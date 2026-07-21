@@ -163,6 +163,14 @@ You can use the following arguments with the `profiling_config` block:
 
 Refer to [profiler-options][profiler-options] for more information about async-profiler configuration.
 
+The following blocks are supported inside `profiling_config`:
+
+| Block               | Description                                        | Required |
+| ------------------- | -------------------------------------------------- | -------- |
+| [`thread`][thread]  | Surface the sampled thread in the profile.         | no       |
+
+[thread]: #thread
+
 ### `custom_arguments`
 
 `custom_arguments` passes async-profiler `start` flags directly.
@@ -202,6 +210,41 @@ For more details, refer to [Options applicable to any output format except JFR][
 
 [non-jfr-options]: https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr
 {{< /admonition >}}
+
+### `thread`
+
+The `thread` block surfaces the thread each sample ran on. It requires `per_thread` to be enabled.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                                                                                            | Default | Required |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `frame`      | `bool`   | Add the thread name as a root frame, so flame graphs split by thread.                                                 | `false` | no       |
+| `label_name` | `string` | Add a sample label under this name holding the thread name, for filtering and grouping. Empty disables it.            | `""`    | no       |
+| `regex`      | `string` | Collapse the thread name to this regular expression's first capture group, for example a pool name. Applies to both `frame` and `label_name`. | `""`    | no       |
+
+The `regex` regular expression must contain at least one capture group. It applies to both `frame` and `label_name`, so without it the raw thread name is used. Because it depends on the output medium, the following combinations produce different views:
+
+* `frame` on, no `regex`: the graph splits by each individual thread.
+* `frame` on with `regex`: the graph splits by pool.
+* `label_name` set: the graph is unchanged, but you can filter or group by thread or pool in {{< param "PRODUCT_NAME" >}}.
+
+```alloy
+pyroscope.java "java" {
+  targets    = discovery.relabel.java.output
+  forward_to = [pyroscope.write.staging.receiver]
+
+  profiling_config {
+    per_thread = true
+
+    thread {
+      frame      = false
+      label_name = "thread_pool"
+      regex      = "^(.*?)-\\d"
+    }
+  }
+}
+```
 
 ## Exported fields
 

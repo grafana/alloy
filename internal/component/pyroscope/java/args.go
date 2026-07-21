@@ -2,6 +2,7 @@ package java
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -31,6 +32,19 @@ type ProfilingConfig struct {
 	Quiet           bool          `alloy:"quiet,attr,optional"`
 	CustomArguments []string      `alloy:"custom_arguments,attr,optional"`
 	Tlab            bool          `alloy:"tlab,attr,optional"`
+
+	Thread ThreadConfig `alloy:"thread,block,optional"`
+}
+
+// ThreadConfig surfaces the sampled thread in the profile. Requires per_thread.
+// frame renders the thread name as a root frame so flame graphs split by thread;
+// label_name adds a sample label under that name for filtering/grouping; regex,
+// when set, collapses the thread name to its first capture group (e.g. a pool
+// name) and applies to both frame and label.
+type ThreadConfig struct {
+	Frame     bool   `alloy:"frame,attr,optional"`
+	LabelName string `alloy:"label_name,attr,optional"`
+	Regex     string `alloy:"regex,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
@@ -42,6 +56,16 @@ func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
 func (arg *Arguments) Validate() error {
 	if len(arg.ProfilingConfig.CustomArguments) == 0 && arg.ProfilingConfig.Tlab && arg.ProfilingConfig.Alloc == "" {
 		return fmt.Errorf("profiling_config.tlab requires profiling_config.alloc to be set")
+	}
+	t := arg.ProfilingConfig.Thread
+	if t.Regex != "" {
+		re, err := regexp.Compile(t.Regex)
+		if err != nil {
+			return fmt.Errorf("invalid thread.regex: %w", err)
+		}
+		if re.NumSubexp() < 1 {
+			return fmt.Errorf("thread.regex must contain at least one capture group")
+		}
 	}
 	return nil
 }
