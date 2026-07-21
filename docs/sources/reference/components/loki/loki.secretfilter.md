@@ -296,6 +296,15 @@ Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_d
 Every rule adds regular expression work, so removing rules you don't need, or raising a noisy rule's `entropy` threshold, also lowers CPU usage.
 Refer to [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration) to disable or tune rules.
 
+```toml
+[extend]
+useDefault = true
+
+# Disable generic-api-key rule
+disabledRules = ["generic-api-key"]
+...
+```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
