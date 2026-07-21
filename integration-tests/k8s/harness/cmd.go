@@ -20,6 +20,21 @@ func RunCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
+// RunCommandOutput runs name with args and returns its stdout. stderr is folded
+// into the returned error so the caller gets clean stdout to parse (e.g.
+// `kubectl logs ...`). CommandEnv pins KUBECONFIG.
+func RunCommandOutput(name string, args ...string) (string, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Env = CommandEnv()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), fmt.Errorf("%s %v failed: %w: %s", name, args, err, stderr.String())
+	}
+	return stdout.String(), nil
+}
+
 // RunCommandQuiet is RunCommand with stdout/stderr discarded; use it when
 // only the exit code matters (e.g. `docker image inspect`).
 func RunCommandQuiet(name string, args ...string) error {

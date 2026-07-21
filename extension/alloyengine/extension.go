@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/flowcmd"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/readyctx"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/syntax/ast"
@@ -80,7 +81,7 @@ type alloyEngineExtension struct {
 	config            *Config
 	settings          component.TelemetrySettings
 	runExited         chan struct{}
-	runCommandFactory func(modulePath string, configs map[string][]byte) *cobra.Command
+	runCommandFactory func(modulePath string, configs map[string][]byte, onConfigImport importsource.ImportContentHook) *cobra.Command
 
 	stateMutex sync.Mutex
 	state      state
@@ -110,12 +111,19 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		e.settings.Logger.Warn("config.file is deprecated, use config.path instead")
 	}
 
-	modulePath, files, err := buildAlloyConfig(e.config.AlloyConfig)
+	modulePath, files, err := buildAlloyConfig(e.settings.Logger, e.config.AlloyConfig)
 	if err != nil {
 		return err
 	}
 
-	runCommand := e.runCommandFactory(modulePath, files)
+	// Optional hook to check imported configs whether they contain `module_path`.
+	// Has effect only for inline configs with `config.inline.module_path` is unset.
+	var onConfigImport importsource.ImportContentHook
+	if e.config.AlloyConfig.isModulePathUnset() {
+		onConfigImport = newImportContentHook(e.settings.Logger, modulePath)
+	}
+
+	runCommand := e.runCommandFactory(modulePath, files, onConfigImport)
 
 	// Prevent cobra from autoloading command-line args from os.Args
 	runCommand.SetArgs([]string{})
@@ -241,7 +249,7 @@ func (e *alloyEngineExtension) NotReady() error {
 	}
 }
 
-func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
+func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
 	// File is deprecated; use it as fallback when Path is not set.
 	effectivePath := cfg.Path
 	if effectivePath == "" {
@@ -255,7 +263,8 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 		}
 
 		modulePath = cfg.Inline.ModulePath
-		if modulePath == "" {
+		isModulePathUndefined := modulePath == ""
+		if isModulePathUndefined {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return "", nil, fmt.Errorf("cannot get current working directory: %w", err)
@@ -264,7 +273,7 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 		}
 
 		data := []byte(cfg.Inline.Content)
-		if err := validateAlloyConfig("config.alloy", data); err != nil {
+		if err := validateAlloyConfig(logger, "config.alloy", data, !isModulePathUndefined); err != nil {
 			return "", nil, fmt.Errorf("invalid inline Alloy config: %w", err)
 		}
 
@@ -284,7 +293,7 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", effectivePath, err)
 		}
 
-		if err := validateAlloyConfig(effectivePath, data); err != nil {
+		if err := validateAlloyConfig(logger, effectivePath, data, true); err != nil {
 			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", effectivePath, err)
 		}
 
@@ -314,7 +323,7 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 			return "", nil, err
 		}
 
-		if err := validateAlloyConfig(fpath, data); err != nil {
+		if err := validateAlloyConfig(logger, fpath, data, true); err != nil {
 			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", fpath, err)
 		}
 
@@ -325,24 +334,73 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 }
 
 // validateAlloyConfig checks whether Alloy config contains statements unsupported in extension mode.
-func validateAlloyConfig(fname string, data []byte) error {
+func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, isModulePathSet bool) error {
 	tree, err := parser.ParseFile(fname, data)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// TODO: throw warning if 'import.file' uses 'module_path' in inline config.
+	if err := checkUnsupportedBlocks(tree); err != nil {
+		return err
+	}
+
+	if !isModulePathSet && usesModulePath(tree) {
+		logger.Warn("inline Alloy config references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
+			zap.String("file", fname))
+	}
+
+	return nil
+}
+
+// checkUnsupportedBlocks checks whether Alloy config AST contains blocks that aren't allowed in the extension mode.
+func checkUnsupportedBlocks(tree *ast.File) error {
 	for _, stmt := range tree.Body {
 		block, ok := stmt.(*ast.BlockStmt)
 		if !ok {
 			continue
 		}
 
-		blockName := block.GetBlockName()
-		if blockName == remotecfg.ServiceName {
-			return fmt.Errorf("block %q is not supported in Alloy extension", blockName)
+		if name := block.GetBlockName(); name == remotecfg.ServiceName {
+			return fmt.Errorf("block %q is not supported in Alloy extension", name)
 		}
 	}
-
 	return nil
+}
+
+// newImportContentHook returns a hook to check Alloy configs loaded via `import.*` blocks.
+//
+// Hook throws warning if imported config uses `module_path` that was inherited from global Alloy config.
+func newImportContentHook(logger *zap.Logger, rootModulePath string) importsource.ImportContentHook {
+	return func(fileName string, content *ast.File, source importsource.ImportSource) {
+		if !source.InheritsModulePath() {
+			// only the `import.string` inherits the parent module_path.
+			return
+		}
+
+		shouldWarn := source.ModulePath() == rootModulePath && usesModulePath(content)
+		if shouldWarn {
+			logger.Warn("imported module references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
+				zap.String("file", fileName))
+		}
+	}
+}
+
+// usesModulePath reports whether the AST references the module_path keyword in any expression.
+func usesModulePath(tree *ast.File) bool {
+	var v modulePathVisitor
+	ast.Walk(&v, tree)
+	return v.found
+}
+
+// modulePathVisitor walks an AST looking for references to the module_path keyword.
+type modulePathVisitor struct {
+	found bool
+}
+
+func (v *modulePathVisitor) Visit(node ast.Node) ast.Visitor {
+	expr, ok := node.(*ast.IdentifierExpr)
+	if ok && expr.Ident.Name == importsource.ModulePath {
+		v.found = true
+	}
+	return v
 }

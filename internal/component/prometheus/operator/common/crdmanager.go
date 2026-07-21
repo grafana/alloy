@@ -181,13 +181,16 @@ func (c *crdManager) Run(ctx context.Context) error {
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	defer alloyAppendable.Clear()
 
-	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
 	scrapeOpts := &scrape.Options{
 		AppendMetadata:          c.args.Scrape.HonorMetadata,
 		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
 		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
+		// ParseST extracts the start timestamp from the scrape formats;
+		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
+		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
 	}
-	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}

@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -521,6 +522,7 @@ func TestConfigConversion(t *testing.T) {
 						interval = "123s"
 						timeout = "113s"
 						port = 4321
+						owner_account = "123456789012"
 					}
 				}
 				protocol {
@@ -540,6 +542,7 @@ func TestConfigConversion(t *testing.T) {
 						Interval:      123 * time.Second,
 						Timeout:       113 * time.Second,
 						Port:          getPtrToUint(4321),
+						OwnerAccount:  ptr.To("123456789012"),
 					}),
 				},
 				RoutingKey: "traceID",

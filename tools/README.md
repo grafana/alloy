@@ -68,13 +68,14 @@ Tags the next RC and creates a draft prerelease from the open release-please
 PR for the given branch. Use `main` for a new minor RC, `release/v1.X` for a
 patch RC. Driven by `release-create-rc.yml` (manual `workflow_dispatch`).
 
-**`release backport --pr=<N> --label=backport/v1.X`**
+**`release prepare-backport --pr=<N> --label=backport/v1.X`**
 
-Cherry-picks the commit from a merged PR onto the `release/v1.X` branch, pushes
-the backport branch, and opens a backport PR. Skips cleanly when the target
-branch doesn't exist yet (release still in RC) or when the backport is already
-merged. On failure it comments on the source PR with manual instructions.
-Driven by `release-backport.yml` after the trigger workflow.
+Prepares a cherry-pick from a merged PR onto the `release/v1.X` branch and emits
+the pull request inputs used by `release-backport.yml`. The workflow signs the
+commit and opens the PR with `peter-evans/create-pull-request`. Skips cleanly
+when the target branch doesn't exist yet (release still in RC) or when the
+backport is already merged. On failure it comments on the source PR with manual
+instructions. Driven by `release-backport.yml` after the trigger workflow.
 
 **`release enrich-release-notes --tag=<v1.X.Y> [--footer=<path>]`**
 

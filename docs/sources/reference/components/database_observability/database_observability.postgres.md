@@ -96,10 +96,14 @@ You can use the following blocks with `database_observability.postgres`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+It contains zero or one of the [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
+
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 
 ### `aws`
 
@@ -117,7 +121,7 @@ The `azure` block supplies the identifying information for the database being mo
 |-------------------|----------|------------------------------------------------------|---------|----------|
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
-| `server_name`     | `string` | The database server name.                            |         | no       |
+| `server_name`     | `string` | The database server name, for example `orders-db` for the host `orders-db.postgres.database.azure.com`. |         | no       |
 
 ### `gcp`
 
@@ -138,7 +142,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 | Name                      | Type       | Description                                                   | Default | Required |
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
-| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
 | `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |

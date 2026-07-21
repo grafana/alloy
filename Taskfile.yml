@@ -2,6 +2,7 @@
 version: "3"
 
 includes:
+  docs: build-tools/task/docs.yml
   lint: build-tools/task/lint.yml
 
 vars:
