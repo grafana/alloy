@@ -15,13 +15,20 @@ import (
 
 const (
 	ProductName = "Alloy"
+	// ExtensionProductName is the product name reported when Alloy runs as an OTel
+	// Collector extension, distinguishing it from native Alloy.
+	ExtensionProductName = ProductName + " OTel Extension"
 
 	deployModeEnv = "ALLOY_DEPLOY_MODE"
+
+	EngineOTel    = "otel"
+	EngineDefault = "default"
 )
 
 // settable by tests
 var goos = runtime.GOOS
 var executable = os.Executable
+var args = os.Args
 
 func Get() string {
 	parenthesis := ""
@@ -33,7 +40,31 @@ func Get() string {
 	if len(metadata) > 0 {
 		parenthesis = fmt.Sprintf(" (%s)", strings.Join(metadata, "; "))
 	}
-	return fmt.Sprintf("%s/%s%s", ProductName, build.Version, parenthesis)
+	// The product name distinguishes the engine: native Alloy vs Alloy running as
+	// an OTel Collector extension.
+	product := ProductName
+	if GetEngineMode() == EngineOTel {
+		product = ExtensionProductName
+	}
+	return fmt.Sprintf("%s/%s%s", product, build.Version, parenthesis)
+}
+
+// GetEngineMode returns which engine Alloy is running with.
+func GetEngineMode() string {
+	// Find the first positional argument (the subcommand). Skip flags and any
+	// flag values that may precede it.
+	for _, a := range args[1:] {
+		if strings.HasPrefix(a, "-") {
+			continue
+		}
+		if a == EngineOTel {
+			return EngineOTel
+		}
+		// The first positional argument is the subcommand; if it isn't "otel"
+		// we are not running the OTel engine.
+		break
+	}
+	return EngineDefault
 }
 
 // GetDeployMode returns our best-effort guess at the way Grafana Alloy was deployed.

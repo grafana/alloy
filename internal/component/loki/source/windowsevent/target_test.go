@@ -29,7 +29,7 @@ func TestBookmarkUpdate(t *testing.T) {
 
 	dirPath := "bookmarktest"
 	filePath := path.Join(dirPath, "bookmark.xml")
-	require.NoError(t, os.MkdirAll(path.Dir(filePath), 700))
+	require.NoError(t, os.MkdirAll(path.Dir(filePath), 0700))
 	defer func() {
 		require.NoError(t, os.RemoveAll(dirPath))
 	}()

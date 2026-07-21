@@ -202,6 +202,20 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}(),
 		},
 		{
+			testName: "Message key from metadata key",
+			cfg: `
+				protocol_version = "2.0.0"
+				logs {
+					message_key_from_metadata_key = "my.metadata.key"
+				}
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.Logs.MessageKeyFromMetadataKey = "my.metadata.key"
+				return cfg
+			}(),
+		},
+		{
 			testName: "Explicit",
 			cfg: `
 				protocol_version = "2.0.0"

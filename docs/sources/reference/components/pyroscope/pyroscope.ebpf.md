@@ -203,11 +203,16 @@ You can use the `sample_rate` argument to define the number of stack traces coll
 The following labels are automatically injected into the collected profiles if you haven't defined them.
 These labels can help you pin down a profiling target.
 
-| Label              | Description                                                                                                                      |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `__container_id__` | The container ID derived from target.                                                                                            |
-| `__name__`         | Pyroscope metric name. Defaults to `process_cpu`.                                                                                |
-| `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. |
+| Label                | Description                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `__container_id__`   | The container ID derived from target.                                                                                            |
+| `__name__`           | Pyroscope metric name. Defaults to `process_cpu`.                                                                                |
+| `service_name`       | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. |
+| `otel.scope.name`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.ebpf`.                                                       |
+| `otel.scope.version` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.                                                              |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
 
 ### Targets
 

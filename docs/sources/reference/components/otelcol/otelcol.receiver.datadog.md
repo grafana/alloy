@@ -45,6 +45,8 @@ You can use the following arguments with `otelcol.receiver.datadog`:
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
+| `idle_series_cleanup_interval` | `duration`            | How frequently to check for stale series.                                    | `"5m"`                                                     | no       |
+| `idle_series_timeout`    | `duration`                 | Duration after which a series is considered stale and evicted. `0` disables eviction. | `"0s"`                                             | no       |
 | `idle_timeout`           | `duration`                 | Maximum idle time before closing a keep-alive connection.                    | `"1m"`                                                     | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
@@ -136,7 +138,7 @@ The `proxy` block configures how the `/intake` proxy operates.
 It's only used when `behavior` is set to `"proxy"`.
 If `behavior` isn't `"proxy"`, this block is ignored.
 
-This block has no arguments and is configured with the nested [`api`][api] block.
+This block has no arguments and is configured with the nested [`api`](#api) block.
 
 ### `api`
 

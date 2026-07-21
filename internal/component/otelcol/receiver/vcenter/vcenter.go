@@ -378,6 +378,9 @@ type Arguments struct {
 	ScraperControllerArguments otelcol.ScraperControllerArguments `alloy:",squash"`
 	TLS                        otelcol.TLSClientArguments         `alloy:"tls,block,optional"`
 
+	// MaxQueryMetrics caps the number of metrics requested per vSphere QueryPerf call.
+	MaxQueryMetrics int `alloy:"max_query_metrics,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -391,6 +394,7 @@ var _ receiver.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		ScraperControllerArguments: otelcol.DefaultScraperControllerArguments,
+		MaxQueryMetrics:            256,
 	}
 	args.MetricsBuilderConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
@@ -412,6 +416,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Password = configopaque.String(args.Password)
 	result.ClientConfig = *args.TLS.Convert()
 	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
+	result.MaxQueryMetrics = args.MaxQueryMetrics
 
 	return &result, nil
 }

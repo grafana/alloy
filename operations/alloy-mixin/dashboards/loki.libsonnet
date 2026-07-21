@@ -83,15 +83,15 @@ local filename = 'alloy-loki.json';
         panel.newQuery(
           expr=|||
             (
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
-              or ignoring(le)
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
             )
             /
             (
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
-              or ignoring(le)
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
             ) * 100
           ||| % $._config,
         ),

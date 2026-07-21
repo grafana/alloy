@@ -78,7 +78,12 @@ type Arguments struct {
 	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
 	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
+	Logs                   LogsArguments                `alloy:"logs,block,optional"`
 	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
+}
+
+type LogsArguments struct {
+	EnableErrorLogsProcessing bool `alloy:"enable_error_logs_processing,attr,optional"`
 }
 
 type CloudProvider struct {
@@ -610,14 +615,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     effectiveExcludeUsers,
-			EntryHandler:     entryHandler,
-			TableRegistry:    tableRegistry,
-			Logger:           c.opts.Logger,
+			DB:                        c.dbConnection,
+			CollectInterval:           c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:           c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeDatabases:          c.args.ExcludeDatabases,
+			ExcludeUsers:              effectiveExcludeUsers,
+			EntryHandler:              entryHandler,
+			TableRegistry:             tableRegistry,
+			EnableErrorLogsProcessing: c.args.Logs.EnableErrorLogsProcessing,
+			Logger:                    c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -718,13 +724,14 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:         c.logsReceiver,
-		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:           c.opts.Logger,
-		Registry:         c.registry,
-		ExcludeDatabases: c.args.ExcludeDatabases,
-		ExcludeUsers:     effectiveExcludeUsers,
-		DB:               c.dbConnection,
+		Receiver:                  c.logsReceiver,
+		EntryHandler:              entryHandler,
+		Logger:                    c.opts.Logger,
+		Registry:                  c.registry,
+		ExcludeDatabases:          c.args.ExcludeDatabases,
+		ExcludeUsers:              effectiveExcludeUsers,
+		EnableErrorLogsProcessing: c.args.Logs.EnableErrorLogsProcessing,
+		DB:                        c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

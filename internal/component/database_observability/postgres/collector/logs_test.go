@@ -7,12 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logfmt/logfmt"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -153,6 +156,42 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	for _, mf := range mfs {
 		if mf.GetName() == "database_observability_pg_errors_total" {
 			require.Equal(t, 0, len(mf.GetMetric()), "should not create metrics for non-error logs")
+		}
+	}
+}
+
+// TestLogsCollector_DoesNotCountEmbeddedSeverityKeyword pins the robustness of
+// severity detection: a non-error line whose text embeds an "ERROR:" keyword
+// (here a LOG-level logged statement, as emitted with log_statement=all) must
+// not be counted as an error. The line's real leading label (LOG) shadows the
+// embedded keyword.
+func TestLogsCollector_DoesNotCountEmbeddedSeverityKeyword(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	ts := collector.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// A LOG-level statement line whose SQL text embeds an "ERROR:" keyword.
+	// SQLSTATE is 00000 (successful completion).
+	logLine := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:00000:" + ts2 +
+		":25/112:0:693c34cb.2398::psqlLOG:  statement: SELECT 'ERROR:' AS msg"
+
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: logLine}}))
+
+	mfs, _ := registry.Gather()
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			require.Equal(t, 0, len(mf.GetMetric()), "a LOG line with an embedded ERROR: keyword must not be counted")
 		}
 	}
 }
@@ -387,47 +426,6 @@ func TestLogsCollector_StartStop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return collector.Stopped()
 	}, 5*time.Second, 100*time.Millisecond)
-}
-
-func TestExtractSeverity(t *testing.T) {
-	tests := []struct {
-		message  string
-		expected string
-	}{
-		{"ERROR:  canceling statement", "ERROR"},
-		{"FATAL:  too many connections", "FATAL"},
-		{"PANIC:  system failure", "PANIC"},
-		{"LOG:  connection received", "LOG"},
-		{"no colon here", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.message, func(t *testing.T) {
-			require.Equal(t, tt.expected, extractSeverity(tt.message))
-		})
-	}
-}
-
-func TestIsContinuationLine(t *testing.T) {
-	tests := []struct {
-		line     string
-		expected bool
-	}{
-		{"\tIndented line", true},
-		{"DETAIL:  some detail", true},
-		{"HINT:  some hint", true},
-		{"CONTEXT:  some context", true},
-		{"STATEMENT:  SELECT 1", true},
-		{"  DETAIL:  with whitespace", true},
-		{"2025-01-12 10:30:45 UTC:app-user@db:[123]:ERROR:  normal log", false},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			require.Equal(t, tt.expected, isContinuationLine(tt.line))
-		})
-	}
 }
 
 func TestLogsCollector_SQLStateExtraction(t *testing.T) {
@@ -864,4 +862,442 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 		}
 	}
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}
+
+// drainEntries reads up to want entries from the handler's channel within
+// timeout. Returns whatever arrived in order.
+func drainEntries(t *testing.T, ch chan loki.Entry, want int, timeout time.Duration) []loki.Entry {
+	t.Helper()
+	out := make([]loki.Entry, 0, want)
+	deadline := time.Now().Add(timeout)
+	for len(out) < want && time.Now().Before(deadline) {
+		select {
+		case e := <-ch:
+			out = append(out, e)
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	return out
+}
+
+// parseLogfmt decodes a logfmt entry body into a map using the same logfmt
+// library production consumers use, so encoder bugs can't hide behind a
+// matching bespoke test parser.
+func parseLogfmt(t *testing.T, s string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	decoder := logfmt.NewDecoder(strings.NewReader(s))
+	for decoder.ScanRecord() {
+		for decoder.ScanKeyval() {
+			out[string(decoder.Key())] = string(decoder.Value())
+		}
+	}
+	require.NoError(t, decoder.Err(), "entry body must be valid logfmt")
+	return out
+}
+
+// requireOnlyFields asserts the parsed logfmt entry contains exactly the given
+// keys and no others — pinning the minimal v1 op="error_message" field set so any
+// re-added error-detail field fails the test until its own PR lands.
+func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string) {
+	t.Helper()
+	allow := make(map[string]struct{}, len(allowed))
+	for _, k := range allowed {
+		allow[k] = struct{}{}
+		require.Containsf(t, fields, k, "expected field %q to be present", k)
+	}
+	for k := range fields {
+		_, ok := allow[k]
+		require.Truef(t, ok, "unexpected field %q in minimal op=error_message entry", k)
+	}
+}
+
+// startErrorLogs builds and starts a logs collector with op="error_message" emission
+// enabled, returning it with its receiver and entry channel. A non-zero timeout
+// overrides pendingErrorTimeout before Start (the run loop reads it once at
+// startup, so the timeout/race tests must set it here).
+func startErrorLogs(t *testing.T, timeout time.Duration) (*Logs, loki.LogsReceiver, chan loki.Entry) {
+	t.Helper()
+	if !fingerprint.Supported() {
+		t.Skip("op=error_message emission requires SQL fingerprinting, which needs a cgo build")
+	}
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+	c, err := NewLogs(LogsArguments{
+		Receiver:                  receiver,
+		EntryHandler:              loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                    logging.NewSlogNop(),
+		Registry:                  prometheus.NewRegistry(),
+		EnableErrorLogsProcessing: true,
+	})
+	require.NoError(t, err)
+	if timeout > 0 {
+		c.pendingErrorTimeout = timeout
+	}
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+	return c, receiver, entryCh
+}
+
+// logTS returns a log-line timestamp after the collector's start time (so it
+// passes the historical-log filter), formatted as PostgreSQL emits it.
+func logTS(c *Logs) string {
+	return c.startTime.Add(10 * time.Second).UTC().Format("2006-01-02 15:04:05.000 MST")
+}
+
+func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "12345"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing WHERE id = $1"}}
+	// The next prefix line flushes the buffered STATEMENT deterministically.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
+
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1")
+	require.NoError(t, fpErr)
+
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, "books_store", fields["datname"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+
+	// v1 emits only the bare-minimum field set; error-detail fields (sqlstate,
+	// pid, client/session, error_message, the SQL text, …) are deferred.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+
+	// FATAL with no following STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[99999]:1:53300:FATAL:  too many connections"}}
+
+	// pg_errors_total increments immediately.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+	}, 1*time.Second, 50*time.Millisecond)
+
+	// No entry should arrive even after the timeout window.
+	got := drainEntries(t, entryCh, 1, 400*time.Millisecond)
+	require.Len(t, got, 0, "no STATEMENT → no Loki entry")
+}
+
+func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "55555"
+
+	// ERROR #1 displaced by ERROR #2 from the same backend.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  err one"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P02:ERROR:  err two"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:42P02:STATEMENT:  SELECT 2"}}
+	// The next prefix line flushes the buffered STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 2, 1*time.Second)
+	require.Len(t, got, 1, "exactly one entry: only the second error's STATEMENT was matched")
+
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT 2")
+	require.NoError(t, fpErr)
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+// TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
+// production shape: STATEMENT keyword line carries the prefix and is followed
+// by TAB-prefixed continuations. The next prefix line flushes the buffer.
+func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "38"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:4:40001:ERROR:  could not serialize access due to concurrent update"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:5:40001:STATEMENT:  WITH target_books AS ("}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tSELECT id FROM books WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"}}
+	// The next prefix line flushes the buffered STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:6:00000:LOG:  duration: 1.234 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
+	expectedFP, fpErr := fingerprint.Fingerprint(expectedSQL)
+	require.NoError(t, fpErr)
+
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+// TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
+// ERROR+STATEMENT pair with no following log line still emits when the pending
+// expires: flushExpiredPending emits a pending that has its STATEMENT rather
+// than dropping it. The 500ms timeout is generous against goroutine starvation
+// under parallel-test contention.
+func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 500*time.Millisecond)
+	ts := logTS(c)
+	pid := "310"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:4:40001:ERROR:  could not serialize access due to concurrent update"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:5:40001:STATEMENT:  INSERT INTO t (a) VALUES ($1)"}}
+
+	got := drainEntries(t, entryCh, 1, 3*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	expectedFP, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)")
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+}
+
+// TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
+// with EnableErrorLogsProcessing explicitly false the component still increments
+// pg_errors_total but never forwards an op="error_message" Loki entry.
+func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:                  receiver,
+		EntryHandler:              loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                    logging.NewSlogNop(),
+		Registry:                  prometheus.NewRegistry(),
+		EnableErrorLogsProcessing: false, // explicitly off
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:2:42P01:STATEMENT:  SELECT * FROM missing WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	// Wait for the buffering / flush logic to settle. pg_errors_total should
+	// have incremented (gating doesn't touch it).
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// No Loki entries should have flowed.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error_message entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good — silence
+	}
+}
+
+// TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
+// EnableErrorLogsProcessing from LogsArguments yields the disabled behavior:
+// pg_errors_total still increments, but no op="error_message" Loki entry appears.
+func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     prometheus.NewRegistry(),
+		// EnableErrorLogsProcessing intentionally omitted — defaults to false
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+
+	// Counter should still increment.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// And no Loki entry should appear.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error_message entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good
+	}
+}
+
+// TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword pins that an
+// ERROR line whose message text contains a STATEMENT keyword is still counted
+// in pg_errors_total when enable_error_logs_processing is on: the line is classified by
+// its leftmost real label (ERROR), not diverted to the statement-attach path.
+func TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword(t *testing.T) {
+	if !fingerprint.Supported() {
+		t.Skip("enable_error_logs_processing requires a cgo build")
+	}
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:                  loki.NewLogsReceiver(),
+		EntryHandler:              loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:                    logging.NewSlogNop(),
+		Registry:                  registry,
+		EnableErrorLogsProcessing: true,
+	})
+	require.NoError(t, err)
+
+	ts := c.startTime.Add(10 * time.Second).UTC().Format("2006-01-02 15:04:05.000 MST")
+	line := ts + `::user@books_store:[123]:1:42601:ERROR:  syntax error at or near "STATEMENT:  SELECT"`
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42601", "42", "books_store", "user"))
+	require.Equal(t, float64(1), got, "an ERROR line with an embedded STATEMENT keyword must still be counted")
+}
+
+// TestLogsCollector_AppNameLabelDoesNotShadowSeverity pins that a label-like
+// substring in the client-controlled application_name (%a sits between the
+// SQLSTATE anchor and the real severity) cannot shadow the message's actual
+// label: matching requires PostgreSQL's ":  " separator.
+func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	tsBase := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := tsBase.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := tsBase.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// application_name "etl-LOG:worker" contains "LOG:" before the real ERROR label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:57014:" + ts2 +
+		":25/112:0:693c34cb.2398::etl-LOG:workerERROR:  canceling statement"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
+}
+
+// newLogsForClassify builds a Logs collector for severity-classification tests
+// and returns it alongside the recent-line timestamp fields.
+func newLogsForClassify(t *testing.T) (*Logs, *prometheus.Registry, string, string) {
+	t.Helper()
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	tsBase := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := tsBase.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := tsBase.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	return c, registry, ts1, ts2
+}
+
+// TestLogsCollector_ForgedAppNameDoesNotHideError pins the hide direction: a
+// client that sets application_name to exactly "LOG:  " (PostgreSQL's own
+// separator, which pg_clean_ascii preserves) forges a benign label before the
+// real ERROR. Walking to the last label in the run recovers the real severity,
+// so the error is still counted rather than silently dropped.
+func TestLogsCollector_ForgedAppNameDoesNotHideError(t *testing.T) {
+	c, _, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "LOG:  " sits before the real ERROR label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:57014:" + ts2 +
+		":25/112:0:693c34cb.2398::LOG:  ERROR:  canceling statement"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	require.Equal(t, float64(1), got, `a forged "LOG:  " application_name must not hide the real ERROR`)
+}
+
+// TestLogsCollector_ForgedAppNameDoesNotInflateError pins the inflate direction:
+// a client that sets application_name to exactly "ERROR:  " forges an error
+// label before the real LOG label on a benign statement line (SQLSTATE 00000).
+// Walking to the last label recovers LOG, so nothing is counted.
+func TestLogsCollector_ForgedAppNameDoesNotInflateError(t *testing.T) {
+	c, registry, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "ERROR:  " sits before the real LOG label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:00000:" + ts2 +
+		":25/112:0:693c34cb.2398::ERROR:  LOG:  statement: SELECT 1"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	mfs, _ := registry.Gather()
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			require.Equal(t, 0, len(mf.GetMetric()), `a forged "ERROR:  " application_name must not inflate the error count`)
+		}
+	}
+}
+
+// TestLogsCollector_MultipleForgedAppNameLabels pins that a run of several
+// forged labels in application_name is fully consumed: the walk advances past
+// every "<label>:  " token to the real severity PostgreSQL appends last.
+func TestLogsCollector_MultipleForgedAppNameLabels(t *testing.T) {
+	c, _, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "ERROR:  LOG:  " precedes the real FATAL label.
+	line := ts1 + ":[local]:conn_user@testdb:[9449]:4:53300:" + ts2 +
+		":91/57:0:693c34db.24e9::ERROR:  LOG:  FATAL:  too many connections"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "testdb", "conn_user"))
+	require.Equal(t, float64(1), got, "multiple forged application_name labels must all be skipped to the real FATAL")
+}
+
+// TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:
+// a STATEMENT line from another backend must not attach to the pending error,
+// so interleaved streams cannot emit a mispaired op="error_message" entry.
+func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[111]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[222]:1:42P02:STATEMENT:  SELECT * FROM other_backend"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[222]:2:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
+	require.Len(t, got, 0, "a STATEMENT from a different PID must not pair with the pending error")
 }
