@@ -194,6 +194,10 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client *debuginfoc
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
 
+	if buildID == "" {
+		return
+	}
+
 	// Skip virtual DSOs — they have no backing file and no build ID.
 	if strings.HasPrefix(fileName, "linux-vdso") || strings.HasPrefix(fileName, "[vdso]") {
 		return

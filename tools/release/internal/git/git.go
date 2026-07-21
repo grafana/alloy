@@ -63,14 +63,6 @@ func run(args ...string) (string, error) {
 	return out, nil
 }
 
-// AmendCommit amends the current HEAD commit with any staged changes.
-func AmendCommit() error {
-	if _, err := run("git", "commit", "--amend", "--no-edit"); err != nil {
-		return fmt.Errorf("amending commit: %w", err)
-	}
-	return nil
-}
-
 // BranchExistsOnRemote checks if a branch exists on the remote using git ls-remote.
 func BranchExistsOnRemote(branch string) (bool, error) {
 	if err := validateBranchName(branch); err != nil {
@@ -81,17 +73,6 @@ func BranchExistsOnRemote(branch string) (bool, error) {
 		return false, fmt.Errorf("checking remote branch %s: %w", branch, err)
 	}
 	return out != "", nil
-}
-
-// Checkout checks out an existing branch.
-func Checkout(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "checkout", branch); err != nil {
-		return fmt.Errorf("checking out branch %s: %w", branch, err)
-	}
-	return nil
 }
 
 // CherryPick cherry-picks a commit. By default it commits with a "(cherry picked from commit ...)"
@@ -151,101 +132,41 @@ func Fetch(branch string) error {
 	return nil
 }
 
-// MergeOurs merges a branch using the "ours" strategy, which creates a merge commit
-// that records the merge but keeps the current branch's content unchanged.
-func MergeOurs(branch, message string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "merge", "--strategy", "ours", "origin/"+branch, "--message", message); err != nil {
-		return fmt.Errorf("merging branch %s with ours strategy: %w", branch, err)
-	}
-	return nil
-}
-
-// Push pushes a branch to origin.
-func Push(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "push", "origin", branch); err != nil {
-		return fmt.Errorf("pushing branch %s: %w", branch, err)
-	}
-	return nil
-}
-
-// MergeFFOnly merges the given branch into the current branch using fast-forward only.
-func MergeFFOnly(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "merge", "--ff-only", branch); err != nil {
-		return fmt.Errorf("merging branch %s (ff-only): %w", branch, err)
-	}
-	return nil
-}
-
-// CurrentBranch returns the name of the currently checked-out branch.
-func CurrentBranch() (string, error) {
-	out, err := run("git", "rev-parse", "--abbrev-ref", "HEAD")
+// GetHeadCommitMessage returns the full commit message for HEAD.
+func GetHeadCommitMessage() (string, error) {
+	message, err := run("git", "log", "-1", "--format=%B")
 	if err != nil {
-		return "", fmt.Errorf("getting current branch: %w", err)
+		return "", fmt.Errorf("getting HEAD commit message: %w", err)
 	}
-	return out, nil
+	return message, nil
 }
 
-// AbortCherryPick attempts to abort an in-progress cherry-pick.
-func AbortCherryPick() error {
-	if err := exec.Command("git", "cherry-pick", "--abort").Run(); err != nil {
-		return fmt.Errorf("aborting cherry-pick: %w", err)
-	}
-	return nil
-}
-
-// ResetHard resets the index and working tree to HEAD, discarding all changes.
-func ResetHard() error {
-	if _, err := run("git", "reset", "--hard"); err != nil {
-		return fmt.Errorf("resetting working copy: %w", err)
-	}
-	return nil
-}
-
-// DeleteLocalBranch force-deletes a local branch.
-func DeleteLocalBranch(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "branch", "-D", branch); err != nil {
-		return fmt.Errorf("deleting local branch %s: %w", branch, err)
-	}
-	return nil
-}
-
-// CoAuthor represents a co-author extracted from a commit message.
-type CoAuthor struct {
+// CommitAuthor is the author identity recorded on a git commit.
+type CommitAuthor struct {
 	Name  string
 	Email string
 }
 
-// ParseCoAuthors extracts co-authors from Co-authored-by trailers in a commit message.
-func ParseCoAuthors(message string) []CoAuthor {
-	var coauthors []CoAuthor
-	for line := range strings.SplitSeq(message, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(strings.ToLower(line), "co-authored-by:") {
-			continue
-		}
-		// Parse "Co-authored-by: Name <email>"
-		rest := strings.TrimSpace(line[len("co-authored-by:"):])
-		start := strings.Index(rest, "<")
-		end := strings.Index(rest, ">")
-		if start == -1 || end == -1 || end <= start {
-			continue
-		}
-		coauthors = append(coauthors, CoAuthor{
-			Name:  strings.TrimSpace(rest[:start]),
-			Email: strings.TrimSpace(rest[start+1 : end]),
-		})
+// GetHeadCommitAuthor returns the author identity for HEAD.
+func GetHeadCommitAuthor() (CommitAuthor, error) {
+	out, err := run("git", "log", "-1", "--format=%an%x00%ae")
+	if err != nil {
+		return CommitAuthor{}, fmt.Errorf("getting HEAD commit author: %w", err)
 	}
-	return coauthors
+
+	name, email, ok := strings.Cut(out, "\x00")
+	if !ok || name == "" || email == "" {
+		return CommitAuthor{}, fmt.Errorf("HEAD commit author is incomplete")
+	}
+
+	return CommitAuthor{Name: name, Email: email}, nil
+}
+
+// ResetLastCommit resets HEAD back one commit while keeping that commit's
+// changes in the working tree.
+func ResetLastCommit() error {
+	if _, err := run("git", "reset", "HEAD^"); err != nil {
+		return fmt.Errorf("resetting last commit into working tree: %w", err)
+	}
+	return nil
 }

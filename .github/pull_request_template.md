@@ -18,7 +18,7 @@
 
 ### Pull Request Details
 
-<!-- Detailed descripion of the Pull Request, if needed. -->
+<!-- Detailed description of the Pull Request, if needed. -->
 
 
 ### Issue(s) fixed by this Pull Request
@@ -38,3 +38,4 @@
 - [ ] Documentation added
 - [ ] Tests updated
 - [ ] Config converters updated
+- [ ] This pull request was substantially generated with AI assistance (see the [GenAI policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md))

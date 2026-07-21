@@ -59,11 +59,11 @@ You can use the following blocks with `otelcol.processor.span`:
 | `include` > [`regexp`][regexp]            | Regex cache settings.                                                      | no       |
 | `include` > [`resource`][resource]        | A list of items to match the resources against.                            | no       |
 | [`name`][name]                            | Configures how to rename a span and add attributes.                        | no       |
-| `name` > [`to-attributes`][to-attributes] | Configuration to create attributes from a span name.                       | no       |
+| `name` > [`to_attributes`][to_attributes] | Configuration to create attributes from a span name.                       | no       |
 | [`status`][status]                        | Specifies a status which should be set for this span.                      | no       |
 
 [name]: #name
-[to-attributes]: #to_attributes
+[to_attributes]: #to_attributes
 [status]: #status
 [output]: #output
 [include]: #include
@@ -106,6 +106,12 @@ The following arguments are supported:
 A match occurs if at least one item in the lists matches.
 
 One of `services`, `span_names`, `span_kinds`, [`attribute`][attribute], [`resource`][resource], or [`library`][library] must be specified with a non-empty value for a valid configuration.
+
+[name]: #name
+[status]: #status
+[attribute]: #attribute
+[resource]: #resource
+[library]: #library
 
 ### `attribute`
 
@@ -153,7 +159,7 @@ The following attributes are supported:
 | `from_attributes` | `list(string)` | Attribute keys to pull values from, to generate a new span name. | `[]`    | no       |
 | `separator`       | `string`       | Separates attributes values in the new span name.                | `""`    | no       |
 
-Firstly `from_attributes` rules are applied, then [`to-attributes`][to-attributes] are applied.
+Firstly `from_attributes` rules are applied, then [`to_attributes`][to_attributes] are applied.
 At least one of these 2 fields must be set.
 
 `from_attributes` represents the attribute keys to pull the values from to generate the new span name:
@@ -164,7 +170,9 @@ At least one of these 2 fields must be set.
 
 `separator` is the string used to separate attributes values in the new span name.
 If no value is set, no separator is used between attribute values.
-`separator` is used with `from_attributes` only. It's not used with [`to-attributes`][to-attributes].
+`separator` is used with `from_attributes` only. It's not used with [`to_attributes`][to_attributes].
+
+[to_attributes]: #to_attributes
 
 ### `to_attributes`
 

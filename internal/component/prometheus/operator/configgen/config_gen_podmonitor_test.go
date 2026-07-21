@@ -29,8 +29,9 @@ import (
 
 func TestGeneratePodMonitorConfig(t *testing.T) {
 	var (
-		falsePtr = ptr.To(false)
-		proxyURL = "https://proxy:8080"
+		falsePtr    = ptr.To(false)
+		proxyURL    = "https://proxy:8080"
+		httpsScheme = promopv1.Scheme("https")
 	)
 	suite := []struct {
 		name                   string
@@ -409,7 +410,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				Port:            stringPtr("metrics"),
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				Scheme:          "https",
+				Scheme:          &httpsScheme,
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
@@ -421,15 +422,19 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						TargetLabel:  "bar",
 					},
 				},
-				HTTPConfig: promopv1.HTTPConfig{
-					EnableHTTP2:     falsePtr,
-					FollowRedirects: falsePtr,
+				HTTPConfigWithProxy: promopv1.HTTPConfigWithProxy{
+					HTTPConfig: promopv1.HTTPConfig{
+						HTTPConfigWithoutTLS: promopv1.HTTPConfigWithoutTLS{
+							EnableHTTP2:     falsePtr,
+							FollowRedirects: falsePtr,
+						},
+						TLSConfig: &promopv1.SafeTLSConfig{
+							ServerName:         stringPtr("foo.com"),
+							InsecureSkipVerify: boolPtr(true),
+						},
+					},
 					ProxyConfig: promopv1.ProxyConfig{
 						ProxyURL: &proxyURL,
-					},
-					TLSConfig: &promopv1.SafeTLSConfig{
-						ServerName:         stringPtr("foo.com"),
-						InsecureSkipVerify: boolPtr(true),
 					},
 				},
 			},

@@ -47,9 +47,11 @@ The following components, grouped by namespace, _export_ Targets.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
+- [discovery.aws](../components/discovery/discovery.aws)
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
 - [discovery.consulagent](../components/discovery/discovery.consulagent)
@@ -131,6 +133,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -263,6 +266,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="faro" >}}

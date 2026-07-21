@@ -47,28 +47,31 @@ You can use the following blocks with `prometheus.remote_write`:
 
 {{< docs/alloy-config >}}
 
-| Block                                                           | Description                                                                | Required |
-|-----------------------------------------------------------------|----------------------------------------------------------------------------|----------|
-| [`endpoint`][endpoint]                                          | Location to send metrics to.                                               | no       |
-| `endpoint` > [`authorization`][authorization]                   | Configure generic authorization to the endpoint.                           | no       |
-| `endpoint` > [`azuread`][azuread]                               | Configure AzureAD for authenticating to the endpoint.                      | no       |
-| `endpoint` > `azuread` > [`managed_identity`][managed_identity] | Configure Azure user-assigned managed identity.                            | yes      |
-| `endpoint` > `azuread` > [`oauth`][oauth]                       | Configure Azure OAuth.                                                     | yes      |
-| `endpoint` > `azuread` > [`sdk`][sdk]                           | Configure Azure SDK authentication.                                        | yes      |
-| `endpoint` > [`basic_auth`][basic_auth]                         | Configure `basic_auth` for authenticating to the endpoint.                 | no       |
-| `endpoint` > [`metadata_config`][metadata_config]               | Configuration for how metric metadata is sent.                             | no       |
-| `endpoint` > [`oauth2`][oauth2]                                 | Configure OAuth 2.0 for authenticating to the endpoint.                    | no       |
-| `endpoint` > `oauth2` > [`tls_config`][tls_config]              | Configure TLS settings for connecting to the endpoint.                     | no       |
-| `endpoint` > [`queue_config`][queue_config]                     | Configuration for how metrics are batched before sending.                  | no       |
-| `endpoint` > [`sigv4`][sigv4]                                   | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no       |
-| `endpoint` > [`tls_config`][tls_config]                         | Configure TLS settings for connecting to the endpoint.                     | no       |
-| `endpoint` > [`write_relabel_config`][write_relabel_config]     | Configuration for `write_relabel_config`.                                  | no       |
-| [`wal`][wal]                                                    | Configuration for the component's WAL.                                     | no       |
+| Block                                                             | Description                                                                | Required |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------|----------|
+| [`endpoint`][endpoint]                                            | Location to send metrics to.                                               | no       |
+| `endpoint` > [`authorization`][authorization]                     | Configure generic authorization to the endpoint.                           | no       |
+| `endpoint` > [`azuread`][azuread]                                 | Configure AzureAD for authenticating to the endpoint.                      | no       |
+| `endpoint` > `azuread` > [`managed_identity`][managed_identity]   | Configure Azure user-assigned managed identity.                            | yes      |
+| `endpoint` > `azuread` > [`oauth`][oauth]                         | Configure Azure OAuth.                                                     | yes      |
+| `endpoint` > `azuread` > [`sdk`][sdk]                             | Configure Azure SDK authentication.                                        | yes      |
+| `endpoint` > `azuread` > [`workload_identity`][workload_identity] | Configure Microsoft Entra Workload ID.                                     | yes      |
+| `endpoint` > [`basic_auth`][basic_auth]                           | Configure `basic_auth` for authenticating to the endpoint.                 | no       |
+| `endpoint` > [`google_iam`][google_iam]                           | Configure Google IAM authentication for the endpoint.                      | no       |
+| `endpoint` > [`metadata_config`][metadata_config]                 | Configuration for how metric metadata is sent.                             | no       |
+| `endpoint` > [`oauth2`][oauth2]                                   | Configure OAuth 2.0 for authenticating to the endpoint.                    | no       |
+| `endpoint` > `oauth2` > [`tls_config`][tls_config]                | Configure TLS settings for connecting to the endpoint.                     | no       |
+| `endpoint` > [`queue_config`][queue_config]                       | Configuration for how metrics are batched before sending.                  | no       |
+| `endpoint` > [`sigv4`][sigv4]                                     | Configure AWS Signature Verification 4 for authenticating to the endpoint. | no       |
+| `endpoint` > [`tls_config`][tls_config]                           | Configure TLS settings for connecting to the endpoint.                     | no       |
+| `endpoint` > [`write_relabel_config`][write_relabel_config]       | Configuration for `write_relabel_config`.                                  | no       |
+| [`wal`][wal]                                                      | Configuration for the component's WAL.                                     | no       |
 
 [endpoint]: #endpoint
 [authorization]: #authorization
 [azuread]: #azuread
 [basic_auth]: #basic_auth
+[google_iam]: #google_iam
 [managed_identity]: #managed_identity
 [metadata_config]: #metadata_config
 [oauth]: #oauth
@@ -78,6 +81,7 @@ You can use the following blocks with `prometheus.remote_write`:
 [sigv4]: #sigv4
 [tls_config]: #tls_config
 [wal]: #wal
+[workload_identity]: #workload_identity
 [write_relabel_config]: #write_relabel_config
 
 {{< /docs/alloy-config >}}
@@ -105,18 +109,20 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                                                                | `false`                     | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                                                                 |                             | no       |
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                                                                | `"30s"`                     | no       |
+| `round_robin_dns`        | `bool`              | Whether to round-robin requests across the resolved DNS addresses of the endpoint.                                                   | `false`                     | no       |
 | `send_exemplars`         | `bool`              | Whether exemplars should be sent.                                                                                                    | `true`                      | no       |
 | `send_native_histograms` | `bool`              | Whether native histograms should be sent.                                                                                            | `false`                     | no       |
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`azuread`][azuread] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`oauth2`][oauth2] block
-* [`sigv4`][sigv4] block
+* [`authorization`](#authorization) block
+* [`azuread`](#azuread) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#endpoint) argument
+* [`bearer_token`](#endpoint) argument
+* [`google_iam`](#google_iam) block
+* [`oauth2`](#oauth2) block
+* [`sigv4`](#sigv4) block
 
 When multiple `endpoint` blocks are provided, metrics are concurrently sent to all configured locations.
 Each endpoint has a _queue_ which is used to read metrics from the WAL and queue them for sending.
@@ -138,6 +144,8 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 {{< docs/shared lookup="reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+You must configure exactly one of the [`managed_identity`](#managed_identity), [`oauth`](#oauth), [`sdk`](#sdk), or [`workload_identity`](#workload_identity) blocks.
+
 ### `managed_identity`
 
 {{< badge text="Required" >}}
@@ -155,6 +163,12 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/azuread-sdk.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `workload_identity`
+
+{{< badge text="Required" >}}
+
+{{< docs/shared lookup="reference/components/azure-workload_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `basic_auth`
 
@@ -216,6 +230,14 @@ The default value is `0s`, which means that all samples are sent (feature is dis
 ### `sigv4`
 
 {{< docs/shared lookup="reference/components/sigv4-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `google_iam`
+
+The `google_iam` block configures Google IAM authentication for the endpoint.
+
+| Name               | Type     | Description                                                        | Default | Required |
+|--------------------|----------|--------------------------------------------------------------------|---------|----------|
+| `credentials_file` | `string` | Path to a Google Cloud credentials JSON file used to authenticate. |         | no       |
 
 ### `write_relabel_config`
 
@@ -550,10 +572,7 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
-[authorization]: #authorization
 [azuread]: #azuread
-[basic_auth]: #basic_auth
-[oauth2]: #oauth2
 [sigv4]: #sigv4
 [endpoint]: #endpoint
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
