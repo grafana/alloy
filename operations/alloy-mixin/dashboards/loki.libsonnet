@@ -82,9 +82,17 @@ local filename = 'alloy-loki.json';
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
+            (
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
+            )
             /
-            sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])) * 100 
+            (
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+            ) * 100
           ||| % $._config,
         ),
       ])
@@ -103,8 +111,15 @@ local filename = 'alloy-loki.json';
           expr=|||
             histogram_quantile(
               0.99,
+              sum by (${groupby}) (
+                rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+              )
+            )
+            or ignoring(le)
+            histogram_quantile(
+              0.99,
               sum by (le, ${groupby}) (
-            	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+                rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,
@@ -114,8 +129,15 @@ local filename = 'alloy-loki.json';
           expr=|||
             histogram_quantile(
               0.95,
+              sum by (${groupby}) (
+                rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+              )
+            )
+            or ignoring(le)
+            histogram_quantile(
+              0.95,
               sum by (le, ${groupby}) (
-            	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+                rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,
@@ -125,8 +147,15 @@ local filename = 'alloy-loki.json';
           expr=|||
             histogram_quantile(
               0.50,
+              sum by (${groupby}) (
+                rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+              )
+            )
+            or ignoring(le)
+            histogram_quantile(
+              0.50,
               sum by (le, ${groupby}) (
-            	rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
+                rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval])
               )
             )
           ||| % $._config,

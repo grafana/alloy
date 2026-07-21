@@ -6,6 +6,7 @@ import (
 	"debug/elf"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,13 +15,10 @@ import (
 	"time"
 
 	lru "github.com/elastic/go-freelru"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/reporter"
-
 	"go.opentelemetry.io/ebpf-profiler/process"
+	"go.opentelemetry.io/ebpf-profiler/reporter"
 )
 
 var errUnknownFile = errors.New("unknown file")
@@ -53,7 +51,7 @@ type Resolver struct {
 	cache    *lru.SyncedLRU[libpf.FileID, cachedMarker]
 	jobs     chan convertJob
 	wg       sync.WaitGroup
-	logger   log.Logger
+	logger   *slog.Logger
 
 	mutex    sync.Mutex
 	tables   map[libpf.FileID]Table
@@ -93,8 +91,8 @@ type Options struct {
 	SizeEntries uint32
 }
 
-func NewFSCache(logger log.Logger, impl TableFactory, opt Options) (*Resolver, error) {
-	level.Debug(logger).Log("msg", "irsymtab", "path", opt.Path, "size", opt.SizeEntries)
+func NewFSCache(logger *slog.Logger, impl TableFactory, opt Options) (*Resolver, error) {
+	logger.Debug("irsymtab", "path", opt.Path, "size", opt.SizeEntries)
 
 	shutdown := make(chan struct{})
 	res := &Resolver{
@@ -131,9 +129,9 @@ func NewFSCache(logger log.Logger, impl TableFactory, opt Options) (*Resolver, e
 		res.mutex.Unlock()
 
 		filePath := res.tableFilePath(id)
-		level.Debug(res.logger).Log("msg", "symbcache evicting", "file", filePath)
+		res.logger.Debug("symbcache evicting", "file", filePath)
 		if err = os.Remove(filePath); err != nil {
-			level.Error(res.logger).Log("msg", "symbcache eviction error", "err", err)
+			res.logger.Error("symbcache eviction error", "err", err)
 		}
 	})
 	if err != nil {
@@ -211,16 +209,16 @@ func (c *Resolver) ObserveExecutable(fid libpf.FileID, md *reporter.ExecutableMe
 	if err != nil {
 		c.cache.Add(fid, erroredMarker)
 		if !errors.Is(err, syscall.ESRCH) && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, elf.ErrNoSymbols) {
-			level.Error(c.logger).Log("msg", "conversion failed",
+			c.logger.Error("conversion failed",
 				"fid", fid.StringNoQuotes(), "elf", md.MappingFile.Value().FileName.String(),
 				"pid", pid, "duration", duration, "err", err)
 		} else {
-			level.Debug(c.logger).Log("msg", "conversion failed",
+			c.logger.Debug("conversion failed",
 				"fid", fid.StringNoQuotes(), "elf", md.MappingFile.Value().FileName.String(),
 				"pid", pid, "duration", duration, "err", err)
 		}
 	} else {
-		level.Debug(c.logger).Log("msg", "converted",
+		c.logger.Debug("converted",
 			"fid", fid.StringNoQuotes(), "elf", md.MappingFile.Value().FileName.String(),
 			"pid", pid, "duration", duration)
 	}
@@ -245,7 +243,7 @@ func (c *Resolver) convert(
 	if md.DebuglinkFileName != "" {
 		src, err = os.Open(md.DebuglinkFileName)
 		if err != nil {
-			level.Debug(c.logger).Log("msg", "open debug file failed", "err", err)
+			c.logger.Debug("open debug file failed", "err", err)
 		} else {
 			defer src.Close()
 		}

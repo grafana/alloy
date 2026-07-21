@@ -75,16 +75,20 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`     | no       |
 | `cache_rounds`            | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |          | no       |
 | `collect_interval`        | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`  | no       |
-| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernelspace profiles.                                           | `true`   | no       |
-| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of userspace profiles.                                             | `true`   | no       |
+| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`   | no       |
+| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`   | no       |
+| `comm`                    | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"` | no       |
 | `container_id_cache_size` | `int`                    | The size of the PID -> container ID table LRU cache.                                                                 | `1024`   | no       |
-| `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, or `full`.                              | `"none"` | no       |
+| `demangle`                | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"` | no       |
 | `dotnet_enabled`          | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`   | no       |
 | `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`  | no       |
-| `hotspot_enabled`         | `bool`                   | A flag to enable ordisable hotspot profiling.                                                                        | `true`   | no       |
+| `hotspot_enabled`         | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`   | no       |
+| `kernel_frames`           | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`   | no       |
+| `no_kernel_version_check` | `bool`                   | Skip the kernel version check for eBPF support.                                                                      | `false`  | no       |
 | `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
 | `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
 | `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
+| `pid_label`               | `bool`                   | Attach the process PID to each pprof sample as a `pid` label.                                                        | `false`  | no       |
 | `pid_map_size`            | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`   | no       |
 | `python_enabled`          | `bool`                   | A flag to enable or disable python profiling.                                                                        | `true`   | no       |
 | `ruby_enabled`            | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`   | no       |
@@ -98,6 +102,11 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `verbose_mode`            | `bool`                   | Enable verbose logging for the eBPF profiler.                                                                        | `false`  | no       |
 | `lazy_mode`               | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`  | no       |
 
+{{< admonition type="caution" >}}
+Use `no_kernel_version_check` only when you run on an older kernel that includes backported eBPF features from a later release.
+When you skip this check, the profiler can't verify that your kernel has the eBPF features it needs, and profiling may fail or produce incomplete results.
+Proceed at your own risk.
+{{< /admonition >}}
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
 
@@ -189,16 +198,21 @@ The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` m
 ## Profile collecting behavior
 
 The `pyroscope.ebpf` component collects stack traces associated with a process running on the current host.
-You can use the `sample_rate` argument to define the number of stack traces collected per second. The default is 97.
+You can use the `sample_rate` argument to define the number of stack traces collected per second. The default is 19.
 
 The following labels are automatically injected into the collected profiles if you haven't defined them.
 These labels can help you pin down a profiling target.
 
-| Label              | Description                                                                                                                      |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `__container_id__` | The container ID derived from target.                                                                                            |
-| `__name__`         | Pyroscope metric name. Defaults to `process_cpu`.                                                                                |
-| `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. |
+| Label                | Description                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `__container_id__`   | The container ID derived from target.                                                                                            |
+| `__name__`           | Pyroscope metric name. Defaults to `process_cpu`.                                                                                |
+| `service_name`       | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. |
+| `otel.scope.name`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.ebpf`.                                                       |
+| `otel.scope.version` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.                                                              |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
 
 ### Targets
 

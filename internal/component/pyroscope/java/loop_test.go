@@ -5,20 +5,21 @@ package java
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type mockProfiler struct {
@@ -61,10 +62,35 @@ func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.In
 	return args.Error(0)
 }
 
+func TestLabelsForProfileAddsScopeLabels(t *testing.T) {
+	target := discovery.NewTargetFromMap(map[string]string{
+		labelServiceName: "java-service",
+	})
+
+	lbs := labelsForProfile(target, "jdk.ExecutionSample", "process_cpu")
+
+	require.Equal(t, "java-service", lbs.Get(labelServiceName))
+	require.Equal(t, pyroscope.ScopeNameJava, lbs.Get(pyroscope.LabelOtelScopeName))
+}
+
+func TestLabelsForProfileDoesNotOverrideScopeLabels(t *testing.T) {
+	target := discovery.NewTargetFromMap(map[string]string{
+		labelServiceName:                "java-service",
+		pyroscope.LabelOtelScopeName:    "user-scope",
+		pyroscope.LabelOtelScopeVersion: "user-version",
+	})
+
+	lbs := labelsForProfile(target, "jdk.ExecutionSample", "process_cpu")
+
+	require.Equal(t, "java-service", lbs.Get(labelServiceName))
+	require.Equal(t, "user-scope", lbs.Get(pyroscope.LabelOtelScopeName))
+	require.Equal(t, "user-version", lbs.Get(pyroscope.LabelOtelScopeVersion))
+}
+
 func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
 	reg := prometheus.NewRegistry()
 	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 	cfg := ProfilingConfig{
 		Interval:   10 * time.Millisecond,
 		SampleRate: 1000,
@@ -78,7 +104,7 @@ func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyros
 func newTestCustomArgumentsLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
 	reg := prometheus.NewRegistry()
 	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 	cfg := ProfilingConfig{
 		Interval:        10 * time.Millisecond,
 		SampleRate:      1000,

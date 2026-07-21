@@ -20,14 +20,108 @@ The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
 The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
 
-{{< admonition type="note" >}}
-To run this component, {{< param "PRODUCT_NAME" >}} requires administrative privileges, or at least it needs to be granted the following capabilities: `BPF`, `SYS_PTRACE`, `NET_RAW`, `CAP_CHECKPOINT_RESTORE`, `DAC_READ_SEARCH`, and `PERFMON`.
-The number of required capabilities depends on the specific use case.
-Refer to the [Beyla capabilities](https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla) for more information.
+## Permissions
 
-In Kubernetes environments, the [AppArmor profile must be `Unconfined`](https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod) for the Deployment or DaemonSet running {{< param "PRODUCT_NAME" >}}.
-You must also set the `hostPID` flag to `true` in the Pod spec so that in can access all the processes running on the host.
+`beyla.ebpf` uses eBPF and needs elevated privileges.
+{{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities through the kernel's inheritable and ambient capability sets.
+You don't need `SETPCAP`.
+
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` on kernels earlier than 5.11, and `SYS_ADMIN` for library-level instrumentation only.
+The exact set depends on your use case.
+Refer to [Beyla capabilities][] for more information.
+
+In Kubernetes, set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
+
+### Standalone: root
+
+Run {{< param "PRODUCT_NAME" >}} as root.
+On a standard Linux system, root processes inherit all capabilities from the bounding set, so you don't need extra configuration.
+If systemd or another tool restricts the bounding set, grant the required capabilities explicitly:
+
+```bash
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ep' /path/to/alloy
+```
+
+### Standalone: non-root
+
+Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary with the `+ip` flag.
+This seeds the permitted set but doesn't grant effective capabilities to {{< param "PRODUCT_NAME" >}}, so {{< param "PRODUCT_NAME" >}} holds them only to pass to Beyla:
+
+```bash
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /path/to/alloy
+```
+
+{{< admonition type="note" >}}
+File capabilities aren't scoped to a container boundary and travel with the binary.
+Treat this as a deliberate security decision.
 {{< /admonition >}}
+
+### Kubernetes: privileged
+
+Set `privileged: true` in the container's `securityContext`.
+This grants all capabilities and disables `seccomp` and AppArmor profiles.
+This approach is **not recommended** for production environments.
+
+### Kubernetes: unprivileged, root user
+
+This is the recommended approach for Kubernetes. Run the container as root with `privileged: false` and grant only the required capabilities:
+
+```yaml
+spec:
+  hostPID: true
+  containers:
+    - name: alloy
+      securityContext:
+        privileged: false
+        allowPrivilegeEscalation: true  # optional: true is the default for root containers
+        capabilities:
+          add:
+            - BPF
+            - NET_ADMIN
+            - NET_RAW
+            - PERFMON
+            - DAC_READ_SEARCH
+            - SYS_PTRACE
+            - CHECKPOINT_RESTORE
+            - SYS_RESOURCE  # kernels < 5.11
+            - SYS_ADMIN  # only for library-level instrumentation
+```
+
+Unlike `privileged: true`, this keeps `seccomp` and AppArmor profiles active.
+
+### Kubernetes: unprivileged, non-root user
+
+For the most restrictive posture, run as a non-root UID.
+Add `setcap +ip` to the binary when you build a custom image:
+
+```dockerfile
+RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /bin/alloy
+```
+
+Then configure the Pod security context:
+
+```yaml
+spec:
+  hostPID: true
+  containers:
+    - name: alloy
+      securityContext:
+        privileged: false
+        runAsUser: 473
+        runAsNonRoot: true
+        allowPrivilegeEscalation: true  # required: no_new_privs blocks PR_CAP_AMBIENT_RAISE
+        capabilities:
+          add:
+            - BPF
+            - NET_ADMIN
+            - NET_RAW
+            - PERFMON
+            - DAC_READ_SEARCH
+            - SYS_PTRACE
+            - CHECKPOINT_RESTORE
+            - SYS_RESOURCE  # kernels < 5.11
+            - SYS_ADMIN  # only for library-level instrumentation
+```
 
 ## Usage
 
@@ -88,6 +182,13 @@ You can use the following blocks with `beyla.ebpf`:
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
 | `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > [`gemini`][gemini payload extraction] | Configures Gemini payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > [`bedrock`][bedrock payload extraction] | Configures AWS Bedrock payload extraction.                                               | no       |
+| `ebpf` > `payload_extraction` > `http` > [`embedding`][embedding payload extraction] | Configures embedding payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > [`mcp`][mcp payload extraction] | Configures Model Context Protocol payload extraction.                                                          | no       |
+| `ebpf` > `payload_extraction` > `http` > [`qwen`][qwen payload extraction] | Configures `Qwen` payload extraction.                                                              | no       |
+| `ebpf` > `payload_extraction` > `http` > [`rerank`][rerank payload extraction] | Configures `rerank` payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > [`retrieval`][retrieval payload extraction] | Configures retrieval payload extraction.                                             | no       |
 | `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -99,11 +200,13 @@ You can use the following blocks with `beyla.ebpf`:
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 | [`injector`][injector]                                                 | Configures the SDK injection feature for automatic instrumentation without eBPF.                   | no       |
 | `injector` > [`instrument`][services]                                  | Configures the services to instrument with SDK injection.                                          | no       |
-| `injector` > [`webhook`][injector webhook]                             | Configures the webhook for SDK injection.                                                          | no       |
-| `injector` > [`export`][injector export]                               | Configures which telemetry signals the injected SDK exports.                                       | no       |
+| `injector` > [`exclude_instrument`][services]                          | Configures the services to exclude from SDK injection.                                             | no       |
+| `injector` > [`otel_exported_signals`][injector export]                | Configures which telemetry signals the injected SDK exports.                                       | no       |
 | `injector` > [`resources`][injector resources]                         | Configures resource attributes for the injected SDK.                                               | no       |
-| `injector` > [`sampler`][sampler]                                      | Configures default trace sampling for injected SDKs.                                               | no       |
+| `injector` > [`trace_sampler`][sampler]                                | Configures default trace sampling for injected SDKs.                                               | no       |
+| `injector` > [`webhook`][injector webhook]                             | Configures delegation of SDK injection to an external webhook controller.                          | no       |
 | [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
+| [`jvm_runtime_metrics`][jvm_runtime_metrics]                           | Configures collection of JVM runtime metrics from instrumented Java processes.                     | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -120,6 +223,13 @@ You can use the following blocks with `beyla.ebpf`:
 [openai payload extraction]: #openai
 [maps config]: #maps_config
 [anthropic payload extraction]: #anthropic
+[gemini payload extraction]: #gemini
+[bedrock payload extraction]: #bedrock
+[embedding payload extraction]: #embedding
+[mcp payload extraction]: #mcp
+[qwen payload extraction]: #qwen
+[rerank payload extraction]: #rerank
+[retrieval payload extraction]: #retrieval
 [filters]: #filters
 [application filters]: #application
 [metrics]: #metrics
@@ -128,9 +238,10 @@ You can use the following blocks with `beyla.ebpf`:
 [output]: #output
 [injector]: #injector
 [injector webhook]: #webhook
-[injector export]: #export
+[injector export]: #otel_exported_signals
 [injector resources]: #resources
 [stats]: #stats
+[jvm_runtime_metrics]: #jvm_runtime_metrics
 
 {{< /docs/alloy-config >}}
 
@@ -365,6 +476,8 @@ The `traces` block configures trace collection and sampling options for the beyl
 {{< admonition type="note" >}}
 To export traces, you must also configure the [`output`][output] block with a `traces` destination.
 Without an output configuration, traces are collected but not exported.
+
+[output]: #output
 {{< /admonition >}}
 
 | Name              | Type           | Description                                                      | Default | Required |
@@ -521,6 +634,62 @@ When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces 
 | `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
 
 When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `gemini`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Gemini payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported Gemini HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `bedrock`
+
+| Name      | Type   | Description                                    | Default | Required |
+|-----------|--------|------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable AWS Bedrock payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported AWS Bedrock HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `embedding`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable embedding payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported embedding provider HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `mcp`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Model Context Protocol payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported Model Context Protocol HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `qwen`
+
+| Name      | Type   | Description                             | Default | Required |
+|-----------|--------|-----------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable `Qwen` payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported `Qwen` HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `rerank`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable `rerank` payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported `rerank` HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `retrieval`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable retrieval payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported retrieval HTTP payloads and can enrich traces with GenAI-related attributes.
 
 #### `maps_config`
 
@@ -749,58 +918,54 @@ The matcher tags can be in the `:name` or `{name}` format.
 
 ### `injector`
 
-The `injector` block configures Beyla's SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
+The `injector` block configures the Beyla SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
 
-| Name                  | Type           | Description                                                                    | Default | Required |
-|-----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `debug`               | `bool`         | Enable debug mode for the SDK injector.                                        | `false` | no       |
-| `disable_auto_restart`| `bool`         | Disable automatic restart of instrumented services after SDK injection.        | `false` | no       |
-| `enabled_sdks`        | `list(string)` | List of SDK languages to enable for injection (e.g. `["java", "dotnet"]`).     | `[]`    | no       |
-| `host_mount_path`     | `string`       | Path where the host filesystem is mounted inside the injector container.       | `""`    | no       |
-| `host_path_volume`    | `string`       | Path on the host where SDK packages are stored.                                | `""`    | no       |
-| `image_volume_path`   | `string`       | OCI image volume mount path for SDK injection. Requires Kubernetes 1.31+. Mutually exclusive with `host_mount_path` and `sdk_package_version`. | `""`    | no       |
-| `manage_sdk_versions` | `bool`         | Automatically manage and update SDK versions.                                  | `false` | no       |
-| `otel_endpoint`       | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
-| `propagators`         | `list(string)` | List of context propagation formats (e.g. `["tracecontext", "baggage"]`).      | `[]`    | no       |
-| `sdk_package_version` | `string`       | Version of the SDK package to inject.                                          | `""`    | no       |
+| Name                     | Type           | Description                                                                                     | Default | Required |
+|--------------------------|----------------|-------------------------------------------------------------------------------------------------|---------|----------|
+| `disable_auto_restart`   | `bool`         | Disable automatic restart of instrumented services after SDK injection.                         | `false` | no       |
+| `enabled_sdks`           | `list(string)` | List of enabled SDK auto-instrumentations. Use it to limit which language instrumentations run. | `[]`    | no       |
+| `exporter_otlp_endpoint` | `string`       | Override for the OTLP endpoint that injected SDKs use to export telemetry.                       | `""`    | no       |
+| `exporter_otlp_protocol` | `string`       | OTLP protocol that injected SDKs use to export telemetry, for example `http/protobuf` or `grpc`.| `""`    | no       |
+| `image_version`          | `string`       | OCI image version to inject.                                                                     | `""`    | no       |
+| `trace_propagators`      | `list(string)` | Context propagation formats for injected SDKs, for example `["tracecontext", "baggage"]`.       | `[]`    | no       |
 
-`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`, `php`.
+`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`.
 
-`otel_endpoint` configures the OTLP endpoint that injected SDKs use to export telemetry. When set, it overrides the global OTLP endpoint for SDK-injected services.
+`exporter_otlp_endpoint` overrides the OTLP endpoint that injected SDKs use to export telemetry, for cases where Beyla isn't configured to export traces. When set, it overrides the global OTLP endpoint for SDK-injected services.
+
+`trace_propagators` common values are `tracecontext`, `baggage`, `b3`, `b3multi`, `jaeger`, and `xray`.
 
 It contains the following blocks:
 
 #### `webhook`
 
-The `webhook` block configures the Kubernetes admission webhook used to inject SDKs into Pods at creation time.
+The `webhook` block delegates SDK injection to an external mutating webhook controller or operator instead of Beyla handling it directly.
 
-| Name        | Type       | Description                                               | Default | Required |
-|-------------|------------|-----------------------------------------------------------|---------|----------|
-| `cert_path` | `string`   | Path to the TLS certificate file for the webhook server.  | `""`    | no       |
-| `enable`    | `bool`     | Enable the admission webhook server.                      | `false` | no       |
-| `key_path`  | `string`   | Path to the TLS private key file for the webhook server.  | `""`    | no       |
-| `port`      | `number`   | Port on which the webhook server listens.                 | `8443`  | no       |
-| `timeout`   | `duration` | Timeout for webhook requests.                             | `"10s"` | no       |
+| Name                       | Type     | Description                                                                | Default | Required |
+|----------------------------|----------|----------------------------------------------------------------------------|---------|----------|
+| `external_deployment_name` | `string` | Name of the external controller or operator that handles SDK injection.    | `""`    | no       |
 
-#### `export`
+#### `otel_exported_signals`
 
-The `export` block configures which telemetry signals the injected SDK exports.
+The `otel_exported_signals` block configures which telemetry signals the injected SDK exports through OTLP.
+Injected SDKs can only export through OTLP, not Prometheus scraping.
 
-| Name      | Type   | Description                            | Default | Required |
-|-----------|--------|----------------------------------------|---------|----------|
-| `logs`    | `bool` | Enable log export from injected SDKs.  | `false` | no       |
-| `metrics` | `bool` | Enable metric export from injected SDKs.| `false` | no       |
-| `traces`  | `bool` | Enable trace export from injected SDKs. | `true`  | no       |
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `logs`    | `bool` | Enable log export from injected SDKs.     | `false` | no       |
+| `metrics` | `bool` | Enable metric export from injected SDKs.  | `true`  | no       |
+| `traces`  | `bool` | Enable trace export from injected SDKs.   | `true`  | no       |
 
 #### `resources`
 
 The `resources` block configures resource attributes attached to telemetry emitted by injected SDKs.
 
-| Name                | Type               | Description                                                                        | Default | Required |
-|---------------------|--------------------|------------------------------------------------------------------------------------|---------|----------|
-| `add_k8s_attributes`| `bool`             | Add Kubernetes UID attributes (e.g. `k8s.deployment.uid`) to the resource.         | `false` | no       |
-| `attributes`        | `map(string)`      | Map of additional resource attributes to add (e.g. `{environment = "production"}`). | `{}`    | no       |
-| `use_labels`        | `bool`             | Use common Kubernetes labels as resource attributes (e.g. `app.kubernetes.io/name` as `service.name`). | `false` | no       |
+| Name                                     | Type          | Description                                                                                                       | Default | Required |
+|------------------------------------------|---------------|-------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `add_k8s_ip_attribute`                   | `bool`        | Set the `k8s.pod.ip` resource attribute from the Kubernetes downward API (`status.podIP`).                        | `false` | no       |
+| `add_k8s_uid_attributes`                 | `bool`        | Add Kubernetes UID attributes, for example `k8s.deployment.uid`, to the resource.                                 | `false` | no       |
+| `attributes`                             | `map(string)` | Map of additional resource attributes to add, for example `{environment = "production"}`.                         | `{}`    | no       |
+| `use_k8s_labels_for_resource_attributes` | `bool`        | Use common Kubernetes labels as resource attributes, for example `app.kubernetes.io/name` as `service.name`.      | `false` | no       |
 
 ### `stats`
 
@@ -817,6 +982,17 @@ The `stats` block configures stats observability options for Beyla. You must app
 You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
 
 You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
+
+### `jvm_runtime_metrics`
+
+The `jvm_runtime_metrics` block configures collection of JVM runtime metrics, such as heap usage, garbage collection, and thread counts, from instrumented Java processes.
+
+| Name                | Type       | Description                                | Default | Required |
+|---------------------|------------|--------------------------------------------|---------|----------|
+| `enabled`           | `bool`     | Enable collection of JVM runtime metrics.  | `false` | no       |
+| `sampling_interval` | `duration` | How often to sample JVM runtime metrics.   | `""`    | no       |
+
+When `sampling_interval` is unset, Beyla uses its own default interval.
 
 ## Exported fields
 
@@ -837,6 +1013,50 @@ The exported targets use the configured [in-memory traffic][] address specified 
 ## Debug information
 
 `beyla.ebpf` doesn't expose any component-specific debug information.
+
+## Observability considerations
+
+`beyla.ebpf` runs Beyla as a separate child process.
+This isolates failures in Beyla from {{< param "PRODUCT_NAME" >}} but changes how {{< param "PRODUCT_NAME" >}} exposes resource usage and profile data.
+
+### Resource metrics
+
+{{< param "PRODUCT_NAME" >}} exposes process-level metrics for the Beyla process under the same name as its own, with a `subprocess="beyla"` label:
+
+```promql
+alloy_resources_process_resident_memory_bytes                    # {{< param "PRODUCT_NAME" >}} process only
+alloy_resources_process_resident_memory_bytes{subprocess="beyla"} # Beyla subprocess only
+```
+
+If you use `alloy_resources_process_*` to approximate total container resource usage, the metrics include only the {{< param "PRODUCT_NAME" >}} process.
+To get the combined figure for both processes, sum across the label:
+
+```promql
+sum without(subprocess) (alloy_resources_process_resident_memory_bytes)
+```
+
+For container-level limits and OOM monitoring, prefer `kubelet`/cAdvisor metrics such as `container_memory_working_set_bytes`, which already account for every process in the container.
+
+### Profiling
+
+The {{< param "PRODUCT_NAME" >}} `/debug/pprof/*` endpoints reflect goroutines, allocations, and CPU from the {{< param "PRODUCT_NAME" >}} process only.
+Beyla exposes profile data on its own HTTP port.
+You can reach it through the component's reverse-proxy URL, for example:
+
+```
+<alloy>/api/v0/component/beyla.ebpf.<LABEL>/debug/pprof/heap
+```
+
+When you enable profiling for {{< param "PRODUCT_NAME" >}}, Beyla also exposes pprof endpoints.
+The toggle is the `--server.http.enable-pprof` flag, which defaults to `true`.
+If you set it to `false`, the proxied URL returns 404, which matches how the {{< param "PRODUCT_NAME" >}} `/debug/pprof/*` endpoints behave.
+Beyla doesn't have a separate switch.
+
+Each `beyla.ebpf` component instance has its own pprof URL scoped by component ID.
+If you define multiple instances, such as `beyla.ebpf.foo` and `beyla.ebpf.bar`, each one is reachable at its own component path without extra configuration.
+
+To capture Beyla profile data in continuous-profiling pipelines, scrape the component's proxied pprof URL in addition to the {{< param "PRODUCT_NAME" >}} pprof endpoints.
+A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints captures only the {{< param "PRODUCT_NAME" >}} profile.
 
 ## Examples
 
@@ -968,6 +1188,8 @@ Replace the following:
 [scrape]: ../../prometheus/prometheus.scrape/
 [Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
+[Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
+[Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

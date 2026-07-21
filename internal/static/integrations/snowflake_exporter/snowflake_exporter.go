@@ -1,7 +1,8 @@
 package snowflake_exporter
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
 	"github.com/grafana/snowflake-prometheus-exporter/collector"
 	config_util "github.com/prometheus/common/config"
 
@@ -65,7 +66,7 @@ func init() {
 }
 
 // NewIntegration creates a new integration from the config.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	exporterConfig := c.exporterConfig()
 
 	if err := exporterConfig.Validate(); err != nil {

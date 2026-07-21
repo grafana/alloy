@@ -35,9 +35,9 @@ func TestArguments_Validate(t *testing.T) {
 			wantErr: "path must be non-empty",
 		},
 		{
-			name:    "append and compression",
-			args:    Arguments{Path: "/tmp/test.json", Format: "json", FlushInterval: time.Second, Append: true, Compression: "zstd"},
-			wantErr: "append and compression enabled at the same time is not supported",
+			// Upstream allows append + compression together as of otel-contrib v0.152.
+			name: "append and compression",
+			args: Arguments{Path: "/tmp/test.json", Format: "json", FlushInterval: time.Second, Append: true, Compression: "zstd"},
 		},
 		{
 			name:    "append and rotation",

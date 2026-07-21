@@ -3,8 +3,8 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -62,7 +62,7 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 }
 
 // newMatcherStage creates a new matcherStage from config
-func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func newMatcherStage(slogger *slog.Logger, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	selector, err := validateMatcherConfig(&config)
 	if err != nil {
 		return nil, err
@@ -71,9 +71,9 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 	var pl *Pipeline
 	if config.Action == MatchActionKeep {
 		var err error
-		pl, err = NewPipeline(logger, config.Stages, registerer, minStability)
+		pl, err = NewPipeline(slogger, config.Stages, registerer, minStability)
 		if err != nil {
-			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
+			return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", config, err)
 		}
 	}
 
@@ -87,9 +87,14 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 		dropReason = config.DropReason
 	}
 
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &matcherStage{
 		dropReason: dropReason,
-		dropCount:  getDropCountMetric(registerer),
+		dropCount:  dropCount,
 		matchers:   selector.Matchers(),
 		pipeline:   pl,
 		action:     config.Action,
@@ -97,23 +102,20 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 	}, nil
 }
 
-func getDropCountMetric(registerer prometheus.Registerer) *prometheus.CounterVec {
+func getDropCountMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
 	dropCount := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_process_dropped_lines_total",
 		Help: "A count of all log lines dropped as a result of a pipeline stage",
 	}, []string{"reason"})
 	err := registerer.Register(dropCount)
 	if err != nil {
-		// TODO: This code should neither panic nor use AlreadyRegisteredError.
-		//       Register it without these, and return error if it fails.
 		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			dropCount = existing.ExistingCollector.(*prometheus.CounterVec)
 		} else {
-			// Same behavior as MustRegister if the error is not for AlreadyRegistered
-			panic(err)
+			return nil, err
 		}
 	}
-	return dropCount
+	return dropCount, nil
 }
 
 // matcherStage applies Label matchers to determine if the include stages should be run
@@ -191,5 +193,11 @@ func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {
 func (m *matcherStage) Cleanup() {
 	if m.pipeline != nil {
 		m.pipeline.Cleanup()
+	}
+}
+
+func (m *matcherStage) Stop() {
+	if m.pipeline != nil { // nil for MatchActionDrop matchers, see Cleanup
+		m.pipeline.Stop()
 	}
 }

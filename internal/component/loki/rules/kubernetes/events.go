@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"sigs.k8s.io/yaml" // Used for CRD compatibility instead of gopkg.in/yaml.v2
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const eventTypeSyncLoki kubernetes.EventType = "sync-loki"
@@ -25,7 +25,7 @@ func (c *Component) eventLoop(ctx context.Context) {
 	for {
 		evt, shutdown := c.queue.Get()
 		if shutdown {
-			level.Info(c.log).Log("msg", "shutting down event loop")
+			c.opts.Logger.Info("shutting down event loop")
 			return
 		}
 
@@ -37,16 +37,16 @@ func (c *Component) eventLoop(ctx context.Context) {
 			if retries < 5 {
 				c.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				c.queue.AddRateLimited(evt)
-				level.Error(c.log).Log(
-					"msg", "failed to process event, will retry",
+				c.opts.Logger.Error(
+					"failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
 				continue
 			} else {
 				c.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				level.Error(c.log).Log(
-					"msg", "failed to process event, max retries exceeded",
+				c.opts.Logger.Error(
+					"failed to process event, max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
@@ -65,9 +65,9 @@ func (c *Component) processEvent(ctx context.Context, e kubernetes.Event) error 
 
 	switch e.Typ {
 	case kubernetes.EventTypeResourceChanged:
-		level.Info(c.log).Log("msg", "processing event", "type", e.Typ, "key", e.ObjectKey)
+		c.opts.Logger.Info("processing event", "type", e.Typ, "key", e.ObjectKey)
 	case eventTypeSyncLoki:
-		level.Debug(c.log).Log("msg", "syncing current state from ruler")
+		c.opts.Logger.Debug("syncing current state from ruler")
 		err := c.syncLoki(ctx)
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func (c *Component) syncLoki(ctx context.Context) error {
 
 	rulesByNamespace, err := c.lokiClient.ListRules(ctx, "")
 	if err != nil {
-		level.Error(c.log).Log("msg", "failed to list rules from loki", "err", err)
+		c.opts.Logger.Error("failed to list rules from loki", "err", err)
 		return err
 	}
 
@@ -136,10 +136,21 @@ func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespa
 		}
 
 		for _, rule := range crdState {
-			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, rule)
+			lokiNs := lokiNamespaceForRuleCRD(c.args.LokiNameSpacePrefix, c.args.LokiNamespaceSeparator, rule)
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			if len(c.args.ExternalLabels) > 0 {
+				for _, ruleGroup := range groups {
+					for i := range ruleGroup.Rules {
+						if ruleGroup.Rules[i].Labels == nil {
+							ruleGroup.Rules[i].Labels = make(map[string]string, len(c.args.ExternalLabels))
+						}
+						maps.Copy(ruleGroup.Rules[i].Labels, c.args.ExternalLabels)
+					}
+				}
 			}
 
 			if c.args.ExtraQueryMatchers != nil {
@@ -148,7 +159,7 @@ func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespa
 						query := ruleGroup.Rules[i].Expr
 						newQuery, err := addMatchersToQuery(query, c.args.ExtraQueryMatchers.Matchers)
 						if err != nil {
-							level.Error(c.log).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
+							c.opts.Logger.Error("failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
 						ruleGroup.Rules[i].Expr = newQuery
 					}
@@ -227,7 +238,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 
 	var errs error
 	// TODO: Expose validation scheme setting https://github.com/grafana/alloy/issues/4122
-	groups, _ := rulefmt.Parse(buf, false, model.LegacyValidation)
+	groups, _ := rulefmt.Parse(buf, false, model.LegacyValidation, parser.NewParser(parser.Options{}), nil)
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr); err != nil {
@@ -258,21 +269,21 @@ func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []
 			if err != nil {
 				return err
 			}
-			level.Info(c.log).Log("msg", "added rule group", "namespace", namespace, "group", diff.Desired.Name)
+			c.opts.Logger.Info("added rule group", "namespace", namespace, "group", diff.Desired.Name)
 		case kubernetes.RuleGroupDiffKindRemove:
 			err := c.lokiClient.DeleteRuleGroup(ctx, namespace, diff.Actual.Name)
 			if err != nil {
 				return err
 			}
-			level.Info(c.log).Log("msg", "removed rule group", "namespace", namespace, "group", diff.Actual.Name)
+			c.opts.Logger.Info("removed rule group", "namespace", namespace, "group", diff.Actual.Name)
 		case kubernetes.RuleGroupDiffKindUpdate:
 			err := c.lokiClient.CreateRuleGroup(ctx, namespace, diff.Desired)
 			if err != nil {
 				return err
 			}
-			level.Info(c.log).Log("msg", "updated rule group", "namespace", namespace, "group", diff.Desired.Name)
+			c.opts.Logger.Info("updated rule group", "namespace", namespace, "group", diff.Desired.Name)
 		default:
-			level.Error(c.log).Log("msg", "unknown rule group diff kind", "kind", diff.Kind)
+			c.opts.Logger.Error("unknown rule group diff kind", "kind", diff.Kind)
 		}
 	}
 
@@ -281,23 +292,21 @@ func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []
 }
 
 // lokiNamespaceForRuleCRD returns the namespace that the rule CRD should be
-// stored in loki. This function, along with isManagedNamespace, is used to
+// stored in loki. This function, along with isManagedLokiNamespace, is used to
 // determine if a rule CRD is managed by Alloy.
-func lokiNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
-	// Set to - to separate, loki doesn't support prefixpath like mimir ruler does
-	return fmt.Sprintf("%s-%s-%s-%s", prefix, pr.Namespace, pr.Name, pr.UID)
+func lokiNamespaceForRuleCRD(prefix, separator string, pr *promv1.PrometheusRule) string {
+	return prefix + separator + pr.Namespace + separator + pr.Name + separator + string(pr.UID)
 }
 
 // isManagedLokiNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
+// The check is separator-agnostic so that rules created with a previous separator
+// are still recognised and garbage-collected when the separator changes.
 func isManagedLokiNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)
-	namespacePart := `.+`
-	namePart := `.+`
 	uuidPart := `[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}`
 	managedNamespaceRegex := regexp.MustCompile(
-		// Set to - to separate, loki doesn't support prefixpath like mimir ruler does
-		fmt.Sprintf("^%s-%s-%s-%s$", prefixPart, namespacePart, namePart, uuidPart),
+		fmt.Sprintf(`^%s.+%s$`, prefixPart, uuidPart),
 	)
 	return managedNamespaceRegex.MatchString(namespace)
 }

@@ -8,14 +8,6 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/aws/aws-sdk-go-v2/service/servicediscovery/types"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/component/otelcol/auth"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
@@ -25,6 +17,15 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/pipeline"
+	"k8s.io/utils/ptr"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -50,14 +51,14 @@ func init() {
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
 					} else {
-						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces
 					}
 				case "resource", "metric", "streamID":
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeMetrics
 					} else {
-						level.Warn(opts.Logger).Log("msg", "disabling metrics exporter as stability level does not allow it")
+						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 					}
 				}
 				return typeSignal
@@ -310,6 +311,8 @@ type AWSCloudMapResolver struct {
 	Interval      time.Duration `alloy:"interval,attr,optional"`
 	Timeout       time.Duration `alloy:"timeout,attr,optional"`
 	Port          *uint16       `alloy:"port,attr,optional"`
+	// OwnerAccount is the AWS account that owns the Cloud Map namespace, for cross-account service discovery.
+	OwnerAccount string `alloy:"owner_account,attr,optional"`
 }
 
 var _ syntax.Defaulter = &AWSCloudMapResolver{}
@@ -351,6 +354,11 @@ func (r *AWSCloudMapResolver) Convert() configoptional.Optional[loadbalancingexp
 		port = &portNum
 	}
 
+	var ownerAccount *string
+	if r.OwnerAccount != "" {
+		ownerAccount = ptr.To(r.OwnerAccount)
+	}
+
 	return configoptional.Some(loadbalancingexporter.AWSCloudMapResolver{
 		NamespaceName: r.NamespaceName,
 		ServiceName:   r.ServiceName,
@@ -358,6 +366,7 @@ func (r *AWSCloudMapResolver) Convert() configoptional.Optional[loadbalancingexp
 		Interval:      r.Interval,
 		Timeout:       r.Timeout,
 		Port:          port,
+		OwnerAccount:  ownerAccount,
 	})
 }
 

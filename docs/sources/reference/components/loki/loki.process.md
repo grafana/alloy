@@ -261,7 +261,7 @@ stage.drop {
 
 ### `stage.eventlogmessage`
 
-Deprecated in favor of the [`stage.windowsevent`][stage.windowsevent] block.
+Deprecated in favor of the [`stage.windowsevent`](#stagewindowsevent) block.
 
 The `eventlogmessage` stage extracts data from the Message string that appears in the Windows Event Log.
 
@@ -591,7 +591,7 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
-For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+For labels that are static, refer to [`stage.static_labels`](#stagestatic_labels)
 
 The following arguments are supported:
 
@@ -1513,7 +1513,7 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
-For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+For labels that are dynamic, refer to [`stage.labels`](#stagelabels)
 
 The following arguments are supported:
 
@@ -1802,13 +1802,14 @@ When no timestamp stage is set, the log entry timestamp defaults to the time whe
 
 The following arguments are supported:
 
-| Name                | Type           | Description                                                 | Default   | Required |
-| ------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
-| `format`            | `string`       | Determines how to parse the source string.                  |           | yes      |
-| `source`            | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
-| `action_on_failure` | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
-| `fallback_formats`  | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
-| `location`          | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
+| Name                            | Type           | Description                                                 | Default   | Required |
+| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
+| `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
+| `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
+| `action_on_duplicate_timestamp` | `string`       | What to do when parsing duplicate timestamps.               | `"fudge"` | no       |
+| `fallback_formats`              | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
+| `location`                      | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
 
 {{< admonition type="note" >}}
 Be careful with further stages which may also override the timestamp.
@@ -1882,6 +1883,13 @@ The supported actions are:
 
 * fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
 * skip: Don't change the timestamp and keep the time when the log entry was scraped.
+
+The `action_on_duplicate_timestamp` field defines what to do when parsing succeeds but the parsed timestamp is equal to the last emitted timestamp for that stream, for example, when multiple messages share the same second or millisecond.
+
+The supported actions are:
+
+* fudge (default): Set the entry timestamp to the last emitted timestamp plus 1 nanosecond so that message order is preserved in Loki and Grafana.
+* keep: Leave the parsed timestamp as-is; duplicate timestamps may appear out of order downstream.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
 
@@ -2086,10 +2094,10 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit](#stagelimit).
 * `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
-* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
-* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri](#stagecri).
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri](#stagecri).
 
 ## Example
 

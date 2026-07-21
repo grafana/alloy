@@ -286,9 +286,11 @@ func TestGenerateTLSConfig(t *testing.T) {
 			name: "all_fields",
 			tlsConfig: promopv1.TLSConfig{
 				SafeTLSConfig: promopv1.SafeTLSConfig{},
-				CAFile:        "ca_file",
-				KeyFile:       "key_file",
-				CertFile:      "cert_file",
+				TLSFilesConfig: promopv1.TLSFilesConfig{
+					CAFile:   "ca_file",
+					KeyFile:  "key_file",
+					CertFile: "cert_file",
+				},
 			},
 			hasErr:   false,
 			keyFile:  "key_file",
@@ -448,9 +450,10 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 		{
 			name: "defaults set",
 			scrapeOptions: operator.ScrapeOptions{
-				DefaultScrapeInterval: 30 * time.Second,
-				DefaultScrapeTimeout:  5 * time.Second,
-				DefaultSampleLimit:    100,
+				DefaultScrapeInterval:  30 * time.Second,
+				DefaultScrapeTimeout:   5 * time.Second,
+				DefaultSampleLimit:     100,
+				ScrapeNativeHistograms: true,
 			},
 			expectedInterval:         30 * time.Second,
 			expectedTimeout:          5 * time.Second,
@@ -468,6 +471,7 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			assert.Equal(t, model.Duration(tt.expectedTimeout), got.ScrapeTimeout)
 			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
 			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
+			assert.Equal(t, &tt.scrapeOptions.ScrapeNativeHistograms, got.ScrapeNativeHistograms)
 		})
 	}
 }

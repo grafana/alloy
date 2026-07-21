@@ -7,13 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/stretchr/testify/require"
@@ -26,6 +19,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
+	"k8s.io/utils/ptr"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 func getPtrToUint(v uint16) *uint16 {
@@ -94,7 +95,7 @@ func Test(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}
@@ -129,7 +130,7 @@ func Test(t *testing.T) {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			require.ErrorContains(t, err, "telemetry type is not supported")
 			if err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}
@@ -162,7 +163,7 @@ func Test(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}
@@ -521,6 +522,7 @@ func TestConfigConversion(t *testing.T) {
 						interval = "123s"
 						timeout = "113s"
 						port = 4321
+						owner_account = "123456789012"
 					}
 				}
 				protocol {
@@ -540,6 +542,7 @@ func TestConfigConversion(t *testing.T) {
 						Interval:      123 * time.Second,
 						Timeout:       113 * time.Second,
 						Port:          getPtrToUint(4321),
+						OwnerAccount:  ptr.To("123456789012"),
 					}),
 				},
 				RoutingKey: "traceID",

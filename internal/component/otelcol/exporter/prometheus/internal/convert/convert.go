@@ -10,17 +10,19 @@ package convert
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/timestamp"
@@ -31,7 +33,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var (
@@ -42,7 +44,7 @@ var (
 // Converter implements consumer.Metrics and converts received metrics
 // into Prometheus-compatible metrics.
 type Converter struct {
-	log log.Logger
+	log *slog.Logger
 
 	optsMut sync.RWMutex
 	opts    Options
@@ -68,15 +70,32 @@ type Options struct {
 	// ResourceToTelemetryConversion controls whether to convert resource attributes to Prometheus-compatible datapoint attributes
 	ResourceToTelemetryConversion bool
 	HonorMetadata                 bool
+	// ConvertClassicHistogramsToNHCB controls whether OTel classic (explicit
+	// bounds) histograms are converted to Prometheus Native Histograms with
+	// Custom Buckets instead of being written as N+2 classic series.
+	ConvertClassicHistogramsToNHCB bool
+	// KeepIdentifyingResourceAttributes preserves service.name,
+	// service.namespace, and service.instance.id as labels on target_info
+	// in addition to mapping them to job and instance, keeping target_info
+	// compliant with the OpenTelemetry service resource semantic conventions
+	// (https://opentelemetry.io/docs/specs/semconv/resource/service/).
+	// Only affects target_info; regular metric series are unchanged.
+	KeepIdentifyingResourceAttributes bool
+	// EnableStartTimestampZeroIngestion controls whether a synthetic zero
+	// sample is injected at the OTLP start timestamp ahead of each cumulative
+	// (counter, histogram, summary) sample, marking the point at which the
+	// series started or was reset. This mirrors Prometheus' scrape-time
+	// start-timestamp-zero-ingestion feature.
+	EnableStartTimestampZeroIngestion bool
 }
 
 var _ consumer.Metrics = (*Converter)(nil)
 
 // New returns a new Converter. Converted metrics are passed to the provided
 // storage.Appendable implementation.
-func New(l log.Logger, next storage.Appendable, opts Options) *Converter {
+func New(l *slog.Logger, next storage.Appendable, opts Options) *Converter {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = logging.NewSlogNop()
 	}
 	return &Converter{log: l, next: next, opts: opts}
 }
@@ -141,12 +160,12 @@ func (conv *Converter) consumeResourceMetrics(app storage.Appender, rm pmetric.R
 	if opts.IncludeTargetInfo {
 		// Write series data first, so the series exists before we write metadata.
 		if err := memResource.WriteTo(app, time.Now()); err != nil {
-			level.Error(conv.log).Log("msg", "failed to write target_info metric", "err", err)
+			conv.log.Error("failed to write target_info metric", "err", err)
 		}
 		// Write metadata after series data, so the series exists in the appender.
 		if opts.HonorMetadata {
 			if err := resourceMD.WriteTo(app, time.Now()); err != nil {
-				level.Warn(conv.log).Log("msg", "failed to write target_info metadata", "err", err)
+				conv.log.Warn("failed to write target_info metadata", "err", err)
 			}
 		}
 	}
@@ -199,12 +218,16 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	lb.Set(model.JobLabel, jobLabel)
 	lb.Set(model.InstanceLabel, instanceLabel)
 
+	keepIdentifying := conv.getOpts().KeepIdentifyingResourceAttributes
+
 	attrs.Range(func(k string, v pcommon.Value) bool {
-		// Skip attributes that we used for determining the job and instance
-		// labels.
-		if k == string(semconv.ServiceNameKey) ||
-			k == string(semconv.ServiceNamespaceKey) ||
-			k == string(semconv.ServiceInstanceIDKey) {
+		// Skip service.name/namespace/instance.id unless
+		// KeepIdentifyingResourceAttributes is set; they are already
+		// represented as the job/instance labels.
+		if !keepIdentifying &&
+			(k == string(semconv.ServiceNameKey) ||
+				k == string(semconv.ServiceNamespaceKey) ||
+				k == string(semconv.ServiceInstanceIDKey)) {
 
 			return true
 		}
@@ -238,12 +261,12 @@ func (conv *Converter) consumeScopeMetrics(app storage.Appender, memResource *me
 	if opts.IncludeScopeInfo {
 		// Write series data first, so the series exists before we write metadata.
 		if err := memScope.WriteTo(app, time.Now()); err != nil {
-			level.Error(conv.log).Log("msg", "failed to write otel_scope_info metric", "err", err)
+			conv.log.Error("failed to write otel_scope_info metric", "err", err)
 		}
 		// Write metadata after series data, so the series exists in the appender.
 		if opts.HonorMetadata {
 			if err := scopeMD.WriteTo(app, time.Now()); err != nil {
-				level.Warn(conv.log).Log("msg", "failed to write otel_scope_info metadata", "err", err)
+				conv.log.Warn("failed to write otel_scope_info metadata", "err", err)
 			}
 		}
 	}
@@ -329,21 +352,59 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 
 		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
 		if err := writeSeries(app, memSeries, dp, getNumberDataPointValue(dp)); err != nil {
-			level.Error(conv.log).Log("msg", "failed to write metric sample", metricName, "err", err)
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
 		}
 	}
 
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
 
 type otelcolDataPoint interface {
 	Timestamp() pcommon.Timestamp
+	StartTimestamp() pcommon.Timestamp
 	Flags() pmetric.DataPointFlags
+}
+
+// writeStartTimestampZeroSample injects a synthetic zero sample at the data
+// point's start timestamp ahead of the real sample, marking the point at which
+// the cumulative series started or reset. It is a no-op unless the feature is
+// enabled and the data point carries a start timestamp. The appender rejects
+// start timestamps that are not strictly older than the sample
+// (ErrSTNewerThanSample) or that would be out of order (ErrOutOfOrderST); both
+// are expected - the latter is the steady-state case for long-lived counters -
+// and are not logged.
+func (conv *Converter) writeStartTimestampZeroSample(app storage.Appender, series *memorySeries, dp otelcolDataPoint) {
+	if !conv.getOpts().EnableStartTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	err := series.WriteSTZeroSampleTo(app, t, st)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject start-timestamp zero sample", "series", series.labels.String(), "err", err)
+	}
+}
+
+// writeStartTimestampZeroHistogram is the native-histogram counterpart of
+// writeStartTimestampZeroSample. h carries the shape (schema, zero threshold,
+// custom values) that the synthetic empty histogram replicates.
+func (conv *Converter) writeStartTimestampZeroHistogram(app storage.Appender, series *memorySeries, dp otelcolDataPoint, h *histogram.Histogram, fh *histogram.FloatHistogram) {
+	if !conv.getOpts().EnableStartTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	err := series.WriteHistogramSTZeroSampleTo(app, t, st, h, fh)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject start-timestamp zero histogram", "series", series.labels.String(), "err", err)
+	}
 }
 
 func writeSeries(app storage.Appender, series *memorySeries, dp otelcolDataPoint, val float64) error {
@@ -443,7 +504,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && !m.Sum().IsMonotonic():
 		convType = model.MetricTypeGauge
 	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityDelta && m.Sum().IsMonotonic():
-		level.Debug(conv.log).Log("msg", "dropped unsupported delta sum")
+		conv.log.Debug("dropped unsupported delta sum")
 		// Drop non-cumulative summaries for now, which is permitted by the spec.
 		//
 		// TODO(rfratto): implement delta-to-cumulative for sums.
@@ -469,15 +530,21 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 
 		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
 
+		// Only counters carry counter-reset semantics; non-monotonic sums become
+		// gauges, for which a start timestamp is meaningless.
+		if convType == model.MetricTypeCounter {
+			conv.writeStartTimestampZeroSample(app, memSeries, dp)
+		}
+
 		val := getNumberDataPointValue(dp)
 		if err := writeSeries(app, memSeries, dp, val); err != nil {
-			level.Error(conv.log).Log("msg", "failed to write metric sample", metricName, "err", err)
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
 		}
 
 		if convType == model.MetricTypeCounter {
 			for i := 0; i < dp.Exemplars().Len(); i++ {
 				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-					level.Error(conv.log).Log("msg", "failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
+					conv.log.Error("failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
 				}
 			}
 		}
@@ -486,7 +553,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -507,6 +574,8 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 		Help: m.Description(),
 	})
 
+	convertToNHCB := conv.getOpts().ConvertClassicHistogramsToNHCB
+
 	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Histogram().DataPoints().Len(); dpcount++ {
 		dp := m.Histogram().DataPoints().At(dpcount)
@@ -515,13 +584,19 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			joinAttributeMaps(resAttrs, dp.Attributes())
 		}
 
+		if convertToNHCB {
+			conv.writeClassicHistogramAsNHCB(app, memResource, memScope, metricName, dp)
+			continue
+		}
+
 		// Sum metric
 		if dp.HasSum() {
 			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
 			sumMetricVal := dp.Sum()
 
+			conv.writeStartTimestampZeroSample(app, sumMetric, dp)
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram sum sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram sum sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -530,8 +605,9 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
 			countMetricVal := float64(dp.Count())
 
+			conv.writeStartTimestampZeroSample(app, countMetric, dp)
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram count sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -585,14 +661,15 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			bucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
 			bucketVal := float64(count)
 
+			conv.writeStartTimestampZeroSample(app, bucket, dp)
 			if err := writeSeries(app, bucket, dp, bucketVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram bucket sample", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
 
 			for ; exemplarInd < len(exemplars); exemplarInd++ {
 				if exemplars[exemplarInd].DoubleValue() < bound {
 					if err := conv.writeExemplar(app, bucket, exemplars[exemplarInd]); err != nil {
-						level.Error(conv.log).Log("msg", "failed to add exemplar", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+						conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 					}
 				} else {
 					break
@@ -611,14 +688,15 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			infBucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
 			infBucketVal := float64(dp.Count())
 
+			conv.writeStartTimestampZeroSample(app, infBucket, dp)
 			if err := writeSeries(app, infBucket, dp, infBucketVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram bucket sample", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
 
 			// Add remaining exemplars.
 			for ; exemplarInd < len(exemplars); exemplarInd++ {
 				if err := conv.writeExemplar(app, infBucket, exemplars[exemplarInd]); err != nil {
-					level.Error(conv.log).Log("msg", "failed to add exemplar", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+					conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 				}
 			}
 		}
@@ -627,7 +705,39 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+// writeClassicHistogramAsNHCB writes a single classic histogram data point as
+// a Prometheus Native Histogram with Custom Buckets, instead of the N+2
+// classic _bucket/_sum/_count series.
+func (conv *Converter) writeClassicHistogramAsNHCB(app storage.Appender, memResource *memorySeries, memScope *memorySeries, metricName string, dp pmetric.HistogramDataPoint) {
+	memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+
+	ts := dp.Timestamp().AsTime()
+	if ts.Before(memSeries.Timestamp()) {
+		// Out-of-order; skip.
+		return
+	}
+	memSeries.SetTimestamp(ts)
+
+	h, err := explicitToCustomBucketsHistogram(dp)
+	if err != nil {
+		conv.log.Error("failed to convert classic histogram to native histogram with custom buckets", "metric_name", metricName, "err", err)
+		return
+	}
+
+	conv.writeStartTimestampZeroHistogram(app, memSeries, dp, &h, nil)
+	if err := memSeries.WriteNativeHistogramTo(app, ts, &h, nil); err != nil {
+		conv.log.Error("failed to write native histogram with custom buckets", "metric_name", metricName, "err", err)
+		return
+	}
+
+	for i := 0; i < dp.Exemplars().Len(); i++ {
+		if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
+			conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -666,18 +776,19 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 		promHistogram, err := exponentialToNativeHistogram(dp)
 
 		if err != nil {
-			level.Error(conv.log).Log("msg", "failed to convert exponential histogram to native histogram", "metric name", metricName, "err", err)
+			conv.log.Error("failed to convert exponential histogram to native histogram", "metric_name", metricName, "err", err)
 			continue
 		}
 
+		conv.writeStartTimestampZeroHistogram(app, memSeries, dp, &promHistogram, nil)
 		if err := memSeries.WriteNativeHistogramTo(app, ts, &promHistogram, nil); err != nil {
-			level.Error(conv.log).Log("msg", "failed to write native histogram", "metric name", metricName, "err", err)
+			conv.log.Error("failed to write native histogram", "metric_name", metricName, "err", err)
 			continue
 		}
 
 		for i := 0; i < dp.Exemplars().Len(); i++ {
 			if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-				level.Error(conv.log).Log("msg", "failed to add exemplar", "metric name", metricName, "err", err)
+				conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
 			}
 		}
 	}
@@ -685,7 +796,7 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -740,8 +851,9 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
 			sumMetricVal := dp.Sum()
 
+			conv.writeStartTimestampZeroSample(app, sumMetric, dp)
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write summary sum sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write summary sum sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -750,8 +862,9 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
 			countMetricVal := float64(dp.Count())
 
+			conv.writeStartTimestampZeroSample(app, countMetric, dp)
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram count sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -768,7 +881,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			quantileVal := qp.Value()
 
 			if err := writeSeries(app, quantile, dp, quantileVal); err != nil {
-				level.Error(conv.log).Log("msg", "failed to write histogram quantile sample", "metric name", metricName, "quantile", quantileLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram quantile sample", "metric_name", metricName, "quantile", quantileLabel.Value, "err", err)
 			}
 		}
 	}
@@ -776,7 +889,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }

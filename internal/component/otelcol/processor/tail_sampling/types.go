@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 )
@@ -176,11 +176,14 @@ func (stringAttributeConfig StringAttributeConfig) Convert() tsp.StringAttribute
 type RateLimitingConfig struct {
 	// SpansPerSecond sets the limit on the maximum nuber of spans that can be processed each second.
 	SpansPerSecond int64 `alloy:"spans_per_second,attr"`
+	// BurstCapacity sets the maximum burst capacity in spans. If not specified, defaults to 2x SpansPerSecond.
+	BurstCapacity int64 `alloy:"burst_capacity,attr,optional"`
 }
 
 func (rateLimitingConfig RateLimitingConfig) Convert() tsp.RateLimitingCfg {
 	return tsp.RateLimitingCfg{
 		SpansPerSecond: rateLimitingConfig.SpansPerSecond,
+		BurstCapacity:  rateLimitingConfig.BurstCapacity,
 	}
 }
 

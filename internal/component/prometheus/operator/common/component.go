@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
@@ -107,7 +106,7 @@ func (c *Component) Run(ctx context.Context) error {
 			wg.Add(1)
 			go func() {
 				if err := manager.Run(innerCtx); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
+					c.opts.Logger.Error("error running crd manager", "err", err)
 					errChan <- err
 				}
 				wg.Done()
@@ -128,6 +127,10 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if cfg.Scrape.EnableTypeAndUnitLabels && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
 		return fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
+	if cfg.Scrape.StartTimestampZeroIngestion && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("start_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
 	select {

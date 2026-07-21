@@ -50,7 +50,9 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `enable_http2`          | `bool`              | Whether HTTP2 is supported for requests.                                                | `true`    | no       |
 | `follow_redirects`      | `bool`              | Whether redirects returned by the server should be followed.                            | `true`    | no       |
 | `http_headers`          | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name. |           | no       |
-| `loki_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
+| `external_labels`          | `map(string)`    | Labels to add to all alert rules synced to Loki.                                        |           | no       |
+| `loki_namespace_prefix`    | `string`         | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
+| `loki_namespace_separator` | `string`         | Separator between components of the Loki namespace string.                              | `"-"`     | no       |
 | `proxy_url`             | `string`            | HTTP proxy to proxy requests through.                                                   |           | no       |
 | `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | `"30s"`   | no       |
 | `tenant_id`             | `string`            | Loki tenant ID.                                                                         |           | no       |
@@ -58,16 +60,11 @@ You can use the following arguments with `loki.rules.kubernetes`:
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
-
- [arguments]: #arguments
- [authorization]: #authorization
- [basic_auth]: #basic_auth
- [oauth2]: #oauth2
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
+* [`oauth2`](#oauth2) block
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
@@ -77,6 +74,10 @@ Updates are processed as events from the Kubernetes API server according to the 
 
 You can use the `loki_namespace_prefix` argument to separate the rules managed by multiple {{< param "PRODUCT_NAME" >}} deployments across your infrastructure.
 You should set the prefix to a unique value for each deployment.
+
+The `external_labels` argument defines a set of labels that are automatically merged into the labels of every alert rule synced to the Loki Ruler API.
+If the same key is present in both `external_labels` and the labels on a `PrometheusRule` resource, the value from `external_labels` takes precedence.
+This is useful for injecting labels such as `k8s_cluster_name` or `alertsource` without requiring every `PrometheusRule` CRD to be manually annotated.
 
 ## Blocks
 
@@ -120,7 +121,7 @@ You can use the following blocks with `loki.rules.kubernetes`:
 ### `extra_query_matchers`
 
 The `extra_query_matchers` block has no attributes.
-It contains zero or more [matcher][] blocks.
+It contains zero or more [matcher](#matcher) blocks.
 These blocks allow you to add extra label matchers to all queries that are discovered by the `loki.rules.kubernetes` component.
 The algorithm for adding the label matchers to queries is the same as the one used by the [`promtool promql label-matchers set` command](https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-promql).
 It's adapted to work with the LogQL parser.

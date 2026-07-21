@@ -2,11 +2,10 @@ package stages
 
 import (
 	"errors"
+	"log/slog"
 	"reflect"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -21,7 +20,7 @@ const ReservedLabelTenantID = "__tenant_id__"
 
 type tenantStage struct {
 	cfg    TenantConfig
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // TenantConfig configures a tenant stage.
@@ -45,7 +44,7 @@ func validateTenantConfig(c TenantConfig) error {
 }
 
 // newTenantStage creates a new tenant stage to override the tenant ID from extracted data
-func newTenantStage(logger log.Logger, cfg TenantConfig) (Stage, error) {
+func newTenantStage(logger *slog.Logger, cfg TenantConfig) (Stage, error) {
 	err := validateTenantConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -53,7 +52,7 @@ func newTenantStage(logger log.Logger, cfg TenantConfig) (Stage, error) {
 
 	return toStage(&tenantStage{
 		cfg:    cfg,
-		logger: logger,
+		logger: logger.With("stage", "tenant"),
 	}), nil
 }
 
@@ -82,14 +81,14 @@ func (s *tenantStage) getTenantFromSourceField(extracted map[string]any) string 
 	// Get the tenant ID from the source data
 	value, ok := extracted[s.cfg.Source]
 	if !ok {
-		level.Debug(s.logger).Log("msg", "the tenant source does not exist in the extracted data", "source", s.cfg.Source)
+		s.logger.Debug("the tenant source does not exist in the extracted data", "source", s.cfg.Source)
 		return ""
 	}
 
 	// Convert the value to string
 	tenantID, err := getString(value)
 	if err != nil {
-		level.Debug(s.logger).Log("msg", "failed to convert value to string", "err", err, "type", reflect.TypeOf(value))
+		s.logger.Debug("failed to convert value to string", "err", err, "type", reflect.TypeOf(value))
 		return ""
 	}
 
@@ -101,7 +100,7 @@ func (s *tenantStage) getTenantFromLabel(labels model.LabelSet) string {
 	tenantID, ok := labels[model.LabelName(s.cfg.Label)]
 
 	if !ok {
-		level.Debug(s.logger).Log("msg", "the tenant source does not exist in the labels", "source", s.cfg.Source)
+		s.logger.Debug("the tenant source does not exist in the labels", "source", s.cfg.Source)
 		return ""
 	}
 

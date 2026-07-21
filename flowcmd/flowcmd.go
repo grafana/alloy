@@ -1,15 +1,18 @@
 package flowcmd
 
 import (
-	"github.com/grafana/alloy"
-	"github.com/grafana/alloy/internal/alloycli"
-	"github.com/grafana/alloy/internal/build"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy"
+	"github.com/grafana/alloy/internal/alloycli"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
+
 	// Register Prometheus SD components
-	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
 	_ "github.com/prometheus/prometheus/discovery/install"
+
+	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
 
 	// Register integrations
 	_ "github.com/grafana/alloy/internal/static/integrations/install"
@@ -37,6 +40,13 @@ func RootCommand() *cobra.Command {
 	return alloycli.Command()
 }
 
-func RunCommand() *cobra.Command {
-	return alloycli.RunCommand()
+// RunAsExtensionCommand returns a standalone cobra command to run Alloy inside Otel collector.
+//
+// configImportHook is a hook that called when `import.*` component loads additional config files.
+func RunAsExtensionCommand(modulePath string, configs map[string][]byte, configImportHook importsource.ImportContentHook) *cobra.Command {
+	return alloycli.NewRunAsExtensionCommand(alloycli.ExtensionModeParams{
+		Configs:        configs,
+		ModulePath:     modulePath,
+		OnConfigImport: configImportHook,
+	})
 }

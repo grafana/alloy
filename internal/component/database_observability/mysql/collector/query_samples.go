@@ -4,18 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -53,12 +54,21 @@ SELECT
 	statements.ROWS_SENT,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
+	statements.MYSQL_ERRNO,
+	statements.RETURNED_SQLSTATE,
+	statements.MESSAGE_TEXT,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
 	waits.timer_wait as WAIT_TIMER_WAIT,
+	nested_waits.event_id as NESTED_WAIT_EVENT_ID,
+	nested_waits.end_event_id as NESTED_WAIT_END_EVENT_ID,
+	nested_waits.event_name as NESTED_WAIT_EVENT_NAME,
+	nested_waits.object_name as NESTED_WAIT_OBJECT_NAME,
+	nested_waits.object_type as NESTED_WAIT_OBJECT_TYPE,
+	nested_waits.timer_wait as NESTED_WAIT_TIMER_WAIT,
 	threads.PROCESSLIST_USER as QUERY_USER,
 	threads.PROCESSLIST_HOST as QUERY_HOST
 	%s
@@ -70,13 +80,20 @@ LEFT JOIN
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 	%s
 LEFT JOIN
+	performance_schema.events_waits_history nested_waits
+	ON waits.thread_id = nested_waits.thread_id
+	AND waits.event_id = nested_waits.nesting_event_id
+	AND waits.event_name = 'wait/io/table/sql/handler'
+	%s
+LEFT JOIN
 	performance_schema.threads threads
 	ON statements.THREAD_ID = threads.THREAD_ID
 WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.SQL_TEXT IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN %s
-	%s %s`
+	%s %s
+ORDER BY statements.thread_id, statements.EVENT_ID`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -89,6 +106,7 @@ type QuerySamplesArguments struct {
 	CollectInterval               time.Duration
 	ExcludeSchemas                []string
 	EntryHandler                  loki.EntryHandler
+	Registry                      *prometheus.Registry
 	DisableQueryRedaction         bool
 	AutoEnableSetupConsumers      bool
 	SetupConsumersCheckInterval   time.Duration
@@ -96,7 +114,7 @@ type QuerySamplesArguments struct {
 	WaitEventMinDuration          time.Duration
 	EnablePreClassifiedWaitEvents bool
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QuerySamples struct {
@@ -105,14 +123,16 @@ type QuerySamples struct {
 	collectInterval               time.Duration
 	excludeSchemas                []string
 	entryHandler                  loki.EntryHandler
+	registry                      *prometheus.Registry
 	disableQueryRedaction         bool
 	autoEnableSetupConsumers      bool
 	setupConsumersCheckInterval   time.Duration
 	sampleMinDuration             time.Duration
 	waitEventMinDuration          time.Duration
+	waitEventCounter              *prometheus.CounterVec
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -135,8 +155,18 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		sampleMinDuration:             args.SampleMinDuration,
 		waitEventMinDuration:          args.WaitEventMinDuration,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
+	}
+
+	if args.EnablePreClassifiedWaitEvents && args.Registry != nil {
+		c.registry = args.Registry
+		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "wait_event_seconds_total",
+			Help:      "Total duration of wait events in seconds.",
+		}, []string{"digest", "schema"})
+		args.Registry.MustRegister(c.waitEventCounter)
 	}
 
 	return c, nil
@@ -148,9 +178,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -175,7 +205,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -199,6 +229,9 @@ func (c *QuerySamples) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+	if c.registry != nil && c.waitEventCounter != nil {
+		c.registry.Unregister(c.waitEventCounter)
+	}
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
@@ -207,7 +240,7 @@ func (c *QuerySamples) runSetupConsumersCheck() {
 
 	for {
 		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
-			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+			c.logger.Error("error with performance_schema.setup_consumers check", "err", err)
 		}
 
 		select {
@@ -247,9 +280,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
 
-	var waitDurationClause string
+	var waitDurationClause, nestedWaitDurationClause string
 	if c.waitEventMinDuration > 0 {
-		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", secondsToPicoseconds(c.waitEventMinDuration.Seconds()))
+		minPs := secondsToPicoseconds(c.waitEventMinDuration.Seconds())
+		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", minPs)
+		nestedWaitDurationClause = fmt.Sprintf("AND nested_waits.timer_wait >= %.0f", minPs)
 	}
 
 	var sampleDurationClause string
@@ -259,12 +294,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
@@ -277,6 +312,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 	c.timerBookmark = limit
 	c.lastUptime = uptime
 
+	lastThreadIDLogged := ""
 	lastDigestLogged := ""
 	lastEventIDLogged := ""
 
@@ -302,17 +338,30 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			RowsAffected uint64
 			Errors       uint64
 
+			// sample error info
+			MysqlErrno       sql.NullInt64
+			ReturnedSQLState sql.NullString
+			MessageText      sql.NullString
+
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
 
-			// sample wait info, if any
+			// wait event info
 			WaitEventID    sql.NullString
 			WaitEndEventID sql.NullString
 			WaitEventName  sql.NullString
 			WaitObjectName sql.NullString
 			WaitObjectType sql.NullString
 			WaitTime       sql.NullFloat64
+
+			// nested wait event info (when outer event is wait/io/table/sql/handler)
+			NestedWaitEventID    sql.NullString
+			NestedWaitEndEventID sql.NullString
+			NestedWaitEventName  sql.NullString
+			NestedWaitObjectName sql.NullString
+			NestedWaitObjectType sql.NullString
+			NestedWaitTime       sql.NullFloat64
 
 			// user and host who issued the query
 			User sql.NullString
@@ -332,12 +381,21 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.RowsSent,
 			&row.RowsAffected,
 			&row.Errors,
+			&row.MysqlErrno,
+			&row.ReturnedSQLState,
+			&row.MessageText,
 			&row.WaitEventID,
 			&row.WaitEndEventID,
 			&row.WaitEventName,
 			&row.WaitObjectName,
 			&row.WaitObjectType,
 			&row.WaitTime,
+			&row.NestedWaitEventID,
+			&row.NestedWaitEndEventID,
+			&row.NestedWaitEventName,
+			&row.NestedWaitObjectName,
+			&row.NestedWaitObjectType,
+			&row.NestedWaitTime,
 			&row.User,
 			&row.Host,
 		}
@@ -352,23 +410,24 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		err := rs.Scan(scanArgs...)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
+			c.logger.Error("failed to scan history table samples", "err", err)
 			continue
 		}
 
 		if !row.TimerEndPicoseconds.Valid {
-			level.Debug(c.logger).Log("msg", "skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
+			c.logger.Debug("skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
 			continue
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
-		cpuTime := picosecondsToMilliseconds(row.CPUTime)
+		endMilliseconds := calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
-		traceParent := tryExtractTraceParent(row.SQLText.String)
+		row.TimestampMilliseconds = endMilliseconds - elapsedTime
+		cpuTime := picosecondsToMilliseconds(row.CPUTime)
+		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate="%s" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
@@ -376,6 +435,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			row.RowsSent,
 			row.RowsAffected,
 			row.Errors,
+			row.MysqlErrno.Int64,
+			row.ReturnedSQLState.String,
 			row.MaxControlledMemory,
 			row.MaxTotalMemory,
 			cpuTime,
@@ -383,13 +444,19 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			elapsedTime,
 		)
 		if traceParent != "" {
-			logMessage += fmt.Sprintf(` traceparent="%s"`, traceParent)
+			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
+		// message_text can embed literal values (e.g. a duplicate key value), so
+		// it is only emitted when query redaction is disabled, like sql_text.
+		if c.disableQueryRedaction && row.MessageText.Valid {
+			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
+		}
 
-		if lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+			lastThreadIDLogged = row.ThreadID.String
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
@@ -402,7 +469,27 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
-			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			eventID := row.WaitEventID.String
+			endEventID := row.WaitEndEventID.String
+			eventName := row.WaitEventName.String
+			objectName := row.WaitObjectName.String
+			objectType := row.WaitObjectType.String
+			waitTime := row.WaitTime.Float64
+
+			// wait/io/table/sql/handler is a molecule event wrapping the actual I/O;
+			// the SQL JOIN populates nested_waits.* only for that outer name, so a
+			// valid nested row means we should surface its fields instead.
+			// See https://dev.mysql.com/doc/refman/8.0/en/performance-schema-atom-molecule-events.html
+			if row.NestedWaitEventID.Valid && row.NestedWaitTime.Valid {
+				eventID = row.NestedWaitEventID.String
+				endEventID = row.NestedWaitEndEventID.String
+				eventName = row.NestedWaitEventName.String
+				objectName = row.NestedWaitObjectName.String
+				objectType = row.NestedWaitObjectType.String
+				waitTime = row.NestedWaitTime.Float64
+			}
+
+			waitTimeMs := picosecondsToMilliseconds(waitTime)
 
 			if c.enablePreClassifiedWaitEvents {
 				waitV2LogMessage := fmt.Sprintf(
@@ -413,13 +500,13 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.ThreadID.String,
 					row.Digest.String,
 					row.StatementEventID.String,
-					row.WaitEventID.String,
-					row.WaitEndEventID.String,
-					row.WaitEventName.String,
-					classifyMySQLWaitEventType(row.WaitEventName.String),
-					row.WaitObjectName.String,
-					row.WaitObjectType.String,
-					waitTime,
+					eventID,
+					endEventID,
+					eventName,
+					classifyMySQLWaitEventType(eventName),
+					objectName,
+					objectType,
+					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
@@ -427,6 +514,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
+
+				if c.waitEventCounter != nil {
+					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(picosecondsToSeconds(waitTime))
+				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
 					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
@@ -436,12 +527,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.ThreadID.String,
 					row.Digest.String,
 					row.StatementEventID.String,
-					row.WaitEventID.String,
-					row.WaitEndEventID.String,
-					row.WaitEventName.String,
-					row.WaitObjectName.String,
-					row.WaitObjectType.String,
-					waitTime,
+					eventID,
+					endEventID,
+					eventName,
+					objectName,
+					objectType,
+					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
@@ -470,7 +561,7 @@ func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
 	}
-	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
+	c.logger.Debug("updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
 	return nil
 }
@@ -493,13 +584,44 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	return timerClause, limit
 }
 
-// classifyMySQLWaitEventType maps a raw MySQL performance_schema wait event name
-// to a standardized category, aligned with the wait taxonomy used elsewhere:
-//
-//	IO Wait      = wait/io/(file|table).+
-//	Network Wait = wait/io/socket.+
-//	Lock Wait    = wait/(io/lock|synch|lock).+
+var mysqlSynchReplicationSymbolPrefixes = []string{
+	"Slave_",
+	"Replica_",
+	"Master_info",
+	"Source_info",
+	"Relay_log_info",
+	"MYSQL_RELAY_LOG",
+	"Mts_",
+}
+
+func isMySQLReplicationWaitEvent(name string) bool {
+	if strings.HasPrefix(name, "wait/io/file/sql/relaylog") {
+		return true
+	}
+	rest, ok := strings.CutPrefix(name, "wait/synch/")
+	if !ok {
+		return false
+	}
+	// rest is "<primitive>/<owner>/<symbol>", e.g. "mutex/sql/Slave_jobs_lock".
+	parts := strings.SplitN(rest, "/", 3)
+	if len(parts) < 3 {
+		return false
+	}
+	if parts[1] != "sql" {
+		return false
+	}
+	for _, p := range mysqlSynchReplicationSymbolPrefixes {
+		if strings.HasPrefix(parts[2], p) {
+			return true
+		}
+	}
+	return false
+}
+
 func classifyMySQLWaitEventType(waitEventName string) string {
+	if isMySQLReplicationWaitEvent(waitEventName) {
+		return "Replication Wait"
+	}
 	rest, ok := strings.CutPrefix(waitEventName, "wait/")
 	if !ok {
 		return "Other Wait"
@@ -509,61 +631,10 @@ func classifyMySQLWaitEventType(waitEventName string) string {
 		return "IO Wait"
 	case strings.HasPrefix(rest, "io/socket/"):
 		return "Network Wait"
-	case strings.HasPrefix(rest, "io/lock/"),
-		strings.HasPrefix(rest, "synch/"),
-		strings.HasPrefix(rest, "lock/"):
+	case strings.HasPrefix(rest, "io/lock/"), strings.HasPrefix(rest, "lock/"):
 		return "Lock Wait"
+	case strings.HasPrefix(rest, "synch/"):
+		return "Engine Wait"
 	}
 	return "Other Wait"
-}
-
-// tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
-// block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
-// It returns the traceparent string when matched, otherwise an empty string.
-func tryExtractTraceParent(sqlText string) string {
-	if strings.HasSuffix(sqlText, "...") {
-		return ""
-	}
-
-	// Find the last comment: strip out /* and */
-	start := strings.LastIndex(sqlText, "/*")
-	if start < 0 {
-		return ""
-	}
-	body := sqlText[start+2:]
-	end := strings.Index(body, "*/")
-	if end < 0 {
-		return ""
-	}
-
-	body = body[:end]
-	body = strings.TrimSpace(body)
-	if body == "" {
-		return ""
-	}
-
-	// Split the comment by comma into key value pairs
-	pairs := strings.Split(body, ",")
-	for _, pair := range pairs {
-		pair = strings.TrimSpace(pair)
-		key, val, ok := strings.Cut(pair, "=")
-		if !ok {
-			continue
-		}
-
-		if !strings.EqualFold(strings.TrimSpace(key), "traceparent") {
-			continue
-		}
-
-		// SQL unescape: trim ' or " at beginning and end of value
-		if strings.HasPrefix(val, "'") || strings.HasPrefix(val, `"`) {
-			quote := string(val[0])
-			val = strings.TrimPrefix(val, quote)
-			val = strings.TrimSuffix(val, quote)
-		}
-
-		return strings.TrimSpace(val)
-	}
-
-	return ""
 }

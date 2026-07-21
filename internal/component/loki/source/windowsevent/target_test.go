@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -17,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestBookmarkUpdate(t *testing.T) {
@@ -29,7 +29,7 @@ func TestBookmarkUpdate(t *testing.T) {
 
 	dirPath := "bookmarktest"
 	filePath := path.Join(dirPath, "bookmark.xml")
-	require.NoError(t, os.MkdirAll(path.Dir(filePath), 700))
+	require.NoError(t, os.MkdirAll(path.Dir(filePath), 0700))
 	defer func() {
 		require.NoError(t, os.RemoveAll(dirPath))
 	}()
@@ -48,7 +48,7 @@ func TestBookmarkUpdate(t *testing.T) {
 	}
 
 	handle := loki.NewLogsReceiver()
-	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)
+	winTarget, err := NewTarget(logging.NewSlogNop(), handle, nil, scrapeConfig, 1000*time.Millisecond)
 	require.NoError(t, err)
 
 	tm := time.Now().Format(time.RFC3339Nano)

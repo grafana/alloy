@@ -90,10 +90,14 @@ You can use the following blocks with `database_observability.mysql`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+It contains zero or one of the [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
+
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 
 ### `aws`
 
@@ -111,7 +115,7 @@ The `azure` block supplies the identifying information for the database being mo
 |-------------------|----------|------------------------------------------------------|---------|----------|
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
-| `server_name`     | `string` | The database server name.                            |         | no       |
+| `server_name`     | `string` | The database server name, for example `orders-db` for the host `orders-db.mysql.database.azure.com`. |         | no       |
 
 ### `gcp`
 
@@ -136,12 +140,14 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 ### `schema_details`
 
-| Name               | Type       | Description                                                           | Default | Required |
-|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
-| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
-| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+| Name               | Type       | Description                                                 | Default | Required |
+|--------------------|------------|-------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.        | `"1m"`  | no       |
+| `cache_enabled`    | `boolean`  | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
+| `cache_size`       | `integer`  | Deprecated. Cache size.                                     | `256`   | no       |
+| `cache_ttl`        | `duration` | Deprecated. Cache TTL.                                      | `"10m"` | no       |
+
+The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they are accepted for backward compatibility, but ignored.
 
 ### `explain_plans`
 
@@ -163,7 +169,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name                             | Type       | Description                                                                    | Default | Required |
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
 | `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
-| `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
+| `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text (including query parameters) and query error messages. | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |

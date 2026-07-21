@@ -15,14 +15,20 @@
   ],
   "always-update": true,
   "draft": true,
+  "tag-separator": "/",
   "force-tag-creation": true,
   "draft-pull-request": true,
+  "separate-pull-requests": true,
+  "plugins": ["release-pr-output"],
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
     ".": {
       "release-type": "go",
       "versioning": "minor-breaking",
       "changelog-path": "CHANGELOG.md",
+      "exclude-paths": [
+        "syntax"
+      ],
       "extra-files": [
         {
           "type": "generic",
@@ -35,10 +41,20 @@
         {
           "type": "generic",
           "path": "collector/VERSION"
-        },
+        }
+      ]
+    },
+    "syntax": {
+      "package-name": "syntax",
+      "release-type": "go",
+      "versioning": "minor-breaking",
+      "changelog-path": "CHANGELOG.md",
+      "draft": false,
+      "pull-request-title-pattern": "fix(syntax): Release${component} ${version}",
+      "extra-files": [
         {
           "type": "generic",
-          "path": "extension/alloyengine/go.mod"
+          "path": "/go.mod"
         }
       ]
     }

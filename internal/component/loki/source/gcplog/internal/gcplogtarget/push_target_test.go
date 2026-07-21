@@ -3,13 +3,11 @@ package gcplogtarget
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -19,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 const localhost = "127.0.0.1"
@@ -49,8 +48,7 @@ func makeGCPPushRequest(host string, body string) (*http.Request, error) {
 }
 
 func TestPushTarget(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	type expectedEntry struct {
 		labels model.LabelSet
@@ -227,8 +225,7 @@ func TestPushTarget(t *testing.T) {
 }
 
 func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
@@ -275,8 +272,7 @@ func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
 }
 
 func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
@@ -335,8 +331,7 @@ func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 }
 
 func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	eh := loki.NewCollectingHandler()
 	defer eh.Stop()
@@ -435,7 +430,7 @@ func TestPushTargetBlocked(t *testing.T) {
 			reg     = prometheus.NewRegistry()
 			metrics = NewMetrics(reg)
 		)
-		pt, err := NewPushTarget(metrics, log.NewNopLogger(), eh, config, nil, reg)
+		pt, err := NewPushTarget(metrics, logging.NewSlogNop(), eh, config, nil, reg)
 		require.NoError(t, err)
 		defer pt.Stop()
 		require.NoError(t, pt.Run())
@@ -468,7 +463,7 @@ func TestPushTargetBlocked(t *testing.T) {
 			reg     = prometheus.NewRegistry()
 			metrics = NewMetrics(reg)
 		)
-		pt, err := NewPushTarget(metrics, log.NewNopLogger(), eh, config, nil, reg)
+		pt, err := NewPushTarget(metrics, logging.NewSlogNop(), eh, config, nil, reg)
 		require.NoError(t, err)
 		require.NoError(t, pt.Run())
 

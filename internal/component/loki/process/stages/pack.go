@@ -3,17 +3,14 @@ package stages
 import (
 	"bytes"
 	"errors"
-	"fmt"
+	"log/slog"
 	"reflect"
 	"sort"
 	"time"
 
-	"github.com/go-kit/log"
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -119,18 +116,23 @@ func (p *PackConfig) SetToDefault() {
 	*p = DefaultPackConfig
 }
 
-// newPackStage creates a DropStage from config
-func newPackStage(logger log.Logger, config PackConfig, registerer prometheus.Registerer) Stage {
-	return &packStage{
-		logger:    log.With(logger, "component", "stage", "type", "pack"),
-		cfg:       &config,
-		dropCount: getDropCountMetric(registerer),
+// newPackStage creates a PackStage from config
+func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.Registerer) (Stage, error) {
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
 	}
+
+	return &packStage{
+		logger:    logger.With("stage", "pack"),
+		cfg:       &config,
+		dropCount: dropCount,
+	}, nil
 }
 
 // packStage applies Label matchers to determine if the include stages should be run
 type packStage struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	cfg       *PackConfig
 	dropCount *prometheus.CounterVec
 }
@@ -157,7 +159,7 @@ func (m *packStage) pack(e Entry) Entry {
 			if lk == wl {
 				sv, err := getString(lv)
 				if err != nil {
-					level.Debug(m.logger).Log("msg", fmt.Sprintf("value for key: '%s' cannot be converted to a string and cannot be packed", lk), "err", err, "type", reflect.TypeOf(lv))
+					m.logger.Debug("value cannot be converted to a string and cannot be packed", "key", lk, "err", err, "type", reflect.TypeOf(lv))
 					continue
 				}
 				packedLabels[wl] = sv
@@ -175,7 +177,7 @@ func (m *packStage) pack(e Entry) Entry {
 	// Marshal to json
 	wl, err := json.Marshal(w)
 	if err != nil {
-		level.Debug(m.logger).Log("msg", "pack stage failed to marshal packed object to json, packing will be skipped", "err", err)
+		m.logger.Debug("pack stage failed to marshal packed object to json, packing will be skipped", "err", err)
 		return e
 	}
 

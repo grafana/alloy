@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -99,7 +98,7 @@ func BenchmarkAppenderFlows(b *testing.B) {
 
 	for _, c := range cases {
 		now := time.Now().UnixMilli()
-		ls := labelstore.New(log.NewNopLogger(), promclient.DefaultRegisterer, c.useLabelStore)
+		ls := labelstore.New(nil, promclient.DefaultRegisterer, c.useLabelStore)
 
 		children := make([]storage.Appendable, c.targetsCount)
 		for i := range c.targetsCount {
@@ -187,6 +186,10 @@ func (n noopStore) StartTime() (int64, error) {
 
 func (n noopStore) Close() error {
 	return nil
+}
+
+func (n noopStore) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented")
 }
 
 // recordingAppender records the ref passed to each Append call.

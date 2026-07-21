@@ -20,7 +20,6 @@ Key dependencies are Go module dependencies of the Alloy project that are known 
     - `github.com/prometheus/client_model`
 - Beyla dependencies (Beyla)
   - `github.com/grafana/beyla/v2`
-  - `go.opentelemetry.io/obi`
   - `go.opentelemetry.io/ebpf-profiler`
 - Loki dependencies (Loki)
 
@@ -116,7 +115,6 @@ Here is a summary of the relationships between the key dependencies of Alloy.
 5. **Beyla** (grafana/beyla/v2)
    - Depends on: Prometheus client libraries (client_golang, client_model, common)
    - Depends on: OpenTelemetry Collector Core (component, pdata, exporter packages)
-   - Depends on: OBI (go.opentelemetry.io/obi)
    - Does NOT depend on: Prometheus (full) or Loki
 
 6. **Loki** (grafana/loki/v3)
@@ -148,11 +146,11 @@ The key dependencies that are using the same minor versions as the ones we want 
 
 For all the key dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
 
-Start with `dependency-replacements.yaml`. Every replace entry must have a comment with a link to an upstream issue or PR. Use that link to understand why the fork exists and whether it is still needed. If you add or change a replace, include or update that link.
+Start with the shared replace block in `collector/builder-config.yaml`. Every replace entry must have a comment with a link to an upstream issue or PR. Use that link to understand why the fork exists and whether it is still needed. If you add or change a replace, include or update that link.
 
 Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
 
-Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `dependency-replacements.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
+Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `collector/builder-config.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
 
 If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream key dependency as the base.
 
@@ -160,14 +158,14 @@ Determine what is the status of the fork:
 
 - If the fork is no longer needed, quote the issues or PRs that resolve it. Denote with ✅
 - If a new, updated tag or branch exists, write clearly that an updated fork of the new version exists and we can continue. Denote with ✅
-- In the case of `go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation` and `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replaces, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
+- In the case of `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replace, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
 - If it doesn't exist, write clearly that we need to update the fork before we can continue. State what upstream version should be used as the base. Denote with 🛑
 
 Only continue to the next step if all the key dependenies have a fork ready, don't need one, or you're told to continue. If there are forks that are not ready but not for the key dependencies, we can continue and keep them unchanged.
 
 ### Step 4: Update Go modules to desired versions
 
-Replace directives are generated. Do not edit them directly in go.mod or builder-config.yaml. Update `dependency-replacements.yaml`, run `make generate-module-dependencies` and ` make generate-otel-collector-distro` to update the root go.mod, extension/alloyengine/go.mod, collector/go.mod, collector/builder-config.yaml and generate otel distro
+The shared replace block in `collector/builder-config.yaml` is canonical. Do not edit shared remote replaces in `go.mod` directly. Update `collector/builder-config.yaml`, then run `make generate-otel-collector-distro` to sync the root go.mod and generated OTel distro files.
 
 Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 
@@ -200,7 +198,7 @@ Make sure you organise the go.mod in the following way:
 - module name, go version, etc.
 - direct dependencies in one require() block
 - indirect dependencies in another require() block
-- keep the generated replace block as-is; place any local replaces outside of it
+- keep shared remote replaces in `collector/builder-config.yaml`; place any root-local replaces in `go.mod`
 - anything else
 
 After reorganising the go.mod, make sure you run `go mod tidy` again to make sure it is still successful and properly formatted.
@@ -300,7 +298,6 @@ Fetch the changelog using curl
 For otel we are interested in these repos
 * github.com/open-telemetry/opentelemetry-collector
 * github.com/open-telemetry/opentelemetry-go-build-tools
-* github.com/grafana/opentelemetry-ebpf-instrumentation
 * github.com/grafana/opentelemetry-ebpf-profiler
 
 Run curl to get changelog for release

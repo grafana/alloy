@@ -15,7 +15,6 @@ import (
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var _ component.LiveDebugging = (*Component)(nil)
@@ -81,14 +80,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.syslog component shutting down, stopping listeners")
+		c.opts.Logger.Info("loki.source.syslog component shutting down, stopping listeners")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			for _, l := range c.targets {
 				if err := l.Stop(); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
+					c.opts.Logger.Error("error while stopping syslog listener", "err", err)
 				}
 			}
 		})
@@ -174,7 +173,7 @@ func (c *Component) reloadTargets() {
 	// Stop existing targets
 	for _, l := range targetsToStop {
 		if err := l.Stop(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
+			c.opts.Logger.Error("error while stopping syslog listener", "err", err)
 		}
 	}
 
@@ -187,7 +186,7 @@ func (c *Component) reloadTargets() {
 	for _, cfg := range c.args.SyslogListeners {
 		promtailCfg, cfgErr := cfg.Convert()
 		if cfgErr != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to convert syslog listener config", "err", cfgErr)
+			c.opts.Logger.Error("failed to convert syslog listener config", "err", cfgErr)
 			continue
 		}
 
@@ -200,7 +199,7 @@ func (c *Component) reloadTargets() {
 			DebugListener: c.liveDbgListener,
 		})
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create syslog listener with provided config", "err", err)
+			c.opts.Logger.Error("failed to create syslog listener with provided config", "err", err)
 			continue
 		}
 		c.targets = append(c.targets, t)

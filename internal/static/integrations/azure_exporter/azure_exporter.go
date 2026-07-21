@@ -3,10 +3,9 @@ package azure_exporter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
-
-	"go.uber.org/zap"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,7 +18,7 @@ import (
 
 type Exporter struct {
 	cfg               Config
-	logger            *zap.SugaredLogger // used by azure client
+	logger            *slog.Logger
 	ConcurrencyConfig azure_config.Opts
 }
 
@@ -38,14 +37,14 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 		mergedConfig, err := MergeConfigWithQueryParams(e.cfg, params)
 		if err != nil {
 			err = fmt.Errorf("failed to merge config with query parameters, %v", err)
-			e.logger.Error(err)
+			e.logger.Error("failed to merge config with query parameters", "err", err)
 			http.Error(resp, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		if err := mergedConfig.Validate(); err != nil {
 			err = fmt.Errorf("config to be used for scraping was invalid, %v", err)
-			e.logger.Error(err)
+			e.logger.Error("config to be used for scraping was invalid", "err", err)
 			http.Error(resp, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -53,7 +52,7 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 		tagManager, err := client.TagManager.ParseTagConfig(mergedConfig.IncludedResourceTags)
 		if err != nil {
 			err = fmt.Errorf("unable to create azure tag manager from included_resource_tags %s, %v", strings.Join(mergedConfig.IncludedResourceTags, ","), err)
-			e.logger.Error(err)
+			e.logger.Error("unable to create azure tag manager", "err", err)
 			http.Error(resp, err.Error(), http.StatusBadRequest)
 		}
 
@@ -67,7 +66,7 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 
 		settings, err := mergedConfig.ToScrapeSettings()
 		if err != nil {
-			e.logger.Error(fmt.Errorf("unexpected error mapping config to scrape settings, %v", err))
+			e.logger.Error("unexpected error mapping config to scrape settings", "err", err)
 			http.Error(resp, "unexpected scrape error", http.StatusInternalServerError)
 			return
 		}
@@ -86,7 +85,7 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 		} else {
 			err = prober.ServiceDiscovery.FindResourceGraph(ctx, settings.Subscriptions, settings.ResourceType, settings.Filter)
 			if err != nil {
-				e.logger.Error(fmt.Errorf("service discovery failed, %v", err))
+				e.logger.Error("service discovery failed", "err", err)
 				http.Error(resp, "Failed to discovery azure resources", http.StatusInternalServerError)
 				return
 			}

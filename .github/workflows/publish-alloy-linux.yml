@@ -26,7 +26,7 @@ permissions:
 jobs:
   publish_linux_container:
     name: Publish Alloy Linux container
-    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
+    container: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -36,19 +36,21 @@ jobs:
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
       # We don't want this file to end up in the repo directory.
-      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
-    - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
+      # Then "scripts/image-tag" would get confused because "git status" no longer reports a clean repo.
+    - name: Login to Google Artifact Registry
+      uses: grafana/shared-workflows/actions/login-to-gar@1f541877ceb22c7be7667d8a8df04984aeac9f9d # login-to-gar/v1.0.3
+      with:
+        registry: us-docker.pkg.dev
 
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         persist-credentials: false
 
     - name: Tag dev
       if: ${{ inputs.dev }}
       run: |
-        ./tools/tag-dev
+        ./scripts/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -56,16 +58,10 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
 
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-      with:
-        go-version-file: go.mod
-        cache: false
-
     - run: |
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --name multiarch-alloy-${IMG_NAME}-${GITHUB_SHA} --driver docker-container --use
-        ./tools/ci/docker-containers ${IMG_NAME}
+        ./scripts/docker-containers ${IMG_NAME}
         docker buildx rm multiarch-alloy-${IMG_NAME}-${GITHUB_SHA}
       env:
         PUSH_ALLOY_IMAGE: ${{ inputs.push }}

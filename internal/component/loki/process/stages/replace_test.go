@@ -156,7 +156,7 @@ func TestReplace(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(logger, loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(logger.Slog(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,7 +203,7 @@ func TestReplaceConfigValidation(t *testing.T) {
 	for tName, tt := range tests {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
-			_, err := getExpressionRegex(tt.config)
+			_, _, err := validateReplaceConfig(tt.config)
 			if (err != nil) != (tt.err != nil) {
 				t.Errorf("ReplaceConfig.validate() expected error = %v, actual error = %v", tt.err, err)
 				return

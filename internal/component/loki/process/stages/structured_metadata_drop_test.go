@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -108,7 +108,7 @@ func Test_StructuredMetadataDropStage(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(test.pipelineStagesYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(test.pipelineStagesYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			result := processEntries(pl, newEntry(nil, nil, "", time.Now()))[0]
@@ -118,7 +118,7 @@ func Test_StructuredMetadataDropStage(t *testing.T) {
 }
 
 func Test_StructuredMetadataDropStage_Validation(t *testing.T) {
-	stage, err := newStructuredMetadataDropStage(log.NewNopLogger(), StructuredMetadataDropConfig{Values: []string{}})
+	stage, err := newStructuredMetadataDropStage(logging.NewSlogNop(), StructuredMetadataDropConfig{Values: []string{}})
 	assert.EqualError(t, err, ErrEmptyStructuredMetadataDropStageConfig.Error())
 	assert.Nil(t, stage)
 }

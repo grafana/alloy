@@ -4,23 +4,24 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -46,28 +47,30 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	StatementsLimit  int
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
+	DB                        *sql.DB
+	CollectInterval           time.Duration
+	StatementsLimit           int
+	ExcludeDatabases          []string
+	ExcludeUsers              []string
+	EntryHandler              loki.EntryHandler
+	TableRegistry             *TableRegistry
+	EnableErrorLogsProcessing bool
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	statementsLimit  int
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	normalizer       *sqllexer.Normalizer
+	dbConnection              *sql.DB
+	collectInterval           time.Duration
+	statementsLimit           int
+	excludeDatabases          []string
+	excludeUsers              []string
+	entryHandler              loki.EntryHandler
+	tableRegistry             *TableRegistry
+	enableErrorLogsProcessing bool
+	normalizer                *sqllexer.Normalizer
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -76,16 +79,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		statementsLimit:  args.StatementsLimit,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:              args.DB,
+		collectInterval:           args.CollectInterval,
+		statementsLimit:           args.StatementsLimit,
+		excludeDatabases:          args.ExcludeDatabases,
+		excludeUsers:              args.ExcludeUsers,
+		entryHandler:              args.EntryHandler,
+		tableRegistry:             args.TableRegistry,
+		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
+		normalizer:                sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:                    args.Logger.With("collector", QueryDetailsCollector),
+		running:                   &atomic.Bool{},
 	}, nil
 }
 
@@ -94,7 +98,7 @@ func (c *QueryDetails) Name() string {
 }
 
 func (c *QueryDetails) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -109,7 +113,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -150,25 +154,48 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		var databaseName database
 		err := rs.Scan(&queryID, &queryText, &databaseName)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
+			c.logger.Error("failed to scan result set for pg_stat_statements", "err", err)
 			continue
+		}
+
+		var fp string
+		var fpErr error
+		if c.enableErrorLogsProcessing {
+			// Fingerprint the raw text BEFORE comment stripping; pg_query
+			// canonicalizes literals at the AST level so the value is stable
+			// across comment-only differences and matches the fingerprint
+			// computed elsewhere from pg_stat_activity / server logs.
+			fp, fpErr = fingerprint.Fingerprint(queryText)
 		}
 
 		queryText, err = removeComments(c.normalizer, queryText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+			c.logger.Error("failed to remove comments", "err", err)
 			continue
 		}
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
-		)
+		if !c.enableErrorLogsProcessing {
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION,
+				fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+			)
+		} else if fp != "" {
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
+			)
+		} else {
+			// enable_error_logs_processing is on but fingerprinting failed
+			// (empty fp): warn with the queryid and skip the association rather
+			// than emit an empty query_fingerprint or a misleading v1 entry.
+			c.logger.Warn("skipping query_association_v2: could not compute query fingerprint", "queryid", queryID, "err", fpErr)
+		}
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
+			c.logger.Error("failed to tokenize table names", "err", err)
 			continue
 		}
 
@@ -188,7 +215,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over result set", "err", err)
+		c.logger.Error("failed to iterate over result set", "err", err)
 		return err
 	}
 

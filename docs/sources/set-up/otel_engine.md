@@ -89,9 +89,10 @@ Since the {{< param "DEFAULT_ENGINE" >}} isn't running, the UI and metrics aren'
 
 You can also run the {{< param "OTEL_ENGINE" >}} with the {{< param "DEFAULT_ENGINE" >}}.
 Modify your YAML configuration to include the `alloyengine` extension.
-This extension accepts a path to the {{< param "DEFAULT_ENGINE" >}} configuration and starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
+This extension accepts a path to the {{< param "DEFAULT_ENGINE" >}} configuration or an inline {{< param "DEFAULT_ENGINE" >}} configuration.
+It starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
 
-The following example shows the configuration:
+The following example uses `config.path` to load the {{< param "DEFAULT_ENGINE" >}} configuration from a file or directory:
 
 ```yaml
 extensions:
@@ -101,7 +102,7 @@ extensions:
       password: <PASSWORD>
   alloyengine:
     config:
-      file: <ALLOY_CONFIG_PATH>
+      path: <ALLOY_CONFIG_PATH>
     flags:
       server.http.listen-addr: 0.0.0.0:12345
 
@@ -139,6 +140,19 @@ Replace the following:
 - _`<USERNAME>`_: Your username. If you're using Grafana Cloud, this is your Grafana Cloud instance ID.
 - _`<PASSWORD>`_: Your password. If you're using Grafana Cloud, this is your Grafana Cloud API token.
 - _`<URL>`_: The URL to export data to. If you're using Grafana Cloud, this is your Grafana Cloud OTLP endpoint URL.
+
+To provide the {{< param "DEFAULT_ENGINE" >}} configuration inline, use `config.inline.content` instead of `config.path`:
+
+```yaml
+extensions:
+  alloyengine:
+    config:
+      inline:
+        content: |
+          logging {
+            level = "info"
+          }
+```
 
 This example adds the `alloyengine` block in the extension declarations and enables the extension in the `service` block.
 You can then run {{< param "PRODUCT_NAME" >}} with the exact same command as before:
@@ -189,7 +203,7 @@ ports:
 alternateConfig:
   extensions:
     health_check:
-      endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
+      endpoint: 0.0.0.0:13133 # This is necessary for the Kubernetes liveness check
     basicauth/my_auth:
       client_auth:
         username: <USERNAME>
@@ -258,6 +272,7 @@ In the meantime, use the CLI or Helm options for testing.
 1. **Server ports**: The {{< param "DEFAULT_ENGINE" >}} exposes its HTTP server on port `12345`.
    The {{< param "OTEL_ENGINE" >}} exposes its HTTP server on port `8888`.
    The {{< param "OTEL_ENGINE" >}} HTTP server doesn't expose a UI, support bundles, or reload endpoint functionality like the {{< param "DEFAULT_ENGINE" >}} does.
+1. **Inline configuration module path**: If `config.inline.module_path` isn't defined, the `module_path` {{< param "PRODUCT_NAME" >}} configuration keyword resolves to the process current working directory.
 1. **Fleet management**: [Grafana Fleet Management](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management) doesn't support the {{< param "OTEL_ENGINE" >}} yet.
    You must define and manage the input configuration manually.
 

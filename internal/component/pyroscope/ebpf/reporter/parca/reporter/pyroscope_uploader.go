@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -18,9 +19,6 @@ import (
 
 	"connectrpc.com/connect"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 
 	lru "github.com/elastic/go-freelru"
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,7 +41,7 @@ type uploadRequest struct {
 }
 
 type PyroscopeSymbolUploader struct {
-	logger log.Logger
+	logger *slog.Logger
 
 	retry *lru.SyncedLRU[libpf.FileID, struct{}]
 
@@ -58,7 +56,7 @@ type PyroscopeSymbolUploader struct {
 }
 
 func NewPyroscopeSymbolUploader(
-	logger log.Logger,
+	logger *slog.Logger,
 	cacheSize uint32,
 	stripTextSection bool,
 	queueSize uint32,
@@ -74,7 +72,7 @@ func NewPyroscopeSymbolUploader(
 
 	cacheDirectory := filepath.Join(cacheDir, "symuploader")
 	if _, err := os.Stat(cacheDirectory); os.IsNotExist(err) {
-		level.Debug(logger).Log("msg", "creating cache directory", "path", cacheDirectory)
+		logger.Debug("creating cache directory", "path", cacheDirectory)
 		if err := os.MkdirAll(cacheDirectory, os.ModePerm); err != nil {
 			return nil, fmt.Errorf("failed to create cache directory (%s): %s", cacheDirectory, err)
 		}
@@ -82,12 +80,12 @@ func NewPyroscopeSymbolUploader(
 
 	if err := filepath.Walk(cacheDirectory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			level.Warn(logger).Log("msg", "failed to access cached file during walk", "path", path, "err", err)
+			logger.Warn("failed to access cached file during walk", "path", path, "err", err)
 			return nil
 		}
 
 		if info == nil {
-			level.Warn(logger).Log("msg", "filepath.Walk returned nil FileInfo", "path", path)
+			logger.Warn("filepath.Walk returned nil FileInfo", "path", path)
 			return nil
 		}
 		if info.IsDir() {
@@ -95,7 +93,7 @@ func NewPyroscopeSymbolUploader(
 		}
 
 		if os.Remove(path) != nil {
-			level.Warn(logger).Log("msg", "failed to remove cached file", "path", path)
+			logger.Warn("failed to remove cached file", "path", path)
 		}
 
 		return nil
@@ -180,7 +178,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 					return nil
 				case req := <-u.queue:
 					if err := u.attemptUpload(ctx, req.client, req.fileID, req.fileName, req.buildID, req.open); err != nil {
-						level.Warn(u.logger).Log("msg", "failed to upload", "file_name", req.fileName, "build_id", req.buildID, "err", err)
+						u.logger.Warn("failed to upload", "file_name", req.fileName, "build_id", req.buildID, "err", err)
 					}
 				}
 			}
@@ -195,6 +193,10 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client *debuginfoclient.Client,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
+
+	if buildID == "" {
+		return
+	}
 
 	// Skip virtual DSOs — they have no backing file and no build ID.
 	if strings.HasPrefix(fileName, "linux-vdso") || strings.HasPrefix(fileName, "[vdso]") {
@@ -220,7 +222,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client *debuginfoc
 	default:
 		// The queue is full, we can't enqueue the request.
 		u.inProgressTracker.Remove(fileID)
-		level.Warn(u.logger).Log("msg", "failed to enqueue upload request, queue is full", "file_name", fileName, "build_id", buildID)
+		u.logger.Warn("failed to enqueue upload request, queue is full", "file_name", fileName, "build_id", buildID)
 	}
 }
 
@@ -248,13 +250,13 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client *deb
 		return fmt.Errorf("ShouldInitiateUpload: %w", err)
 	}
 
-	l := log.With(u.logger,
+	l := u.logger.With(
 		"file_name", fileName,
 		"otel_file_id", fileID,
 		"gnu_build_id", buildID,
 	)
 
-	level.Debug(l).Log("msg", "ShouldInitiateUpload result",
+	l.Debug("ShouldInitiateUpload result",
 		"should_initiate_upload", resp.Msg.ShouldInitiateUpload,
 		"reason", resp.Msg.Reason)
 
@@ -353,7 +355,7 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client *deb
 	}
 
 	u.uploadRequestBytes.Add(float64(fileSize))
-	level.Debug(l).Log("msg", "upload succeeded", "bytes", fileSize)
+	l.Debug("upload succeeded", "bytes", fileSize)
 	u.retry.Add(fileID, struct{}{})
 	return nil
 }
@@ -363,10 +365,10 @@ type Stater interface {
 }
 
 // readAtCloserSize attempts to determine the size of the reader.
-func readAtCloserSize(logger log.Logger, r process.ReadAtCloser) (int64, error) {
+func readAtCloserSize(logger *slog.Logger, r process.ReadAtCloser) (int64, error) {
 	stater, ok := r.(Stater)
 	if !ok {
-		level.Debug(logger).Log("msg", "ReadAtCloser is not a Stater, can't determine size")
+		logger.Debug("ReadAtCloser is not a Stater, can't determine size")
 		return 0, nil
 	}
 

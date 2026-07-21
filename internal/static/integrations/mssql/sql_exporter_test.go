@@ -1,13 +1,13 @@
 package mssql
 
 import (
-	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConfig_validate(t *testing.T) {
@@ -195,7 +195,7 @@ metrics:
 			QueryConfig:        []byte(strQueryConfig),
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.NoError(t, err)
 		require.NotNil(t, i)
 	})
@@ -208,7 +208,7 @@ metrics:
 			Timeout:            10 * time.Second,
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "failed to validate config:")
 	})
@@ -230,7 +230,7 @@ metrics:
 			QueryConfig:        []byte(strQueryConfig),
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "failed to create mssql target: query_config not in correct format: ")
 	})

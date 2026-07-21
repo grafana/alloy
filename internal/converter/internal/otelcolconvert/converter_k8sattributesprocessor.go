@@ -59,7 +59,7 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 			Annotations:                  toFilterExtract(cfg.Extract.Annotations),
 			Labels:                       toFilterExtract(cfg.Extract.Labels),
 			OtelAnnotations:              cfg.Extract.OtelAnnotations,
-			DeploymentNameFromReplicaSet: cfg.Extract.DeploymentNameFromReplicaSet,
+			DeploymentNameFromReplicaSet: cfg.Extract.DeploymentNameFromReplicaSet, //nolint:staticcheck // deprecated upstream (defaults to true) but still read so existing configs convert; drop when upstream removes it
 		},
 		Filter: k8sattributes.FilterConfig{
 			Node:      cfg.Filter.Node,

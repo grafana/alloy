@@ -1,75 +1,101 @@
+import '@grafana/alloy-pipeline-graph/style.css';
+
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
-import { Slider } from '@grafana/ui';
-import { useEffect, useState } from 'react';
+import { PipelineGraph, type PipelineGraphData, type PipelineNode } from '@grafana/alloy-pipeline-graph';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 
-import ComponentGraph from '../features/graph/ComponentGraph';
-import { Legend } from '../features/graph/Legend';
+import SliderInput from '../components/SliderInput';
+import { usePathPrefix } from '../contexts/usePathPrefix';
 import Page from '../features/layout/Page';
+import { buildPipelineGraph } from '../features/pipeline/buildPipelineGraph';
+import type { DebugData } from '../features/pipeline/debugDataType';
+import { overlayLiveMetrics } from '../features/pipeline/overlayLiveMetrics';
+import styles from '../features/pipeline/PipelineGraphPage.module.css';
 import { useComponentInfo } from '../hooks/componentInfo';
-import styles from './LiveDebugging.module.css';
+import { useGraph } from '../hooks/graph';
+import { useModuleInternals } from '../hooks/useModuleInternals';
 
 const DEFAULT_WINDOW = 5;
+const MIN_WINDOW = 1;
+const MAX_WINDOW = 60;
 
 function Graph() {
   const { '*': id } = useParams();
   const moduleID = id || '';
-  const [components, setComponents] = useComponentInfo(moduleID, moduleID.startsWith('remotecfg/'));
+  const isRemotecfg = moduleID.startsWith('remotecfg/');
+  const pathPrefix = usePathPrefix();
+  const [components, setComponents] = useComponentInfo(moduleID, isRemotecfg);
+  const moduleInternals = useModuleInternals(components, isRemotecfg);
+
   const [window, setWindow] = useState(DEFAULT_WINDOW);
   const [sliderWindow, setSliderWindow] = useState(DEFAULT_WINDOW);
   const [enabled, setEnabled] = useState(true);
+  const [debugData, setDebugData] = useState<DebugData[]>([]);
+  const { error } = useGraph(setDebugData, moduleID, window, enabled);
 
-  // Reset component state when moduleID changes
   useEffect(() => {
     setEnabled(false);
     setComponents([]);
-    setTimeout(() => {
-      setEnabled(true);
-    }, 200);
+    setDebugData([]);
+    setTimeout(() => setEnabled(true), 200);
   }, [moduleID, setComponents]);
 
-  function handleWindowChange(value?: number) {
-    setSliderWindow(value ? value : DEFAULT_WINDOW);
-  }
-
-  function handleWindowChangeComplete(value?: number) {
-    setWindow(value ? value : DEFAULT_WINDOW);
+  function handleWindowChangeComplete(value: number) {
+    setWindow(value);
     if (enabled) {
       setEnabled(false);
       setTimeout(() => setEnabled(true), 200);
     }
   }
 
+  const baseGraph = useMemo(() => buildPipelineGraph(components, moduleInternals), [components, moduleInternals]);
+
+  const liveGraph: PipelineGraphData = useMemo(() => overlayLiveMetrics(baseGraph, debugData), [baseGraph, debugData]);
+
+  // Give each node an `href` to its component page; the graph renders these as anchors.
+  const graph: PipelineGraphData = useMemo(() => {
+    const baseUrl = globalThis.window.location.origin + pathPrefix;
+    const nodes = liveGraph.nodes.map((node: PipelineNode) => {
+      const nodeModuleID = String(node.meta?.moduleID ?? '');
+      const localID = String(node.meta?.localID ?? node.id);
+      const remoteCfgPrefix = nodeModuleID.startsWith('remotecfg/') ? 'remotecfg/' : '';
+      const path = nodeModuleID !== '' ? `component/${nodeModuleID}/${localID}` : `component/${localID}`;
+      return { ...node, href: baseUrl + remoteCfgPrefix + path };
+    });
+    return { ...liveGraph, nodes };
+  }, [liveGraph, pathPrefix]);
+
   const controls = (
-    <>
-      <div className={styles.slider}>
-        <span className={styles.sliderLabel}>Window</span>
-        <Slider
-          included
-          min={1}
-          max={60}
-          value={sliderWindow}
-          orientation="horizontal"
-          onChange={handleWindowChange}
-          onAfterChange={handleWindowChangeComplete}
-        />
-      </div>
-      <Legend></Legend>
-    </>
+    <SliderInput
+      label="Window"
+      min={MIN_WINDOW}
+      max={MAX_WINDOW}
+      value={sliderWindow}
+      defaultValue={DEFAULT_WINDOW}
+      onChange={setSliderWindow}
+      onCommit={handleWindowChangeComplete}
+    />
   );
 
   return (
     <Page
-      name="Graph"
-      desc="Visualize data flow per second for components."
+      name="Pipeline"
+      desc="Visualize the configured pipeline by stage and signal type."
       icon={faDiagramProject}
       controls={controls}
       infoText={
-        <div className={styles.infoText}>Only edges from components that support live debugging will be colored.</div>
+        <div className={styles.infoText}>Only edges from components that support live debugging show flow rates.</div>
       }
     >
-      {components.length > 0 && (
-        <ComponentGraph components={components} moduleID={moduleID} enabled={enabled} window={window} />
+      {error ? (
+        <p>Error: {error}</p>
+      ) : (
+        components.length > 0 && (
+          <div className={styles.graphWrapper}>
+            <PipelineGraph graph={graph} theme="light" />
+          </div>
+        )
       )}
     </Page>
   );

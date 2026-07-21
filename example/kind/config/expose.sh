@@ -12,7 +12,7 @@ if [ -z "$POD_NAME" ]; then
 fi
 
 # Start port-forward in background
-kubectl --kubeconfig "$KUBECONFIG" port-forward -n monitoring pod/$POD_NAME 12345:12345 &
+kubectl --kubeconfig "$KUBECONFIG" port-forward -n monitoring pod/"$POD_NAME" 12345:12345 &
 PORT_FORWARD_PID=$!
 
 # Give port-forward a moment to start

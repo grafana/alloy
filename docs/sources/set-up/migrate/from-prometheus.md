@@ -136,7 +136,7 @@ remote_write:
       password: <PASSWORD>
 ```
 
-The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][configuration]] file.
+The convert command takes the YAML file as input and outputs a [{{< param "PRODUCT_NAME" >}} configuration][configuration] file.
 
 ```shell
 alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CONFIG_PATH>

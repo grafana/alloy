@@ -2,8 +2,8 @@ package stages
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/sampling"
@@ -35,17 +35,22 @@ func (s *SamplingConfig) Validate() error {
 }
 
 // newSamplingStage creates a SamplingStage from config using the shared probabilistic sampler.
-func newSamplingStage(logger log.Logger, cfg SamplingConfig, registerer prometheus.Registerer) Stage {
-	return &samplingStage{
-		logger:    log.With(logger, "component", "stage", "type", "sampling"),
-		cfg:       cfg,
-		dropCount: getDropCountMetric(registerer),
-		sampler:   sampling.NewSampler(cfg.SamplingRate),
+func newSamplingStage(logger *slog.Logger, cfg SamplingConfig, registerer prometheus.Registerer) (Stage, error) {
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
 	}
+
+	return &samplingStage{
+		logger:    logger.With("stage", "sampling"),
+		cfg:       cfg,
+		dropCount: dropCount,
+		sampler:   sampling.NewSampler(cfg.SamplingRate),
+	}, nil
 }
 
 type samplingStage struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	cfg       SamplingConfig
 	dropCount *prometheus.CounterVec
 	sampler   *sampling.Sampler

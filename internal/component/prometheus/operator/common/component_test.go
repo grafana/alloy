@@ -3,11 +3,11 @@ package common
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage"
@@ -29,7 +29,7 @@ type crdManagerFactoryHungRun struct {
 	stopRun         chan struct{}
 }
 
-func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ log.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
 	return &crdManagerHungRun{m.running, m.contextCanceled, m.stopRun}
 }
 
@@ -60,7 +60,7 @@ func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeCon
 
 func TestRunExit(t *testing.T) {
 	opts := component.Options{
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     util.TestAlloyLogger(t).Slog(),
 		Registerer: prometheus.NewRegistry(),
 		GetServiceData: func(name string) (any, error) {
 			switch name {
@@ -141,12 +141,19 @@ func TestExperimentalFeatures(t *testing.T) {
 				args.Scrape.EnableTypeAndUnitLabels = true
 			},
 		},
+		{
+			featureName:  "start_timestamp_zero_ingestion",
+			minStability: featuregate.StabilityExperimental,
+			setConfig: func(args *operator.Arguments) {
+				args.Scrape.StartTimestampZeroIngestion = true
+			},
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.featureName, func(t *testing.T) {
 			opts := component.Options{
-				Logger:       util.TestAlloyLogger(t),
+				Logger:       util.TestAlloyLogger(t).Slog(),
 				Registerer:   prometheus.NewRegistry(),
 				MinStability: featuregate.StabilityGenerallyAvailable,
 				GetServiceData: func(name string) (any, error) {

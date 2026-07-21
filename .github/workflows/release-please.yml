@@ -6,50 +6,48 @@ on:
       - main
       - 'release/v*'
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      release_prs_created: ${{ steps.release-please.outputs.release_prs_created }}
+      release_prs: ${{ steps.release-please.outputs.release_prs }}
     steps:
-      - name: Get GitHub app secrets 🔐
-        id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
-        with:
-          export_env: false
-          repo_secrets: |
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
-
       - name: Generate token 🔐
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          persist-credentials: false
+          ref: ${{ github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: true # Required for fetching release-please branches
 
-      - name: Setup Node.js 🏗️
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+      - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          node-version-file: tools/release/release-please-runner/.nvmrc
-          package-manager-cache: false
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go node
 
       - name: Install dependencies 📦
-        working-directory: tools/release/release-please-runner
-        run: npm install
+        working-directory: build-tools/release-please-runner
+        run: npm ci --no-audit --no-fund
 
       - name: Run release-please 🚀
-        working-directory: tools/release/release-please-runner
+        id: release-please
+        working-directory: build-tools/release-please-runner
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}
@@ -57,3 +55,92 @@ jobs:
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
         run: node index.js
+
+  regenerate-release-please-prs:
+    needs: release-please
+    if: needs.release-please.outputs.release_prs_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        release_pr: ${{ fromJSON(needs.release-please.outputs.release_prs) }}
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: true # Required for fetching release-please branches
+
+      - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go
+
+      - name: Find release-please branch 🔎
+        id: release-branch
+        env:
+          RELEASE_BRANCH: ${{ matrix.release_pr.branch }}
+        run: |
+          if [ -z "${RELEASE_BRANCH}" ]; then
+            echo "No release-please PR branch; nothing to regenerate."
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "name=${RELEASE_BRANCH}" >> "${GITHUB_OUTPUT}"
+          for attempt in 1 2 3; do
+            if git fetch origin "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}"; then
+              echo "exists=true" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+
+            echo "Fetch attempt ${attempt} failed for ${RELEASE_BRANCH}; retrying."
+            sleep "$((attempt * 2))"
+          done
+
+          echo "No release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
+          echo "exists=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Stage release-please changes 🌿
+        if: steps.release-branch.outputs.exists == 'true'
+        env:
+          RELEASE_BRANCH: ${{ steps.release-branch.outputs.name }}
+        run: git merge --squash "refs/remotes/origin/${RELEASE_BRANCH}"
+
+      - name: Regenerate collector distro 🏗️
+        if: steps.release-branch.outputs.exists == 'true'
+        run: make generate-otel-collector-distro
+
+      - name: Write release-please pull request body 📝
+        if: steps.release-branch.outputs.exists == 'true'
+        id: release-pr-body
+        env:
+          PR_BODY: ${{ matrix.release_pr.body }}
+        run: |
+          body_path="${RUNNER_TEMP}/release-please-pr-body.md"
+          printf '%s' "${PR_BODY}" > "${body_path}"
+          echo "path=${body_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update release-please pull request 📝
+        if: steps.release-branch.outputs.exists == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          sign-commits: true
+          branch: ${{ steps.release-branch.outputs.name }}
+          base: ${{ github.ref_name }}
+          commit-message: ${{ matrix.release_pr.title }}
+          title: ${{ matrix.release_pr.title }}
+          body-path: ${{ steps.release-pr-body.outputs.path }}

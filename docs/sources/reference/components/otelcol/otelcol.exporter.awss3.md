@@ -96,6 +96,7 @@ The following arguments are supported:
 | `s3_partition_format`   | `string`   | Filepath formatting for the partition; Refer to [`strftime`][strftime] for format specification.      | `"year=%Y/month=%m/day=%d/hour=%H/minute=%M"` | no       |
 | `s3_partition_timezone` | `string`   | Timezone used for partition time. Local timezone is used if not configured.                           |                                               | no       |
 | `storage_class`         | `string`   | The storage class to use when uploading objects.                                                      | `"STANDARD"`                                  | no       |
+| `unique_key_func_name`  | `string`   | Function used to generate the unique part of the S3 key. The only supported value is `uuidv7`.        |                                               | no       |
 
 `retry_mode` must be one of `standard`, `adaptive`, or `nop`.
 If `retry_mode` is set to `nop`, the `aws.NopRetryer` implementation effectively disables the retry.
@@ -147,9 +148,9 @@ The following arguments are supported:
 | `s3_bucket` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
 | `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 bucket. |         | no      |
 
-When `s3_prefix` or `s3_bucket` are set, they dynamically override the [`s3_uploader`][s3_uploader] attributes.
+When `s3_prefix` or `s3_bucket` are set, they dynamically override the [`s3_uploader`](#s3_uploader) attributes.
 If the specified resource attribute exists in the data, its value will be used.
-Otherwise, the [`s3_uploader`][s3_uploader] attribute will serve as the fallback.
+Otherwise, the [`s3_uploader`](#s3_uploader) attribute will serve as the fallback.
 
 ### Compression
 

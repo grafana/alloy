@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestIsJobPod(t *testing.T) {
@@ -171,7 +172,7 @@ func TestGetPodInfo(t *testing.T) {
 
 			// Create a tailer with the fake client
 			tailer := &tailer{
-				log:    log.NewNopLogger(),
+				log:    logging.NewSlogNop(),
 				target: target,
 				opts: &Options{
 					Client: fakeClient,
@@ -411,7 +412,7 @@ func TestShouldStopTailingJobContainer(t *testing.T) {
 
 			// Create a tailer with the fake client
 			tailer := &tailer{
-				log:    log.NewNopLogger(),
+				log:    logging.NewSlogNop(),
 				target: target,
 				opts: &Options{
 					Client: fakeClient,

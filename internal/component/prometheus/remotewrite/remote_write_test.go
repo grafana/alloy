@@ -556,8 +556,8 @@ func newTestServer(t *testing.T, writeResult chan string, rwVersion RemoteWriteV
 
 			select {
 			case writeResult <- string(reqJson):
-			default:
-				require.Fail(t, "failed to send remote_write result over channel")
+			case <-time.After(time.Minute):
+				require.Fail(t, "timed out waiting to send remote_write result over channel")
 			}
 		}))
 	case RemoteWriteVersionV2:
@@ -573,8 +573,8 @@ func newTestServer(t *testing.T, writeResult chan string, rwVersion RemoteWriteV
 
 			select {
 			case writeResult <- string(reqJson):
-			default:
-				require.Fail(t, "failed to send remote_write result over channel")
+			case <-time.After(time.Minute):
+				require.Fail(t, "timed out waiting to send remote_write result over channel")
 			}
 
 			// If we don't set these headers, then the client will think that the write failed.

@@ -14,7 +14,6 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
@@ -96,7 +95,7 @@ func getImportManagedOptions(globals ComponentGlobals, cn *ImportConfigNode) com
 	parent, id := splitPath(cn.globalID)
 	return component.Options{
 		ID:     cn.globalID,
-		Logger: log.With(globals.Logger, "config_path", parent, "config_id", id),
+		Logger: globals.Logger.Slog().With("config_path", parent, "config_id", id),
 		Registerer: prometheus.WrapRegistererWith(prometheus.Labels{
 			"config_path": parent,
 			"config_id":   id,
@@ -207,10 +206,8 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 		return
 	}
 
-	cn.importedContent = make(map[string]string)
-	for k, v := range importedContent {
-		cn.importedContent[k] = v
-	}
+	cn.importedContent = make(map[string]string, len(importedContent))
+	maps.Copy(cn.importedContent, importedContent)
 	cn.importedDeclares = make(map[string]ast.Body)
 	cn.importConfigNodesChildren = make(map[string]*ImportConfigNode)
 
@@ -220,6 +217,10 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 			cn.logger.Error("failed to parse file on update", "file", f, "err", err)
 			cn.setContentHealth(component.HealthTypeUnhealthy, fmt.Sprintf("imported content from %q cannot be parsed: %s", f, err))
 			return
+		}
+
+		if cn.globals.OnImportContent != nil {
+			cn.globals.OnImportContent(f, parsedImportedContent, cn.source)
 		}
 
 		// populate importedDeclares and importConfigNodesChildren

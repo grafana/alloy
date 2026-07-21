@@ -3,19 +3,17 @@ package container
 import (
 	"context"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
-	"github.com/go-kit/log"
+	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l log.Logger) (testcontainers.Container, string, int) {
+func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l *slog.Logger) (testcontainers.Container, string, int) {
 	req := testcontainers.ContainerRequest{
 		Image:        "springcommunity/spring-framework-petclinic:latest",
 		ExposedPorts: []string{"8080/tcp"},
@@ -31,7 +29,7 @@ func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l log.Logg
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
-		Logger:           stdlog.New(log.NewStdlibAdapter(l), "", 0),
+		Logger:           slog.NewLogLogger(l.Handler(), slog.LevelDebug),
 	})
 	require.NoError(t, err)
 
@@ -40,7 +38,7 @@ func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l log.Logg
 		require.NoError(t, err)
 	})
 
-	mappedPort, err := c.MappedPort(ctx, nat.Port("8080/tcp"))
+	mappedPort, err := c.MappedPort(ctx, "8080/tcp")
 	require.NoError(t, err)
 
 	host, err := c.Host(ctx)
