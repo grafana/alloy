@@ -208,14 +208,25 @@ func (app *Appender) Rollback() error {
 	return nil
 }
 
-// AppendSTZeroSample implements storage.Appender.
+// AppendSTZeroSample implements storage.Appender. It records a synthetic zero
+// sample at the start timestamp st.
 func (app *Appender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, st int64) (storage.SeriesRef, error) {
-	panic("this test appender does not yet implement AppendSTZeroSample")
+	return app.Append(ref, l, st, 0)
 }
 
-// AppendHistogramSTZeroSample implements storage.Appender.
+// AppendHistogramSTZeroSample implements storage.Appender. It records a
+// synthetic empty histogram, marking a counter reset, at the start timestamp st.
 func (app *Appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t int64, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	panic("this test appender does not yet implement AppendHistogramSTZeroSample")
+	if h == nil {
+		// testappender does not model float histograms (see AppendHistogram).
+		return 0, nil
+	}
+	return app.AppendHistogram(ref, l, st, &histogram.Histogram{
+		CounterResetHint: histogram.CounterReset,
+		Schema:           h.Schema,
+		ZeroThreshold:    h.ZeroThreshold,
+		CustomValues:     h.CustomValues,
+	}, nil)
 }
 
 // SetOptions implements storage.Appender.

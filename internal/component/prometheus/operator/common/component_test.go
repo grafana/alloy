@@ -141,6 +141,13 @@ func TestExperimentalFeatures(t *testing.T) {
 				args.Scrape.EnableTypeAndUnitLabels = true
 			},
 		},
+		{
+			featureName:  "start_timestamp_zero_ingestion",
+			minStability: featuregate.StabilityExperimental,
+			setConfig: func(args *operator.Arguments) {
+				args.Scrape.StartTimestampZeroIngestion = true
+			},
+		},
 	}
 
 	for _, tc := range cases {
