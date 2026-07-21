@@ -17,11 +17,11 @@ import (
 // instead of silently emitting nothing.
 func TestNewLogs_ErrorLogsRequireCgo(t *testing.T) {
 	_, err := NewLogs(LogsArguments{
-		Receiver:        loki.NewLogsReceiver(),
-		EntryHandler:    loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
-		Logger:          logging.NewSlogNop(),
-		Registry:        prometheus.NewRegistry(),
-		EnableErrorLogs: true,
+		Receiver:                  loki.NewLogsReceiver(),
+		EntryHandler:              loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:                    logging.NewSlogNop(),
+		Registry:                  prometheus.NewRegistry(),
+		EnableErrorLogsProcessing: true,
 	})
 	require.ErrorContains(t, err, "enable_error_logs_processing requires a cgo-enabled Alloy build")
 }
