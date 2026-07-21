@@ -42,17 +42,25 @@ func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.R
 		cfg.MaxDistinctLabels = MinReasonableMaxDistinctLabels
 	}
 
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	r := &limitStage{
 		logger:    logger,
 		cfg:       cfg,
-		dropCount: getDropCountMetric(registerer),
+		dropCount: dropCount,
 		ctx:       ctx,
 		cancel:    cancel,
 	}
 
 	if cfg.ByLabelName != "" {
-		r.dropCountByLabel = getDropCountByLabelMetric(registerer)
+		r.dropCountByLabel, err = getDropCountByLabelMetric(registerer)
+		if err != nil {
+			return nil, err
+		}
 		newRateLimiter := func() *rate.Limiter { return rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst) }
 		gcCb := func() { r.dropCountByLabel.Reset() }
 		r.rateLimiterByLabel = NewGenMap[model.LabelValue, *rate.Limiter](cfg.MaxDistinctLabels, newRateLimiter, gcCb)
@@ -134,7 +142,7 @@ func (*limitStage) Cleanup() {
 	// no-op
 }
 
-func getDropCountByLabelMetric(registerer prometheus.Registerer) *prometheus.CounterVec {
+func getDropCountByLabelMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
 	return registerCounterVec(registerer, "loki_process", "dropped_lines_by_label_total",
 		"A count of all log lines dropped as a result of a pipeline stage",
 		[]string{"label_name", "label_value"})
@@ -180,7 +188,7 @@ func (m *GenerationalMap[K, T]) GetOrCreate(key K) T {
 	return v
 }
 
-func registerCounterVec(registerer prometheus.Registerer, namespace, name, help string, labels []string) *prometheus.CounterVec {
+func registerCounterVec(registerer prometheus.Registerer, namespace, name, help string, labels []string) (*prometheus.CounterVec, error) {
 	vec := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      name,
@@ -191,9 +199,8 @@ func registerCounterVec(registerer prometheus.Registerer, namespace, name, help 
 		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			vec = existing.ExistingCollector.(*prometheus.CounterVec)
 		} else {
-			// Same behavior as MustRegister if the error is not for AlreadyRegistered
-			panic(err)
+			return nil, err
 		}
 	}
-	return vec
+	return vec, nil
 }

@@ -4,7 +4,10 @@ otelcol.receiver.otlp "default" {
 	}
 
 	http {
-		endpoint = "localhost:4318"
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {
@@ -15,8 +18,6 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.transform "default" {
-	error_mode = "ignore"
-
 	trace_statements {
 		context    = "resource"
 		statements = ["keep_keys(attributes, [\"service.name\", \"service.namespace\", \"cloud.region\", \"process.command_line\"])", "replace_pattern(attributes[\"process.command_line\"], \"password\\\\=[^\\\\s]*(\\\\s?)\", \"password=***\")", "limit(attributes, 100, [])", "truncate_all(attributes, 4096)"]

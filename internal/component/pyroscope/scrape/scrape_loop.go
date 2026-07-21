@@ -231,7 +231,8 @@ func (t *scrapeLoop) scrape() {
 	if len(b) > 0 {
 		t.lastScrapeSize = len(b)
 	}
-	if err := t.appender.Append(context.Background(), t.allLabels, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
+	lbs := pyroscope.LabelsWithScope(t.allLabels, pyroscope.ScopeNameScrape)
+	if err := t.appender.Append(context.Background(), lbs, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
 		t.logger.Error("push failed", "target", t, "err", err)
 		t.updateTargetStatus(start, err)
 		return

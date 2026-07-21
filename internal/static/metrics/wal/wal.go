@@ -586,6 +586,11 @@ func (w *Storage) Appender(_ context.Context) storage.Appender {
 	return w.appenderPool.Get().(storage.Appender)
 }
 
+// AppenderV2 implements storage.Storage. The WAL does not support AppenderV2.
+func (w *Storage) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented for WAL storage")
+}
+
 // StartTime always returns 0, nil. It is implemented for compatibility with
 // Prometheus, but is unused in the agent.
 func (*Storage) StartTime() (int64, error) {
@@ -643,8 +648,11 @@ func (w *Storage) Truncate(mint int64) error {
 
 	w.metrics.checkpointCreationTotal.Inc()
 
-	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
-	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint); err != nil {
+	// Pass false to disable Prometheus start-timestamp (ST) native storage, an
+	// experimental, off-by-default upstream feature. TODO: expose it as config,
+	// matching how upstream documents the feature flag:
+	// https://prometheus.io/docs/prometheus/latest/feature_flags/#start-timestamp-st-native-storage
+	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint, false); err != nil {
 		w.metrics.checkpointCreationFail.Inc()
 		var cerr *wlog.CorruptionErr
 		if errors.As(err, &cerr) {
@@ -912,9 +920,47 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	return storage.SeriesRef(series.ref), nil
 }
 
-func (a *appender) AppendSTZeroSample(_ storage.SeriesRef, _ labels.Labels, _ int64, _ int64) (storage.SeriesRef, error) {
-	// TODO(ptodev): implement this later
-	return 0, nil
+// AppendSTZeroSample appends a synthetic zero sample at the start timestamp st
+// ahead of the real sample at t, marking the point at which the cumulative
+// series started or was reset. The zero sample is logged as an ordinary sample,
+// so it is forwarded over both remote write 1.0 and 2.0.
+func (a *appender) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
+	if st >= t {
+		return 0, storage.ErrSTNewerThanSample
+	}
+
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		var err error
+		series, err = a.getOrCreate(l)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	series.Lock()
+	defer series.Unlock()
+
+	// Skip the zero sample if the start timestamp is not strictly newer than the
+	// last sample committed for this series; appending it would be out of order.
+	// This is the common case: long-lived counters keep reporting the same start
+	// timestamp on every push, so the zero sample is only emitted once - when the
+	// series first appears or when its start timestamp advances (a counter
+	// reset). lastTs is updated on Commit, so it reflects the last committed
+	// batch.
+	if st <= series.lastTs {
+		return storage.SeriesRef(series.ref), storage.ErrOutOfOrderST
+	}
+
+	a.pendingSamples = append(a.pendingSamples, record.RefSample{
+		Ref: series.ref,
+		T:   st,
+		V:   0,
+	})
+	a.sampleSeries = append(a.sampleSeries, series)
+
+	a.w.metrics.totalAppendedSamples.Inc()
+	return storage.SeriesRef(series.ref), nil
 }
 
 func (a *appender) UpdateMetadata(ref storage.SeriesRef, labels labels.Labels, meta metadata.Metadata) (storage.SeriesRef, error) {
@@ -956,9 +1002,61 @@ func (a *appender) SetOptions(_ *storage.AppendOptions) {
 	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
 }
 
+// AppendHistogramSTZeroSample appends a synthetic empty histogram at the start
+// timestamp st ahead of the real histogram at t, marking a counter reset. Only
+// the histogram's shape fields are replicated to avoid needless chunk creation
+// downstream. See AppendSTZeroSample for the gating rationale.
 func (a *appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	// TODO: implement this later
-	return 0, nil
+	if st >= t {
+		return 0, storage.ErrSTNewerThanSample
+	}
+
+	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
+	if series == nil {
+		var err error
+		series, err = a.getOrCreate(l)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	series.Lock()
+	defer series.Unlock()
+
+	if st <= series.lastTs {
+		return storage.SeriesRef(series.ref), storage.ErrOutOfOrderST
+	}
+
+	switch {
+	case h != nil:
+		a.pendingHistograms = append(a.pendingHistograms, record.RefHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			H: &histogram.Histogram{
+				// The zero sample represents a counter reset by definition.
+				CounterResetHint: histogram.CounterReset,
+				Schema:           h.Schema,
+				ZeroThreshold:    h.ZeroThreshold,
+				CustomValues:     h.CustomValues,
+			},
+		})
+		a.histogramSeries = append(a.histogramSeries, series)
+	case fh != nil:
+		a.pendingFloatHistograms = append(a.pendingFloatHistograms, record.RefFloatHistogramSample{
+			Ref: series.ref,
+			T:   st,
+			FH: &histogram.FloatHistogram{
+				CounterResetHint: histogram.CounterReset,
+				Schema:           fh.Schema,
+				ZeroThreshold:    fh.ZeroThreshold,
+				CustomValues:     fh.CustomValues,
+			},
+		})
+		a.floatHistogramSeries = append(a.floatHistogramSeries, series)
+	}
+
+	a.w.metrics.totalAppendedSamples.Inc()
+	return storage.SeriesRef(series.ref), nil
 }
 
 // Commit submits the collected samples and purges the batch.

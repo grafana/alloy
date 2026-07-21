@@ -76,8 +76,10 @@ You can use the following arguments with `otelcol.connector.spanmetrics`:
 | `namespace`                       | `string`       | Metric namespace.                                                                                     | `"traces.span.metrics"` | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                                  | `1000`                  | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                            | `[]`                    | no       |
+| `series_expiration`               | `duration`     | Time period after which individual metric series are considered stale and are no longer exported.    | `"0s"`                  | no       |
 | `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`                     | no       |
 | `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                                     | `[]`                    | no       |
+| `include_collector_instance_id`   | `bool`         | Add a `collector.instance.id` dimension for [Single Writer Principle][single-writer-principle] compliance. | `false`                 | no       |
 
 The supported values for `aggregation_temporality` are:
 
@@ -87,6 +89,8 @@ The supported values for `aggregation_temporality` are:
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
 
 Setting `metrics_expiration` to `"0s"` means that the metrics will never expire.
+
+Setting `series_expiration` to `"0s"` means that series will never expire.
 
 `resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
 
@@ -102,6 +106,13 @@ For example, `["service.name", "telemetry.sdk.language", "telemetry.sdk.name"]`.
 
 When the `aggregation_cardinality_limit` limit is reached, additional unique combinations will be dropped but registered under a new entry with `otel.metric.overflow="true"`. 
 A value of `0` means no limit is applied.
+
+`include_collector_instance_id` is `false` by default.
+When enabled, the connector adds a `collector.instance.id` dimension whose value is a random UUID generated per connector instance.
+That UUID changes each time the component restarts or its arguments change, so with a single {{< param "PRODUCT_NAME" >}} instance it only fragments the metric series and breaks `rate()` continuity.
+Set it to `true` when you run multiple {{< param "PRODUCT_NAME" >}} instances that send spanmetrics to the same backend, where a unique ID per instance keeps their series distinct and satisfies the [Single Writer Principle][single-writer-principle].
+
+[single-writer-principle]: https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer
 
 ## Blocks
 
@@ -135,7 +146,7 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 
 {{< /docs/alloy-config >}}
 
-You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
+You must specify either an [`exponential`](#exponential) or an [`explicit`](#explicit) block.
 You can't specify both blocks in the same configuration.
 
 ### `histogram`
@@ -177,7 +188,11 @@ The default dimensions are:
 * `span.kind`
 * `status.code`
 
-The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones will be added.
+{{< param "PRODUCT_NAME" >}} adds the default dimensions unless you list them in `exclude_dimensions`.
+If you don't specify additional dimensions, {{< param "PRODUCT_NAME" >}} adds only the default ones.
+
+`otelcol.connector.spanmetrics` also adds a `collector.instance.id` dimension by default, set to a random UUID generated once per connector instance.
+{{< param "PRODUCT_NAME" >}} excludes it unless you set `include_collector_instance_id`; see [Arguments](#arguments) for why.
 
 The following attributes are supported:
 
@@ -196,7 +211,7 @@ If the attribute is missing in both the span and resource attributes:
 
 ### `calls_dimension`
 
-The attributes and behavior of the `calls_dimension` block match the [`dimension`][dimension] block.
+The attributes and behavior of the `calls_dimension` block match the [`dimension`](#dimension) block.
 
 ### `events`
 

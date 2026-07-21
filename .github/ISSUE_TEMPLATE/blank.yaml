@@ -21,6 +21,8 @@ body:
       - beyla.ebpf
       - database_observability.mysql
       - database_observability.postgres
+      - database_observability.sql_server
+      - discovery.aws
       - discovery.azure
       - discovery.consul
       - discovery.consulagent

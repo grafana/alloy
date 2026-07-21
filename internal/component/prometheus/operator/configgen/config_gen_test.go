@@ -286,9 +286,11 @@ func TestGenerateTLSConfig(t *testing.T) {
 			name: "all_fields",
 			tlsConfig: promopv1.TLSConfig{
 				SafeTLSConfig: promopv1.SafeTLSConfig{},
-				CAFile:        "ca_file",
-				KeyFile:       "key_file",
-				CertFile:      "cert_file",
+				TLSFilesConfig: promopv1.TLSFilesConfig{
+					CAFile:   "ca_file",
+					KeyFile:  "key_file",
+					CertFile: "cert_file",
+				},
 			},
 			hasErr:   false,
 			keyFile:  "key_file",

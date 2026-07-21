@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -124,6 +125,9 @@ type ExtensionModeParams struct {
 
 	// ModulePath is a value that will be used as "module_path" keyword value in Alloy config.
 	ModulePath string
+
+	// OnConfigImport is a hook that is called when config files are imported using `import.*` components.
+	OnConfigImport importsource.ImportContentHook
 }
 
 // NewRunAsExtensionCommand returns a standalone cobra command to run Alloy inside OTel collector as an extension.
@@ -140,6 +144,7 @@ func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			rp := runParams{
+				onConfigImport: params.OnConfigImport,
 				newReloadSignal: func() chan os.Signal {
 					// SIGHUP is reserved by otel collector. Thus, use nop.
 					return nil
@@ -384,13 +389,16 @@ type runParams struct {
 
 	// getConfig callback provides initial alloy config.
 	getConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
+
+	// onConfigImport is a hook that called when extra configs are loaded using `import.*` components.
+	onConfigImport importsource.ImportContentHook
 }
 
 func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runParams) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
-	ctx, cancel := interruptContext(ctx)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	if err := fr.checkExperimentalFlags(); err != nil {
@@ -417,7 +425,8 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		if err := featuregate.CheckAllowed(
 			featuregate.StabilityPublicPreview,
 			fr.minStability,
-			"Windows process priority"); err != nil {
+			"Windows process priority",
+		); err != nil {
 			return err
 		}
 
@@ -571,6 +580,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 			uiService,
 		},
 		TaskShutdownDeadline: fr.taskShutdownDeadline,
+		OnImportContent:      params.onConfigImport,
 	})
 	if err != nil {
 		return err
@@ -745,25 +755,6 @@ func addDeprecatedFlags(fset *pflag.FlagSet) {
 	}
 	deprecateFlagByName(fset, "cluster.use-discovery-v1")
 	deprecateFlagByName(fset, "feature.prometheus.metric-validation-scheme")
-}
-
-func interruptContext(parent context.Context) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parent)
-
-	go func() {
-		defer cancel()
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-		select {
-		case <-sig:
-		case <-ctx.Done():
-		}
-		signal.Stop(sig)
-
-		fmt.Fprintln(os.Stderr, "interrupt received")
-	}()
-
-	return ctx, cancel
 }
 
 func splitPeers(s, sep string) []string {

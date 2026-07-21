@@ -1,6 +1,8 @@
 package prometheusconvert
 
 import (
+	"reflect"
+
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
@@ -62,7 +64,14 @@ func ValidateServiceDiscoveryConfigs(serviceDiscoveryConfigs prom_discover.Confi
 }
 
 func validateStorageConfig(storageConfig *prom_config.StorageConfig) diag.Diagnostics {
-	hasStorage := storageConfig.TSDBConfig != nil || storageConfig.ExemplarsConfig != nil
+	// Prometheus v0.311+ always injects default TSDBConfig and ExemplarsConfig during
+	// unmarshaling even when no storage block is present in the config file. Compare
+	// against the known defaults to detect only explicitly-configured storage.
+	defaultRetention := prom_config.DefaultTSDBRetentionConfig
+	defaultTSDB := &prom_config.TSDBConfig{Retention: &defaultRetention}
+	tsdbConfigured := storageConfig.TSDBConfig != nil && !reflect.DeepEqual(storageConfig.TSDBConfig, defaultTSDB)
+	exemplarsConfigured := storageConfig.ExemplarsConfig != nil && !reflect.DeepEqual(*storageConfig.ExemplarsConfig, prom_config.DefaultExemplarsConfig)
+	hasStorage := tsdbConfigured || exemplarsConfigured
 	return common.ValidateSupported(common.Equals, hasStorage, true, "storage", "")
 }
 
