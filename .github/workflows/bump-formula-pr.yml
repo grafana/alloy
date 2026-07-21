@@ -56,11 +56,19 @@ jobs:
     permissions:
       id-token: write
     steps:
+      # Token scoped to the Alloy repo, used to check out this repo.
       - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
         with:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
           permission_set: alloy
+
+      # Token scoped to the homebrew-grafana tap, used to check out the tap and open the PR.
+      - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token-homebrew
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+          permission_set: homebrew
 
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -72,7 +80,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.BREW_TAP_REPO }}
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token-homebrew.outputs.token }}
           persist-credentials: false
           ref: master
           path: ${{ env.TAP_CHECKOUT_DIR }}
@@ -95,7 +103,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token-homebrew.outputs.token }}
           path: ${{ env.TAP_CHECKOUT_DIR }}
           base: master
           branch: "${{ env.ALLOYBOT_APP_NAME }}/bump-alloy-${{ github.event.release.tag_name }}"
