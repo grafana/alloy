@@ -10,9 +10,21 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.11.0 (2026-07-20)
+----------
+
 ### Enhancements
 
 - Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
+
+- Update to Grafana Alloy v1.18.0 (@blewis12)
+
+1.10.1 (2026-06-29)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.17.1 (@x1unix)
 
 1.10.0 (2026-06-12)
 ----------

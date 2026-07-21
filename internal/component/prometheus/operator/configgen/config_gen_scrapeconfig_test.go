@@ -28,7 +28,7 @@ import (
 )
 
 func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
-	HTTPS := "HTTPS"
+	HTTPS := promopv1.Scheme("HTTPS")
 	var falsePtr = ptr.To(false)
 	suite := []struct {
 		name                   string

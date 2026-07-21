@@ -259,3 +259,8 @@ func (im *ImportFile) ModulePath() string {
 	}
 	return path
 }
+
+// InheritsModulePath reports that import.file defines its own module_path (the imported file's dir).
+func (im *ImportFile) InheritsModulePath() bool {
+	return false
+}

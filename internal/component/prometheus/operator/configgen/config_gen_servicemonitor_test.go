@@ -28,8 +28,9 @@ import (
 
 func TestGenerateServiceMonitorConfig(t *testing.T) {
 	var (
-		falsePtr = ptr.To(false)
-		proxyURL = "https://proxy:8080"
+		falsePtr    = ptr.To(false)
+		proxyURL    = "https://proxy:8080"
+		httpsScheme = promopv1.Scheme("https")
 	)
 	suite := []struct {
 		name                   string
@@ -393,23 +394,29 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			},
 			ep: promopv1.Endpoint{
 				Port:            "metrics",
-				EnableHttp2:     falsePtr,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: falsePtr,
-				ProxyConfig: promopv1.ProxyConfig{
-					ProxyURL: &proxyURL,
-				},
-				Scheme:          "https",
+				Scheme:          &httpsScheme,
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
 				HonorTimestamps: falsePtr,
 				FilterRunning:   falsePtr,
-				TLSConfig: &promopv1.TLSConfig{
-					SafeTLSConfig: promopv1.SafeTLSConfig{
-						ServerName:         stringPtr("foo.com"),
-						InsecureSkipVerify: boolPtr(true),
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						HTTPConfigWithoutTLS: promopv1.HTTPConfigWithoutTLS{
+							EnableHTTP2:     falsePtr,
+							FollowRedirects: falsePtr,
+						},
+						TLSConfig: &promopv1.TLSConfig{
+							SafeTLSConfig: promopv1.SafeTLSConfig{
+								ServerName:         stringPtr("foo.com"),
+								InsecureSkipVerify: boolPtr(true),
+							},
+						},
+					},
+					ProxyConfig: promopv1.ProxyConfig{
+						ProxyURL: &proxyURL,
 					},
 				},
 				RelabelConfigs: []promopv1.RelabelConfig{

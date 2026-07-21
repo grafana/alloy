@@ -29,6 +29,8 @@ type memorySeries struct {
 	timestamp time.Time // Timestamp used for out-of-order detection.
 	lastSeen  time.Time // Timestamp used for garbage collection.
 
+	lastZeroST int64 // Start timestamp of the last injected zero sample; injects it at most once per start timestamp.
+
 	exemplarTimestamp time.Time // Timestamp used for exemplars out-of-order detection.
 
 	value float64 // Value used for writing.
@@ -139,6 +141,58 @@ func (series *memorySeries) WriteNativeHistogramTo(app storage.Appender, ts time
 	if _, err := app.AppendHistogram(series.id, series.labels, timestamp.FromTime(ts), h, fh); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+// WriteSTZeroSampleTo appends a synthetic zero sample at the start timestamp st
+// ahead of the sample at t. The appender rejects start timestamps that are not
+// strictly older than the sample or that would be out of order; the caller is
+// expected to tolerate those errors.
+func (series *memorySeries) WriteSTZeroSampleTo(app storage.Appender, t, st int64) error {
+	series.Lock()
+	defer series.Unlock()
+
+	// Inject the zero sample at most once per start timestamp, so multiple data
+	// points of the same series in one batch don't each emit a duplicate zero.
+	if st <= series.lastZeroST {
+		return nil
+	}
+
+	newID, err := app.AppendSTZeroSample(series.id, series.labels, t, st)
+	if err != nil {
+		return err
+	}
+
+	if newID != series.id {
+		series.id = newID
+	}
+	series.lastZeroST = st
+
+	return nil
+}
+
+// WriteHistogramSTZeroSampleTo appends a synthetic empty histogram at the start
+// timestamp st ahead of the histogram at t. See WriteSTZeroSampleTo.
+func (series *memorySeries) WriteHistogramSTZeroSampleTo(app storage.Appender, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) error {
+	series.Lock()
+	defer series.Unlock()
+
+	// Inject the zero sample at most once per start timestamp, so multiple data
+	// points of the same series in one batch don't each emit a duplicate zero.
+	if st <= series.lastZeroST {
+		return nil
+	}
+
+	newID, err := app.AppendHistogramSTZeroSample(series.id, series.labels, t, st, h, fh)
+	if err != nil {
+		return err
+	}
+
+	if newID != series.id {
+		series.id = newID
+	}
+	series.lastZeroST = st
 
 	return nil
 }

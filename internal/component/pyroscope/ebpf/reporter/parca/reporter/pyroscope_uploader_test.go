@@ -204,28 +204,23 @@ func TestAttemptUpload_UploadInProgress(t *testing.T) {
 	require.True(t, cached, "fileID should be in retry cache for in-progress reason")
 }
 
-func TestAttemptUpload_EmptyBuildID(t *testing.T) {
-	var receivedFile *debuginfov1alpha1.FileMetadata
-
-	handler := &mockDebuginfoHandler{
-		shouldInitiateFunc: func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
-			receivedFile = req.Msg.File
-			return connect.NewResponse(&debuginfov1alpha1.ShouldInitiateUploadResponse{
-				ShouldInitiateUpload: false,
-			}), nil
-		},
-	}
-	uploadHTTP := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("upload should not be called")
-	})
-	client := startMockServer(t, handler, uploadHTTP)
+func TestUpload_EmptyBuildID(t *testing.T) {
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(7, 8)
+	openCalled := atomic.NewBool(false)
 
-	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "", newMockReadAtCloser([]byte("data")))
-	require.NoError(t, err)
-	require.Equal(t, "", receivedFile.GetGnuBuildId())
-	require.Equal(t, fileID.StringNoQuotes(), receivedFile.GetOtelFileId())
+	u.Upload(context.Background(), nil, fileID, "test.so", "", func() (process.ReadAtCloser, error) {
+		openCalled.Store(true)
+		return newMockReadAtCloser([]byte("data"))()
+	})
+
+	require.False(t, openCalled.Load(), "file should not be opened")
+	require.Len(t, u.queue, 0, "upload request should not be queued")
+
+	u.inProgressTracker.mu.Lock()
+	_, inProgress := u.inProgressTracker.m[fileID]
+	u.inProgressTracker.mu.Unlock()
+	require.False(t, inProgress, "fileID should not be marked in progress")
 }
 
 func TestAttemptUpload_LargeFile(t *testing.T) {

@@ -2,43 +2,26 @@ package main
 
 import (
 	"io"
-	"runtime"
 	"strings"
 
-	"golang.org/x/sys/windows/svc/eventlog"
+	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 )
 
 // writer sends writes to the Windows Event Log.
 type writer struct {
-	el *eventlog.Log
+	el eventlog.EventLog
 }
 
 var (
 	_ io.Writer = (*writer)(nil)
 )
 
-// newWriter creates a new writer which writes to the Windows Event
-// Logger.
+// newWriter creates a new writer which writes to the Windows Event Log.
 func newWriter() (*writer, error) {
-	eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
-
-	// Install the event source. This will fail with an error string saying "already
-	// exists" if it has been installed before.
-	err := eventlog.InstallAsEventCreate(serviceName, eventTypes)
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
-		return nil, err
-	}
-
-	el, err := eventlog.Open(serviceName)
+	el, err := eventlog.GetEventLogOpener()(serviceName)
 	if err != nil {
 		return nil, err
 	}
-
-	// Ensure the logger gets closed when GC runs.
-	runtime.SetFinalizer(el, func(li *eventlog.Log) {
-		_ = li.Close()
-	})
-
 	return &writer{el: el}, nil
 }
 

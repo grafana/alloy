@@ -67,8 +67,8 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	if ep.Params != nil {
 		cfg.Params = ep.Params
 	}
-	if ep.Scheme != "" {
-		cfg.Scheme = ep.Scheme
+	if ep.Scheme != nil && *ep.Scheme != "" {
+		cfg.Scheme = string(*ep.Scheme)
 	}
 	if ep.FollowRedirects != nil {
 		cfg.HTTPClientConfig.FollowRedirects = *ep.FollowRedirects

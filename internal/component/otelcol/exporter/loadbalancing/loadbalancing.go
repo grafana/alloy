@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/pipeline"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -310,6 +311,8 @@ type AWSCloudMapResolver struct {
 	Interval      time.Duration `alloy:"interval,attr,optional"`
 	Timeout       time.Duration `alloy:"timeout,attr,optional"`
 	Port          *uint16       `alloy:"port,attr,optional"`
+	// OwnerAccount is the AWS account that owns the Cloud Map namespace, for cross-account service discovery.
+	OwnerAccount string `alloy:"owner_account,attr,optional"`
 }
 
 var _ syntax.Defaulter = &AWSCloudMapResolver{}
@@ -351,6 +354,11 @@ func (r *AWSCloudMapResolver) Convert() configoptional.Optional[loadbalancingexp
 		port = &portNum
 	}
 
+	var ownerAccount *string
+	if r.OwnerAccount != "" {
+		ownerAccount = ptr.To(r.OwnerAccount)
+	}
+
 	return configoptional.Some(loadbalancingexporter.AWSCloudMapResolver{
 		NamespaceName: r.NamespaceName,
 		ServiceName:   r.ServiceName,
@@ -358,6 +366,7 @@ func (r *AWSCloudMapResolver) Convert() configoptional.Optional[loadbalancingexp
 		Interval:      r.Interval,
 		Timeout:       r.Timeout,
 		Port:          port,
+		OwnerAccount:  ownerAccount,
 	})
 }
 
