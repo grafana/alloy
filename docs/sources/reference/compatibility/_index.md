@@ -117,6 +117,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.squid](../components/prometheus/prometheus.exporter.squid)
 - [prometheus.exporter.static](../components/prometheus/prometheus.exporter.static)
 - [prometheus.exporter.statsd](../components/prometheus/prometheus.exporter.statsd)
+- [prometheus.exporter.tailscale](../components/prometheus/prometheus.exporter.tailscale)
 - [prometheus.exporter.unix](../components/prometheus/prometheus.exporter.unix)
 - [prometheus.exporter.windows](../components/prometheus/prometheus.exporter.windows)
 {{< /collapse >}}
