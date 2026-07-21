@@ -37,12 +37,10 @@ func newFlagSet() *flag.FlagSet {
 	return flag.NewFlagSet("formula-gen", flag.ContinueOnError)
 }
 
-// artifact describes a single released binary and its archive.
+// artifact describes a single released archive.
 type artifact struct {
 	// Package is the release asset (zip) file name, e.g. alloy-darwin-arm64.zip.
 	Package string `json:"package"`
-	// BinFile is the binary file name inside the archive, e.g. alloy-darwin-arm64.
-	BinFile string `json:"binFile"`
 	// Checksum is the SHA256 of Package. Populated from the SHA256SUMS asset,
 	// not from the artifacts JSON.
 	Checksum string `json:"-"`
@@ -61,12 +59,20 @@ type artifacts struct {
 	Linux  archMap `json:"linux"`
 }
 
-// all returns every artifact by pointer so callers can fill checksums and
-// validate in a single pass.
-func (a *artifacts) all() []*artifact {
-	return []*artifact{
-		&a.Darwin.Arm64, &a.Darwin.Amd64,
-		&a.Linux.Arm64, &a.Linux.Amd64,
+// labeledArtifact pairs an artifact with its OS/arch label for diagnostics.
+type labeledArtifact struct {
+	Label string // e.g. "darwin/arm64"
+	Art   *artifact
+}
+
+// all returns every artifact (labeled, by pointer) so callers can fill
+// checksums and validate in a single pass.
+func (a *artifacts) all() []labeledArtifact {
+	return []labeledArtifact{
+		{"darwin/arm64", &a.Darwin.Arm64},
+		{"darwin/amd64", &a.Darwin.Amd64},
+		{"linux/arm64", &a.Linux.Arm64},
+		{"linux/amd64", &a.Linux.Amd64},
 	}
 }
 
@@ -161,9 +167,9 @@ func loadArtifacts(path string, dst *artifacts) error {
 	if err := dec.Decode(dst); err != nil {
 		return fmt.Errorf("parsing artifacts file: %w", err)
 	}
-	for _, a := range dst.all() {
-		if a.Package == "" || a.BinFile == "" {
-			return fmt.Errorf("artifacts file is missing package/binFile for one or more OS/arch entries")
+	for _, e := range dst.all() {
+		if e.Art.Package == "" {
+			return fmt.Errorf("artifacts file entry %s is missing package", e.Label)
 		}
 	}
 	return nil
@@ -209,16 +215,16 @@ func parseChecksums(contents string) map[string]string {
 // applyChecksums fills every artifact's Checksum from sums, keyed by Package.
 func applyChecksums(a *artifacts, sums map[string]string) error {
 	var missing []string
-	for _, art := range a.all() {
-		sum, ok := sums[art.Package]
+	for _, e := range a.all() {
+		sum, ok := sums[e.Art.Package]
 		if !ok {
-			missing = append(missing, art.Package)
+			missing = append(missing, e.Art.Package)
 			continue
 		}
 		if !isSHA256(sum) {
-			return fmt.Errorf("checksum for %s is not a valid SHA256: %q", art.Package, sum)
+			return fmt.Errorf("checksum for %s (%s) is not a valid SHA256: %q", e.Art.Package, e.Label, sum)
 		}
-		art.Checksum = sum
+		e.Art.Checksum = sum
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("SHA256SUMS is missing checksums for: %s", strings.Join(missing, ", "))
@@ -245,26 +251,23 @@ func isSHA256(s string) bool {
 
 // render parses the template at path and executes it against data.
 func render(path string, data templateData) ([]byte, error) {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading template: %w", err)
+	}
+
 	tmpl, err := template.New("formula").
 		Option("missingkey=error").
-		ParseFiles(path)
+		Parse(string(src))
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
 
 	var buf bytes.Buffer
-	// ParseFiles names the template after the file's base name.
-	if err := tmpl.ExecuteTemplate(&buf, baseName(path), data); err != nil {
+	if err := tmpl.Execute(&buf, data); err != nil {
 		return nil, fmt.Errorf("rendering template: %w", err)
 	}
 	return buf.Bytes(), nil
-}
-
-func baseName(path string) string {
-	if i := strings.LastIndexAny(path, `/\`); i >= 0 {
-		return path[i+1:]
-	}
-	return path
 }
 
 func requireEnv(name string) (string, error) {

@@ -11,18 +11,18 @@ import (
 
 const testArtifacts = `{
   "darwin": {
-    "arm64": {"package": "alloy-darwin-arm64.zip", "binFile": "alloy-darwin-arm64"},
-    "amd64": {"package": "alloy-darwin-amd64.zip", "binFile": "alloy-darwin-amd64"}
+    "arm64": {"package": "alloy-darwin-arm64.zip"},
+    "amd64": {"package": "alloy-darwin-amd64.zip"}
   },
   "linux": {
-    "arm64": {"package": "alloy-linux-arm64.zip", "binFile": "alloy-linux-arm64"},
-    "amd64": {"package": "alloy-linux-amd64.zip", "binFile": "alloy-linux-amd64"}
+    "arm64": {"package": "alloy-linux-arm64.zip"},
+    "amd64": {"package": "alloy-linux-amd64.zip"}
   }
 }`
 
 const testTemplate = `version "{{.Version}}"
 tag {{.Tag}}
-darwin-arm64 {{.BaseURL}}/{{.Tag}}/{{.Artifacts.Darwin.Arm64.Package}} {{.Artifacts.Darwin.Arm64.Checksum}} {{.Artifacts.Darwin.Arm64.BinFile}}
+darwin-arm64 {{.BaseURL}}/{{.Tag}}/{{.Artifacts.Darwin.Arm64.Package}} {{.Artifacts.Darwin.Arm64.Checksum}}
 darwin-amd64 {{.Artifacts.Darwin.Amd64.Package}} {{.Artifacts.Darwin.Amd64.Checksum}}
 linux-arm64 {{.Artifacts.Linux.Arm64.Package}} {{.Artifacts.Linux.Arm64.Checksum}}
 linux-amd64 {{.Artifacts.Linux.Amd64.Package}} {{.Artifacts.Linux.Amd64.Checksum}}
@@ -84,7 +84,7 @@ func TestRun(t *testing.T) {
 
 	want := `version "1.17.1"
 tag v1.17.1
-darwin-arm64 ` + ts.URL + `/grafana/alloy/releases/download/v1.17.1/alloy-darwin-arm64.zip ` + h('a') + ` alloy-darwin-arm64
+darwin-arm64 ` + ts.URL + `/grafana/alloy/releases/download/v1.17.1/alloy-darwin-arm64.zip ` + h('a') + `
 darwin-amd64 alloy-darwin-amd64.zip ` + h('b') + `
 linux-arm64 alloy-linux-arm64.zip ` + h('c') + `
 linux-amd64 alloy-linux-amd64.zip ` + h('d') + `

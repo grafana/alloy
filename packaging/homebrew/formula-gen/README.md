@@ -46,18 +46,17 @@ archives. It fails if `SHA256SUMS` is missing an entry for any artifact
 
 ## Artifacts JSON
 
-Maps OS/arch to the release archive (`package`) and the binary file inside it
-(`binFile`):
+Maps OS/arch to the release archive (`package`):
 
 ```json
 {
   "darwin": {
-    "arm64": { "package": "alloy-darwin-arm64.zip", "binFile": "alloy-darwin-arm64" },
-    "amd64": { "package": "alloy-darwin-amd64.zip", "binFile": "alloy-darwin-amd64" }
+    "arm64": { "package": "alloy-darwin-arm64.zip" },
+    "amd64": { "package": "alloy-darwin-amd64.zip" }
   },
   "linux": {
-    "arm64": { "package": "alloy-linux-arm64.zip", "binFile": "alloy-linux-arm64" },
-    "amd64": { "package": "alloy-linux-amd64.zip", "binFile": "alloy-linux-amd64" }
+    "arm64": { "package": "alloy-linux-arm64.zip" },
+    "amd64": { "package": "alloy-linux-amd64.zip" }
   }
 }
 ```
