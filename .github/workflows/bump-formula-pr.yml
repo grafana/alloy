@@ -2,6 +2,12 @@ name: Bump Homebrew formula
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to bump the formula to (e.g. v1.17.1). Must be an existing published release.'
+        type: string
+        required: true
 
 permissions: {}
 
@@ -12,14 +18,16 @@ env:
 
 jobs:
   # Gate prevents homebrew job execution for unreleased or component-level releases (e.g helm-chart or syntax).
+  # Manual dispatch always proceeds (for testing) using the input tag.
   gate:
     name: gate
     runs-on: ubuntu-latest
-    if: startsWith(github.event.release.tag_name, 'v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     permissions:
       id-token: write
     outputs:
       is_latest: ${{ steps.compare.outputs.is_latest }}
+      tag: ${{ steps.compare.outputs.tag }}
     steps:
       - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
@@ -35,18 +43,33 @@ jobs:
           repository: "${{ github.repository }}"
           type: "stable"
 
-      # Report whether the triggering release is the latest stable release.
-      - name: Compare with latest release
+      # Resolve the target tag and whether to proceed. On a release the tag must
+      # be the latest stable release; on manual dispatch we always proceed using
+      # the input tag so the workflow can be tested without cutting a release.
+      - name: Resolve tag and latest status
         id: compare
         env:
+          EVENT_NAME: ${{ github.event_name }}
+          RESOLVED_TAG: ${{ github.event.release.tag_name || inputs.tag }}
           LATEST_ID: ${{ steps.latest_release.outputs.release_id }}
           CURRENT_ID: ${{ github.event.release.id }}
         run: |
-          if [ -z "$LATEST_ID" ]; then
-            echo "::error::latest release lookup returned empty release_id" >&2
+          if [[ "$RESOLVED_TAG" != v* ]]; then
+            echo "::error::tag must start with 'v' (e.g. v1.17.1). Got: '$RESOLVED_TAG'" >&2
             exit 1
           fi
-          echo "is_latest=$([ "$LATEST_ID" = "$CURRENT_ID" ] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            is_latest=true
+          elif [ -z "$LATEST_ID" ]; then
+            echo "::error::latest release lookup returned empty release_id" >&2
+            exit 1
+          else
+            is_latest=$([ "$LATEST_ID" = "$CURRENT_ID" ] && echo true || echo false)
+          fi
+
+          echo "tag=${RESOLVED_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "is_latest=${is_latest}" >> "${GITHUB_OUTPUT}"
 
   homebrew-grafana:
     name: homebrew-grafana
@@ -94,7 +117,7 @@ jobs:
       # Render formula from a template. Checksums are fetched from release's SHA256SUMS asset.
       - name: Generate Formula
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ needs.gate.outputs.tag }}
         run: |
           go run -C packaging/homebrew/formula-gen/ . \
             -tag "$RELEASE_TAG" \
@@ -106,10 +129,10 @@ jobs:
           token: ${{ steps.app-token-homebrew.outputs.token }}
           path: ${{ env.TAP_CHECKOUT_DIR }}
           base: master
-          branch: "${{ env.ALLOYBOT_APP_NAME }}/bump-alloy-${{ github.event.release.tag_name }}"
-          title: "alloy ${{ github.event.release.tag_name }}"
-          body: "Automated formula bump for Alloy ${{ github.event.release.tag_name }}."
+          branch: "${{ env.ALLOYBOT_APP_NAME }}/bump-alloy-${{ needs.gate.outputs.tag }}"
+          title: "alloy ${{ needs.gate.outputs.tag }}"
+          body: "Automated formula bump for Alloy ${{ needs.gate.outputs.tag }}."
           committer: "${{ env.ALLOYBOT_APP_NAME }}[bot] <879451+${{ env.ALLOYBOT_APP_NAME }}[bot]@users.noreply.github.com>"
-          commit-message: "Bump alloy to ${{ github.event.release.tag_name }}"
+          commit-message: "Bump alloy to ${{ needs.gate.outputs.tag }}"
           sign-commits: true
           delete-branch: true
