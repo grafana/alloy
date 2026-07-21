@@ -34,47 +34,13 @@ Place `loki.secretfilter` after components that reduce log volume so it processe
 
 [gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
-## Example usage
-
-This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
-
-Optional arguments are supported, several of which are listed below:
-
-- Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
-- Set `redact_percent` to `100` for full redaction.
-- Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
-- Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
-
-For a full list of arguments, refer to [Arguments](#arguments).
+## Usage
 
 ```alloy
-local.file_match "local_logs" {
-    path_targets = "<PATH_TARGETS>"
-}
-
-loki.source.file "local_logs" {
-    targets    = local.file_match.local_logs.targets
-    forward_to = [loki.secretfilter.secret_filter.receiver]
-}
-
-loki.secretfilter "secret_filter" {
-    forward_to  = [loki.write.local_loki.receiver]
-    redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
-    // optional: gitleaks_config = "/etc/alloy/gitleaks.toml"
-    // optional: redact_percent = 100  // use when redact_with is not set
-}
-
-loki.write "local_loki" {
-    endpoint {
-        url = "<LOKI_ENDPOINT>"
-    }
+loki.secretfilter "<LABEL>" {
+    forward_to = <RECEIVER_LIST>
 }
 ```
-
-Replace the following:
-
-* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
-* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 ## Arguments
 
@@ -304,6 +270,48 @@ useDefault = true
 disabledRules = ["generic-api-key"]
 ...
 ```
+
+## Example
+
+This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
+
+Optional arguments are supported, several of which are listed below:
+
+- Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
+- Set `redact_percent` to `100` for full redaction.
+- Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
+- Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
+
+For a full list of arguments, refer to [Arguments](#arguments).
+
+```alloy
+local.file_match "local_logs" {
+    path_targets = "<PATH_TARGETS>"
+}
+
+loki.source.file "local_logs" {
+    targets    = local.file_match.local_logs.targets
+    forward_to = [loki.secretfilter.secret_filter.receiver]
+}
+
+loki.secretfilter "secret_filter" {
+    forward_to  = [loki.write.local_loki.receiver]
+    redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
+    // optional: gitleaks_config = "/etc/alloy/gitleaks.toml"
+    // optional: redact_percent = 100  // use when redact_with is not set
+}
+
+loki.write "local_loki" {
+    endpoint {
+        url = "<LOKI_ENDPOINT>"
+    }
+}
+```
+
+Replace the following:
+
+* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
+* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
