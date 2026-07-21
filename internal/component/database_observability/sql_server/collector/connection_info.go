@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -87,6 +88,28 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			providerRegion = c.CloudProvider.GCP.Region
 			providerAccount = c.CloudProvider.GCP.ProjectID
 			dbInstanceIdentifier = c.CloudProvider.GCP.InstanceID
+		}
+	} else {
+		cfg, err := msdsn.Parse(c.DSN)
+		if err != nil {
+			return err
+		}
+
+		if host := cfg.Host; host != "" {
+			if strings.HasSuffix(host, "rds.amazonaws.com") {
+				providerName = "aws"
+				matches := database_observability.RdsRegex.FindStringSubmatch(host)
+				if len(matches) > 3 {
+					dbInstanceIdentifier = matches[1]
+					providerRegion = matches[3]
+				}
+			} else if strings.HasSuffix(host, "database.windows.net") {
+				providerName = "azure"
+				matches := database_observability.AzureSQLServerRegex.FindStringSubmatch(host)
+				if len(matches) > 1 {
+					dbInstanceIdentifier = matches[1]
+				}
+			}
 		}
 	}
 	c.running.Store(true)

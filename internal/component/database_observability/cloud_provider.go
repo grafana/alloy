@@ -10,6 +10,7 @@ var (
 	RdsRegex             = regexp.MustCompile(`(?P<identifier>[^\.]+)\.([^\.]+)\.(?P<region>[^\.]+)\.rds\.amazonaws\.com`)
 	AzureMySQLRegex      = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:privatelink\.)?mysql\.database\.azure\.com`)
 	AzurePostgreSQLRegex = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:privatelink\.)?postgres\.database\.azure\.com`)
+	AzureSQLServerRegex  = regexp.MustCompile(`(?P<identifier>[^\.]+)\.(?:[^\.]+\.)?(?:privatelink\.)?database\.windows\.net`)
 )
 
 type CloudProvider struct {
