@@ -63,9 +63,12 @@ jobs:
         persist-credentials: false
 
     - name: Get the image tag
+      id: get-tag
       run: |
-        echo "$(bash ./scripts/image-tag-docker)" > .tag-only
-        echo "grafana/alloy-dev:$(bash ./scripts/image-tag-docker)" > .image-tag
+        TAG="$(bash ./scripts/image-tag-docker)"
+        echo "${TAG}" > .tag-only
+        echo "grafana/alloy-dev:${TAG}" > .image-tag
+        echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       # This step needs to run after "Get the image tag".
       # That's because the login to GAR generates a new file.
@@ -75,6 +78,12 @@ jobs:
       uses: grafana/shared-workflows/actions/login-to-gar@1f541877ceb22c7be7667d8a8df04984aeac9f9d # login-to-gar/v1.0.3
       with:
         registry: us-docker.pkg.dev
+
+    - name: Wait for image to mirror to DockerHub
+      uses: grafana/shared-workflows/actions/wait-for-docker-publish@cd185787ec303639a71383384e1b0d424b7422fb # wait-for-docker-publish/v0.2.0
+      with:
+        image: grafana/alloy-dev:${{ steps.get-tag.outputs.tag }}
+        timeout: 10m
 
     - name: Update to latest image
       run: |

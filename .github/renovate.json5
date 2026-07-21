@@ -49,7 +49,10 @@
       "enabled": true
     },
     {
+      // Update only direct Go module dependencies automatically. Omit indirect
+      // dependencies.
       "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "tool"],
       "groupName": "go dependencies",
       "postUpdateOptions": ["gomodTidy"],
       "enabled": true
@@ -66,27 +69,31 @@
       "enabled": false
     },
     {
-      // Hold unstable deps
+      // Don't let Renovate propose standalone updates for transitive Go module
+      // requirements.
       "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "enabled": false
+    },
+    {
+      // Hold unstable direct deps
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
       "matchPackageNames": [
         "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector",
         "github.com/KimMachineGun/automemlimit",
         "github.com/prometheus-community/elasticsearch_exporter", // Introduces breaking changes in minor versions
         "github.com/google/cadvisor",
-        "github.com/grafana/beyla/v2",
+        "github.com/grafana/beyla/v3",
         "github.com/grafana/jfr-parser/pprof",
-        "github.com/grafana/opentelemetry-ebpf-instrumentation",
         "github.com/hashicorp/vault/api/**",
-        "github.com/heroku/x",
         "github.com/influxdata/telegraf", // v1.38.3+ require hashicorp/vault/api/auth/** >= v0.12 which is held
         "github.com/jaegertracing/jaeger-idl",
         "github.com/mackerelio/go-osstat",
         "github.com/ncabatoff/process-exporter",
-        "github.com/nerdswords/yet-another-cloudwatch-exporter",
         "github.com/percona/mongodb_exporter", // v0.48+ pulls in percona-backup-mongodb with platform-incompatible syscall usage
         "github.com/prometheus-community/yet-another-cloudwatch-exporter", // Introduces breaking changes in minor versions
         "github.com/prometheus/alertmanager", // v0.31+ requires sigv4 v0.4+ which is held
-        "github.com/opencontainers/runc",
         "github.com/prometheus-operator/**",
         "github.com/prometheus/consul_exporter",
         "github.com/prometheus/memcached_exporter",

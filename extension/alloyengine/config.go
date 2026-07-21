@@ -27,6 +27,14 @@ type AlloyConfig struct {
 	Inline InlineAlloyConfig `mapstructure:"inline"`
 }
 
+func (cfg AlloyConfig) isModulePathUnset() bool {
+	if cfg.File != "" || cfg.Path != "" {
+		return false
+	}
+
+	return cfg.Inline.ModulePath == ""
+}
+
 type InlineAlloyConfig struct {
 	// ModulePath is value to be resolved for "module_path" alloy config keyword.
 	ModulePath string `mapstructure:"module_path"`

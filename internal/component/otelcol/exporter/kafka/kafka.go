@@ -82,21 +82,50 @@ type Arguments struct {
 	Metrics *KafkaExporterSignalConfig `alloy:"metrics,block,optional"`
 	Traces  *KafkaExporterSignalConfig `alloy:"traces,block,optional"`
 
-	Authentication otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata       otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
-	Retry          otelcol.RetryArguments               `alloy:"retry_on_failure,block,optional"`
-	Queue          otelcol.QueueArguments               `alloy:"sending_queue,block,optional"`
-	Producer       Producer                             `alloy:"producer,block,optional"`
-	TLS            *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
+	Authentication    otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata          otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	Retry             otelcol.RetryArguments               `alloy:"retry_on_failure,block,optional"`
+	Queue             otelcol.QueueArguments               `alloy:"sending_queue,block,optional"`
+	Producer          Producer                             `alloy:"producer,block,optional"`
+	RecordPartitioner *RecordPartitionerConfig             `alloy:"record_partitioner,block,optional"`
+	TLS               *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 }
 
 type KafkaExporterSignalConfig struct {
-	Topic                string `alloy:"topic,attr,optional"`
-	TopicFromMetadataKey string `alloy:"topic_from_metadata_key,attr,optional"`
-	Encoding             string `alloy:"encoding,attr,optional"`
+	Topic                     string `alloy:"topic,attr,optional"`
+	TopicFromMetadataKey      string `alloy:"topic_from_metadata_key,attr,optional"`
+	Encoding                  string `alloy:"encoding,attr,optional"`
+	MessageKeyFromMetadataKey string `alloy:"message_key_from_metadata_key,attr,optional"`
+}
+
+// RecordPartitionerConfig selects the strategy used to assign Kafka records to partitions.
+type RecordPartitionerConfig struct {
+	StickyKey   *StickyKeyPartitionerConfig `alloy:"sticky_key,block,optional"`
+	RoundRobin  bool                        `alloy:"round_robin,attr,optional"`
+	LeastBackup bool                        `alloy:"least_backup,attr,optional"`
+}
+
+// Convert converts args into the upstream type.
+func (r RecordPartitionerConfig) Convert() kafkaexporter.RecordPartitionerConfig {
+	c := kafkaexporter.RecordPartitionerConfig{}
+	if r.StickyKey != nil {
+		c.StickyKey = &kafkaexporter.StickyKeyPartitionerConfig{Hasher: r.StickyKey.Hasher}
+	}
+	if r.RoundRobin {
+		c.RoundRobin = &struct{}{}
+	}
+	if r.LeastBackup {
+		c.LeastBackup = &struct{}{}
+	}
+	return c
+}
+
+// StickyKeyPartitionerConfig configures the sticky-key partitioner's hasher.
+type StickyKeyPartitionerConfig struct {
+	Hasher string `alloy:"hasher,attr,optional"`
 }
 
 // A utility struct for handling deprecated arguments.
@@ -120,6 +149,7 @@ func (c *KafkaExporterSignalConfig) convert(topic, encoding deprecatedArg) kafka
 			result.Encoding = c.Encoding
 		}
 		result.TopicFromMetadataKey = c.TopicFromMetadataKey
+		result.MessageKeyFromMetadataKey = c.MessageKeyFromMetadataKey
 	} else { // Try to use deprecated attributes only if the new block is not set.
 		if len(topic.value) > 0 {
 			result.Topic = topic.value
@@ -223,6 +253,9 @@ func (args *Arguments) SetToDefault() {
 			FlushMaxMessages:       10000,
 			AllowAutoTopicCreation: true,
 		},
+		RecordPartitioner: &RecordPartitionerConfig{
+			StickyKey: &StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
+		},
 	}
 	args.Retry.SetToDefault()
 	args.Queue.SetToDefault()
@@ -313,6 +346,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	result.QueueBatchConfig = q
 	result.Producer = args.Producer.Convert()
+
+	if args.RecordPartitioner != nil {
+		result.RecordPartitioner = args.RecordPartitioner.Convert()
+	} else {
+		result.RecordPartitioner = kafkaexporter.RecordPartitionerConfig{
+			StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
+		}
+	}
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()

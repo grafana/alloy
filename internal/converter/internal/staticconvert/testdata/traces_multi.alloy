@@ -5,8 +5,11 @@ otelcol.receiver.otlp "trace_config_1_default" {
 	}
 
 	http {
-		endpoint         = "localhost:4318"
-		include_metadata = true
+		endpoint            = "localhost:4318"
+		include_metadata    = true
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {
@@ -42,8 +45,11 @@ otelcol.receiver.otlp "trace_config_2_default" {
 	}
 
 	http {
-		endpoint         = "localhost:4318"
-		include_metadata = true
+		endpoint            = "localhost:4318"
+		include_metadata    = true
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {

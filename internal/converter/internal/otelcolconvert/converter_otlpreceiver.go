@@ -54,8 +54,8 @@ func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otl
 	)
 
 	return &otlp.Arguments{
-		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPC.Get())),
-		HTTP: toHTTPConfigArguments(cfg.HTTP),
+		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.Protocols.GRPC.Get())),
+		HTTP: toHTTPConfigArguments(cfg.Protocols.HTTP),
 
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
 
@@ -192,6 +192,11 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		IncludeMetadata:    cfg.IncludeMetadata,
 
 		CompressionAlgorithms: compressionAlgorithms,
+
+		IdleTimeout:       cfg.IdleTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
 	}
 }
 

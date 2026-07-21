@@ -117,6 +117,9 @@ type Options struct {
 
 	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
 	TaskShutdownDeadline time.Duration
+
+	// OnImportContent is a hook that is invoked with the parsed content of every imported module.
+	OnImportContent importsource.ImportContentHook
 }
 
 // Runtime is the Alloy system.
@@ -209,6 +212,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,
 			EnableCommunityComps: o.EnableCommunityComps,
+			OnImportContent:      o.OnImportContent,
 			OnBlockNodeUpdate: func(cn controller.BlockNode) {
 				// Changed node should be queued for reevaluation.
 				f.updateQueue.Enqueue(&controller.QueuedNode{Node: cn, LastUpdatedTime: time.Now()})
