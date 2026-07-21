@@ -3,7 +3,8 @@
 > **Maintainers only.** Bumping Beyla records new binary checksums in
 > `beyla_version.yaml` — the trust anchor for verifying the download. Run
 > `make update-beyla` and review the checksum diff only as a maintainer, to guard
-> against supply-chain tampering.
+> against supply-chain tampering. If a community PR proposes a Beyla bump, close it
+> and reopen an equivalent PR authored by a maintainer.
 
 ## Overview
 
@@ -28,7 +29,8 @@ This one command:
   pinned manifest),
 - downloads and verifies the binaries against those checksums,
 - downloads the matching config schema,
-- syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`.
+- syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`,
+- regenerates the golden config fixture (`golden_test.go`).
 
 Review the `beyla_version.yaml` diff before committing — the committed checksum is the
 trust anchor, like `go.sum`.
