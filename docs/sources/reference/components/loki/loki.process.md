@@ -784,7 +784,7 @@ time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit 
 stage.luhn {
     replacement = "**DELETED**"
     min_length  = 12
-    skip_regex  = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+    skip_regex  = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 }
 ```
 
