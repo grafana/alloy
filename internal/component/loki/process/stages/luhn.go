@@ -86,7 +86,7 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 		return
 	}
 
-	var skipRanges [][2]int
+	var skipRanges [][]int
 	if r.skipRegex != nil {
 		// Running skip_regex is only worthwhile if there's a Luhn-valid number to potentially
 		// exempt from redaction. Skip it entirely for the common case of no match at all.
@@ -170,17 +170,10 @@ func hasLuhnValidNumberWithDelimiters(input string, minLength int, delimiters st
 	return checkRun()
 }
 
-// findSkipRanges returns the byte ranges of all matches of skipRegex found in input.
-func findSkipRanges(input string, skipRegex skipRegexMatcher) [][2]int {
-	matches := skipRegex.FindAllStringIndex(input, -1)
-	if len(matches) == 0 {
-		return nil
-	}
-	ranges := make([][2]int, len(matches))
-	for i, m := range matches {
-		ranges[i] = [2]int{m[0], m[1]}
-	}
-	return ranges
+// findSkipRanges returns the byte ranges of all matches of skipRegex found in input, in the same
+// [start, end] pair-per-match form FindAllStringIndex already produces.
+func findSkipRanges(input string, skipRegex skipRegexMatcher) [][]int {
+	return skipRegex.FindAllStringIndex(input, -1)
 }
 
 // newSkipRangeCursor returns a function that reports whether a byte position falls within any of
@@ -188,7 +181,7 @@ func findSkipRanges(input string, skipRegex skipRegexMatcher) [][2]int {
 // successive calls must pass strictly increasing positions (as in a range-over-string loop). Under
 // those conditions the cursor advances forward only, giving O(n+m) total cost across a scan instead
 // of the O(n*m) a fresh per-character linear scan over ranges would cost.
-func newSkipRangeCursor(ranges [][2]int) func(pos int) bool {
+func newSkipRangeCursor(ranges [][]int) func(pos int) bool {
 	idx := 0
 	return func(pos int) bool {
 		for idx < len(ranges) && pos >= ranges[idx][1] {
@@ -199,28 +192,34 @@ func newSkipRangeCursor(ranges [][2]int) func(pos int) bool {
 }
 
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
-func replaceLuhnValidNumbers(input, replacement string, minLength int, skipRanges [][2]int) string {
+func replaceLuhnValidNumbers(input, replacement string, minLength int, skipRanges [][]int) string {
 	var sb strings.Builder
-	var currentNumber strings.Builder
+	sb.Grow(len(input))
+	// Track the current digit run by its start offset into input rather than copying digits into
+	// a separate buffer. This avoids an allocation per run, which matters when digit runs are short
+	// and frequent (e.g. lone digits interspersed with hex letters in a UUID).
+	digitStart := -1
 
-	flushNumber := func() {
-		// If the number is at least minLength, check if it's a Luhn-valid number.
-		if currentNumber.Len() >= minLength {
-			numberStr := currentNumber.String()
-			number, err := strconv.Atoi(numberStr)
-			if err == nil && isLuhn(number) {
-				// If the number is Luhn-valid, replace it.
-				sb.WriteString(replacement)
-			} else {
-				// If the number is not Luhn-valid, write it as is.
-				sb.WriteString(numberStr)
-			}
-		} else if currentNumber.Len() > 0 {
-			// If the number is less than minLength but not empty, write it as is.
-			sb.WriteString(currentNumber.String())
+	flushNumber := func(end int) {
+		if digitStart == -1 {
+			return
 		}
-		// Reset the current number.
-		currentNumber.Reset()
+		start := digitStart
+		digitStart = -1
+		if end-start < minLength {
+			// If the number is less than minLength but not empty, write it as is.
+			sb.WriteString(input[start:end])
+			return
+		}
+		// If the number is at least minLength, check if it's a Luhn-valid number.
+		number, err := strconv.Atoi(input[start:end])
+		if err == nil && isLuhn(number) {
+			// If the number is Luhn-valid, replace it.
+			sb.WriteString(replacement)
+		} else {
+			// If the number is not Luhn-valid, write it as is.
+			sb.WriteString(input[start:end])
+		}
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
@@ -228,28 +227,31 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int, skipRange
 	for pos, char := range input {
 		// Characters that fall inside a skip_regex match are passed through unchanged.
 		if inSkipRange(pos) {
-			flushNumber()
+			flushNumber(pos)
 			sb.WriteRune(char)
 			continue
 		}
-		// If the character is a digit, add it to the current number.
+		// If the character is a digit, extend the current run.
 		if unicode.IsDigit(char) {
-			currentNumber.WriteRune(char)
+			if digitStart == -1 {
+				digitStart = pos
+			}
 		} else {
-			// If the character is not a digit, flush the current number and write the character.
-			flushNumber()
+			// If the character is not a digit, flush the current run and write the character.
+			flushNumber(pos)
 			sb.WriteRune(char)
 		}
 	}
-	flushNumber() // Ensure any trailing number is processed
+	flushNumber(len(input)) // Ensure any trailing number is processed
 
 	return sb.String()
 }
 
 // replaceLuhnValidNumbersWithDelimiters scans the input for Luhn-valid numbers with delimiter support and replaces them.
 // These are separate functions to keep the base case as fast as possible, if no delimiters are needed.
-func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string, skipRanges [][2]int) string {
+func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string, skipRanges [][]int) string {
 	var sb strings.Builder
+	sb.Grow(len(input))
 	var currentNumber strings.Builder
 	var currentString strings.Builder
 	var trailingDelimiter rune

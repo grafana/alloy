@@ -83,7 +83,7 @@ func TestSkipRegex(t *testing.T) {
 		input := "session=" + luhnUUID + " end"
 		ranges := findSkipRanges(input, uuidRegex)
 		require.Len(t, ranges, 1)
-		require.Equal(t, [2]int{8, 8 + len(luhnUUID)}, ranges[0])
+		require.Equal(t, []int{8, 8 + len(luhnUUID)}, ranges[0])
 	})
 
 	t.Run("findSkipRanges returns nil when no matches present", func(t *testing.T) {
