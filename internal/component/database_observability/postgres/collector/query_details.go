@@ -165,8 +165,10 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			// computed elsewhere from pg_stat_activity / server logs.
 			var fpErr error
 			fp, fpErr = fingerprint.Fingerprint(queryText)
-			if fpErr != nil || fp == "" {
+			if fpErr != nil {
 				c.logger.Warn("could not compute query fingerprint; emitting query_association without fingerprint", "queryid", queryID, "err", fpErr)
+			} else if fp == "" {
+				c.logger.Warn("empty query fingerprint; emitting query_association without fingerprint", "queryid", queryID)
 			}
 		}
 

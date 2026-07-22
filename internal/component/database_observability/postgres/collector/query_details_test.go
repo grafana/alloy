@@ -1044,12 +1044,12 @@ func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		for _, e := range lokiClient.Received() {
-			if e.Labels["op"] == OP_QUERY_ASSOCIATION {
+			if e.Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(e.Line, "query_fingerprint=") {
 				return true
 			}
 		}
 		return false
-	}, 3*time.Second, 50*time.Millisecond, "query_association op should be emitted")
+	}, 3*time.Second, 50*time.Millisecond, "fingerprinted query_association op should be emitted")
 
 	c.Stop()
 	lokiClient.Stop()
@@ -1057,12 +1057,12 @@ func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
 	entries := lokiClient.Received()
 	var assoc *loki.Entry
 	for i := range entries {
-		if entries[i].Labels["op"] == OP_QUERY_ASSOCIATION {
+		if entries[i].Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(entries[i].Line, "query_fingerprint=") {
 			assoc = &entries[i]
 			break
 		}
 	}
-	require.NotNil(t, assoc, "expected at least one query_association entry")
+	require.NotNil(t, assoc, "expected at least one fingerprinted query_association entry")
 	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, assoc.Labels)
 	expectedBody := fmt.Sprintf(`level="info" queryid="abc123" query_fingerprint="%s" querytext=%q datname="books_store"`, fp, q)
 	require.Equal(t, expectedBody, assoc.Line)
@@ -1166,12 +1166,12 @@ func TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack(t *testing.T) {
 	c.Stop()
 	lokiClient.Stop()
 
+	received := lokiClient.Received()
 	var emptyAssoc *loki.Entry
-	for i := range lokiClient.Received() {
-		e := lokiClient.Received()[i]
-		require.NotContains(t, e.Line, `query_fingerprint=""`, "must never emit an empty query_fingerprint")
-		if e.Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(e.Line, `queryid="empty1"`) {
-			emptyAssoc = &e
+	for i := range received {
+		require.NotContains(t, received[i].Line, `query_fingerprint=""`, "must never emit an empty query_fingerprint")
+		if received[i].Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(received[i].Line, `queryid="empty1"`) {
+			emptyAssoc = &received[i]
 		}
 	}
 	require.NotNil(t, emptyAssoc, "empty-fingerprint row should still emit a query_association entry")
