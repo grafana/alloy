@@ -136,8 +136,8 @@ The following fields are exported and can be referenced by other components:
 
 ## Use a custom Gitleaks configuration
 
-By default, the component detects secrets using the upstream [Gitleaks default ruleset][gitleaks-config], which is compiled into {{< param "PRODUCT_NAME" >}}.
-To change which secrets are detected, set the `gitleaks_config` argument to the path of a custom Gitleaks TOML file.
+By default, the component detects secrets with the upstream [Gitleaks default ruleset][gitleaks-config].
+To change which secrets the component detects, set the `gitleaks_config` argument to the path of a custom Gitleaks TOML file.
 
 The recommended way to write a custom configuration is to _extend_ the default rules rather than replace them.
 Add an `[extend]` block with `useDefault = true` so your file starts from the complete set of built-in rules, then layer your own changes on top.
@@ -166,12 +166,12 @@ loki.secretfilter "secret_filter" {
 ```
 
 When `useDefault = true`, redefining a `[[rules]]` block with the same `id` as a built-in rule merges your changes into that rule instead of replacing it.
-This is what makes it possible to adjust a built-in rule, for example, to add allowlists to it, without losing its detection logic.
+This lets you add allowlists or tune fields without losing the detection logic for that rule.
 
 To turn off a built-in rule entirely rather than adjust it, list its `id` in `disabledRules`.
 Disabling a rule stops it from detecting anything, so to keep a rule but ignore specific values, use an allowlist instead.
 
-Adjusting a built-in rule with allowlists is the most common way to reduce false positives, as the [following section](#handle-false-positives) demonstrates.
+Adjust built-in rules with allowlists to reduce false positives, as shown in [Handle false positives](#handle-false-positives).
 For the full set of configuration options, such as global allowlists, the `condition` field, `stopwords`, and path-based matching, refer to the [Gitleaks configuration documentation][gitleaks-configuration].
 
 [gitleaks-configuration]: https://github.com/gitleaks/gitleaks#configuration
@@ -188,12 +188,12 @@ When this happens, identify which rule is firing, then add an _allowlist_ to tha
 
 To find the responsible rule, inspect the `rule` label on the `loki_secretfilter_secrets_redacted_by_category_total` metric.
 
-For example, the built-in `generic-api-key` rule is the most common source of false positives because it matches high-entropy strings broadly.
-You may benefit from just raising the default entropy value.
+For example, the built-in `generic-api-key` rule can produce false positives because it matches high-entropy strings broadly.
+Start by raising the entropy value.
 
 For more precise control, keep the rule enabled and allowlist only the specific values that cause false positives.
 
-Allowlist the false positives by extending the same configuration from the previous section.
+Allowlist false positives by extending the same configuration from the previous section.
 Redefine the offending rule by `id` and add one or more `[[rules.allowlists]]` blocks.
 Each allowlist uses `regexTarget` to choose what its `regexes` are tested against:
 
@@ -217,7 +217,7 @@ keywords = ["secret_tok_"]
 # Reduce false positives from the built-in generic-api-key rule.
 [[rules]]
 id = "generic-api-key"
-# Raise the generic-api-key entropy threshold above its default of 3.5.
+# Raise the generic-api-key entropy threshold above its default.
 entropy = 4.0
 
   # Allowlist by matched text: ignore findings around known non-secret fields.
@@ -237,7 +237,7 @@ entropy = 4.0
   ]
 ```
 
-With this configuration, `generic-api-key` keeps detecting real secrets, but no longer redacts log lines such as `token_id=a1B2c3D4e5F6g7H8i9J0` or values shaped like the UUID `8f14e45f-ceea-167a-9c2b-1f0a3e4d5c6b`.
+With this configuration, `generic-api-key` still detects real secrets, but it no longer redacts log lines such as `token_id=a1B2c3D4e5F6g7H8i9J0` or values shaped like the UUID `8f14e45f-ceea-167a-9c2b-1f0a3e4d5c6b`.
 
 ## Manage performance
 
@@ -254,8 +254,8 @@ Entries that {{< param "PRODUCT_NAME" >}} doesn't select are forwarded unchanged
 Monitor `loki_secretfilter_entries_bypassed_total` to see how many entries were skipped.
 
 **Bound per-line work with `processing_timeout`.**
-Large lines can be expensive to scan, so set `processing_timeout` to cap how long the component spends on any single entry.
-By default, a timed-out line is forwarded unredacted so no data is lost, or you can set `drop_on_timeout = true` to drop it instead.
+Large lines can take longer to scan, so set `processing_timeout` to cap how long the component spends on any single entry.
+By default, a timed-out line is still forwarded — with any secrets found before the deadline already redacted — so no data is lost. Set `drop_on_timeout = true` to drop it instead. 
 Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
 
 **Detect fewer secrets.**
