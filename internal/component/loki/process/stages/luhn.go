@@ -48,16 +48,23 @@ func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return toStage(&luhnFilterStage{
-		config:    &config,
-		skipRegex: skipRegex,
-	}), nil
+	stage := &luhnFilterStage{config: &config}
+	if skipRegex != nil {
+		stage.skipRegex = skipRegex
+	}
+	return toStage(stage), nil
+}
+
+// skipRegexMatcher is the subset of *regexp.Regexp that findSkipRanges needs. It exists so
+// tests can substitute a call-counting stub to verify the regex is only run when needed.
+type skipRegexMatcher interface {
+	FindAllStringIndex(s string, n int) [][]int
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
 	config    *LuhnFilterConfig
-	skipRegex *regexp.Regexp
+	skipRegex skipRegexMatcher
 }
 
 // Process implements Stage.
@@ -81,6 +88,17 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 
 	var skipRanges [][2]int
 	if r.skipRegex != nil {
+		// Running skip_regex is only worthwhile if there's a Luhn-valid number to potentially
+		// exempt from redaction. Skip it entirely for the common case of no match at all.
+		var hasMatch bool
+		if r.config.Delimiters != "" {
+			hasMatch = hasLuhnValidNumberWithDelimiters(*input, r.config.MinLength, r.config.Delimiters)
+		} else {
+			hasMatch = hasLuhnValidNumber(*input, r.config.MinLength)
+		}
+		if !hasMatch {
+			return
+		}
 		skipRanges = findSkipRanges(*input, r.skipRegex)
 	}
 
@@ -91,8 +109,69 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 	}
 }
 
+// hasLuhnValidNumber reports whether input contains a run of at least minLength digits that is
+// Luhn-valid. It mirrors the digit-scanning logic in replaceLuhnValidNumbers without building any
+// output, so it can cheaply decide whether skip_regex is worth evaluating.
+func hasLuhnValidNumber(input string, minLength int) bool {
+	digitStart := -1
+
+	checkRun := func(end int) bool {
+		if digitStart == -1 {
+			return false
+		}
+		start := digitStart
+		digitStart = -1
+		if end-start < minLength {
+			return false
+		}
+		number, err := strconv.Atoi(input[start:end])
+		return err == nil && isLuhn(number)
+	}
+
+	for i, char := range input {
+		if unicode.IsDigit(char) {
+			if digitStart == -1 {
+				digitStart = i
+			}
+		} else if checkRun(i) {
+			return true
+		}
+	}
+	return checkRun(len(input))
+}
+
+// hasLuhnValidNumberWithDelimiters is the delimiter-aware counterpart to hasLuhnValidNumber,
+// mirroring replaceLuhnValidNumbersWithDelimiters's digit-scanning logic.
+func hasLuhnValidNumberWithDelimiters(input string, minLength int, delimiters string) bool {
+	var currentNumber strings.Builder
+
+	checkRun := func() bool {
+		valid := false
+		if currentNumber.Len() >= minLength {
+			number, err := strconv.Atoi(currentNumber.String())
+			valid = err == nil && isLuhn(number)
+		}
+		currentNumber.Reset()
+		return valid
+	}
+
+	for _, char := range input {
+		switch {
+		case unicode.IsDigit(char):
+			currentNumber.WriteRune(char)
+		case delimiters != "" && strings.ContainsRune(delimiters, char) && currentNumber.Len() > 0:
+			continue
+		default:
+			if checkRun() {
+				return true
+			}
+		}
+	}
+	return checkRun()
+}
+
 // findSkipRanges returns the byte ranges of all matches of skipRegex found in input.
-func findSkipRanges(input string, skipRegex *regexp.Regexp) [][2]int {
+func findSkipRanges(input string, skipRegex skipRegexMatcher) [][2]int {
 	matches := skipRegex.FindAllStringIndex(input, -1)
 	if len(matches) == 0 {
 		return nil

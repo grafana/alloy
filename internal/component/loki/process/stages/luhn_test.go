@@ -188,6 +188,146 @@ func TestSkipRegex(t *testing.T) {
 		})
 		require.Error(t, err)
 	})
+
+	t.Run("skip_regex is not evaluated when the entry has no Luhn-valid number", func(t *testing.T) {
+		matcher := &countingMatcher{}
+		// Hex-looking id with no digit run reaching minLength and no Luhn-valid number.
+		entry := "session=a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4 status=ok"
+		stage := &luhnFilterStage{
+			config: &LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+			},
+			skipRegex: matcher,
+		}
+		stage.Process(nil, nil, nil, &entry)
+		require.Equal(t, 0, matcher.calls)
+	})
+
+	t.Run("skip_regex is evaluated when the entry has a Luhn-valid number", func(t *testing.T) {
+		matcher := &countingMatcher{}
+		entry := "card=" + luhnCC
+		stage := &luhnFilterStage{
+			config: &LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+			},
+			skipRegex: matcher,
+		}
+		stage.Process(nil, nil, nil, &entry)
+		require.Equal(t, 1, matcher.calls)
+	})
+}
+
+// countingMatcher is a skipRegexMatcher stub that records how many times it was invoked, used to
+// verify that skip_regex is only evaluated when the entry actually has a Luhn-valid number.
+type countingMatcher struct {
+	calls int
+}
+
+func (m *countingMatcher) FindAllStringIndex(s string, n int) [][]int {
+	m.calls++
+	return nil
+}
+
+func TestHasLuhnValidNumber(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     string
+		minLength int
+		want      bool
+	}{
+		{"no digits", "session=a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4", 12, false},
+		{"digit run shorter than minLength", "id=12345", 12, false},
+		{"digit run long enough but not Luhn-valid", "id=123456789012", 12, false},
+		{"digit run long enough and Luhn-valid", "card=4242424242424242", 12, true},
+		{"Luhn-valid run embedded in longer text", "card=4242424242424242 end", 12, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			require.Equal(t, c.want, hasLuhnValidNumber(c.input, c.minLength))
+		})
+	}
+}
+
+func TestHasLuhnValidNumberWithDelimiters(t *testing.T) {
+	cases := []struct {
+		name       string
+		input      string
+		minLength  int
+		delimiters string
+		want       bool
+	}{
+		{"no digits", "session=a1b2c3d4-e5f6", 12, " -", false},
+		{"delimited run shorter than minLength", "id=1234-5678", 12, " -", false},
+		{"delimited run long enough but not Luhn-valid", "id=1234-5678-9012", 12, " -", false},
+		{"delimited run long enough and Luhn-valid", "card=4242-4242-4242-4242", 12, " -", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			require.Equal(t, c.want, hasLuhnValidNumberWithDelimiters(c.input, c.minLength, c.delimiters))
+		})
+	}
+}
+
+// BenchmarkLuhnFilterStage compares Process performance with skip_regex enabled
+// vs disabled, across inputs that do and don't contain UUIDs and Luhn-valid numbers.
+func BenchmarkLuhnFilterStage(b *testing.B) {
+	const (
+		uuidRegexStr = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+		luhnUUID     = "a3f1b2e4-c5d6-7e8f-4242-424242424242" // last group is a 12-digit Luhn-valid run
+		luhnCC       = "4242424242424242"                     // 16-digit Luhn-valid credit card number
+	)
+
+	fixtures := []struct {
+		name  string
+		entry string
+	}{
+		{
+			name:  "no_uuid_no_luhn",
+			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing request" request_id=req-8f14e45fceaa user_id=usr-2ab3c9d1e502 note="ref 12345 67890" status=success duration_ms=42`,
+		},
+		{
+			name:  "no_uuid_with_luhn",
+			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing payment" request_id=req-8f14e45fceaa user_id=usr-2ab3c9d1e502 card=` + luhnCC + ` status=success duration_ms=42`,
+		},
+		{
+			name:  "with_uuid_no_luhn",
+			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing request" request_id=` + luhnUUID + ` user_id=` + luhnUUID + ` note="ref 12345 67890" status=success duration_ms=42`,
+		},
+		{
+			name:  "with_uuid_with_luhn",
+			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing payment" request_id=` + luhnUUID + ` user_id=` + luhnUUID + ` card=` + luhnCC + ` status=success duration_ms=42`,
+		},
+	}
+
+	skipRegexStates := []struct {
+		name      string
+		skipRegex string
+	}{
+		{"skip_regex=off", ""},
+		{"skip_regex=on", uuidRegexStr},
+	}
+
+	for _, fx := range fixtures {
+		for _, sr := range skipRegexStates {
+			b.Run(fx.name+"/"+sr.name, func(b *testing.B) {
+				stage, err := newLuhnFilterStage(LuhnFilterConfig{
+					Replacement: "**REDACTED**",
+					MinLength:   12,
+					SkipRegex:   sr.skipRegex,
+				})
+				require.NoError(b, err)
+				processor := stage.(Processor)
+
+				b.ReportAllocs()
+				for i := 0; i < b.N; i++ {
+					entry := fx.entry
+					processor.Process(nil, nil, nil, &entry)
+				}
+			})
+		}
+	}
 }
 
 func TestValidateConfig(t *testing.T) {
