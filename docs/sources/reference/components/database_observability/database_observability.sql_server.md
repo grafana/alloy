@@ -43,6 +43,7 @@ The following collectors are configurable:
 | Name              | Description                                                  | Enabled by default |
 |-------------------|--------------------------------------------------------------|--------------------|
 | `schema_details`  | Collect schemas and tables from `information_schema`. | yes                |
+| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
 
 ## Blocks
 
@@ -57,12 +58,14 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
+| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
 [schema_details]: #schema_details
+[query_metrics]: #query_metrics
 
 {{< /docs/alloy-config >}}
 
@@ -79,6 +82,7 @@ When you don't configure a `cloud_provider` block, {{< param "PRODUCT_NAME" >}} 
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
+
 ### `aws`
 
 The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
@@ -112,6 +116,28 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
 The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+
+### `query_metrics`
+
+| Name                  | Type       | Description                                                        | Default | Required |
+|-----------------------|------------|-------------------------------------------------------------------|---------|----------|
+| `collect_interval`    | `duration` | How frequently to collect metrics from Query Store.               | `"1m"`  | no       |
+| `statements_limit`    | `int`      | Maximum number of queries to track, ranked by recent duration.    | `50`   | no       |
+| `statements_lookback` | `duration` | Only queries executed within this window are eligible for tracking.| `"1h"`  | no       |
+
+The `query_metrics` collector reads [Query Store][query-store] for the database selected in the `data_source_name`, not every database on the instance.
+Configure the `data_source_name` to select a user database that has Query Store enabled.
+When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection and remains healthy.
+
+The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
+
+The collector exports the following counters, each labeled with `database` and `query_hash`:
+
+| Metric                                              | Description                                                      |
+|-----------------------------------------------------|------------------------------------------------------------------|
+| `database_observability_query_executions_total`     | Total number of query executions observed while the query is selected. |
+| `database_observability_query_errors_total`         | Total number of failed executions (aborted or exception) observed while the query is selected. |
+| `database_observability_query_duration_seconds_total`| Total query execution duration in seconds observed while the query is selected. |
 
 ## Example
 
