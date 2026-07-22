@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,9 +59,9 @@ func TestReplaceLuhnValidNumbers(t *testing.T) {
 	for _, c := range cases {
 		var got string
 		if c.delimiters == "" {
-			got = replaceLuhnValidNumbers(c.input, c.replacement, 13, nil)
+			got = replaceLuhnValidNumbers(c.input, c.replacement, 13)
 		} else {
-			got = replaceLuhnValidNumbersWithDelimiters(c.input, c.replacement, 13, c.delimiters, nil)
+			got = replaceLuhnValidNumbersWithDelimiters(c.input, c.replacement, 13, c.delimiters)
 		}
 		if got != c.want {
 			t.Errorf("replaceLuhnValidNumbers(%q, %q) == %q, want %q", c.input, c.replacement, got, c.want)
@@ -70,204 +69,9 @@ func TestReplaceLuhnValidNumbers(t *testing.T) {
 	}
 }
 
-func TestSkipRegex(t *testing.T) {
-	const (
-		uuidRegexStr = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
-		luhnUUID     = "a3f1b2e4-c5d6-7e8f-4242-424242424242"
-		luhnCC       = "4242424242424242" // 16-digit Luhn-valid credit card number (Stripe test card)
-		replacement  = "**REDACTED**"
-	)
-	uuidRegex := regexp.MustCompile(uuidRegexStr)
-
-	t.Run("findSkipRanges finds a single match", func(t *testing.T) {
-		input := "session=" + luhnUUID + " end"
-		ranges := findSkipRanges(input, uuidRegex)
-		require.Len(t, ranges, 1)
-		require.Equal(t, []int{8, 8 + len(luhnUUID)}, ranges[0])
-	})
-
-	t.Run("findSkipRanges returns nil when no matches present", func(t *testing.T) {
-		require.Nil(t, findSkipRanges("no uuids here "+luhnCC, uuidRegex))
-	})
-
-	t.Run("findSkipRanges finds multiple matches", func(t *testing.T) {
-		input := luhnUUID + " " + luhnUUID
-		require.Len(t, findSkipRanges(input, uuidRegex), 2)
-	})
-
-	t.Run("UUID Luhn-valid segment preserved when skip_regex matches it", func(t *testing.T) {
-		// With minLength=12, the last UUID segment (424242424242) would be redacted normally.
-		input := "session=" + luhnUUID
-		got := replaceLuhnValidNumbers(input, replacement, 12, findSkipRanges(input, uuidRegex))
-		require.Equal(t, input, got)
-	})
-
-	t.Run("UUID Luhn-valid segment redacted when skip_regex not configured", func(t *testing.T) {
-		// Baseline: without skip ranges the segment gets replaced.
-		input := "session=" + luhnUUID
-		got := replaceLuhnValidNumbers(input, replacement, 12, nil)
-		require.Contains(t, got, replacement)
-		require.NotContains(t, got, "424242424242")
-	})
-
-	t.Run("credit card redacted but UUID preserved", func(t *testing.T) {
-		input := "card=" + luhnCC + " session=" + luhnUUID
-		got := replaceLuhnValidNumbers(input, replacement, 12, findSkipRanges(input, uuidRegex))
-		require.Contains(t, got, replacement)
-		require.Contains(t, got, luhnUUID)
-		require.NotContains(t, got, luhnCC)
-	})
-
-	t.Run("Luhn detection still works when skip_regex configured but no matches present", func(t *testing.T) {
-		input := "card=" + luhnCC
-		got := replaceLuhnValidNumbers(input, replacement, 16, findSkipRanges(input, uuidRegex))
-		require.Contains(t, got, replacement)
-		require.NotContains(t, got, luhnCC)
-	})
-
-	t.Run("delimiter support preserves UUID", func(t *testing.T) {
-		input := "card=4242-4242-4242-4242 session=" + luhnUUID
-		got := replaceLuhnValidNumbersWithDelimiters(input, replacement, 16, " -", findSkipRanges(input, uuidRegex))
-		require.Contains(t, got, replacement)
-		require.Contains(t, got, luhnUUID)
-		require.NotContains(t, got, "4242-4242-4242-4242")
-	})
-
-	t.Run("end-to-end Process with skip_regex set to the uuid pattern", func(t *testing.T) {
-		input := "card=" + luhnCC + " session=" + luhnUUID
-		entry := input
-		stage := &luhnFilterStage{
-			config: &LuhnFilterConfig{
-				Replacement: replacement,
-				MinLength:   12,
-				SkipRegex:   uuidRegexStr,
-			},
-			skipRegex: uuidRegex,
-		}
-		stage.Process(nil, nil, nil, &entry)
-		require.Contains(t, entry, replacement)
-		require.Contains(t, entry, luhnUUID)
-		require.NotContains(t, entry, luhnCC)
-	})
-
-	t.Run("end-to-end Process with skip_regex unset leaves behavior unchanged", func(t *testing.T) {
-		input := "card=" + luhnCC + " session=" + luhnUUID
-		entry := input
-		stage := &luhnFilterStage{
-			config: &LuhnFilterConfig{
-				Replacement: replacement,
-				MinLength:   12,
-			},
-		}
-		stage.Process(nil, nil, nil, &entry)
-		require.Contains(t, entry, replacement)
-		require.NotContains(t, entry, luhnCC)
-		require.NotContains(t, entry, luhnUUID)
-	})
-
-	t.Run("newLuhnFilterStage compiles skip_regex from config", func(t *testing.T) {
-		stage, err := newLuhnFilterStage(LuhnFilterConfig{
-			Replacement: replacement,
-			MinLength:   12,
-			SkipRegex:   uuidRegexStr,
-		})
-		require.NoError(t, err)
-
-		entry := "card=" + luhnCC + " session=" + luhnUUID
-		stage.(Processor).Process(nil, nil, nil, &entry)
-		require.Contains(t, entry, replacement)
-		require.Contains(t, entry, luhnUUID)
-		require.NotContains(t, entry, luhnCC)
-	})
-
-	t.Run("newLuhnFilterStage rejects invalid skip_regex", func(t *testing.T) {
-		_, err := newLuhnFilterStage(LuhnFilterConfig{
-			Replacement: replacement,
-			MinLength:   12,
-			SkipRegex:   "(",
-		})
-		require.Error(t, err)
-	})
-
-	t.Run("skip_regex is not evaluated when the entry has no Luhn-valid number", func(t *testing.T) {
-		matcher := &countingMatcher{}
-		// Hex-looking id with no digit run reaching minLength and no Luhn-valid number.
-		entry := "session=a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4 status=ok"
-		stage := &luhnFilterStage{
-			config: &LuhnFilterConfig{
-				Replacement: replacement,
-				MinLength:   12,
-			},
-			skipRegex: matcher,
-		}
-		stage.Process(nil, nil, nil, &entry)
-		require.Equal(t, 0, matcher.calls)
-	})
-
-	t.Run("skip_regex is evaluated when the entry has a Luhn-valid number", func(t *testing.T) {
-		matcher := &countingMatcher{}
-		entry := "card=" + luhnCC
-		stage := &luhnFilterStage{
-			config: &LuhnFilterConfig{
-				Replacement: replacement,
-				MinLength:   12,
-			},
-			skipRegex: matcher,
-		}
-		stage.Process(nil, nil, nil, &entry)
-		require.Equal(t, 1, matcher.calls)
-	})
-}
-
-// countingMatcher is a skipRegexMatcher stub that records how many times it was invoked, used to
-// verify that skip_regex is only evaluated when the entry actually has a Luhn-valid number.
-type countingMatcher struct {
-	calls int
-}
-
-func (m *countingMatcher) FindAllStringIndex(s string, n int) [][]int {
-	m.calls++
-	return nil
-}
-
-func TestHasLuhnValidNumber(t *testing.T) {
-	cases := []struct {
-		name      string
-		input     string
-		minLength int
-		want      bool
-	}{
-		{"no digits", "session=a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4", 12, false},
-		{"digit run shorter than minLength", "id=12345", 12, false},
-		{"digit run long enough but not Luhn-valid", "id=123456789012", 12, false},
-		{"digit run long enough and Luhn-valid", "card=4242424242424242", 12, true},
-		{"Luhn-valid run embedded in longer text", "card=4242424242424242 end", 12, true},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			require.Equal(t, c.want, hasLuhnValidNumber(c.input, c.minLength))
-		})
-	}
-}
-
-func TestHasLuhnValidNumberWithDelimiters(t *testing.T) {
-	cases := []struct {
-		name       string
-		input      string
-		minLength  int
-		delimiters string
-		want       bool
-	}{
-		{"no digits", "session=a1b2c3d4-e5f6", 12, " -", false},
-		{"delimited run shorter than minLength", "id=1234-5678", 12, " -", false},
-		{"delimited run long enough but not Luhn-valid", "id=1234-5678-9012", 12, " -", false},
-		{"delimited run long enough and Luhn-valid", "card=4242-4242-4242-4242", 12, " -", true},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			require.Equal(t, c.want, hasLuhnValidNumberWithDelimiters(c.input, c.minLength, c.delimiters))
-		})
-	}
+func TestLuhnFilterStageRejectsInvalidSkipRegex(t *testing.T) {
+	_, err := newLuhnFilterStage(LuhnFilterConfig{SkipRegex: "("})
+	require.ErrorContains(t, err, ErrCouldNotCompileRegex.Error())
 }
 
 func TestLuhnFilterStageSkipRegexEndToEnd(t *testing.T) {
@@ -606,27 +410,11 @@ func TestValidateConfig(t *testing.T) {
 				SkipRegex:   `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
 			},
 		},
-		{
-			name: "invalid skip_regex error",
-			input: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &source,
-				MinLength:   10,
-				SkipRegex:   "(",
-			},
-			expected: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &source,
-				MinLength:   10,
-				SkipRegex:   "(",
-			},
-			errorContainsStr: "could not compile",
-		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := validateLuhnFilterConfig(&c.input)
+			err := validateLuhnFilterConfig(&c.input)
 			if c.errorContainsStr == "" {
 				require.NoError(t, err)
 			} else {
