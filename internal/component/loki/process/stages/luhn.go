@@ -183,14 +183,19 @@ func findSkipRanges(input string, skipRegex skipRegexMatcher) [][2]int {
 	return ranges
 }
 
-// isInSkipRange reports whether the byte position pos falls within any of the given ranges.
-func isInSkipRange(pos int, ranges [][2]int) bool {
-	for _, r := range ranges {
-		if pos >= r[0] && pos < r[1] {
-			return true
+// newSkipRangeCursor returns a function that reports whether a byte position falls within any of
+// ranges. ranges must be sorted and non-overlapping (as returned by FindAllStringIndex), and
+// successive calls must pass strictly increasing positions (as in a range-over-string loop). Under
+// those conditions the cursor advances forward only, giving O(n+m) total cost across a scan instead
+// of the O(n*m) a fresh per-character linear scan over ranges would cost.
+func newSkipRangeCursor(ranges [][2]int) func(pos int) bool {
+	idx := 0
+	return func(pos int) bool {
+		for idx < len(ranges) && pos >= ranges[idx][1] {
+			idx++
 		}
+		return idx < len(ranges) && pos >= ranges[idx][0]
 	}
-	return false
 }
 
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
@@ -219,9 +224,10 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int, skipRange
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
+	inSkipRange := newSkipRangeCursor(skipRanges)
 	for pos, char := range input {
 		// Characters that fall inside a skip_regex match are passed through unchanged.
-		if len(skipRanges) > 0 && isInSkipRange(pos, skipRanges) {
+		if inSkipRange(pos) {
 			flushNumber()
 			sb.WriteRune(char)
 			continue
@@ -274,9 +280,10 @@ func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength 
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
+	inSkipRange := newSkipRangeCursor(skipRanges)
 	for pos, char := range input {
 		// Characters that fall inside a skip_regex match are passed through unchanged.
-		if len(skipRanges) > 0 && isInSkipRange(pos, skipRanges) {
+		if inSkipRange(pos) {
 			flushNumber()
 			sb.WriteRune(char)
 			continue
