@@ -255,7 +255,7 @@ Monitor `loki_secretfilter_entries_bypassed_total` to see how many entries were 
 
 **Bound per-line work with `processing_timeout`.**
 Large lines can take longer to scan, so set `processing_timeout` to cap how long the component spends on any single entry.
-By default, a timed-out line is still forwarded — with any secrets found before the deadline already redacted — so no data is lost. Set `drop_on_timeout = true` to drop it instead. 
+By default, a timed-out line is still forwarded, with any secrets found before the deadline already redacted, so no data is lost. Set `drop_on_timeout = true` to drop it instead. 
 Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
 
 **Detect fewer secrets.**
