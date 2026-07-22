@@ -181,6 +181,7 @@ func replaceLuhnValidNumbersSkipRegex(input, replacement string, minLength int, 
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
 func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 	var sb strings.Builder
+	sb.Grow(len(input))
 	var currentNumber strings.Builder
 
 	flushNumber := func() {
@@ -223,6 +224,7 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 // These are separate functions to keep the base case as fast as possible, if no delimiters are needed.
 func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string) string {
 	var sb strings.Builder
+	sb.Grow(len(input))
 	var currentNumber strings.Builder
 	var currentString strings.Builder
 	var trailingDelimiter rune
