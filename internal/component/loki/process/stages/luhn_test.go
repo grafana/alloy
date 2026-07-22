@@ -270,11 +270,210 @@ func TestHasLuhnValidNumberWithDelimiters(t *testing.T) {
 	}
 }
 
+func TestLuhnFilterStageSkipRegexEndToEnd(t *testing.T) {
+	const (
+		uuidRegex     = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+		nonLuhnUUID   = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
+		luhnUUID      = "a3f1b2e4-c5d6-7e8f-4242-424242424242"
+		luhnCard      = "4242424242424242"
+		anotherCard   = "6011111111111117"
+		delimitedCard = "4242-4242-4242-4242"
+		replacement   = "**REDACTED**"
+	)
+
+	tests := []struct {
+		name        string
+		entry       string
+		extracted   map[string]any
+		source      string
+		replacement string
+		minLength   int
+		delimiters  string
+		skipRegex   string
+		want        string
+	}{
+		{
+			name:  "no Luhn number",
+			entry: "payment accepted",
+			want:  "payment accepted",
+		},
+		{
+			name:  "matching UUID without a Luhn number",
+			entry: "session=" + nonLuhnUUID,
+			want:  "session=" + nonLuhnUUID,
+		},
+		{
+			name:  "standalone Luhn number is redacted",
+			entry: "card=" + luhnCard,
+			want:  "card=" + replacement,
+		},
+		{
+			name:      "Luhn number contained by a skip match is preserved",
+			entry:     "safe-card=" + luhnCard,
+			skipRegex: `safe-card=[0-9]+`,
+			want:      "safe-card=" + luhnCard,
+		},
+		{
+			name:      "Luhn number equal to a skip match is preserved",
+			entry:     "card=" + luhnCard,
+			skipRegex: luhnCard,
+			want:      "card=" + luhnCard,
+		},
+		{
+			name:  "Luhn-valid UUID segment is preserved",
+			entry: "session=" + luhnUUID,
+			want:  "session=" + luhnUUID,
+		},
+		{
+			name:  "card before UUID is redacted",
+			entry: "card=" + luhnCard + " session=" + luhnUUID,
+			want:  "card=" + replacement + " session=" + luhnUUID,
+		},
+		{
+			name:  "card after UUID is redacted",
+			entry: "session=" + luhnUUID + " card=" + luhnCard,
+			want:  "session=" + luhnUUID + " card=" + replacement,
+		},
+		{
+			name:  "cursor advances past an earlier non-Luhn UUID",
+			entry: "session=" + nonLuhnUUID + " card=" + luhnCard,
+			want:  "session=" + nonLuhnUUID + " card=" + replacement,
+		},
+		{
+			name:  "multiple skip matches and cards are handled in order",
+			entry: "session1=" + luhnUUID + " card1=" + luhnCard + " session2=" + luhnUUID + " card2=" + anotherCard,
+			want:  "session1=" + luhnUUID + " card1=" + replacement + " session2=" + luhnUUID + " card2=" + replacement,
+		},
+		{
+			name:      "one skip match can contain multiple Luhn numbers",
+			entry:     "safe=" + luhnCard + "/" + anotherCard,
+			skipRegex: `safe=[0-9/]+`,
+			want:      "safe=" + luhnCard + "/" + anotherCard,
+		},
+		{
+			name:      "partial overlap does not suppress redaction",
+			entry:     "card=" + luhnCard,
+			skipRegex: `42424242$`,
+			want:      "card=" + replacement,
+		},
+		{
+			name:      "zero-length skip matches do not suppress redaction",
+			entry:     "card=" + luhnCard,
+			skipRegex: `^|$`,
+			want:      "card=" + replacement,
+		},
+		{
+			name:  "invalid Luhn number is unchanged",
+			entry: "card=4242424242424243",
+			want:  "card=4242424242424243",
+		},
+		{
+			name:      "Luhn number below minimum length is unchanged",
+			entry:     "number=424242424242",
+			minLength: 13,
+			want:      "number=424242424242",
+		},
+		{
+			name:        "custom replacement is used",
+			entry:       "card=" + luhnCard,
+			replacement: "[SECRET]",
+			want:        "card=[SECRET]",
+		},
+		{
+			name:       "delimited card is redacted",
+			entry:      "card=" + delimitedCard,
+			delimiters: "-",
+			want:       "card=" + replacement,
+		},
+		{
+			name:       "delimited card contained by a skip match is preserved",
+			entry:      "safe-card=" + delimitedCard,
+			delimiters: "-",
+			skipRegex:  `safe-card=[0-9-]+`,
+			want:       "safe-card=" + delimitedCard,
+		},
+		{
+			name:      "source without a Luhn number replaces the entry",
+			entry:     "original log line",
+			extracted: map[string]any{"message": "payment accepted"},
+			source:    "message",
+			want:      "payment accepted",
+		},
+		{
+			name:      "source preserves UUID and redacts card",
+			entry:     "original log line",
+			extracted: map[string]any{"message": "session=" + luhnUUID + " card=" + luhnCard},
+			source:    "message",
+			want:      "session=" + luhnUUID + " card=" + replacement,
+		},
+		{
+			name:      "skip regex is evaluated against source rather than entry",
+			entry:     "session=" + luhnUUID,
+			extracted: map[string]any{"message": "card=" + luhnCard},
+			source:    "message",
+			want:      "card=" + replacement,
+		},
+		{
+			name:      "missing source leaves entry unchanged",
+			entry:     "original log line",
+			extracted: map[string]any{},
+			source:    "message",
+			want:      "original log line",
+		},
+		{
+			name:      "non-string source leaves entry unchanged",
+			entry:     "original log line",
+			extracted: map[string]any{"message": 42},
+			source:    "message",
+			want:      "original log line",
+		},
+		{
+			name:       "source supports delimiters",
+			entry:      "original log line",
+			extracted:  map[string]any{"message": "card=" + delimitedCard + " session=" + luhnUUID},
+			source:     "message",
+			delimiters: " -",
+			want:       "card=" + replacement + " session=" + luhnUUID,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			config := LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				Delimiters:  tc.delimiters,
+				SkipRegex:   uuidRegex,
+			}
+			if tc.replacement != "" {
+				config.Replacement = tc.replacement
+			}
+			if tc.minLength != 0 {
+				config.MinLength = tc.minLength
+			}
+			if tc.skipRegex != "" {
+				config.SkipRegex = tc.skipRegex
+			}
+			if tc.source != "" {
+				config.Source = &tc.source
+			}
+
+			stage, err := newLuhnFilterStage(config)
+			require.NoError(t, err)
+
+			entry := tc.entry
+			stage.(Processor).Process(nil, tc.extracted, nil, &entry)
+			require.Equal(t, tc.want, entry)
+		})
+	}
+}
+
 // BenchmarkLuhnFilterStage compares Process performance with skip_regex enabled
 // vs disabled, across inputs that do and don't contain UUIDs and Luhn-valid numbers.
 func BenchmarkLuhnFilterStage(b *testing.B) {
 	const (
 		uuidRegexStr = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+		nonLuhnUUID  = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
 		luhnUUID     = "a3f1b2e4-c5d6-7e8f-4242-424242424242" // last group is a 12-digit Luhn-valid run
 		luhnCC       = "4242424242424242"                     // 16-digit Luhn-valid credit card number
 	)
@@ -293,7 +492,7 @@ func BenchmarkLuhnFilterStage(b *testing.B) {
 		},
 		{
 			name:  "with_uuid_no_luhn",
-			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing request" request_id=` + luhnUUID + ` user_id=` + luhnUUID + ` note="ref 12345 67890" status=success duration_ms=42`,
+			entry: `level=info ts=2024-01-15T10:23:45Z msg="processing request" request_id=` + nonLuhnUUID + ` user_id=` + nonLuhnUUID + ` note="ref 12345 67890" status=success duration_ms=42`,
 		},
 		{
 			name:  "with_uuid_with_luhn",
