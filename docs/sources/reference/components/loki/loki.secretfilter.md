@@ -241,7 +241,8 @@ With this configuration, `generic-api-key` still detects real secrets, but it no
 
 ## Manage performance
 
-Secret detection runs a set of regular expressions against every log line, so its cost scales with both your log volume and the number of active rules.
+Secret detection runs regular expressions against every log line.
+Each active rule adds scan work, and CPU cost rises with log volume and rule count.
 The following options help you control that cost.
 
 **Reduce the number of lines processed.**
