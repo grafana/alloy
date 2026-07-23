@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.19.0](https://github.com/grafana/alloy/compare/v1.18.0...v1.19.0) (2026-07-23)
+
+
+### Features 🌟
+
+* Add ability to exempt lines matching a configured regex pattern from loki.process stage.luhn ([#6608](https://github.com/grafana/alloy/issues/6608)) ([2e0748d](https://github.com/grafana/alloy/commit/2e0748d3f87e666095dd4969411aa0dcc8b6c14a))
+* Add start_timestamp_zero_ingestion to Prometheus metric components ([#6610](https://github.com/grafana/alloy/issues/6610)) ([1a9ed95](https://github.com/grafana/alloy/commit/1a9ed956fa34a172b97b0d11c72d2e9232f359f2))
+* **beyla.ebpf:** Run Beyla as a subprocess ([#6695](https://github.com/grafana/alloy/issues/6695)) ([61ec3d2](https://github.com/grafana/alloy/commit/61ec3d29587322974d76a1cacace9e192eed9825))
+* Binary Alloy Homebrew Formula ([#6723](https://github.com/grafana/alloy/issues/6723)) ([024d224](https://github.com/grafana/alloy/commit/024d22432ebcf8214cfd6f832c91d99754cfbc1d))
+* Bump Alloy Version to v1.18.0 in Helm Chart ([#6722](https://github.com/grafana/alloy/issues/6722)) ([6a3d2e3](https://github.com/grafana/alloy/commit/6a3d2e39422c25361f63ab9d4a072502863db466))
+* Check imports of inline Alloy config in OTel mode ([#6677](https://github.com/grafana/alloy/issues/6677)) ([fda0449](https://github.com/grafana/alloy/commit/fda0449505c9d9391f532047d50df23aacaf200a))
+* **database_observability.postgres:** Emit op=query_association_v2 carrying query_fingerprint ([#6297](https://github.com/grafana/alloy/issues/6297)) ([75239d0](https://github.com/grafana/alloy/commit/75239d0108be1a732162c445ba14df5952391cf4))
+* **database_observability.sql_server:** Support csp metadata for SQL Server ([#6689](https://github.com/grafana/alloy/issues/6689)) ([24c7207](https://github.com/grafana/alloy/commit/24c7207eda9e203fc5a7f671efcda25a350945db))
+* **pyroscope.java:** Update async-profiler binaries to v4.5 ([#6739](https://github.com/grafana/alloy/issues/6739)) ([9b8aa87](https://github.com/grafana/alloy/commit/9b8aa87f5b53735a0f2451f945c80a3d71f8100a))
+
+
+### Bug Fixes 🐛
+
+* Add nop receiver to OTel Engine ([#6751](https://github.com/grafana/alloy/issues/6751)) ([8b7703c](https://github.com/grafana/alloy/commit/8b7703c011c4d940aa60daab5fa3405091c35b98))
+* **database_observability.postgres:** Restore cgo SQL fingerprinting on Windows ([#6746](https://github.com/grafana/alloy/issues/6746)) ([bc33331](https://github.com/grafana/alloy/commit/bc33331133ec534daa3791071aed90bff5f919f9))
+* **database_observability.postgres:** Roll back op=query_association_v2, fold fingerprint into op=query_association ([#6745](https://github.com/grafana/alloy/issues/6745)) ([40e8f1e](https://github.com/grafana/alloy/commit/40e8f1ec4b217806c3707cf11d3aca100482a2ce))
+* **dependencies:** Upgrade golang.org/x/text to v0.39.0 ([#6744](https://github.com/grafana/alloy/issues/6744)) ([105ecf6](https://github.com/grafana/alloy/commit/105ecf69a77ad8d2a1d144e09a7f96ba7f0afedc))
+* **loki.process:** Return errors from metric registration instead of panicking ([#6078](https://github.com/grafana/alloy/issues/6078)) ([a388da5](https://github.com/grafana/alloy/commit/a388da5be3097f65e45d91d14070651570fff00e))
+* **loki.source.windowsevent:** Use octal notation for file permissions ([#6077](https://github.com/grafana/alloy/issues/6077)) ([789140d](https://github.com/grafana/alloy/commit/789140dfec9c65be1ba041766644a2773a435f06))
+
 ## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-07-17)
 
 
