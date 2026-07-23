@@ -290,7 +290,11 @@ update-beyla:
 	@[ -n "$(TAG)" ] || { echo "usage: make update-beyla TAG=<beyla-version>  (e.g. TAG=v3.29.0)"; exit 1; }
 	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
 	    --update-checksums $(TAG) $(BEYLA_VERSION_FILE)
-	@$(MAKE) download-beyla download-beyla-schema sync-beyla-docs-version
+	@$(MAKE) download-beyla download-beyla-schema sync-beyla-docs-version update-beyla-golden
+
+.PHONY: update-beyla-golden
+update-beyla-golden:
+	@UPDATE_GOLDEN=1 go test ./internal/component/beyla/ebpf/internal/config/ -run TestEmittedYAMLGolden >/dev/null
 
 .PHONY: download-beyla-schema
 download-beyla-schema:

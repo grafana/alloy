@@ -25,6 +25,14 @@ func buildYAML(t *testing.T, args Arguments, rt Runtime) map[string]any {
 	return config
 }
 
+// mustYAML marshals v back to a YAML string for require.YAMLEq comparisons.
+func mustYAML(t *testing.T, v any) string {
+	t.Helper()
+	data, err := yaml.Marshal(v)
+	require.NoError(t, err)
+	return string(data)
+}
+
 func TestYAMLGeneration(t *testing.T) {
 	args := Arguments{
 		Discovery: Discovery{
@@ -174,25 +182,24 @@ func TestYAMLGeneration_NetworkFlows(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 12345})
 
-	// Verify network
-	networkFlows, ok := config["network"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, true, networkFlows["enable"])
-	require.Equal(t, "0.0.0.0", networkFlows["agent_ip"])
-	require.Equal(t, []any{"eth0"}, networkFlows["interfaces"])
-	require.Equal(t, []any{"TCP", "UDP"}, networkFlows["protocols"])
-	require.Equal(t, 1, networkFlows["sampling"])
-	require.Equal(t, []any{"10.0.0.0/8"}, networkFlows["cidrs"])
-	require.Equal(t, "ingress", networkFlows["direction"])
-	require.Equal(t, "ipv4", networkFlows["agent_ip_type"])
-
 	// geo_ip/reverse_dns must survive under network (backward compat with released beyla.ebpf).
-	geoIP := networkFlows["geo_ip"].(map[string]any)
-	require.Equal(t, 1024, geoIP["cache_len"])
-	require.Equal(t, "/etc/geoip/country.mmdb", geoIP["maxmind"].(map[string]any)["country_path"])
-	reverseDNS := networkFlows["reverse_dns"].(map[string]any)
-	require.Equal(t, "local", reverseDNS["type"])
-	require.Equal(t, 256, reverseDNS["cache_len"])
+	require.YAMLEq(t, `
+enable: true
+agent_ip: 0.0.0.0
+interfaces: [eth0]
+protocols: [TCP, UDP]
+sampling: 1
+cidrs: [10.0.0.0/8]
+direction: ingress
+agent_ip_type: ipv4
+geo_ip:
+  cache_len: 1024
+  maxmind:
+    country_path: /etc/geoip/country.mmdb
+reverse_dns:
+  type: local
+  cache_len: 256
+`, mustYAML(t, config["network"]))
 }
 
 func TestYAMLGeneration_InjectorEnabledSDKs(t *testing.T) {
