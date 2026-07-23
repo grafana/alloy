@@ -153,6 +153,7 @@ The following arguments are supported:
 | `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                         | `false`    | no       |
 | `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                                    | `false`    | no       |
 | `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                    | `100`      | no       |
+| `tlab`                            | `bool`          | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc` to be set.                            | `false`    | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
@@ -176,7 +177,7 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 When `custom_arguments` is set, Alloy skips these options from this block:
 
-`cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`.
+`cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`, `tlab`.
 
 For example, this enables multi-event profiling (`cpu`, `alloc`, and `lock`) with custom thresholds:
 
