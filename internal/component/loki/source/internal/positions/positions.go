@@ -103,18 +103,27 @@ type LegacyFile struct {
 // ConvertLegacyPositionsFile will convert the legacy positions file to the new format if:
 // 1. There is no file at the newpath
 // 2. There is a file at the legacy path and that it is valid yaml
-func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
-	legacyPositions := readLegacyFile(legacyPath, l)
+//
+// Returns an error if the legacy file exists but could not be read (e.g.
+// permission denied) -- as opposed to simply not existing, which is not an
+// error. Callers should treat a non-nil error as fatal: proceeding despite
+// an unreadable legacy positions file risks silently re-ingesting every
+// tailed file from the beginning (#5493).
+func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) error {
+	legacyPositions, err := readLegacyFile(legacyPath, l)
+	if err != nil {
+		return fmt.Errorf("legacy positions file %q exists but could not be read, refusing to start to avoid re-ingesting logs: %w", legacyPath, err)
+	}
 	// legacyPositions did not exist or was invalid so return.
 	if legacyPositions == nil {
 		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
-		return
+		return nil
 	}
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
 		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
-		return
+		return nil
 	}
 
 	newPositions := make(map[Entry]string)
@@ -130,6 +139,7 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
 		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
 	}
 	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+	return nil
 }
 
 // ConvertLegacyPositionsFileJournal will convert the legacy positions file to the new format for a journal job if:
