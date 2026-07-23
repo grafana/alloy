@@ -30,13 +30,15 @@ func init() {
 }
 
 type Arguments struct {
-	Environment     string           `alloy:"environment,attr,optional"`
-	Port            int              `alloy:"port,attr,optional"`
-	SubscriptionID  string           `alloy:"subscription_id,attr,optional"`
-	OAuth           *OAuth           `alloy:"oauth,block,optional"`
-	ManagedIdentity *ManagedIdentity `alloy:"managed_identity,block,optional"`
-	RefreshInterval time.Duration    `alloy:"refresh_interval,attr,optional"`
-	ResourceGroup   string           `alloy:"resource_group,attr,optional"`
+	Environment      string            `alloy:"environment,attr,optional"`
+	Port             int               `alloy:"port,attr,optional"`
+	SubscriptionID   string            `alloy:"subscription_id,attr,optional"`
+	OAuth            *OAuth            `alloy:"oauth,block,optional"`
+	ManagedIdentity  *ManagedIdentity  `alloy:"managed_identity,block,optional"`
+	SDK              *SDK              `alloy:"sdk_auth,block,optional"`
+	WorkloadIdentity *WorkloadIdentity `alloy:"workload_identity,block,optional"`
+	RefreshInterval  time.Duration     `alloy:"refresh_interval,attr,optional"`
+	ResourceGroup    string            `alloy:"resource_group,attr,optional"`
 
 	ProxyConfig     *config.ProxyConfig `alloy:",squash"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
@@ -55,6 +57,22 @@ type ManagedIdentity struct {
 	ClientID string `alloy:"client_id,attr"`
 }
 
+// SDK configures authentication using the Azure SDK's DefaultAzureCredential
+// chain. The chain reads credentials from the environment and tries several
+// sources in order, including environment variables, Workload Identity, and
+// managed identities.
+// See https://learn.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication
+type SDK struct {
+	TenantID string `alloy:"tenant_id,attr,optional"`
+}
+
+// WorkloadIdentity configures Microsoft Entra Workload Identity authentication.
+// The credentials are read from the environment variables injected by the Azure
+// Workload Identity webhook (AZURE_CLIENT_ID, AZURE_TENANT_ID, and
+// AZURE_FEDERATED_TOKEN_FILE), so the block takes no arguments of its own.
+type WorkloadIdentity struct {
+}
+
 var DefaultArguments = Arguments{
 	Environment:     azure.PublicCloud.Name,
 	Port:            80,
@@ -70,8 +88,21 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	if a.OAuth == nil && a.ManagedIdentity == nil || a.OAuth != nil && a.ManagedIdentity != nil {
-		return fmt.Errorf("exactly one of oauth or managed_identity must be specified")
+	authMethods := 0
+	if a.OAuth != nil {
+		authMethods++
+	}
+	if a.ManagedIdentity != nil {
+		authMethods++
+	}
+	if a.SDK != nil {
+		authMethods++
+	}
+	if a.WorkloadIdentity != nil {
+		authMethods++
+	}
+	if authMethods != 1 {
+		return fmt.Errorf("exactly one of oauth, managed_identity, sdk_auth, or workload_identity must be specified")
 	}
 
 	if err := a.TLSConfig.Validate(); err != nil {
@@ -92,14 +123,20 @@ func (a Arguments) Convert() discovery.DiscovererConfig {
 		tenantID     string
 		clientSecret common.Secret
 	)
-	if a.OAuth != nil {
+	switch {
+	case a.OAuth != nil:
 		authMethod = "OAuth"
 		clientID = a.OAuth.ClientID
 		tenantID = a.OAuth.TenantID
 		clientSecret = common.Secret(a.OAuth.ClientSecret)
-	} else {
+	case a.ManagedIdentity != nil:
 		authMethod = "ManagedIdentity"
 		clientID = a.ManagedIdentity.ClientID
+	case a.SDK != nil:
+		authMethod = "SDK"
+		tenantID = a.SDK.TenantID
+	case a.WorkloadIdentity != nil:
+		authMethod = "WorkloadIdentity"
 	}
 
 	httpClientConfig := config.DefaultHTTPClientConfig

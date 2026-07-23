@@ -15,183 +15,343 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-func TestAlloyUnmarshal(t *testing.T) {
-	alloyCfg := `
-		environment = "AzureTestCloud"
-		port = 8080
-		subscription_id = "subid"
-		refresh_interval = "10m"
-		resource_group = "test"
-		oauth {
-			client_id = "clientid"
-			tenant_id = "tenantid"
-			client_secret = "clientsecret"
-		}
-		enable_http2 = true
-		follow_redirects = false
-		proxy_url = "http://example:8080"
-		http_headers = {
-			"foo" = ["foobar"],
-		}`
+func TestUnmarshal(t *testing.T) {
+	proxyURL, _ := url.Parse("http://example:8080")
 
-	var args Arguments
-	err := syntax.Unmarshal([]byte(alloyCfg), &args)
-	require.NoError(t, err)
+	tests := []struct {
+		name      string
+		config    string
+		expectErr string
+		expected  Arguments
+	}{
+		{
+			name: "oauth full config",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				oauth {
+					client_id = "clientid"
+					tenant_id = "tenantid"
+					client_secret = "clientsecret"
+				}
+				enable_http2 = true
+				follow_redirects = false
+				proxy_url = "http://example:8080"
+				http_headers = {
+					"foo" = ["foobar"],
+				}`,
+			expected: Arguments{
+				Environment:    "AzureTestCloud",
+				Port:           8080,
+				SubscriptionID: "subid",
+				OAuth: &OAuth{
+					ClientID:     "clientid",
+					TenantID:     "tenantid",
+					ClientSecret: "clientsecret",
+				},
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				ProxyConfig:     &config.ProxyConfig{ProxyURL: config.URL{URL: proxyURL}},
+				FollowRedirects: false,
+				EnableHTTP2:     true,
+				HTTPHeaders: &config.Headers{
+					Headers: map[string][]alloytypes.Secret{"foo": {"foobar"}},
+				},
+			},
+		},
+		{
+			name: "managed_identity",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				managed_identity {
+					client_id = "clientid"
+				}`,
+			expected: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				ManagedIdentity: &ManagedIdentity{ClientID: "clientid"},
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				FollowRedirects: true,
+				EnableHTTP2:     true,
+			},
+		},
+		{
+			name: "sdk_auth with tenant_id",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				sdk_auth {
+					tenant_id = "tenantid"
+				}`,
+			expected: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				SDK:             &SDK{TenantID: "tenantid"},
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				FollowRedirects: true,
+				EnableHTTP2:     true,
+			},
+		},
+		{
+			name: "sdk_auth without tenant_id",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				sdk_auth {}`,
+			expected: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				SDK:             &SDK{},
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				FollowRedirects: true,
+				EnableHTTP2:     true,
+			},
+		},
+		{
+			name: "workload_identity",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				workload_identity {}`,
+			expected: Arguments{
+				Environment:      "AzureTestCloud",
+				Port:             8080,
+				SubscriptionID:   "subid",
+				WorkloadIdentity: &WorkloadIdentity{},
+				RefreshInterval:  10 * time.Minute,
+				ResourceGroup:    "test",
+				FollowRedirects:  true,
+				EnableHTTP2:      true,
+			},
+		},
+		{
+			name: "oauth missing required fields",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				oauth {
+					client_id = "clientid"
+				}`,
+			expectErr: "missing required attribute",
+		},
+		{
+			name: "no auth method",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"`,
+			expectErr: "exactly one of oauth, managed_identity, sdk_auth, or workload_identity must be specified",
+		},
+		{
+			name: "multiple auth methods",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				oauth {
+					client_id = "clientid"
+					tenant_id = "tenantid"
+					client_secret = "clientsecret"
+				}
+				managed_identity {
+					client_id = "clientid"
+				}`,
+			expectErr: "exactly one of oauth, managed_identity, sdk_auth, or workload_identity must be specified",
+		},
+		{
+			name: "invalid tls config",
+			config: `
+				environment = "AzureTestCloud"
+				port = 8080
+				subscription_id = "subid"
+				refresh_interval = "10m"
+				resource_group = "test"
+				managed_identity {
+					client_id = "clientid"
+				}
+				tls_config {
+					cert_file = "certfile"
+					cert_pem = "certpem"
+				}`,
+			expectErr: "at most one of cert_pem and cert_file must be configured",
+		},
+	}
 
-	assert.Equal(t, "AzureTestCloud", args.Environment)
-	assert.Equal(t, 8080, args.Port)
-	assert.Equal(t, "subid", args.SubscriptionID)
-	assert.Equal(t, 10*time.Minute, args.RefreshInterval)
-	assert.Equal(t, "test", args.ResourceGroup)
-	assert.Equal(t, "clientid", args.OAuth.ClientID)
-	assert.Equal(t, "tenantid", args.OAuth.TenantID)
-	assert.Equal(t, "clientsecret", string(args.OAuth.ClientSecret))
-	assert.Equal(t, true, args.EnableHTTP2)
-	assert.Equal(t, false, args.FollowRedirects)
-	assert.Equal(t, "http://example:8080", args.ProxyConfig.ProxyURL.String())
-
-	header := args.HTTPHeaders.Headers["foo"][0]
-	assert.Equal(t, "foobar", string(header))
-}
-
-func TestAlloyUnmarshal_OAuthRequiredFields(t *testing.T) {
-	alloyCfg := `
-		environment = "AzureTestCloud"
-		port = 8080
-		subscription_id = "subid"
-		refresh_interval = "10m"
-		resource_group = "test"
-		oauth {
-			client_id = "clientid"
-		}`
-	var args Arguments
-	err := syntax.Unmarshal([]byte(alloyCfg), &args)
-	require.Error(t, err)
-}
-
-func TestValidate(t *testing.T) {
-	noAuth := `
-		environment = "AzureTestCloud"
-		port = 8080
-		subscription_id = "subid"
-		refresh_interval = "10m"
-		resource_group = "test"`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(noAuth), &args)
-	require.ErrorContains(t, err, "exactly one of oauth or managed_identity must be specified")
-
-	bothAuth := `
-		environment = "AzureTestCloud"
-		port = 8080
-		subscription_id = "subid"
-		refresh_interval = "10m"
-		resource_group = "test"
-		oauth {
-			client_id = "clientid"
-			tenant_id = "tenantid"
-			client_secret = "clientsecret"
-		}
-		managed_identity {
-			client_id = "clientid"
-		}`
-	var args2 Arguments
-	err = syntax.Unmarshal([]byte(bothAuth), &args2)
-	require.ErrorContains(t, err, "exactly one of oauth or managed_identity must be specified")
-
-	invalidTLS := `
-		environment = "AzureTestCloud"
-		port = 8080
-		subscription_id = "subid"
-		refresh_interval = "10m"
-		resource_group = "test"
-		managed_identity {
-			client_id = "clientid"
-		}
-		tls_config {
-			cert_file = "certfile"
-			cert_pem = "certpem"
-		}`
-	var args3 Arguments
-	err = syntax.Unmarshal([]byte(invalidTLS), &args3)
-	require.ErrorContains(t, err, "at most one of cert_pem and cert_file must be configured")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tc.config), &args)
+			if tc.expectErr != "" {
+				require.ErrorContains(t, err, tc.expectErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, args)
+		})
+	}
 }
 
 func TestConvert(t *testing.T) {
-	proxyUrl, _ := url.Parse("http://example:8080")
-	alloyArgsOAuth := Arguments{
-		Environment:     "AzureTestCloud",
-		Port:            8080,
-		SubscriptionID:  "subid",
-		RefreshInterval: 10 * time.Minute,
-		ResourceGroup:   "test",
-		OAuth: &OAuth{
-			ClientID:     "clientid",
-			TenantID:     "tenantid",
-			ClientSecret: "clientsecret",
+	proxyURL, _ := url.Parse("http://example:8080")
+	proxyConfig := &config.ProxyConfig{ProxyURL: config.URL{URL: proxyURL}}
+
+	tests := []struct {
+		name string
+		args Arguments
+		// expected is compared against the converted SDConfig. HTTPClientConfig
+		// is derived from Prometheus defaults, so it's verified separately below
+		// via wantProxyURL/wantHeader rather than reconstructed here.
+		expected     promdiscovery.SDConfig
+		wantProxyURL string
+		wantHeader   string
+	}{
+		{
+			name: "oauth",
+			args: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				OAuth: &OAuth{
+					ClientID:     "clientid",
+					TenantID:     "tenantid",
+					ClientSecret: "clientsecret",
+				},
+				FollowRedirects: false,
+				EnableHTTP2:     false,
+				ProxyConfig:     proxyConfig,
+				HTTPHeaders: &config.Headers{
+					Headers: map[string][]alloytypes.Secret{"foo": {"foobar"}},
+				},
+			},
+			expected: promdiscovery.SDConfig{
+				Environment:          "AzureTestCloud",
+				Port:                 8080,
+				SubscriptionID:       "subid",
+				RefreshInterval:      model.Duration(10 * time.Minute),
+				ResourceGroup:        "test",
+				AuthenticationMethod: "OAuth",
+				ClientID:             "clientid",
+				TenantID:             "tenantid",
+				ClientSecret:         "clientsecret",
+			},
+			wantProxyURL: "http://example:8080",
+			wantHeader:   "foobar",
 		},
-		FollowRedirects: false,
-		EnableHTTP2:     false,
-		ProxyConfig: &config.ProxyConfig{
-			ProxyURL: config.URL{
-				URL: proxyUrl,
+		{
+			name: "managed_identity",
+			args: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				ManagedIdentity: &ManagedIdentity{ClientID: "clientid"},
+				FollowRedirects: true,
+				EnableHTTP2:     true,
+				ProxyConfig:     proxyConfig,
+			},
+			expected: promdiscovery.SDConfig{
+				Environment:          "AzureTestCloud",
+				Port:                 8080,
+				SubscriptionID:       "subid",
+				RefreshInterval:      model.Duration(10 * time.Minute),
+				ResourceGroup:        "test",
+				AuthenticationMethod: "ManagedIdentity",
+				ClientID:             "clientid",
+			},
+			wantProxyURL: "http://example:8080",
+		},
+		{
+			name: "sdk_auth",
+			args: Arguments{
+				Environment:     "AzureTestCloud",
+				Port:            8080,
+				SubscriptionID:  "subid",
+				RefreshInterval: 10 * time.Minute,
+				ResourceGroup:   "test",
+				SDK:             &SDK{TenantID: "tenantid"},
+			},
+			expected: promdiscovery.SDConfig{
+				Environment:          "AzureTestCloud",
+				Port:                 8080,
+				SubscriptionID:       "subid",
+				RefreshInterval:      model.Duration(10 * time.Minute),
+				ResourceGroup:        "test",
+				AuthenticationMethod: "SDK",
+				TenantID:             "tenantid",
 			},
 		},
-		HTTPHeaders: &config.Headers{
-			Headers: map[string][]alloytypes.Secret{
-				"foo": {"foobar"},
+		{
+			name: "workload_identity",
+			args: Arguments{
+				Environment:      "AzureTestCloud",
+				Port:             8080,
+				SubscriptionID:   "subid",
+				RefreshInterval:  10 * time.Minute,
+				ResourceGroup:    "test",
+				WorkloadIdentity: &WorkloadIdentity{},
+			},
+			expected: promdiscovery.SDConfig{
+				Environment:          "AzureTestCloud",
+				Port:                 8080,
+				SubscriptionID:       "subid",
+				RefreshInterval:      model.Duration(10 * time.Minute),
+				ResourceGroup:        "test",
+				AuthenticationMethod: "WorkloadIdentity",
 			},
 		},
 	}
 
-	args := alloyArgsOAuth.Convert()
-	promArgs, ok := args.(*promdiscovery.SDConfig)
-	require.True(t, ok)
-	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
-	assert.Equal(t, 8080, promArgs.Port)
-	assert.Equal(t, "subid", promArgs.SubscriptionID)
-	assert.Equal(t, model.Duration(10*time.Minute), promArgs.RefreshInterval)
-	assert.Equal(t, "test", promArgs.ResourceGroup)
-	assert.Equal(t, "clientid", promArgs.ClientID)
-	assert.Equal(t, "tenantid", promArgs.TenantID)
-	assert.Equal(t, "clientsecret", string(promArgs.ClientSecret))
-	assert.Equal(t, false, promArgs.HTTPClientConfig.FollowRedirects)
-	assert.Equal(t, false, promArgs.HTTPClientConfig.EnableHTTP2)
-	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := tc.args.Convert().(*promdiscovery.SDConfig)
+			require.True(t, ok)
 
-	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
-	assert.Equal(t, "foobar", string(header))
+			// The HTTP client config is derived from Prometheus defaults; verify
+			// its relevant fields separately and exclude it from the struct diff.
+			httpCfg := got.HTTPClientConfig
+			got.HTTPClientConfig = tc.expected.HTTPClientConfig
+			require.Equal(t, &tc.expected, got)
 
-	alloyArgsManagedIdentity := Arguments{
-		Environment:     "AzureTestCloud",
-		Port:            8080,
-		SubscriptionID:  "subid",
-		RefreshInterval: 10 * time.Minute,
-		ResourceGroup:   "test",
-		ManagedIdentity: &ManagedIdentity{
-			ClientID: "clientid",
-		},
-		FollowRedirects: true,
-		EnableHTTP2:     true,
-		ProxyConfig: &config.ProxyConfig{
-			ProxyURL: config.URL{
-				URL: proxyUrl,
-			},
-		},
+			assert.Equal(t, tc.args.FollowRedirects, httpCfg.FollowRedirects)
+			assert.Equal(t, tc.args.EnableHTTP2, httpCfg.EnableHTTP2)
+			if tc.wantProxyURL != "" {
+				assert.Equal(t, tc.wantProxyURL, httpCfg.ProxyURL.String())
+			}
+			if tc.wantHeader != "" {
+				assert.Equal(t, tc.wantHeader, string(httpCfg.HTTPHeaders.Headers["foo"].Secrets[0]))
+			}
+		})
 	}
-
-	args = alloyArgsManagedIdentity.Convert()
-	promArgs, ok = args.(*promdiscovery.SDConfig)
-	require.True(t, ok)
-	assert.Equal(t, "AzureTestCloud", promArgs.Environment)
-	assert.Equal(t, 8080, promArgs.Port)
-	assert.Equal(t, "subid", promArgs.SubscriptionID)
-	assert.Equal(t, model.Duration(10*time.Minute), promArgs.RefreshInterval)
-	assert.Equal(t, "test", promArgs.ResourceGroup)
-	assert.Equal(t, "clientid", promArgs.ClientID)
-	assert.Equal(t, "", promArgs.TenantID)
-	assert.Equal(t, "", string(promArgs.ClientSecret))
-	assert.Equal(t, true, promArgs.HTTPClientConfig.FollowRedirects)
-	assert.Equal(t, true, promArgs.HTTPClientConfig.EnableHTTP2)
-	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
 }
