@@ -59,7 +59,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	positionFile := filepath.Join(o.DataPath, "positions.yml")
 	if args.LegacyPosition != nil {
-		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
+		if err := positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger); err != nil {
+			return nil, err
+		}
 	}
 
 	positionsFile, err := positions.New(o.Logger, positions.Config{
