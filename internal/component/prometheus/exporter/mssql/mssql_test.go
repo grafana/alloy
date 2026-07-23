@@ -18,6 +18,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 	connection_string = "sqlserver://user:pass@localhost:1433"
 	max_idle_connections = 3
 	max_open_connections = 3
+	max_connection_lifetime = "30m"
 	timeout = "10s"`
 
 	var args Arguments
@@ -25,11 +26,12 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := Arguments{
-		ConnectionString:   alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
-		MaxIdleConnections: 3,
-		MaxOpenConnections: 3,
-		Timeout:            10 * time.Second,
-		ConnectionName:     "",
+		ConnectionString:      alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
+		MaxIdleConnections:    3,
+		MaxOpenConnections:    3,
+		MaxConnectionLifetime: 30 * time.Minute,
+		Timeout:               10 * time.Second,
+		ConnectionName:        "",
 	}
 
 	require.Equal(t, expected, args)
@@ -197,6 +199,17 @@ func TestArgumentsValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "invalid max connection lifetime",
+			args: Arguments{
+				ConnectionString:      alloytypes.Secret("test"),
+				MaxIdleConnections:    1,
+				MaxOpenConnections:    1,
+				Timeout:               10 * time.Second,
+				MaxConnectionLifetime: -1 * time.Second,
+			},
+			wantErr: true,
+		},
+		{
 			name: "valid",
 			args: Arguments{
 				ConnectionString:   alloytypes.Secret("test"),
@@ -233,10 +246,11 @@ metrics:
   query: "SELECT DATEDIFF(second, '19700101', GETUTCDATE()) AS unix_time"`
 
 	args := Arguments{
-		ConnectionString:   alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
-		MaxIdleConnections: 1,
-		MaxOpenConnections: 1,
-		Timeout:            10 * time.Second,
+		ConnectionString:      alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
+		MaxIdleConnections:    1,
+		MaxOpenConnections:    1,
+		MaxConnectionLifetime: 30 * time.Minute,
+		Timeout:               10 * time.Second,
 		QueryConfig: alloytypes.OptionalSecret{
 			Value: strQueryConfig,
 		},
@@ -244,11 +258,12 @@ metrics:
 	res := args.Convert()
 
 	expected := mssql.Config{
-		ConnectionString:   config_util.Secret("sqlserver://user:pass@localhost:1433"),
-		MaxIdleConnections: 1,
-		MaxOpenConnections: 1,
-		Timeout:            10 * time.Second,
-		QueryConfig:        []byte(strQueryConfig),
+		ConnectionString:      config_util.Secret("sqlserver://user:pass@localhost:1433"),
+		MaxIdleConnections:    1,
+		MaxOpenConnections:    1,
+		MaxConnectionLifetime: 30 * time.Minute,
+		Timeout:               10 * time.Second,
+		QueryConfig:           []byte(strQueryConfig),
 	}
 	require.Equal(t, expected, *res)
 }

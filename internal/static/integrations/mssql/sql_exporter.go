@@ -29,13 +29,16 @@ var DefaultConfig = Config{
 }
 
 // Config is the configuration for the mssql integration
+//
+// Don't expose upstream's ScrapeErrorDropInterval field - it's not relevant to Alloy.
 type Config struct {
-	ConnectionString   config_util.Secret `yaml:"connection_string,omitempty"`
-	ConnectionName     string             `yaml:"connection_name,omitempty"`
-	MaxIdleConnections int                `yaml:"max_idle_connections,omitempty"`
-	MaxOpenConnections int                `yaml:"max_open_connections,omitempty"`
-	Timeout            time.Duration      `yaml:"timeout,omitempty"`
-	QueryConfig        util.RawYAML       `yaml:"query_config,omitempty"`
+	ConnectionString      config_util.Secret `yaml:"connection_string,omitempty"`
+	ConnectionName        string             `yaml:"connection_name,omitempty"`
+	MaxIdleConnections    int                `yaml:"max_idle_connections,omitempty"`
+	MaxOpenConnections    int                `yaml:"max_open_connections,omitempty"`
+	MaxConnectionLifetime time.Duration      `yaml:"max_connection_lifetime,omitempty"`
+	Timeout               time.Duration      `yaml:"timeout,omitempty"`
+	QueryConfig           util.RawYAML       `yaml:"query_config,omitempty"`
 }
 
 func (c Config) validate() error {
@@ -53,15 +56,19 @@ func (c Config) validate() error {
 	}
 
 	if c.MaxOpenConnections < 1 {
-		return errors.New("max_connections must be at least 1")
+		return errors.New("max_open_connections must be at least 1")
 	}
 
 	if c.MaxIdleConnections < 1 {
-		return errors.New("max_idle_connection must be at least 1")
+		return errors.New("max_idle_connections must be at least 1")
 	}
 
 	if c.Timeout <= 0 {
 		return errors.New("timeout must be positive")
+	}
+
+	if c.MaxConnectionLifetime < 0 {
+		return errors.New("max_connection_lifetime must not be negative")
 	}
 
 	return nil
@@ -129,10 +136,11 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 		},
 		prometheus.Labels{},
 		&config.GlobalConfig{
-			ScrapeTimeout: model.Duration(c.Timeout),
-			TimeoutOffset: model.Duration(500 * time.Millisecond),
-			MaxConns:      c.MaxOpenConnections,
-			MaxIdleConns:  c.MaxIdleConnections,
+			ScrapeTimeout:   model.Duration(c.Timeout),
+			TimeoutOffset:   model.Duration(500 * time.Millisecond),
+			MaxConns:        c.MaxOpenConnections,
+			MaxIdleConns:    c.MaxIdleConnections,
+			MaxConnLifetime: c.MaxConnectionLifetime,
 		},
 		&enablePing,
 	)
