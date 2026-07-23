@@ -21,7 +21,6 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -159,13 +158,18 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		}
 
 		var fp string
-		var fpErr error
 		if c.enableErrorLogsProcessing {
 			// Fingerprint the raw text BEFORE comment stripping; pg_query
 			// canonicalizes literals at the AST level so the value is stable
 			// across comment-only differences and matches the fingerprint
 			// computed elsewhere from pg_stat_activity / server logs.
+			var fpErr error
 			fp, fpErr = fingerprint.Fingerprint(queryText)
+			if fpErr != nil {
+				c.logger.Warn("could not compute query fingerprint; emitting query_association without fingerprint", "queryid", queryID, "err", fpErr)
+			} else if fp == "" {
+				c.logger.Warn("empty query fingerprint; emitting query_association without fingerprint", "queryid", queryID)
+			}
 		}
 
 		queryText, err = removeComments(c.normalizer, queryText)
@@ -174,24 +178,17 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		if !c.enableErrorLogsProcessing {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_ASSOCIATION,
-				fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
-			)
-		} else if fp != "" {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_ASSOCIATION_V2,
-				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
-			)
+		var body string
+		if fp != "" {
+			body = fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName)
 		} else {
-			// enable_error_logs_processing is on but fingerprinting failed
-			// (empty fp): warn with the queryid and skip the association rather
-			// than emit an empty query_fingerprint or a misleading v1 entry.
-			c.logger.Warn("skipping query_association_v2: could not compute query fingerprint", "queryid", queryID, "err", fpErr)
+			body = fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
 		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			OP_QUERY_ASSOCIATION,
+			body,
+		)
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
