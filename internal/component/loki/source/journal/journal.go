@@ -10,9 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/prometheus/common/model"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -38,7 +35,6 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts           component.Options
 	metrics        *metrics
-	recv           loki.LogsReceiver
 	positions      positions.Positions
 	targetsUpdated chan struct{}
 
@@ -75,7 +71,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		metrics:        newMetrics(o.Registerer),
 		opts:           o,
-		recv:           loki.NewLogsReceiver(),
 		positions:      positionsFile,
 		fanout:         loki.NewFanout(args.ForwardTo),
 		targetsUpdated: make(chan struct{}, 1),
@@ -89,36 +84,24 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.journal component shutting down")
-		// We need to stop posFile first so we don't record entries we are draining
+		c.mut.Lock()
+		defer c.mut.Unlock()
+
+		if c.tailer != nil {
+			c.tailer.Stop()
+		}
 		c.positions.Stop()
 
-		loki.Drain(c.recv, c.fanout, loki.DefaultDrainTimeout, func() {
-			c.mut.Lock()
-			defer c.mut.Unlock()
-			if c.tailer != nil {
-				if err := c.tailer.Stop(); err != nil {
-					c.opts.Logger.Warn("error stopping journal tailer", "err", err)
-				}
-			}
-		})
 	}()
 
-	var wg sync.WaitGroup
-	wg.Go(func() { loki.Consume(ctx, c.recv, c.fanout) })
-	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-c.targetsUpdated:
-				c.reloadTailer()
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-c.targetsUpdated:
+			c.reloadTailer()
 		}
-
-	})
-
-	wg.Wait()
-	return nil
+	}
 }
 
 // Update updates the fields of the component.
@@ -157,52 +140,40 @@ func (c *Component) CurrentHealth() component.Health {
 }
 
 func (c *Component) reloadTailer() {
-	// Grab current state
 	c.mut.RLock()
 	var tailerToStop *tailer
 	if c.tailer != nil {
 		tailerToStop = c.tailer
 	}
-	rcs := alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
 	c.mut.RUnlock()
 
-	// Stop existing tailer
 	if tailerToStop != nil {
-		err := tailerToStop.Stop()
-		if err != nil {
-			c.opts.Logger.Error("error stopping journal tailer", "err", err)
-		}
+		tailerToStop.Stop()
 	}
 
-	// Create new tailer
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	c.tailer = nil
 
-	tailer, err := newTailer(c.metrics, c.opts.Logger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
+	tailer, err := newTailer(tailerOptions{
+		logger:  c.opts.Logger,
+		metrics: c.metrics,
+		fanout:  c.fanout,
+		path:    c.args.Path,
+		id:      c.opts.ID,
+		pos:     c.positions,
+		matches: c.args.Matches,
+		maxAge:  c.args.MaxAge,
+		rcs:     alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules),
+		labels:  c.args.Labels,
+		asJSON:  c.args.FormatAsJson,
+	})
+
 	if err != nil {
 		c.opts.Logger.Error("error creating journal tailer", "err", err, "path", c.args.Path)
 		c.healthErr = fmt.Errorf("error creating journal tailer: %w", err)
 	} else {
 		c.tailer = tailer
+		c.tailer.Start()
 		c.healthErr = nil
-	}
-}
-
-func convertArgs(job string, a Arguments) *scrapeconfig.JournalTargetConfig {
-	labels := model.LabelSet{
-		model.LabelName("job"): model.LabelValue(job),
-	}
-
-	for k, v := range a.Labels {
-		labels[model.LabelName(k)] = model.LabelValue(v)
-	}
-
-	return &scrapeconfig.JournalTargetConfig{
-		MaxAge:  a.MaxAge.String(),
-		JSON:    a.FormatAsJson,
-		Labels:  labels,
-		Path:    a.Path,
-		Matches: a.Matches,
 	}
 }

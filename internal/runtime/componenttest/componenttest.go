@@ -21,7 +21,7 @@ import (
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
-	PromRegistry prometheus.Registerer
+	PromRegistry *prometheus.Registry
 
 	reg component.Registration
 	log *slog.Logger

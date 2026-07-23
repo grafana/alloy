@@ -5,53 +5,65 @@ package journal
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/coreos/go-systemd/v22/journal"
-	"github.com/prometheus/client_golang/prometheus"
+	cjournal "github.com/coreos/go-systemd/v22/journal"
+	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestJournal(t *testing.T) {
-	// Create opts for component
-	tmp := t.TempDir()
-	lr := loki.NewLogsReceiver()
-	c, err := New(component.Options{
-		ID:         "loki.source.journal.test",
-		Logger:     logging.NewSlogNop(),
-		DataPath:   tmp,
-		Registerer: prometheus.DefaultRegisterer,
-	}, Arguments{
-		FormatAsJson: false,
-		MaxAge:       7 * time.Hour,
-		Path:         "",
-		ForwardTo:    []loki.LogsReceiver{lr},
-	})
-	require.NoError(t, err)
-	ctx := t.Context()
-	ctx, cnc := context.WithTimeout(ctx, 5*time.Second)
-	defer cnc()
-	go c.Run(ctx)
-	ts := time.Now().String()
-	err = journal.Send(ts, journal.PriInfo, nil)
-	require.NoError(t, err)
+	t.Run("consumes journal messages", func(t *testing.T) {
+		ctrl, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.source.journal")
+		require.NoError(t, err)
 
-	select {
-	case <-ctx.Done():
-		t.Error("did not get entry in time")
-		return
-	case msg := <-lr.Chan():
-		if strings.Contains(msg.Line, ts) {
-			return
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		id := uuid.New()
+
+		go func() {
+			_ = ctrl.Run(t.Context(), Arguments{
+				ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+				MaxAge:    7 * time.Hour,
+				Matches:   "ALLOY_TEST_ID=" + id.String(),
+			})
+		}()
+
+		require.NoError(t, ctrl.WaitRunning(time.Minute))
+		const numMessages = 10
+
+		for i := range numMessages {
+			err = cjournal.Send(strconv.Itoa(i), cjournal.PriInfo, map[string]string{
+				"ALLOY_TEST_ID": id.String(),
+			})
+			require.NoError(t, err)
 		}
-	}
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector.Received(), numMessages)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		for i := range collector.Received() {
+			require.Equal(t, strconv.Itoa(i), collector.Received()[i].Line)
+		}
+
+		expectedMetrics := `# HELP loki_source_journal_target_lines_total Total number of successful journal lines read
+	# TYPE loki_source_journal_target_lines_total counter
+	loki_source_journal_target_lines_total 10
+	`
+		err = testutil.GatherAndCompare(ctrl.PromRegistry, strings.NewReader(expectedMetrics))
+		require.NoError(t, err)
+	})
 }
 
 func BenchmarkJournal(b *testing.B) {
