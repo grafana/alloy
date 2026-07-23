@@ -147,18 +147,21 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) erro
 // 2. There is a file at the legacy path and that it is valid yaml
 //
 // legacyJob is the name of the journal job in e.g. promatil or agent static.
-func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l *slog.Logger) {
-	legacyPositions := readLegacyFile(legacyPath, l)
+func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l *slog.Logger) error {
+	legacyPositions, err := readLegacyFile(legacyPath, l)
+	if err != nil {
+		return fmt.Errorf("legacy positions file %q exists but could not be read, refusing to start to avoid re-ingesting logs: %w", legacyPath, err)
+	}
 	// legacyPositions did not exist or was invalid so return.
 	if legacyPositions == nil {
 		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
-		return
+		return nil
 	}
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
 		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
-		return
+		return nil
 	}
 
 	var (
