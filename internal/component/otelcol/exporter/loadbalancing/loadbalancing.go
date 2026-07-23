@@ -277,7 +277,7 @@ var _ syntax.Defaulter = &KubernetesResolver{}
 func (r *KubernetesResolver) SetToDefault() {
 	*r = KubernetesResolver{
 		Ports:   []int32{4317},
-		Timeout: 1 * time.Second,
+		Timeout: 1 * time.Minute,
 	}
 }
 
