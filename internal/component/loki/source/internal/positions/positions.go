@@ -103,18 +103,20 @@ type LegacyFile struct {
 // ConvertLegacyPositionsFile will convert the legacy positions file to the new format if:
 // 1. There is no file at the newpath
 // 2. There is a file at the legacy path and that it is valid yaml
-func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
-	legacyPositions := readLegacyFile(legacyPath, l)
-	// legacyPositions did not exist or was invalid so return.
+func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) error {
+	legacyPositions, err := readLegacyFile(legacyPath, l)
+	if err != nil {
+		return err
+	}
 	if legacyPositions == nil {
 		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
-		return
+		return nil
 	}
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
 		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
-		return
+		return nil
 	}
 
 	newPositions := make(map[Entry]string)
@@ -128,8 +130,10 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
 	err = writePositionFile(newPath, newPositions)
 	if err != nil {
 		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
+		return err
 	}
 	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+	return nil
 }
 
 // ConvertLegacyPositionsFileJournal will convert the legacy positions file to the new format for a journal job if:
@@ -138,7 +142,11 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
 //
 // legacyJob is the name of the journal job in e.g. promatil or agent static.
 func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l *slog.Logger) {
-	legacyPositions := readLegacyFile(legacyPath, l)
+	legacyPositions, err := readLegacyFile(legacyPath, l)
+	if err != nil {
+		l.Error("error reading legacy positions file", "path", legacyPath, "error", err)
+		return
+	}
 	// legacyPositions did not exist or was invalid so return.
 	if legacyPositions == nil {
 		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
@@ -173,27 +181,35 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
 }
 
-func readLegacyFile(legacyPath string, l *slog.Logger) *LegacyFile {
+func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 	oldFile, err := os.Stat(legacyPath)
 	// If the old file doesn't exist or is empty then return early.
-	if err != nil || oldFile.Size() == 0 {
+	if err != nil {
+		if os.IsNotExist(err) {
+			l.Info("no legacy positions file found", "path", legacyPath)
+			return nil, nil
+		}
+		l.Error("error reading legacy positions file", "path", legacyPath, "error", err)
+		return nil, fmt.Errorf("error reading legacy positions file %q: %w", legacyPath, err)
+	}
+	if oldFile.Size() == 0 {
 		l.Info("no legacy positions file found", "path", legacyPath)
-		return nil
+		return nil, nil
 	}
 	// Try to read and parse the legacy file.
 	clean := filepath.Clean(legacyPath)
 	buf, err := os.ReadFile(clean)
 	if err != nil {
 		l.Error("error reading legacy positions file", "path", clean, "error", err)
-		return nil
+		return nil, fmt.Errorf("error reading legacy positions file %q: %w", clean, err)
 	}
 	legacyPositions := &LegacyFile{}
 	err = yaml.UnmarshalStrict(buf, legacyPositions)
 	if err != nil {
 		l.Error("error parsing legacy positions file", "path", clean, "error", err)
-		return nil
+		return nil, nil
 	}
-	return legacyPositions
+	return legacyPositions, nil
 }
 
 // New makes a new Positions.

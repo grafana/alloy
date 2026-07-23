@@ -52,6 +52,14 @@ func writeLegacy(t *testing.T, tmpDir string) string {
 	return legacy
 }
 
+func TestConvertLegacyPositionsFileReturnsReadError(t *testing.T) {
+	legacy := filepath.Join(t.TempDir(), "legacy")
+	require.NoError(t, os.Mkdir(legacy, 0750))
+
+	err := ConvertLegacyPositionsFile(legacy, filepath.Join(t.TempDir(), "positions"), logging.NewSlogNop())
+	require.ErrorContains(t, err, "error reading legacy positions file")
+}
+
 func TestLegacyConversion(t *testing.T) {
 	tmpDir := t.TempDir()
 	legacy := writeLegacy(t, tmpDir)
