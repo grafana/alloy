@@ -5,5 +5,7 @@ service:
   enabled: true
 serviceMonitor:
   enabled: true
+  attachMetadata:
+    node: true
   tlsConfig:
     insecureSkipVerify: true

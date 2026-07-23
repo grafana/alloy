@@ -194,6 +194,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | serviceAccount.create | bool | `true` | Whether to create a service account for the Grafana Alloy deployment. |
 | serviceAccount.name | string | `nil` | The name of the existing service account to use when serviceAccount.create is false. |
 | serviceMonitor.additionalLabels | object | `{}` | Additional labels for the service monitor. |
+| serviceMonitor.attachMetadata | object | `{}` | Attaches node metadata to discovered targets. Requires Prometheus Operator v0.45+ and the `nodes` RBAC permission on the Prometheus service account. ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#attachmetadata |
 | serviceMonitor.enabled | bool | `false` |  |
 | serviceMonitor.interval | string | `""` | Scrape interval. If not set, the Prometheus default scrape interval is used. |
 | serviceMonitor.metricRelabelings | list | `[]` | MetricRelabelConfigs to apply to samples after scraping, but before ingestion. ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig |
