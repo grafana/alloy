@@ -1,0 +1,79 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	output {
+		traces = [otelcol.processor.redaction.default.input]
+	}
+}
+
+otelcol.processor.redaction "default" {
+	allow_all_keys       = true
+	allowed_keys         = ["description", "group"]
+	ignored_keys         = ["safe_attribute"]
+	blocked_key_patterns = [".*token.*"]
+	ignored_key_patterns = [".*safe.*"]
+	allowed_values       = ["^https?://.*"]
+	blocked_values       = ["4[0-9]{12}(?:[0-9]{3})?"]
+	hash_function        = "hmac-sha256"
+	hmac_key             = "0123456789abcdef0123456789abcdef"
+	redact_all_types     = true
+	summary              = "debug"
+
+	url_sanitizer {
+		enabled            = true
+		attributes         = ["http.url", "url.full"]
+		sanitize_span_name = true
+	}
+
+	db_sanitizer {
+		sanitize_span_name = true
+
+		sql {
+			enabled    = true
+			attributes = ["db.statement"]
+		}
+
+		redis {
+			enabled = true
+		}
+
+		valkey {
+			enabled = true
+		}
+
+		memcached {
+			enabled = true
+		}
+
+		mongo {
+			enabled = true
+		}
+
+		opensearch {
+			enabled = true
+		}
+
+		es {
+			enabled = true
+		}
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

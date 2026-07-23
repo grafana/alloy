@@ -1195,6 +1195,8 @@ github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e h1:XN6vpnyS0vur4R23eP
 github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
+github.com/grafana/clusterurl v0.2.1 h1:ygU7u8z1Ie1dfdoOViLZPmhuu26wMBKMXPXJXBk7t8M=
+github.com/grafana/clusterurl v0.2.1/go.mod h1:IdIOq5skvcUaZWe+pj732lxtn1wQ0t+br7dn7Z5W6Xw=
 github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff h1:/v+WgSjDWKBQg9iIDULBDy0F26ds6asrNtEQt3x+95A=
 github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff/go.mod h1:re/L4wAtBh8vkYBWVMn+8cfeq1CEdJig2Zta4Eiy/H4=
 github.com/grafana/dskit v0.0.0-20260209132809-8d1c6d34bb5a h1:a/GywXjGvbhyra9fG7vqe8fN1xnNbCVIjWluZwus8d4=
@@ -1928,6 +1930,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstartt
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.153.0/go.mod h1:fJp+YuMEsOuZD2zudtidMPkvZtHYjRVM1wCygw5vr/o=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.153.0 h1:sGmIdePszoFAAU12QWFzYvebf6ENepR9plFzTTc8yFQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.153.0/go.mod h1:LLXDeNi9M7f3fZm6h4lsKwal2/LdHgJbfjx+ZgozUvw=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.153.0 h1:mdpXHDvHQVFBdV1IyQTshLkui/uFBUMAX5JdfZTqL+4=
+github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.153.0/go.mod h1:hm+55lhnJIGjxcazZTRmELzaOPohoAmOTHC28UHQF9o=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.153.0 h1:3vZ1Y+iWJIprylJn9OiWCt11CDKcofherbFjwmKxtDw=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.153.0/go.mod h1:hE74x7l04EEohgU6RJbwMZ5rXDAN98T9umkZ3UYZDac=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.153.0 h1:NWQL56jAzSmwazkMy5CygDVP/mSdqGv1moHMaapdZOQ=

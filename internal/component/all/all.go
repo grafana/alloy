@@ -104,6 +104,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"          // Import otelcol.processor.memory_limiter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/metricstarttime"        // Import otelcol.processor.metric_start_time
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"  // Import otelcol.processor.probabilistic_sampler
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/redaction"              // Import otelcol.processor.redaction
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"      // Import otelcol.processor.resourcedetection
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/span"                   // Import otelcol.processor.span
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
