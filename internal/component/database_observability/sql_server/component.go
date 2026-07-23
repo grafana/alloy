@@ -133,6 +133,9 @@ func (a *Arguments) Validate() error {
 	}
 
 	if enableOrDisableCollectors(*a)[collector.QueryMetricsCollector] {
+		if a.QueryMetricsArguments.CollectInterval <= 0 {
+			return fmt.Errorf("query_metrics.collect_interval must be greater than zero")
+		}
 		if a.QueryMetricsArguments.StatementsLimit <= 0 {
 			return fmt.Errorf("query_metrics.statements_limit must be greater than zero")
 		}

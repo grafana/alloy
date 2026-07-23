@@ -139,6 +139,8 @@ The collector exports the following counters, each labeled with `database` and `
 | `database_observability_query_errors_total`         | Total number of failed executions (aborted or exception) observed while the query is selected. |
 | `database_observability_query_duration_seconds_total`| Total query execution duration in seconds observed while the query is selected. |
 
+[query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
+
 ## Example
 
 ```alloy

@@ -173,6 +173,12 @@ func TestValidateQueryMetrics(t *testing.T) {
 		require.NoError(t, args.Validate())
 	})
 
+	t.Run("non-positive collect_interval is rejected", func(t *testing.T) {
+		args := base()
+		args.QueryMetricsArguments.CollectInterval = 0
+		require.ErrorContains(t, args.Validate(), "query_metrics.collect_interval")
+	})
+
 	t.Run("non-positive statements_limit is rejected", func(t *testing.T) {
 		args := base()
 		args.QueryMetricsArguments.StatementsLimit = 0
