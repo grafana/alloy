@@ -23,9 +23,14 @@ func runGoModTidy(moduleDir string) error {
 		// Forward go's output so diagnostics surface in the build log.
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		// Pipe falls through to direct on any proxy error; comma only falls
+		cmd.Env = os.Environ()
+		// Respect a GOPROXY the caller already configured (e.g. a corporate
+		// module proxy); only fall back to the public proxy otherwise. Pipe
+		// falls through to direct on any proxy error; comma only falls
 		// through on 404/410, which doesn't cover transient proxy failures.
-		cmd.Env = append(os.Environ(), "GOPROXY=https://proxy.golang.org|direct")
+		if os.Getenv("GOPROXY") == "" {
+			cmd.Env = append(cmd.Env, "GOPROXY=https://proxy.golang.org|direct")
+		}
 
 		log.Printf("Running go mod tidy in %s (attempt %d/%d)", moduleDir, attempt, tidyMaxAttempts)
 		if err := cmd.Run(); err == nil {
