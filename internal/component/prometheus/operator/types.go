@@ -38,7 +38,51 @@ type Arguments struct {
 
 	Scrape ScrapeOptions `alloy:"scrape,block,optional"`
 
+	// ScrapeClasses defines a set of named scrape classes that discovered
+	// resources can reference through their `scrapeClass` field, mirroring the
+	// Prometheus Operator ScrapeClass feature.
+	ScrapeClasses []ScrapeClass `alloy:"scrape_class,block,optional"`
+
 	InformerSyncTimeout time.Duration `alloy:"informer_sync_timeout,attr,optional"`
+}
+
+// ScrapeClass holds common scrape settings that are applied to discovered
+// resources referencing it by name. It mirrors the Prometheus Operator
+// ScrapeClass: https://prometheus-operator.dev/docs/developer/scrapeclass/
+type ScrapeClass struct {
+	// Name is the unique identifier of the scrape class, referenced by a
+	// resource's `scrapeClass` field.
+	Name string `alloy:"name,attr"`
+
+	// Default marks this class as the one applied to resources that do not
+	// reference a scrape class. At most one class may be the default.
+	Default bool `alloy:"default,attr,optional"`
+
+	// TLSConfig is applied to a resource's endpoints unless the endpoint sets
+	// its own TLS configuration.
+	TLSConfig *config.TLSConfig `alloy:"tls_config,block,optional"`
+
+	// Authorization is applied to a resource's endpoints unless the endpoint
+	// sets its own authorization.
+	Authorization *config.Authorization `alloy:"authorization,block,optional"`
+
+	// Relabelings are prepended to the relabel rules of the resource's
+	// endpoints.
+	Relabelings []*alloy_relabel.Config `alloy:"relabel_rule,block,optional"`
+
+	// MetricRelabelings are appended to the metric relabel rules of the
+	// resource's endpoints.
+	MetricRelabelings []*alloy_relabel.Config `alloy:"metric_relabel_rule,block,optional"`
+
+	// AttachMetadata is applied to a resource unless the resource sets its own
+	// attach metadata configuration.
+	AttachMetadata *AttachMetadataConfig `alloy:"attach_metadata,block,optional"`
+}
+
+// AttachMetadataConfig mirrors the Prometheus Operator AttachMetadata type.
+type AttachMetadataConfig struct {
+	// Node controls whether node metadata is attached to discovered targets.
+	Node bool `alloy:"node,attr,optional"`
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
@@ -97,6 +141,40 @@ func (args *Arguments) Validate() error {
 	}
 	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
 		return fmt.Errorf("only endpoints and endpointslice are supported")
+	}
+	if err := validateScrapeClasses(args.ScrapeClasses); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateScrapeClasses(classes []ScrapeClass) error {
+	seen := make(map[string]struct{}, len(classes))
+	defaultSet := false
+	for _, sc := range classes {
+		if sc.Name == "" {
+			return fmt.Errorf("scrape_class name must not be empty")
+		}
+		if _, ok := seen[sc.Name]; ok {
+			return fmt.Errorf("found multiple scrape_class blocks with name %q", sc.Name)
+		}
+		seen[sc.Name] = struct{}{}
+		if sc.Default {
+			if defaultSet {
+				return fmt.Errorf("only one scrape_class may be marked as default")
+			}
+			defaultSet = true
+		}
+		if sc.TLSConfig != nil {
+			if err := sc.TLSConfig.Validate(); err != nil {
+				return fmt.Errorf("scrape_class %q: %w", sc.Name, err)
+			}
+		}
+		if sc.Authorization != nil {
+			if err := sc.Authorization.Validate(); err != nil {
+				return fmt.Errorf("scrape_class %q: %w", sc.Name, err)
+			}
+		}
 	}
 	return nil
 }
