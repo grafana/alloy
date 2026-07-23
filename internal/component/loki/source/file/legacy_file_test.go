@@ -19,6 +19,23 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+func TestLegacyConversionUnreadableFile(t *testing.T) {
+	legacyPositionFilename := filepath.Join(t.TempDir(), "legacy.yaml")
+	require.NoError(t, os.Mkdir(legacyPositionFilename, 0750))
+
+	ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
+	require.NoError(t, err)
+
+	err = ctrl.Run(componenttest.TestContext(t), Arguments{
+		LegacyPositionsFile: legacyPositionFilename,
+		ForwardTo:           []loki.LogsReceiver{},
+		FileMatch: FileMatch{
+			SyncPeriod: 10 * time.Second,
+		},
+	})
+	require.ErrorContains(t, err, "error reading legacy positions file")
+}
+
 func TestLegacyConversion(t *testing.T) {
 	tmpFileDir := t.TempDir()
 
