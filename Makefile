@@ -363,14 +363,21 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql generate-component-manifest
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql generate-component-manifest
 
 generate-graphql:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+endif
+
+generate-component-manifest:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	GOOS= GOARCH= go run ./internal/component/manifest_gen -output internal/component/manifest.yaml
 endif
 
 generate-helm-docs:
