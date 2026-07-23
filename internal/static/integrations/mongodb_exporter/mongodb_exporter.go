@@ -58,6 +58,11 @@ type Config struct {
 	EnableShards             bool               `yaml:"enable_shards,omitempty"`
 	EnableFCV                bool               `yaml:"enable_fcv,omitempty"`
 	EnablePBMMetrics         bool               `yaml:"enable_pbm_metrics,omitempty"`
+	CollStatsNamespaces      []string           `yaml:"collstats_colls,omitempty"`
+	IndexStatsCollections    []string           `yaml:"indexstats_colls,omitempty"`
+	CollStatsLimit           int                `yaml:"collstats_limit,omitempty"`
+	GlobalConnPool           bool               `yaml:"global_conn_pool" default:"true"`
+	ProfileTimeTS            int                `yaml:"profile_time_ts,omitempty" default:"30"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -93,6 +98,15 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
+	collStatsNamespaces := c.CollStatsNamespaces
+	if collStatsNamespaces == nil {
+		collStatsNamespaces = []string{}
+	}
+	indexStatsCollections := c.IndexStatsCollections
+	if indexStatsCollections == nil {
+		indexStatsCollections = []string{}
+	}
+
 	exp := exporter.New(&exporter.Opts{
 		URI:                      string(c.URI),
 		Logger:                   logger,
@@ -115,6 +129,11 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		EnableShards:             c.EnableShards,
 		EnableFCV:                c.EnableFCV,
 		EnablePBMMetrics:         c.EnablePBMMetrics,
+		CollStatsNamespaces:      collStatsNamespaces,
+		IndexStatsCollections:    indexStatsCollections,
+		CollStatsLimit:           c.CollStatsLimit,
+		GlobalConnPool:           c.GlobalConnPool,
+		ProfileTimeTS:            c.ProfileTimeTS,
 	})
 
 	return integrations.NewHandlerIntegration(c.Name(), exp.Handler()), nil
