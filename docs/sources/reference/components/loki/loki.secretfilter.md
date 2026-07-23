@@ -90,13 +90,12 @@ When `origin_label` isn’t set, the `origin` label on `secrets_redacted_by_cate
 
 **Processing timeout:** The `processing_timeout` argument sets a maximum duration for processing each log entry.
 When the timeout is exceeded, the `loki_secretfilter_lines_timed_out_total` metric is incremented.
-By default (`drop_on_timeout = false`), the original unredacted entry is forwarded so no log lines are lost.
+By default (`drop_on_timeout = false`), {{< param "PRODUCT_NAME" >}} forwards the line and redacts any secrets it detected before the timeout, so no log lines are lost.
 When `drop_on_timeout = true`, entries that exceed the timeout are dropped and the `loki_secretfilter_lines_dropped_total` metric is incremented.
 
 Set `label_timed_out = true` to add `secretfilter="timed-out"` to any entry that {{< param "PRODUCT_NAME" >}} forwards after a timeout.
 You can then query timed-out lines in Loki, for example, with `{secretfilter="timed-out"}`.
 {{< param "PRODUCT_NAME" >}} applies this label only to forwarded entries.
-It doesn't label dropped entries when `drop_on_timeout = true`.
 
 {{< admonition type="caution" >}}
 Setting `drop_on_timeout = true` means log lines can be silently dropped.
@@ -104,7 +103,7 @@ A dropped line can't be recovered, whereas an unredacted line containing a secre
 Use this option only when dropping lines is preferable to forwarding potentially unredacted data.
 {{< /admonition >}}
 
-[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
+[embedded-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Blocks
 
@@ -135,16 +134,157 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                              |
 | `loki_secretfilter_secrets_redacted_by_category_total` | Counter | Number of secrets redacted, partitioned by rule name and origin label value. The `origin` label is empty when `origin_label` is not set or the label is absent on the entry. |
 
+## Use a custom Gitleaks configuration
+
+By default, the component detects secrets with the upstream [Gitleaks default ruleset][gitleaks-config].
+To change which secrets the component detects, set the `gitleaks_config` argument to the path of a custom Gitleaks TOML file.
+
+The recommended way to write a custom configuration is to _extend_ the default rules rather than replace them.
+Add an `[extend]` block with `useDefault = true` so your file starts from the complete set of built-in rules, then layer your own changes on top.
+
+```toml
+title = "Extended Gitleaks config"
+
+[extend]
+useDefault = true
+
+# Add your own rule in addition to the built-in ones.
+[[rules]]
+id = "secret-internal-token"
+description = "Secret internal service token"
+regex = '''secret_tok_[0-9a-zA-Z]{32}'''
+keywords = ["secret_tok_"]
+```
+
+Point the component at this file:
+
+```alloy
+loki.secretfilter "secret_filter" {
+    forward_to      = [loki.write.local_loki.receiver]
+    gitleaks_config = "/etc/alloy/gitleaks.toml"
+}
+```
+
+When `useDefault = true`, redefining a `[[rules]]` block with the same `id` as a built-in rule merges your changes into that rule instead of replacing it.
+This lets you add allowlists or tune fields without losing the detection logic for that rule.
+
+To turn off a built-in rule entirely rather than adjust it, list its `id` in `disabledRules`.
+Disabling a rule stops it from detecting anything, so to keep a rule but ignore specific values, use an allowlist instead.
+
+Adjust built-in rules with allowlists to reduce false positives, as shown in [Handle false positives](#handle-false-positives).
+For the full set of configuration options, such as global allowlists, the `condition` field, `stopwords`, and path-based matching, refer to the [Gitleaks configuration documentation][gitleaks-configuration].
+
+[gitleaks-configuration]: https://github.com/gitleaks/gitleaks#configuration
+
+{{< admonition type="note" >}}
+Setting `useDefault = false`, or omitting the `[extend]` block, means only the rules you define yourself are used.
+The built-in rules are not loaded, so most secrets go undetected unless you redefine them.
+{{< /admonition >}}
+
+## Handle false positives
+
+Because detection is regular expression-based, `loki.secretfilter` sometimes redacts values that aren't secrets, such as identifiers, UUIDs, or hashes that happen to look like an API key.
+When this happens, identify which rule is firing, then add an _allowlist_ to that rule so the matching values are ignored.
+
+To find the responsible rule, inspect the `rule` label on the `loki_secretfilter_secrets_redacted_by_category_total` metric.
+
+For example, the built-in `generic-api-key` rule can produce false positives because it matches high-entropy strings broadly.
+Start by raising the entropy value.
+
+For more precise control, keep the rule enabled and allowlist only the specific values that cause false positives.
+
+Allowlist false positives by extending the same configuration from the previous section.
+Redefine the offending rule by `id` and add one or more `[[rules.allowlists]]` blocks.
+Each allowlist uses `regexTarget` to choose what its `regexes` are tested against:
+
+- `regexTarget = "match"` tests against the surrounding matched text, which is useful for allowlisting by field name, such as ignoring anything that looks like `token_id=...`.
+- `regexTarget = "secret"` tests against the captured secret value itself, which is useful for allowlisting by value shape, such as ignoring UUIDs. This is the default when `regexTarget` is omitted.
+
+A finding is ignored when it matches any allowlist on the rule.
+
+```toml
+title = "Extended Gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "secret-internal-token"
+description = "Secret internal service token"
+regex = '''secret_tok_[0-9a-zA-Z]{32}'''
+keywords = ["secret_tok_"]
+
+# Reduce false positives from the built-in generic-api-key rule.
+[[rules]]
+id = "generic-api-key"
+# Raise the generic-api-key entropy threshold above its default.
+entropy = 4.0
+
+  # Allowlist by matched text: ignore findings around known non-secret fields.
+  [[rules.allowlists]]
+  description = "Ignore token identifiers"
+  regexTarget = "match"
+  regexes = [
+    "(?i)token_?id",
+  ]
+
+  # Allowlist by secret value: ignore when the captured value is a UUID.
+  [[rules.allowlists]]
+  description = "Ignore UUID values"
+  regexTarget = "secret"
+  regexes = [
+    '''^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$''',
+  ]
+```
+
+With this configuration, `generic-api-key` still detects real secrets, but it no longer redacts log lines such as `token_id=a1B2c3D4e5F6g7H8i9J0` or values shaped like the UUID `8f14e45f-ceea-167a-9c2b-1f0a3e4d5c6b`.
+
+## Manage performance
+
+Secret detection runs regular expressions against every log line.
+Each active rule adds scan work, and CPU cost rises with log volume and rule count.
+The following options help you control that cost.
+
+**Reduce the number of lines processed.**
+Place `loki.secretfilter` after components that filter or drop logs, such as `loki.process`, so it only scans the lines you care about.
+Fewer lines in means less work for the component.
+
+**Sample high-volume streams with `rate`.**
+Set `rate` to a value below `1.0` to process only a fraction of entries, for example, `0.1` to scan 10% of lines.
+Entries that {{< param "PRODUCT_NAME" >}} doesn't select are forwarded unchanged, so this reduces CPU usage at the cost of leaving some lines unscanned.
+Monitor `loki_secretfilter_entries_bypassed_total` to see how many entries were skipped.
+
+**Bound per-line work with `processing_timeout`.**
+Large lines can take longer to scan, so set `processing_timeout` to cap how long the component spends on any single entry.
+By default, a timed out line is forwarded, and {{< param "PRODUCT_NAME" >}} redacts any findings returned before the timeout, so the line is not dropped.
+Set `drop_on_timeout` to `true` to drop timed out lines instead.
+Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
+
+**Detect fewer secrets.**
+Every active rule runs its own regular expression against each line, so disabling rules you don't need lowers CPU usage.
+Refer to [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration) to disable or tune rules.
+
+```toml
+[extend]
+useDefault = true
+
+# Disable generic-api-key rule
+disabledRules = ["generic-api-key"]
+...
+```
+
 ## Example
 
 This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
 
-Alternatively, you can:
+Optional arguments are supported, several of which are listed below:
 
 - Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
 - Set `redact_percent` to `100` for full redaction.
 - Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
 - Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
+
+For a full list of arguments, refer to [Arguments](#arguments).
 
 ```alloy
 local.file_match "local_logs" {
