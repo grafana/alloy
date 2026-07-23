@@ -42,9 +42,9 @@ type Arguments struct {
 	BlockedKeyPatterns []string `alloy:"blocked_key_patterns,attr,optional"`
 	// IgnoredKeyPatterns is a list of regexes; matching attribute keys pass through unchanged.
 	IgnoredKeyPatterns []string `alloy:"ignored_key_patterns,attr,optional"`
-	// AllowedValues is a list of regexes; matching values of blocked keys are not masked.
+	// AllowedValues is a list of regexes; matching value substrings are left unchanged even if they also match BlockedValues.
 	AllowedValues []string `alloy:"allowed_values,attr,optional"`
-	// BlockedValues is a list of regexes; matching values of allowed keys are masked.
+	// BlockedValues is a list of regexes; matching value substrings are masked after key filtering.
 	BlockedValues []string `alloy:"blocked_values,attr,optional"`
 	// HashFunction hashes redacted values instead of masking them with a fixed string.
 	HashFunction string `alloy:"hash_function,attr,optional"`
