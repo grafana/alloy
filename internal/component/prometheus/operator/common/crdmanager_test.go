@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/config"
@@ -124,6 +125,36 @@ func TestClearConfigsProbe(t *testing.T) {
 	require.ElementsMatch(t, []string{"monitoring/probe", "monitoring/probe-another"}, maps.Keys(m.crdsToMapKeys))
 	require.ElementsMatch(t, []string{"probe/monitoring/probe-another"}, maps.Keys(m.discoveryConfigs))
 	require.ElementsMatch(t, []string{"probe/monitoring/probe-another"}, maps.Keys(m.debugInfo))
+}
+
+func TestAddDebugInfoScrapeConfigsURL(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	m := newCrdManager(
+		component.Options{
+			ID:     "prometheus.operator.probes.blackbox_exporter_probe",
+			Logger: logger,
+			GetServiceData: func(name string) (any, error) {
+				return http.Data{
+					HTTPListenAddr: "localhost:12345",
+					BaseHTTPPath:   "/api/v0/component/",
+				}, nil
+			},
+		},
+		cluster.Mock(),
+		logger,
+		&operator.DefaultArguments,
+		KindProbe,
+		labelstore.New(logger, prometheus.DefaultRegisterer),
+	)
+
+	m.addDebugInfo("monitoring", "google", nil)
+
+	debug := m.debugInfo["probe/monitoring/google"]
+	require.NotNil(t, debug)
+	require.Equal(t,
+		"localhost:12345/api/v0/component/prometheus.operator.probes.blackbox_exporter_probe/scrapeConfig/monitoring/google",
+		debug.ScrapeConfigsURL)
+	require.NotContains(t, debug.ScrapeConfigsURL, "//")
 }
 
 type mockDiscoveryManager struct {
