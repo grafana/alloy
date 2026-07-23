@@ -184,29 +184,54 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
 	}
 	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+	return nil
 }
 
-func readLegacyFile(legacyPath string, l *slog.Logger) *LegacyFile {
+// readLegacyFile reads and parses the legacy positions file.
+//
+// Returns (nil, nil) if the file simply doesn't exist or is empty -- this is
+// the normal, expected case for anyone not migrating from promtail/static
+// mode, or who has already converted. Returns (nil, err) if the file exists
+// but a genuine I/O error (e.g. permission denied) prevented reading it --
+// callers must treat this as fatal rather than silently proceeding as if
+// there were no legacy positions, since that risks re-ingesting every
+// tailed file from the beginning (#5493). Malformed YAML is still treated
+// as non-fatal (nil, nil), unchanged from prior behavior.
+func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 	oldFile, err := os.Stat(legacyPath)
-	// If the old file doesn't exist or is empty then return early.
-	if err != nil || oldFile.Size() == 0 {
+	if err != nil {
+		if os.IsNotExist(err) {
+			l.Info("no legacy positions file found", "path", legacyPath)
+			return nil, nil
+		}
+		// File exists but we couldn't stat it (e.g. permission denied on
+		// a parent directory) -- this is a real error, not "doesn't exist".
+		return nil, fmt.Errorf("error checking legacy positions file %q: %w", legacyPath, err)
+	}
+	if oldFile.Size() == 0 {
 		l.Info("no legacy positions file found", "path", legacyPath)
-		return nil
+		return nil, nil
 	}
 	// Try to read and parse the legacy file.
 	clean := filepath.Clean(legacyPath)
 	buf, err := os.ReadFile(clean)
 	if err != nil {
-		l.Error("error reading legacy positions file", "path", clean, "error", err)
-		return nil
+		// The file exists (we just Stat'd it successfully) but couldn't be
+		// read -- e.g. permission denied. This is the case reported in
+		// #5493: silently returning nil here let Alloy proceed as if there
+		// were no legacy positions, re-ingesting every tailed file.
+		return nil, fmt.Errorf("error reading legacy positions file %q: %w", clean, err)
 	}
 	legacyPositions := &LegacyFile{}
 	err = yaml.UnmarshalStrict(buf, legacyPositions)
 	if err != nil {
+		// Malformed content is left non-fatal, unchanged from prior
+		// behavior -- scope of this fix is I/O errors on the file itself,
+		// not validation of its contents.
 		l.Error("error parsing legacy positions file", "path", clean, "error", err)
-		return nil
+		return nil, nil
 	}
-	return legacyPositions
+	return legacyPositions, nil
 }
 
 // New makes a new Positions.
