@@ -30,25 +30,45 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
+// streamLabels holds the fully relabelled label sets for a container's stdout
+// and stderr streams. They are computed together whenever the tailer's labels
+// change and published as a single immutable value, so the hot path in process
+// can read them with one atomic load instead of taking a lock per log line.
+type streamLabels struct {
+	stdout model.LabelSet
+	stderr model.LabelSet
+}
+
 // tailer for Docker container logs.
 type tailer struct {
-	logger            *slog.Logger
-	recv              loki.LogsReceiver
-	positions         positions.Positions
-	containerID       string
-	labels            model.LabelSet
+	logger      *slog.Logger
+	recv        loki.LogsReceiver
+	positions   positions.Positions
+	containerID string
+	// labelsStr is the label set the tailer was created with. It is the
+	// positions-file key for this container and is deliberately never updated:
+	// the read offset describes how far we have read in the container's log,
+	// which does not depend on how the entries are labelled. Re-keying it when
+	// labels change would orphan the existing entry and re-ship the whole log.
 	labelsStr         string
-	relabelConfig     []*relabel.Config
 	metrics           *metrics
 	restartInterval   time.Duration
 	componentStopping func() bool
 
 	client client.APIClient
 
-	mu      sync.Mutex // protects cancel, running and err fields
+	mu      sync.Mutex // protects cancel, running, err, labels and relabelConfig
 	err     error
 	running bool
 	cancel  context.CancelFunc
+	// labels and relabelConfig may change while the tailer is running; both are
+	// guarded by mu and are only read when recomputing curStreamLabels.
+	labels        model.LabelSet
+	relabelConfig []*relabel.Config
+
+	// curStreamLabels is the published result of applying relabelConfig to
+	// labels. Written under mu, read lock-free by process.
+	curStreamLabels atomic.Pointer[streamLabels]
 
 	wg sync.WaitGroup
 
@@ -69,7 +89,7 @@ func newTailer(
 		return nil, err
 	}
 
-	return &tailer{
+	t := &tailer{
 		logger:            logger,
 		recv:              recv,
 		since:             atomic.NewInt64(pos),
@@ -83,7 +103,48 @@ func newTailer(
 		client:            client,
 		restartInterval:   restartInterval,
 		componentStopping: componentStopping,
-	}, nil
+	}
+	t.publishStreamLabels()
+	return t, nil
+}
+
+// updateLabels replaces the label set and relabel rules used to label entries
+// emitted by this tailer. It takes effect on the next entry read from the
+// container without restarting the log stream, so no entries are duplicated or
+// dropped and the positions file is left untouched.
+func (t *tailer) updateLabels(labels model.LabelSet, relabelConfig []*relabel.Config) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Recomputed unconditionally: Update builds a fresh []*relabel.Config on
+	// every call, so comparing rules to skip the work is not worthwhile.
+	t.labels = labels
+	t.relabelConfig = relabelConfig
+	t.publishStreamLabels()
+}
+
+// streamLabelsFor returns the label set to apply to entries read from the
+// given stream. It is safe on a tailer whose label sets have not been
+// published yet, in which case entries carry no labels.
+func (t *tailer) streamLabelsFor(stdout bool) model.LabelSet {
+	sl := t.curStreamLabels.Load()
+	if sl == nil {
+		return model.LabelSet{}
+	}
+	if stdout {
+		return sl.stdout
+	}
+	return sl.stderr
+}
+
+// publishStreamLabels recomputes the per-stream label sets from the current
+// labels and relabel rules. Callers must hold t.mu, except for newTailer where
+// the tailer is not yet shared.
+func (t *tailer) publishStreamLabels() {
+	t.curStreamLabels.Store(&streamLabels{
+		stdout: t.getStreamLabels("stdout"),
+		stderr: t.getStreamLabels("stderr"),
+	})
 }
 
 func (t *tailer) Run(ctx context.Context) {
@@ -194,10 +255,12 @@ func (t *tailer) DebugInfo() sourceInfo {
 	}
 
 	return sourceInfo{
-		ID:         t.containerID,
-		LastError:  errMsg,
-		Labels:     t.labelsStr,
-		IsRunning:  running,
+		ID:        t.containerID,
+		LastError: errMsg,
+		// Current labels, which may differ from labelsStr after updateLabels.
+		Labels:    t.labels.String(),
+		IsRunning: running,
+		// Keyed by labelsStr, the positions key fixed at creation time.
 		ReadOffset: t.positions.GetString(positions.CursorKey(t.containerID), t.labelsStr),
 	}
 }
@@ -243,12 +306,12 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	// Start processing
 	go func() {
 		defer t.wg.Done()
-		t.process(rstdout, t.getStreamLabels("stdout"))
+		t.process(rstdout, true)
 	}()
 
 	go func() {
 		defer t.wg.Done()
-		t.process(rstderr, t.getStreamLabels("stderr"))
+		t.process(rstderr, false)
 	}()
 
 	// Wait until done
@@ -273,7 +336,7 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	return ts, line[spaceIdx+1:], nil
 }
 
-func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
+func (t *tailer) process(r io.Reader, stdout bool) {
 	const maxCapacity = dockerMaxChunkSize * 64
 
 	reader := bufio.NewReader(r)
@@ -322,7 +385,9 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
-		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+		// Read the label set per entry so that a label change applied by
+		// updateLabels takes effect without restarting the log stream.
+		t.recv.Chan() <- loki.NewEntry(t.streamLabelsFor(stdout), push.Entry{
 			Timestamp: ts,
 			Line:      string(content),
 		})

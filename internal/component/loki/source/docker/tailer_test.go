@@ -517,3 +517,84 @@ func (sw *stdWriter) Write(p []byte) (int, error) {
 	}
 	return sw.Writer.Write(p)
 }
+
+func TestTailerUpdateLabelsAppliesToNewEntries(t *testing.T) {
+	logger := logging.NewSlogNop()
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+
+	ps, err := positions.New(logger, positions.Config{
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: t.TempDir() + "/positions.yml",
+	})
+	require.NoError(t, err)
+	defer ps.Stop()
+
+	tailer, err := newTailer(
+		newMetrics(prometheus.NewRegistry()),
+		logger,
+		entryHandler.Receiver(),
+		ps,
+		"container-id",
+		model.LabelSet{"job": "docker", "env": "staging"},
+		[]*relabel.Config{},
+		nil,
+		restartInterval,
+		func() bool { return false },
+	)
+	require.NoError(t, err)
+
+	// process is fed directly so the label change can be applied while the
+	// stream stays open, which is the behaviour under test.
+	pr, pw := io.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		tailer.process(pr, true)
+	}()
+
+	_, err = pw.Write([]byte("2024-01-01T00:00:00.000000000Z before\n"))
+	require.NoError(t, err)
+
+	lineLabels := func(line string) (model.LabelSet, bool) {
+		for _, e := range entryHandler.Received() {
+			if e.Line == line {
+				return e.Labels, true
+			}
+		}
+		return nil, false
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		lset, ok := lineLabels("before")
+		if !assert.True(c, ok) {
+			return
+		}
+		assert.Equal(c, model.LabelValue("staging"), lset["env"])
+	}, 5*time.Second, 10*time.Millisecond)
+
+	tailer.updateLabels(model.LabelSet{"job": "docker", "env": "production"}, []*relabel.Config{})
+
+	_, err = pw.Write([]byte("2024-01-01T00:00:01.000000000Z after\n"))
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		lset, ok := lineLabels("after")
+		if !assert.True(c, ok) {
+			return
+		}
+		assert.Equal(c, model.LabelValue("production"), lset["env"])
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// Entries already read keep the labels that applied when they were read.
+	lset, ok := lineLabels("before")
+	require.True(t, ok)
+	require.Equal(t, model.LabelValue("staging"), lset["env"])
+
+	require.NoError(t, pw.Close())
+	<-done
+
+	// The positions key must stay stable, otherwise the read offset for this
+	// container is orphaned and its log is re-shipped from the beginning.
+	require.Equal(t, `{env="staging", job="docker"}`, tailer.labelsStr)
+}
