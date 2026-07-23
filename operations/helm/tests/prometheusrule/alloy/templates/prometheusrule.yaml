@@ -1,0 +1,38 @@
+---
+# Source: alloy/templates/prometheusrule.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alloy-controller
+  namespace: default
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+    release: prometheus
+spec:
+  groups:
+    - name: controller
+      rules:
+        - alert: UnhealthyComponents
+          annotations:
+            description: Unhealthy components detected under job {{ $labels.job }}
+            summary: Unhealthy components detected.
+          expr: sum by (cluster, namespace, job) (alloy_component_controller_running_components{health_type!="healthy"})
+            > 0
+          for: 15m
+          labels:
+            severity: warning
+        - alert: SlowComponentEvaluations
+          annotations:
+            description: Component evaluations are taking too long under job {{ $labels.job
+              }}, component_path {{ $labels.component_path }}, component_id {{ $labels.component_id
+              }}.
+            summary: Component evaluations are taking too long.
+          expr: sum by (cluster, namespace, job, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m]))
+            > 0
+          for: 15m
+          labels:
+            severity: warning
