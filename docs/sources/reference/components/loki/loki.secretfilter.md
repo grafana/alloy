@@ -90,7 +90,7 @@ When `origin_label` isn’t set, the `origin` label on `secrets_redacted_by_cate
 
 **Processing timeout:** The `processing_timeout` argument sets a maximum duration for processing each log entry.
 When the timeout is exceeded, the `loki_secretfilter_lines_timed_out_total` metric is incremented.
-By default (`drop_on_timeout = false`), the original unredacted entry is forwarded so no log lines are lost.
+By default (`drop_on_timeout = false`), {{< param "PRODUCT_NAME" >}} forwards the line and redacts any secrets it detected before the timeout, so no log lines are lost.
 When `drop_on_timeout = true`, entries that exceed the timeout are dropped and the `loki_secretfilter_lines_dropped_total` metric is incremented.
 
 Set `label_timed_out = true` to add `secretfilter="timed-out"` to any entry that {{< param "PRODUCT_NAME" >}} forwards after a timeout.
@@ -261,7 +261,7 @@ Set `drop_on_timeout` to `true` to drop timed out lines instead.
 Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
 
 **Detect fewer secrets.**
-Every rule adds regular expression work, so removing rules you don't need, or raising a noisy rule's `entropy` threshold, also lowers CPU usage.
+Every active rule runs its own regular expression against each line, so disabling rules you don't need lowers CPU usage.
 Refer to [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration) to disable or tune rules.
 
 ```toml
