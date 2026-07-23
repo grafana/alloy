@@ -54,7 +54,14 @@ jobs:
           TARGET_BRANCH: ${{ github.ref_name }}
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
-        run: node index.js
+        # Release branches only manage the root Alloy module. Component modules
+        # (e.g. syntax) release from main and should not open PRs on release/v*.
+        run: |
+          if [[ "${TARGET_BRANCH}" == release/v* ]]; then
+            node index.js --root-only
+          else
+            node index.js
+          fi
 
   regenerate-release-please-prs:
     needs: release-please
