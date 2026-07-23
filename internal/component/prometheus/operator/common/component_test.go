@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -55,6 +56,32 @@ func (c *crdManagerHungRun) DebugInfo() any {
 }
 
 func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
+	return nil
+}
+
+type crdManagerFactoryErrorRun struct {
+	err error
+}
+
+func (m crdManagerFactoryErrorRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+	return &crdManagerErrorRun{err: m.err}
+}
+
+type crdManagerErrorRun struct {
+	err error
+}
+
+func (c *crdManagerErrorRun) Run(_ context.Context) error {
+	return c.err
+}
+
+func (c *crdManagerErrorRun) ClusteringUpdated() {}
+
+func (c *crdManagerErrorRun) DebugInfo() any {
+	return nil
+}
+
+func (c *crdManagerErrorRun) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 	return nil
 }
 
@@ -126,6 +153,44 @@ func TestRunExit(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return runExited.Load() && !factory.running.Load()
 	}, 3*time.Second, 10*time.Millisecond)
+}
+
+func TestRunExitsOnCrdManagerError(t *testing.T) {
+	opts := component.Options{
+		Logger:     util.TestAlloyLogger(t).Slog(),
+		Registerer: prometheus.NewRegistry(),
+		GetServiceData: func(name string) (any, error) {
+			switch name {
+			case http_service.ServiceName:
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "alloy.internal:1245",
+					BaseHTTPPath:     "/",
+					DialFunc:         (&net.Dialer{}).DialContext,
+				}, nil
+			case cluster.ServiceName:
+				return cluster.Mock(), nil
+			case labelstore.ServiceName:
+				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
+			default:
+				return nil, fmt.Errorf("service %q does not exist", name)
+			}
+		},
+	}
+
+	var args operator.Arguments
+	args.SetToDefault()
+	args.ForwardTo = []storage.Appendable{nil}
+
+	c, err := New(opts, args, "")
+	require.NoError(t, err)
+
+	managerErr := errors.New("manager stopped")
+	c.crdManagerFactory = crdManagerFactoryErrorRun{err: managerErr}
+
+	err = c.Run(t.Context())
+	require.ErrorIs(t, err, managerErr)
+	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
 }
 
 func TestExperimentalFeatures(t *testing.T) {
