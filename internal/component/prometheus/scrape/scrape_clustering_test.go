@@ -383,3 +383,55 @@ func (f *fakeCluster) Peers() []peer.Peer {
 func (f *fakeCluster) Ready() bool {
 	return true
 }
+
+// TestLabelsToHash_VolatileLabelsIgnored verifies that setting LabelsToHash
+// makes two targets with identical stable labels but different volatile labels
+// (e.g. pre-signed URL params that change per node) hash to the same shard key
+// and be treated as the same logical target (issue #6484).
+//
+// Without LabelsToHash, the volatile __param_sig label enters the hash and
+// the two targets get different keys → one is owned locally, one remotely,
+// producing gaps or duplicates in a two-replica cluster.
+//
+// With LabelsToHash = ["__metrics_path__"], the volatile label is excluded and
+// both targets hash identically → consistent ownership on both replicas.
+func TestLabelsToHash_VolatileLabelsIgnored(t *testing.T) {
+	stablePath := "/__internal/db1/metrics"
+
+	// target A: what replica 1 sees after its discovery poll (sig=aaaa)
+	tgtA := discovery.Target{
+		"__address__":      "db.example.com:9104",
+		"__metrics_path__": stablePath,
+		"__param_sig":      "aaaa",
+		"__scheme__":       "https",
+	}
+	// target B: what replica 2 sees — identical except the rotating signature
+	tgtB := discovery.Target{
+		"__address__":      "db.example.com:9104",
+		"__metrics_path__": stablePath,
+		"__param_sig":      "bbbb",
+		"__scheme__":       "https",
+	}
+
+	t.Run("without LabelsToHash volatile labels cause different hash", func(t *testing.T) {
+		dt := discovery.NewDistributedTargets(true, nil, []discovery.Target{tgtA, tgtB})
+		// When clustering is enabled but cluster is nil, disabledCluster is used
+		// and all targets are assigned locally — but both must appear as separate
+		// targets because they hash differently.
+		require.Equal(t, 2, dt.TargetCount(),
+			"targets with different volatile labels must be treated as distinct (old behaviour)")
+	})
+
+	t.Run("with LabelsToHash volatile labels are ignored", func(t *testing.T) {
+		dt := discovery.NewDistributedTargetsWithCustomLabels(
+			true, nil,
+			[]discovery.Target{tgtA, tgtB},
+			[]string{"__metrics_path__"},
+		)
+		// With LabelsToHash restricting the hash to __metrics_path__ only, both
+		// targets produce the same key and are de-duplicated to one logical target.
+		require.Equal(t, 1, dt.TargetCount(),
+			"targets sharing stable labels must collapse to one with LabelsToHash set")
+	})
+}
+}

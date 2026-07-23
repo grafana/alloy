@@ -443,7 +443,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 func (c *Component) distributeTargets(targets []discovery.Target, jobName string, args Arguments) (map[string][]*targetgroup.Group, []*scrape.Target) {
 	var (
-		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
+		newDistTargets        = discovery.NewDistributedTargetsWithCustomLabels(args.Clustering.Enabled, c.cluster, targets, args.Clustering.LabelsToHash)
 		oldDistributedTargets *discovery.DistributedTargets
 	)
 
