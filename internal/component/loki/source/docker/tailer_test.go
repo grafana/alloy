@@ -240,13 +240,22 @@ func TestTailerStopsWhenContainerNotFound(t *testing.T) {
 		},
 	}
 
-	tailer, _ := setupTailer(t, mock)
+	tailer, entryHandler := setupTailer(t, mock)
 
 	done := make(chan struct{})
 	go func() {
 		tailer.Run(t.Context())
 		close(done)
 	}()
+
+	// The container is still readable for the first few ticks, so its logs must
+	// be shipped before the tailer notices the container is gone and stops.
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		logLines := entryHandler.Received()
+		if assert.NotEmpty(c, logLines) {
+			assert.Equal(c, "some log line", logLines[0].Line)
+		}
+	}, 5*time.Second, 20*time.Millisecond, "expected the container's log line to be shipped before the tailer stopped")
 
 	select {
 	case <-done:
