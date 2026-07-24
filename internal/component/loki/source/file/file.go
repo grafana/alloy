@@ -354,6 +354,7 @@ func (c *Component) scheduleSources() {
 				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 			})
 		},
+		nil,
 	)
 }
 

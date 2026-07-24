@@ -238,6 +238,11 @@ func (c *Component) Update(args component.Arguments) error {
 				func() bool { return c.exited.Load() },
 			)
 		},
+		func(existing source.Source[string], target promTarget) (source.Source[string], error) {
+			t := existing.(*tailer)
+			t.updateLabels(target.labels.Merge(defaultLabels), c.rcs)
+			return nil, nil
+		},
 	)
 
 	c.args = newArgs

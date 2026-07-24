@@ -195,6 +195,7 @@ func (c *Component) reconcile() {
 				LogFormat:    c.args.LogFormat,
 			}), nil
 		},
+		nil,
 	)
 }
 
