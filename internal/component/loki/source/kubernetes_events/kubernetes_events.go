@@ -195,6 +195,10 @@ func (c *Component) reconcile() {
 				LogFormat:    c.args.LogFormat,
 			}), nil
 		},
+		func(existing source.Source[string], _ string) (source.Source[string], error) {
+			existing.(*eventController).update(c.args.JobName, c.args.LogFormat)
+			return nil, nil
+		},
 	)
 }
 

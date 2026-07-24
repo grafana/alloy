@@ -38,15 +38,18 @@ func (s *Scheduler[Key]) ScheduleSource(source Source[Key]) {
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
+	done := make(chan struct{})
 	st := scheduledSource[Key]{
 		ctx:    ctx,
 		cancel: cancel,
 		source: source,
+		done:   done,
 	}
 
 	s.sources[k] = st
 
 	s.running.Go(func() {
+		defer close(done)
 		st.source.Run(st.ctx)
 	})
 }
@@ -61,6 +64,21 @@ func (s *Scheduler[Key]) StopSource(source Source[Key]) {
 	}
 	delete(s.sources, k)
 	scheduledTask.cancel()
+}
+
+// ReplaceSource stops the currently scheduled source and waits for it to exit
+// before scheduling its replacement.
+func (s *Scheduler[Key]) ReplaceSource(current, replacement Source[Key]) {
+	k := current.Key()
+	scheduledTask, ok := s.sources[k]
+	if !ok {
+		return
+	}
+
+	delete(s.sources, k)
+	scheduledTask.cancel()
+	<-scheduledTask.done
+	s.ScheduleSource(replacement)
 }
 
 // Sources returns an iterator of all scheduled sources.
@@ -78,6 +96,15 @@ func (s *Scheduler[Key]) Sources() iter.Seq[Source[Key]] {
 func (s *Scheduler[Key]) Contains(k Key) bool {
 	_, ok := s.sources[k]
 	return ok
+}
+
+// GetSource returns the source scheduled with k.
+func (s *Scheduler[Key]) GetSource(k Key) (Source[Key], bool) {
+	scheduled, ok := s.sources[k]
+	if !ok {
+		return nil, false
+	}
+	return scheduled.source, true
 }
 
 // Len returns number of scheduled sources
@@ -153,4 +180,5 @@ type scheduledSource[Key comparable] struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	source Source[Key]
+	done   chan struct{}
 }

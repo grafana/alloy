@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
@@ -44,6 +45,8 @@ type eventController struct {
 	opts    eventControllerOptions
 	handler loki.EntryHandler
 
+	formatMut sync.RWMutex
+
 	positionsKey  string
 	initTimestamp time.Time
 }
@@ -79,6 +82,16 @@ func (ctrl *eventController) Run(ctx context.Context) {
 
 func (ctrl *eventController) Key() string {
 	return ctrl.opts.Namespace
+}
+
+// update applies output settings that can change without restarting the informer.
+// Other controller options are immutable or handled through reconciliation.
+func (ctrl *eventController) update(jobName, logFormat string) {
+	ctrl.formatMut.Lock()
+	defer ctrl.formatMut.Unlock()
+
+	ctrl.opts.JobName = jobName
+	ctrl.opts.LogFormat = logFormat
 }
 
 func (ctrl *eventController) runError(ctx context.Context) error {
@@ -229,6 +242,11 @@ func (ctrl *eventController) handleEvent(ctx context.Context, event *corev1.Even
 }
 
 func (ctrl *eventController) parseEvent(event *corev1.Event) (model.LabelSet, string, error) {
+	ctrl.formatMut.RLock()
+	jobName := ctrl.opts.JobName
+	logFormat := ctrl.opts.LogFormat
+	ctrl.formatMut.RUnlock()
+
 	var (
 		msg      strings.Builder
 		lset     = make(model.LabelSet)
@@ -242,10 +260,10 @@ func (ctrl *eventController) parseEvent(event *corev1.Event) (model.LabelSet, st
 	}
 
 	lset[model.LabelName("namespace")] = model.LabelValue(obj.Namespace)
-	lset[model.LabelName("job")] = model.LabelValue(ctrl.opts.JobName)
+	lset[model.LabelName("job")] = model.LabelValue(jobName)
 	lset[model.LabelName("instance")] = model.LabelValue(ctrl.opts.InstanceName)
 
-	if ctrl.opts.LogFormat == logFormatJson {
+	if logFormat == logFormatJson {
 		appender = appendJsonMsg
 	}
 
@@ -289,7 +307,7 @@ func (ctrl *eventController) parseEvent(event *corev1.Event) (model.LabelSet, st
 
 	appender(&msg, fields, "msg", event.Message, "%q")
 
-	if ctrl.opts.LogFormat == logFormatJson {
+	if logFormat == logFormatJson {
 		bb, err := json.Marshal(fields)
 		if err != nil {
 			return nil, "", fmt.Errorf("failed to marshal Event to JSON: %w", err)

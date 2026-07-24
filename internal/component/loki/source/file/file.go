@@ -328,39 +328,55 @@ func (c *Component) scheduleSources() {
 		func(_ positions.Entry, target resolvedTarget) (source.Source[positions.Entry], error) {
 			return c.createSource(target)
 		},
+		func(existing source.Source[positions.Entry], target resolvedTarget) (source.Source[positions.Entry], error) {
+			current := existing.(*fileSource).tailer
+			if current.readerOptions == c.sourceOptions(target).readerOptions() {
+				return nil, nil
+			}
+
+			replacement, err := c.createSource(target)
+			if err != nil {
+				return nil, err
+			}
+
+			// Replacing a source for the same path and labels must retain its
+			// offset so the replacement continues where the old reader stopped.
+			current.preservePosition.Store(true)
+			return replacement, nil
+		},
 	)
 }
 
 func (c *Component) createSource(target resolvedTarget) (source.Source[positions.Entry], error) {
 	fi, err := os.Stat(target.Path)
-			if err != nil {
-				c.metrics.totalBytes.DeleteLabelValues(target.Path)
-				return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
-			}
+	if err != nil {
+		c.metrics.totalBytes.DeleteLabelValues(target.Path)
+		return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
+	}
 
-			if fi.IsDir() {
-				c.metrics.totalBytes.DeleteLabelValues(target.Path)
-				return nil, errors.New("failed to tail file, is directory")
-			}
+	if fi.IsDir() {
+		c.metrics.totalBytes.DeleteLabelValues(target.Path)
+		return nil, errors.New("failed to tail file, is directory")
+	}
 
-			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
-				return nil, source.ErrSkip
-			}
+	if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
+		return nil, source.ErrSkip
+	}
 
-			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
+	c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 	return c.newSource(c.sourceOptions(target))
 }
 
 func (c *Component) sourceOptions(target resolvedTarget) sourceOptions {
 	return sourceOptions{
-				path:                 target.Path,
-				labels:               target.Labels,
-				encoding:             c.args.Encoding,
-				decompressionConfig:  c.args.DecompressionConfig,
-				fileWatch:            c.args.FileWatch,
-				tailFromEnd:          c.args.TailFromEnd,
-				onPositionsFileError: c.args.OnPositionsFileError,
-				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
+		path:                 target.Path,
+		labels:               target.Labels,
+		encoding:             c.args.Encoding,
+		decompressionConfig:  c.args.DecompressionConfig,
+		fileWatch:            c.args.FileWatch,
+		tailFromEnd:          c.args.TailFromEnd,
+		onPositionsFileError: c.args.OnPositionsFileError,
+		legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 	}
 }
 
