@@ -27,6 +27,8 @@ const (
 	logFormatFmt  = "logfmt"
 )
 
+var newCache = cache.New
+
 type eventControllerOptions struct {
 	Log          *slog.Logger
 	Config       *rest.Config // Config to connect to Kubernetes.
@@ -93,7 +95,7 @@ func (ctrl *eventController) runError(ctx context.Context) error {
 		Scheme:            scheme,
 		DefaultNamespaces: defaultNamespaces,
 	}
-	informers, err := cache.New(ctrl.opts.Config, opts)
+	informers, err := newCache(ctrl.opts.Config, opts)
 	if err != nil {
 		return fmt.Errorf("creating informers cache: %w", err)
 	}

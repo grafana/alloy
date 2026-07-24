@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"golang.org/x/text/encoding/unicode"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -359,6 +360,76 @@ func TestUpdate_NoLeak(t *testing.T) {
 			require.NoError(t, err)
 		}
 	})
+}
+
+func TestUpdateAppliesEncoding(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f, err := os.CreateTemp(t.TempDir(), "example")
+		require.NoError(t, err)
+		defer f.Close()
+		_, err = f.WriteString("before update\n")
+		require.NoError(t, err)
+
+		receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 1)))
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(fmt.Sprintf(`
+			forward_to = []
+			targets = [{
+				__path__ = %q,
+				foo      = "bar",
+			}]
+			encoding = "UTF-8"
+			file_watch {
+				min_poll_frequency = "10ms"
+				max_poll_frequency = "10ms"
+			}
+		`, f.Name())), &args))
+		args.ForwardTo = []loki.LogsReceiver{receiver}
+
+		c, err := New(component.Options{
+			Logger:     logging.NewSlogNop(),
+			Registerer: prometheus.NewRegistry(),
+			DataPath:   t.TempDir(),
+		}, args)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		runDone := make(chan error, 1)
+		go func() { runDone <- c.Run(ctx) }()
+		defer func() {
+			cancel()
+			require.NoError(t, <-runDone)
+		}()
+
+		entry := receiveLogEntry(t, receiver)
+		require.Equal(t, "before update", entry.Line)
+		synctest.Wait()
+
+		args.Encoding = "UTF-16LE"
+		require.NoError(t, c.Update(args))
+		synctest.Wait()
+
+		encodedLine, err := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).
+			NewEncoder().
+			Bytes([]byte("after update\n"))
+		require.NoError(t, err)
+		_, err = f.Write(encodedLine)
+		require.NoError(t, err)
+
+		entry = receiveLogEntry(t, receiver)
+		require.Equal(t, "after update", entry.Line)
+	})
+}
+
+func receiveLogEntry(t *testing.T, receiver loki.LogsReceiver) loki.Entry {
+	t.Helper()
+	select {
+	case entry := <-receiver.Chan():
+		return entry
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for log entry")
+		return loki.Entry{}
+	}
 }
 
 func TestTwoTargets(t *testing.T) {

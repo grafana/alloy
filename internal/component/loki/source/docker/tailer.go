@@ -30,25 +30,60 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
+type tailerLabels struct {
+	mut     sync.RWMutex
+	current string
+	stdout  model.LabelSet
+	stderr  model.LabelSet
+}
+
+func (l *tailerLabels) update(base model.LabelSet, rules []*relabel.Config) {
+	current := base.String()
+	stdout := getStreamLabels(base, rules, "stdout")
+	stderr := getStreamLabels(base, rules, "stderr")
+
+	l.mut.Lock()
+	defer l.mut.Unlock()
+	l.current = current
+	l.stdout = stdout
+	l.stderr = stderr
+}
+
+func (l *tailerLabels) forStream(stdout bool) model.LabelSet {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	if stdout {
+		return l.stdout
+	}
+	return l.stderr
+}
+
+func (l *tailerLabels) String() string {
+	l.mut.RLock()
+	defer l.mut.RUnlock()
+	return l.current
+}
+
 // tailer for Docker container logs.
 type tailer struct {
-	logger            *slog.Logger
-	recv              loki.LogsReceiver
-	positions         positions.Positions
-	containerID       string
-	labels            model.LabelSet
-	labelsStr         string
-	relabelConfig     []*relabel.Config
+	logger      *slog.Logger
+	recv        loki.LogsReceiver
+	positions   positions.Positions
+	containerID string
+	// positionsLabels is stable even when emitted labels change.
+	positionsLabels   string
 	metrics           *metrics
 	restartInterval   time.Duration
 	componentStopping func() bool
 
 	client client.APIClient
 
-	mu      sync.Mutex // protects cancel, running and err fields
+	mu      sync.Mutex // protects cancel, running and err
 	err     error
 	running bool
 	cancel  context.CancelFunc
+
+	labels tailerLabels
 
 	wg sync.WaitGroup
 
@@ -63,27 +98,32 @@ func newTailer(
 	componentStopping func() bool,
 ) (*tailer, error) {
 
-	labelsStr := labels.String()
-	pos, err := position.Get(positions.CursorKey(containerID), labelsStr)
+	positionsLabels := labels.String()
+	pos, err := position.Get(positions.CursorKey(containerID), positionsLabels)
 	if err != nil {
 		return nil, err
 	}
 
-	return &tailer{
+	t := &tailer{
 		logger:            logger,
 		recv:              recv,
 		since:             atomic.NewInt64(pos),
 		last:              atomic.NewInt64(0),
 		positions:         position,
 		containerID:       containerID,
-		labels:            labels,
-		labelsStr:         labelsStr,
-		relabelConfig:     relabelConfig,
+		positionsLabels:   positionsLabels,
 		metrics:           metrics,
 		client:            client,
 		restartInterval:   restartInterval,
 		componentStopping: componentStopping,
-	}, nil
+	}
+	t.updateLabels(labels, relabelConfig)
+	return t, nil
+}
+
+// updateLabels changes labels for new entries without restarting the log stream.
+func (t *tailer) updateLabels(labels model.LabelSet, relabelConfig []*relabel.Config) {
+	t.labels.update(labels, relabelConfig)
 }
 
 func (t *tailer) Run(ctx context.Context) {
@@ -174,7 +214,7 @@ func (t *tailer) stop() {
 		// If the component is not stopping, then it means that the target for this component is gone and that
 		// we should clear the entry from the positions file.
 		if !t.componentStopping() {
-			t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
+			t.positions.Remove(positions.CursorKey(t.containerID), t.positionsLabels)
 		}
 	}
 }
@@ -196,9 +236,9 @@ func (t *tailer) DebugInfo() sourceInfo {
 	return sourceInfo{
 		ID:         t.containerID,
 		LastError:  errMsg,
-		Labels:     t.labelsStr,
+		Labels:     t.labels.String(),
 		IsRunning:  running,
-		ReadOffset: t.positions.GetString(positions.CursorKey(t.containerID), t.labelsStr),
+		ReadOffset: t.positions.GetString(positions.CursorKey(t.containerID), t.positionsLabels),
 	}
 }
 
@@ -243,12 +283,12 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	// Start processing
 	go func() {
 		defer t.wg.Done()
-		t.process(rstdout, t.getStreamLabels("stdout"))
+		t.process(rstdout, true)
 	}()
 
 	go func() {
 		defer t.wg.Done()
-		t.process(rstderr, t.getStreamLabels("stderr"))
+		t.process(rstderr, false)
 	}()
 
 	// Wait until done
@@ -273,7 +313,7 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 	return ts, line[spaceIdx+1:], nil
 }
 
-func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
+func (t *tailer) process(r io.Reader, stdout bool) {
 	const maxCapacity = dockerMaxChunkSize * 64
 
 	reader := bufio.NewReader(r)
@@ -322,7 +362,9 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
-		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+		// Read the label set per entry so that a label change applied by
+		// updateLabels takes effect without restarting the log stream.
+		t.recv.Chan() <- loki.NewEntry(t.labels.forStream(stdout), push.Entry{
 			Timestamp: ts,
 			Line:      string(content),
 		})
@@ -334,22 +376,22 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		// problematic if we have the same container with a different set of
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
-		t.positions.Put(positions.CursorKey(t.containerID), t.labelsStr, ts.Unix())
+		t.positions.Put(positions.CursorKey(t.containerID), t.positionsLabels, ts.Unix())
 		t.since.Store(ts.Unix())
 		t.last.Store(time.Now().Unix())
 	}
 }
 
-func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
+func getStreamLabels(base model.LabelSet, rules []*relabel.Config, logStream string) model.LabelSet {
 	// Add all labels from the config, relabel and filter them.
 	lb := labels.NewBuilder(labels.EmptyLabels())
-	for k, v := range t.labels {
+	for k, v := range base {
 		lb.Set(string(k), string(v))
 	}
 
 	lb.Set(dockerLabelLogStream, logStream)
 	processed := labels.EmptyLabels()
-	if relabel.ProcessBuilder(lb, t.relabelConfig...) {
+	if relabel.ProcessBuilder(lb, rules...) {
 		processed = lb.Labels()
 	}
 

@@ -29,23 +29,18 @@ type tailer struct {
 	receiver  loki.LogsReceiver
 	positions positions.Positions
 
-	key                positions.Entry
-	labels             model.LabelSet
-	legacyPositionUsed bool
-
-	tailFromEnd          bool
-	onPositionsFileError OnPositionsFileError
-	watcherConfig        tail.WatcherConfig
+	key           positions.Entry
+	labels        model.LabelSet
+	readerOptions readerOptions
 
 	running *atomic.Bool
 
 	componentStopping func() bool
+	preservePosition  atomic.Bool
 
 	report sync.Once
 
-	file          *tail.File
-	encoding      string
-	decompression DecompressionConfig
+	file *tail.File
 }
 
 func newTailer(
@@ -58,24 +53,16 @@ func newTailer(
 ) *tailer {
 
 	return &tailer{
-		metrics:              metrics,
-		logger:               logger.With("component", "tailer", "path", opts.path),
-		receiver:             receiver,
-		positions:            pos,
-		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
-		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
-		running:              atomic.NewBool(false),
-		tailFromEnd:          opts.tailFromEnd,
-		legacyPositionUsed:   opts.legacyPositionUsed,
-		onPositionsFileError: opts.onPositionsFileError,
-		watcherConfig: tail.WatcherConfig{
-			MinPollFrequency: opts.fileWatch.MinPollFrequency,
-			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
-		},
+		metrics:           metrics,
+		logger:            logger.With("component", "tailer", "path", opts.path),
+		receiver:          receiver,
+		positions:         pos,
+		key:               positions.Entry{Path: opts.path, Labels: opts.labels.String()},
+		labels:            opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
+		readerOptions:     opts.readerOptions(),
+		running:           atomic.NewBool(false),
 		componentStopping: componentStopping,
 		report:            sync.Once{},
-		encoding:          opts.encoding,
-		decompression:     opts.decompressionConfig,
 	}
 }
 
@@ -109,18 +96,18 @@ func (t *tailer) initRun() (int64, error) {
 		return 0, fmt.Errorf("failed to tail file: %w", err)
 	}
 
-	startFromEnd := t.tailFromEnd
+	startFromEnd := t.readerOptions.tailFromEnd
 
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
-		switch t.onPositionsFileError {
+		switch t.readerOptions.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
 			return 0, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
 			startFromEnd = true
 			t.logger.Info("reset position to end of file after position error")
 		default:
-			t.logger.Debug("unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
+			t.logger.Debug("unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.readerOptions.onPositionsFileError)
 			fallthrough
 		case OnPositionsFileErrorRestartBeginning:
 			pos = 0
@@ -130,7 +117,7 @@ func (t *tailer) initRun() (int64, error) {
 
 	// If we translated legacy positions we should try to get position offset without labels
 	// when no other position was matched.
-	if pos == 0 && t.legacyPositionUsed {
+	if pos == 0 && t.readerOptions.legacyPositionUsed {
 		pos, err = t.positions.Get(t.key.Path, "{}")
 		if err != nil {
 			return 0, fmt.Errorf("failed to get file position with empty labels: %w", err)
@@ -147,12 +134,15 @@ func (t *tailer) initRun() (int64, error) {
 	}
 
 	file, err := tail.NewFile(t.logger, &tail.Config{
-		Filename:      t.key.Path,
-		Offset:        pos,
-		StartFromEnd:  startFromEnd,
-		Encoding:      t.encoding,
-		Compression:   t.decompression.GetFormat(),
-		WatcherConfig: t.watcherConfig,
+		Filename:     t.key.Path,
+		Offset:       pos,
+		StartFromEnd: startFromEnd,
+		Encoding:     t.readerOptions.encoding,
+		Compression:  t.readerOptions.decompressionConfig.GetFormat(),
+		WatcherConfig: tail.WatcherConfig{
+			MinPollFrequency: t.readerOptions.fileWatch.MinPollFrequency,
+			MaxPollFrequency: t.readerOptions.fileWatch.MaxPollFrequency,
+		},
 	})
 
 	if err != nil {
@@ -171,9 +161,9 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 	t.metrics.filesActive.Add(1.)
 	t.logger.Info("start tailing file")
 
-	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
-		t.logger.Info("sleeping before reading file", "duration", t.decompression.InitialDelay.String())
-		time.Sleep(t.decompression.InitialDelay)
+	if t.readerOptions.decompressionConfig.Enabled && t.readerOptions.decompressionConfig.InitialDelay > 0 {
+		t.logger.Info("sleeping before reading file", "duration", t.readerOptions.decompressionConfig.InitialDelay.String())
+		time.Sleep(t.readerOptions.decompressionConfig.InitialDelay)
 	}
 
 	var (
@@ -221,7 +211,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 				return line, err
 			}
 
-			if t.decompression.Enabled {
+			if t.readerOptions.decompressionConfig.Enabled {
 				return t.file.Flush()
 			}
 
@@ -274,7 +264,7 @@ func (t *tailer) shouldKeepPosition() bool {
 	// If component is not stopping that means that target is gone and we should no longer tail the file.
 	// If decompression is enabled we read file until we reach EOF and stop so tailer will exit, but we need
 	// to remember the position so that we don't re-ingest it on restart.
-	return t.componentStopping() || t.decompression.Enabled
+	return t.componentStopping() || t.readerOptions.decompressionConfig.Enabled || t.preservePosition.Load()
 }
 
 // cleanupMetrics removes all metrics exported by this tailer

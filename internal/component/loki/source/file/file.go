@@ -326,7 +326,13 @@ func (c *Component) scheduleSources() {
 			return positions.Entry{Path: target.Path, Labels: target.Labels.String()}
 		},
 		func(_ positions.Entry, target resolvedTarget) (source.Source[positions.Entry], error) {
-			fi, err := os.Stat(target.Path)
+			return c.createSource(target)
+		},
+	)
+}
+
+func (c *Component) createSource(target resolvedTarget) (source.Source[positions.Entry], error) {
+	fi, err := os.Stat(target.Path)
 			if err != nil {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
@@ -342,8 +348,11 @@ func (c *Component) scheduleSources() {
 			}
 
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
+	return c.newSource(c.sourceOptions(target))
+}
 
-			return c.newSource(sourceOptions{
+func (c *Component) sourceOptions(target resolvedTarget) sourceOptions {
+	return sourceOptions{
 				path:                 target.Path,
 				labels:               target.Labels,
 				encoding:             c.args.Encoding,
@@ -352,9 +361,7 @@ func (c *Component) scheduleSources() {
 				tailFromEnd:          c.args.TailFromEnd,
 				onPositionsFileError: c.args.OnPositionsFileError,
 				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
-			})
-		},
-	)
+	}
 }
 
 type debugInfo struct {
@@ -395,7 +402,47 @@ type sourceOptions struct {
 	legacyPositionUsed   bool
 }
 
-// newSource will return a decompressor source if enabled, otherwise a tailer source.
+// readerOptions contains the comparable options that determine how a source
+// reads a file. Changes to these options require replacing the source.
+type readerOptions struct {
+	encoding             string
+	decompressionConfig  DecompressionConfig
+	fileWatch            FileWatch
+	tailFromEnd          bool
+	onPositionsFileError OnPositionsFileError
+	legacyPositionUsed   bool
+}
+
+func (o sourceOptions) readerOptions() readerOptions {
+	return readerOptions{
+		encoding:             o.encoding,
+		decompressionConfig:  o.decompressionConfig,
+		fileWatch:            o.fileWatch,
+		tailFromEnd:          o.tailFromEnd,
+		onPositionsFileError: o.onPositionsFileError,
+		legacyPositionUsed:   o.legacyPositionUsed,
+	}
+}
+
+// fileSource keeps the concrete source type stable while optionally adding
+// retry behavior around its tailer.
+type fileSource struct {
+	*tailer
+}
+
+func (s *fileSource) Run(ctx context.Context) {
+	// When decompression is enabled we don't retry starting the tailer.
+	if s.readerOptions.decompressionConfig.Enabled {
+		s.tailer.Run(ctx)
+		return
+	}
+
+	source.NewSourceWithRetry(s.tailer, backoff.Config{
+		MinBackoff: 1 * time.Second,
+		MaxBackoff: 10 * time.Second,
+	}).Run(ctx)
+}
+
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
 	tailer := newTailer(
 		c.metrics,
@@ -405,16 +452,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 		c.IsStopping,
 		opts,
 	)
-
-	// When decompression is enabled we don't retry starting tailer.
-	if opts.decompressionConfig.Enabled {
-		return tailer, nil
-	}
-
-	return source.NewSourceWithRetry(tailer, backoff.Config{
-		MinBackoff: 1 * time.Second,
-		MaxBackoff: 10 * time.Second,
-	}), nil
+	return &fileSource{tailer: tailer}, nil
 }
 
 func (c *Component) IsStopping() bool {
