@@ -280,7 +280,7 @@ otelcol.processor.redaction "default" {
 }
 ```
 
-[raw-string]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#strings
+[raw-string]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#raw-strings
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
