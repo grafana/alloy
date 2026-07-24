@@ -156,6 +156,14 @@ The following arguments are supported:
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
+The following blocks are supported inside `profiling_config`:
+
+| Block               | Description                                        | Required |
+| ------------------- | -------------------------------------------------- | -------- |
+| [`thread`][thread]  | Surface the sampled thread in the profile.         | no       |
+
+[thread]: #thread
+
 #### `event`
 
 The `event` argument configures the profiling mode used by async-profiler.
@@ -169,6 +177,41 @@ The `per_thread` option doesn't apply when using JFR output format.
 Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
 For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
 {{< /admonition >}}
+
+#### `thread`
+
+The `thread` block surfaces the thread each sample ran on. It requires `per_thread` to be enabled.
+
+The following arguments are supported:
+
+| Name         | Type     | Description                                                                                                            | Default | Required |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `frame`      | `bool`   | Add the thread name as a root frame, so flame graphs split by thread.                                                 | `false` | no       |
+| `label_name` | `string` | Add a sample label under this name holding the thread name, for filtering and grouping. Empty disables it.            | `""`    | no       |
+| `regex`      | `string` | Collapse the thread name to this regular expression's first capture group, for example a pool name. Applies to both `frame` and `label_name`. | `""`    | no       |
+
+The `regex` regular expression must contain at least one capture group. It applies to both `frame` and `label_name`, so without it the raw thread name is used. Because it depends on the output medium, the following combinations produce different views:
+
+* `frame` on, no `regex`: the graph splits by each individual thread.
+* `frame` on with `regex`: the graph splits by pool.
+* `label_name` set: the graph is unchanged, but you can filter or group by thread or pool in {{< param "PRODUCT_NAME" >}}.
+
+```alloy
+pyroscope.java "java" {
+  targets    = discovery.relabel.java.output
+  forward_to = [pyroscope.write.staging.receiver]
+
+  profiling_config {
+    per_thread = true
+
+    thread {
+      frame      = false
+      label_name = "thread_pool"
+      regex      = "^(.*?)-\\d"
+    }
+  }
+}
+```
 
 ### `custom_arguments`
 
