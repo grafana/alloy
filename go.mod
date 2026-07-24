@@ -14,7 +14,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.30
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/DataDog/go-sqllexer v0.2.2
+	github.com/DataDog/go-sqllexer v0.2.4
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector v0.56.0
 	github.com/IBM/sarama v1.50.3
 	github.com/KimMachineGun/automemlimit v0.7.5
@@ -108,7 +108,7 @@ require (
 	github.com/leodido/go-syslog/v4 v4.5.0
 	github.com/lib/pq v1.12.3
 	github.com/mackerelio/go-osstat v0.2.5
-	github.com/microsoft/go-mssqldb v1.9.7
+	github.com/microsoft/go-mssqldb v1.10.0
 	github.com/miekg/dns v1.1.72
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
