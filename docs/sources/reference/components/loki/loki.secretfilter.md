@@ -156,6 +156,10 @@ regex = '''secret_tok_[0-9a-zA-Z]{32}'''
 keywords = ["secret_tok_"]
 ```
 
+Try to set `keywords` on custom rules.
+{{< param "PRODUCT_NAME" >}} uses them as a prefilter and only evaluates the rule's `regex` on lines that contain one of its keywords, so a rule without `keywords` runs against every line.
+Refer to [Manage performance](#manage-performance) for details.
+
 Point the component at this file:
 
 ```alloy
@@ -241,8 +245,8 @@ With this configuration, `generic-api-key` still detects real secrets, but it no
 
 ## Manage performance
 
-Secret detection runs regular expressions against every log line.
-Each active rule adds scan work, and CPU cost rises with log volume and rule count.
+Secret detection scans every log line, so CPU cost rises with your log volume and the number of active rules.
+To avoid running every rule against every line, {{< param "PRODUCT_NAME" >}} first applies a fast keyword prefilter and only evaluates a rule's regular expression when one of the rule's `keywords` appears in the line.
 The following options help you control that cost.
 
 **Reduce the number of lines processed.**
@@ -260,8 +264,13 @@ By default, a timed out line is forwarded, and {{< param "PRODUCT_NAME" >}} reda
 Set `drop_on_timeout` to `true` to drop timed out lines instead.
 Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
 
+**Add keywords to custom rules.**
+The keyword prefilter can only skip a rule that declares `keywords`.
+A custom rule without `keywords` runs its regular expression against every line, which is much slower than the built-in rules.
+Try to set `keywords` that must be present for the secret to match, as shown in [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration).
+
 **Detect fewer secrets.**
-Every active rule runs its own regular expression against each line, so disabling rules you don't need lowers CPU usage.
+Every active rule runs its own regular expression against each matching line, so disabling rules you don't need lowers CPU usage.
 Refer to [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration) to disable or tune rules.
 
 ```toml
