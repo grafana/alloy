@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -34,8 +35,11 @@ import (
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
 // Note: This *could* be kept in sync with upstream by using the following. However, that would require importing the github.com/google/cadvisor/cmd package, which introduces some dependency conflicts that weren't worth the hassle IMHO.
-// var disabledMetrics = *flag.Lookup("disable_metrics").Value.(*container.MetricSet)
-var disabledMetrics = container.MetricSet{
+// var defaultDisabledMetrics = *flag.Lookup("disable_metrics").Value.(*container.MetricSet)
+//
+// Treat this as read-only: GetIncludedMetrics copies it instead of writing to it, so that one
+// component's configuration can't change what every other component collects.
+var defaultDisabledMetrics = container.MetricSet{
 	container.MemoryNumaMetrics:              struct{}{},
 	container.NetworkTcpUsageMetrics:         struct{}{},
 	container.NetworkUdpUsageMetrics:         struct{}{},
@@ -49,29 +53,34 @@ var disabledMetrics = container.MetricSet{
 	container.CPUSetMetrics:                  struct{}{},
 }
 
-// GetIncludedMetrics applies some logic to determine the final set of metrics to be scraped and returned by the cAdvisor integration
+// GetIncludedMetrics applies some logic to determine the final set of metrics to be scraped and returned by the cAdvisor integration.
+//
+// An unset disabled_metrics keeps the built-in default-disabled set, and setting it overrides that
+// set rather than adding to it, so an empty list disables nothing. A non-empty enabled_metrics
+// selects exactly the kinds it lists and takes precedence over disabled_metrics.
 func (c *Config) GetIncludedMetrics() (container.MetricSet, error) {
-	var enabledMetrics, includedMetrics container.MetricSet
+	var enabledMetrics container.MetricSet
+
+	// Work on a copy, because MetricSet.Set replaces the set it's called on.
+	disabledMetrics := maps.Clone(defaultDisabledMetrics)
 
 	if c.DisabledMetrics != nil {
 		if err := disabledMetrics.Set(strings.Join(c.DisabledMetrics, ",")); err != nil {
-			return includedMetrics, fmt.Errorf("failed to set disabled metrics: %w", err)
+			return nil, fmt.Errorf("failed to set disabled metrics: %w", err)
 		}
 	}
 
 	if c.EnabledMetrics != nil {
 		if err := enabledMetrics.Set(strings.Join(c.EnabledMetrics, ",")); err != nil {
-			return includedMetrics, fmt.Errorf("failed to set enabled metrics: %w", err)
+			return nil, fmt.Errorf("failed to set enabled metrics: %w", err)
 		}
 	}
 
 	if len(enabledMetrics) > 0 {
-		includedMetrics = enabledMetrics
-	} else {
-		includedMetrics = container.AllMetrics.Difference(disabledMetrics)
+		return enabledMetrics, nil
 	}
 
-	return includedMetrics, nil
+	return container.AllMetrics.Difference(disabledMetrics), nil
 }
 
 // NewIntegration creates a new cadvisor integration
