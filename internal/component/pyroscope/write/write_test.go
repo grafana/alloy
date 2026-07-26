@@ -3,6 +3,7 @@ package write
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -575,6 +576,81 @@ func (s *AppendIngestTestSuite) TestInvalidLabels() {
 
 func Test_Write_AppendIngest(t *testing.T) {
 	suite.Run(t, new(AppendIngestTestSuite))
+}
+
+func Test_shouldRetry_On429(t *testing.T) {
+	err := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusTooManyRequests})
+
+	// With retry_on_http_429 enabled, a 429 is retried.
+	require.True(t, shouldRetry(err, true))
+	// With retry_on_http_429 disabled, a 429 is not retried.
+	require.False(t, shouldRetry(err, false))
+
+	// A 408 Request Timeout is always retried regardless of the flag.
+	timeoutErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusRequestTimeout})
+	require.True(t, shouldRetry(timeoutErr, true))
+	require.True(t, shouldRetry(timeoutErr, false))
+
+	// A 5xx is always retried regardless of the flag.
+	serverErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusServiceUnavailable})
+	require.True(t, shouldRetry(serverErr, true))
+	require.True(t, shouldRetry(serverErr, false))
+
+	// A 400 is never retried.
+	badReqErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusBadRequest})
+	require.False(t, shouldRetry(badReqErr, true))
+	require.False(t, shouldRetry(badReqErr, false))
+}
+
+func (s *AppendIngestTestSuite) TestRetryOnHTTP429Disabled() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("too many requests"))
+	})
+
+	endpoint := s.newEndpoint(server, nil)
+	endpoint.RetryOnHTTP429 = false
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{endpoint},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.Error(err)
+	s.Contains(err.Error(), "pyroscope write error: status=429")
+	// With retries disabled for 429, the request is attempted exactly once.
+	s.Equal(int32(1), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestRetryOnHTTP429Enabled() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("too many requests"))
+	})
+
+	endpoint := s.newEndpoint(server, nil)
+	endpoint.RetryOnHTTP429 = true
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{endpoint},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.Error(err)
+	s.Contains(err.Error(), "pyroscope write error: status=429")
+	// With retries enabled for 429, the request is retried up to MaxBackoffRetries times.
+	s.Positive(endpoint.MaxBackoffRetries)
+	s.Equal(int32(endpoint.MaxBackoffRetries), s.requestCount.Load())
 }
 
 func Test_Write_FanOut_ValidateLabels(t *testing.T) {
