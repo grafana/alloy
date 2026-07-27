@@ -52,12 +52,14 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 		}
 	case "WorkloadIdentity":
 		args.WorkloadIdentity = &azure.WorkloadIdentity{}
-	default: // "OAuth" or unset.
+	case "", "OAuth":
 		args.OAuth = &azure.OAuth{
 			ClientID:     sdConfig.ClientID,
 			TenantID:     sdConfig.TenantID,
 			ClientSecret: alloytypes.Secret(sdConfig.ClientSecret),
 		}
+	default:
+		// Unknown method: leave auth unset; validation will surface a diagnostic.
 	}
 
 	return args
