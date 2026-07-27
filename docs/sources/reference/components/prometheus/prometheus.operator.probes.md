@@ -260,76 +260,19 @@ prometheus.operator.probes "probes" {
 {{< param "PRODUCT_NAME" >}} can act as that prober when you also configure [`prometheus.exporter.blackbox`][blackbox].
 You don't need a separate blackbox-exporter Deployment unless you prefer one.
 
-The Probe resource must set `spec.prober`:
+Set `spec.prober` on the Probe resource:
 
 * `url` — host:port of the prober. For the embedded exporter, use the {{< param "PRODUCT_NAME" >}} HTTP listen address (default port `12345`).
-* `path` — HTTP path of the blackbox probe endpoint on that prober.
-
-For `prometheus.exporter.blackbox`, {{< param "PRODUCT_NAME" >}} exposes the prober on the component HTTP API:
+* `path` — HTTP path of the blackbox probe endpoint. For `prometheus.exporter.blackbox`, use:
 
 ```text
 /api/v0/component/prometheus.exporter.blackbox.<LABEL>/probe
 ```
 
-The handler is the same for any trailing path segment under the component (including `/metrics`); `/probe` matches the conventional blackbox-exporter path and is recommended.
+Pointing `spec.prober.url` at the {{< param "PRODUCT_NAME" >}} UI root without the component path scrapes the wrong endpoint and fails with a non-Prometheus response.
+The `module` field on the Probe must match a module name defined in the `prometheus.exporter.blackbox` `config` or `config_file`.
 
-The following end-to-end example assumes:
-
-* {{< param "PRODUCT_NAME" >}} is running in the `monitoring` namespace.
-* Its Service is `alloy.monitoring.svc.cluster.local:12345`.
-* The blackbox exporter component label is `blackbox_exporter`.
-* Probe resources live in the `testns` namespace.
-
-{{< param "PRODUCT_NAME" >}} configuration:
-
-```alloy
-prometheus.exporter.blackbox "blackbox_exporter" {
-  // Either config or config_file is required. This defines the blackbox modules
-  // referenced by Probe resources (for example module: http_2xx).
-  config = "{ modules: { http_2xx: { prober: http, timeout: 5s } } }"
-}
-
-prometheus.operator.probes "blackbox" {
-  namespaces = ["testns"]
-  forward_to = [prometheus.remote_write.staging.receiver]
-}
-
-prometheus.remote_write "staging" {
-  endpoint {
-    url = "http://mimir:9009/api/v1/push"
-  }
-}
-```
-
-Matching Kubernetes Probe resource:
-
-```yaml
-apiVersion: monitoring.coreos.com/v1
-kind: Probe
-metadata:
-  name: http-grafana
-  namespace: testns
-spec:
-  jobName: blackbox
-  interval: 30s
-  module: http_2xx
-  prober:
-    # Address of Alloy (not a separate blackbox-exporter pod).
-    url: alloy.monitoring.svc.cluster.local:12345
-    # Component HTTP API path for prometheus.exporter.blackbox.blackbox_exporter.
-    path: /api/v0/component/prometheus.exporter.blackbox.blackbox_exporter/probe
-  targets:
-    staticConfig:
-      static:
-        - https://grafana.com
-```
-
-Notes:
-
-* `spec.prober.url` is required. Pointing it at the Alloy UI root without the component path (for example only `localhost:12345` with path `/probe`) scrapes the wrong endpoint and fails with a non-Prometheus response.
-* The `module` field on the Probe must match a module name defined in the `prometheus.exporter.blackbox` `config` or `config_file`.
-* No extra container port is required beyond Alloy's existing HTTP listen port (default `12345`), which must be reachable from the Alloy process that runs `prometheus.operator.probes` (often the same process).
-* Alternatively, set `spec.prober.url` to a standalone [blackbox_exporter](https://github.com/prometheus/blackbox_exporter) Service and use `path: /probe`.
+Runnable end-to-end examples that need Kubernetes and the Prometheus Operator belong in [alloy-scenarios](https://github.com/grafana/alloy-scenarios) rather than this reference page. See the [contribute guide](https://github.com/grafana/alloy-scenarios#contribute).
 
 [blackbox]: ../prometheus.exporter.blackbox/
 
