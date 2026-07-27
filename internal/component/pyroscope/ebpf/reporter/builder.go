@@ -56,7 +56,7 @@ func NewProfileBuilders(options BuildersOptions) *ProfileBuilders {
 func (b *ProfileBuilders) BuilderForSample(
 	target *discovery.Target,
 	pid uint32,
-) *ProfileBuilder {
+) (*ProfileBuilder, error) {
 
 	labelsHash, _ := target.Labels()
 
@@ -66,24 +66,26 @@ func (b *ProfileBuilders) BuilderForSample(
 	}
 	res := b.Builders[k]
 	if res != nil {
-		return res
+		return res, nil
 	}
 
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	switch {
-	case b.opt.ProfileType.ReportValues:
+	switch b.opt.ProfileType.SampleType {
+	case "off_cpu":
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	case b.opt.ProfileType.SampleType == "events":
+	case "events":
 		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
 		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
 		period = 1
-	default:
+	case "samples":
 		sampleType = []*profile.ValueType{{Type: cpuProfileType, Unit: "nanoseconds"}}
 		periodType = &profile.ValueType{Type: cpuProfileType, Unit: "nanoseconds"}
 		period = time.Second.Nanoseconds() / b.opt.SampleRate
+	default:
+		return nil, fmt.Errorf("unsupported profile sample type %q", b.opt.ProfileType.SampleType)
 	}
 	dummyMapping := &profile.Mapping{
 		ID: 1,
@@ -107,7 +109,7 @@ func (b *ProfileBuilders) BuilderForSample(
 	}
 	res = builder
 	b.Builders[k] = res
-	return res
+	return res, nil
 }
 
 type functionsKey struct {

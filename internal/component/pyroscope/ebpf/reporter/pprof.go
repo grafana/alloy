@@ -196,7 +196,11 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		if target == nil {
 			continue
 		}
-		b := bs.BuilderForSample(target, uint32(resourceKey.PID))
+		b, err := bs.BuilderForSample(target, uint32(resourceKey.PID))
+		if err != nil {
+			p.log.Error("failed to create profile builder", "err", err)
+			return nil
+		}
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))

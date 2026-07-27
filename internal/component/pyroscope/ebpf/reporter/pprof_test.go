@@ -336,6 +336,12 @@ func TestPPROFReporter_UsesProfileType(t *testing.T) {
 			sampleUnit:  "count",
 			value:       2,
 		},
+		{
+			name: "unknown",
+			profileType: &samples.TypeMetadata{
+				SampleType: "unknown",
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rep := newReporter()
@@ -346,6 +352,11 @@ func TestPPROFReporter_UsesProfileType(t *testing.T) {
 					Values:     tc.values,
 				},
 			})
+
+			if tc.profileType.SampleType == "unknown" {
+				assert.Empty(t, profiles)
+				return
+			}
 
 			require.Len(t, profiles, 1)
 			p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
