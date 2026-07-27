@@ -4,28 +4,21 @@ description: Shared content, basic auth block
 headless: true
 ---
 
-| Name            | Type     | Description                                                                                             | Default | Required |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `password_file` | `string` | File containing the basic auth password. Read on every outgoing request that uses basic authentication. |         | no       |
-| `password`      | `secret` | Basic auth password.                                                                                    |         | no       |
-| `username`      | `string` | Basic auth username.                                                                                    |         | no       |
+| Name            | Type     | Description                                           | Default | Required |
+| --------------- | -------- | ----------------------------------------------------- | ------- | -------- |
+| `password_file` | `string` | Path to a file that contains the basic auth password. |         | no       |
+| `password`      | `secret` | Basic auth password.                                  |         | no       |
+| `username`      | `string` | Basic auth username.                                  |         | no       |
 
 `password` and `password_file` are mutually exclusive, and only one can be provided inside a `basic_auth` block.
 
-This shared `basic_auth` block has the same arguments and the same `password_file` reload behavior in every component that embeds it, unless a component page documents an exception.
+If you set `password_file`, {{< param "PRODUCT_NAME" >}} reads the file on every outgoing request that uses basic authentication.
+{{< param "PRODUCT_NAME" >}} reads the file on each request, so it picks up password rotation automatically.
 
-{{< admonition type="warning" >}}
-Using `password_file` causes the file to be read on every outgoing request. The file isn't limited to a one-time read at startup, so password rotation is picked up automatically, but high-frequency scrapes or writes re-read the file often.
+{{< admonition type="caution" >}}
+If you use `password_file`, {{< param "PRODUCT_NAME" >}} reads the file on every outgoing request.
+Use the `local.file` component with the `password` attribute instead to avoid unnecessary reads.
 
-Prefer the `local.file` component with the `password` attribute when you want fewer filesystem reads. `local.file` watches the file for changes and exports the latest content:
-
-```alloy
-local.file "basic_auth_password" {
-  filename  = "/path/to/password"
-  is_secret = true
-}
-
-// Inside a basic_auth block:
-// password = local.file.basic_auth_password.content
-```
+High scrape or write rates can trigger repeated file reads.
+The `local.file` component watches the file for changes and exports the latest content.
 {{< /admonition >}}
