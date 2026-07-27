@@ -105,7 +105,7 @@ The following arguments are supported:
 When you provide multiple `endpoint` blocks, profiles are concurrently forwarded to all configured locations.
 
 The `retry_on_http_429` argument specifies whether `HTTP 429` status code responses should be treated as recoverable errors.
-Other `HTTP 4xx` status code responses are never considered recoverable errors.
+Other `HTTP 4xx` status code responses are never considered recoverable errors, with the exception of `HTTP 408 Request Timeout`, which is always retried.
 When `retry_on_http_429` is enabled, the retry mechanism is governed by the backoff configuration specified through `min_backoff_period`, `max_backoff_period` and `max_backoff_retries` attributes.
 
 ### `authorization`

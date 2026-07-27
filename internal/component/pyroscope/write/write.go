@@ -427,9 +427,10 @@ func shouldRetry(err error, retryOnHTTP429 bool) bool {
 
 	switch connect.CodeOf(err) {
 	case connect.CodeDeadlineExceeded, connect.CodeUnknown,
-		connect.CodeResourceExhausted, connect.CodeInternal,
-		connect.CodeUnavailable, connect.CodeDataLoss, connect.CodeAborted:
+		connect.CodeInternal, connect.CodeUnavailable, connect.CodeDataLoss, connect.CodeAborted:
 		return true
+	case connect.CodeResourceExhausted:
+		return retryOnHTTP429
 	}
 	return false
 }
