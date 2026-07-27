@@ -64,7 +64,7 @@ The `allowed_keys` list fails closed: if it's empty and `allow_all_keys` is `fal
 The processor removes disallowed keys before it checks remaining values against `blocked_values`.
 To mask values without removing keys, set `allow_all_keys = true` or include the keys in `allowed_keys`.
 
-`hash_function` accepts one of `sha1`, `sha3`, `md5`, `hmac-sha256`, or `hmac-sha512`.
+`hash_function` accepts one of `sha1`, `sha3`, `md5`, `hmac-sha256`, or `hmac-sha512`, and the value is case-insensitive.
 {{< param "PRODUCT_NAME" >}} validates `hash_function` during configuration parsing.
 When you set `hash_function` to `hmac-sha256`, you must also set `hmac_key` to at least 32 bytes.
 When you set `hash_function` to `hmac-sha512`, you must also set `hmac_key` to at least 64 bytes.

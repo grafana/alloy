@@ -155,12 +155,24 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "HashFunctionIsCaseInsensitive",
+			cfg: `
+			hash_function = "HMAC-SHA256"
+			hmac_key      = "0123456789abcdef0123456789abcdef"
+			output {}
+			`,
+			expected: map[string]any{
+				"hash_function": "hmac-sha256",
+				"hmac_key":      "0123456789abcdef0123456789abcdef",
+			},
+		},
+		{
 			testName: "InvalidHashFunction",
 			cfg: `
 			hash_function = "sha256"
 			output {}
 			`,
-			errMsg: `invalid hash_function "sha256"`,
+			errMsg: "invalid hash_function: unknown HashFunction sha256",
 		},
 		{
 			testName: "HMACMissingKey",

@@ -131,26 +131,21 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
-// Validate implements syntax.Validator. It adds a parse-time enum check on
-// hash_function (mapstructure.Decode bypasses HashFunction.UnmarshalText, so the
-// value is otherwise unvalidated), then delegates the remaining checks — notably
-// the HMAC key requirements — to the upstream Config.Validate.
-func (args *Arguments) Validate() error {
-	switch redactionprocessor.HashFunction(args.HashFunction) {
-	case redactionprocessor.None,
-		redactionprocessor.SHA1,
-		redactionprocessor.SHA3,
-		redactionprocessor.MD5,
-		redactionprocessor.HMACSHA256,
-		redactionprocessor.HMACSHA512:
-		// Valid.
-	default:
-		return fmt.Errorf("invalid hash_function %q, allowed values are %q, %q, %q, %q and %q",
-			args.HashFunction,
-			redactionprocessor.SHA1, redactionprocessor.SHA3, redactionprocessor.MD5,
-			redactionprocessor.HMACSHA256, redactionprocessor.HMACSHA512)
+// hashFunction validates and normalizes hash_function. mapstructure.Decode
+// bypasses HashFunction.UnmarshalText, so we call it directly to keep the
+// upstream behaviour, including its case-insensitive matching.
+func (args Arguments) hashFunction() (redactionprocessor.HashFunction, error) {
+	var hf redactionprocessor.HashFunction
+	if err := hf.UnmarshalText([]byte(args.HashFunction)); err != nil {
+		return "", fmt.Errorf("invalid hash_function: %w", err)
 	}
+	return hf, nil
+}
 
+// Validate implements syntax.Validator. Conversion covers the hash_function
+// enum check, and the upstream Config.Validate covers the remaining checks,
+// notably the HMAC key requirements.
+func (args *Arguments) Validate() error {
 	cfg, err := args.Convert()
 	if err != nil {
 		return err
@@ -160,6 +155,11 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	hashFunction, err := args.hashFunction()
+	if err != nil {
+		return nil, err
+	}
+
 	input := map[string]any{
 		"allow_all_keys":       args.AllowAllKeys,
 		"allowed_keys":         args.AllowedKeys,
@@ -168,7 +168,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		"ignored_key_patterns": args.IgnoredKeyPatterns,
 		"allowed_values":       args.AllowedValues,
 		"blocked_values":       args.BlockedValues,
-		"hash_function":        args.HashFunction,
+		"hash_function":        string(hashFunction),
 		"hmac_key":             string(args.HMACKey),
 		"redact_all_types":     args.RedactAllTypes,
 		"summary":              args.Summary,
