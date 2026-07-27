@@ -87,6 +87,7 @@ func (a *Arguments) Validate() error {
 func (a *Arguments) Convert() *mssql.Config {
 	return &mssql.Config{
 		ConnectionString:      config_util.Secret(a.ConnectionString),
+		ConnectionName:        a.ConnectionName,
 		MaxIdleConnections:    a.MaxIdleConnections,
 		MaxOpenConnections:    a.MaxOpenConnections,
 		MaxConnectionLifetime: a.MaxConnectionLifetime,

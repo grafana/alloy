@@ -98,6 +98,17 @@ metrics:
 			err: "timeout must be positive",
 		},
 		{
+			name: "max connection lifetime is negative",
+			input: Config{
+				ConnectionString:      "sqlserver://user:pass@localhost:1433",
+				MaxIdleConnections:    3,
+				MaxOpenConnections:    3,
+				MaxConnectionLifetime: -1 * time.Second,
+				Timeout:               10 * time.Second,
+			},
+			err: "max_connection_lifetime must not be negative",
+		},
+		{
 			name: "good query config",
 			input: Config{
 				ConnectionString:   "sqlserver://user:pass@localhost:1433",

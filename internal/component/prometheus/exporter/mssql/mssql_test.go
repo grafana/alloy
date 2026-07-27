@@ -247,6 +247,7 @@ metrics:
 
 	args := Arguments{
 		ConnectionString:      alloytypes.Secret("sqlserver://user:pass@localhost:1433"),
+		ConnectionName:        "localhost",
 		MaxIdleConnections:    1,
 		MaxOpenConnections:    1,
 		MaxConnectionLifetime: 30 * time.Minute,
@@ -259,6 +260,7 @@ metrics:
 
 	expected := mssql.Config{
 		ConnectionString:      config_util.Secret("sqlserver://user:pass@localhost:1433"),
+		ConnectionName:        "localhost",
 		MaxIdleConnections:    1,
 		MaxOpenConnections:    1,
 		MaxConnectionLifetime: 30 * time.Minute,
