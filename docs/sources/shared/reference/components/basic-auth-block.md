@@ -10,15 +10,14 @@ headless: true
 | `password`      | `secret` | Basic auth password.                                  |         | no       |
 | `username`      | `string` | Basic auth username.                                  |         | no       |
 
+When you use `password_file`, the file is read on every outgoing request that uses basic authentication.
+
 `password` and `password_file` are mutually exclusive, and only one can be provided inside a `basic_auth` block.
 
-If you set `password_file`, {{< param "PRODUCT_NAME" >}} reads the file on every outgoing request that uses basic authentication.
-{{< param "PRODUCT_NAME" >}} reads the file on each request, so it picks up password rotation automatically.
+{{< admonition type="note" >}}
+High scrape or write rates create repeated file reads when you use `password_file`.
+You can use the [`local.file`][local.file] component to read the password file and provide the content to the `password` attribute.
+This avoids repeated file reads because `local.file` monitors the file and only reads when it changes.
 
-{{< admonition type="caution" >}}
-If you use `password_file`, {{< param "PRODUCT_NAME" >}} reads the file on every outgoing request.
-Use the `local.file` component with the `password` attribute instead to avoid unnecessary reads.
-
-High scrape or write rates can trigger repeated file reads.
-The `local.file` component watches the file for changes and exports the latest content.
+[local.file]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/local/local.file/
 {{< /admonition >}}
