@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -14,11 +13,9 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -256,19 +253,13 @@ type Collector interface {
 }
 
 type Component struct {
-	opts              component.Options
-	args              Arguments
-	handler           loki.LogsReceiver
-	fanout            *loki.Fanout
-	mut               sync.RWMutex
-	registry          *prometheus.Registry
-	baseTarget        discovery.Target
-	collectors        []Collector
-	instanceKey       string
-	dbConnection      *sql.DB
-	healthErr         *atomic.String
-	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
-	exporterCollector prometheus.Collector
+	opts     component.Options
+	args     Arguments
+	handler  loki.LogsReceiver
+	fanout   *loki.Fanout
+	mut      sync.RWMutex
+	instance *dbInstance
+	openSQL  func(driverName, dataSourceName string) (*sql.DB, error)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -277,26 +268,18 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		fanout:    loki.NewFanout(args.ForwardTo),
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:    opts,
+		args:    args,
+		fanout:  loki.NewFanout(args.ForwardTo),
+		handler: loki.NewLogsReceiver(),
+		openSQL: openFn,
 	}
 
-	instance, err := instanceKey(string(args.DataSourceName))
+	instance, err := newDBInstance(opts, string(args.DataSourceName))
 	if err != nil {
 		return nil, err
 	}
-	c.instanceKey = instance
-
-	baseTarget, err := c.getBaseTarget()
-	if err != nil {
-		return nil, err
-	}
-	c.baseTarget = baseTarget
+	c.instance = instance
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -313,11 +296,11 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
-			for _, collector := range c.collectors {
+			for _, collector := range c.instance.collectors {
 				collector.Stop()
 			}
-			if c.dbConnection != nil {
-				c.dbConnection.Close()
+			if c.instance.dbConnection != nil {
+				c.instance.dbConnection.Close()
 			}
 		})
 	}()
@@ -340,7 +323,7 @@ func (c *Component) Run(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				c.mut.RLock()
-				hasCollectors := len(c.collectors) > 0
+				hasCollectors := len(c.instance.collectors) > 0
 				c.mut.RUnlock()
 
 				if !hasCollectors {
@@ -357,22 +340,6 @@ func (c *Component) Run(ctx context.Context) error {
 	return nil
 }
 
-func (c *Component) getBaseTarget() (discovery.Target, error) {
-	data, err := c.opts.GetServiceData(http_service.ServiceName)
-	if err != nil {
-		return discovery.EmptyTarget, fmt.Errorf("failed to get HTTP information: %w", err)
-	}
-	httpData := data.(http_service.Data)
-
-	return discovery.NewTargetFromMap(map[string]string{
-		model.AddressLabel:     httpData.MemoryListenAddr,
-		model.SchemeLabel:      "http",
-		model.MetricsPathLabel: path.Join(httpData.HTTPPathForComponent(c.opts.ID), "metrics"),
-		"instance":             c.instanceKey,
-		"job":                  database_observability.JobName,
-	}), nil
-}
-
 // The result of SELECT version() is something like:
 // for MariaDB: "10.5.17-MariaDB-1:10.5.17+maria~ubu2004-log"
 // for MySQL: "8.0.36-28.1"
@@ -380,7 +347,7 @@ var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
 func (c *Component) reportError(errorMsg string, err error) {
 	c.opts.Logger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
-	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.instance.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -395,7 +362,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return nil
 	}
 
-	c.healthErr.Store("")
+	c.instance.healthErr.Store("")
 	return nil
 }
 
@@ -408,7 +375,7 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 		return err
 	}
 
-	c.healthErr.Store("")
+	c.instance.healthErr.Store("")
 	return nil
 }
 
@@ -416,9 +383,9 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 // closes old connection, opens new one, queries server info, and starts collectors
 // Must be called with c.mut locked
 func (c *Component) connectAndStartCollectors(ctx context.Context) error {
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
-		c.dbConnection = nil
+	if c.instance.dbConnection != nil {
+		c.instance.dbConnection.Close()
+		c.instance.dbConnection = nil
 	}
 
 	dbConnection, err := c.openSQL("mysql", formatDSN(string(c.args.DataSourceName), "parseTime=true"))
@@ -434,9 +401,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		dbConnection.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	c.dbConnection = dbConnection
+	c.instance.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(ctx, selectServerInfo)
+	rs := c.instance.dbConnection.QueryRowContext(ctx, selectServerInfo)
 	if err = rs.Err(); err != nil {
 		return fmt.Errorf("failed to query engine version: %w", err)
 	}
@@ -472,9 +439,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		cp = cloudProvider
 	}
 
-	if c.exporterCollector != nil {
-		c.registry.Unregister(c.exporterCollector)
-		c.exporterCollector = nil
+	if c.instance.exporterCollector != nil {
+		c.instance.registry.Unregister(c.instance.exporterCollector)
+		c.instance.exporterCollector = nil
 	}
 
 	if len(c.args.Targets) == 0 {
@@ -490,13 +457,13 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
 			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
 		)
-		if err := c.registry.Register(exporter); err != nil {
+		if err := c.instance.registry.Register(exporter); err != nil {
 			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
 		}
-		c.exporterCollector = exporter
+		c.instance.exporterCollector = exporter
 	}
 
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	c.args.Targets = append([]discovery.Target{c.instance.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
@@ -509,10 +476,10 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		Targets: targets,
 	})
 
-	for _, collector := range c.collectors {
+	for _, collector := range c.instance.collectors {
 		collector.Stop()
 	}
-	c.collectors = nil
+	c.instance.collectors = nil
 
 	if err := c.startCollectors(generatedServerID, engineVersion, parsedEngineVersion, cp); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
@@ -556,13 +523,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instance.instanceKey, serverID)
 
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.QueryDetailsCollector] {
 		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              c.dbConnection,
+			DB:              c.instance.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
@@ -575,7 +542,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := qtCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QueryDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, qtCollector)
+			c.instance.collectors = append(c.instance.collectors, qtCollector)
 		}
 	}
 
@@ -591,7 +558,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
+			DB:              c.instance.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			EntryHandler:    entryHandler,
@@ -603,7 +570,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, stCollector)
+			c.instance.collectors = append(c.instance.collectors, stCollector)
 		}
 	}
 
@@ -616,12 +583,12 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                            c.dbConnection,
+			DB:                            c.instance.dbConnection,
 			EngineVersion:                 parsedEngineVersion,
 			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
 			ExcludeSchemas:                c.args.ExcludeSchemas,
 			EntryHandler:                  entryHandler,
-			Registry:                      c.registry,
+			Registry:                      c.instance.registry,
 			Logger:                        c.opts.Logger,
 			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
@@ -636,14 +603,14 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := qsCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QuerySamplesCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, qsCollector)
+			c.instance.collectors = append(c.instance.collectors, qsCollector)
 		}
 	}
 
 	if collectors[collector.SetupConsumersCollector] {
 		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
-			DB:              c.dbConnection,
-			Registry:        c.registry,
+			DB:              c.instance.dbConnection,
+			Registry:        c.instance.registry,
 			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
@@ -653,7 +620,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := scCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SetupConsumersCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, scCollector)
+			c.instance.collectors = append(c.instance.collectors, scCollector)
 		}
 	}
 
@@ -663,7 +630,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
-			DB:                    c.dbConnection,
+			DB:                    c.instance.dbConnection,
 			Logger:                c.opts.Logger,
 			CollectInterval:       c.args.SetupActorsArguments.CollectInterval,
 			AutoUpdateSetupActors: c.args.AllowUpdatePerfSchemaSettings && c.args.SetupActorsArguments.AutoUpdateSetupActors,
@@ -674,13 +641,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := saCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SetupActorsCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, saCollector)
+			c.instance.collectors = append(c.instance.collectors, saCollector)
 		}
 	}
 
 	if collectors[collector.LocksCollector] {
 		locksCollector, err := collector.NewLocks(collector.LocksArguments{
-			DB:                c.dbConnection,
+			DB:                c.instance.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
 			Logger:            c.opts.Logger,
@@ -692,13 +659,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := locksCollector.Start(context.Background()); err != nil {
 				logStartError(collector.LocksCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, locksCollector)
+			c.instance.collectors = append(c.instance.collectors, locksCollector)
 		}
 	}
 
 	if collectors[collector.ExplainPlansCollector] {
 		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
-			DB:              c.dbConnection,
+			DB:              c.instance.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
@@ -713,17 +680,17 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			if err := epCollector.Start(context.Background()); err != nil {
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
-			c.collectors = append(c.collectors, epCollector)
+			c.instance.collectors = append(c.instance.collectors, epCollector)
 		}
 	}
 
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.DataSourceName),
-		Registry:      c.registry,
+		Registry:      c.instance.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
-		DB:            c.dbConnection,
+		DB:            c.instance.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
@@ -731,12 +698,12 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if err := ciCollector.Start(context.Background()); err != nil {
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
-		c.collectors = append(c.collectors, ciCollector)
+		c.instance.collectors = append(c.instance.collectors, ciCollector)
 	}
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
+		DB:              c.instance.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
 		ExcludeSchemas:  c.args.ExcludeSchemas,
 		EntryHandler:    entryHandler,
@@ -748,7 +715,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if err := hcCollector.Start(context.Background()); err != nil {
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
-		c.collectors = append(c.collectors, hcCollector)
+		c.instance.collectors = append(c.instance.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {
@@ -759,11 +726,11 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+	return promhttp.HandlerFor(c.instance.registry, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {
-	if err := c.healthErr.Load(); err != "" {
+	if err := c.instance.healthErr.Load(); err != "" {
 		return component.Health{
 			Health:     component.HealthTypeUnhealthy,
 			Message:    err,
@@ -774,7 +741,7 @@ func (c *Component) CurrentHealth() component.Health {
 	var unhealthyCollectors []string
 
 	c.mut.RLock()
-	for _, collector := range c.collectors {
+	for _, collector := range c.instance.collectors {
 		if collector.Stopped() {
 			unhealthyCollectors = append(unhealthyCollectors, collector.Name())
 		}
@@ -794,24 +761,6 @@ func (c *Component) CurrentHealth() component.Health {
 		Message:    "All collectors are healthy",
 		UpdateTime: time.Now(),
 	}
-}
-
-// instanceKey returns network(hostname:port)/dbname of the MySQL server.
-// This is the same key as used by the mysqld_exporter integration.
-func instanceKey(dsn string) (string, error) {
-	m, err := mysql.ParseDSN(dsn)
-	if err != nil {
-		return "", err
-	}
-
-	if m.Addr == "" {
-		m.Addr = "localhost:3306"
-	}
-	if m.Net == "" {
-		m.Net = "tcp"
-	}
-
-	return fmt.Sprintf("%s(%s)/%s", m.Net, m.Addr, m.DBName), nil
 }
 
 // formatDSN appends the given parameters to the DSN.
