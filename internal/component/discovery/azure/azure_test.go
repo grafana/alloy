@@ -301,6 +301,8 @@ func TestConvert(t *testing.T) {
 				RefreshInterval: 10 * time.Minute,
 				ResourceGroup:   "test",
 				SDK:             &SDK{TenantID: "tenantid"},
+				FollowRedirects: true,
+				EnableHTTP2:     true,
 			},
 			expected: promdiscovery.SDConfig{
 				Environment:          "AzureTestCloud",
@@ -321,6 +323,8 @@ func TestConvert(t *testing.T) {
 				RefreshInterval:  10 * time.Minute,
 				ResourceGroup:    "test",
 				WorkloadIdentity: &WorkloadIdentity{},
+				FollowRedirects:  true,
+				EnableHTTP2:      true,
 			},
 			expected: promdiscovery.SDConfig{
 				Environment:          "AzureTestCloud",
