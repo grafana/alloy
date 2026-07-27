@@ -97,6 +97,7 @@ require (
 	go.opentelemetry.io/collector/processor/batchprocessor v0.153.0
 	go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.153.0
 	go.opentelemetry.io/collector/receiver v1.59.0
+	go.opentelemetry.io/collector/receiver/nopreceiver v0.153.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.153.0
 	go.opentelemetry.io/collector/service v0.153.0
 )
