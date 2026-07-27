@@ -75,7 +75,7 @@ metrics:
 				MaxOpenConnections: 0,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_connections must be at least 1",
+			err: "max_open_connections must be at least 1",
 		},
 		{
 			name: "max idle connections is less than 1",
@@ -85,7 +85,7 @@ metrics:
 				MaxOpenConnections: 3,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_idle_connection must be at least 1",
+			err: "max_idle_connections must be at least 1",
 		},
 		{
 			name: "timeout is not positive",
