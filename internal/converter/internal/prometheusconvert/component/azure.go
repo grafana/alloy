@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -63,5 +64,16 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 }
 
 func ValidateDiscoveryAzure(sdConfig *prom_azure.SDConfig) diag.Diagnostics {
-	return common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
+	d := common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
+
+	switch sdConfig.AuthenticationMethod {
+	case "ManagedIdentity", "SDK", "WorkloadIdentity", "", "OAuth":
+		return d
+	default:
+		d.Add(
+			diag.SeverityLevelCritical,
+			fmt.Sprintf("unknown authentication_type %q. Supported types are \"OAuth\", \"ManagedIdentity\", \"SDK\" or \"WorkloadIdentity\"", sdConfig.AuthenticationMethod),
+		)
+	}
+	return d
 }
