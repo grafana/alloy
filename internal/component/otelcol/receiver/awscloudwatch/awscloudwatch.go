@@ -36,6 +36,7 @@ type Arguments struct {
 	Profile      string                      `alloy:"profile,attr,optional"`
 	IMDSEndpoint string                      `alloy:"imds_endpoint,attr,optional"`
 	Logs         LogsConfig                  `alloy:"logs,block,optional"`
+	Metrics      *MetricsConfig              `alloy:"metrics,block,optional"`
 	Storage      *extension.ExtensionHandler `alloy:"storage,attr,optional"`
 
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -69,6 +70,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Profile:      args.Profile,
 		IMDSEndpoint: args.IMDSEndpoint,
 		Logs:         args.Logs.Convert(),
+		Metrics:      args.Metrics.Convert(),
 	}
 
 	// If no autodiscover or named configs are provided, set the autodiscover config with a default limit.
