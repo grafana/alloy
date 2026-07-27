@@ -242,6 +242,9 @@ func (p *profilingLoop) start() error {
 		}
 		if cfg.Alloc != "" {
 			argv = append(argv, "--alloc", cfg.Alloc)
+			if cfg.Tlab {
+				argv = append(argv, "--tlab")
+			}
 		}
 		if cfg.Lock != "" {
 			argv = append(argv, "--lock", cfg.Lock)
