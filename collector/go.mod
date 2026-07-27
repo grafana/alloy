@@ -14,13 +14,10 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.153.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.153.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.153.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.153.0
@@ -57,7 +54,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.153.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.153.0
@@ -710,6 +706,9 @@ require (
 	github.com/oliver006/redis_exporter v1.86.0 // indirect
 	github.com/open-telemetry/opamp-go v0.23.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.153.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.153.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.153.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.153.0 // indirect
@@ -754,6 +753,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.153.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.153.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
