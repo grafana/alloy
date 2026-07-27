@@ -72,7 +72,7 @@ func ValidateDiscoveryAzure(sdConfig *prom_azure.SDConfig) diag.Diagnostics {
 	default:
 		d.Add(
 			diag.SeverityLevelCritical,
-			fmt.Sprintf("unknown authentication_type %q. Supported types are \"OAuth\", \"ManagedIdentity\", \"SDK\" or \"WorkloadIdentity\"", sdConfig.AuthenticationMethod),
+			fmt.Sprintf("unknown authentication_method %q. Supported methods are \"OAuth\", \"ManagedIdentity\", \"SDK\" or \"WorkloadIdentity\"", sdConfig.AuthenticationMethod),
 		)
 	}
 	return d
