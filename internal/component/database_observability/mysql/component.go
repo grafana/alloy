@@ -14,6 +14,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
+	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
@@ -27,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax"
@@ -65,6 +67,8 @@ type Arguments struct {
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
+
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
 	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments      `alloy:"setup_consumers,block,optional"`
@@ -307,6 +311,7 @@ var (
 	_ component.Component       = (*Component)(nil)
 	_ http_service.Component    = (*Component)(nil)
 	_ component.HealthComponent = (*Component)(nil)
+	_ cluster.Component         = (*Component)(nil)
 )
 
 type Collector interface {
@@ -323,6 +328,11 @@ type Component struct {
 	fanout  *loki.Fanout
 	mut     sync.RWMutex
 	openSQL func(driverName, dataSourceName string) (*sql.DB, error)
+
+	cluster cluster.Cluster
+	// clusterChanged wakes the Run loop to reconcile database ownership. It
+	// has capacity 1 so notifications coalesce.
+	clusterChanged chan struct{}
 
 	// instances holds one dbInstance per configured database. The slice is
 	// replaced wholesale on Update and stored atomically so that Handler can
@@ -356,12 +366,19 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:    opts,
-		args:    args,
-		fanout:  loki.NewFanout(args.ForwardTo),
-		handler: loki.NewLogsReceiver(),
-		openSQL: openFn,
+		opts:           opts,
+		args:           args,
+		fanout:         loki.NewFanout(args.ForwardTo),
+		handler:        loki.NewLogsReceiver(),
+		openSQL:        openFn,
+		clusterChanged: make(chan struct{}, 1),
 	}
+
+	data, err := opts.GetServiceData(cluster.ServiceName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get information about cluster: %w", err)
+	}
+	c.cluster = data.(cluster.Cluster)
 
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -398,7 +415,13 @@ func (c *Component) Run(ctx context.Context) error {
 			select {
 			case <-ctx.Done():
 				return
+			case <-c.clusterChanged:
+				c.reconcileCluster()
 			case <-ticker.C:
+				// Reconcile ownership on the periodic tick as well, as a
+				// backstop in case a cluster notification was missed.
+				c.reconcileCluster()
+
 				c.mut.RLock()
 				needsReconnect := false
 				for _, inst := range c.loadInstances() {
@@ -444,20 +467,35 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Build the new instances before touching any state, so that a failed
 	// rebuild returns an error while the previous instances keep running.
-	cfgs := newArgs.databaseConfigs()
-	instances := make([]*dbInstance, 0, len(cfgs))
-	for _, cfg := range cfgs {
-		inst, err := newDBInstance(c.opts, cfg)
-		if err != nil {
-			return err
-		}
-		instances = append(instances, inst)
+	owned := c.ownedDatabases(newArgs.databaseConfigs(), newArgs.Clustering.Enabled)
+	instances, err := c.buildInstances(owned)
+	if err != nil {
+		return err
 	}
 
 	c.args = newArgs
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
-	// Replace the previous instances with the newly built ones.
+	c.replaceInstances(instances)
+	return nil
+}
+
+// buildInstances constructs, but doesn't connect, one dbInstance per config.
+func (c *Component) buildInstances(cfgs []databaseConfig) ([]*dbInstance, error) {
+	instances := make([]*dbInstance, 0, len(cfgs))
+	for _, cfg := range cfgs {
+		inst, err := newDBInstance(c.opts, cfg)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, inst)
+	}
+	return instances, nil
+}
+
+// replaceInstances stops the running instances, publishes the new ones,
+// connects them, and re-exports targets. Must be called with c.mut locked.
+func (c *Component) replaceInstances(instances []*dbInstance) {
 	c.stopInstances(c.loadInstances())
 	c.storeInstances(instances)
 
@@ -470,7 +508,95 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.exportTargets()
-	return nil
+}
+
+// ownedDatabases returns the subset of configs this node is responsible for
+// collecting. With clustering disabled, all databases are owned locally.
+// While the cluster isn't ready to admit traffic, no databases are owned, so
+// that nodes don't collect duplicates while the cluster is still forming.
+// Ownership lookup errors fail open to local ownership, matching the
+// semantics of discovery.DistributedTargets.
+func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool) []databaseConfig {
+	if !clusteringEnabled {
+		return cfgs
+	}
+	if !c.cluster.Ready() {
+		c.opts.Logger.Info("cluster is not ready to admit traffic, not collecting from any database")
+		return nil
+	}
+
+	owned := make([]databaseConfig, 0, len(cfgs))
+	for _, cfg := range cfgs {
+		key, err := instanceKey(string(cfg.dsn))
+		if err != nil {
+			// Validate guarantees the DSN parses; fail open to local ownership.
+			owned = append(owned, cfg)
+			continue
+		}
+		peers, err := c.cluster.Lookup(shard.StringKey(key), 1, shard.OpReadWrite)
+		if err != nil || len(peers) == 0 || peers[0].Self {
+			owned = append(owned, cfg)
+		}
+	}
+	return owned
+}
+
+// NotifyClusterChange implements cluster.Component. It must never block: the
+// cluster service notifies components sequentially, and reconciliation may be
+// waiting on the component lock while it's held across database connects.
+func (c *Component) NotifyClusterChange() {
+	select {
+	case c.clusterChanged <- struct{}{}:
+	default:
+	}
+}
+
+// reconcileCluster recomputes database ownership and rebuilds the running
+// instances when ownership changed.
+func (c *Component) reconcileCluster() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if !c.args.Clustering.Enabled {
+		return
+	}
+
+	owned := c.ownedDatabases(c.args.databaseConfigs(), true)
+	if !c.ownershipChanged(owned) {
+		return
+	}
+
+	instances, err := c.buildInstances(owned)
+	if err != nil {
+		// Keep the current instances running; the next evaluation or cluster
+		// change retries.
+		c.opts.Logger.Error("failed to rebuild database instances after cluster change", "err", err)
+		return
+	}
+	c.replaceInstances(instances)
+}
+
+// ownershipChanged reports whether the owned set of databases differs from
+// the currently running instances. Must be called with c.mut locked.
+func (c *Component) ownershipChanged(owned []databaseConfig) bool {
+	running := c.loadInstances()
+	if len(running) != len(owned) {
+		return true
+	}
+	keys := make(map[string]struct{}, len(running))
+	for _, inst := range running {
+		keys[inst.instanceKey] = struct{}{}
+	}
+	for _, cfg := range owned {
+		key, err := instanceKey(string(cfg.dsn))
+		if err != nil {
+			return true
+		}
+		if _, ok := keys[key]; !ok {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Component) tryReconnect(ctx context.Context) error {
@@ -898,6 +1024,7 @@ func (c *Component) CurrentHealth() component.Health {
 	var unhealthyCollectors []string
 
 	c.mut.RLock()
+	clusteringEnabled := c.args.Clustering.Enabled
 	for _, inst := range c.loadInstances() {
 		for _, collector := range inst.collectors {
 			if collector.Stopped() {
@@ -915,6 +1042,14 @@ func (c *Component) CurrentHealth() component.Health {
 		return component.Health{
 			Health:     component.HealthTypeUnhealthy,
 			Message:    "One or more collectors are unhealthy: [" + strings.Join(unhealthyCollectors, ", ") + "]",
+			UpdateTime: time.Now(),
+		}
+	}
+
+	if clusteringEnabled && len(c.loadInstances()) == 0 {
+		return component.Health{
+			Health:     component.HealthTypeHealthy,
+			Message:    "clustering is enabled and no databases are currently owned by this node",
 			UpdateTime: time.Now(),
 		}
 	}
