@@ -75,7 +75,7 @@ metrics:
 				MaxOpenConnections: 0,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_connections must be at least 1",
+			err: "max_open_connections must be at least 1",
 		},
 		{
 			name: "max idle connections is less than 1",
@@ -85,7 +85,7 @@ metrics:
 				MaxOpenConnections: 3,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_idle_connection must be at least 1",
+			err: "max_idle_connections must be at least 1",
 		},
 		{
 			name: "timeout is not positive",
@@ -96,6 +96,17 @@ metrics:
 				Timeout:            0,
 			},
 			err: "timeout must be positive",
+		},
+		{
+			name: "max connection lifetime is negative",
+			input: Config{
+				ConnectionString:      "sqlserver://user:pass@localhost:1433",
+				MaxIdleConnections:    3,
+				MaxOpenConnections:    3,
+				MaxConnectionLifetime: -1 * time.Second,
+				Timeout:               10 * time.Second,
+			},
+			err: "max_connection_lifetime must not be negative",
 		},
 		{
 			name: "good query config",
