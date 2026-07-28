@@ -264,7 +264,17 @@ configReloader:
       cpu: "10m"
       memory: "50Mi"
   # -- Security context to apply to the Grafana configReloader container.
-  securityContext: {}
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
 
 controller:
   # -- Type of controller to use for deploying Grafana Alloy in the cluster.
