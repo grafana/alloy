@@ -32,15 +32,34 @@ const (
 	envStorageDir = "STORAGE_DIR"
 )
 
+const svCmdDoc = `[EXPERIMENTAL] Run an embedded OpAMP supervisor that manages alloy as a supervised agent
+
+Configuration can be provided in two ways:
+
+1. Config File Mode:
+   Pass the --config flag to point to a supervisor configuration file.
+
+2. Simple Mode (Default):
+   If --config is omitted, simple mode uses the following environment variables:
+
+   GCLOUD_FM_URL
+     Fleet management base URL (used as the OpAMP address).
+     Note: The path "/v1/opamp" is appended if it's not already present.
+
+   GCLOUD_BASIC_AUTH
+     Pre-encoded Basic auth credentials in base64 format (instance_id:token).
+
+   STORAGE_DIR
+     Path for supervisor storage directory.
+`
+
 func newOtelSupervisorCommand() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
-		Use:           "supervisor",
-		Aliases:       []string{"sv"},
+		Use:           "otel-supervisor",
 		Short:         "Run the embedded OpAMP supervisor for Alloy's OTel engine",
-		Long:          "[EXPERIMENTAL] Run an embedded OpAMP supervisor that manages alloy as a supervised agent",
-		Example:       "<example comes here>",
+		Long:          svCmdDoc,
 		Hidden:        false,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -49,7 +68,7 @@ func newOtelSupervisorCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&configPath, "config", "", "path to a supervisor configuration file. If omitted, simple mode builds the config from environment variables")
+	cmd.Flags().StringVar(&configPath, "config", "", "path to a configuration file. If omitted, uses environment-based simple mode")
 
 	return cmd
 }
