@@ -15,6 +15,8 @@ Unreleased
 
 ### Enhancements
 
+- Add `serviceMonitor.attachMetadata` to attach node metadata to targets discovered by the ServiceMonitor. (@aljohri)
+
 - Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
 
 - Update to Grafana Alloy v1.18.0 (@blewis12)
