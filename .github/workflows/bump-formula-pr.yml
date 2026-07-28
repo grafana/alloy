@@ -5,9 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to bump the formula to (e.g. v1.17.1). Must be an existing published release.'
+        description: "Release tag to bump the formula to (e.g. v1.17.1). Must be an existing published release."
         type: string
         required: true
+      dry_run:
+        description: "Dry run (print the rendered formula instead of opening a PR)"
+        type: boolean
+        default: true # For safety!
 
 permissions: {}
 
@@ -18,7 +22,7 @@ env:
 
 jobs:
   # Gate prevents homebrew job execution for unreleased or component-level releases (e.g helm-chart or syntax).
-  # Manual dispatch always proceeds (for testing) using the input tag.
+  # Manual dispatch always proceeds using the input tag.
   gate:
     name: gate
     runs-on: ubuntu-latest
@@ -28,6 +32,7 @@ jobs:
     outputs:
       is_latest: ${{ steps.compare.outputs.is_latest }}
       tag: ${{ steps.compare.outputs.tag }}
+      dry_run: ${{ steps.compare.outputs.dry_run }}
     steps:
       - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
@@ -43,9 +48,9 @@ jobs:
           repository: "${{ github.repository }}"
           type: "stable"
 
-      # Resolve the target tag and whether to proceed. On a release the tag must
-      # be the latest stable release; on manual dispatch we always proceed using
-      # the input tag so the workflow can be tested without cutting a release.
+      # Resolve the target tag and whether to proceed.
+      # On a release: the tag must be the latest stable release.
+      # On manual dispatch: always proceed using a given tag, so the workflow can be tested w/o cutting a release.
       - name: Resolve tag and latest status
         id: compare
         env:
@@ -53,23 +58,28 @@ jobs:
           RESOLVED_TAG: ${{ github.event.release.tag_name || inputs.tag }}
           LATEST_ID: ${{ steps.latest_release.outputs.release_id }}
           CURRENT_ID: ${{ github.event.release.id }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           if [[ "$RESOLVED_TAG" != v* ]]; then
             echo "::error::tag must start with 'v' (e.g. v1.17.1). Got: '$RESOLVED_TAG'" >&2
             exit 1
           fi
 
+          # Dry run only applies to manual dispatch
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             is_latest=true
+            dry_run=$([ "$DRY_RUN" = "true" ] && echo true || echo false)
           elif [ -z "$LATEST_ID" ]; then
             echo "::error::latest release lookup returned empty release_id" >&2
             exit 1
           else
             is_latest=$([ "$LATEST_ID" = "$CURRENT_ID" ] && echo true || echo false)
+            dry_run=false
           fi
 
           echo "tag=${RESOLVED_TAG}" >> "${GITHUB_OUTPUT}"
           echo "is_latest=${is_latest}" >> "${GITHUB_OUTPUT}"
+          echo "dry_run=${dry_run}" >> "${GITHUB_OUTPUT}"
 
   homebrew-grafana:
     name: homebrew-grafana
@@ -123,7 +133,12 @@ jobs:
             -tag "$RELEASE_TAG" \
             -out "$GITHUB_WORKSPACE/$TAP_CHECKOUT_DIR/alloy.rb"
 
+      - name: Print formula (dry run)
+        if: needs.gate.outputs.dry_run == 'true'
+        run: cat "$GITHUB_WORKSPACE/$TAP_CHECKOUT_DIR/alloy.rb"
+
       - name: Create Pull Request
+        if: needs.gate.outputs.dry_run != 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ steps.app-token-homebrew.outputs.token }}

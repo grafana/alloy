@@ -17,7 +17,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/ebpf-profiler/support"
 )
 
 func TestSendProfilesConcurrently(t *testing.T) {
@@ -86,7 +85,6 @@ func TestSendProfilesConcurrently(t *testing.T) {
 				profiles = append(profiles, reporter.PPROF{
 					Raw:    []byte(fmt.Sprintf("profile_%d", i)),
 					Labels: target,
-					Origin: support.TraceOriginSampling,
 				})
 			}
 

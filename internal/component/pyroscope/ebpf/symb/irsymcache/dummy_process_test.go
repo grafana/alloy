@@ -15,7 +15,7 @@ import (
 // dummyProcess implements pfelf.Process for testing purposes
 type dummyProcess struct {
 	pid           libpf.PID
-	mappings      []process.Mapping
+	mappings      []process.RawMapping
 	mappingsError error
 }
 
@@ -36,8 +36,13 @@ func (d *dummyProcess) GetMachineData() process.MachineData {
 	return process.MachineData{}
 }
 
-func (d *dummyProcess) GetMappings() ([]process.Mapping, uint32, error) {
-	return d.mappings, 0, d.mappingsError
+func (d *dummyProcess) IterateMappings(callback func(m process.RawMapping) bool) (uint32, error) {
+	for _, m := range d.mappings {
+		if !callback(m) {
+			break
+		}
+	}
+	return 0, d.mappingsError
 }
 
 func (d *dummyProcess) GetThreads() ([]process.ThreadInfo, error) {
@@ -48,16 +53,16 @@ func (d *dummyProcess) GetRemoteMemory() remotememory.RemoteMemory {
 	return remotememory.RemoteMemory{}
 }
 
-func (d *dummyProcess) GetMappingFileLastModified(_ *process.Mapping) int64 {
+func (d *dummyProcess) GetMappingFileLastModified(_ *process.RawMapping) int64 {
 	return 0
 }
 
-func (d *dummyProcess) CalculateMappingFileID(m *process.Mapping) (libpf.FileID, error) {
-	return libpf.FileIDFromExecutableFile(m.Path.String())
+func (d *dummyProcess) CalculateMappingFileID(m *process.RawMapping) (libpf.FileID, error) {
+	return libpf.FileIDFromExecutableFile(m.Path)
 }
 
-func (d *dummyProcess) OpenMappingFile(m *process.Mapping) (process.ReadAtCloser, error) {
-	return os.Open(m.Path.String())
+func (d *dummyProcess) OpenMappingFile(m *process.RawMapping) (process.ReadAtCloser, error) {
+	return os.Open(m.Path)
 }
 
 func (d *dummyProcess) OpenELF(name string) (*pfelf.File, error) {
