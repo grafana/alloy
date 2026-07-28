@@ -1,0 +1,558 @@
+attributes:
+    host_id:
+        override: x
+    instance_id:
+        dns: true
+        override_hostname: x
+    kubernetes:
+        cluster_name: x
+        disable_informers:
+            - x
+        drop_external: true
+        enable: x
+        informers_resync_period: 1s
+        informers_sync_timeout: 1s
+        kubeconfig_path: x
+        meta_cache_address: x
+        meta_restrict_local_node: true
+        resource_labels:
+            x:
+                - x
+        service_name_template: x
+    metadata_retry:
+        max_interval: 1s
+        start_interval: 1s
+        timeout: 1s
+    metric_span_names_limit: 1
+    rename_unresolved_hosts: x
+    rename_unresolved_hosts_incoming: x
+    rename_unresolved_hosts_outgoing: x
+    select:
+        x:
+            exclude:
+                - x
+            include:
+                - x
+discovery:
+    bpf_pid_filter_off: true
+    default_exclude_instrument:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    default_exclude_services:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    default_otlp_grpc_port: 1
+    disabled_route_harvesters:
+        - x
+    exclude_instrument:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    exclude_otel_instrumented_services: true
+    exclude_otel_instrumented_services_span_metrics: true
+    exclude_services:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    excluded_linux_system_paths:
+        - x
+    instrument:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    min_process_age: 1s
+    poll_interval: 1s
+    route_harvester_advanced:
+        java_harvest_delay: 1s
+    route_harvester_timeout: 1s
+    services:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    skip_go_specific_tracers: true
+    survey:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+ebpf:
+    batch_length: 1
+    batch_timeout: 1s
+    bpf_debug: true
+    bpf_fs_path: x
+    buffer_sizes:
+        http: 1
+        kafka: 1
+        mssql: 1
+        mysql: 1
+        postgres: 1
+        tcp: 1
+    context_propagation: x
+    couchbase_db_cache_size: 1
+    disable_black_box_cp: true
+    dns_request_timeout: 1s
+    force_bpf_map_reader: x
+    heuristic_sql_detect: true
+    high_request_volume: true
+    http_request_timeout: 1s
+    instrument_cuda: 1
+    kafka_topic_uuid_cache_size: 1
+    log_enricher:
+        async_writer_channel_len: 1
+        async_writer_workers: 1
+        cache_size: 1
+        cache_ttl: 1s
+        services:
+            - service:
+                - cmd_args: x
+                  containers_only: true
+                  exe_path: x
+                  exports:
+                    - x
+                  k8s_daemonset_name: x
+                  k8s_deployment_name: x
+                  k8s_namespace: x
+                  k8s_owner_name: x
+                  k8s_pod_annotations:
+                    x: x
+                  k8s_pod_labels:
+                    x: x
+                  k8s_pod_name: x
+                  k8s_replicaset_name: x
+                  k8s_statefulset_name: x
+                  languages: x
+                  name: x
+                  namespace: x
+                  open_ports: x
+                  sampler:
+                    arg: x
+                    name: x
+    maps_config:
+        global_scale_factor: 1
+    max_transaction_time: 1s
+    mongo_requests_cache_size: 1
+    mssql_prepared_statements_cache_size: 1
+    mysql_prepared_statements_cache_size: 1
+    override_bpfloop_enabled: true
+    payload_extraction:
+        http:
+            aws:
+                enabled: true
+            elasticsearch:
+                enabled: true
+            enrichment:
+                enabled: true
+                policy:
+                    default_action:
+                        body: x
+                        headers: x
+                    obfuscation_string: x
+                rules:
+                    - action: x
+                      match:
+                        case_sensitive: true
+                        methods:
+                            - x
+                        obfuscation_json_paths:
+                            - x
+                        patterns:
+                            - x
+                        url_path_patterns:
+                            - x
+                      scope: x
+                      type: x
+            genai:
+                anthropic:
+                    enabled: true
+                bedrock:
+                    enabled: true
+                embedding:
+                    enabled: true
+                gemini:
+                    enabled: true
+                mcp:
+                    enabled: true
+                openai:
+                    enabled: true
+                qwen:
+                    enabled: true
+                rerank:
+                    enabled: true
+                retrieval:
+                    enabled: true
+            graphql:
+                enabled: true
+            jsonrpc:
+                enabled: true
+            sqlpp:
+                enabled: true
+                endpoint_patterns:
+                    - x
+    postgres_prepared_statements_cache_size: 1
+    protocol_debug_print: true
+    redis_db_cache:
+        enabled: true
+        max_size: 1
+    stats_wakeup_data_bytes: 1
+    track_request_headers: true
+    traffic_control_backend: x
+    wakeup_len: 1
+enforce_sys_caps: true
+filter:
+    application:
+        x:
+            equals: 1
+            greater_equals: 1
+            greater_than: 1
+            less_equals: 1
+            less_than: 1
+            match: x
+            not_equals: 1
+            not_match: x
+    network:
+        x:
+            equals: 1
+            greater_equals: 1
+            greater_than: 1
+            less_equals: 1
+            less_than: 1
+            match: x
+            not_equals: 1
+            not_match: x
+health_check:
+    unix_socket_path: '@beyla-health'
+injector:
+    disable_auto_restart: true
+    enabled_sdks:
+        - x
+    exclude_instrument:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    exporter_otlp_endpoint: x
+    exporter_otlp_protocol: x
+    image_version: x
+    instrument:
+        - cmd_args: x
+          containers_only: true
+          exe_path: x
+          exports:
+            - x
+          k8s_daemonset_name: x
+          k8s_deployment_name: x
+          k8s_namespace: x
+          k8s_owner_name: x
+          k8s_pod_annotations:
+            x: x
+          k8s_pod_labels:
+            x: x
+          k8s_pod_name: x
+          k8s_replicaset_name: x
+          k8s_statefulset_name: x
+          languages: x
+          name: x
+          namespace: x
+          open_ports: x
+          sampler:
+            arg: x
+            name: x
+    otel_exported_signals:
+        logs: true
+        metrics: true
+        traces: true
+    resources:
+        add_k8s_ip_attribute: true
+        add_k8s_uid_attributes: true
+        attributes:
+            x: x
+        use_k8s_labels_for_resource_attributes: true
+    trace_propagators:
+        - x
+    trace_sampler:
+        arg: x
+        name: x
+    webhook:
+        external_deployment_name: x
+internal_metrics:
+    bpf_metric_scrape_interval: 1s
+    exporter: x
+javaagent:
+    attach_timeout: 1s
+    debug: true
+    debug_instrumentation: true
+    enabled: true
+jvm_runtime_metrics:
+    enabled: true
+    sampling_interval: 1s
+log_level: x
+network:
+    agent_ip: x
+    agent_ip_iface: x
+    agent_ip_type: x
+    cache_active_timeout: 1s
+    cache_max_flows: 1
+    cidrs:
+        - x
+    deduper: x
+    deduper_fc_ttl: 1s
+    direction: x
+    enable: true
+    exclude_interfaces:
+        - x
+    exclude_protocols:
+        - x
+    geo_ip:
+        cache_expiry: 1s
+        cache_len: 1
+        ipinfo:
+            path: x
+        maxmind:
+            asn_path: x
+            country_path: x
+    guess_ports: x
+    interfaces:
+        - x
+    listen_interfaces: x
+    listen_poll_period: 1s
+    print_flows: true
+    protocols:
+        - x
+    reverse_dns:
+        cache_expiry: 1s
+        cache_len: 1
+        type: x
+    sampling: 1
+    source: x
+nodejs:
+    enabled: true
+otel_metrics_export:
+    endpoint: unix://@beyla-otlp
+    protocol: http/protobuf
+otel_traces_export:
+    endpoint: unix://@beyla-otlp
+    instrumentations:
+        - x
+    protocol: http/protobuf
+    sampler:
+        arg: x
+        name: x
+prometheus_export:
+    allow_service_graph_self_references: true
+    buckets:
+        duration_histogram:
+            - 1
+        gen_ai_client_operation_duration_histogram:
+            - 1
+        gen_ai_client_token_usage_histogram:
+            - 1
+        request_size_histogram:
+            - 1
+        response_size_histogram:
+            - 1
+        stat_tcp_rtt_histogram:
+            - 1
+    exemplar_filter: x
+    extra_resource_attributes:
+        - x
+    extra_span_resource_attributes:
+        - x
+    features:
+        - x
+    instrumentations:
+        - x
+    native_histogram:
+        bucket_factor: 1
+        max_bucket_number: 1
+        min_reset_duration: 1s
+    port: 12345
+    ttl: 1s
+routes:
+    ignore_mode: x
+    ignored_patterns:
+        - x
+    max_path_segment_cardinality: 1
+    patterns:
+        - x
+    unmatched: x
+    wildcard_char: x
+stats:
+    agent_ip: x
+    agent_ip_iface: x
+    agent_ip_type: x
+    cidrs:
+        - x
+    geo_ip:
+        cache_expiry: 1s
+        cache_len: 1
+        ipinfo:
+            path: x
+        maxmind:
+            asn_path: x
+            country_path: x
+    print_stats: true
+    reverse_dns:
+        cache_expiry: 1s
+        cache_len: 1
+        type: x
+trace_printer: x

@@ -1003,3 +1003,102 @@ func (fn *fakeNotifier) Notify() {
 		fn.NotitfyFunc()
 	}
 }
+
+func TestStorage_AppendSTZeroSample(t *testing.T) {
+	s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	lset := labels.FromStrings("__name__", "test_total")
+
+	// Batch 1: first appearance - the zero sample at the start timestamp is emitted.
+	app := s.Appender(t.Context())
+	ref, err := app.AppendSTZeroSample(0, lset, 100, 50)
+	require.NoError(t, err)
+	_, err = app.Append(ref, lset, 100, 5)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Batch 2: same start timestamp - the zero sample is out of order and skipped.
+	app = s.Appender(t.Context())
+	_, err = app.AppendSTZeroSample(ref, lset, 200, 50)
+	require.ErrorIs(t, err, storage.ErrOutOfOrderST)
+	_, err = app.Append(ref, lset, 200, 6)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Batch 3: the start timestamp advances (a counter reset) - a new zero sample is emitted.
+	app = s.Appender(t.Context())
+	_, err = app.AppendSTZeroSample(ref, lset, 300, 250)
+	require.NoError(t, err)
+	_, err = app.Append(ref, lset, 300, 7)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// A start timestamp at or after the sample's timestamp is rejected.
+	app = s.Appender(t.Context())
+	_, err = app.AppendSTZeroSample(ref, lset, 400, 400)
+	require.ErrorIs(t, err, storage.ErrSTNewerThanSample)
+	require.NoError(t, app.Rollback())
+
+	collector := walDataCollector{}
+	replayer := walReplayer{w: &collector}
+	require.NoError(t, replayer.Replay(s.wal.Dir()))
+
+	type sample struct {
+		T int64
+		V float64
+	}
+	got := make([]sample, 0, len(collector.samples))
+	for _, smpl := range collector.samples {
+		got = append(got, sample{smpl.T, smpl.V})
+	}
+	sort.Slice(got, func(i, j int) bool { return got[i].T < got[j].T })
+	require.Equal(t, []sample{
+		{50, 0}, // injected zero at the initial start timestamp
+		{100, 5},
+		{200, 6},
+		{250, 0}, // injected zero at the reset start timestamp
+		{300, 7},
+	}, got)
+}
+
+func TestStorage_AppendHistogramSTZeroSample(t *testing.T) {
+	s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	lset := labels.FromStrings("__name__", "test_histogram")
+
+	// First appearance - the zero histogram at the start timestamp is emitted.
+	app := s.Appender(t.Context())
+	ref, err := app.AppendHistogramSTZeroSample(0, lset, 100, 50, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	_, err = app.AppendHistogram(ref, lset, 100, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Same start timestamp on the next batch is out of order and skipped.
+	app = s.Appender(t.Context())
+	_, err = app.AppendHistogramSTZeroSample(ref, lset, 200, 50, tsdbutil.GenerateTestHistogram(2), nil)
+	require.ErrorIs(t, err, storage.ErrOutOfOrderST)
+	require.NoError(t, app.Commit())
+
+	collector := walDataCollector{}
+	replayer := walReplayer{w: &collector}
+	require.NoError(t, replayer.Replay(s.wal.Dir()))
+
+	require.Len(t, collector.histograms, 2)
+	sort.Sort(byRefHistogramSample(collector.histograms))
+
+	// The injected histogram is an empty counter-reset marker at the start timestamp.
+	zero := collector.histograms[0]
+	require.Equal(t, int64(50), zero.T)
+	require.Equal(t, histogram.CounterReset, zero.H.CounterResetHint)
+	require.Zero(t, zero.H.Count)
+	require.Equal(t, int64(100), collector.histograms[1].T)
+}

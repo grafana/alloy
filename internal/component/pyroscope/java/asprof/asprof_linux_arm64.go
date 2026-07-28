@@ -6,7 +6,7 @@ import (
 	_ "embed"
 )
 
-//go:embed async-profiler-4.4-linux-arm64.tar.gz
+//go:embed async-profiler-4.5-linux-arm64.tar.gz
 var embeddedArchiveData []byte
 
 // bin/asprof

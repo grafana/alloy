@@ -1,10 +1,13 @@
 package stages
 
 import (
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/prometheus/common/model"
 )
@@ -15,6 +18,7 @@ type LuhnFilterConfig struct {
 	Source      *string `alloy:"source,attr,optional"`
 	MinLength   int     `alloy:"min_length,attr,optional"`
 	Delimiters  string  `alloy:"delimiters,attr,optional"`
+	SkipRegex   string  `alloy:"skip_regex,attr,optional"`
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.
@@ -36,14 +40,26 @@ func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
 	if err := validateLuhnFilterConfig(&config); err != nil {
 		return nil, err
 	}
+
+	var skipRegex *regexp.Regexp
+	if config.SkipRegex != "" {
+		var err error
+		skipRegex, err = regexp.Compile(config.SkipRegex)
+		if err != nil {
+			return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+		}
+	}
+
 	return toStage(&luhnFilterStage{
-		config: &config,
+		config:    &config,
+		skipRegex: skipRegex,
 	}), nil
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
-	config *LuhnFilterConfig
+	config    *LuhnFilterConfig
+	skipRegex *regexp.Regexp
 }
 
 // Process implements Stage.
@@ -66,7 +82,10 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 	}
 
 	// Replace Luhn-valid numbers in the input.
-	if r.config.Delimiters != "" {
+	if r.skipRegex != nil {
+		updatedEntry := replaceLuhnValidNumbersSkipRegex(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters, r.skipRegex)
+		*entry = updatedEntry
+	} else if r.config.Delimiters != "" {
 		updatedEntry := replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters)
 		*entry = updatedEntry
 	} else {
@@ -75,9 +94,94 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 	}
 }
 
+// replaceLuhnValidNumbersSkipRegex scans Luhn candidates in order and only evaluates skipRegex
+// after finding the first valid candidate. The regex match cursor then only moves forward.
+func replaceLuhnValidNumbersSkipRegex(input, replacement string, minLength int, delimiters string, skipRegex *regexp.Regexp) string {
+	var output strings.Builder
+	output.Grow(len(input))
+	var currentNumber strings.Builder
+	var trailingDelimiter rune
+	numberStart := -1
+	numberEnd := -1
+	numberTextEnd := -1
+
+	var skipMatches [][]int
+	skipMatchIndex := 0
+	skipMatchesLoaded := false
+
+	// Checks if the range is skipped by the skipRegex
+	isSkipped := func(start, end int) bool {
+		if !skipMatchesLoaded { // Lazy load the skipRegex matches
+			skipMatches = skipRegex.FindAllStringIndex(input, -1)
+			skipMatchesLoaded = true
+		}
+
+		for skipMatchIndex < len(skipMatches) && skipMatches[skipMatchIndex][1] <= start {
+			skipMatchIndex++
+		}
+		if skipMatchIndex == len(skipMatches) {
+			return false
+		}
+
+		match := skipMatches[skipMatchIndex]
+		return match[0] <= start && end <= match[1]
+	}
+
+	// Flushes the current number to the output, only replacing it if it's a Luhn-valid number and not skipped.
+	flushNumber := func() {
+		if currentNumber.Len() >= minLength {
+			number, err := strconv.Atoi(currentNumber.String())
+			if err == nil && isLuhn(number) {
+				if isSkipped(numberStart, numberEnd) {
+					output.WriteString(input[numberStart:numberTextEnd])
+				} else {
+					output.WriteString(replacement)
+					if trailingDelimiter != 0 {
+						output.WriteRune(trailingDelimiter)
+					}
+				}
+			} else {
+				output.WriteString(input[numberStart:numberTextEnd])
+			}
+		} else if currentNumber.Len() > 0 {
+			output.WriteString(input[numberStart:numberTextEnd])
+		}
+
+		currentNumber.Reset()
+		trailingDelimiter = 0
+		numberStart = -1
+		numberEnd = -1
+		numberTextEnd = -1
+	}
+
+	// Iterate over the input, replacing Luhn-valid numbers.
+	for pos, char := range input {
+		switch {
+		case unicode.IsDigit(char):
+			if numberStart == -1 {
+				numberStart = pos
+			}
+			currentNumber.WriteRune(char)
+			numberEnd = pos + utf8.RuneLen(char)
+			numberTextEnd = numberEnd
+			trailingDelimiter = 0
+		case delimiters != "" && strings.ContainsRune(delimiters, char) && currentNumber.Len() > 0:
+			numberTextEnd = pos + utf8.RuneLen(char)
+			trailingDelimiter = char
+		default:
+			flushNumber()
+			output.WriteRune(char)
+		}
+	}
+	flushNumber()
+
+	return output.String()
+}
+
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
 func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 	var sb strings.Builder
+	sb.Grow(len(input))
 	var currentNumber strings.Builder
 
 	flushNumber := func() {
@@ -120,6 +224,7 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 // These are separate functions to keep the base case as fast as possible, if no delimiters are needed.
 func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string) string {
 	var sb strings.Builder
+	sb.Grow(len(input))
 	var currentNumber strings.Builder
 	var currentString strings.Builder
 	var trailingDelimiter rune
