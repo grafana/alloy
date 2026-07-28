@@ -39,6 +39,11 @@ The {{< param "OTEL_ENGINE" >}} includes:
 {{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} bundles OpenTelemetry Collector components from version {{< param "OTEL_VERSION" >}}.
 You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
 
+The {{< param "OTEL_ENGINE" >}} bundles a deliberately curated subset of these components rather than mirroring all of upstream Contrib.
+Each component is chosen for demand, quality, and maintainability, so you get components that {{< param "PRODUCT_NAME" >}} supports along with a dependency and security surface we actively maintain.
+Because this is Grafana's distribution of the OpenTelemetry Collector, we make sure the {{< param "OTEL_ENGINE" >}} works with Grafana products and always include the components necessary for a smooth integration with Grafana.
+For the criteria we use to decide what to bundle, refer to the contributor guide on [adding OpenTelemetry components](https://github.com/grafana/alloy/blob/main/docs/developer/add-otel-component.md#inclusion-criteria).
+
 The following sections list all included components:
 
 {{< collapse title="Extensions" >}}
@@ -154,6 +159,14 @@ The following sections list all included components:
 {{< /collapse >}}
 
 To view the full list of components and their versions, refer to the [OpenTelemetry Collector Builder manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
+
+## Component lifecycle
+
+{{< admonition type="note" >}}
+Bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
+If a component becomes deprecated or unmaintained upstream, it's deprecated and eventually removed from the {{< param "OTEL_ENGINE" >}} as well.
+We provide notice before removing a component, and you can keep using it through a [custom OCB build](#custom-builds-with-the-opentelemetry-collector-builder-ocb).
+{{< /admonition >}}
 
 ## Custom builds with the OpenTelemetry Collector Builder (OCB)
 
