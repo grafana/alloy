@@ -29,7 +29,7 @@ You can use the following arguments with `database_observability.mysql`:
 
 | Name                                       | Type                 | Description                                                                 | Default | Required |
 |--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
+| `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to. Required when no `database_instance` blocks are defined. |         | no       |
 | `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
@@ -61,6 +61,8 @@ You can use the following blocks with `database_observability.mysql`:
 | `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
+| [`database_instance`][database_instance]                           | Define one database to monitor. Repeat the block to monitor several databases. | no       |
+| `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
@@ -75,6 +77,7 @@ You can use the following blocks with `database_observability.mysql`:
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
+[database_instance]: #database_instance
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
 [schema_details]: #schema_details
@@ -124,6 +127,53 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name              | Type     | Description                                                                                                                 | Default | Required |
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
+
+### `database_instance`
+
+The `database_instance` block defines one database server to monitor.
+Repeat the block to monitor several databases with a single component.
+The block label must be unique across `database_instance` blocks and identifies the database in the component's metrics endpoint path.
+Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port, and database name are rejected.
+
+| Name               | Type                | Description                                               | Default | Required |
+|--------------------|---------------------|-----------------------------------------------------------|---------|----------|
+| `data_source_name` | `secret`            | [Data Source Name][] for the MySQL server to connect to. |         | yes      |
+
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+
+The component always embeds a mysqld_exporter for each `database_instance` block and serves its metrics on the block's metrics path.
+Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
+External exporter targets are only supported in the top-level single-DSN form.
+
+When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
+They're mutually exclusive with `database_instance` blocks.
+All other arguments and blocks, such as collector settings and `prometheus_exporter`, apply to every configured database.
+
+The metrics for each database are served on a separate `/db/<LABEL>/metrics` path under the component's HTTP endpoint, and the exported targets point to the corresponding path.
+When you don't define `database_instance` blocks, the component serves metrics on its historical `/metrics` path.
+The metrics endpoints are served exactly at those paths: requests to any other path under the component's HTTP endpoint return HTTP 404.
+
+For example:
+
+```alloy
+database_observability.mysql "pool" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  database_instance "orders" {
+    data_source_name = sys.env("ORDERS_DSN")
+
+    cloud_provider {
+      aws {
+        arn = "orders-rds-db-arn"
+      }
+    }
+  }
+
+  database_instance "billing" {
+    data_source_name = sys.env("BILLING_DSN")
+  }
+}
+```
 
 ### `setup_consumers`
 

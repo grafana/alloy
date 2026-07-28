@@ -3,8 +3,10 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -419,6 +421,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
+		OnStateChange: func(e cmp.Exports) {},
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -511,11 +514,11 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.instance.healthErr.Store("initial error")
+		c.loadInstances()[0].healthErr.Store("initial error")
 
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.instance.healthErr.Load())
+		assert.NotEmpty(t, c.loadInstances()[0].healthErr.Load())
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -551,21 +554,22 @@ func TestMySQL_Reconnection(t *testing.T) {
 			fanout:  loki.NewFanout(args.ForwardTo),
 			handler: loki.NewLogsReceiver(),
 			openSQL: func(_ string, _ string) (*sql.DB, error) { return db1, nil },
-			instance: &dbInstance{
-				instanceKey: "test-instance",
-				baseTarget: discovery.NewTargetFromMap(map[string]string{
-					"instance": "test-instance",
-					"job":      "database_observability",
-				}),
-				registry:  prometheus.NewRegistry(),
-				healthErr: atomic.NewString(""),
-			},
 		}
+		c.storeInstances([]*dbInstance{{
+			cfg:         databaseConfig{dsn: args.DataSourceName},
+			instanceKey: "test-instance",
+			baseTarget: discovery.NewTargetFromMap(map[string]string{
+				"instance": "test-instance",
+				"job":      "database_observability",
+			}),
+			registry:  prometheus.NewRegistry(),
+			healthErr: atomic.NewString(""),
+		}})
 
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.instance.healthErr.Load())
+		assert.NotEmpty(t, c.loadInstances()[0].healthErr.Load())
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
@@ -583,7 +587,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 		// Second attempt: connection succeeds and clears error
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.instance.healthErr.Load())
+		assert.Empty(t, c.loadInstances()[0].healthErr.Load())
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
@@ -678,4 +682,304 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
 	})
+}
+
+func Test_databaseInstanceBlocks(t *testing.T) {
+	t.Run("parse database blocks", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+				cloud_provider {
+					aws {
+						arn = "arn:aws:rds:us-east-1:123456789012:db:orders"
+					}
+				}
+			}
+			database_instance "billing" {
+				data_source_name = "user:pass@tcp(localhost:3306)/billing"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+
+		require.Len(t, args.Databases, 2)
+		assert.Equal(t, "orders", args.Databases[0].Name)
+		assert.Equal(t, alloytypes.Secret("user:pass@tcp(localhost:3306)/orders"), args.Databases[0].DataSourceName)
+		require.NotNil(t, args.Databases[0].CloudProvider)
+		assert.Equal(t, "arn:aws:rds:us-east-1:123456789012:db:orders", args.Databases[0].CloudProvider.AWS.ARN)
+		assert.Equal(t, "billing", args.Databases[1].Name)
+	})
+
+	t.Run("data_source_name and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "data_source_name and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("targets and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			targets = [{"__address__" = "localhost:9104"}]
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "targets and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("cloud_provider and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			cloud_provider {
+				aws {
+					arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+				}
+			}
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "cloud_provider and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("duplicate database_instance block labels", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+			}
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/billing"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `duplicate database_instance block label "orders"`)
+	})
+
+	t.Run("invalid database block label", func(t *testing.T) {
+		// The syntax parser rejects non-identifier labels itself; the Validate
+		// check is a backstop for programmatically constructed Arguments.
+		args := Arguments{
+			Databases: []DatabaseArguments{
+				{Name: "bad name", DataSourceName: "user:pass@tcp(localhost:3306)/orders"},
+			},
+		}
+		err := args.Validate()
+		require.ErrorContains(t, err, "must be a valid identifier")
+	})
+
+	t.Run("database blocks resolving to the same server", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+			}
+			database_instance "orders_replica" {
+				data_source_name = "other:pass@tcp(localhost:3306)/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "resolve to the same server")
+	})
+
+	t.Run("targets is not a valid attribute of database_instance blocks", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "user:pass@tcp(localhost:3306)/orders"
+				targets = [{"__address__" = "localhost:9104"}]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `unrecognized attribute name "targets"`)
+	})
+}
+
+func multiDatabaseTestMockDB(t *testing.T, uuid string) *sql.DB {
+	t.Helper()
+
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+
+	mock.MatchExpectationsInOrder(false)
+	mock.ExpectPing()
+	mock.ExpectPing()
+	mock.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).
+		WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).
+			AddRow(uuid, "host-"+uuid, "8.0.0"))
+	return db
+}
+
+func TestMySQL_MultipleDatabases(t *testing.T) {
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "a", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db1"},
+			{Name: "b", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db2"},
+		},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:     "test.mysql",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+		OnStateChange: func(e cmp.Exports) { gotExports = e },
+	}
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+	dbB := multiDatabaseTestMockDB(t, "uuid-b")
+
+	c, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	instanceA, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db1", instanceA)
+	pathA, _ := exported.Targets[0].Get(model.MetricsPathLabel)
+	assert.True(t, strings.HasSuffix(pathA, "/db/a/metrics"), "unexpected metrics path %q", pathA)
+
+	instanceB, _ := exported.Targets[1].Get("instance")
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db2", instanceB)
+	pathB, _ := exported.Targets[1].Get(model.MetricsPathLabel)
+	assert.True(t, strings.HasSuffix(pathB, "/db/b/metrics"), "unexpected metrics path %q", pathB)
+
+	// Each database is served on its own metrics path.
+	for _, path := range []string{"/db/a/metrics", "/db/b/metrics"} {
+		rec := httptest.NewRecorder()
+		c.Handler().ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "database_observability_connection_info")
+	}
+
+	// The single-database /metrics path is not served when database_instance blocks are used.
+	rec := httptest.NewRecorder()
+	c.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestMySQL_MultipleDatabases_PartialFailure(t *testing.T) {
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "a", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db1"},
+			{Name: "b", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db2"},
+		},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:     "test.mysql",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+		OnStateChange: func(e cmp.Exports) { gotExports = e },
+	}
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+
+	dbB, mockB, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { dbB.Close() })
+	mockB.ExpectPing().WillReturnError(assert.AnError)
+
+	c, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+	assert.Contains(t, h.Message, `database "b"`)
+
+	// Only the connected database exports targets.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db1", instance)
+}
+
+// TestMySQL_Update_FailedRebuildKeepsOldInstances tests that when Update can't
+// build the new instances, it returns an error and the previous instances keep
+// running untouched.
+func TestMySQL_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
+	failGetServiceData := false
+	opts := cmp.Options{
+		ID:     "test.mysql",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			if failGetServiceData {
+				return nil, assert.AnError
+			}
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+		OnStateChange: func(e cmp.Exports) {},
+	}
+	args := Arguments{
+		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	db := multiDatabaseTestMockDB(t, "uuid-1")
+
+	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 1)
+	require.NotEmpty(t, before[0].collectors)
+
+	failGetServiceData = true
+	err = c.Update(args)
+	require.Error(t, err)
+
+	after := c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Same(t, before[0], after[0])
+	assert.NotEmpty(t, after[0].collectors)
+	assert.Equal(t, cmp.HealthTypeHealthy, c.CurrentHealth().Health)
 }
