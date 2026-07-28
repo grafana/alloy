@@ -78,11 +78,14 @@ func leadingLogLabel(s string) string {
 // error line's prefix; a STATEMENT line only attaches when its PID matches, so
 // interleaved log streams cannot pair one backend's error with another's SQL.
 type pendingError struct {
-	receivedAt time.Time
-	pid        string
-	severity   string
-	datname    string
-	timestamp  time.Time
+	receivedAt    time.Time
+	pid           string
+	severity      string
+	datname       string
+	user          string
+	sqlstate      string
+	sqlstateClass string
+	timestamp     time.Time
 
 	sql          strings.Builder
 	hasStatement bool
@@ -490,11 +493,14 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// pending is displaced here (no STATEMENT captured → no op="error_message" entry);
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
-		receivedAt: time.Now(),
-		pid:        pid,
-		severity:   label,
-		datname:    database,
-		timestamp:  parsedTimestamp,
+		receivedAt:    time.Now(),
+		pid:           pid,
+		severity:      label,
+		datname:       database,
+		user:          user,
+		sqlstate:      sqlstateCode,
+		sqlstateClass: sqlstateClass,
+		timestamp:     parsedTimestamp,
 	}
 
 	return nil
@@ -580,11 +586,14 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	}
 
 	// Minimal logfmt body for one ERROR + STATEMENT pair: just the fields
-	// needed to compute per-query error rate. The SQL text and error-detail
-	// fields are intentionally omitted (deferred to a follow-up PR); consumers
-	// recover the SQL by joining on query_fingerprint. severity and fp never
-	// need quoting; %q fully escapes datname.
-	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s", p.severity, p.datname, fp)
+	// needed to compute per-query error rate plus who/what triggered it. The
+	// SQL text and remaining error-detail fields (client/session, error
+	// message, …) are intentionally omitted (deferred to a follow-up PR);
+	// consumers recover the SQL by joining on query_fingerprint. severity, pid,
+	// sqlstate, sqlstate_class, and fp never need quoting; %q escapes datname
+	// and user.
+	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s",
+		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass)
 
 	// Blocking send by design (backpressure over dropping entries), but guarded
 	// by the collector context so a stalled downstream can't wedge Stop().
