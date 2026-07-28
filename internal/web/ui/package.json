@@ -28,7 +28,7 @@
     "normalize.css": "^8.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router": "^7.16.0"
+    "react-router": "^8.0.0"
   },
   "overrides": {
     "esbuild": "0.28.1",
