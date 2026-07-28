@@ -1,11 +1,10 @@
 package main
 
 import (
-
-	// TODO: this imported to just download dependencies. Bare imports will be removed after newOtelSupervisorCommand is finished.
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -168,41 +167,20 @@ func supervisorConfigFromEnv() (*config.Supervisor, error) {
 		fmURL += opAmpEndpoint
 	}
 
-	// TODO: Modify config.Supervisor instead of unmarshal
-	cfgMap := map[string]any{
-		"server": map[string]any{
-			"endpoint": fmURL,
-			"headers": map[string]any{
-				"Authorization": "Basic " + authStr,
-			},
-		},
-		"capabilities": map[string]any{
-			"accepts_remote_config": true,
-			"reports_remote_config": true,
-		},
-		"agent": map[string]any{
-			"args":                      []any{"otel"},
-			"passthrough_logs":          true,
-			"orphan_detection_interval": "5s",
-		},
-		"storage": map[string]any{
-			"directory": storageDir,
-		},
-		"telemetry": map[string]any{
-			"logs": map[string]any{
-				"level": "info",
-			},
-		},
-	}
-
+	// Start from supervisor defaults and override only what simple mode needs.
+	// Defaults already cover agent timeouts, orphan detection interval and "info" log level.
 	cfg := config.DefaultSupervisor()
-	err := confmap.NewFromStringMap(cfgMap).Unmarshal(&cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build supervisor config: %w", err)
+	cfg.Server.Endpoint = fmURL
+	cfg.Server.Headers = http.Header{
+		"Authorization": []string{"Basic " + authStr},
 	}
+	cfg.Capabilities.AcceptsRemoteConfig = true
+	cfg.Capabilities.ReportsRemoteConfig = true
+	cfg.Agent.Arguments = []string{"otel"}
+	cfg.Agent.PassthroughLogs = true
+	cfg.Storage.Directory = storageDir
 
-	err = cfg.Validate()
-	if err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("cannot validate generated supervisor config: %w", err)
 	}
 
