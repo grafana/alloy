@@ -17,7 +17,7 @@ When you use `password_file`, the file is read on every outgoing request that us
 {{< admonition type="note" >}}
 High scrape or write rates create repeated file reads when you use `password_file`.
 You can use the [`local.file`][local.file] component to read the password file and provide the content to the `password` attribute.
-This avoids repeated file reads because `local.file` monitors the file and only reads when it changes.
+This avoids repeated file reads because `local.file` monitors the file and reads when it changes.
 
 [local.file]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/local/local.file/
 {{< /admonition >}}
