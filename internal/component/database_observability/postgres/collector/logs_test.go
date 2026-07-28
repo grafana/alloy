@@ -969,10 +969,14 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, "books_store", fields["datname"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	require.Equal(t, "user", fields["user"])
+	require.Equal(t, pid, fields["pid"])
+	require.Equal(t, "42P01", fields["sqlstate"])
+	require.Equal(t, "42", fields["sqlstate_class"])
 
-	// v1 emits only the bare-minimum field set; error-detail fields (sqlstate,
-	// pid, client/session, error_message, the SQL text, …) are deferred.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+	// v1 emits only the bare-minimum field set; error-detail fields (client/session,
+	// error_message, the SQL text, …) are deferred.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
 }
 
 func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
@@ -1018,7 +1022,9 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	require.NoError(t, fpErr)
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+	require.Equal(t, pid, fields["pid"])
+	require.Equal(t, "42P02", fields["sqlstate"], "the second error's SQLSTATE is the one matched")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
 }
 
 // TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
@@ -1050,8 +1056,10 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	require.Equal(t, "app-user", fields["user"])
+	require.Equal(t, pid, fields["pid"])
 	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
 }
 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an

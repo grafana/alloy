@@ -28,14 +28,14 @@ var (
 type config struct {
 	ebpfEnabled bool
 	javaPids    pids
-	uprobeLinks stringSlice
+	probeLinks  stringSlice
 }
 
 func parseConfig() *config {
 	c := &config{}
 	flag.BoolVar(&c.ebpfEnabled, "ebpf", true, "enable ebpf")
 	flag.Var(&c.javaPids, "java", "java process id")
-	flag.Var(&c.uprobeLinks, "uprobe", "uprobe link (can be specified multiple times)")
+	flag.Var(&c.probeLinks, "probe", "probe link (can be specified multiple times)")
 	flag.Parse()
 	return c
 }
@@ -49,7 +49,7 @@ func newWrite() (pyroscope.Appendable, *write.Component) {
 	return receiver, c
 }
 
-func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component {
+func newEbpf(forward pyroscope.Appendable, probeLinks []string) *ebpf.Component {
 	args := ebpf.NewDefaultArguments()
 	args.PyroscopeDynamicProfilingPolicy = false
 	args.ForwardTo = []pyroscope.Appendable{forward}
@@ -58,7 +58,7 @@ func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component
 	args.PIDLabel = true
 	args.Comm = "both"
 	args.KernelFrames = true
-	args.UProbeLinks = uprobeLinks
+	args.ProbeLinks = probeLinks
 	// args.DebugInfoOptions.UploadEnabled = true
 	e, err := ebpf.New(
 		l.With("component", "ebpf"),
@@ -88,7 +88,7 @@ func main() {
 	}, cancel2)
 
 	if cfg.ebpfEnabled {
-		e := newEbpf(w, cfg.uprobeLinks)
+		e := newEbpf(w, cfg.probeLinks)
 		g.Add(func() error {
 			return e.Run(ctx)
 		}, cancel2)
