@@ -2364,8 +2364,8 @@ github.com/testcontainers/testcontainers-go/modules/minio v0.34.0 h1:OpUqT7VV/d+
 github.com/testcontainers/testcontainers-go/modules/minio v0.34.0/go.mod h1:0iaOtVNCzu04KcXHgmdNE7aelKaMUwC9x1M0oe6h1sw=
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0 h1:o3bgcECyBFfMwqexCH/6vIJ8XzbCffCP/Euesu33rgY=
 github.com/testcontainers/testcontainers-go/modules/mongodb v0.34.0/go.mod h1:ljLR42dN7k40CX0dp30R8BRIB3OOdvr7rBANEpfmMs4=
-github.com/tetratelabs/wazero v1.9.0 h1:IcZ56OuxrtaEz8UYNRHBrUa9bYeX9oVY93KspZZBf/I=
-github.com/tetratelabs/wazero v1.9.0/go.mod h1:TSbcXCfFP0L2FGkRPxHphadXPjo1T6W+CseNNY7EkjM=
+github.com/tetratelabs/wazero v1.12.0 h1:DuWcpNu/FzgEXgGBDp8J1Spc+CWOvvtvVyjKlaZopYU=
+github.com/tetratelabs/wazero v1.12.0/go.mod h1:LvKtzl2RqO4gyF27BiXU+nKAjcV8f38U+kP/q2vgxh0=
 github.com/tg123/go-htpasswd v1.2.4 h1:HgH8KKCjdmo7jjXWN9k1nefPBd7Be3tFCTjc2jPraPU=
 github.com/tg123/go-htpasswd v1.2.4/go.mod h1:EKThQok9xHkun6NBMynNv6Jmu24A33XdZzzl4Q7H1+0=
 github.com/tidwall/gjson v1.10.2/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
@@ -2447,10 +2447,10 @@ github.com/vmware/govmomi v0.54.0 h1:akEKkM9XKMOhTskmdzTLG8JzH+sh61jbFrVPbAzv5IQ
 github.com/vmware/govmomi v0.54.0/go.mod h1:0F3hChqXDrSQQnjfSiCqRE5lPD4aZlbOtKG4uroq2a4=
 github.com/vultr/govultr/v3 v3.31.2 h1:2l3/KDvfemG+4azw4LLquJoh9mFOAVEdBXtPPzix3ac=
 github.com/vultr/govultr/v3 v3.31.2/go.mod h1:2zyUw9yADQaGwKnwDesmIOlBNLrm7edsCfWHFJpWKf8=
-github.com/wasilibs/go-re2 v1.10.0 h1:vQZEBYZOCA9jdBMmrO4+CvqyCj0x4OomXTJ4a5/urQ0=
-github.com/wasilibs/go-re2 v1.10.0/go.mod h1:k+5XqO2bCJS+QpGOnqugyfwC04nw0jaglmjrrkG8U6o=
-github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 h1:OvLBa8SqJnZ6P+mjlzc2K7PM22rRUPE1x32G9DTPrC4=
-github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52/go.mod h1:jMeV4Vpbi8osrE/pKUxRZkVaA0EX7NZN0A9/oRzgpgY=
+github.com/wasilibs/go-re2 v1.12.0 h1:sq3A6ZOqT90HYY25MD5/cG8Xv6uT2AhmPgBfkCfhp10=
+github.com/wasilibs/go-re2 v1.12.0/go.mod h1:2W+7GrrdO4NHv7ITHz8Yy3a1IxzjZCk8JR5zgTprxZs=
+github.com/wasilibs/wazero-helpers v0.0.0-20250123031827-cd30c44769bb h1:gQ+ZV4wJke/EBKYciZ2MshEouEHFuinB85dY3f5s1q8=
+github.com/wasilibs/wazero-helpers v0.0.0-20250123031827-cd30c44769bb/go.mod h1:jMeV4Vpbi8osrE/pKUxRZkVaA0EX7NZN0A9/oRzgpgY=
 github.com/webdevops/azure-metrics-exporter v0.0.0-20250720221040-5092ac086990 h1:lZ2FF6ftDgcG9ntn81MTnjMeIRpQjQklUUscMfPqGLA=
 github.com/webdevops/azure-metrics-exporter v0.0.0-20250720221040-5092ac086990/go.mod h1:N7UMt8u3vundNaXHTtJgQRII4/LnLhx+1KoN3NTzAeY=
 github.com/webdevops/go-common v0.0.0-20250720220738-a468ce107f36 h1:N7tsRqWOSeYvtgioX4G9X5FpqiiwXadI7tzybv+IUAU=
