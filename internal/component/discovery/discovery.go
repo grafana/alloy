@@ -237,8 +237,12 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 
 	for _, source := range sources {
 		group := cache[source]
+		// Pack the group's shared labels once and let every target in the group
+		// reference them, so they are stored once per group rather than once per
+		// target.
+		groupLabels := newGroupLabels(group.Labels)
 		for _, target := range group.Targets {
-			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
+			allTargets = append(allTargets, newTargetFromGroup(groupLabels, target))
 		}
 	}
 	return allTargets
