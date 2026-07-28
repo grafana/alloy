@@ -10,6 +10,59 @@ It's straightforward to add a component to Alloy, whether for your personal use 
 This document uses a simple example to show how you add a component to Alloy that exists in an upstream OpenTelemetry Collector repository.
 You can apply this information to add any part of an OpenTelemetry pipeline to Alloy.
 
+## Inclusion criteria
+
+The criteria below apply when you want a component bundled into the official Alloy distribution and maintained by the Alloy team.
+
+Alloy ships a deliberately curated subset of upstream OpenTelemetry components rather than mirroring all of Contrib.
+Keeping that set small is what lets us support and maintain the components we bundle and keep the dependency and security surface manageable.
+These principles are fundamentally about what we commit to maintain.
+Components we maintain are kept interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
+Components we don't want to maintain are instead marked as community components in the Default Engine and aren't bundled in the OTel Engine.
+So these criteria apply to any `otelcol.*` component we would maintain, whether it targets the Default Engine or the OTel Engine.
+
+Before proposing a component, open a feature request and weigh it against the signals below.
+Referencing these criteria in the feature request helps maintainers evaluate the proposal.
+
+### Signals for inclusion
+
+| Signal | Why it matters |
+| --- | --- |
+| Grafana product compatibility | The component is needed for Grafana products or Grafana Cloud to ingest or work with the telemetry. |
+| Clear demand | There is a feature request with genuine motivation and real community interest, such as activity and reactions. |
+| Ecosystem adoption | The component is widely used upstream, bundled by other OpenTelemetry distributions, or assumed by upstream Helm chart presets. |
+| Fills a genuine gap | No existing bundled component covers the use case well. |
+
+### Signals against inclusion
+
+These are the carrying costs and risks a component has to justify.
+
+| Signal | Why it matters |
+| --- | --- |
+| Low stability or unmaintained | Contrib components vary widely in maturity, and an alpha or unmaintained component is a support risk. |
+| Non-reputable source repository | Components from unknown or inactive repositories carry higher trust and maintenance risk. |
+| Heavy dependency or security footprint | Every bundled component adds ongoing cost, so a large dependency tree, a required fork, or known CVEs all raise the bar. |
+| Incompatible license | Alloy is licensed under Apache 2.0, so a component must be under a compatible license to be bundled. |
+
+### How we decide
+
+These are principles and not a scoring system per se.
+Maintainers weigh the signals together and make the final call, so meeting individual criteria doesn't guarantee inclusion.
+A proposal results in one of three outcomes:
+
+* **Bundled and supported.** The component is added to both engines and maintained by the Alloy team.
+* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain our responsibility to ship.
+* **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
+
+## Component lifecycle and removal
+
+Once the OTel Engine is generally available, bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
+
+* If a component is marked **deprecated** upstream, we mark it deprecated in our distribution and keep it for at least two more minor releases before removing it.
+* If a component becomes **unmaintained** upstream, we follow the same process and remove it after it has been unmaintained for three months.
+
+In either case we provide notice and recommend the OCB fallback for anyone affected.
+
 ## Before you begin
 
 The OpenTelemetry component must be the same version as the OpenTelemetry components included in the version of Alloy you are using.
@@ -161,7 +214,9 @@ _ "github.com/grafana/alloy/internal/component/otelcol/processor/example"       
 
 ## Add the component to the OTel engine
 
-The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set. To make the component available there too, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
+The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set.
+
+Only non-community components are bundled in the OTel Engine. If your component is a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/), skip this step: community components live in the Default Engine only, and users who want them in the OTel Engine add them through a custom OCB build. For a non-community component, make it available in the OTel Engine by adding it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
 
 ```yaml
 processors:
