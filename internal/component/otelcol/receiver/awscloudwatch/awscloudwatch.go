@@ -80,11 +80,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
-	// If the autodiscover config is provided but the limit is not set, set the limit to the default.
-	if args.Logs.Groups.AutodiscoverConfig != nil && args.Logs.Groups.AutodiscoverConfig.Limit == nil {
-		otelConfig.Logs.Groups.AutodiscoverConfig.Limit = defaultLogGroupLimit
-	}
-
 	// Configure storage if args.Storage is set.
 	if args.Storage != nil {
 		if args.Storage.Extension == nil {

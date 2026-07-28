@@ -419,6 +419,35 @@ func TestArguments_NoMetricsBlock(t *testing.T) {
 	)
 }
 
+// TestArguments_AutodiscoverNullLimit guards against a nil dereference in
+// AutodiscoverConfig.Convert. SetToDefault populates the limit when the block is
+// present, but an explicit `limit = null` leaves the pointer nil, which used to
+// panic while loading the configuration.
+func TestArguments_AutodiscoverNullLimit(t *testing.T) {
+	cfg := `
+		region = "us-west-2"
+		logs {
+			groups {
+				autodiscover {
+					prefix = "app-"
+					limit = null
+				}
+			}
+		}
+		output {}
+	`
+
+	var args awscloudwatch.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	autodiscover := actual.(*awscloudwatchreceiver.Config).Logs.Groups.AutodiscoverConfig
+	require.NotNil(t, autodiscover)
+	require.Equal(t, 50, autodiscover.Limit)
+}
+
 // TestArguments_IncludeLinkedAccountsUnset guards the pointer semantics of
 // include_linked_accounts. Upstream only forwards the field to AWS when it is
 // non-nil, so omitting the attribute must not send an explicit false.

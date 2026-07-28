@@ -206,10 +206,18 @@ func (args *AutodiscoverConfig) Convert() *awscloudwatchreceiver.AutodiscoverCon
 	if args == nil {
 		return nil
 	}
+
+	// SetToDefault populates Limit when the block is present, but an explicit
+	// `limit = null` leaves it nil, so fall back rather than dereferencing.
+	limit := defaultLogGroupLimit
+	if args.Limit != nil {
+		limit = *args.Limit
+	}
+
 	return &awscloudwatchreceiver.AutodiscoverConfig{
 		Prefix:                args.Prefix,
 		Pattern:               args.Pattern,
-		Limit:                 *args.Limit,
+		Limit:                 limit,
 		Streams:               args.Streams.Convert(),
 		AccountIdentifiers:    args.AccountIdentifiers,
 		IncludeLinkedAccounts: args.IncludeLinkedAccounts,
