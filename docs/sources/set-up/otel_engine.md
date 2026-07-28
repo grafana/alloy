@@ -264,6 +264,62 @@ Service installation support for systemd, launchd, and similar systems isn't inc
 Service installers work seamlessly with the {{< param "OTEL_ENGINE" >}} as the feature matures.
 In the meantime, use the CLI or Helm options for testing.
 
+## Custom builds with the OpenTelemetry Collector Builder (OCB)
+
+The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest.
+If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
+Grafana doesn't offer commercial support for custom builds.
+
+### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
+
+Clone the Git repository and change to the repository root.
+The following steps assume you run commands from this directory.
+
+```shell
+git clone https://github.com/grafana/alloy.git
+cd alloy
+```
+
+To build from a **specific release**, fetch tags and check out the tag after you clone:
+
+```shell
+git fetch --tags
+git checkout <RELEASE_TAG>
+```
+
+Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
+
+### 2. Start from the checked-in manifest
+
+The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
+You can:
+
+- **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
+- **Add** a component: append a line that points at the module path and version you want.
+  Follow the same `- gomod:` pattern as the other entries.
+
+### 3. Build the {{< param "PRODUCT_NAME" >}} binary
+
+Build the full {{< param "PRODUCT_NAME" >}} binary:
+
+```shell
+make alloy
+```
+
+The binary in `build/` behaves like a standard `alloy` build.
+Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+
+### 4. Build a Docker image
+
+To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
+
+```shell
+make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
+```
+
+Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
+If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
+
 ## Considerations
 
 1. **Storage configuration**: The {{< param "DEFAULT_ENGINE" >}} accepts the `--storage.path` flag to set a base directory for components to store data on disk.
@@ -273,10 +329,8 @@ In the meantime, use the CLI or Helm options for testing.
    The {{< param "OTEL_ENGINE" >}} exposes its HTTP server on port `8888`.
    The {{< param "OTEL_ENGINE" >}} HTTP server doesn't expose a UI, support bundles, or reload endpoint functionality like the {{< param "DEFAULT_ENGINE" >}} does.
 1. **Inline configuration module path**: If `config.inline.module_path` isn't defined, the `module_path` {{< param "PRODUCT_NAME" >}} configuration keyword resolves to the process current working directory.
-1. **Fleet management**: [Grafana Fleet Management](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management) doesn't support the {{< param "OTEL_ENGINE" >}} yet.
-   You must define and manage the input configuration manually.
 
 ## Next steps
 
-- Refer to [OpenTelemetry in {{< param "PRODUCT_NAME" >}}](../../introduction/otel_alloy/) for information about the included components.
-- Refer to the [OTel CLI reference](../../reference/cli/otel/) for more information about the OTel CLI.
+- Refer to [OpenTelemetry in {{< param "PRODUCT_NAME" >}}](../../introduction/otel_alloy/) to learn when to use each engine.
+- Refer to the [`otel` command reference](../../reference/cli/otel/) for the command options and included components.
