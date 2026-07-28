@@ -99,11 +99,22 @@ providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.59.0
   - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.59.0
 
+excludes:
+  # The monolithic github.com/knadh/koanf v1.5.0 ships packages (parsers/yaml, providers/rawbytes,
+  # maps, ...) at the same import paths as the modular koanf/* modules. cmd/opampsupervisor and
+  # go.opentelemetry.io/collector/confmap require the modular form, so exclude the monolith to
+  # resolve the "ambiguous import" error during `go mod tidy`.
+  - github.com/knadh/koanf v1.5.0
+
 replaces:
   # Local modules.
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
   # <BEGIN_SHARED_REPLACE_DIRECTIVES>
+  # OTel supervisor that embedded in Alloy, imports cmd/opampsupervisor, but OCB does not list it as a component,
+  # so `go mod tidy` would otherwise resolve it to @latest and break the filelogreceiver family.
+  # Pin it to the v0.153 contrib train
+  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Replace directives from Loki — Azure SDK

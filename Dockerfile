@@ -64,8 +64,10 @@ COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
 
 # Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
 # OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
-COPY packaging/docker/otelcol.sh /bin/otelcol
-RUN chmod 755 /bin/otelcol
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otelcol.sh /bin/otelcol
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor as PID 1
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otel-supervisor.sh /bin/otel-supervisor
 
 # Create alloy user in container, but do not set it as default
 #
@@ -73,7 +75,7 @@ RUN chmod 755 /bin/otelcol
 # undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME \
     && useradd -m -u $UID -g $UID $USERNAME \
-    && mkdir -p /var/lib/alloy/data \
+    && mkdir -p /var/lib/alloy/data /var/lib/alloy/supervisor \
     && chown -R $USERNAME:$USERNAME /var/lib/alloy \
     && chmod -R 770 /var/lib/alloy
 
