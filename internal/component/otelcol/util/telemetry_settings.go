@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/useragent"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/service/telemetry"
@@ -32,9 +33,17 @@ func GetTelemetrySettingsResource() (pcommon.Resource, error) {
 }
 
 func GetBuildInfo() otelcomponent.BuildInfo {
+	// otelcol exporters derive their User-Agent from BuildInfo.
+	// Under the OTel engine these components run via the alloyengine extension.
+	// Mentioning "extension" in User-Agent helps us distinguish whether the
+	// otelcol components run in OTel Engine or in Alloy Engine.
+	description := useragent.ProductName
+	if useragent.GetEngineMode() == useragent.EngineOTel {
+		description = useragent.ExtensionProductName
+	}
 	return otelcomponent.BuildInfo{
 		Command:     os.Args[0],
-		Description: "Grafana Alloy",
+		Description: description,
 		Version:     build.Version,
 	}
 }

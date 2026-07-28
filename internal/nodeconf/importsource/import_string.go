@@ -70,3 +70,8 @@ func (im *ImportString) SetEval(eval *vm.Evaluator) {
 func (im *ImportString) ModulePath() string {
 	return im.modulePath
 }
+
+// InheritsModulePath reports that import.string derives module_path from the parent scope.
+func (im *ImportString) InheritsModulePath() bool {
+	return true
+}

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  CLOUDWATCH_DOC: ./docs/sources/shared/reference/components/prometheus-exporter-cloudwatch-supported-services.md
+  CLOUDWATCH_DOC_GENERATOR: ./internal/static/integrations/cloudwatch_exporter/docs/doc.go
+
+tasks:
+  cloudwatch-sync:
+    desc: Sync the CloudWatch exporter supported-services documentation.
+    cmds:
+      - go run {{.CLOUDWATCH_DOC_GENERATOR}} sync {{.CLOUDWATCH_DOC}}

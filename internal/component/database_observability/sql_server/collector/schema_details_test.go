@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,9 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func TestSchemaDetails(t *testing.T) {
@@ -696,11 +699,20 @@ func TestSchemaDetails(t *testing.T) {
 
 		lokiClient := loki.NewCollectingHandler()
 
+		// No loki-side sync point here, so sync on the collector's log via a
+		// thread-safe buffer and inspect the mock only after Stop().
+		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          util.TestAlloyLogger(t).Slog(),
+			Logger:          logger.Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -721,16 +733,17 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
+			return strings.Contains(logBuffer.String(), `msg="no tables detected from information_schema.tables"`)
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		lokiClient.Stop()
-
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiClient.Stop()
 		require.Empty(t, lokiClient.Received())
 	})
 

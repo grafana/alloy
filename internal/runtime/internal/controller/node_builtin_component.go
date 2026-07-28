@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
@@ -83,6 +84,9 @@ type ComponentGlobals struct {
 	NewModuleController  func(opts ModuleControllerOpts) ModuleController // Func to generate a module controller.
 	GetServiceData       func(name string) (any, error)                   // Get data for a service.
 	EnableCommunityComps bool                                             // Enables the use of community components.
+
+	// OnImportContent is a hook that is invoked with the parsed content of every imported module.
+	OnImportContent importsource.ImportContentHook
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.

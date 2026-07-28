@@ -51,13 +51,14 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 
 	if host, ok := parts["host"]; ok {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
-			matches := database_observability.RdsRegex.FindStringSubmatch(host)
-			cloudProvider.AWS = &database_observability.AWSCloudProviderInfo{
-				ARN: arn.ARN{
-					Resource:  fmt.Sprintf("db:%s", matches[1]),
-					Region:    matches[3],
-					AccountID: "unknown",
-				},
+			if matches := database_observability.RdsRegex.FindStringSubmatch(host); len(matches) >= 4 {
+				cloudProvider.AWS = &database_observability.AWSCloudProviderInfo{
+					ARN: arn.ARN{
+						Resource:  fmt.Sprintf("db:%s", matches[1]),
+						Region:    matches[3],
+						AccountID: "unknown",
+					},
+				}
 			}
 		} else if strings.HasSuffix(host, "postgres.database.azure.com") {
 			matches := database_observability.AzurePostgreSQLRegex.FindStringSubmatch(host)

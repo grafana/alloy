@@ -27,13 +27,11 @@ var specialModuleMappings = map[string]string{
 	"go.opentelemetry.io/collector":     "open-telemetry/opentelemetry-collector",
 	"go.opentelemetry.io/build-tools":   "open-telemetry/opentelemetry-go-build-tools",
 	"go.opentelemetry.io/auto":          "open-telemetry/opentelemetry-go-instrumentation",
-	"go.opentelemetry.io/obi":           "grafana/opentelemetry-ebpf-instrumentation",
 	"go.opentelemetry.io/ebpf-profiler": "grafana/opentelemetry-ebpf-profiler",
 }
 
 var primaryLookupMethod = map[string]LookupMethod{
-	"grafana/opentelemetry-ebpf-profiler":        GitTag,
-	"grafana/opentelemetry-ebpf-instrumentation": GitTag,
+	"grafana/opentelemetry-ebpf-profiler": GitTag,
 
 	"prometheus/prometheus":                          GitHubRelease,
 	"prometheus/common":                              GitHubRelease,

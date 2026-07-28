@@ -48,11 +48,11 @@ database_observability_logs_processing_enabled 0
 			}
 			reg := prometheus.NewRegistry()
 			c, err := NewLogs(LogsArguments{
-				Receiver:        loki.NewLogsReceiver(),
-				EntryHandler:    loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
-				Logger:          logging.NewSlogNop(),
-				Registry:        reg,
-				EnableErrorLogs: tc.enabled,
+				Receiver:                  loki.NewLogsReceiver(),
+				EntryHandler:              loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+				Logger:                    logging.NewSlogNop(),
+				Registry:                  reg,
+				EnableErrorLogsProcessing: tc.enabled,
 			})
 			require.NoError(t, err)
 

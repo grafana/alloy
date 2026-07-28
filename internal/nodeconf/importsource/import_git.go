@@ -306,3 +306,8 @@ func (im *ImportGit) SetEval(eval *vm.Evaluator) {
 func (im *ImportGit) ModulePath() string {
 	return im.repoPath
 }
+
+// InheritsModulePath reports that import.git defines its own module_path (the local clone dir).
+func (im *ImportGit) InheritsModulePath() bool {
+	return false
+}

@@ -78,25 +78,28 @@ func leadingLogLabel(s string) string {
 // error line's prefix; a STATEMENT line only attaches when its PID matches, so
 // interleaved log streams cannot pair one backend's error with another's SQL.
 type pendingError struct {
-	receivedAt time.Time
-	pid        string
-	severity   string
-	datname    string
-	timestamp  time.Time
+	receivedAt    time.Time
+	pid           string
+	severity      string
+	datname       string
+	user          string
+	sqlstate      string
+	sqlstateClass string
+	timestamp     time.Time
 
 	sql          strings.Builder
 	hasStatement bool
 }
 
 type LogsArguments struct {
-	Receiver         loki.LogsReceiver
-	EntryHandler     loki.EntryHandler
-	Logger           *slog.Logger
-	Registry         *prometheus.Registry
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EnableErrorLogs  bool
-	DB               *sql.DB
+	Receiver                  loki.LogsReceiver
+	EntryHandler              loki.EntryHandler
+	Logger                    *slog.Logger
+	Registry                  *prometheus.Registry
+	ExcludeDatabases          []string
+	ExcludeUsers              []string
+	EnableErrorLogsProcessing bool
+	DB                        *sql.DB
 }
 
 type Logs struct {
@@ -104,10 +107,10 @@ type Logs struct {
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
-	receiver         loki.LogsReceiver
-	excludeDatabases []string
-	excludeUsers     []string
-	enableErrorLogs  bool
+	receiver                  loki.LogsReceiver
+	excludeDatabases          []string
+	excludeUsers              []string
+	enableErrorLogsProcessing bool
 
 	db              *sql.DB
 	logTimezone     atomic.Pointer[time.Location]
@@ -143,26 +146,26 @@ type Logs struct {
 func NewLogs(args LogsArguments) (*Logs, error) {
 	// Fail loudly instead of silently emitting nothing: the error surfaces via
 	// startCollectors into the component's health status.
-	if args.EnableErrorLogs && !fingerprint.Supported() {
+	if args.EnableErrorLogsProcessing && !fingerprint.Supported() {
 		return nil, fmt.Errorf("logs.enable_error_logs_processing requires a cgo-enabled Alloy build (CGO_ENABLED=1)")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:              args.Logger.With("collector", LogsCollector),
-		entryHandler:        args.EntryHandler,
-		registry:            args.Registry,
-		receiver:            args.Receiver,
-		excludeDatabases:    args.ExcludeDatabases,
-		excludeUsers:        args.ExcludeUsers,
-		enableErrorLogs:     args.EnableErrorLogs,
-		db:                  args.DB,
-		pendingErrorTimeout: 5 * time.Second,
-		ctx:                 ctx,
-		cancel:              cancel,
-		stopped:             atomic.NewBool(false),
-		startTime:           time.Now(),
+		logger:                    args.Logger.With("collector", LogsCollector),
+		entryHandler:              args.EntryHandler,
+		registry:                  args.Registry,
+		receiver:                  args.Receiver,
+		excludeDatabases:          args.ExcludeDatabases,
+		excludeUsers:              args.ExcludeUsers,
+		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
+		db:                        args.DB,
+		pendingErrorTimeout:       5 * time.Second,
+		ctx:                       ctx,
+		cancel:                    cancel,
+		stopped:                   atomic.NewBool(false),
+		startTime:                 time.Now(),
 	}
 
 	l.initMetrics()
@@ -205,7 +208,7 @@ func (l *Logs) initMetrics() {
 	)
 
 	enabled := 0.0
-	if l.enableErrorLogs {
+	if l.enableErrorLogsProcessing {
 		enabled = 1.0
 	}
 	l.logsProcessingEnabled.Set(enabled)
@@ -287,7 +290,7 @@ func (l *Logs) run() {
 	l.logger.Debug("collector running, waiting for log entries")
 
 	var tickerC <-chan time.Time
-	if l.enableErrorLogs {
+	if l.enableErrorLogsProcessing {
 		tickPeriod := l.pendingErrorTimeout / 2
 		if tickPeriod < 50*time.Millisecond {
 			tickPeriod = 50 * time.Millisecond
@@ -320,7 +323,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
 	if strings.HasPrefix(line, "\t") {
-		if l.enableErrorLogs {
+		if l.enableErrorLogsProcessing {
 			l.appendStatement(line)
 		}
 		return nil
@@ -333,8 +336,8 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
 		strings.Contains(line, "FATAL:") ||
 		strings.Contains(line, "PANIC:")
-	hasStatementKeyword := l.enableErrorLogs && strings.Contains(line, "STATEMENT:")
-	mayFlush := l.enableErrorLogs && l.pending != nil && l.pending.hasStatement
+	hasStatementKeyword := l.enableErrorLogsProcessing && strings.Contains(line, "STATEMENT:")
+	mayFlush := l.enableErrorLogsProcessing && l.pending != nil && l.pending.hasStatement
 	if !hasErrorKeyword && !hasStatementKeyword && !mayFlush {
 		return nil
 	}
@@ -343,7 +346,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	// A new prefixed line means any in-flight ERROR+STATEMENT pair is complete;
 	// emit it before handling this line.
-	if l.enableErrorLogs && isFormat {
+	if l.enableErrorLogsProcessing && isFormat {
 		l.flushPending()
 	}
 
@@ -461,7 +464,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	if label == "STATEMENT" {
-		if l.enableErrorLogs {
+		if l.enableErrorLogsProcessing {
 			sqlStart := searchFrom + labelAt + len("STATEMENT:")
 			l.attachStatement(pid, strings.TrimSpace(line[sqlStart:]))
 		}
@@ -482,7 +485,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
-	if !l.enableErrorLogs {
+	if !l.enableErrorLogsProcessing {
 		return nil
 	}
 
@@ -490,11 +493,14 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// pending is displaced here (no STATEMENT captured → no op="error_message" entry);
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
-		receivedAt: time.Now(),
-		pid:        pid,
-		severity:   label,
-		datname:    database,
-		timestamp:  parsedTimestamp,
+		receivedAt:    time.Now(),
+		pid:           pid,
+		severity:      label,
+		datname:       database,
+		user:          user,
+		sqlstate:      sqlstateCode,
+		sqlstateClass: sqlstateClass,
+		timestamp:     parsedTimestamp,
 	}
 
 	return nil
@@ -580,11 +586,14 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	}
 
 	// Minimal logfmt body for one ERROR + STATEMENT pair: just the fields
-	// needed to compute per-query error rate. The SQL text and error-detail
-	// fields are intentionally omitted (deferred to a follow-up PR); consumers
-	// recover the SQL by joining on query_fingerprint. severity and fp never
-	// need quoting; %q fully escapes datname.
-	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s", p.severity, p.datname, fp)
+	// needed to compute per-query error rate plus who/what triggered it. The
+	// SQL text and remaining error-detail fields (client/session, error
+	// message, …) are intentionally omitted (deferred to a follow-up PR);
+	// consumers recover the SQL by joining on query_fingerprint. severity, pid,
+	// sqlstate, sqlstate_class, and fp never need quoting; %q escapes datname
+	// and user.
+	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s",
+		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass)
 
 	// Blocking send by design (backpressure over dropping entries), but guarded
 	// by the collector context so a stalled downstream can't wedge Stop().
