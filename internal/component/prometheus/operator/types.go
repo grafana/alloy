@@ -42,6 +42,7 @@ type Arguments struct {
 }
 
 // ScrapeOptions holds values that configure scraping behavior.
+// Keep in sync with prometheus.scrape's Arguments.
 type ScrapeOptions struct {
 	// DefaultScrapeInterval is the default interval to scrape targets.
 	DefaultScrapeInterval time.Duration `alloy:"default_scrape_interval,attr,optional"`
@@ -67,7 +68,7 @@ type ScrapeOptions struct {
 	NativeHistogramBucketLimit uint `alloy:"native_histogram_bucket_limit,attr,optional"`
 
 	// If the growth factor of one bucket to the next is smaller than this,
-	// buckets will be merged to stay within the limit. Disabled when set zero.
+	// buckets will be merged to stay within the limit. Disabled when set to zero.
 	NativeHistogramMinBucketFactor float64 `alloy:"native_histogram_min_bucket_factor,attr,optional"`
 
 	// HonorMetadata controls whether metric metadata should be passed to downstream components.
