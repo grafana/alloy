@@ -117,8 +117,7 @@ Compiling Alloy on Linux requires extra dependencies:
 
 Compiling Alloy on Windows requires extra dependencies:
 
-- [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64-bit install for compiling C
-  dependencies.
+- A 64-bit [mingw-w64](https://www.mingw-w64.org/) gcc toolchain for compiling C dependencies. The [WinLibs](https://winlibs.com/) build is recommended (it is also what CI uses, installed via `choco install mingw`).
 
 ## Pull Request Checklist
 
