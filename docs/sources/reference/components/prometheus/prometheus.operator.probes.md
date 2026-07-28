@@ -272,8 +272,6 @@ For `prometheus.exporter.blackbox`, use the component HTTP API path:
 
 The `module` field on the Probe must match a module name defined in the `prometheus.exporter.blackbox` `config` or `config_file`.
 
-Runnable end-to-end examples that need Kubernetes and the Prometheus Operator belong in [alloy-scenarios](https://github.com/grafana/alloy-scenarios) rather than this reference page. See the [contribute guide](https://github.com/grafana/alloy-scenarios#contribute).
-
 [blackbox]: ../prometheus.exporter.blackbox/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
