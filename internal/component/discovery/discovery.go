@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -228,7 +229,14 @@ func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 	}
 	allTargets := make([]Target, 0, targetsCount)
 
-	for _, group := range cache {
+	sources := make([]string, 0, len(cache))
+	for source := range cache {
+		sources = append(sources, source)
+	}
+	sort.Strings(sources)
+
+	for _, source := range sources {
+		group := cache[source]
 		for _, target := range group.Targets {
 			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
 		}
