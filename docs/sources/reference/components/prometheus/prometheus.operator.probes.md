@@ -260,16 +260,16 @@ prometheus.operator.probes "probes" {
 {{< param "PRODUCT_NAME" >}} can act as that prober when you also configure [`prometheus.exporter.blackbox`][blackbox].
 You don't need a separate blackbox-exporter Deployment unless you prefer one.
 
-Set `spec.prober` on the Probe resource:
+Set `spec.prober.url` to the {{< param "PRODUCT_NAME" >}} HTTP listen address.
+Set `spec.prober.path` to the prober endpoint path.
+For blackbox-style probers, the `/probe` endpoint returns probe metrics, while `/metrics` exposes exporter operational metrics.
 
-* `url` — host:port of the prober. For the embedded exporter, use the {{< param "PRODUCT_NAME" >}} HTTP listen address (default port `12345`).
-* `path` — HTTP path of the blackbox probe endpoint. For `prometheus.exporter.blackbox`, use:
+For `prometheus.exporter.blackbox`, use the component HTTP API path:
 
 ```text
 /api/v0/component/prometheus.exporter.blackbox.<LABEL>/probe
 ```
 
-Pointing `spec.prober.url` at the {{< param "PRODUCT_NAME" >}} UI root without the component path scrapes the wrong endpoint and fails with a non-Prometheus response.
 The `module` field on the Probe must match a module name defined in the `prometheus.exporter.blackbox` `config` or `config_file`.
 
 Runnable end-to-end examples that need Kubernetes and the Prometheus Operator belong in [alloy-scenarios](https://github.com/grafana/alloy-scenarios) rather than this reference page. See the [contribute guide](https://github.com/grafana/alloy-scenarios#contribute).
