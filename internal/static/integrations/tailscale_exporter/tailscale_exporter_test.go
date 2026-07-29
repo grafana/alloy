@@ -170,6 +170,7 @@ func TestParsePeerMetrics_extraLabels(t *testing.T) {
 	families, err := parsePeerMetrics(raw, "n1", map[string]string{
 		"tags": "tag:us-east-proxy",
 		"os":   "linux",
+		"node": "configured-override",
 		"":     "ignored", // empty key/value pairs must be dropped
 	})
 	require.NoError(t, err)

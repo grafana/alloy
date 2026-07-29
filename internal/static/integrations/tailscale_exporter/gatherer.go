@@ -69,13 +69,16 @@ func parsePeerMetrics(raw []byte, nodeName string, extra map[string]string) ([]*
 			for _, pair := range m.Label {
 				labels[pair.GetName()] = pair.GetValue()
 			}
-			labels["node"] = nodeName
 			for name, value := range extra {
 				if name == "" || value == "" {
 					continue
 				}
 				labels[name] = value
 			}
+			// The source peer identity is authoritative. Apply it after all
+			// other labels so neither scraped nor configured labels can
+			// override it.
+			labels["node"] = nodeName
 
 			keys := make([]string, 0, len(labels))
 			for name := range labels {
@@ -86,7 +89,10 @@ func parsePeerMetrics(raw []byte, nodeName string, extra map[string]string) ([]*
 			m.Label = make([]*dto.LabelPair, 0, len(keys))
 			for _, name := range keys {
 				value := labels[name]
-				m.Label = append(m.Label, &dto.LabelPair{Name: &name, Value: &value})
+				m.Label = append(m.Label, &dto.LabelPair{
+					Name:  proto.String(name),
+					Value: proto.String(value),
+				})
 			}
 		}
 		families = append(families, cloned)
