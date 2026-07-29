@@ -130,3 +130,95 @@ func targetGroupCacheForTest(t *testing.T) map[string]*targetgroup.Group {
 		},
 	}
 }
+
+// TestGroupPackerReusesUnchangedGroups covers the memoisation in groupPacker.
+// Converting a target means sorting and encoding its labels, so reusing the
+// result for sources that did not change is what keeps repeated sends cheap.
+func TestGroupPackerReusesUnchangedGroups(t *testing.T) {
+	groupA := &targetgroup.Group{
+		Source:  "a",
+		Labels:  commonlabels.LabelSet{"job": "a"},
+		Targets: []commonlabels.LabelSet{{"__address__": "10.0.0.1:80"}, {"__address__": "10.0.0.2:80"}},
+	}
+	groupB := &targetgroup.Group{
+		Source:  "b",
+		Labels:  commonlabels.LabelSet{"job": "b"},
+		Targets: []commonlabels.LabelSet{{"__address__": "10.0.1.1:80"}},
+	}
+	cache := map[string]*targetgroup.Group{"a": groupA, "b": groupB}
+
+	packer := newGroupPacker()
+	first := packer.toAlloyTargets(cache)
+	require.Len(t, first, 3)
+
+	// A second send with an unchanged cache must reuse the packed label buffers,
+	// not re-encode them.
+	second := packer.toAlloyTargets(cache)
+	require.Len(t, second, 3)
+	for i := range first {
+		require.Same(t, first[i].group, second[i].group, "target %d group must be reused", i)
+		require.Equal(t, first[i].own, second[i].own, "target %d own labels must be reused", i)
+		require.True(t, first[i].EqualsTarget(&second[i]))
+	}
+
+	// The outer slice must still be freshly allocated, since it is handed to
+	// downstream components.
+	require.NotSame(t, unsafe.SliceData(first), unsafe.SliceData(second))
+
+	// Replacing one source must re-convert only that source.
+	groupBv2 := &targetgroup.Group{
+		Source:  "b",
+		Labels:  commonlabels.LabelSet{"job": "b"},
+		Targets: []commonlabels.LabelSet{{"__address__": "10.0.1.9:80"}},
+	}
+	cache["b"] = groupBv2
+	third := packer.toAlloyTargets(cache)
+	require.Len(t, third, 3)
+	require.Same(t, first[0].group, third[0].group, "unchanged source must still be reused")
+	require.Same(t, first[1].group, third[1].group, "unchanged source must still be reused")
+	value, ok := third[2].Get("__address__")
+	require.True(t, ok)
+	require.Equal(t, "10.0.1.9:80", value, "changed source must be re-converted")
+
+	// A group mutated in place cannot be detected, which is why the reuse is keyed
+	// on the pointer; discoverers allocate a new group whenever contents change.
+	// Removing a source must drop its cached conversion.
+	delete(cache, "a")
+	fourth := packer.toAlloyTargets(cache)
+	require.Len(t, fourth, 1)
+	require.Len(t, packer.packed, 1, "stale conversions must be pruned")
+	require.Contains(t, packer.packed, "b")
+}
+
+// TestGroupPackerMatchesUncachedConversion checks the memoising and
+// non-memoising paths agree, including after sources are added and removed.
+func TestGroupPackerMatchesUncachedConversion(t *testing.T) {
+	mk := func(source, job string, addrs ...string) *targetgroup.Group {
+		g := &targetgroup.Group{Source: source, Labels: commonlabels.LabelSet{"job": commonlabels.LabelValue(job)}}
+		for _, a := range addrs {
+			g.Targets = append(g.Targets, commonlabels.LabelSet{"__address__": commonlabels.LabelValue(a)})
+		}
+		return g
+	}
+
+	packer := newGroupPacker()
+	cache := map[string]*targetgroup.Group{}
+	steps := []func(){
+		func() { cache["a"] = mk("a", "a", "1:80", "2:80") },
+		func() { cache["b"] = mk("b", "b", "3:80") },
+		func() { cache["a"] = mk("a", "a", "1:80", "2:80", "4:80") }, // changed
+		func() { delete(cache, "b") },
+		func() { cache["c"] = mk("c", "c", "5:80") },
+		func() { delete(cache, "a"); delete(cache, "c") },
+	}
+	for i, step := range steps {
+		step()
+		got := packer.toAlloyTargets(cache)
+		want := toAlloyTargets(cache)
+		require.Len(t, got, len(want), "step %d", i)
+		for j := range want {
+			require.True(t, want[j].EqualsTarget(&got[j]), "step %d target %d", i, j)
+			require.Equal(t, want[j].String(), got[j].String(), "step %d target %d", i, j)
+		}
+	}
+}

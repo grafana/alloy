@@ -105,3 +105,85 @@ func Benchmark_Targets_ResidentMemory(b *testing.B) {
 	}
 	runtime.KeepAlive(targets)
 }
+
+// Benchmark_ToAlloyTargets_Memoised models what a long-running component
+// actually does: many discovered sources, of which only one changes between
+// sends. runDiscovery keeps the *targetgroup.Group for every unchanged source, so
+// without memoisation each send re-sorts and re-encodes the labels of every
+// target of every source.
+//
+// Compare against Benchmark_ToAlloyTargets, which measures the cold conversion.
+//
+// 50 sources x 400 targets = 20k targets, on linux/amd64 Ryzen AI MAX+ 395:
+//
+//	                                    time/op    B/op    allocs/op
+//	map-based layout (before packing)    2.30ms    484kB        2
+//	packed, no memoisation               4.28ms   4224kB    20159
+//	packed, memoised, 1 source changes   0.39ms    900kB     3825
+//	packed, memoised, nothing changes    0.045ms   648kB        2
+//
+// The memoised numbers are the ones that matter for a long-running collector.
+// Note the worst case is unchanged by memoisation: a discoverer with a single
+// source that changes on every cycle still pays the full conversion, which is
+// what Benchmark_ToAlloyTargets measures.
+func Benchmark_ToAlloyTargets_Memoised(b *testing.B) {
+	const (
+		sources          = 50
+		targetsPerSource = 400 // 20k targets in total
+	)
+
+	mkGroup := func(s, gen int) *targetgroup.Group {
+		shared := commonlabels.LabelSet{
+			"job":                               commonlabels.LabelValue(fmt.Sprintf("job_%d", s)),
+			"__meta_kubernetes_namespace":       "prod",
+			"__meta_kubernetes_service_name":    commonlabels.LabelValue(fmt.Sprintf("svc_%d", s)),
+			"__meta_kubernetes_service_label_a": "aaaaaaaaaa",
+			"__meta_kubernetes_service_label_b": "bbbbbbbbbb",
+		}
+		targets := make([]commonlabels.LabelSet, 0, targetsPerSource)
+		for i := 0; i < targetsPerSource; i++ {
+			targets = append(targets, commonlabels.LabelSet{
+				"__address__":                commonlabels.LabelValue(fmt.Sprintf("10.%d.%d.%d:8080", s%256, i%256, gen%256)),
+				"__meta_kubernetes_pod_name": commonlabels.LabelValue(fmt.Sprintf("pod-%d-%d-%d", s, i, gen)),
+				"__meta_kubernetes_pod_ip":   commonlabels.LabelValue(fmt.Sprintf("10.%d.%d.%d", s%256, i%256, gen%256)),
+				"__meta_kubernetes_pod_uid":  commonlabels.LabelValue(fmt.Sprintf("uid-%d-%d-%d", s, i, gen)),
+			})
+		}
+		return &targetgroup.Group{Source: fmt.Sprintf("source_%d", s), Labels: shared, Targets: targets}
+	}
+
+	cache := make(map[string]*targetgroup.Group, sources)
+	for s := 0; s < sources; s++ {
+		cache[fmt.Sprintf("source_%d", s)] = mkGroup(s, 0)
+	}
+
+	b.Run("one source changes per send", func(b *testing.B) {
+		packer := newGroupPacker()
+		packer.toAlloyTargets(cache) // warm
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			s := i % sources
+			cache[fmt.Sprintf("source_%d", s)] = mkGroup(s, i+1)
+			_ = packer.toAlloyTargets(cache)
+		}
+	})
+
+	b.Run("nothing changes", func(b *testing.B) {
+		packer := newGroupPacker()
+		packer.toAlloyTargets(cache) // warm
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = packer.toAlloyTargets(cache)
+		}
+	})
+
+	b.Run("no memoisation", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = toAlloyTargets(cache)
+		}
+	})
+}
