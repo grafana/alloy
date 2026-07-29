@@ -12,14 +12,14 @@ You can apply this information to add any part of an OpenTelemetry pipeline to A
 
 ## Inclusion criteria
 
-The criteria below apply when you want a component bundled into the official Alloy distribution and maintained by the Alloy team.
+The criteria below apply when a new component is proposed to be bundled into the official Alloy distribution.
 
 Alloy ships a deliberately curated subset of upstream OpenTelemetry components rather than mirroring all of Contrib.
-Keeping that set small is what lets us support and maintain the components we bundle and keep the dependency and security surface manageable.
+Keeping that set small is what lets the Alloy maintainers support and maintain the bundled components and keep the dependency and security surface manageable.
 These principles are fundamentally about what we commit to maintain.
-Components we maintain are kept interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
-Components we don't want to maintain are instead marked as community components in the Default Engine and aren't bundled in the OTel Engine.
-So these criteria apply to any `otelcol.*` component we would maintain, whether it targets the Default Engine or the OTel Engine.
+Maintained components are kept interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
+Components the Alloy maintainers don't intend to maintain are instead marked as community components in the Default Engine and aren't bundled in the OTel Engine.
+So these criteria apply to any non-community `otelcol.*` component the Alloy maintainers would maintain, whether it targets the Default Engine or the OTel Engine.
 
 Before proposing a component, open a feature request and weigh it against the signals below.
 Referencing these criteria in the feature request helps maintainers evaluate the proposal.
@@ -44,24 +44,24 @@ These are the carrying costs and risks a component has to justify.
 | Heavy dependency or security footprint | Every bundled component adds ongoing cost, so a large dependency tree, a required fork, or known CVEs all raise the bar. |
 | Incompatible license | Alloy is licensed under Apache 2.0, so a component must be under a compatible license to be bundled. |
 
-### How we decide
+### The decision process
 
 These are principles and not a scoring system per se.
 Maintainers weigh the signals together and make the final call, so meeting individual criteria doesn't guarantee inclusion.
 A proposal results in one of three outcomes:
 
 * **Bundled and supported.** The component is added to both engines and maintained by the Alloy team.
-* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain our responsibility to ship.
+* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
 * **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
 
 ## Component lifecycle and removal
 
 Bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
 
-* If a component is marked **deprecated** upstream, we mark it deprecated in our distribution and keep it for at least two more minor releases before removing it.
-* If a component becomes **unmaintained** upstream, we follow the same process and remove it after it has been unmaintained for three months.
+* If a component is marked **deprecated** upstream, it's also marked deprecated in the Alloy distribution and kept for at least two more minor releases before removal.
+* If a component becomes **unmaintained** upstream, the same process applies and it's removed after it has been unmaintained for three months.
 
-In either case we provide notice and recommend the OCB fallback for anyone affected.
+In either case, notice is provided, and users can [create a custom build using OCB][ocb] to include a deprecated component.
 
 ## Before you begin
 
@@ -308,3 +308,5 @@ Let us know if you want to add components to Alloy or any other Alloy-related to
 You can find us most easily in the `#alloy` channel in the Grafana [community slack](https://slack.grafana.com/) or by raising a [GitHub issue](https://github.com/grafana/alloy/issues/new?template=feature_request.yaml).
 We also have monthly community calls that you can participate in.
 You can find more details in Slack or in the [community calendar](https://calendar.google.com/calendar/u/0/embed?src=grafana.com_n57lluqpn4h4edroeje6199o00@group.calendar.google.com).
+
+[ocb]: ../sources/introduction/otel_alloy.md#custom-builds-with-the-opentelemetry-collector-builder-ocb
