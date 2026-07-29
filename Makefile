@@ -70,6 +70,7 @@
 ##
 ##   USE_CONTAINER        Set to 1 to enable proxying commands to build container
 ##   ALLOY_IMAGE          Image name:tag built by `make alloy-image`
+##   ALLOY_IMAGE_CHISEL   Image name:tag built by `make alloy-image-chisel`
 ##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
 ##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
 ##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
@@ -90,6 +91,7 @@
 include build-tools/make/*.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_CHISEL  		?= grafana/alloy:chisel
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
 SERVICE_BINARY       		?= build/alloy-service
@@ -340,11 +342,14 @@ ifneq ($(DOCKER_PLATFORM),)
 DOCKER_FLAGS += --platform=$(DOCKER_PLATFORM)
 endif
 
-.PHONY: images alloy-image
-images: alloy-image
+.PHONY: images alloy-image alloy-image-chisel
+images: alloy-image alloy-image-chisel
 
 alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+
+alloy-image-chisel:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_CHISEL) -f Dockerfile.chisel .
 
 # Test fixture image used by the k8s integration tests as a Prometheus scrape
 # target. The runner builds this alongside alloy-image so the tests don't have
