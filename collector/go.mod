@@ -352,6 +352,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
+	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
@@ -386,6 +387,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.18.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
+	github.com/cornelk/hashmap v1.0.8 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/databricks/databricks-sql-go v1.11.0 // indirect
@@ -845,6 +847,9 @@ require (
 	github.com/safchain/ethtool v0.7.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.53.0 // indirect
+	github.com/samber/slog-common v0.21.0 // indirect
+	github.com/samber/slog-multi v1.8.0 // indirect
+	github.com/samber/slog-sampling v1.6.0 // indirect
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da // indirect
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.36 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect

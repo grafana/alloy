@@ -969,6 +969,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nginxreceiver v0.153.0
+	github.com/samber/slog-sampling v1.6.0
 	github.com/spf13/viper v1.21.0
 	github.com/vektah/gqlparser/v2 v2.5.36
 	github.com/zricethezav/gitleaks/v8 v8.30.1
@@ -1027,6 +1028,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.118.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.2.2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
@@ -1045,6 +1047,7 @@ require (
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/containerd/containerd/api v1.9.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
+	github.com/cornelk/hashmap v1.0.8 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/semgroup v1.2.0 // indirect
@@ -1079,6 +1082,8 @@ require (
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
+	github.com/samber/slog-common v0.21.0 // indirect
+	github.com/samber/slog-multi v1.8.0 // indirect
 	github.com/sijms/go-ora/v2 v2.9.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
