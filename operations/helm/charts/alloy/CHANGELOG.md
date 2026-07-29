@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Harden the default `securityContext` for the config reloader sidecar: disable privilege escalation, use a read-only root filesystem, drop all capabilities, run as non-root, and set the `RuntimeDefault` seccomp profile. (@petewall)
+
 1.11.0 (2026-07-20)
 ----------
 

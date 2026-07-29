@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -25,12 +26,10 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 		return nil
 	}
 
-	return &azure.Arguments{
+	args := &azure.Arguments{
 		Environment:     sdConfig.Environment,
 		Port:            sdConfig.Port,
 		SubscriptionID:  sdConfig.SubscriptionID,
-		OAuth:           toDiscoveryAzureOauth2(sdConfig.ClientID, sdConfig.TenantID, string(sdConfig.ClientSecret)),
-		ManagedIdentity: toManagedIdentity(sdConfig),
 		RefreshInterval: time.Duration(sdConfig.RefreshInterval),
 		ResourceGroup:   sdConfig.ResourceGroup,
 		ProxyConfig:     common.ToProxyConfig(sdConfig.HTTPClientConfig.ProxyConfig),
@@ -38,26 +37,45 @@ func toDiscoveryAzure(sdConfig *prom_azure.SDConfig) *azure.Arguments {
 		EnableHTTP2:     sdConfig.HTTPClientConfig.EnableHTTP2,
 		TLSConfig:       *common.ToTLSConfig(&sdConfig.HTTPClientConfig.TLSConfig),
 	}
+
+	// Only emit the block matching the configured authentication method.
+	// Emitting more than one auth block produces an invalid discovery.azure
+	// configuration. Prometheus defaults AuthenticationMethod to "OAuth".
+	switch sdConfig.AuthenticationMethod {
+	case "ManagedIdentity":
+		args.ManagedIdentity = &azure.ManagedIdentity{
+			ClientID: sdConfig.ClientID,
+		}
+	case "SDK":
+		args.SDK = &azure.SDK{
+			TenantID: sdConfig.TenantID,
+		}
+	case "WorkloadIdentity":
+		args.WorkloadIdentity = &azure.WorkloadIdentity{}
+	case "", "OAuth":
+		args.OAuth = &azure.OAuth{
+			ClientID:     sdConfig.ClientID,
+			TenantID:     sdConfig.TenantID,
+			ClientSecret: alloytypes.Secret(sdConfig.ClientSecret),
+		}
+	default:
+		// Unknown method: leave auth unset; validation will surface a diagnostic.
+	}
+
+	return args
 }
 
 func ValidateDiscoveryAzure(sdConfig *prom_azure.SDConfig) diag.Diagnostics {
-	return common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
-}
+	d := common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
 
-func toManagedIdentity(sdConfig *prom_azure.SDConfig) *azure.ManagedIdentity {
-	if sdConfig == nil {
-		return nil
+	switch sdConfig.AuthenticationMethod {
+	case "ManagedIdentity", "SDK", "WorkloadIdentity", "", "OAuth":
+		return d
+	default:
+		d.Add(
+			diag.SeverityLevelCritical,
+			fmt.Sprintf("unknown authentication_method %q. Supported methods are \"OAuth\", \"ManagedIdentity\", \"SDK\" or \"WorkloadIdentity\"", sdConfig.AuthenticationMethod),
+		)
 	}
-
-	return &azure.ManagedIdentity{
-		ClientID: sdConfig.ClientID,
-	}
-}
-
-func toDiscoveryAzureOauth2(clientId string, tenantId string, clientSecret string) *azure.OAuth {
-	return &azure.OAuth{
-		ClientID:     clientId,
-		TenantID:     tenantId,
-		ClientSecret: alloytypes.Secret(clientSecret),
-	}
+	return d
 }

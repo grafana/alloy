@@ -124,6 +124,7 @@ body:
       - otelcol.processor.memory_limiter
       - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
+      - otelcol.processor.redaction
       - otelcol.processor.resourcedetection
       - otelcol.processor.span
       - otelcol.processor.tail_sampling
