@@ -2,6 +2,7 @@ package logging
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -86,5 +87,33 @@ func TestOptions_EndToEnd(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.want, o.Destination)
 		})
+	}
+}
+
+func TestOptionsDefaultEnablesRateLimiting(t *testing.T) {
+	var o Options
+	o.SetToDefault()
+	require.NotNil(t, o.RateLimiting)
+	require.True(t, o.RateLimiting.Enabled)
+	require.Equal(t, time.Second, o.RateLimiting.Tick)
+	require.Equal(t, uint64(10), o.RateLimiting.Threshold)
+	require.Equal(t, 0.0, o.RateLimiting.Rate)
+	require.Equal(t, 1000, o.RateLimiting.MaxSignatures)
+}
+
+func TestRateLimitingValidate(t *testing.T) {
+	valid := RateLimitingOptions{Enabled: true, Tick: time.Second, Threshold: 10, Rate: 0, MaxSignatures: 1000}
+	require.NoError(t, valid.Validate())
+	require.NoError(t, RateLimitingOptions{Enabled: false}.Validate())
+	for _, m := range []func(*RateLimitingOptions){
+		func(o *RateLimitingOptions) { o.Tick = 0 },
+		func(o *RateLimitingOptions) { o.Threshold = 0 },
+		func(o *RateLimitingOptions) { o.Rate = -0.1 },
+		func(o *RateLimitingOptions) { o.Rate = 1.1 },
+		func(o *RateLimitingOptions) { o.MaxSignatures = 0 },
+	} {
+		bad := valid
+		m(&bad)
+		require.Error(t, bad.Validate())
 	}
 }
