@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -85,4 +86,60 @@ func TestBuildRootDisabledReturnsTerminal(t *testing.T) {
 	terminal := slog.NewTextHandler(&bytes.Buffer{}, nil)
 	got := buildRoot(RateLimitingOptions{Enabled: false}, terminal, nil)
 	require.Same(t, terminal, got)
+}
+
+func newTestInjector(t *testing.T, root slog.Handler, bare slog.Handler) *samplingInjector {
+	t.Helper()
+	var holder atomic.Pointer[versionedHandler]
+	holder.Store(&versionedHandler{version: 1, h: root})
+	return newSamplingInjector(&holder, bare)
+}
+
+func TestInjectorRendersAttrsAndGroups(t *testing.T) {
+	var buf bytes.Buffer
+	term := slog.NewTextHandler(&buf, nil)
+	inj := newTestInjector(t, term, term) // no sampling, just render
+	h := inj.WithAttrs([]slog.Attr{slog.String("component_id", "x")}).WithGroup("g").WithAttrs([]slog.Attr{slog.String("k", "v")}).(*samplingInjector)
+	require.Equal(t, "x", h.comp.id)
+	rec := slog.NewRecord(time.Unix(0, 0), slog.LevelInfo, "hi", 0)
+	require.NoError(t, h.Handle(context.Background(), rec))
+	out := buf.String()
+	require.Contains(t, out, "component_id=x")
+	require.Contains(t, out, "g.k=v") // group-nested attr rendered natively
+}
+
+func TestInjectorEmptyMessageBypassesSampler(t *testing.T) {
+	var termBuf bytes.Buffer
+	term := slog.NewTextHandler(&termBuf, nil)
+	// A root that drops everything, to prove empty-message goes to `bare` (term) not root.
+	// AbsoluteSamplingOption panics when Max == 0, so we build the drop-all root
+	// with ThresholdSamplingOption{Threshold: 0, Rate: 0} instead, which admits
+	// nothing (confirmed against slog-sampling v1.6.0 in Task 2's spike).
+	dropAll := slogsampling.ThresholdSamplingOption{
+		Tick:      time.Hour,
+		Threshold: 0,
+		Rate:      0,
+		Matcher:   func(ctx context.Context, r *slog.Record) string { return "" },
+		Buffer:    buffer.NewLRUBuffer[string](10),
+	}.NewMiddleware()(slog.NewTextHandler(&bytes.Buffer{}, nil))
+	inj := newTestInjector(t, dropAll, term)
+	rec := slog.NewRecord(time.Unix(0, 0), slog.LevelInfo, "", 0)
+	rec.AddAttrs(slog.String("k", "v"))
+	require.NoError(t, inj.Handle(context.Background(), rec))
+	require.Contains(t, termBuf.String(), "k=v") // empty-msg reached bare terminal
+}
+
+func TestInjectorReDerivesOnVersionBump(t *testing.T) {
+	var bufA, bufB bytes.Buffer
+	termA := slog.NewTextHandler(&bufA, nil)
+	termB := slog.NewTextHandler(&bufB, nil)
+	var holder atomic.Pointer[versionedHandler]
+	holder.Store(&versionedHandler{version: 1, h: termA})
+	inj := newSamplingInjector(&holder, termA)
+	rec := slog.NewRecord(time.Unix(0, 0), slog.LevelInfo, "m", 0)
+	require.NoError(t, inj.Handle(context.Background(), rec))
+	require.Contains(t, bufA.String(), "m")
+	holder.Store(&versionedHandler{version: 2, h: termB}) // reload
+	require.NoError(t, inj.Handle(context.Background(), rec))
+	require.Contains(t, bufB.String(), "m") // now routed to the new root
 }

@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 	slogsampling "github.com/samber/slog-sampling"
@@ -140,3 +141,136 @@ func buildRoot(o RateLimitingOptions, terminal slog.Handler, m *rateLimitMetrics
 	}
 	return opt.NewMiddleware()(terminal)
 }
+
+// replayOp captures a single WithAttrs or WithGroup call so that it can be
+// replayed onto a freshly (re-)derived terminal handler. Exactly one of
+// attrs or group is set.
+type replayOp struct {
+	attrs []slog.Attr
+	group string
+}
+
+// versionedHandler pairs the current sampling-wrapped root handler with a
+// version number that's bumped whenever rate-limiting configuration changes
+// (see Task 4). samplingInjector uses the version to know when its cached
+// derived handler is stale and must be re-derived.
+type versionedHandler struct {
+	version uint64
+	h       slog.Handler
+}
+
+// cachedHandler is a samplingInjector's memoized replay of its ops onto a
+// particular version of the root handler.
+type cachedHandler struct {
+	version uint64
+	h       slog.Handler
+}
+
+// samplingInjector is a slog.Handler that sits between component loggers and
+// the shared, possibly rate-limited, root handler. It:
+//
+//   - Tracks component identity (comp) sniffed from WithAttrs calls, so the
+//     rate limiter's Matcher can key on component path via the context.
+//   - Records every WithAttrs/WithGroup call as a replayOp, so that when the
+//     root handler is swapped out (e.g. rate-limiting config changes) or
+//     bypassed (empty-message records), those calls can be replayed onto the
+//     new/bare terminal handler to reproduce the same rendering.
+//   - Bypasses the rate limiter entirely for empty-message records, which
+//     would otherwise all collapse onto the same signature.
+type samplingInjector struct {
+	comp componentInfo
+	ops  []replayOp
+
+	holder *atomic.Pointer[versionedHandler]
+	bare   slog.Handler // root terminal (no per-component attrs), for empty-message bypass
+
+	cache     atomic.Pointer[cachedHandler]
+	bareCache atomic.Pointer[slog.Handler]
+}
+
+// newSamplingInjector creates a samplingInjector rooted at holder (the
+// current, possibly sampling-wrapped, root handler) with bare as the
+// terminal handler used to bypass sampling for empty-message records.
+func newSamplingInjector(holder *atomic.Pointer[versionedHandler], bare slog.Handler) *samplingInjector {
+	return &samplingInjector{holder: holder, bare: bare}
+}
+
+// replay re-applies a recorded sequence of WithAttrs/WithGroup calls onto h,
+// in order, reproducing the derived handler that would have resulted from
+// making those calls directly against h.
+func replay(h slog.Handler, ops []replayOp) slog.Handler {
+	for _, op := range ops {
+		if op.group != "" {
+			h = h.WithGroup(op.group)
+		} else {
+			h = h.WithAttrs(op.attrs)
+		}
+	}
+	return h
+}
+
+// clone returns a new samplingInjector sharing this injector's holder and
+// bare terminal, with an independent copy of ops and freshly reset caches
+// (since a fresh ops slice means any previously cached replay is stale).
+func (s *samplingInjector) clone() *samplingInjector {
+	// New injector shares holder/bare; caches reset (ops differ).
+	ns := &samplingInjector{comp: s.comp, holder: s.holder, bare: s.bare}
+	ns.ops = make([]replayOp, len(s.ops), len(s.ops)+1)
+	copy(ns.ops, s.ops)
+	return ns
+}
+
+// WithAttrs returns a new handler with attrs bound. It also sniffs attrs for
+// component identity so the rate limiter can key by component, and records
+// the call as a replayOp so it still reaches the terminal handler for
+// rendering.
+func (s *samplingInjector) WithAttrs(attrs []slog.Attr) slog.Handler {
+	ns := s.clone()
+	ns.comp = sniffComponent(s.comp, attrs)
+	ns.ops = append(ns.ops, replayOp{attrs: attrs})
+	return ns
+}
+
+// WithGroup returns a new handler with name pushed as an open group,
+// recording the call as a replayOp so it still reaches the terminal handler
+// for rendering.
+func (s *samplingInjector) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return s
+	}
+	ns := s.clone()
+	ns.ops = append(ns.ops, replayOp{group: name})
+	return ns
+}
+
+// Enabled delegates to the current root handler.
+func (s *samplingInjector) Enabled(ctx context.Context, l slog.Level) bool {
+	return s.holder.Load().h.Enabled(ctx, l)
+}
+
+// Handle routes empty-message records directly to the bare terminal handler
+// (bypassing the rate limiter, since blank-message records from different
+// call sites would otherwise share a signature), and all other records
+// through the current, possibly rate-limited, root handler with the
+// component identity injected into ctx for the Matcher to read.
+func (s *samplingInjector) Handle(ctx context.Context, r slog.Record) error {
+	if r.Message == "" {
+		// Bypass sampler: unrelated no-msg events must not collapse into one signature.
+		bh := s.bareCache.Load()
+		if bh == nil {
+			h := replay(s.bare, s.ops)
+			bh = &h
+			s.bareCache.Store(bh)
+		}
+		return (*bh).Handle(ctx, r)
+	}
+	vh := s.holder.Load()
+	c := s.cache.Load()
+	if c == nil || c.version != vh.version {
+		c = &cachedHandler{version: vh.version, h: replay(vh.h, s.ops)}
+		s.cache.Store(c)
+	}
+	return c.h.Handle(withComponent(ctx, s.comp), r)
+}
+
+var _ slog.Handler = (*samplingInjector)(nil)
