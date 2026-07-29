@@ -88,9 +88,11 @@ func (d *deferredSlogHandler) buildHandlers(parent slog.Handler) {
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
-	// Root node will not have attrs or groups.
+	// Root node will not have attrs or groups. Route it through the
+	// samplingInjector so the shared, possibly rate-limited, root handler
+	// (l.rlHolder) sits between component loggers and the terminal handler.
 	if parent == nil {
-		d.handle = d.l.handler
+		d.handle = newSamplingInjector(&d.l.rlHolder, d.l.handler)
 	} else {
 		if d.group != "" {
 			d.handle = parent.WithGroup(d.group)

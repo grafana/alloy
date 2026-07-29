@@ -6,8 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -36,6 +38,16 @@ type Logger struct {
 	// the optional Windows Event Log.
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
+
+	// rlHolder holds the current, possibly rate-limit-sampling-wrapped, root
+	// handler used by the samplingInjector rooted at the deferred handler
+	// tree. It starts pointing at the bare terminal handler (rate limiting
+	// disabled) and is swapped atomically by Update. rlVersion is bumped on
+	// every swap so samplingInjector instances know to re-derive their
+	// cached, per-component replay of the root handler.
+	rlHolder  atomic.Pointer[versionedHandler]
+	rlVersion atomic.Uint64
+	rlMetrics *rateLimitMetrics
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -94,6 +106,10 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		writer:  writer,
 		handler: bh,
 	}
+	// Disabled until the first Update: the injector's root is the bare
+	// terminal handler, so logging behaves exactly as it did before rate
+	// limiting existed until a config Update explicitly enables it.
+	l.rlHolder.Store(&versionedHandler{version: 0, h: bh})
 	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
@@ -125,6 +141,17 @@ func (l *Logger) Update(o Options) error {
 	l.writer.SetLokiWriter(o.WriteTo)
 	l.bufferMut.Unlock()
 
+	rlOpts := defaultRateLimitingOptions()
+	if o.RateLimiting != nil {
+		rlOpts = *o.RateLimiting
+	}
+	if err := rlOpts.Validate(); err != nil {
+		return err
+	}
+	root := buildRoot(rlOpts, l.handler, l.rlMetrics)
+	v := l.rlVersion.Add(1)
+	l.rlHolder.Store(&versionedHandler{version: v, h: root})
+
 	// Rebuild deferred slog handlers outside bufferMut to avoid a deadlock
 	// with concurrent Handle() calls (they hold a child handler's RLock
 	// while waiting for bufferMut via addRecord).
@@ -154,6 +181,13 @@ func (l *Logger) flushBuffer() {
 		if item.handler.Enabled(context.Background(), item.record.Level) {
 			_ = item.handler.Handle(context.Background(), item.record)
 		}
+	}
+}
+
+// SetRateLimitMetrics wires the suppressed-lines metric. Call once before the logger is shared.
+func (l *Logger) SetRateLimitMetrics(reg prometheus.Registerer) {
+	if l.rlMetrics == nil {
+		l.rlMetrics = newRateLimitMetrics(reg)
 	}
 }
 
