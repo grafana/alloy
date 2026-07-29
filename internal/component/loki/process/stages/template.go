@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -25,6 +26,24 @@ import (
 var (
 	ErrTemplateSourceRequired = errors.New("template source value is required")
 )
+
+// cachedRegexp is an immutable (expression, compiled) pair stored in regexpCache.
+type cachedRegexp struct {
+	expr string
+	re   *regexp.Regexp
+}
+
+// regexpCache keeps only the most recently compiled expression
+var regexpCache atomic.Pointer[cachedRegexp]
+
+func mustCompileCachedRegexp(expr string) *regexp.Regexp {
+	if c := regexpCache.Load(); c != nil && c.expr == expr {
+		return c.re
+	}
+	re := regexp.MustCompile(expr)
+	regexpCache.Store(&cachedRegexp{expr: expr, re: re})
+	return re
+}
 
 var extraFunctionMap = template.FuncMap{
 	"ToLower":    strings.ToLower,
@@ -45,12 +64,10 @@ var extraFunctionMap = template.FuncMap{
 		return hex.EncodeToString(hash[:])
 	},
 	"regexReplaceAll": func(regex string, s string, repl string) string {
-		r := regexp.MustCompile(regex)
-		return r.ReplaceAllString(s, repl)
+		return mustCompileCachedRegexp(regex).ReplaceAllString(s, repl)
 	},
 	"regexReplaceAllLiteral": func(regex string, s string, repl string) string {
-		r := regexp.MustCompile(regex)
-		return r.ReplaceAllLiteralString(s, repl)
+		return mustCompileCachedRegexp(regex).ReplaceAllLiteralString(s, repl)
 	},
 }
 

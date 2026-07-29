@@ -2,8 +2,10 @@ package stages
 
 import (
 	"bytes"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -455,4 +457,62 @@ func mustTemplate(text string) Template {
 		panic(err)
 	}
 	return t
+}
+
+func TestRegexReplaceAllCache(t *testing.T) {
+	resetRegexpCache()
+
+	re1 := mustCompileCachedRegexp(`(\d{2}:\d{2}:\d{2}):(\d{3})`)
+	re2 := mustCompileCachedRegexp(`(\d{2}:\d{2}:\d{2}):(\d{3})`)
+	require.Same(t, re1, re2)
+
+	require.NotSame(t, re1, mustCompileCachedRegexp(`[0-9]{3}`))
+	require.NotSame(t, re1, mustCompileCachedRegexp(`(\d{2}:\d{2}:\d{2}):(\d{3})`))
+
+	require.Panics(t, func() { mustCompileCachedRegexp(`\K`) })
+}
+
+func TestRegexReplaceAllCacheConcurrent(t *testing.T) {
+	resetRegexpCache()
+
+	fn := extraFunctionMap["regexReplaceAll"].(func(string, string, string) string)
+	const goroutines = 64
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for g := 0; g < goroutines; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			<-start
+			for i := 0; i < 500; i++ {
+				_ = fn(`(\d{2}:\d{2}:\d{2}):(\d{3})`, "07/21/26 15:04:05:550", "${1}.${2}")
+				_ = fn("g"+strconv.Itoa(g)+"n"+strconv.Itoa(i)+".*", "x", "y")
+			}
+		}(g)
+	}
+	close(start)
+	wg.Wait()
+
+	require.Equal(t, "07/21/26 15:04:05.550",
+		fn(`(\d{2}:\d{2}:\d{2}):(\d{3})`, "07/21/26 15:04:05:550", "${1}.${2}"))
+}
+
+func resetRegexpCache() {
+	regexpCache.Store(nil)
+}
+
+func BenchmarkRegexReplaceAllCached(b *testing.B) {
+	resetRegexpCache()
+	fn := extraFunctionMap["regexReplaceAll"].(func(string, string, string) string)
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = fn(`(\d{2}:\d{2}:\d{2}):(\d{3})`, "07/21/26 15:04:05:550", "${1}.${2}")
+	}
+}
+
+func BenchmarkRegexReplaceAllUncached(b *testing.B) {
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = regexp.MustCompile(`(\d{2}:\d{2}:\d{2}):(\d{3})`).ReplaceAllString("07/21/26 15:04:05:550", "${1}.${2}")
+	}
 }
