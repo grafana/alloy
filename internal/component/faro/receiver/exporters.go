@@ -192,7 +192,11 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, exp.sendTimeout)
+	timeout := exp.sendTimeout
+	if timeout <= 0 {
+		timeout = 2 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	return exp.fanout.Send(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
 		Timestamp: time.Now(),
