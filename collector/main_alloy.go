@@ -46,8 +46,8 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
 		}
 		if !*disableReporting {
 			logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-			// Use an empty seeDir since the OTel Engine cmd line has no storage path flag.
-			// The seed will be stored in the tmp dir.
+			// Use an empty seedDir since the OTel Engine cmd line has no storage path flag.
+			// The seed will fall back to the platform default location.
 			usagestats.StartReporter(cmd.Context(), logger, "", usagestats.GlobalTracker)
 		}
 		return nil
