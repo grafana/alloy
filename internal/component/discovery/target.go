@@ -396,6 +396,32 @@ func (t Target) EqualsTarget(other *Target) bool {
 	return labelpack.EqualMerged(t.group.labels(), t.own, other.group.labels(), other.own)
 }
 
+// TargetCacheKey identifies the labels of a Target and can be used as a map key.
+// It is only meaningful as an opaque key: use Target.EqualsTarget to compare
+// targets for equality.
+//
+// Two Targets with equal keys always have the same labels, which is what makes
+// the key safe to memoise a per-target computation on. The converse does not
+// hold: two Targets with the same labels split differently between their group
+// and own buffers have different keys, so a cache keyed on this may miss where a
+// label comparison would have matched. A miss only costs recomputation.
+type TargetCacheKey struct {
+	group *groupLabels
+	own   labelpack.Labels
+}
+
+// CacheKey returns a comparable key identifying this target's labels, for use as
+// a map key when memoising work per target.
+//
+// This is cheap: the group is compared by pointer and the own labels by their
+// already-packed string, so no labels are decoded and nothing is allocated.
+// Targets discovered together share a group pointer, and a target that came
+// through service discovery or relabeling unchanged keeps the same own buffer, so
+// unchanged targets produce equal keys.
+func (t Target) CacheKey() TargetCacheKey {
+	return TargetCacheKey{group: t.group, own: t.own}
+}
+
 func (t Target) NonMetaLabelsHash() uint64 {
 	return t.HashLabelsWithPredicate(func(key string) bool {
 		return !strings.HasPrefix(key, commonlabels.MetaLabelPrefix)
