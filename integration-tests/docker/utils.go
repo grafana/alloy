@@ -63,6 +63,12 @@ func buildBaseAlloyImage() {
 	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
 }
 
+
+
+func buildBaseAlloyChiselImage() {
+	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE_CHISEL=" + alloyImageName, "alloy-image-chisel"}, "Building Alloy Chisel")
+}
+
 // alloyIntegrationImageTag is the image ref for the Alloy container (layered tag when dockerfile is set).
 func alloyIntegrationImageTag(dirName, dockerfile string) string {
 	if dockerfile != "" {

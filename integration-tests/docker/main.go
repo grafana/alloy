@@ -18,6 +18,7 @@ import (
 var (
 	specificTest    string
 	skipBuild       bool
+	useChisel       bool
 	stateful        bool
 	testTimeout     time.Duration
 	alwaysPrintLogs bool
@@ -34,6 +35,7 @@ func main() {
 
 	rootCmd.PersistentFlags().StringVar(&specificTest, "test", "", "Specific test directory to run")
 	rootCmd.PersistentFlags().BoolVar(&skipBuild, "skip-build", false, "Skip building Alloy")
+	rootCmd.PersistentFlags().BoolVar(&useChisel, "use-chisel", false, "Use Alloy Chisel")
 	statefulUsageString := "Run the tests in a stateful manner. " +
 		"The docker compose setup will not be torn down after the tests complete. " +
 		"Any queries will be run with a start time set to the alloy container start time. " +
@@ -50,14 +52,19 @@ func main() {
 }
 
 func runIntegrationTests(cmd *cobra.Command, args []string) {
-	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, specific-test=%s)\n", stateful, skipBuild, specificTest)
+	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, use-chisel=%v, specific-test=%s)\n", stateful, skipBuild, useChisel, specificTest)
 
 	ctx := cmd.Context()
 	repoRootDir = mustFindRepoRoot()
 	testsRootDir = filepath.Join(repoRootDir, "integration-tests", "docker")
 
 	if !skipBuild {
-		buildBaseAlloyImage()
+		if useChisel{
+			buildBaseAlloyChiselImage()
+		}
+		else {
+			buildBaseAlloyImage()
+		}
 		buildAlloyImagesFromTestYAMLs()
 	}
 

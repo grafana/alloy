@@ -237,7 +237,7 @@ endif
 
 .PHONY: integration-test-docker
 integration-test-docker:
-	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
+	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m && $(GO_ENV) go run . --test-timeout=15m --use-chisel
 
 .PHONY: integration-test-k8s
 integration-test-k8s:
