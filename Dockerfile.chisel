@@ -1,0 +1,111 @@
+# Chiseled Ubuntu noble runtime image PoC for Alloy.
+#
+# Slice picks:
+#   base-files_base       — minimal /etc, /var, FHS symlinks
+#   libc6_libs            — glibc shared libs + dynamic linker
+#   libsystemd0_libs      — libsystemd.so.0 + transitive deps (libcap2, libgcrypt20,
+#                           liblz4-1, liblzma5, libzstd1) pulled in via slice deps
+#   ca-certificates_data  — /etc/ssl/certs/ca-certificates.crt + openssl_data symlink
+#   tzdata_zoneinfo       — full /usr/share/zoneinfo (every region)
+
+ARG UBUNTU_RELEASE=24.04
+ARG CHISEL_VERSION=v1.4.1
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186 AS ui-build
+ARG BUILDPLATFORM
+COPY ./internal/web/ui /ui
+WORKDIR /ui
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund                         \
+    && npm run build
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186 AS build
+
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG RELEASE_BUILD=1
+ARG VERSION
+ARG GOEXPERIMENT
+
+COPY . /src/alloy
+WORKDIR /src/alloy
+
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
+    RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
+    GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
+    GOEXPERIMENT=${GOEXPERIMENT} \
+    SKIP_UI_BUILD=1 \
+    make alloy
+
+#
+# Stage 1 — Slice Ubuntu noble into a staging rootfs.
+#
+FROM ubuntu:${UBUNTU_RELEASE} AS slicer
+ARG UBUNTU_RELEASE
+ARG CHISEL_VERSION
+ARG TARGETARCH
+
+
+ARG UID="473"
+ARG USERNAME="alloy"
+SHELL ["/bin/bash", "-oeux", "pipefail", "-c"]
+
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get clean -y \
+ && rm -rf /var/lib/apt/lists/*
+
+ADD "https://github.com/canonical/chisel/releases/download/${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_${TARGETARCH}.tar.gz" /tmp/chisel.tar.gz
+RUN tar -xf /tmp/chisel.tar.gz -C /usr/bin/ chisel && rm /tmp/chisel.tar.gz
+
+RUN mkdir /rootfs \
+ && chisel cut --release "ubuntu-${UBUNTU_RELEASE}" --root /rootfs \
+        base-files_base \
+        libc6_libs \
+        libsystemd0_libs \
+        ca-certificates_data \
+        tzdata_zoneinfo
+
+# Alloy user (uid 473) — chiseled image has no shell to run useradd, so write
+# the passwd/group lines directly. base-files_base provides /etc/ as a dir.
+RUN cat >>/rootfs/etc/passwd <<'EOF'
+root:x:0:0:root:/root:/sbin/nologin
+alloy:x:473:473::/var/lib/alloy:/sbin/nologin
+EOF
+RUN cat >>/rootfs/etc/group <<'EOF'
+root:x:0:
+alloy:x:473:
+EOF
+
+# Alloy artifacts. Ubuntu noble is merged-usr (/bin -> usr/bin etc.); chisel
+# produces a matching layout via base-files_lib's slice rules, so we drop
+# binaries directly under /usr/bin/.
+COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /rootfs/usr/bin/alloy
+COPY --chown=${UID}:${UID} example-config.alloy /rootfs/etc/alloy/config.alloy
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY packaging/docker/otelcol.sh /rootfs/usr/bin/otelcol
+RUN chmod 755 /rootfs/usr/bin/alloy /rootfs/usr/bin/otelcol \
+ && mkdir -p /rootfs/var/lib/alloy/data /rootfs/home/alloy \
+ && chown -R 473:473 /rootfs/var/lib/alloy /rootfs/home/alloy \
+ && chmod -R 770 /rootfs/var/lib/alloy
+
+#
+# Stage 2 — Final image. FROM scratch + the staged rootfs.
+#
+FROM scratch
+
+LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
+
+COPY --from=slicer /rootfs/ /
+
+ENTRYPOINT ["/usr/bin/alloy"]
+ENV ALLOY_DEPLOY_MODE=docker
+CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
