@@ -24,11 +24,10 @@ func runGoModTidy(moduleDir string) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Env = os.Environ()
-		// Respect a GOPROXY the caller already configured (e.g. a corporate
-		// module proxy); only fall back to the public proxy otherwise. Pipe
-		// falls through to direct on any proxy error; comma only falls
-		// through on 404/410, which doesn't cover transient proxy failures.
-		if os.Getenv("GOPROXY") == "" {
+		// Respect a GOPROXY the caller already configured.
+		if _, ok := os.LookupEnv("GOPROXY"); !ok {
+			// Pipe falls through to direct on any proxy error; comma only falls
+			// through on 404/410, which doesn't cover transient proxy failures.
 			cmd.Env = append(cmd.Env, "GOPROXY=https://proxy.golang.org|direct")
 		}
 
