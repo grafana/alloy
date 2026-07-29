@@ -56,7 +56,7 @@ A proposal results in one of three outcomes:
 
 ## Component lifecycle and removal
 
-Once the OTel Engine is generally available, bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
+Bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
 
 * If a component is marked **deprecated** upstream, we mark it deprecated in our distribution and keep it for at least two more minor releases before removing it.
 * If a component becomes **unmaintained** upstream, we follow the same process and remove it after it has been unmaintained for three months.
