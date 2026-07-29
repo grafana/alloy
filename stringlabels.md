@@ -296,6 +296,48 @@ Note that per-operation `allocs/op` cannot show this, which is why this benchmar
 4. **`Benchmark_Targets_TypicalPipeline` allocs +40% while time is -18.5%.** Same cause as (1): the
    encoding cost moved into Alloy from the SD library. Time and resident memory both improve.
 
+### Why not make Prometheus service discovery emit packed labels
+
+The obvious way to remove the conversion entirely would be for service discovery to hand over packed
+labels in the first place. That is not practical:
+
+- `targetgroup.Group` is `Targets []model.LabelSet` plus `Labels model.LabelSet`
+  (`discovery/targetgroup/targetgroup.go:24-33`), and `Discoverer.Run(ctx, chan<- []*targetgroup.Group)`
+  (`discovery/discovery.go:35-40`) is the contract every discoverer implements.
+- There is no `labels.Labels` anywhere in the upstream service discovery API.
+- Alloy wraps 35 upstream discoverers, spanning 41 packages and ~22.8k lines. Changing the label type
+  means forking all of it and giving up upstream fixes, for a conversion that runs at most every 5s.
+
+Instead the conversion is memoised, which removes the repeated cost without touching Prometheus. See
+below.
+
+### Memoising the conversion
+
+`runDiscovery` only replaces the cache entry for sources present in an update
+(`discovery.go:210-219`), so every unchanged source keeps the same `*targetgroup.Group` pointer, yet
+`toAlloyTargets` re-sorted and re-encoded all of them on every send. `groupPacker` keys a cached
+conversion on that pointer; discoverers build a new group whenever contents change and never mutate a
+group after sending it, so pointer identity is sufficient.
+
+50 sources x 400 targets = 20k targets:
+
+| variant | time/op | B/op | allocs/op |
+|---|---|---|---|
+| map-based layout (before this change) | 2.30ms | 484kB | 2 |
+| packed, no memoisation | 4.28ms | 4224kB | 20159 |
+| packed, memoised, one source changes per send | **0.39ms** | 900kB | 3825 |
+| packed, memoised, nothing changes | **0.045ms** | 648kB | 2 |
+
+So the realistic long-running case is ~5.9x faster than the original map-based code rather than 1.9x
+slower, and the steady state is ~51x faster. Memoisation also makes the group pointer and own buffer
+identical across sends for unchanged targets, so `EqualsTarget` hits its 2ns fast path and the
+export-comparison short circuit added in `45f3994b5` becomes effective.
+
+**Worst case is unchanged:** a discoverer with a single source that changes on every cycle gets no
+reuse and still pays the full conversion, i.e. the `Benchmark_ToAlloyTargets` regression above. Fixing
+that would need content-based rather than identity-based invalidation, which costs about as much as
+just re-encoding.
+
 ### Rejected optimisation
 
 `toAlloyTargets` could pack every target of a group into a single buffer and give each target a
