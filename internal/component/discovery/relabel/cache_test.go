@@ -502,3 +502,74 @@ func TestCacheDoesNotRebuildOnFullChurn(t *testing.T) {
 	// Only the current generation is retained.
 	require.Equal(t, rebuildMinSize, c.cache.len())
 }
+
+// TestCacheHitsWhenGroupIsRebuilt is the regression test for the cache keying on
+// group contents rather than on the group pointer.
+//
+// Most service discovery mechanisms are built on refresh: they rebuild every
+// target group on every refresh interval, so a group whose contents did not change
+// still arrives as a fresh allocation. toAlloyTargets then packs a new
+// *groupLabels for it, and a cache keyed on that pointer missed for every target
+// of every refresh-based mechanism, which is nearly all of them. Verified against
+// a running discovery.file: changing one address in one of three groups produced
+// 0 hits and 12 misses.
+func TestCacheHitsWhenGroupIsRebuilt(t *testing.T) {
+	group := commonlabels.LabelSet{"job": "alpha", "env": "prod"}
+
+	// Two independently packed groups with identical contents, as consecutive
+	// refreshes of the same service discovery mechanism produce.
+	build := func(addr string) discovery.Target {
+		return discovery.NewTargetFromSpecificAndBaseLabelSet(
+			commonlabels.LabelSet{"__address__": commonlabels.LabelValue(addr), "app": "backend"},
+			commonlabels.LabelSet{"job": group["job"], "env": group["env"]},
+		)
+	}
+
+	first := build("10.0.0.1:80")
+	rebuilt := build("10.0.0.1:80")
+
+	require.True(t, first.EqualsTarget(&rebuilt), "the two targets have identical labels")
+	require.Equal(t, first.CacheKey(), rebuilt.CacheKey(),
+		"a rebuilt group with identical contents must produce the same cache key")
+
+	reg := prometheus.NewRegistry()
+	c := testComponent(t, reg, &fakePublisher{})
+	args := mustArgs(t, keepBackendRules)
+
+	args.Targets = []discovery.Target{first}
+	require.NoError(t, c.Update(args))
+	require.Equal(t, float64(1), counterValue(t, reg, "alloy_discovery_relabel_cache_misses_total"))
+	require.Equal(t, float64(0), counterValue(t, reg, "alloy_discovery_relabel_cache_hits_total"))
+
+	// The same target arriving from a rebuilt group must be served from the cache.
+	args.Targets = []discovery.Target{rebuilt}
+	require.NoError(t, c.Update(args))
+	require.Equal(t, float64(1), counterValue(t, reg, "alloy_discovery_relabel_cache_misses_total"),
+		"a rebuilt group must not cause a miss")
+	require.Equal(t, float64(1), counterValue(t, reg, "alloy_discovery_relabel_cache_hits_total"))
+	require.Equal(t, 1, c.cache.len(), "the rebuilt target must reuse the existing entry, not add one")
+
+	// A partially changed group: only the target that actually changed may miss.
+	changed := build("10.0.0.99:80")
+	args.Targets = []discovery.Target{rebuilt, changed}
+	require.NoError(t, c.Update(args))
+	require.Equal(t, float64(2), counterValue(t, reg, "alloy_discovery_relabel_cache_hits_total"),
+		"the unchanged target must still hit")
+	require.Equal(t, float64(2), counterValue(t, reg, "alloy_discovery_relabel_cache_misses_total"),
+		"only the changed target may miss")
+}
+
+// TestCacheKeyIgnoresGroupIdentityNotContents checks the key distinguishes group
+// contents, so that a target cannot be served a result computed for different
+// group labels.
+func TestCacheKeyIgnoresGroupIdentityNotContents(t *testing.T) {
+	own := commonlabels.LabelSet{"__address__": "10.0.0.1:80"}
+
+	a := discovery.NewTargetFromSpecificAndBaseLabelSet(own, commonlabels.LabelSet{"job": "alpha"})
+	sameContents := discovery.NewTargetFromSpecificAndBaseLabelSet(own, commonlabels.LabelSet{"job": "alpha"})
+	differentContents := discovery.NewTargetFromSpecificAndBaseLabelSet(own, commonlabels.LabelSet{"job": "beta"})
+
+	require.Equal(t, a.CacheKey(), sameContents.CacheKey())
+	require.NotEqual(t, a.CacheKey(), differentContents.CacheKey(),
+		"different group labels must not share a cache entry")
+}

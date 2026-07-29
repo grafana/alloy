@@ -406,20 +406,21 @@ func (t Target) EqualsTarget(other *Target) bool {
 // and own buffers have different keys, so a cache keyed on this may miss where a
 // label comparison would have matched. A miss only costs recomputation.
 type TargetCacheKey struct {
-	group *groupLabels
+	group labelpack.Labels
 	own   labelpack.Labels
 }
 
 // CacheKey returns a comparable key identifying this target's labels, for use as
 // a map key when memoising work per target.
 //
-// This is cheap: the group is compared by pointer and the own labels by their
-// already-packed string, so no labels are decoded and nothing is allocated.
-// Targets discovered together share a group pointer, and a target that came
-// through service discovery or relabeling unchanged keeps the same own buffer, so
-// unchanged targets produce equal keys.
+// The key holds the two packed label buffers, so no labels are decoded and
+// nothing is allocated. It deliberately compares the group by its contents rather
+// than by pointer: service discovery mechanisms built on refresh, which is most of
+// them, rebuild every target group on every refresh, so an unchanged group arrives
+// as a new allocation with identical contents. Keying on the pointer made every
+// target of such a mechanism miss.
 func (t Target) CacheKey() TargetCacheKey {
-	return TargetCacheKey{group: t.group, own: t.own}
+	return TargetCacheKey{group: t.group.labels(), own: t.own}
 }
 
 func (t Target) NonMetaLabelsHash() uint64 {

@@ -145,10 +145,10 @@ func benchComponent(tb testing.TB) *Component {
 // linux/amd64, Ryzen AI MAX+ 395, 50 sources x 400 targets = 20k targets:
 //
 //	                           time/op   alloc/op  allocs/op
-//	cold                       78.1ms    43.3MB    941k       every target relabeled
-//	unchanged snapshot          1.52ms    1.61MB    20.0k     every target a cache hit
-//	one of 50 sources changed   3.16ms    2.38MB    38.4k
-//	rules changed              82.1ms    45.3MB    1.02M      cache purged, as intended
+//	cold                       78.5ms    43.8MB    941k       every target relabeled
+//	unchanged snapshot          1.33ms    1.61MB    20.0k     every target a cache hit
+//	one of 50 sources changed   3.10ms    2.38MB    38.4k
+//	rules changed              82.1ms    45.9MB    1.02M      cache purged, as intended
 //
 // The 20k allocations left on the fully cached path are the live debugging
 // closure built per target in Update, not the cache: with that call removed the
