@@ -131,6 +131,14 @@ func (l *Logger) Update(o Options) error {
 		return fmt.Errorf("unrecognized log format %q", o.Format)
 	}
 
+	rlOpts := defaultRateLimitingOptions()
+	if o.RateLimiting != nil {
+		rlOpts = *o.RateLimiting
+	}
+	if err := rlOpts.Validate(); err != nil {
+		return err
+	}
+
 	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
@@ -141,13 +149,6 @@ func (l *Logger) Update(o Options) error {
 	l.writer.SetLokiWriter(o.WriteTo)
 	l.bufferMut.Unlock()
 
-	rlOpts := defaultRateLimitingOptions()
-	if o.RateLimiting != nil {
-		rlOpts = *o.RateLimiting
-	}
-	if err := rlOpts.Validate(); err != nil {
-		return err
-	}
 	root := buildRoot(rlOpts, l.handler, l.rlMetrics)
 	v := l.rlVersion.Add(1)
 	l.rlHolder.Store(&versionedHandler{version: v, h: root})

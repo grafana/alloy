@@ -88,7 +88,7 @@ The `rate_limiting` block enables per-message rate limiting and sampling of repe
 Rate limiting keys on the component, the log level, and the log message text (not attributes/fields).
 Only identical repeated lines from the same component at the same level are throttled; distinct components/messages are independent (LRU-bounded by `max_signatures`).
 
-Because keying is on the message TEXT, log lines that share a constant message but differ only in attributes are treated as the same signature and throttled together — use distinct message text when you need lines rate-limited independently.
+Because keying is on the message text, log lines that share a constant message but differ only in attributes are treated as the same signature and throttled together.
 
 After suppression begins, the first admitted line of each new window carries a `slog_sampling.dropped_count` attribute.
 
