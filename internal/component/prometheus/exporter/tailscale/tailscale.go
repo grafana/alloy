@@ -31,12 +31,13 @@ func init() {
 
 // DefaultArguments holds non-zero defaults for Arguments.
 var DefaultArguments = Arguments{
-	APIBaseURL:        "https://api.tailscale.com",
-	RefreshInterval:   60 * time.Second,
-	PeerMetricsPort:   5252,
-	PeerMetricsPath:   "/metrics",
-	PeerScrapeTimeout: 3 * time.Second,
-	TSNetHostname:     "alloy-tailscale-exporter",
+	APIBaseURL:            "https://api.tailscale.com",
+	RefreshInterval:       60 * time.Second,
+	PeerMetricsPort:       5252,
+	PeerMetricsPath:       "/metrics",
+	PeerScrapeTimeout:     3 * time.Second,
+	PeerScrapeConcurrency: 32,
+	TSNetHostname:         "alloy-tailscale-exporter",
 }
 
 // Arguments configures the prometheus.exporter.tailscale component.
@@ -87,6 +88,10 @@ type Arguments struct {
 	// respond (e.g. firewalled).
 	PeerScrapeTimeout time.Duration `alloy:"peer_scrape_timeout,attr,optional"`
 
+	// PeerScrapeConcurrency limits the number of peer metrics requests in
+	// progress at the same time. Every matching peer is still scraped.
+	PeerScrapeConcurrency int `alloy:"peer_scrape_concurrency,attr,optional"`
+
 	// OAuth authenticates via a Tailscale OAuth client instead of api_key +
 	// auth_key. When set, it authenticates the management API and the tsnet node
 	// join. Mutually exclusive with api_key/api_key_file.
@@ -94,9 +99,8 @@ type Arguments struct {
 
 	// Targets maps node types to the port/path where they expose metrics. Use
 	// this when different node types listen on different ports — for example,
-	// clients and exit nodes on 5252, but Tailscale Kubernetes operator proxies
-	// and ingresses on 9002. When no target blocks are given, every node is
-	// scraped on peer_metrics_port/peer_metrics_path.
+	// Tailscale clients on 5252 and node_exporter on 9100. When no target blocks
+	// are given, every node is scraped on peer_metrics_port/peer_metrics_path.
 	Targets []Target `alloy:"target,block,optional"`
 }
 
@@ -189,6 +193,9 @@ func (a *Arguments) Validate() error {
 	if a.PeerScrapeTimeout <= 0 {
 		return fmt.Errorf("peer_scrape_timeout must be positive")
 	}
+	if a.PeerScrapeConcurrency <= 0 {
+		return fmt.Errorf("peer_scrape_concurrency must be positive")
+	}
 	if !strings.HasPrefix(a.PeerMetricsPath, "/") {
 		return fmt.Errorf("peer_metrics_path must start with \"/\"")
 	}
@@ -262,20 +269,21 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	}
 
 	cfg := tailscale_exporter.Config{
-		Tailnet:           a.Tailnet,
-		APIKey:            apiKey,
-		AuthKey:           string(a.AuthKey),
-		OAuthClientID:     oauthID,
-		OAuthClientSecret: oauthSecret,
-		AdvertiseTags:     advertiseTags,
-		APIBaseURL:        a.APIBaseURL,
-		StateDir:          stateDir,
-		TSNetHostname:     a.TSNetHostname,
-		RefreshInterval:   a.RefreshInterval,
-		PeerMetricsPort:   a.PeerMetricsPort,
-		PeerMetricsPath:   a.PeerMetricsPath,
-		PeerScrapeTimeout: a.PeerScrapeTimeout,
-		Targets:           targets,
+		Tailnet:               a.Tailnet,
+		APIKey:                apiKey,
+		AuthKey:               string(a.AuthKey),
+		OAuthClientID:         oauthID,
+		OAuthClientSecret:     oauthSecret,
+		AdvertiseTags:         advertiseTags,
+		APIBaseURL:            a.APIBaseURL,
+		StateDir:              stateDir,
+		TSNetHostname:         a.TSNetHostname,
+		RefreshInterval:       a.RefreshInterval,
+		PeerMetricsPort:       a.PeerMetricsPort,
+		PeerMetricsPath:       a.PeerMetricsPath,
+		PeerScrapeTimeout:     a.PeerScrapeTimeout,
+		PeerScrapeConcurrency: a.PeerScrapeConcurrency,
+		Targets:               targets,
 	}
 
 	integration, err := tailscale_exporter.New(opts.Logger, cfg)

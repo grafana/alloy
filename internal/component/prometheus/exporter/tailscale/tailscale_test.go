@@ -103,6 +103,15 @@ func TestArgumentsValidate(t *testing.T) {
 			wantErr: "peer_metrics_path",
 		},
 		{
+			name: "peer scrape concurrency must be positive",
+			mutate: func(a *Arguments) {
+				a.APIKey = "key"
+				a.AuthKey = "authkey"
+				a.PeerScrapeConcurrency = 0
+			},
+			wantErr: "peer_scrape_concurrency",
+		},
+		{
 			name: "catch-all target before another target",
 			mutate: func(a *Arguments) {
 				a.APIKey = "key"

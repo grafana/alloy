@@ -74,6 +74,7 @@ You can use the following arguments with `prometheus.exporter.tailscale`:
 | `auth_key`            | `secret`   | Tailscale pre-auth key (`tskey-auth-...`) used by the embedded node to join the tailnet.  |                              | no       |
 | `peer_metrics_path`   | `string`   | HTTP path scraped on each peer when no `target` blocks are configured.                    | `"/metrics"`                 | no       |
 | `peer_metrics_port`   | `number`   | Port scraped on each peer when no `target` blocks are configured.                         | `5252`                       | no       |
+| `peer_scrape_concurrency` | `number` | Maximum number of peer metrics requests in progress at the same time.                  | `32`                         | no       |
 | `peer_scrape_timeout` | `duration` | Timeout for each peer metrics request.                                                     | `"3s"`                       | no       |
 | `refresh_interval`    | `duration` | How often to poll the API and scrape peer metrics.                                        | `"60s"`                      | no       |
 | `state_dir`           | `string`   | Directory for persistent tsnet state, including WireGuard keys and certificates.          | Component data path + `/tsnet` | no       |
@@ -98,6 +99,12 @@ This mode replaces both `api_key` and `auth_key`.
 The embedded tsnet node stores WireGuard private keys, node certificates, and other persistent state in `state_dir`. This directory must be on persistent storage. If Alloy restarts and `state_dir` is empty or missing (for example, on a Kubernetes Pod with ephemeral storage), the node re-authenticates using `auth_key` and consumes a new auth key slot.
 
 When running multiple instances of `prometheus.exporter.tailscale` in the same Alloy process, each instance must have a unique `tsnet_hostname` and a separate `state_dir`.
+
+### Peer scraping
+
+The `peer_scrape_concurrency` argument limits simultaneous requests, not the total number of devices scraped.
+Each refresh queues every matching device and processes up to `peer_scrape_concurrency` peers at the same time.
+`prometheus.exporter.tailscale` rejects peer metrics responses larger than 10 MiB.
 
 ## Blocks
 
@@ -167,7 +174,7 @@ prometheus.exporter.tailscale "example" {
 }
 ```
 
-Per-node daemon metrics are labeled with `node` (hostname), `tags`, and `os` so you can distinguish node types (clients, exit nodes, subnet routers, and so on) in queries.
+Per-node daemon metrics are labeled with `node` (the unique Tailscale machine name), `tags`, and `os` so you can distinguish node types (clients, exit nodes, subnet routers, and so on) in queries.
 Labels configured with `labels` override the generated `tags` and `os` labels.
 You can't override the reserved `node` label.
 
@@ -182,6 +189,7 @@ In those cases, exported fields retain their last healthy values.
 
 If the embedded tsnet node fails to start, Alloy logs the error and the component's metrics endpoint remains unavailable.
 If a management API call or peer scrape fails, `prometheus.exporter.tailscale` continues running and exports stale or partial metrics.
+If cached peer metrics are malformed or conflict with another peer's metric metadata, Alloy logs the error, increments `tailscale_exporter_gather_errors_total`, and exports the valid metrics.
 
 ## Debug information
 
@@ -224,10 +232,11 @@ All per-device metrics include `name` and `id` labels identifying the device.
 | `tailscale_exporter_last_refresh_duration_seconds`          | `gauge`   |        | Duration in seconds of the last full refresh cycle.  |
 | `tailscale_exporter_peer_scrape_errors_total`               | `counter` | `node` | Total number of errors scraping per-node metrics.    |
 | `tailscale_exporter_api_errors_total`                       | `counter` |        | Total number of Tailscale management API errors.     |
+| `tailscale_exporter_gather_errors_total`                    | `counter` |        | Total number of errors gathering cached peer metrics. |
 
 ### Per-node daemon metrics
 
-The component scrapes `http://<tailscale_ip>:<peer_metrics_port><peer_metrics_path>` on each device using an HTTP client that routes traffic through the tsnet VPN. The raw Prometheus metrics from each peer are re-exposed with an additional `node=<hostname>` label.
+The component scrapes `http://<tailscale_ip>:<peer_metrics_port><peer_metrics_path>` on each device using an HTTP client that routes traffic through the tsnet VPN. The raw Prometheus metrics from each peer are re-exposed with an additional `node=<tailscale_machine_name>` label.
 
 Common metrics produced by the Tailscale daemon include counters for inbound and outbound packets and bytes, WireGuard peer counts, and DERP connection statistics. Devices that don't expose metrics on this port are skipped silently.
 

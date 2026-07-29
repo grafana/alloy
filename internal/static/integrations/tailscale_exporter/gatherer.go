@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
@@ -14,6 +15,7 @@ import (
 // peerEntry is a cached peer scrape plus the labels to inject on its metrics.
 type peerEntry struct {
 	raw    []byte
+	node   string
 	labels map[string]string // e.g. tags, os; the "node" label is added separately
 }
 
@@ -22,22 +24,29 @@ type peerEntry struct {
 // it on demand, and injects a "node" label (plus any per-peer labels)
 // identifying the source peer.
 type peerMetricsGatherer struct {
-	// cache maps peer hostname to its scraped metrics and labels.
+	// cache maps a stable peer identifier to its scraped metrics and labels.
 	cache map[string]peerEntry
 }
 
 // Gather implements prometheus.Gatherer.
 func (g *peerMetricsGatherer) Gather() ([]*dto.MetricFamily, error) {
 	var all []*dto.MetricFamily
-	for node, entry := range g.cache {
-		families, err := parsePeerMetrics(entry.raw, node, entry.labels)
+	var errs prometheus.MultiError
+	keys := make([]string, 0, len(g.cache))
+	for key := range g.cache {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		entry := g.cache[key]
+		families, err := parsePeerMetrics(entry.raw, entry.node, entry.labels)
 		if err != nil {
-			// Skip bad peers — don't abort the whole gather.
-			continue
+			errs = append(errs, err)
 		}
 		all = append(all, families...)
 	}
-	return all, nil
+	return all, errs.MaybeUnwrap()
 }
 
 // parsePeerMetrics parses Prometheus text exposition format from raw and
@@ -46,8 +55,9 @@ func (g *peerMetricsGatherer) Gather() ([]*dto.MetricFamily, error) {
 func parsePeerMetrics(raw []byte, nodeName string, extra map[string]string) ([]*dto.MetricFamily, error) {
 	parser := expfmt.NewTextParser(model.LegacyValidation)
 	parsed, err := parser.TextToMetricFamilies(bytes.NewReader(raw))
-	if err != nil && len(parsed) == 0 {
-		return nil, fmt.Errorf("parse peer metrics for %q: %w", nodeName, err)
+	var parseErr error
+	if err != nil {
+		parseErr = fmt.Errorf("parse peer metrics for %q: %w", nodeName, err)
 	}
 
 	families := make([]*dto.MetricFamily, 0, len(parsed))
@@ -81,5 +91,5 @@ func parsePeerMetrics(raw []byte, nodeName string, extra map[string]string) ([]*
 		}
 		families = append(families, cloned)
 	}
-	return families, nil
+	return families, parseErr
 }

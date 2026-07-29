@@ -1,15 +1,21 @@
 package tailscale_exporter
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	tsclient "tailscale.com/client/tailscale/v2"
 )
 
@@ -97,6 +103,7 @@ func TestNew_defaults(t *testing.T) {
 	require.Equal(t, defaultPeerMetricsPort, i.cfg.PeerMetricsPort)
 	require.Equal(t, defaultPeerMetricsPath, i.cfg.PeerMetricsPath)
 	require.Equal(t, defaultPeerScrapeTimeout, i.cfg.PeerScrapeTimeout)
+	require.Equal(t, defaultPeerScrapeConcurrency, i.cfg.PeerScrapeConcurrency)
 	require.Equal(t, defaultTSNetHostname, i.cfg.TSNetHostname)
 }
 
@@ -182,8 +189,8 @@ metric_a 1
 `)
 	g := &peerMetricsGatherer{
 		cache: map[string]peerEntry{
-			"node-a": {raw: raw},
-			"node-b": {raw: raw},
+			"id-a": {raw: raw, node: "node-a"},
+			"id-b": {raw: raw, node: "node-b"},
 		},
 	}
 	families, err := g.Gather()
@@ -210,15 +217,15 @@ func TestResolveTarget(t *testing.T) {
 
 	// Tag-matched target groups, with a catch-all last.
 	i := &integration{cfg: Config{Targets: []ScrapeTarget{
-		{MatchTags: []string{"tag:*-proxy", "tag:*-ingress"}, Port: 9002, Labels: map[string]string{"role": "k8s"}},
+		{MatchTags: []string{"tag:*-server"}, Port: 9100, Labels: map[string]string{"role": "node-exporter"}},
 		{MatchTags: nil, Port: 5252, Path: "/metrics"},
 	}}}
 
-	port, path, labels, ok := i.resolveTarget([]string{"tag:us-east-proxy"})
+	port, path, labels, ok := i.resolveTarget([]string{"tag:us-east-server"})
 	require.True(t, ok)
-	require.Equal(t, 9002, port)
-	require.Equal(t, "/metrics", path)      // defaulted
-	require.Equal(t, "k8s", labels["role"]) // per-target label returned
+	require.Equal(t, 9100, port)
+	require.Equal(t, "/metrics", path)                // defaulted
+	require.Equal(t, "node-exporter", labels["role"]) // per-target label returned
 
 	port, _, _, ok = i.resolveTarget([]string{"tag:laptop"})
 	require.True(t, ok)
@@ -226,7 +233,7 @@ func TestResolveTarget(t *testing.T) {
 
 	// No catch-all and no match -> skip.
 	noCatch := &integration{cfg: Config{Targets: []ScrapeTarget{
-		{MatchTags: []string{"tag:*-proxy"}, Port: 9002},
+		{MatchTags: []string{"tag:*-server"}, Port: 9100},
 	}}}
 	_, _, _, ok = noCatch.resolveTarget([]string{"tag:laptop"})
 	require.False(t, ok)
@@ -236,12 +243,32 @@ func TestParsePeerMetrics_malformed(t *testing.T) {
 	// The key guarantee is that invalid Prometheus text does not panic and
 	// that any metric families returned still have the node label injected.
 	raw := []byte(`not valid prometheus text !!!`)
-	families, _ := parsePeerMetrics(raw, "bad-node", nil)
+	families, err := parsePeerMetrics(raw, "bad-node", nil)
+	require.ErrorContains(t, err, `parse peer metrics for "bad-node"`)
 	for _, mf := range families {
 		for _, m := range mf.Metric {
 			require.Equal(t, "bad-node", labelValue(m.Label, "node"))
 		}
 	}
+}
+
+func TestParsePeerMetrics_returnsPartialResultsAndError(t *testing.T) {
+	raw := []byte(`# TYPE good_metric gauge
+good_metric 1
+not valid prometheus text !!!
+`)
+	families, err := parsePeerMetrics(raw, "partial-node", nil)
+	require.Error(t, err)
+	require.NotEmpty(t, families)
+	var goodMetric *dto.MetricFamily
+	for _, family := range families {
+		if family.GetName() == "good_metric" {
+			goodMetric = family
+			break
+		}
+	}
+	require.NotNil(t, goodMetric)
+	require.Equal(t, "partial-node", labelValue(goodMetric.Metric[0].Label, "node"))
 }
 
 func TestParsePeerMetrics_preservesHelpAndType(t *testing.T) {
@@ -262,11 +289,11 @@ func TestBoolToFloat(t *testing.T) {
 }
 
 func TestCopyPeerCache(t *testing.T) {
-	orig := map[string]peerEntry{"a": {raw: []byte("data")}}
+	orig := map[string]peerEntry{"a": {raw: []byte("data"), node: "node-a"}}
 	cp := copyPeerCache(orig)
 	require.Equal(t, orig, cp)
 
-	cp["b"] = peerEntry{raw: []byte("extra")}
+	cp["b"] = peerEntry{raw: []byte("extra"), node: "node-b"}
 	require.NotContains(t, orig, "b")
 }
 
@@ -408,6 +435,196 @@ func TestPeerMetricsURL(t *testing.T) {
 			require.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestScrapePeers_preservesDevicesWithDuplicateHostnames(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := fmt.Fprintln(w, "# TYPE peer_metric gauge\npeer_metric 1"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	i, err := New(slog.New(slog.DiscardHandler), Config{
+		Tailnet:         "example.com",
+		APIKey:          "key",
+		AuthKey:         "authkey",
+		PeerMetricsPort: server.Listener.Addr().(*net.TCPAddr).Port,
+	})
+	require.NoError(t, err)
+
+	devices := []tsclient.Device{
+		{
+			NodeID:   "node-id-1",
+			Name:     "shared-name-1.example.ts.net",
+			Hostname: "shared-name",
+			Addresses: []string{
+				server.Listener.Addr().(*net.TCPAddr).IP.String(),
+			},
+		},
+		{
+			NodeID:   "node-id-2",
+			Name:     "shared-name-2.example.ts.net",
+			Hostname: "shared-name",
+			Addresses: []string{
+				server.Listener.Addr().(*net.TCPAddr).IP.String(),
+			},
+		},
+	}
+
+	cache := i.scrapePeers(context.Background(), devices, server.Client())
+	require.Len(t, cache, 2)
+	require.Equal(t, devices[0].Name, cache[devices[0].NodeID].node)
+	require.Equal(t, devices[1].Name, cache[devices[1].NodeID].node)
+}
+
+func TestScrapePeers_boundsConcurrency(t *testing.T) {
+	const testConcurrency = 7
+	var active atomic.Int64
+	var peak atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		current := active.Add(1)
+		defer active.Add(-1)
+		for {
+			previous := peak.Load()
+			if current <= previous || peak.CompareAndSwap(previous, current) {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		if _, err := fmt.Fprintln(w, "# TYPE peer_metric gauge\npeer_metric 1"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	i, err := New(slog.New(slog.DiscardHandler), Config{
+		Tailnet:               "example.com",
+		APIKey:                "key",
+		AuthKey:               "authkey",
+		PeerMetricsPort:       server.Listener.Addr().(*net.TCPAddr).Port,
+		PeerScrapeConcurrency: testConcurrency,
+	})
+	require.NoError(t, err)
+
+	const peerCount = testConcurrency * 3
+	devices := make([]tsclient.Device, 0, peerCount)
+	for idx := range peerCount {
+		devices = append(devices, tsclient.Device{
+			NodeID:   fmt.Sprintf("node-id-%d", idx),
+			Name:     fmt.Sprintf("node-%d.example.ts.net", idx),
+			Hostname: fmt.Sprintf("node-%d", idx),
+			Addresses: []string{
+				server.Listener.Addr().(*net.TCPAddr).IP.String(),
+			},
+		})
+	}
+
+	cache := i.scrapePeers(context.Background(), devices, server.Client())
+	require.Len(t, cache, peerCount)
+	require.LessOrEqual(t, peak.Load(), int64(testConcurrency))
+}
+
+func TestScrapePeers_countsMalformedMetrics(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := fmt.Fprint(w, "not valid prometheus text !!!"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	i, err := New(slog.New(slog.DiscardHandler), Config{
+		Tailnet:         "example.com",
+		APIKey:          "key",
+		AuthKey:         "authkey",
+		PeerMetricsPort: server.Listener.Addr().(*net.TCPAddr).Port,
+	})
+	require.NoError(t, err)
+	device := tsclient.Device{
+		NodeID:   "node-id",
+		Name:     "node.example.ts.net",
+		Hostname: "node",
+		Addresses: []string{
+			server.Listener.Addr().(*net.TCPAddr).IP.String(),
+		},
+	}
+
+	cache := i.scrapePeers(context.Background(), []tsclient.Device{device}, server.Client())
+	require.Len(t, cache, 1)
+	require.Equal(t, 1.0, testutil.ToFloat64(i.peerScrapeErrors.WithLabelValues(device.Name)))
+}
+
+func TestMetricsHandler_reportsGatherErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		cache       map[string]peerEntry
+		wantBody    string
+		notWantBody string
+	}{
+		{
+			name: "malformed exposition",
+			cache: map[string]peerEntry{
+				"id": {raw: []byte("not valid prometheus text !!!"), node: "bad-node"},
+			},
+		},
+		{
+			name: "inconsistent help",
+			cache: map[string]peerEntry{
+				"id-a": {
+					raw:  []byte("# HELP duplicate_metric Help A.\n# TYPE duplicate_metric gauge\nduplicate_metric 1\n"),
+					node: "node-a",
+				},
+				"id-b": {
+					raw:  []byte("# HELP duplicate_metric Help B.\n# TYPE duplicate_metric gauge\nduplicate_metric 1\n"),
+					node: "node-b",
+				},
+			},
+			wantBody:    "# HELP duplicate_metric Help A.",
+			notWantBody: "# HELP duplicate_metric Help B.",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			i, err := New(slog.New(slog.DiscardHandler), Config{
+				Tailnet: "example.com",
+				APIKey:  "key",
+				AuthKey: "authkey",
+			})
+			require.NoError(t, err)
+
+			reg := prometheus.NewRegistry()
+			reg.MustRegister(i.gatherErrors)
+			i.registry.store(reg)
+			i.peerCache = tc.cache
+
+			h, err := i.MetricsHandler()
+			require.NoError(t, err)
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, 1.0, testutil.ToFloat64(i.gatherErrors))
+			if tc.wantBody != "" {
+				require.Contains(t, rec.Body.String(), tc.wantBody)
+			}
+			if tc.notWantBody != "" {
+				require.NotContains(t, rec.Body.String(), tc.notWantBody)
+			}
+		})
+	}
+}
+
+func TestScrapePeer_rejectsOversizedResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := fmt.Fprint(w, strings.Repeat("x", maxPeerMetricsBodyBytes+1)); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	_, err := scrapePeer(context.Background(), server.Client(), server.URL)
+	require.ErrorContains(t, err, "exceeds")
 }
 
 // --- test helpers ---
