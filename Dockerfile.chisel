@@ -1,3 +1,9 @@
+# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+
+# NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
+# default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
+# in environment variables.
+
 # Chiseled Ubuntu noble runtime image PoC for Alloy.
 #
 # Slice picks:
@@ -45,7 +51,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     make alloy
 
 #
-# Stage 1 — Slice Ubuntu noble into a staging rootfs.
+# Slice Ubuntu noble into a staging rootfs.
 #
 FROM ubuntu:${UBUNTU_RELEASE} AS slicer
 ARG UBUNTU_RELEASE
@@ -77,11 +83,11 @@ RUN mkdir /rootfs \
 # the passwd/group lines directly. base-files_base provides /etc/ as a dir.
 RUN cat >>/rootfs/etc/passwd <<'EOF'
 root:x:0:0:root:/root:/sbin/nologin
-alloy:x:473:473::/var/lib/alloy:/sbin/nologin
+alloy:x:${UID}:${UID}::/var/lib/alloy:/sbin/nologin
 EOF
 RUN cat >>/rootfs/etc/group <<'EOF'
 root:x:0:
-alloy:x:473:
+alloy:x:${UID}:
 EOF
 
 # Alloy artifacts. Ubuntu noble is merged-usr (/bin -> usr/bin etc.); chisel
@@ -98,7 +104,7 @@ RUN chmod 755 /rootfs/usr/bin/alloy /rootfs/usr/bin/otelcol \
  && chmod -R 770 /rootfs/var/lib/alloy
 
 #
-# Stage 2 — Final image. FROM scratch + the staged rootfs.
+# Final image. FROM scratch + the staged rootfs.
 #
 FROM scratch
 
