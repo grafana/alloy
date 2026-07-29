@@ -1,11 +1,5 @@
 # Changelog
 
-## Main (unreleased)
-
-### Features 🌟
-
-- `faro.receiver`: Add configurable `logs_send_timeout` in the `output` block to control how long the receiver waits when pushing log entries to the downstream pipeline. Defaults to `"2s"`. Previously this was hardcoded and could cause `context deadline exceeded` errors under backpressure. (@kpelelis)
-
 ## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-07-17)
 
 
