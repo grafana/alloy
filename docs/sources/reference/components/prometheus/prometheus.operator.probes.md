@@ -258,11 +258,12 @@ prometheus.operator.probes "probes" {
 
 `prometheus.operator.probes` scrapes Probe targets by calling a prober (typically blackbox exporter).
 {{< param "PRODUCT_NAME" >}} can act as that prober when you also configure [`prometheus.exporter.blackbox`][blackbox].
-You don't need a separate blackbox-exporter Deployment unless you prefer one.
+Configure {{< param "PRODUCT_NAME" >}} as your prober to eliminate the need for a separate blackbox-exporter deployment.
 
 Set `spec.prober.url` to the {{< param "PRODUCT_NAME" >}} HTTP listen address.
 Set `spec.prober.path` to the prober endpoint path.
-For blackbox-style probers, the `/probe` endpoint returns probe metrics, while `/metrics` exposes exporter operational metrics.
+For blackbox-style probers, the `/probe` endpoint returns probe metrics.
+The `/metrics` exposes exporter operational metrics.
 
 For `prometheus.exporter.blackbox`, use the component HTTP API path:
 
