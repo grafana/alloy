@@ -16,202 +16,93 @@ It lets you run {{< param "PRODUCT_NAME" >}} with the OpenTelemetry Collector wh
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-## Terminology
+## Why the OpenTelemetry Engine exists
 
-{{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension:
+OpenTelemetry Collector users expect a distribution to accept standard Collector YAML configuration and command-line arguments.
+Translating Collector configuration into another format can add friction, and the rapid pace of upstream development makes translation difficult to keep current.
 
-- **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../../get-started/syntax/).
-This remains the default, stable experience with [backward compatibility](../backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
+The {{< param "OTEL_ENGINE" >}} addresses this by running the upstream Collector runtime directly from the {{< param "PRODUCT_NAME" >}} executable.
+You can bring an existing Collector configuration to {{< param "PRODUCT_NAME" >}}, use familiar Collector tooling, and choose from the [components bundled with the `otel` command](../../reference/cli/otel/#included-components).
 
-- **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
-  It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
+The {{< param "OTEL_ENGINE" >}} also gives Grafana a standards-native foundation for extending {{< param "PRODUCT_NAME" >}}.
+Grafana is committed to providing a first-class OpenTelemetry collection experience as this experimental engine matures.
 
-- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that lets you run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} at the same time.
+## How the engines fit together
 
-## Included components
+The following tree shows how the engines and the {{< param "PRODUCT_NAME" >}} Engine extension fit inside the {{< param "PRODUCT_NAME" >}} executable:
 
-The {{< param "OTEL_ENGINE" >}} includes:
-
-- Standard components from the OpenTelemetry Collector Core repository
-- Selected components from the OpenTelemetry Collector Contrib repositories
-- The `alloyengine` extension
-
-{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} bundles OpenTelemetry Collector components from version {{< param "OTEL_VERSION" >}}.
-You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
-
-The following sections list all included components:
-
-{{< collapse title="Extensions" >}}
-
-- [alloyengine](https://github.com/grafana/alloy/tree/main/extension/alloyengine)
-- [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/basicauthextension/README.md)
-- [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/bearertokenauthextension/README.md)
-- [headerssetter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/headerssetterextension/README.md)
-- [healthcheck](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/healthcheckextension/README.md)
-- [jaegerremotesampling](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/jaegerremotesampling/README.md)
-- [k8sleaderelector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/k8sleaderelector/README.md)
-- [oauth2clientauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/oauth2clientauthextension/README.md)
-- [opamp](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/opampextension/README.md)
-- [pprof](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/pprofextension/README.md)
-- [sigv4auth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/sigv4authextension/README.md)
-- [filestorage](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/storage/filestorage/README.md)
-- [zpages](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/extension/zpagesextension/README.md)
-
-{{< /collapse >}}
-
-{{< collapse title="Configuration Providers" >}}
-
-- [env](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/confmap/provider/envprovider/README.md)
-- [file](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/confmap/provider/fileprovider/README.md)
-- [http](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/confmap/provider/httpprovider/README.md)
-- [https](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/confmap/provider/httpsprovider/README.md)
-- [yaml](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/confmap/provider/yamlprovider/README.md)
-
-{{< /collapse >}}
-
-{{< collapse title="Receivers" >}}
-
-- [awscloudwatch](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awscloudwatchreceiver/README.md)
-- [awsecscontainermetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awsecscontainermetricsreceiver/README.md)
-- [awss3](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awss3receiver/README.md)
-- [cloudflare](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/cloudflarereceiver/README.md)
-- [datadog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/datadogreceiver/README.md)
-- [faro](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/faroreceiver/README.md)
-- [filelog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md)
-- [filestats](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filestatsreceiver/README.md)
-- [fluentforward](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/fluentforwardreceiver/README.md)
-- [googlecloudpubsub](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/googlecloudpubsubreceiver/README.md)
-- [hostmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/hostmetricsreceiver/README.md)
-- [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver/README.md)
-- [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver/README.md)
-- [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sclusterreceiver/README.md)
-- [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sobjectsreceiver/README.md)
-- [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver/README.md)
-- [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kubeletstatsreceiver/README.md)
-- [nginx](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/nginxreceiver/README.md)
-- [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/prometheusreceiver/README.md)
-- [prometheusremotewrite](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/prometheusremotewritereceiver/README.md)
-- [solace](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/solacereceiver/README.md)
-- [splunkhec](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/splunkhecreceiver/README.md)
-- [syslog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/syslogreceiver/README.md)
-- [tcplog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/tcplogreceiver/README.md)
-- [vcenter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/vcenterreceiver/README.md)
-- [zipkin](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/zipkinreceiver/README.md)
-- [nop](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/receiver/nopreceiver/README.md)
-- [otlp](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/receiver/otlpreceiver/README.md)
-{{< /collapse >}}
-
-{{< collapse title="Connectors" >}}
-- [count](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/countconnector/README.md)
-- [grafanacloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/grafanacloudconnector/README.md)
-- [servicegraph](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector/README.md)
-- [signaltometrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/signaltometricsconnector/README.md)
-- [spanmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/spanmetricsconnector/README.md)
-- [forward](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/connector/forwardconnector/README.md)
-
-{{< /collapse >}}
-
-{{< collapse title="Processors" >}}
-
-- [attributes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/attributesprocessor/README.md)
-- [cumulativetodelta](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/cumulativetodeltaprocessor/README.md)
-- [deltatocumulative](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/deltatocumulativeprocessor/README.md)
-- [filter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/filterprocessor/README.md)
-- [groupbyattrs](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/groupbyattrsprocessor/README.md)
-- [interval](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/intervalprocessor/README.md)
-- [k8sattributes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/k8sattributesprocessor/README.md)
-- [metricstarttime](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/metricstarttimeprocessor/README.md)
-- [probabilisticsampler](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/probabilisticsamplerprocessor/README.md)
-- [resource](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/resourceprocessor/README.md)
-- [resourcedetection](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/resourcedetectionprocessor/README.md)
-- [span](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/spanprocessor/README.md)
-- [tailsampling](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/tailsamplingprocessor/README.md)
-- [transform](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/transformprocessor/README.md)
-- [batch](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/processor/batchprocessor/README.md)
-- [memorylimiter](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/processor/memorylimiterprocessor/README.md)
-
-{{< /collapse >}}
-
-{{< collapse title="Exporters" >}}
-
-- [awss3](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/awss3exporter/README.md)
-- [faro](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/faroexporter/README.md)
-- [file](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/fileexporter/README.md)
-- [googlecloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudexporter/README.md)
-- [googlecloudpubsub](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudpubsubexporter/README.md)
-- [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/kafkaexporter/README.md)
-- [loadbalancing](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/loadbalancingexporter/README.md)
-- [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/prometheusexporter/README.md)
-- [prometheusremotewrite](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/prometheusremotewriteexporter/README.md)
-- [splunkhec](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/splunkhecexporter/README.md)
-- [syslog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/syslogexporter/README.md)
-- [zipkin](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/zipkinexporter/README.md)
-- [debug](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/debugexporter/README.md)
-- [nop](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/nopexporter/README.md)
-- [otlp](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlpexporter/README.md)
-- [otlphttp](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/otlphttpexporter/README.md)
-
-{{< /collapse >}}
-
-To view the full list of components and their versions, refer to the [OpenTelemetry Collector Builder manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
-
-## Custom builds with the OpenTelemetry Collector Builder (OCB)
-
-The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest.
-If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
-Grafana doesn't offer commercial support for custom builds.
-
-### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
-
-Clone the Git repository and change to the repository root.
-The following steps assume you run commands from this directory.
-
-```shell
-git clone https://github.com/grafana/alloy.git
-cd alloy
+```text
+Grafana Alloy executable
+├── alloy run
+│   └── Default Engine
+└── alloy otel
+    └── OTel Engine
+        └── alloyengine extension (optional)
+            └── Default Engine pipeline
 ```
 
-To build from a **specific release**, fetch tags and check out the tag after you clone:
+## Choose an engine
 
-```shell
-git fetch --tags
-git checkout <RELEASE_TAG>
-```
+{{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension.
+Choose the engine that best matches your existing configuration and collection workload.
 
-Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
+- **{{< param "DEFAULT_ENGINE" >}}**: The standard way to run {{< param "PRODUCT_NAME" >}}.
+  It uses [{{< param "PRODUCT_NAME" >}} configuration syntax](../../get-started/syntax/) and {{< param "PRODUCT_NAME" >}} components.
+  It remains the stable, most polished experience for getting the most from Grafana Cloud, with [backward compatibility](../backward-compatibility/) guarantees, a built-in UI, live debugging, support bundles, clustering, and broad Grafana integrations.
+- **{{< param "OTEL_ENGINE" >}}**: The upstream OpenTelemetry Collector runtime embedded in {{< param "PRODUCT_NAME" >}}.
+  It uses [Collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) and standard Collector command-line arguments.
+  It provides a direct path for OpenTelemetry-native pipelines and existing Collector configurations.
+- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}}.
+  The two pipelines run in the same process, but they don't interact directly.
 
-### 2. Start from the checked-in manifest
+### Use the {{% param "OTEL_ENGINE" %}} for OpenTelemetry-native pipelines
 
-The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
-You can:
+The {{< param "OTEL_ENGINE" >}} is a good fit when you:
 
-- **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
-- **Add** a component: append a line that points at the module path and version you want.
-  Follow the same `- gomod:` pattern as the other entries.
+- Already run an OpenTelemetry Collector and want to reuse its YAML configuration and operational model.
+- Prefer to use standard Collector configuration and command-line arguments.
+- Collect push-based, OpenTelemetry-native signals through OTLP.
+- Use Grafana Application Observability and don't need {{< param "DEFAULT_ENGINE" >}} components in the same pipeline.
 
-### 3. Build the {{< param "PRODUCT_NAME" >}} binary
+Grafana Application Observability uses OpenTelemetry-native telemetry.
+To build a compatible Collector pipeline, refer to [Set up OpenTelemetry Collector for Application Observability](https://grafana.com/docs/opentelemetry/collector/opentelemetry-collector/).
 
-Build the full {{< param "PRODUCT_NAME" >}} binary:
+### Use the {{% param "DEFAULT_ENGINE" %}} for the full {{% param "PRODUCT_NAME" %}} experience
 
-```shell
-make alloy
-```
+The {{< param "DEFAULT_ENGINE" >}} is the recommended choice when you:
 
-The binary in `build/` behaves like a standard `alloy` build.
-Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+- Want the stable and most complete {{< param "PRODUCT_NAME" >}} experience.
+- Collect infrastructure telemetry with Prometheus exporters and pull-based scrapes.
+- Need {{< param "PRODUCT_NAME" >}} features such as clustering, the built-in UI, live debugging, support bundles, or configuration reloads.
+- Use Grafana integrations for Kubernetes monitoring, Database Observability, eBPF, logs, or profiles.
 
-### 4. Build a Docker image
+The {{< param "DEFAULT_ENGINE" >}} is optimized for Prometheus pipelines and label semantics.
+It also provides Grafana-specific collection features that don't yet have OpenTelemetry-native equivalents.
 
-To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
+### Run both engines when you need both component sets
 
-```shell
-make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
-```
+Use the `alloyengine` extension when one process needs both standard Collector components and {{< param "DEFAULT_ENGINE" >}} components.
+This approach can simplify small deployments.
 
-Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
-If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
+For large workloads, run the engines in separate processes so you can scale and troubleshoot them independently.
+Push-based OTLP gateways and pull-based Prometheus scrapers have different load and scaling characteristics.
+
+## Manage the {{% param "OTEL_ENGINE" %}} with Fleet Management
+
+The {{< param "OTEL_ENGINE" >}} works with the OpenTelemetry Collector support in Grafana Fleet Management.
+The {{< param "PRODUCT_NAME" >}} container provides an `otelcol`-compatible entry point, and the engine includes the components needed to run with the Open Agent Management Protocol (OpAMP) Supervisor.
+To monitor and remotely configure an {{< param "OTEL_ENGINE" >}} deployment, follow the [Fleet Management setup for the OpenTelemetry Collector](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/get-started/opentelemetry-collector/).
+
+## How the engines evolve
+
+Grafana continues to improve the {{< param "OTEL_ENGINE" >}} and its integration with Grafana products.
+The goal is a first-class collection experience for users who choose standard OpenTelemetry Collector workflows.
+
+The {{< param "DEFAULT_ENGINE" >}} will continue to be in active development.
+It remains the default, stable engine, and Grafana continues to add features to it.
+The two engines can evolve toward the same outcomes without requiring every feature to have an identical implementation.
 
 ## Next steps
 
-- Refer to [The {{< param "OTEL_ENGINE" >}}](../../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
-- Refer to the [OpenTelemetry CLI reference](../../reference/cli/otel/) for more information about the OpenTelemetry CLI.
+- [Set up the {{< param "OTEL_ENGINE" >}}](../../set-up/otel_engine/).
+- [Explore the `otel` command and its included components](../../reference/cli/otel/).
