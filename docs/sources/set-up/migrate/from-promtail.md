@@ -244,7 +244,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 
 [Promtail]: https://www.grafana.com/docs/loki/latest/clients/promtail/
 [debugging]: #debugging
-[expanded in the configuration file]: https://www.grafana.com/docs/loki/latest/clients/promtail/configuration/#use-environment-variables-in-the-configuration
+[expanded in the configuration file]: https://grafana.com/docs/loki/latest/send-data/promtail/
 [local.file_match]: ../../../reference/components/local/local.file_match/
 [loki.source.file]: ../../../reference/components/loki/loki.source.file/
 [loki.source.journal]: ../../../reference/components/loki/loki.source.journal/
