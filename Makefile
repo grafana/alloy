@@ -157,7 +157,7 @@ endif
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 # Clears cross-compile settings, to be set in any build-time generation steps that run "go run" under the hood
-GO_HOST_ENV := env -u GOOS -u GOARCH -u GOARM -u CC -u CXX CGO_ENABLED=0
+GO_HOST_ENV := env -u GOOS -u GOARCH CGO_ENABLED=0
 
 VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
