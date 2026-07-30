@@ -209,72 +209,15 @@ The following fields are exported and can be referenced by other components.
 ## Example
 
 ```alloy
-database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@tcp(mysql:3306)/"
-  forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
+database_observability.mysql "<LABEL>" {
+  data_source_name = "<DATA_SOURCE_NAME>"
+  forward_to       = [loki.relabel.<LABEL>.receiver]
 
   enable_collectors = ["query_samples", "explain_plans"]
 
   cloud_provider {
     aws {
-      arn = "your-rds-db-arn"
-    }
-  }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
-}
-
-loki.relabel "orders_db" {
-  forward_to = [loki.write.logs_service.receiver]
-  rule {
-    target_label = "job"
-    replacement  = "integrations/db-o11y"
-  }
-  rule {
-    target_label = "instance"
-    replacement  = "orders_db"
-  }
-}
-
-discovery.relabel "orders_db" {
-  targets = database_observability.mysql.orders_db.targets
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/db-o11y"
-  }
-  rule {
-    target_label = "instance"
-    replacement  = "orders_db"
-  }
-}
-
-prometheus.scrape "orders_db" {
-  targets    = discovery.relabel.orders_db.targets
-  job_name   = "integrations/db-o11y"
-  forward_to = [prometheus.remote_write.metrics_service.receiver]
-}
-
-prometheus.remote_write "metrics_service" {
-  endpoint {
-    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
-    basic_auth {
-      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
-      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
-    }
-  }
-}
-
-loki.write "logs_service" {
-  endpoint {
-    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
-    basic_auth {
-      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
-      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+      arn = "<AWS_RDS_ARN>"
     }
   }
 }
@@ -282,11 +225,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
+* _`<LABEL>`_: The Alloy component label (for example, `prod-mysql`).
+* _`<DATA_SOURCE_NAME>`_: The MySQL connection [Data Source Name] (for example, `user:pass@tcp(mysql:3306)/`).
+* _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database (for example, `arn:aws:rds:us-east-1:123456789:db/prod-mysql`).
+
+For a complete end-to-end example that demonstrates sending database observability metrics to Grafana Cloud, refer to the [`collect-mysql-database-metrics`](../../../tasks/collect/collect-mysql-database-metrics/) task topic.
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
