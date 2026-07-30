@@ -190,6 +190,13 @@ type samplingInjector struct {
 	holder *atomic.Pointer[versionedHandler]
 	bare   slog.Handler // root terminal (no per-component attrs), for empty-message bypass
 
+	// bgCtx is context.Background() with comp already injected via
+	// withComponent. It's precomputed per injector (rather than on every
+	// Handle call) because slog.Logger.Info/Warn/Error always pass
+	// context.Background(), making this the overwhelmingly common case on
+	// the admit path; see Handle.
+	bgCtx context.Context
+
 	cache     atomic.Pointer[cachedHandler]
 	bareCache atomic.Pointer[slog.Handler]
 }
@@ -198,7 +205,9 @@ type samplingInjector struct {
 // current, possibly sampling-wrapped, root handler) with bare as the
 // terminal handler used to bypass sampling for empty-message records.
 func newSamplingInjector(holder *atomic.Pointer[versionedHandler], bare slog.Handler) *samplingInjector {
-	return &samplingInjector{holder: holder, bare: bare}
+	s := &samplingInjector{holder: holder, bare: bare}
+	s.bgCtx = withComponent(context.Background(), s.comp)
+	return s
 }
 
 // replay re-applies a recorded sequence of WithAttrs/WithGroup calls onto h,
@@ -219,8 +228,10 @@ func replay(h slog.Handler, ops []replayOp) slog.Handler {
 // bare terminal, with an independent copy of ops and freshly reset caches
 // (since a fresh ops slice means any previously cached replay is stale).
 func (s *samplingInjector) clone() *samplingInjector {
-	// New injector shares holder/bare; caches reset (ops differ).
-	ns := &samplingInjector{comp: s.comp, holder: s.holder, bare: s.bare}
+	// New injector shares holder/bare; caches reset (ops differ). comp is
+	// unchanged by clone itself (WithAttrs mutates it on the returned
+	// injector below), so bgCtx carries over from the parent unchanged too.
+	ns := &samplingInjector{comp: s.comp, holder: s.holder, bare: s.bare, bgCtx: s.bgCtx}
 	ns.ops = make([]replayOp, len(s.ops), len(s.ops)+1)
 	copy(ns.ops, s.ops)
 	return ns
@@ -233,6 +244,7 @@ func (s *samplingInjector) clone() *samplingInjector {
 func (s *samplingInjector) WithAttrs(attrs []slog.Attr) slog.Handler {
 	ns := s.clone()
 	ns.comp = sniffComponent(s.comp, attrs)
+	ns.bgCtx = withComponent(context.Background(), ns.comp)
 	ns.ops = append(ns.ops, replayOp{attrs: attrs})
 	return ns
 }
@@ -249,9 +261,15 @@ func (s *samplingInjector) WithGroup(name string) slog.Handler {
 	return ns
 }
 
-// Enabled delegates to the current root handler.
+// Enabled delegates to the bare terminal handler rather than the (possibly
+// sampling-wrapped) root: sampling only ever drops in Handle, never changes
+// level-enabled-ness, so routing here avoids paying the sampling middleware's
+// per-call Enabled cost on every slog.Info/Warn/Error call site. s.bare's
+// leveler is the shared LevelVar mutated by Update, and level-gating is
+// component-independent, so this is correct for every derived injector, not
+// just the root one.
 func (s *samplingInjector) Enabled(ctx context.Context, l slog.Level) bool {
-	return s.holder.Load().h.Enabled(ctx, l)
+	return s.bare.Enabled(ctx, l)
 }
 
 // Handle routes empty-message records directly to the bare terminal handler
@@ -276,7 +294,18 @@ func (s *samplingInjector) Handle(ctx context.Context, r slog.Record) error {
 		c = &cachedHandler{version: vh.version, h: replay(vh.h, s.ops)}
 		s.cache.Store(c)
 	}
-	return c.h.Handle(withComponent(ctx, s.comp), r)
+	// slog.Logger.Info/Warn/Error always pass context.Background(); reuse
+	// the precomputed component ctx for that common case instead of paying
+	// context.WithValue's allocation on every admitted line. Any other ctx
+	// (e.g. via InfoContext) falls back to injecting fresh, since it may
+	// carry values or a Done channel we must not clobber.
+	var cctx context.Context
+	if ctx == context.Background() {
+		cctx = s.bgCtx
+	} else {
+		cctx = withComponent(ctx, s.comp)
+	}
+	return c.h.Handle(cctx, r)
 }
 
 var _ slog.Handler = (*samplingInjector)(nil)

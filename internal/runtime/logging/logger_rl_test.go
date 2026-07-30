@@ -72,6 +72,35 @@ func TestLoggerSamePathDistinctComponentIDNoCrossSuppress(t *testing.T) {
 	require.Equal(t, 2, strings.Count(buf.String(), "msg=same"))
 }
 
+// ctxVariantKey is an unexported context key used solely to build a non-
+// context.Background() ctx for TestInjectorComponentKeyingViaContextVariant.
+type ctxVariantKey struct{}
+
+// TestInjectorComponentKeyingViaContextVariant guards optimization B's
+// fallback path: when Handle is reached via a NON-Background ctx (e.g.
+// slog's *Context logging variants), component identity must still be
+// threaded through withComponent(ctx, s.comp) rather than the precomputed
+// bgCtx, so distinct components sharing a signature don't cross-suppress.
+func TestInjectorComponentKeyingViaContextVariant(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 1, Rate: 0, MaxSignatures: 100}})
+	require.NoError(t, err)
+	a := l.Slog().With("component_path", "/", "component_id", "comp.a")
+	b := l.Slog().With("component_path", "/", "component_id", "comp.b")
+
+	// Deliberately not context.Background(), to exercise Handle's
+	// withComponent(ctx, s.comp) fallback rather than the cached bgCtx.
+	ctx := context.WithValue(context.Background(), ctxVariantKey{}, 1)
+	require.NotEqual(t, context.Background(), ctx)
+
+	a.Log(ctx, slog.LevelInfo, "same")
+	a.Log(ctx, slog.LevelInfo, "same") // 2nd dropped: same component, same signature
+	b.Log(ctx, slog.LevelInfo, "same") // different component_id ⇒ own bucket ⇒ admitted despite the shared non-Background ctx
+	require.Equal(t, 2, strings.Count(buf.String(), "msg=same"))
+}
+
 func TestLoggerDisabledByConfig(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var buf bytes.Buffer

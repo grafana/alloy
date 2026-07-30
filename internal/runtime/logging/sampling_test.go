@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
+	"io"
 	"log/slog"
 	"strings"
 	"sync/atomic"
@@ -128,6 +129,21 @@ func TestInjectorEmptyMessageBypassesSampler(t *testing.T) {
 	rec.AddAttrs(slog.String("k", "v"))
 	require.NoError(t, inj.Handle(context.Background(), rec))
 	require.Contains(t, termBuf.String(), "k=v") // empty-msg reached bare terminal
+}
+
+// TestInjectorEnabledMatchesTerminalLevel guards optimization A: Enabled must
+// delegate to the bare terminal handler (whose leveler reflects the current,
+// live-updatable level), not to the sampling-wrapped root. Here root reports
+// everything enabled (LevelDebug) while bare is gated at Info, so if Enabled
+// mistakenly consulted root instead of bare, the LevelDebug assertion below
+// would fail.
+func TestInjectorEnabledMatchesTerminalLevel(t *testing.T) {
+	root := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
+	bare := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelInfo})
+	inj := newTestInjector(t, root, bare)
+
+	require.False(t, inj.Enabled(context.Background(), slog.LevelDebug), "Enabled must reflect the terminal's level, not the sampling root's")
+	require.True(t, inj.Enabled(context.Background(), slog.LevelInfo))
 }
 
 func TestInjectorReDerivesOnVersionBump(t *testing.T) {
