@@ -6,6 +6,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-07-30
 ---
 
 # `database_observability.mysql`
@@ -35,7 +36,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
+| `allow_update_performance_schema_settings` | `bool`               | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
 
@@ -143,7 +144,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name               | Type       | Description                                                 | Default | Required |
 |--------------------|------------|-------------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database.        | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
+| `cache_enabled`    | `bool`     | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
 | `cache_size`       | `integer`  | Deprecated. Cache size.                                     | `256`   | no       |
 | `cache_ttl`        | `duration` | Deprecated. Cache TTL.                                      | `"10m"` | no       |
 
@@ -170,17 +171,17 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
 | `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text (including query parameters) and query error messages. | `false` | no       |
-| `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
+| `auto_enable_setup_consumers`    | `bool`     | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
-| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events` | `bool`    | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
 ### `setup_actors`
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `auto_update_setup_actors` | `boolean`  | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
+| `auto_update_setup_actors` | `bool`     | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 
@@ -196,6 +197,14 @@ The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers
 The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
+
+## Exported fields
+
+The following fields are exported and can be referenced by other components.
+
+| Name      | Type                | Description                                                                         |
+|-----------|---------------------|-------------------------------------------------------------------------------------|
+| `targets` | `list(map(string))` | The targets that can be used to collect metrics of instrumented services with Prometheus scraping. |
 
 ## Example
 
