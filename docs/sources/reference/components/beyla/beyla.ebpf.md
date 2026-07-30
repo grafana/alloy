@@ -162,7 +162,7 @@ You can use the following blocks with `beyla.ebpf`:
 
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
-| [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | no       |
+| [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
 | [`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no       |
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
@@ -255,17 +255,16 @@ The following arguments are supported:
 | `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
 | `traces`  | `list(otelcol.Consumer)` | List of consumers to send traces to.  | `[]`    | no       |
 
-The `output` block is optional.
 By default, telemetry data is dropped.
 Configure `traces` to forward traces to OTel consumer components.
 Configure `metrics` to forward metrics to OTel consumer components instead of, or in addition to, the Prometheus scrape path exposed via the `targets` export.
 
-{{< admonition type="note" >}}
-If you configure the [`traces`][traces] block, you must also define the `output` block, or {{< param "PRODUCT_NAME" >}} will return a validation error at startup.
- To export traces, configure `output.traces` with one or more destinations.
-
-[traces]: #traces
-{{< /admonition >}}
+<!-- TODO: Validate output block requirement status and document internal_metrics block.
+     - Check validation.go to confirm whether output is unconditionally required or conditionally required
+     - If conditionally required, document which configurations trigger the requirement
+     - Locate and document the internal_metrics block and its exporter attribute (referenced in conditional requirements)
+     - Verify whether metrics field in output block should be required/optional and when it's used
+-->
 
 ### `attributes`
 
