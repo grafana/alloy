@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-07-30
 title: beyla.ebpf
 ---
 
@@ -135,11 +136,12 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name               | Type     | Description                                                    | Default      | Required |
-|--------------------|----------|----------------------------------------------------------------|--------------|----------|
-| `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
-| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
-| `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
+| Name               | Type     | Description                                                                 | Default      | Required |
+| ------------------ | -------- | --------------------------------------------------------------------------- | ------------ | -------- |
+| `debug`            | `bool`   | Enable debug mode for Beyla. Deprecated: use `log_level = "debug"` instead. | `false`      | no       |
+| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation.              | `false`      | no       |
+| `log_level`        | `string` | Log level for Beyla. Replaces the deprecated `debug` attribute.             | `""`         | no       |
+| `trace_printer`    | `string` | Format for printing trace information.                                      | `"disabled"` | no       |
 
 
 `debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
@@ -163,7 +165,7 @@ You can use the following blocks with `beyla.ebpf`:
 
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
-| [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
+| [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | no       |
 | [`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no       |
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
@@ -247,8 +249,6 @@ You can use the following blocks with `beyla.ebpf`:
 
 ### `output`
 
-{{< badge text="Required" >}}
-
 The `output` block configures a set of components to forward the resulting telemetry data to.
 
 The following arguments are supported:
@@ -257,9 +257,15 @@ The following arguments are supported:
 |----------|--------------------------|--------------------------------------|---------|----------|
 | `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
 
-You must specify the `output` block, but all its arguments are optional.
+The `output` block is optional.
 By default, telemetry data is dropped.
 Configure the `traces` argument to send traces data to other components.
+
+{{< admonition type="note" >}}
+If you configure the [`traces`][traces] block, you must also configure `output` with a `traces` destination, or Alloy will return a validation error at startup.
+
+[traces]: #traces
+{{< /admonition >}}
 
 ### `attributes`
 
@@ -373,6 +379,8 @@ The `discovery` block configures the discovery for processes to instrument match
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
 
+<!-- TODO: exclude_otel_instrumented_services is declared as *bool (pointer) in source (args.go), not bool. Verify whether the three-state semantics (nil/unset vs false vs true) are user-visible and update type and description accordingly. -->
+
 It contains the following blocks:
 
 #### `instrument`
@@ -413,9 +421,9 @@ The `exclude_instrument` block uses the same configuration options as the `instr
 
 #### `default_exclude_instrument`
 
-The `default_exclude_instrument` block disables instrumentation of Grafana Alloy and related components by default.
+The `default_exclude_instrument` block disables instrumentation of {{< param "PRODUCT_NAME" >}} and related components by default.
 The default value for `exe_path` uses a glob pattern that matches `beyla`, `alloy`, and `otelcol*` executables.
-Set to empty to allow Alloy to instrument itself as well as these other components.
+Set to empty to allow {{< param "PRODUCT_NAME" >}} to instrument itself as well as these other components.
 
 #### `survey`
 
@@ -497,6 +505,12 @@ The supported values for `instrumentations` are:
 * `mongo`: Enables the collection of MongoDB database traces.
 * `redis`: Enables the collection of Redis client/server database traces.
 * `sql`: Enables the collection of SQL database client call traces.
+* `amqp`: Enables the collection of AMQP client/server traces.
+* `couchbase`: Enables the collection of Couchbase database traces.
+* `dns`: Enables the collection of DNS traces.
+* `mqtt`: Enables the collection of MQTT client/server traces.
+* `nats`: Enables the collection of NATS client/server traces.
+* `sunrpc`: Enables the collection of Sun RPC traces.
 
 Example:
 
@@ -581,13 +595,14 @@ The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
+| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `0`          | no       |
 | `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
-| `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
+| `http_request_timeout`  | `duration` | Timeout for HTTP requests. When unset, Beyla uses its own default of `30s`.   | `""`         | no       |
 | `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
 | `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
 | `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
 
+<!-- TODO: force_bpf_map_reader (string) and traffic_control_backend (string) are undocumented attributes in this block. Accepted values for both are unknown from source alone — verify valid values with the Beyla team before documenting. -->
 
 #### `context_propagation`
 
@@ -785,6 +800,14 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
 * `stats` exports kernel-level connection statistics per service.
+* `application_jvm` exports JVM runtime metrics for instrumented Java processes.
+* `application_runtime` exports application runtime metrics.
+* `ebpf` exports eBPF-level internal metrics.
+* `network_flow_packets` exports network flow packet metrics.
+* `stats_tcp_failed_connections` exports stats for failed TCP connections.
+* `stats_tcp_io` exports stats for TCP I/O operations.
+* `stats_tcp_retransmits` exports stats for TCP retransmits.
+* `stats_tcp_rtt` exports stats for TCP round-trip time.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -798,6 +821,12 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
+* `amqp` enables the collection of AMQP client/server message queue metrics.
+* `couchbase` enables the collection of Couchbase database metrics.
+* `dns` enables the collection of DNS metrics.
+* `mqtt` enables the collection of MQTT client/server metrics.
+* `nats` enables the collection of NATS client/server metrics.
+* `sunrpc` enables the collection of Sun RPC metrics.
 
 `extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
 on the service, that you want to include on the `target_info` metric.
@@ -916,6 +945,7 @@ The matcher tags can be in the `:name` or `{name}` format.
 * `unset` leaves the `http.route` property as unset.
 * `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
 
+<!-- TODO: The top-level javaagent block (args.go: Javaagent struct, alloy:"javaagent,block,optional") is undocumented. Clarify its relationship to the injector block below (complementary, legacy, or mutually exclusive) before documenting it. -->
 ### `injector`
 
 The `injector` block configures the Beyla SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
@@ -1183,10 +1213,9 @@ Replace the following:
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF website]: https://ebpf.io/
-[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
+[in-memory traffic]: ../../../../get-started/components/component-controller/#in-memory-traffic
 [run command]: ../../../cli/run/
 [scrape]: ../../prometheus/prometheus.scrape/
-[Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
 [Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
 [Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
