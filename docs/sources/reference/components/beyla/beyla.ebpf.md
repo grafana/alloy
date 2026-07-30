@@ -572,23 +572,6 @@ beyla.ebpf "default" {
 }
 ```
 
-Global sampling (configured within `traces`):
-
-```alloy
-beyla.ebpf "default" {
-  traces {
-    instrumentations = ["http", "grpc", "sql"]
-    sampler {
-      name = "traceidratio"
-      arg = "0.1"  // Global 10% sampling rate for all traces
-    }
-  }
-  output {
-    traces = [otelcol.processor.batch.default.input]
-  }
-}
-```
-
 ### `ebpf`
 
 The `ebpf` block configures eBPF-specific settings.
