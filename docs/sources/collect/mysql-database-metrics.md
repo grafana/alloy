@@ -57,7 +57,7 @@ discovery.relabel "example" {
 }
 
 prometheus.scrape "example" {
-  targets    = discovery.relabel.example.targets
+  targets    = discovery.relabel.example.output
   job_name   = "integrations/db-o11y"
   forward_to = [prometheus.remote_write.metrics_service.receiver]
 }
