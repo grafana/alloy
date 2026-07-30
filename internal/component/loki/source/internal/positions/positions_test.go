@@ -115,19 +115,11 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 }
 
 func TestLegacyConversionUnreadableFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod-based permission test is not supported on windows")
-	}
-	if os.Geteuid() == 0 {
-		t.Skip("test requires running as a non-root user so file permissions are enforced")
-	}
-
 	tmpDir := t.TempDir()
-	legacy := writeLegacy(t, tmpDir)
-	require.NoError(t, os.Chmod(legacy, 0000))
-	defer func() {
-		_ = os.Chmod(legacy, 0644) // restore so t.TempDir() cleanup can remove it
-	}()
+	// A directory can't be read as a file, so this reliably forces a read
+	// error without relying on chmod/permission bits.
+	legacy := filepath.Join(tmpDir, "legacy")
+	require.NoError(t, os.Mkdir(legacy, 0750))
 
 	positionsPath := filepath.Join(tmpDir, "positions")
 	err := ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
@@ -142,31 +134,14 @@ func TestLegacyConversionUnreadableFile(t *testing.T) {
 }
 
 func TestConvertLegacyPositionsFileJournalUnreadableFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod-based permission test is not supported on windows")
-	}
-	if os.Geteuid() == 0 {
-		t.Skip("test requires running as a non-root user so file permissions are enforced")
-	}
-
 	tmpDir := t.TempDir()
+	// A directory can't be read as a file, so this reliably forces a read
+	// error without relying on chmod/permission bits.
 	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
-	legacyPositions := LegacyFile{
-		Positions: map[string]string{
-			"/some/path/test.log": "100",
-		},
-	}
-	f, err := os.Create(legacyFile)
-	require.NoError(t, err)
-	require.NoError(t, yaml.NewEncoder(f).Encode(legacyPositions))
-	require.NoError(t, f.Close())
-	require.NoError(t, os.Chmod(legacyFile, 0000))
-	defer func() {
-		_ = os.Chmod(legacyFile, 0644)
-	}()
+	require.NoError(t, os.Mkdir(legacyFile, 0750))
 
 	newFile := filepath.Join(tmpDir, "new.yaml")
-	err = ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
+	err := ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not be read")
 	require.Contains(t, err.Error(), "refusing to start")
