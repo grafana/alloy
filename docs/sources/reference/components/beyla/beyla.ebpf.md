@@ -262,7 +262,7 @@ By default, telemetry data is dropped.
 Configure the `traces` argument to send traces data to other components.
 
 {{< admonition type="note" >}}
-If you configure the [`traces`][traces] block, you must also configure `output` with a `traces` destination, or Alloy will return a validation error at startup.
+If you configure the [`traces`][traces] block, you must also configure `output` with a `traces` destination, or Alloy returns a validation error at startup.
 
 [traces]: #traces
 {{< /admonition >}}
@@ -577,13 +577,13 @@ beyla.ebpf "default" {
 The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
-|-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `0`          | no       |
-| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
-| `http_request_timeout`  | `duration` | Timeout for HTTP requests. When unset, Beyla uses its own default of `30s`.   | `""`         | no       |
-| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
-| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
-| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
+|-------------------------|------------|---------------------------------------------------------------------------------|--------------|----------|
+| `wakeup_len`            | `int`      | Number of messages to accumulate before wake up request.                        | `0`          | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for `traceparent` fields.                    | `false`      | no       |
+| `http_request_timeout`  | `duration` | Timeout for HTTP requests. When unset, Beyla uses its own default of `30s`.     | `""`         | no       |
+| `context_propagation`   | `string`   | Enables injecting of the `traceparent` header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.               | `false`      | no       |
+| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                               | `false`      | no       |
 
 <!-- TODO: force_bpf_map_reader (string) and traffic_control_backend (string) are undocumented attributes in this block. Accepted values for both are unknown from source alone — verify valid values with the Beyla team before documenting. -->
 
@@ -1074,7 +1074,7 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 ## Examples
 
 The following example instruments a service by port, enables application metrics, and forwards traces to an OTel receiver.
-`beyla.ebpf` exposes metrics as a Prometheus scrape target via the `targets` export — pass that to a `prometheus.scrape` component to collect them.
+`beyla.ebpf` exposes metrics as a Prometheus scrape target via the `targets` export.
 
 ```alloy
 beyla.ebpf "<LABEL>" {
