@@ -216,8 +216,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	newPositionsPath := filepath.Join(o.DataPath, "positions.yml")
 	// Check to see if we can convert the legacy positions file to the new format.
+	// A non-nil error here means the legacy file exists but couldn't be read
+	// (e.g. permission denied) -- fail component construction rather than
+	// silently proceeding as if there were no legacy positions, which would
+	// re-ingest every tailed file from the beginning (#5493).
 	if args.LegacyPositionsFile != "" {
-		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
+		if err := positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger); err != nil {
+			return nil, err
+		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
