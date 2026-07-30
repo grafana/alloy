@@ -11,12 +11,12 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"text/template"
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/grafana/alloy/syntax"
