@@ -158,7 +158,7 @@ GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOA
 
 # Environment for host tools such as code generators: clears every cross-compile
 # setting, including the C toolchain, since these run on the build machine.
-GO_HOST_ENV := env -u GOOS -u GOARCH -u GOARM CGO_ENABLED=0 CC= CXX=
+GO_HOST_ENV := env -u GOOS -u GOARCH -u GOARM -u CC -u CXX CGO_ENABLED=0
 
 VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
