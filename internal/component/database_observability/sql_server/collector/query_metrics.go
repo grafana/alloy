@@ -15,15 +15,6 @@ import (
 
 const QueryMetricsCollector = "query_metrics"
 
-// selectQueryStoreState reads the connected database's Query Store state
-const selectQueryStoreState = `
-SELECT
-	DB_NAME(),
-	actual_state_desc,
-	query_capture_mode_desc,
-	readonly_reason
-FROM sys.database_query_store_options`
-
 // selectQueryMetrics ranks the top-N queries by duration within the recent lookback
 // window, then sums their full retained Query Store history so the emitted
 // counters stay monotonic across interval rollover.
@@ -238,7 +229,8 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 }
 
 func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
-	rows, err := c.dbConnection.QueryContext(ctx, selectQueryMetrics,
+	rows, err := c.dbConnection.QueryContext(
+		ctx, selectQueryMetrics,
 		sql.Named("limit", c.limit),
 		sql.Named("lookback_window", int(c.lookback/time.Second)),
 	)

@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+// selectQueryStoreState reads the connected database's Query Store state
+const selectQueryStoreState = `
+	SELECT
+		DB_NAME(),
+		actual_state_desc,
+		query_capture_mode_desc,
+		readonly_reason
+	FROM sys.database_query_store_options`
+
 // checkQueryStoreState reports whether Query Store is readable on the connected
 // database and returns that database's name. It mirrors the preflight used by
 // query_metrics so query_details skips cleanly when Query Store is unavailable.
