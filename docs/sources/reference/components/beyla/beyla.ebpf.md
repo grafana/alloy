@@ -1090,135 +1090,44 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 
 ## Examples
 
-The following examples show you how to collect metrics and traces from `beyla.ebpf`.
-
-### Metrics
-
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of the specified port:
+The following example instruments a service by port, enables application metrics, and forwards traces to an OTel receiver.
+`beyla.ebpf` exposes metrics as a Prometheus scrape target via the `targets` export — pass that to a `prometheus.scrape` component to collect them.
 
 ```alloy
-beyla.ebpf "default" {
+beyla.ebpf "<LABEL>" {
   discovery {
     instrument {
-      open_ports = <OPEN_PORT>
+      open_ports = "<OPEN_PORT>"
+      name       = "<SERVICE_NAME>"
     }
   }
 
   metrics {
-    features = [
-     "application", 
-    ]
+    features = ["application"]
   }
-}
 
-prometheus.scrape "beyla" {
-  targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-
-prometheus.remote_write "demo" {
-  endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
-
-    basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
-    }
-  }
-}
-```
-
-#### Kubernetes
-
-This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
-
-```alloy
-beyla.ebpf "default" {
-  discovery {
-    instrument {
-     kubernetes {
-      namespace = "<NAMESPACE>"
-      pod_name = "<POD_NAME>"
-     }
-    }
-  }
-  metrics {
-    features = [
-     "application", 
-    ]
-  }
-}
-
-prometheus.scrape "beyla" {
-  targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-
-prometheus.remote_write "demo" {
-  endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
-
-    basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
-    }
+  output {
+    traces = [otelcol.exporter.otlp.<LABEL>.input]
   }
 }
 ```
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
-* _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<LABEL>`_: A unique label for the component instance.
+* _`<OPEN_PORT>`_: The port of the running service to instrument with eBPF.
+* _`<SERVICE_NAME>`_: The name to assign to the instrumented service in exported metrics and traces.
 
-### Traces
-
-This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
-
-```alloy
-beyla.ebpf "default" {
-  discovery {
-    instrument {
-      open_ports = <OPEN_PORT>
-    }
-  }
-  output {
-    traces = [otelcol.processor.batch.default.input]
-  }
-}
-
-otelcol.processor.batch "default" {
-  output {
-    traces  = [otelcol.exporter.otlphttp.default.input]
-  }
-}
-
-otelcol.exporter.otlphttp "default" {
-  client {
-    endpoint = sys.env("<OTLP_ENDPOINT>")
-  }
-}
-```
-
-Replace the following:
-
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+For a complete working example that collects both metrics and traces from a running service using `beyla.ebpf`, refer to the [beyla-zero-code-instrumentation Alloy scenario][beyla-zero-code-instrumentation scenario].
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF website]: https://ebpf.io/
 [in-memory traffic]: ../../../../get-started/components/component-controller/#in-memory-traffic
 [run command]: ../../../cli/run/
-[scrape]: ../../prometheus/prometheus.scrape/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
 [Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
 [Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+[beyla-zero-code-instrumentation scenario]: https://github.com/grafana/alloy-scenarios/tree/main/beyla-zero-code-instrumentation
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
