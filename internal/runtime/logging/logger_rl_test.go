@@ -2,6 +2,8 @@ package logging
 
 import (
 	"bytes"
+	"context"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +52,25 @@ func TestLoggerDistinctComponentsNoCrossSuppress(t *testing.T) {
 	require.Equal(t, 2, strings.Count(buf.String(), "msg=same"))
 }
 
+// TestLoggerSamePathDistinctComponentIDNoCrossSuppress guards against the
+// bug where compMatcher keyed only on component_path (the parent/module
+// path, e.g. "/" for every top-level component) and message/level. Two
+// distinct top-level components sharing the same parent path but different
+// component_id must not share a rate-limit bucket.
+func TestLoggerSamePathDistinctComponentIDNoCrossSuppress(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 1, Rate: 0, MaxSignatures: 100}})
+	require.NoError(t, err)
+	a := l.Slog().With("component_path", "/", "component_id", "comp.a")
+	b := l.Slog().With("component_path", "/", "component_id", "comp.b")
+	a.Info("same")
+	a.Info("same") // 2nd dropped: same component, same signature
+	b.Info("same") // different component_id, same path ⇒ own bucket ⇒ admitted
+	require.Equal(t, 2, strings.Count(buf.String(), "msg=same"))
+}
+
 func TestLoggerDisabledByConfig(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var buf bytes.Buffer
@@ -60,6 +81,27 @@ func TestLoggerDisabledByConfig(t *testing.T) {
 		log.Info("noisy")
 	}
 	require.Equal(t, 10, strings.Count(buf.String(), "noisy"))
+}
+
+func TestUpdateInvalidRateLimitingLeavesStateUnchanged(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt, RateLimiting: &RateLimitingOptions{Enabled: false}})
+	require.NoError(t, err)
+
+	err = l.Update(Options{
+		Level:        LevelError,
+		Format:       FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: 0},
+	})
+	require.Error(t, err)
+
+	// The level must not have been mutated: an Info record should still pass,
+	// proving the invalid RateLimiting config was rejected before any other
+	// state (level, format, writer) was applied.
+	require.True(t, l.Enabled(context.Background(), slog.LevelInfo))
+	l.Slog().Info("still-info")
+	require.Contains(t, buf.String(), "still-info")
 }
 
 func TestLoggerLiveRetune(t *testing.T) {

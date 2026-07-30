@@ -67,19 +67,20 @@ func TestSniffComponent(t *testing.T) {
 	})
 }
 
-func TestCompMatcherKeysOnPathLevelMessage(t *testing.T) {
-	mk := func(path string, level slog.Level, msg string) string {
-		ctx := withComponent(context.Background(), componentInfo{path: path})
+func TestCompMatcherKeysOnPathIDLevelMessage(t *testing.T) {
+	mk := func(path, id string, level slog.Level, msg string) string {
+		ctx := withComponent(context.Background(), componentInfo{path: path, id: id})
 		r := slog.NewRecord(time.Time{}, level, msg, 0)
 		return compMatcher(ctx, &r)
 	}
 
-	base := mk("/a", slog.LevelInfo, "hello")
+	base := mk("/a", "comp.a", slog.LevelInfo, "hello")
 
-	require.Equal(t, base, mk("/a", slog.LevelInfo, "hello"), "identical path/level/message should produce the same key")
-	require.NotEqual(t, base, mk("/b", slog.LevelInfo, "hello"), "different path should produce a different key")
-	require.NotEqual(t, base, mk("/a", slog.LevelWarn, "hello"), "different level should produce a different key")
-	require.NotEqual(t, base, mk("/a", slog.LevelInfo, "goodbye"), "different message should produce a different key")
+	require.Equal(t, base, mk("/a", "comp.a", slog.LevelInfo, "hello"), "identical path/id/level/message should produce the same key")
+	require.NotEqual(t, base, mk("/b", "comp.a", slog.LevelInfo, "hello"), "different path should produce a different key")
+	require.NotEqual(t, base, mk("/a", "comp.b", slog.LevelInfo, "hello"), "different component id (same path) should produce a different key")
+	require.NotEqual(t, base, mk("/a", "comp.a", slog.LevelWarn, "hello"), "different level should produce a different key")
+	require.NotEqual(t, base, mk("/a", "comp.a", slog.LevelInfo, "goodbye"), "different message should produce a different key")
 }
 
 func TestBuildRootDisabledReturnsTerminal(t *testing.T) {

@@ -50,10 +50,16 @@ func componentFromCtx(ctx context.Context) componentInfo {
 // compMatcher is the slog-sampling Matcher used to key the rate limiter's
 // per-signature counters. Two records are considered the same "signature"
 // (and thus share a rate-limit budget) when they share the same component
-// path, level, and message.
+// path, component id, level, and message.
+//
+// component_path alone is not enough: it identifies the parent/module path
+// (e.g. "/" for every top-level component), so distinct top-level components
+// emitting the same message at the same level would otherwise collapse onto
+// one signature and cross-suppress each other. component_id disambiguates
+// them.
 func compMatcher(ctx context.Context, r *slog.Record) string {
 	c := componentFromCtx(ctx)
-	return c.path + "\x00" + r.Level.String() + "\x00" + r.Message
+	return c.path + "\x00" + c.id + "\x00" + r.Level.String() + "\x00" + r.Message
 }
 
 // levelString maps a slog.Level to the lowercase level label used on the

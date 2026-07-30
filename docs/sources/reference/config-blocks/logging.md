@@ -90,6 +90,8 @@ Only identical repeated lines from the same component at the same level are thro
 
 Because keying is on the message text, log lines that share a constant message but differ only in attributes are treated as the same signature and throttled together.
 
+Log lines with an empty message, such as some `go-kit`-style logs emitted without a `msg` or `message` field, bypass rate limiting entirely and are always written.
+
 After suppression begins, the first admitted line of each new window carries a `slog_sampling.dropped_count` attribute.
 
 Dropped lines are counted by the `alloy_logging_suppressed_lines_total` metric (labeled by `level` and `component_id`).
