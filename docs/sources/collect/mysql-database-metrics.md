@@ -3,6 +3,10 @@ canonical: https://grafana.com/docs/alloy/latest/collect/mysql-database-metrics/
 description: Learn how to collect MySQL database metrics and logs with Grafana Alloy.
 title: Collect MySQL database metrics and logs
 weight: 410
+labels:
+  products:
+    - oss
+review_date: 2026-07-30
 ---
 
 # Collect MySQL database metrics and logs
