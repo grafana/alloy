@@ -112,6 +112,15 @@ func TestArgumentsValidate(t *testing.T) {
 			wantErr: "peer_scrape_concurrency",
 		},
 		{
+			name: "peer recheck interval must be positive",
+			mutate: func(a *Arguments) {
+				a.APIKey = "key"
+				a.AuthKey = "authkey"
+				a.PeerRecheckInterval = 0
+			},
+			wantErr: "peer_recheck_interval",
+		},
+		{
 			name: "catch-all target before another target",
 			mutate: func(a *Arguments) {
 				a.APIKey = "key"

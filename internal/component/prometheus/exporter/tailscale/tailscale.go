@@ -37,6 +37,7 @@ var DefaultArguments = Arguments{
 	PeerMetricsPath:       "/metrics",
 	PeerScrapeTimeout:     3 * time.Second,
 	PeerScrapeConcurrency: 32,
+	PeerRecheckInterval:   15 * time.Minute,
 	TSNetHostname:         "alloy-tailscale-exporter",
 }
 
@@ -89,8 +90,12 @@ type Arguments struct {
 	PeerScrapeTimeout time.Duration `alloy:"peer_scrape_timeout,attr,optional"`
 
 	// PeerScrapeConcurrency limits the number of peer metrics requests in
-	// progress at the same time. Every matching peer is still scraped.
+	// progress at the same time.
 	PeerScrapeConcurrency int `alloy:"peer_scrape_concurrency,attr,optional"`
+
+	// PeerRecheckInterval controls how often peers without a reachable metrics
+	// endpoint are retried.
+	PeerRecheckInterval time.Duration `alloy:"peer_recheck_interval,attr,optional"`
 
 	// OAuth authenticates via a Tailscale OAuth client instead of api_key +
 	// auth_key. When set, it authenticates the management API and the tsnet node
@@ -196,6 +201,9 @@ func (a *Arguments) Validate() error {
 	if a.PeerScrapeConcurrency <= 0 {
 		return fmt.Errorf("peer_scrape_concurrency must be positive")
 	}
+	if a.PeerRecheckInterval <= 0 {
+		return fmt.Errorf("peer_recheck_interval must be positive")
+	}
 	if !strings.HasPrefix(a.PeerMetricsPath, "/") {
 		return fmt.Errorf("peer_metrics_path must start with \"/\"")
 	}
@@ -283,6 +291,7 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 		PeerMetricsPath:       a.PeerMetricsPath,
 		PeerScrapeTimeout:     a.PeerScrapeTimeout,
 		PeerScrapeConcurrency: a.PeerScrapeConcurrency,
+		PeerRecheckInterval:   a.PeerRecheckInterval,
 		Targets:               targets,
 	}
 

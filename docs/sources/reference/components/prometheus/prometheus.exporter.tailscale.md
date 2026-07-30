@@ -74,6 +74,7 @@ You can use the following arguments with `prometheus.exporter.tailscale`:
 | `auth_key`            | `secret`   | Tailscale pre-auth key (`tskey-auth-...`) used by the embedded node to join the tailnet.  |                              | no       |
 | `peer_metrics_path`   | `string`   | HTTP path scraped on each peer when no `target` blocks are configured.                    | `"/metrics"`                 | no       |
 | `peer_metrics_port`   | `number`   | Port scraped on each peer when no `target` blocks are configured.                         | `5252`                       | no       |
+| `peer_recheck_interval` | `duration` | How often to retry peers without a reachable metrics endpoint.                         | `"15m"`                      | no       |
 | `peer_scrape_concurrency` | `number` | Maximum number of peer metrics requests in progress at the same time.                  | `32`                         | no       |
 | `peer_scrape_timeout` | `duration` | Timeout for each peer metrics request.                                                     | `"3s"`                       | no       |
 | `refresh_interval`    | `duration` | How often to poll the API and scrape peer metrics.                                        | `"60s"`                      | no       |
@@ -103,7 +104,11 @@ When running multiple instances of `prometheus.exporter.tailscale` in the same A
 ### Peer scraping
 
 The `peer_scrape_concurrency` argument limits simultaneous requests, not the total number of devices scraped.
-Each refresh queues every matching device and processes up to `peer_scrape_concurrency` peers at the same time.
+The first refresh checks every matching device for a metrics endpoint.
+Devices with a reachable endpoint are scraped during every refresh.
+Devices without a reachable endpoint are skipped until `peer_recheck_interval` elapses, and the next refresh checks them again.
+If a previously reachable endpoint becomes unavailable, `prometheus.exporter.tailscale` removes its cached metrics and retries it after `peer_recheck_interval`.
+Rechecks run as part of a refresh, so the effective interval can be up to one `refresh_interval` longer than `peer_recheck_interval`.
 `prometheus.exporter.tailscale` rejects peer metrics responses larger than 10 MiB.
 
 ## Blocks
@@ -230,7 +235,7 @@ All per-device metrics include `name` and `id` labels identifying the device.
 | ------------------------------------------------------------ | ------- | ------ | -------------------------------------------------------------- |
 | `tailscale_exporter_last_refresh_success_timestamp_seconds` | `gauge`   |        | Unix timestamp of the last successful refresh cycle. |
 | `tailscale_exporter_last_refresh_duration_seconds`          | `gauge`   |        | Duration in seconds of the last full refresh cycle.  |
-| `tailscale_exporter_peer_scrape_errors_total`               | `counter` | `node` | Total number of errors scraping per-node metrics.    |
+| `tailscale_exporter_peer_scrape_errors_total`               | `counter` | `node` | Total number of errors scraping discovered per-node metrics endpoints. |
 | `tailscale_exporter_api_errors_total`                       | `counter` |        | Total number of Tailscale management API errors.     |
 | `tailscale_exporter_gather_errors_total`                    | `counter` |        | Total number of errors gathering cached peer metrics. |
 

@@ -37,6 +37,7 @@ const (
 	defaultPeerMetricsPath       = "/metrics"
 	defaultPeerScrapeTimeout     = 3 * time.Second
 	defaultPeerScrapeConcurrency = 32
+	defaultPeerRecheckInterval   = 15 * time.Minute
 	defaultTSNetHostname         = "alloy-tailscale-exporter"
 	maxPeerMetricsBodyBytes      = 10 << 20
 
@@ -58,6 +59,7 @@ type Config struct {
 	PeerMetricsPath       string
 	PeerScrapeTimeout     time.Duration
 	PeerScrapeConcurrency int
+	PeerRecheckInterval   time.Duration
 
 	// OAuthClientID / OAuthClientSecret, when set, replace APIKey and AuthKey.
 	// The client credentials authenticate the management API (token minted via
@@ -87,10 +89,16 @@ type ScrapeTarget struct {
 }
 
 type peerScrapeJob struct {
-	device      tsclient.Device
-	port        int
-	path        string
-	extraLabels map[string]string
+	device       tsclient.Device
+	port         int
+	path         string
+	extraLabels  map[string]string
+	wasAvailable bool
+}
+
+type peerEndpointState struct {
+	available  bool
+	retryAfter time.Time
 }
 
 // integration implements integrations.Integration.
@@ -105,6 +113,9 @@ type integration struct {
 	// peerMu guards peerCache.
 	peerMu    sync.RWMutex
 	peerCache map[string]peerEntry // stable peer ID -> scraped metrics + labels
+
+	// peerEndpoints is only read and written by the refresh goroutine.
+	peerEndpoints map[string]peerEndpointState // stable peer ID -> endpoint availability
 
 	// Self-reported health counters, registered once at construction and
 	// included in every registry swap.
@@ -200,6 +211,9 @@ func New(logger *slog.Logger, cfg Config) (*integration, error) {
 	if cfg.PeerScrapeConcurrency <= 0 {
 		cfg.PeerScrapeConcurrency = defaultPeerScrapeConcurrency
 	}
+	if cfg.PeerRecheckInterval <= 0 {
+		cfg.PeerRecheckInterval = defaultPeerRecheckInterval
+	}
 	if cfg.TSNetHostname == "" {
 		cfg.TSNetHostname = defaultTSNetHostname
 	}
@@ -210,13 +224,14 @@ func New(logger *slog.Logger, cfg Config) (*integration, error) {
 	}
 
 	i := &integration{
-		logger:    logger,
-		cfg:       cfg,
-		peerCache: make(map[string]peerEntry),
+		logger:        logger,
+		cfg:           cfg,
+		peerCache:     make(map[string]peerEntry),
+		peerEndpoints: make(map[string]peerEndpointState),
 
 		peerScrapeErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "tailscale_exporter_peer_scrape_errors_total",
-			Help: "Total number of errors scraping per-node Tailscale daemon metrics.",
+			Help: "Total number of errors scraping discovered per-node Tailscale daemon metrics endpoints.",
 		}, []string{"node"}),
 		apiErrors: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "tailscale_exporter_api_errors_total",
@@ -364,7 +379,12 @@ func (i *integration) refresh(ctx context.Context, apiClient *tsclient.Client, t
 }
 
 func (i *integration) scrapePeers(ctx context.Context, devices []tsclient.Device, client *http.Client) map[string]peerEntry {
+	return i.scrapePeersAt(ctx, devices, client, time.Now())
+}
+
+func (i *integration) scrapePeersAt(ctx context.Context, devices []tsclient.Device, client *http.Client, now time.Time) map[string]peerEntry {
 	jobs := make(chan peerScrapeJob, len(devices))
+	nextPeerEndpoints := make(map[string]peerEndpointState, len(devices))
 	for _, d := range devices {
 		if len(d.Addresses) == 0 {
 			continue
@@ -374,11 +394,18 @@ func (i *integration) scrapePeers(ctx context.Context, devices []tsclient.Device
 			// No configured target group matches this node's tags — skip it.
 			continue
 		}
+		key := peerCacheKey(d)
+		endpoint, known := i.peerEndpoints[key]
+		if known && !endpoint.available && now.Before(endpoint.retryAfter) {
+			nextPeerEndpoints[key] = endpoint
+			continue
+		}
 		jobs <- peerScrapeJob{
-			device:      d,
-			port:        port,
-			path:        path,
-			extraLabels: extraLabels,
+			device:       d,
+			port:         port,
+			path:         path,
+			extraLabels:  extraLabels,
+			wasAvailable: known && endpoint.available,
 		}
 	}
 	close(jobs)
@@ -417,32 +444,40 @@ func (i *integration) scrapePeers(ctx context.Context, devices []tsclient.Device
 						}
 
 						mu.Lock()
-						newPeerCache[peerCacheKey(d)] = peerEntry{
+						key := peerCacheKey(d)
+						newPeerCache[key] = peerEntry{
 							raw:    raw,
 							node:   node,
 							labels: labels,
 						}
+						nextPeerEndpoints[key] = peerEndpointState{available: true}
 						mu.Unlock()
 						continue
 					}
 				}
 
+				retryAfter := now.Add(i.cfg.PeerRecheckInterval)
+				mu.Lock()
+				nextPeerEndpoints[peerCacheKey(d)] = peerEndpointState{retryAfter: retryAfter}
+				mu.Unlock()
+
 				var errno syscall.Errno
 				connRefused := (errors.As(scrapeErr, &errno) && errno == syscall.ECONNREFUSED) ||
 					strings.Contains(scrapeErr.Error(), "connection refused")
-				if connRefused {
-					// Connection refused means the peer doesn't expose metrics — this is
-					// expected for nodes that haven't enabled the Tailscale metrics endpoint.
-					i.logger.Debug("peer metrics not available", "node", node, "err", scrapeErr)
-				} else {
+				if job.wasAvailable && !connRefused {
 					i.logger.Warn("peer metrics scrape failed", "node", node, "err", scrapeErr)
 					i.peerScrapeErrors.WithLabelValues(node).Inc()
+				} else {
+					// An unavailable endpoint is expected for peers that don't expose
+					// metrics. Retry it later without warning on every refresh.
+					i.logger.Debug("peer metrics endpoint not available", "node", node, "retry_after", retryAfter, "err", scrapeErr)
 				}
 			}
 		}()
 	}
 	wg.Wait()
 
+	i.peerEndpoints = nextPeerEndpoints
 	return newPeerCache
 }
 

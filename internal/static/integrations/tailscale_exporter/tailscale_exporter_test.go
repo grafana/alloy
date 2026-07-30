@@ -104,6 +104,7 @@ func TestNew_defaults(t *testing.T) {
 	require.Equal(t, defaultPeerMetricsPath, i.cfg.PeerMetricsPath)
 	require.Equal(t, defaultPeerScrapeTimeout, i.cfg.PeerScrapeTimeout)
 	require.Equal(t, defaultPeerScrapeConcurrency, i.cfg.PeerScrapeConcurrency)
+	require.Equal(t, defaultPeerRecheckInterval, i.cfg.PeerRecheckInterval)
 	require.Equal(t, defaultTSNetHostname, i.cfg.TSNetHostname)
 }
 
@@ -524,6 +525,113 @@ func TestScrapePeers_boundsConcurrency(t *testing.T) {
 	cache := i.scrapePeers(context.Background(), devices, server.Client())
 	require.Len(t, cache, peerCount)
 	require.LessOrEqual(t, peak.Load(), int64(testConcurrency))
+}
+
+func TestScrapePeers_rechecksUnavailableEndpoints(t *testing.T) {
+	var requests atomic.Int64
+	var available atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Inc()
+		if !available.Load() {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if _, err := fmt.Fprintln(w, "# TYPE peer_metric gauge\npeer_metric 1"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	const recheckInterval = time.Minute
+	i, err := New(slog.New(slog.DiscardHandler), Config{
+		Tailnet:             "example.com",
+		APIKey:              "key",
+		AuthKey:             "authkey",
+		PeerMetricsPort:     server.Listener.Addr().(*net.TCPAddr).Port,
+		PeerRecheckInterval: recheckInterval,
+	})
+	require.NoError(t, err)
+
+	device := tsclient.Device{
+		NodeID:   "node-id",
+		Name:     "node.example.ts.net",
+		Hostname: "node",
+		Addresses: []string{
+			server.Listener.Addr().(*net.TCPAddr).IP.String(),
+		},
+	}
+	start := time.Unix(1000, 0)
+
+	cache := i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start)
+	require.Empty(t, cache)
+	require.Equal(t, int64(1), requests.Load())
+	require.Equal(t, peerEndpointState{retryAfter: start.Add(recheckInterval)}, i.peerEndpoints[device.NodeID])
+	require.Zero(t, testutil.ToFloat64(i.peerScrapeErrors.WithLabelValues(device.Name)))
+
+	available.Store(true)
+	cache = i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start.Add(recheckInterval-time.Second))
+	require.Empty(t, cache)
+	require.Equal(t, int64(1), requests.Load(), "endpoint must not be retried before the recheck interval")
+
+	cache = i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start.Add(recheckInterval))
+	require.Len(t, cache, 1)
+	require.Equal(t, int64(2), requests.Load())
+	require.Equal(t, peerEndpointState{available: true}, i.peerEndpoints[device.NodeID])
+
+	cache = i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start.Add(recheckInterval+time.Second))
+	require.Len(t, cache, 1)
+	require.Equal(t, int64(3), requests.Load(), "discovered endpoints must be scraped on every refresh")
+}
+
+func TestScrapePeers_suppressesRepeatedFailuresAfterEndpointBecomesUnavailable(t *testing.T) {
+	var requests atomic.Int64
+	var available atomic.Bool
+	available.Store(true)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Inc()
+		if !available.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if _, err := fmt.Fprintln(w, "# TYPE peer_metric gauge\npeer_metric 1"); err != nil {
+			t.Errorf("write response: %v", err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	const recheckInterval = time.Minute
+	i, err := New(slog.New(slog.DiscardHandler), Config{
+		Tailnet:             "example.com",
+		APIKey:              "key",
+		AuthKey:             "authkey",
+		PeerMetricsPort:     server.Listener.Addr().(*net.TCPAddr).Port,
+		PeerRecheckInterval: recheckInterval,
+	})
+	require.NoError(t, err)
+
+	device := tsclient.Device{
+		NodeID:   "node-id",
+		Name:     "node.example.ts.net",
+		Hostname: "node",
+		Addresses: []string{
+			server.Listener.Addr().(*net.TCPAddr).IP.String(),
+		},
+	}
+	start := time.Unix(1000, 0)
+
+	cache := i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start)
+	require.Len(t, cache, 1)
+
+	available.Store(false)
+	cache = i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start.Add(time.Second))
+	require.Empty(t, cache)
+	require.Equal(t, int64(2), requests.Load())
+	require.Equal(t, 1.0, testutil.ToFloat64(i.peerScrapeErrors.WithLabelValues(device.Name)))
+
+	cache = i.scrapePeersAt(context.Background(), []tsclient.Device{device}, server.Client(), start.Add(2*time.Second))
+	require.Empty(t, cache)
+	require.Equal(t, int64(2), requests.Load(), "endpoint must not be retried on every refresh")
+	require.Equal(t, 1.0, testutil.ToFloat64(i.peerScrapeErrors.WithLabelValues(device.Name)))
 }
 
 func TestScrapePeers_countsMalformedMetrics(t *testing.T) {
