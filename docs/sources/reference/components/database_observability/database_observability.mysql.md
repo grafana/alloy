@@ -229,7 +229,7 @@ Replace the following:
 * _`<DATA_SOURCE_NAME>`_: The MySQL connection [Data Source Name] (for example, `user:pass@tcp(mysql:3306)/`).
 * _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database (for example, `arn:aws:rds:us-east-1:123456789:db/prod-mysql`).
 
-For a complete end-to-end example that demonstrates sending database observability metrics to Grafana Cloud, refer to the [`mysql-database-metrics`](../../../collect/mysql-database-metrics/) task topic.
+For a complete end-to-end example that demonstrates sending database observability metrics to Grafana Cloud, refer to [Collect MySQL database metrics and logs](../../../collect/mysql-database-metrics/).
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
