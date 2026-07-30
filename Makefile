@@ -156,6 +156,10 @@ endif
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
+# Environment for host tools such as code generators: clears every cross-compile
+# setting, including the C toolchain, since these run on the build machine.
+GO_HOST_ENV := env -u GOOS -u GOARCH -u GOARM CGO_ENABLED=0 CC= CXX=
+
 VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
@@ -400,11 +404,12 @@ generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
-	GOOS= GOARCH= go run -C tools ./cmd sync-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
+	# These are host tools, so GO_HOST_ENV clears the cross-compile settings to
+	# avoid accidentally building them for the target platform within generate
+	$(GO_HOST_ENV) go run -C tools ./cmd sync-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
 	# This tidy propagates any root module changes to the collector module
-	cd ./collector && GOOS= GOARCH= go mod tidy
-	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
+	cd ./collector && $(GO_HOST_ENV) go mod tidy
+	cd ./collector && $(GO_HOST_ENV) BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
 generate-ui:
