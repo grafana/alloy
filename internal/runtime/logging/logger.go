@@ -48,6 +48,20 @@ type Logger struct {
 	rlHolder  atomic.Pointer[versionedHandler]
 	rlVersion atomic.Uint64
 	rlMetrics *rateLimitMetrics
+
+	// rlMut guards the rate-limiting apply block in Update (the
+	// rlApplied comparison, buildRoot, rlVersion bump, and rlHolder
+	// store must happen as one atomic unit) as well as writes/reads of
+	// rlMetrics, which is otherwise read in Update without
+	// synchronization against SetRateLimitMetrics.
+	rlMut sync.Mutex
+	// rlApplied is the RateLimitingOptions last used to build the
+	// current rlHolder root. nil means no Update has applied rate
+	// limiting yet. Update only rebuilds the sampler (and bumps
+	// rlVersion) when the incoming options differ from rlApplied, so
+	// unrelated config reloads don't reset in-flight rate-limit
+	// budgets.
+	rlApplied *RateLimitingOptions
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -149,9 +163,15 @@ func (l *Logger) Update(o Options) error {
 	l.writer.SetLokiWriter(o.WriteTo)
 	l.bufferMut.Unlock()
 
-	root := buildRoot(rlOpts, l.handler, l.rlMetrics)
-	v := l.rlVersion.Add(1)
-	l.rlHolder.Store(&versionedHandler{version: v, h: root})
+	l.rlMut.Lock()
+	if l.rlApplied == nil || *l.rlApplied != rlOpts {
+		root := buildRoot(rlOpts, l.handler, l.rlMetrics)
+		v := l.rlVersion.Add(1)
+		l.rlHolder.Store(&versionedHandler{version: v, h: root})
+		applied := rlOpts
+		l.rlApplied = &applied
+	}
+	l.rlMut.Unlock()
 
 	// Rebuild deferred slog handlers outside bufferMut to avoid a deadlock
 	// with concurrent Handle() calls (they hold a child handler's RLock
@@ -187,6 +207,8 @@ func (l *Logger) flushBuffer() {
 
 // SetRateLimitMetrics wires the suppressed-lines metric. Call once before the logger is shared.
 func (l *Logger) SetRateLimitMetrics(reg prometheus.Registerer) {
+	l.rlMut.Lock()
+	defer l.rlMut.Unlock()
 	if l.rlMetrics == nil {
 		l.rlMetrics = newRateLimitMetrics(reg)
 	}

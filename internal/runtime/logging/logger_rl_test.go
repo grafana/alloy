@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -102,6 +103,85 @@ func TestUpdateInvalidRateLimitingLeavesStateUnchanged(t *testing.T) {
 	require.True(t, l.Enabled(context.Background(), slog.LevelInfo))
 	l.Slog().Info("still-info")
 	require.Contains(t, buf.String(), "still-info")
+}
+
+// TestUpdateSameOptionsPreservesBudget guards against re-applying an
+// unchanged RateLimitingOptions on every Update (e.g. from an unrelated
+// config reload) resetting the sampler's per-signature counters. Before the
+// fix, Update unconditionally rebuilt the sampler (fresh LRU/counters) on
+// every call, so the repeated call below would spuriously re-admit the
+// already-throttled line.
+func TestUpdateSameOptionsPreservesBudget(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	opts := Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 2, Rate: 0, MaxSignatures: 100}}
+	l, err := New(&buf, opts)
+	require.NoError(t, err)
+	log := l.Slog()
+
+	log.Info("steady")
+	log.Info("steady")
+	log.Info("steady") // 3rd: over threshold, dropped
+	require.Equal(t, 2, strings.Count(buf.String(), "msg=steady"))
+
+	// Re-apply the identical options (simulating an unrelated config
+	// reload triggering LoggingConfigNode.Evaluate -> Update again).
+	require.NoError(t, l.Update(opts))
+
+	log.Info("steady") // still over the ORIGINAL window's budget: must stay dropped
+	require.Equal(t, 2, strings.Count(buf.String(), "msg=steady"))
+}
+
+// TestUpdateChangedOptionsRebuilds confirms that when rate_limiting options
+// actually change across Update, the new configuration takes effect for a
+// pre-existing logger. This overlaps with TestLoggerLiveRetune but pins down
+// the specific contract exercised by the conditional-rebuild fix: a change
+// must still trigger a rebuild (not just "same options are a no-op").
+func TestUpdateChangedOptionsRebuilds(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 2, Rate: 0, MaxSignatures: 100}})
+	require.NoError(t, err)
+	log := l.Slog()
+
+	require.NoError(t, l.Update(Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 1, Rate: 0, MaxSignatures: 100}}))
+
+	log.Info("changed")
+	log.Info("changed") // 2nd: over the NEW threshold of 1, dropped
+	require.Equal(t, 1, strings.Count(buf.String(), "msg=changed"))
+}
+
+// TestConcurrentUpdatesNoRace exercises many goroutines calling Update
+// concurrently with valid (possibly differing) options. It asserts -race
+// stays clean, nothing panics, and the logger is still functional
+// afterward.
+func TestConcurrentUpdatesNoRace(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 10, Rate: 0, MaxSignatures: 100}})
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	for g := 0; g < 8; g++ {
+		wg.Add(1)
+		go func(g int) {
+			defer wg.Done()
+			for i := 0; i < 5; i++ {
+				threshold := uint64(1 + (g+i)%5)
+				err := l.Update(Options{Level: LevelInfo, Format: FormatLogfmt,
+					RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: threshold, Rate: 0, MaxSignatures: 100}})
+				require.NoError(t, err)
+			}
+		}(g)
+	}
+	wg.Wait()
+
+	l.Slog().Info("post-concurrent-update")
+	require.Contains(t, buf.String(), "post-concurrent-update")
 }
 
 func TestLoggerLiveRetune(t *testing.T) {
