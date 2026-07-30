@@ -1,5 +1,5 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/tasks/collect/collect-mysql-database-metrics/
+canonical: https://grafana.com/docs/alloy/latest/collect/mysql-database-metrics/
 description: Learn how to collect MySQL database metrics and logs with Grafana Alloy.
 title: Collect MySQL database metrics and logs
 labels:
