@@ -113,15 +113,17 @@ If `service_name` isn't specified and couldn't be inferred, then it's set to `un
 
 ## Blocks
 
-You can use the following block with `pyroscope.java`:
+You can use the following blocks with `pyroscope.java`:
 
 {{< docs/alloy-config >}}
 
-| Block                                 | Description                             | Required |
-| ------------------------------------- | --------------------------------------- | -------- |
-| [profiling_config`][profiling_config] | Describes java profiling configuration. | no       |
+| Block                                        | Description                             | Required |
+| -------------------------------------------- | --------------------------------------- | -------- |
+| [`profiling_config`][profiling_config]       | Describes java profiling configuration. | no       |
+| `profiling_config` > [`thread`][thread]      | Surface the sampled thread in the profile. | no    |
 
 [profiling_config]: #profiling_config
+[thread]: #thread
 
 {{< /docs/alloy-config >}}
 
@@ -146,14 +148,6 @@ The following arguments are supported:
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
-The following blocks are supported inside `profiling_config`:
-
-| Block               | Description                                        | Required |
-| ------------------- | -------------------------------------------------- | -------- |
-| [`thread`][thread]  | Surface the sampled thread in the profile.         | no       |
-
-[thread]: #thread
-
 #### `event`
 
 The `event` argument configures the profiling mode used by async-profiler.
@@ -170,7 +164,7 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 #### `thread`
 
-The `thread` block surfaces the thread each sample ran on. It requires `per_thread` to be enabled.
+The `thread` block surfaces the thread each sample ran on.
 
 The following arguments are supported:
 
@@ -192,8 +186,6 @@ pyroscope.java "java" {
   forward_to = [pyroscope.write.staging.receiver]
 
   profiling_config {
-    per_thread = true
-
     thread {
       frame      = false
       label_name = "thread_pool"

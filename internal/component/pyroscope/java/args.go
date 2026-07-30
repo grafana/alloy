@@ -35,11 +35,11 @@ type ProfilingConfig struct {
 	Thread ThreadConfig `alloy:"thread,block,optional"`
 }
 
-// ThreadConfig surfaces the sampled thread in the profile. Requires per_thread.
-// frame renders the thread name as a root frame so flame graphs split by thread;
-// label_name adds a sample label under that name for filtering/grouping; regex,
-// when set, collapses the thread name to its first capture group (e.g. a pool
-// name) and applies to both frame and label.
+// ThreadConfig surfaces the sampled thread in the profile. frame renders the
+// thread name as a root frame so flame graphs split by thread; label_name adds
+// a sample label under that name for filtering/grouping; regex, when set,
+// collapses the thread name to its first capture group (e.g. a pool name) and
+// applies to both frame and label.
 type ThreadConfig struct {
 	Frame     bool   `alloy:"frame,attr,optional"`
 	LabelName string `alloy:"label_name,attr,optional"`
