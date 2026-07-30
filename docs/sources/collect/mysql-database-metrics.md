@@ -69,7 +69,7 @@ To collect MySQL observability data and forward it to Grafana Cloud, complete th
 
    * _`<LABEL>`_: The Alloy component label, such as `prod-mysql`.
    * _`<MYSQL_DSN>`_: The MySQL Data Source Name, such as `user:pass@tcp(mysql:3306)/`.
-     Refer to the [go-sql-driver/mysql documentation](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the full DSN format.
+     Refer to the [DSN](https://github.com/go-sql-driver/mysql#dsn-data-source-name) documentation for the full DSN format.
    * _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database instance, such as `arn:aws:rds:us-east-1:123456789:db/prod-mysql`.
      If using Azure or GCP, use the corresponding cloud provider block instead.
 
@@ -291,7 +291,7 @@ Replace the following:
 * _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
 * _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
 
-[database_observability.mysql]: ../../reference/components/database_observability.mysql/
+[database_observability.mysql]: ../../reference/components/database_observability/database_observability.mysql/
 [prometheus.exporter.mysql]: ../../reference/components/prometheus/prometheus.exporter.mysql/
 [loki.relabel]: ../../reference/components/loki/loki.relabel/
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/
