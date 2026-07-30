@@ -143,9 +143,6 @@ You can use the following arguments with `beyla.ebpf`:
 | `log_level`        | `string` | Log level for Beyla. Replaces the deprecated `debug` attribute.             | `""`         | no       |
 | `trace_printer`    | `string` | Format for printing trace information.                                      | `"disabled"` | no       |
 
-
-`debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
-
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
 `trace_printer` is used to print the trace information in a specific format.
@@ -253,16 +250,19 @@ The `output` block configures a set of components to forward the resulting telem
 
 The following arguments are supported:
 
-| Name     | Type                     | Description                          | Default | Required |
-|----------|--------------------------|--------------------------------------|---------|----------|
-| `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
+| Name      | Type                     | Description                           | Default | Required |
+|-----------|--------------------------|---------------------------------------|---------|----------|
+| `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
+| `traces`  | `list(otelcol.Consumer)` | List of consumers to send traces to.  | `[]`    | no       |
 
 The `output` block is optional.
 By default, telemetry data is dropped.
-Configure the `traces` argument to send traces data to other components.
+Configure `traces` to forward traces to OTel consumer components.
+Configure `metrics` to forward metrics to OTel consumer components instead of, or in addition to, the Prometheus scrape path exposed via the `targets` export.
 
 {{< admonition type="note" >}}
-If you configure the [`traces`][traces] block, you must also configure `output` with a `traces` destination, or Alloy returns a validation error at startup.
+If you configure the [`traces`][traces] block, you must also define the `output` block, or {{< param "PRODUCT_NAME" >}} will return a validation error at startup.
+ To export traces, configure `output.traces` with one or more destinations.
 
 [traces]: #traces
 {{< /admonition >}}
@@ -1073,8 +1073,9 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 
 ## Examples
 
-The following example instruments a service by port, enables application metrics, and forwards traces to an OTel receiver.
+The following example instruments a service by port and enables application metrics.
 `beyla.ebpf` exposes metrics as a Prometheus scrape target via the `targets` export.
+To also forward traces to an OTel receiver, add an [`output`][output] block pointing at an OTel consumer component.
 
 ```alloy
 beyla.ebpf "<LABEL>" {
@@ -1087,10 +1088,6 @@ beyla.ebpf "<LABEL>" {
 
   metrics {
     features = ["application"]
-  }
-
-  output {
-    traces = [otelcol.exporter.otlp.<LABEL>.input]
   }
 }
 ```
