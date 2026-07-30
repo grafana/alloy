@@ -225,7 +225,7 @@ database_observability.mysql "<LABEL>" {
 
 Replace the following:
 
-* _`<LABEL>`_: The Alloy component label (for example, `prod-mysql`).
+* _`<LABEL>`_: The Alloy component label (for example, `prod_mysql`).
 * _`<DATA_SOURCE_NAME>`_: The MySQL connection [Data Source Name] (for example, `user:pass@tcp(mysql:3306)/`).
 * _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database (for example, `arn:aws:rds:us-east-1:123456789:db/prod-mysql`).
 

@@ -54,6 +54,7 @@ To collect MySQL observability data and forward it to Grafana Cloud, complete th
    database_observability.mysql "<LABEL>" {
      data_source_name = "<MYSQL_DSN>"
      forward_to       = [loki.relabel.<LABEL>.receiver]
+     targets          = prometheus.exporter.mysql.<LABEL>.targets
 
      enable_collectors = ["query_samples", "explain_plans"]
 
@@ -67,7 +68,7 @@ To collect MySQL observability data and forward it to Grafana Cloud, complete th
 
    Replace the following:
 
-   * _`<LABEL>`_: The Alloy component label, such as `prod-mysql`.
+   * _`<LABEL>`_: The Alloy component label, such as `prod_mysql`.
    * _`<MYSQL_DSN>`_: The MySQL Data Source Name, such as `user:pass@tcp(mysql:3306)/`.
      Refer to the [DSN](https://github.com/go-sql-driver/mysql#dsn-data-source-name) documentation for the full DSN format.
    * _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database instance, such as `arn:aws:rds:us-east-1:123456789:db/prod-mysql`.
@@ -139,7 +140,7 @@ To collect MySQL observability data and forward it to Grafana Cloud, complete th
 
    For more information, refer to the [`discovery.relabel`][discovery.relabel] documentation.
 
-5. Add a `prometheus.scrape` component to scrape the MySQL metrics exported by both the `database_observability.mysql` and `prometheus.exporter.mysql` components.
+5. Add a `prometheus.scrape` component to scrape the relabeled targets from `discovery.relabel`, which are sourced from the `database_observability.mysql` component's exported targets.
 
    ```alloy
    prometheus.scrape "<LABEL>" {
@@ -209,6 +210,7 @@ The following is a complete configuration that collects MySQL database observabi
 database_observability.mysql "example" {
   data_source_name = "<MYSQL_DSN>"
   forward_to       = [loki.relabel.example.receiver]
+  targets          = prometheus.exporter.mysql.example.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
 
