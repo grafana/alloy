@@ -1,10 +1,9 @@
 # Updating Beyla
 
-> **Maintainers only.** Bumping Beyla records new binary checksums in
-> `beyla_version.yaml` — the trust anchor for verifying the download. Run
-> `make update-beyla` and review the checksum diff only as a maintainer, to guard
-> against supply-chain tampering. If a community PR proposes a Beyla bump, close it
-> and reopen an equivalent PR authored by a maintainer.
+> **Only maintainers should update Beyla**
+> Bumping Beyla records new binary checksums in `beyla_version.yaml`.
+> To guard against supply-chain attacks, only maintainers should change the Beyla binaries that Alloy incorporates.
+> If a community PR is opened for this, maintainers should close it and reopen a new one made by a maintainer.
 
 ## Overview
 
