@@ -37,7 +37,6 @@ The component starts an HTTP server on the configured port and address with the 
 * `/loki/api/v1/push` - accepting `POST` requests compatible with [Loki push API][loki-push-api], for example, from another {{< param "PRODUCT_NAME" >}}'s [`loki.write`][loki.write] component.
 * `/loki/api/v1/raw` - accepting `POST` requests with newline-delimited log lines in body.
   This can be used to send NDJSON or plain text logs.
-  This is compatible with the Promtail push API endpoint.
   When this endpoint is used, the incoming timestamps can't be used and the `use_incoming_timestamp = true` setting is ignored.
 * `/ready` - accepting `GET` requests. Can be used to confirm the server is reachable and healthy.
 * `/api/v1/push` - internally reroutes to `/loki/api/v1/push`.
