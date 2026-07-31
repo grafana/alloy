@@ -246,7 +246,7 @@ func (a *Arguments) Validate() error {
 		return fmt.Errorf("data_source_name and database_instance blocks are mutually exclusive")
 	}
 	if len(a.Targets) > 0 {
-		return fmt.Errorf("targets and database_instance blocks are mutually exclusive: set targets on each database_instance block")
+		return fmt.Errorf("targets and database_instance blocks are mutually exclusive: database_instance blocks always use the embedded exporter")
 	}
 	if a.CloudProvider != nil {
 		return fmt.Errorf("cloud_provider and database_instance blocks are mutually exclusive: set cloud_provider on each database_instance block")
@@ -329,6 +329,9 @@ type Component struct {
 	// read it without blocking on mut while an Update is connecting. Mutation
 	// of dbInstance fields is guarded by mut.
 	instances atomic.Pointer[[]*dbInstance]
+	// handlerMux serves the per-database metrics endpoints. It's rebuilt
+	// whenever the instances are replaced.
+	handlerMux atomic.Pointer[http.ServeMux]
 }
 
 func (c *Component) loadInstances() []*dbInstance {
@@ -339,7 +342,12 @@ func (c *Component) loadInstances() []*dbInstance {
 }
 
 func (c *Component) storeInstances(instances []*dbInstance) {
+	mux := http.NewServeMux()
+	for _, inst := range instances {
+		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{}))
+	}
 	c.instances.Store(&instances)
+	c.handlerMux.Store(mux)
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -514,9 +522,10 @@ func (c *Component) exportTargets() {
 	})
 }
 
-// dbPingTimeout bounds the connectivity check when (re)connecting to a
-// database, so that one unreachable server can't stall an Update for long.
-const dbPingTimeout = 10 * time.Second
+// dbConnectTimeout bounds the connectivity check and the server-info query
+// when (re)connecting to a database, so that one unresponsive server can't
+// stall an Update for long while it holds the component lock.
+const dbConnectTimeout = 10 * time.Second
 
 // connectAndStartCollectors handles the full connection lifecycle of one
 // database instance: closes its old connection, opens a new one, queries
@@ -537,15 +546,15 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("nil DB connection")
 	}
 
-	pingCtx, cancel := context.WithTimeout(ctx, dbPingTimeout)
+	connectCtx, cancel := context.WithTimeout(ctx, dbConnectTimeout)
 	defer cancel()
-	if err = dbConnection.PingContext(pingCtx); err != nil {
+	if err = dbConnection.PingContext(connectCtx); err != nil {
 		dbConnection.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	inst.dbConnection = dbConnection
 
-	rs := inst.dbConnection.QueryRowContext(ctx, selectServerInfo)
+	rs := inst.dbConnection.QueryRowContext(connectCtx, selectServerInfo)
 	if err = rs.Err(); err != nil {
 		return fmt.Errorf("failed to query engine version: %w", err)
 	}
@@ -865,11 +874,10 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 }
 
 func (c *Component) Handler() http.Handler {
-	mux := http.NewServeMux()
-	for _, inst := range c.loadInstances() {
-		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{}))
+	if mux := c.handlerMux.Load(); mux != nil {
+		return mux
 	}
-	return mux
+	return http.NewServeMux()
 }
 
 func (c *Component) CurrentHealth() component.Health {

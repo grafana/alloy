@@ -141,7 +141,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 
 Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
 
-The component always embeds a mysqld_exporter for each `database_instance` block and serves its metrics on the block's metrics path.
+The component always embeds a `mysqld_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
 Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
 External exporter targets are only supported in the top-level single-DSN form.
 
