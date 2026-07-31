@@ -1263,3 +1263,49 @@ func TestMySQL_Clustering_LookupErrorFailsOpen(t *testing.T) {
 
 	assert.Len(t, c.loadInstances(), 2)
 }
+
+func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("tcp(127.0.0.1:3306)/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true, clusterKeyDB3: false}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "c", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db3"})
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "uuid-a"), nil
+		case strings.Contains(dsn, "/db2"):
+			return multiDatabaseTestMockDB(t, "uuid-b"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "uuid-c"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 2)
+	instA, instB := before[0], before[1]
+	require.Equal(t, "tcp(127.0.0.1:3306)/db1", instA.instanceKey)
+	require.Equal(t, "tcp(127.0.0.1:3306)/db2", instB.instanceKey)
+
+	// db2 moves away and db3 moves in: db1 must keep running untouched.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}
+	c.reconcileCluster()
+
+	after := c.loadInstances()
+	require.Len(t, after, 2)
+	assert.Same(t, instA, after[0])
+	assert.NotEmpty(t, instA.collectors)
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db3", after[1].instanceKey)
+	assert.NotEmpty(t, after[1].collectors)
+	assert.Empty(t, instB.collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+	first, _ := exported.Targets[0].Get("instance")
+	second, _ := exported.Targets[1].Get("instance")
+	assert.Equal(t, []string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"}, []string{first, second})
+}

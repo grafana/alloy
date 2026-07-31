@@ -551,8 +551,10 @@ func (c *Component) NotifyClusterChange() {
 	}
 }
 
-// reconcileCluster recomputes database ownership and rebuilds the running
-// instances when ownership changed.
+// reconcileCluster recomputes database ownership and moves only the databases
+// whose ownership changed: instances this node no longer owns are stopped,
+// newly owned databases are built and connected, and unmoved instances keep
+// running untouched.
 func (c *Component) reconcileCluster() {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -562,41 +564,78 @@ func (c *Component) reconcileCluster() {
 	}
 
 	owned := c.ownedDatabases(c.args.databaseConfigs(), true)
-	if !c.ownershipChanged(owned) {
-		return
-	}
 
-	instances, err := c.buildInstances(owned)
-	if err != nil {
-		// Keep the current instances running; the next evaluation or cluster
-		// change retries.
-		c.opts.Logger.Error("failed to rebuild database instances after cluster change", "err", err)
-		return
-	}
-	c.replaceInstances(instances)
-}
-
-// ownershipChanged reports whether the owned set of databases differs from
-// the currently running instances. Must be called with c.mut locked.
-func (c *Component) ownershipChanged(owned []databaseConfig) bool {
 	running := c.loadInstances()
-	if len(running) != len(owned) {
-		return true
-	}
-	keys := make(map[string]struct{}, len(running))
+	runningByKey := make(map[string]*dbInstance, len(running))
 	for _, inst := range running {
-		keys[inst.instanceKey] = struct{}{}
+		runningByKey[inst.instanceKey] = inst
 	}
+
+	ownedKeys := make(map[string]struct{}, len(owned))
+	var gainedCfgs []databaseConfig
 	for _, cfg := range owned {
 		key, err := instanceKey(string(cfg.dsn))
 		if err != nil {
-			return true
+			// Validate guarantees the DSN parses.
+			continue
 		}
-		if _, ok := keys[key]; !ok {
-			return true
+		ownedKeys[key] = struct{}{}
+		if _, ok := runningByKey[key]; !ok {
+			gainedCfgs = append(gainedCfgs, cfg)
 		}
 	}
-	return false
+
+	var lost []*dbInstance
+	for _, inst := range running {
+		if _, ok := ownedKeys[inst.instanceKey]; !ok {
+			lost = append(lost, inst)
+		}
+	}
+
+	if len(gainedCfgs) == 0 && len(lost) == 0 {
+		return
+	}
+
+	builtByKey := make(map[string]*dbInstance, len(gainedCfgs))
+	for _, cfg := range gainedCfgs {
+		inst, err := newDBInstance(c.opts, cfg)
+		if err != nil {
+			// The running set still differs from the owned set, so the
+			// periodic reconcile retries this database.
+			c.opts.Logger.Error("failed to build database instance after cluster change", "database", cfg.name, "err", err)
+			continue
+		}
+		builtByKey[inst.instanceKey] = inst
+	}
+
+	// Assemble the new instance set in config order, matching Update.
+	instances := make([]*dbInstance, 0, len(owned))
+	var gained []*dbInstance
+	for _, cfg := range owned {
+		key, err := instanceKey(string(cfg.dsn))
+		if err != nil {
+			continue
+		}
+		if inst, ok := runningByKey[key]; ok {
+			instances = append(instances, inst)
+		} else if inst, ok := builtByKey[key]; ok {
+			instances = append(instances, inst)
+			gained = append(gained, inst)
+		}
+	}
+
+	c.stopInstances(lost)
+	c.storeInstances(instances)
+
+	for _, inst := range gained {
+		if err := c.connectAndStartCollectors(context.Background(), inst); err != nil {
+			c.reportInstanceError(inst, "failed to connect", err)
+			continue
+		}
+		inst.healthErr.Store("")
+	}
+
+	c.exportTargets()
 }
 
 func (c *Component) tryReconnect(ctx context.Context) error {
