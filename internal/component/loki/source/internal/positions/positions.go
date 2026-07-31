@@ -104,11 +104,7 @@ type LegacyFile struct {
 // 1. There is no file at the newpath
 // 2. There is a file at the legacy path and that it is valid yaml
 //
-// Returns an error if the legacy file exists but could not be read (e.g.
-// permission denied) -- as opposed to simply not existing, which is not an
-// error. Callers should treat a non-nil error as fatal: proceeding despite
-// an unreadable legacy positions file risks silently re-ingesting every
-// tailed file from the beginning (#5493).
+// Returns an error if the legacy file exists but couldn't be read (#5493).
 func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) error {
 	legacyPositions, err := readLegacyFile(legacyPath, l)
 	if err != nil {
@@ -189,14 +185,9 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 
 // readLegacyFile reads and parses the legacy positions file.
 //
-// Returns (nil, nil) if the file simply doesn't exist or is empty -- this is
-// the normal, expected case for anyone not migrating from promtail/static
-// mode, or who has already converted. Returns (nil, err) if the file exists
-// but a genuine I/O error (e.g. permission denied) prevented reading it --
-// callers must treat this as fatal rather than silently proceeding as if
-// there were no legacy positions, since that risks re-ingesting every
-// tailed file from the beginning (#5493). Malformed YAML is still treated
-// as non-fatal (nil, nil), unchanged from prior behavior.
+// Returns (nil, nil) if the file doesn't exist or is empty. Returns (nil,
+// err) if it exists but a genuine I/O error (e.g. permission denied)
+// prevented reading it (#5493). Malformed YAML remains non-fatal.
 func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 	oldFile, err := os.Stat(legacyPath)
 	if err != nil {
@@ -204,8 +195,7 @@ func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 			l.Info("no legacy positions file found", "path", legacyPath)
 			return nil, nil
 		}
-		// File exists but we couldn't stat it (e.g. permission denied on
-		// a parent directory) -- this is a real error, not "doesn't exist".
+		// Real error, not "doesn't exist".
 		return nil, fmt.Errorf("error checking legacy positions file %q: %w", legacyPath, err)
 	}
 	if oldFile.Size() == 0 {
@@ -216,18 +206,13 @@ func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 	clean := filepath.Clean(legacyPath)
 	buf, err := os.ReadFile(clean)
 	if err != nil {
-		// The file exists (we just Stat'd it successfully) but couldn't be
-		// read -- e.g. permission denied. This is the case reported in
-		// #5493: silently returning nil here let Alloy proceed as if there
-		// were no legacy positions, re-ingesting every tailed file.
+		// Exists but couldn't be read, e.g. permission denied (#5493).
 		return nil, fmt.Errorf("error reading legacy positions file %q: %w", clean, err)
 	}
 	legacyPositions := &LegacyFile{}
 	err = yaml.UnmarshalStrict(buf, legacyPositions)
 	if err != nil {
-		// Malformed content is left non-fatal, unchanged from prior
-		// behavior -- scope of this fix is I/O errors on the file itself,
-		// not validation of its contents.
+		// Malformed content remains non-fatal; only I/O errors are in scope.
 		l.Error("error parsing legacy positions file", "path", clean, "error", err)
 		return nil, nil
 	}
