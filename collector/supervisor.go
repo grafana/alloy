@@ -33,6 +33,10 @@ const (
 
 	// envStorageDir defines the supervisor storage directory.
 	envStorageDir = "STORAGE_DIR"
+
+	// envBasicAuthBase64 holds base64(instance_id:token) and is exported by simple mode.
+	// Used by FM "OpenTelemetry Collector Health" config template in basic auth header.
+	envBasicAuthBase64 = "GCLOUD_BASIC_AUTH_BASE64"
 )
 
 const svCmdDoc = `[EXPERIMENTAL] Run an embedded OpAMP supervisor that manages alloy as a supervised agent
@@ -85,10 +89,13 @@ func runSupervisor(cfgPath string) error {
 		return fmt.Errorf("unable to get executable path: %w", err)
 	}
 
-	var cfg *config.Supervisor
+	var (
+		cfg       *config.Supervisor
+		basicAuth string
+	)
 	if cfgPath == "" {
 		// Build config from env vars and Grafana Cloud defaults if config is unset.
-		cfg, err = supervisorConfigFromEnv()
+		cfg, basicAuth, err = supervisorConfigFromEnv()
 	} else {
 		cfg, err = supervisorConfigFromFile(cfgPath)
 	}
@@ -102,6 +109,13 @@ func runSupervisor(cfgPath string) error {
 		}
 
 		return err
+	}
+
+	if basicAuth != "" {
+		// Set extra FM variables for simple mode.
+		if err := os.Setenv(envBasicAuthBase64, basicAuth); err != nil {
+			return fmt.Errorf("cannot set %s environment variable: %w", envBasicAuthBase64, err)
+		}
 	}
 
 	logger, err := supervisortelemetry.NewLogger(cfg.Telemetry.Logs)
@@ -146,7 +160,7 @@ func (err *missingEnvVarsError) Error() string {
 
 const opAmpEndpoint = "/v1/opamp"
 
-func supervisorConfigFromEnv() (*config.Supervisor, error) {
+func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
 	var missing []string
 	fmURL := strings.TrimSpace(os.Getenv(envFleetManagementURL))
 	if fmURL == "" {
@@ -169,7 +183,7 @@ func supervisorConfigFromEnv() (*config.Supervisor, error) {
 	}
 
 	if len(missing) > 0 {
-		return nil, &missingEnvVarsError{missing: missing}
+		return nil, "", &missingEnvVarsError{missing: missing}
 	}
 
 	// Append OpAMP endpoint if not defined
@@ -194,10 +208,10 @@ func supervisorConfigFromEnv() (*config.Supervisor, error) {
 	cfg.Storage.Directory = storageDir
 
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("cannot validate generated supervisor config: %w", err)
+		return nil, "", fmt.Errorf("cannot validate generated supervisor config: %w", err)
 	}
 
-	return &cfg, nil
+	return &cfg, authStr, nil
 }
 
 func supervisorConfigFromFile(cfgPath string) (*config.Supervisor, error) {
