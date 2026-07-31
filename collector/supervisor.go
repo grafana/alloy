@@ -22,21 +22,11 @@ import (
 )
 
 const (
-	// envFleetManagementURL is the base Fleet Management URL (no path); "/v1/opamp" is appended.
 	envFleetManagementURL = "GCLOUD_FM_URL"
-
-	// envInstanceID is the Grafana Cloud instance ID used as the Basic auth username.
-	envInstanceID = "GCLOUD_INSTANCE_ID"
-
-	// envOTLPToken is the API token used as the Basic auth password.
-	envOTLPToken = "OTLP_TOKEN"
-
-	// envStorageDir defines the supervisor storage directory.
-	envStorageDir = "STORAGE_DIR"
-
-	// envBasicAuthBase64 holds base64(instance_id:token) and is exported by simple mode.
-	// Used by FM "OpenTelemetry Collector Health" config template in basic auth header.
-	envBasicAuthBase64 = "GCLOUD_BASIC_AUTH_BASE64"
+	envInstanceID         = "GCLOUD_INSTANCE_ID"
+	envOTLPToken          = "OTLP_TOKEN"
+	envStorageDir         = "STORAGE_DIR"
+	envBasicAuthBase64    = "GCLOUD_BASIC_AUTH_BASE64"
 )
 
 const svCmdDoc = `[EXPERIMENTAL] Run an embedded OpAMP supervisor that manages alloy as a supervised agent
@@ -112,7 +102,8 @@ func runSupervisor(cfgPath string) error {
 	}
 
 	if basicAuth != "" {
-		// Set extra FM variables for simple mode.
+		// Expose auth credentials to the supervised collector process.
+		// The FM collector health config uses this env var in its Basic auth header.
 		if err := os.Setenv(envBasicAuthBase64, basicAuth); err != nil {
 			return fmt.Errorf("cannot set %s environment variable: %w", envBasicAuthBase64, err)
 		}
