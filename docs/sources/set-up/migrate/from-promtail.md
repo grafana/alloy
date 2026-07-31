@@ -232,7 +232,7 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
 * Check if you are using any extra command line arguments with Promtail that aren't present in your configuration file. For example, `-max-line-size`.
-* Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
+* Check if you are setting any environment variables, whether expanded in the configuration file itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
 * In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
   Refer to the [`loki.source.file`][loki.source.file] documentation for more details.
   Check if you have any setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions path.
@@ -244,7 +244,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 
 [Promtail]: https://www.grafana.com/docs/loki/latest/clients/promtail/
 [debugging]: #debugging
-[expanded in the configuration file]: https://grafana.com/docs/loki/latest/send-data/promtail/
 [local.file_match]: ../../../reference/components/local/local.file_match/
 [loki.source.file]: ../../../reference/components/loki/loki.source.file/
 [loki.source.journal]: ../../../reference/components/loki/loki.source.journal/
