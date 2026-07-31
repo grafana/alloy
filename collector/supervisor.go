@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,8 +25,11 @@ const (
 	// envFleetManagementURL is the base Fleet Management URL (no path); "/v1/opamp" is appended.
 	envFleetManagementURL = "GCLOUD_FM_URL"
 
-	// envBasicAuth is the pre-encoded Basic credential, base64(instance_id:token).
-	envBasicAuth = "GCLOUD_BASIC_AUTH"
+	// envInstanceID is the Grafana Cloud instance ID used as the Basic auth username.
+	envInstanceID = "GCLOUD_INSTANCE_ID"
+
+	// envOTLPToken is the API token used as the Basic auth password.
+	envOTLPToken = "OTLP_TOKEN"
 
 	// envStorageDir defines the supervisor storage directory.
 	envStorageDir = "STORAGE_DIR"
@@ -45,8 +49,11 @@ Configuration can be provided in two ways:
      Fleet management base URL (used as the OpAMP address).
      Note: The path "/v1/opamp" is appended if it's not already present.
 
-   GCLOUD_BASIC_AUTH
-     Pre-encoded Basic auth credentials in base64 format (instance_id:token).
+   GCLOUD_INSTANCE_ID
+     Grafana Cloud instance ID.
+
+   OTLP_TOKEN
+     Grafana Cloud API token.
 
    STORAGE_DIR
      Path for supervisor storage directory.
@@ -146,9 +153,14 @@ func supervisorConfigFromEnv() (*config.Supervisor, error) {
 		missing = append(missing, envFleetManagementURL)
 	}
 
-	authStr := strings.Join(strings.Fields(os.Getenv(envBasicAuth)), "")
-	if authStr == "" {
-		missing = append(missing, envBasicAuth)
+	instanceID := strings.TrimSpace(os.Getenv(envInstanceID))
+	if instanceID == "" {
+		missing = append(missing, envInstanceID)
+	}
+
+	token := strings.TrimSpace(os.Getenv(envOTLPToken))
+	if token == "" {
+		missing = append(missing, envOTLPToken)
 	}
 
 	storageDir := os.Getenv(envStorageDir)
@@ -171,6 +183,7 @@ func supervisorConfigFromEnv() (*config.Supervisor, error) {
 	// Defaults already cover agent timeouts, orphan detection interval and "info" log level.
 	cfg := config.DefaultSupervisor()
 	cfg.Server.Endpoint = fmURL
+	authStr := base64.StdEncoding.EncodeToString([]byte(instanceID + ":" + token))
 	cfg.Server.Headers = http.Header{
 		"Authorization": []string{"Basic " + authStr},
 	}
