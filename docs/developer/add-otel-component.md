@@ -14,24 +14,26 @@ You can apply this information to add any part of an OpenTelemetry pipeline to A
 
 The criteria below apply when a new component is proposed to be bundled into the official Alloy distribution.
 
-Alloy ships a deliberately curated subset of upstream OpenTelemetry components rather than mirroring all of Contrib.
-Keeping that set small is what lets the Alloy maintainers support and maintain the bundled components and keep the dependency and security surface manageable.
-These principles are fundamentally about what we commit to maintain.
-Maintained components are kept interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
-Components the Alloy maintainers don't intend to maintain are instead marked as community components in the Default Engine and aren't bundled in the OTel Engine.
-So these criteria apply to any non-community `otelcol.*` component the Alloy maintainers would maintain, whether it targets the Default Engine or the OTel Engine.
+Alloy ships a curated subset of upstream OpenTelemetry components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
+Keeping that set small is what lets the Alloy team maintain the bundled components and keep the dependency and security surface manageable.
+These principles are about what the Alloy maintainers commit to maintain.
+Maintained components stay interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
+Components the Alloy maintainers don't intend to maintain become community components in the Default Engine and are excluded from the OTel Engine.
+It follows then that these criteria apply to any non-community `otelcol.*` component the Alloy maintainers would maintain, whether it targets the Default Engine or the OTel Engine.
 
 Before proposing a component, open a feature request and weigh it against the signals below.
 Referencing these criteria in the feature request helps maintainers evaluate the proposal.
 
 ### Signals for inclusion
 
+These are positive signals that count towards accepting new OpenTelemetry components.
+
 | Signal | Why it matters |
 | --- | --- |
-| Grafana product compatibility | The component is needed for Grafana products or Grafana Cloud to ingest or work with the telemetry. |
-| Clear demand | There is a feature request with genuine motivation and real community interest, such as activity and reactions. |
-| Ecosystem adoption | The component is widely used upstream, bundled by other OpenTelemetry distributions, or assumed by upstream Helm chart presets. |
-| Fills a genuine gap | No existing bundled component covers the use case well. |
+| Grafana product compatibility | As the Grafana distribution of the OpenTelemetry Collector, Alloy aims for seamless integration with Grafana products |
+| Clear demand | A feature request with real motivation and community activity shows users need the component, and justifies taking on its maintenance. |
+| Ecosystem adoption | Wide use upstream, in other OpenTelemetry distributions, or in upstream Helm chart presets signals a proven component that users expect to find. |
+| Fills a genuine gap | No existing bundled component covers the use case, so adding it provides real new capability rather than duplicating what Alloy already ships. |
 
 ### Signals against inclusion
 
@@ -39,18 +41,18 @@ These are the carrying costs and risks a component has to justify.
 
 | Signal | Why it matters |
 | --- | --- |
-| Low stability or unmaintained | Contrib components vary widely in maturity, and an alpha or unmaintained component is a support risk. |
+| Low stability or unmaintained | Contrib components vary widely in maturity, and an alpha or unmaintained component is a maintenance risk. |
 | Non-reputable source repository | Components from unknown or inactive repositories carry higher trust and maintenance risk. |
 | Heavy dependency or security footprint | Every bundled component adds ongoing cost, so a large dependency tree, a required fork, or known CVEs all raise the bar. |
 | Incompatible license | Alloy is licensed under Apache 2.0, so a component must be under a compatible license to be bundled. |
 
 ### The decision process
 
-These are principles and not a scoring system per se.
+These are principles, not a scoring system.
 Maintainers weigh the signals together and make the final call, so meeting individual criteria doesn't guarantee inclusion.
 A proposal results in one of three outcomes:
 
-* **Bundled and supported.** The component is added to both engines and maintained by the Alloy team.
+* **Bundled and maintained.** The component is added to both engines and maintained by the Alloy team.
 * **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
 * **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
 

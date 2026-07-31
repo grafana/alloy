@@ -42,7 +42,7 @@ Doing the implementation will make you a maintainer of the component. This will 
 
 Community components live amongst other components in the code. The only difference with core components is that the flag `Community` should be set to true when registering the component.
 
-Community components are part of the Default Engine only. They aren't bundled in the OTel Engine, so don't add them to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml`. A user who wants a community component when running `alloy otel` can add it through a [custom OCB build][ocb]. For the reasoning behind this, see the [component inclusion criteria](add-otel-component.md#inclusion-criteria).
+Community components are part of the Default Engine only. They aren't bundled in the OTel Engine, so don't add them to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml`. A user who wants a community component when running `alloy otel` can add it through a [custom OCB build][ocb]. For the reasoning behind this, refer to the [component inclusion criteria](add-otel-component.md#inclusion-criteria).
 
 The documentation should also follow the same pattern as the core components. You must include the following markdown elements in the component documentation.
 
