@@ -113,7 +113,9 @@ func runSupervisor(cfgPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to build supervisor logger: %w", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	if cfg.Agent.Executable != "" && cfg.Agent.Executable != exe {
 		logger.Sugar().Warnf("warning: ignoring agent.executable %q from supervisor config; forcing the running Alloy binary %q\n", cfg.Agent.Executable, exe)
@@ -178,7 +180,6 @@ func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
 	}
 
 	// Append OpAMP endpoint if not defined
-	// TODO: should this be URL parse + Path set?
 	fmURL = strings.TrimRight(fmURL, "/")
 	if !strings.HasSuffix(fmURL, opAmpEndpoint) {
 		fmURL += opAmpEndpoint
