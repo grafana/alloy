@@ -354,3 +354,30 @@ func TestGenerateProbeConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateProbeConfigScrapeClass(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.Probe{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "pr"},
+		Spec: promopv1.ProbeSpec{
+			ProberSpec: promopv1.ProberSpec{URL: "blackbox:9115"},
+			Targets: promopv1.ProbeTargets{
+				StaticConfig: &promopv1.ProbeTargetStaticConfig{
+					Targets:        []string{"http://example.com"},
+					RelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "from_endpoint", Replacement: ptr.To("yes")}},
+				},
+			},
+			MetricRelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "metric_from_endpoint", Replacement: ptr.To("yes")}},
+		},
+	}
+
+	cfg, err := cg.GenerateProbeConfig(m)
+	require.NoError(t, err)
+
+	assert.True(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify)
+	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
+	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
+
+	assert.Less(t, indexOfTargetLabel(cfg.RelabelConfigs, "from_class"), indexOfTargetLabel(cfg.RelabelConfigs, "from_endpoint"))
+	assert.Greater(t, indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_class"), indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_endpoint"))
+}

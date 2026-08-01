@@ -242,7 +242,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	}
 
 	epHasTLS := m.Spec.TLSConfig != nil
-	epHasAuth := m.Spec.BearerTokenSecret.Name != "" ||
+	epHasAuth := (m.Spec.BearerTokenSecret != nil && m.Spec.BearerTokenSecret.Name != "") || //nolint:staticcheck
 		m.Spec.BasicAuth != nil || m.Spec.OAuth2 != nil || m.Spec.Authorization != nil
 	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
 
