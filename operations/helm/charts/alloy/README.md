@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![AppVersion: v1.17.0](https://img.shields.io/badge/AppVersion-v1.17.0-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.11.0](https://img.shields.io/badge/Version-1.11.0-informational?style=flat-square) ![AppVersion: v1.18.0](https://img.shields.io/badge/AppVersion-v1.18.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -71,7 +71,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1"` | Tag of image to use for config reloading. |
 | configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
-| configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
+| configReloader.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
 | controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated: Please use controller.autoscaling.horizontal instead |
 | controller.autoscaling.horizontal | object | `{"enabled":false,"externalHPA":false,"maxReplicas":5,"minReplicas":1,"scaleDown":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":300},"scaleUp":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":0},"targetCPUUtilizationPercentage":0,"targetMemoryUtilizationPercentage":80}` | Configures the Horizontal Pod Autoscaler for the controller. |

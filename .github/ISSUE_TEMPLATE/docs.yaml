@@ -24,6 +24,8 @@ body:
       - beyla.ebpf
       - database_observability.mysql
       - database_observability.postgres
+      - database_observability.sql_server
+      - discovery.aws
       - discovery.azure
       - discovery.consul
       - discovery.consulagent
@@ -123,6 +125,7 @@ body:
       - otelcol.processor.memory_limiter
       - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
+      - otelcol.processor.redaction
       - otelcol.processor.resourcedetection
       - otelcol.processor.span
       - otelcol.processor.tail_sampling

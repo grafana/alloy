@@ -1,0 +1,23 @@
+// Runs inside the alloyengine extension.
+
+logging {
+  level = "debug"
+}
+
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://nginx-proxy:8080/api/v1/push"
+  }
+  external_labels = {
+    alloy_test_name = "metamonitor-otel",
+  }
+}

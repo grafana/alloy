@@ -124,6 +124,13 @@ The `conditions` argument accepts a list of [OTTL][] conditions that the connect
 The connector processes data into the metric only when at least one condition evaluates to `true`.
 If you don't specify `conditions`, the connector processes all data.
 
+[spans]: #spans
+[attributes]: #attributes
+[exponential_histogram]: #exponential_histogram
+[sum]: #sum
+[gauge]: #gauge
+[histogram]: #histogram
+
 ### `datapoints`
 
 The `datapoints` block configures a metric generated from metric data points.

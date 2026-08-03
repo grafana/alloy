@@ -25,7 +25,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]any{
-				"error_mode": "propagate",
+				"error_mode": "ignore",
 			},
 		},
 		{

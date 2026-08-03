@@ -1,3 +1,4 @@
 build/
 dist/
 **/*tsconfig.json
+src/test/generated_fixtures/discovery.kubernetes.heavy.json

@@ -43,6 +43,7 @@ type Arguments struct {
 	HonorMetadata                     bool                 `alloy:"honor_metadata,attr,optional"`
 	ConvertClassicHistogramsToNHCB    bool                 `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
 	KeepIdentifyingResourceAttributes bool                 `alloy:"keep_identifying_resource_attributes,attr,optional"`
+	StartTimestampZeroIngestion       bool                 `alloy:"start_timestamp_zero_ingestion,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
@@ -169,6 +170,9 @@ func validateStabilityLevel(o component.Options, args Arguments) error {
 	if args.ConvertClassicHistogramsToNHCB && !o.MinStability.Permits(featuregate.StabilityExperimental) {
 		return fmt.Errorf("convert_classic_histograms_to_nhcb is experimental and requires setting the stability.level flag to experimental")
 	}
+	if args.StartTimestampZeroIngestion && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("start_timestamp_zero_ingestion is experimental and requires setting the stability.level flag to experimental")
+	}
 	return nil
 }
 
@@ -181,5 +185,6 @@ func convertArgumentsToConvertOptions(args Arguments) convert.Options {
 		HonorMetadata:                     args.HonorMetadata,
 		ConvertClassicHistogramsToNHCB:    args.ConvertClassicHistogramsToNHCB,
 		KeepIdentifyingResourceAttributes: args.KeepIdentifyingResourceAttributes,
+		EnableStartTimestampZeroIngestion: args.StartTimestampZeroIngestion,
 	}
 }

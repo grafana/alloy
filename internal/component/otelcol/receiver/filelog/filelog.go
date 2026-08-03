@@ -55,6 +55,7 @@ type Arguments struct {
 	IncludeFileRecordNumber bool                     `alloy:"include_file_record_number,attr,optional"`
 	Compression             string                   `alloy:"compression,attr,optional"`
 	AcquireFSLock           bool                     `alloy:"acquire_fs_lock,attr,optional"`
+	FileCacheAdvise         bool                     `alloy:"file_cache_advise,attr,optional"`
 	MultilineConfig         *otelcol.MultilineConfig `alloy:"multiline,block,optional"`
 	TrimConfig              *otelcol.TrimConfig      `alloy:",squash"`
 	Header                  *HeaderConfig            `alloy:"header,block,optional"`
@@ -172,6 +173,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.IncludeFileRecordNumber = args.IncludeFileRecordNumber
 	cfg.InputConfig.Compression = args.Compression
 	cfg.InputConfig.AcquireFSLock = args.AcquireFSLock
+	cfg.InputConfig.FileCacheAdvise = args.FileCacheAdvise
 
 	if len(args.Attributes) > 0 {
 		cfg.InputConfig.Attributes = make(map[string]helper.ExprStringConfig, len(args.Attributes))

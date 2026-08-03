@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 	"testing"
@@ -44,12 +45,13 @@ func TestFile(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "test", Offset: 5}, nil)
 		verifyResult(t, file, &Line{Text: testString, Offset: 4104}, nil)
 		verifyResult(t, file, &Line{Text: "hello", Offset: 4110}, nil)
 		verifyResult(t, file, &Line{Text: "world", Offset: 4116}, nil)
+		verifyResult(t, file, nil, io.EOF)
 	})
 
 	t.Run("read", func(t *testing.T) {
@@ -68,11 +70,12 @@ func TestFile(t *testing.T) {
 				Offset:   0,
 			})
 			require.NoError(t, err)
-			defer file.Stop()
+			defer file.Close()
 
 			verifyResult(t, file, &Line{Text: "hello", Offset: first}, nil)
 			verifyResult(t, file, &Line{Text: "world", Offset: middle}, nil)
 			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, nil, io.EOF)
 		})
 
 		t.Run("skip first", func(t *testing.T) {
@@ -81,10 +84,11 @@ func TestFile(t *testing.T) {
 				Offset:   first,
 			})
 			require.NoError(t, err)
-			defer file.Stop()
+			defer file.Close()
 
 			verifyResult(t, file, &Line{Text: "world", Offset: middle}, nil)
 			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, nil, io.EOF)
 		})
 
 		t.Run("last", func(t *testing.T) {
@@ -93,9 +97,10 @@ func TestFile(t *testing.T) {
 				Offset:   middle,
 			})
 			require.NoError(t, err)
-			defer file.Stop()
+			defer file.Close()
 
 			verifyResult(t, file, &Line{Text: "test", Offset: end}, nil)
+			verifyResult(t, file, nil, io.EOF)
 		})
 	})
 
@@ -108,14 +113,17 @@ func TestFile(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
+		verifyResult(t, file, nil, io.EOF)
 		go func() {
 			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "rld\n")
 		}()
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "world", Offset: 12}, nil)
+		verifyResult(t, file, nil, io.EOF)
 	})
 
 	t.Run("truncate", func(t *testing.T) {
@@ -130,7 +138,7 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "a really long string goes here", Offset: 31}, nil)
 		verifyResult(t, file, &Line{Text: "hello", Offset: 37}, nil)
@@ -141,7 +149,7 @@ func TestFile(t *testing.T) {
 			<-time.After(100 * time.Millisecond)
 			truncateFile(t, name, "h311o\nw0r1d\nendofworld\n")
 		}()
-
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "h311o", Offset: 6}, nil)
 		verifyResult(t, file, &Line{Text: "w0r1d", Offset: 12}, nil)
 		verifyResult(t, file, &Line{Text: "endofworld", Offset: 23}, nil)
@@ -156,16 +164,17 @@ func TestFile(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
+		ctx, cancel := context.WithCancel(t.Context())
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			require.NoError(t, file.Stop())
+			cancel()
 		}()
 
-		_, err = file.Next()
-		require.ErrorIs(t, err, context.Canceled)
+		require.ErrorIs(t, file.Wait(ctx), context.Canceled)
 	})
 
 	t.Run("stopped while waiting for file to be created", func(t *testing.T) {
@@ -180,16 +189,18 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "hello", Offset: 6}, nil)
 		removeFile(t, name)
+		verifyResult(t, file, nil, io.EOF)
+		ctx, cancel := context.WithCancel(t.Context())
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
-			file.Stop()
+			cancel()
 		}()
-		_, err = file.Next()
-		require.ErrorIs(t, err, context.Canceled)
+		require.ErrorIs(t, file.Wait(ctx), context.Canceled)
 	})
 
 	t.Run("calls to next after stop", func(t *testing.T) {
@@ -201,9 +212,9 @@ func TestFile(t *testing.T) {
 			Filename: name,
 		})
 		require.NoError(t, err)
-		file.Stop()
+		file.Close()
 
-		verifyResult(t, file, nil, context.Canceled)
+		verifyResult(t, file, nil, fs.ErrClosed)
 	})
 
 	t.Run("file rotation drains remaining lines from old file", func(t *testing.T) {
@@ -218,7 +229,7 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		// Read first two lines
 		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
@@ -232,7 +243,12 @@ func TestFile(t *testing.T) {
 		// Verify we get the remaining old lines first, then new lines
 		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, nil, io.EOF)
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "partial", Offset: 31}, nil)
+
+		verifyResult(t, file, nil, io.EOF)
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 		verifyResult(t, file, &Line{Text: "newline2", Offset: 18}, nil)
 	})
@@ -248,7 +264,7 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		appended := make(chan struct{})
 		deleteNow := make(chan struct{})
@@ -279,7 +295,7 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		// Read first two lines
 		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
@@ -287,6 +303,8 @@ func TestFile(t *testing.T) {
 		atomicWrite(t, name, "line1\nline2\nline3\nline4\nnewline1\n")
 		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, nil, io.EOF)
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "newline1", Offset: 33}, nil)
 	})
 
@@ -302,7 +320,7 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		// Read first two lines
 		verifyResult(t, file, &Line{Text: "line1", Offset: 6}, nil)
@@ -311,6 +329,8 @@ func TestFile(t *testing.T) {
 		// Because we buffer lines when file is deleted we still get line3 and line4.
 		verifyResult(t, file, &Line{Text: "line3", Offset: 18}, nil)
 		verifyResult(t, file, &Line{Text: "line4", Offset: 24}, nil)
+		verifyResult(t, file, nil, io.EOF)
+		require.NoError(t, file.Wait(t.Context()))
 		verifyResult(t, file, &Line{Text: "newline1", Offset: 9}, nil)
 	})
 
@@ -320,7 +340,7 @@ func TestFile(t *testing.T) {
 			Encoding: "UTF-16LE",
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ", Offset: 180}, nil)
 		verifyResult(t, file, &Line{Text: "	Sep 24 2019 13:48:23 ", Offset: 228}, nil)
@@ -347,7 +367,7 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 
 		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
-		file.Stop()
+		file.Close()
 
 		enc = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
 		encoded, err = enc.String("newline\r\n")
@@ -362,7 +382,7 @@ func TestFile(t *testing.T) {
 			Offset:   24,
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "newline", Offset: 42}, nil)
 	})
@@ -382,7 +402,7 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 
 		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 24}, nil)
-		file.Stop()
+		file.Close()
 
 		enc = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM).NewEncoder()
 		encoded, err = enc.String("newline\r\n")
@@ -397,7 +417,7 @@ func TestFile(t *testing.T) {
 			Offset:   24,
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "newline", Offset: 42}, nil)
 	})
@@ -413,7 +433,7 @@ func TestFile(t *testing.T) {
 			Encoding: "UTF-16",
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "Hello, 世界", Offset: 18}, nil)
 	})
@@ -499,7 +519,7 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 		verifyResult(t, file, &Line{Text: "line2", Offset: offsets[1]}, nil)
 		verifyResult(t, file, &Line{Text: "line3", Offset: offsets[2]}, nil)
 		verifyResult(t, file, nil, io.EOF)
-		require.NoError(t, file.Stop())
+		require.NoError(t, file.Close())
 
 		file, err = NewFile(logging.NewSlogNop(), &Config{
 			Filename: fileName,
@@ -511,7 +531,7 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 			Offset:      offsets[0],
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		verifyResult(t, file, &Line{Text: "line2", Offset: offsets[1]}, nil)
 		verifyResult(t, file, &Line{Text: "line3", Offset: offsets[2]}, nil)
@@ -520,6 +540,21 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 }
 
 func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encoding.Encoder, useCR bool, offset int64, expected []Line) {
+	verify := func(t *testing.T, f *File, line *Line) {
+		t.Helper()
+		for {
+			got, err := f.Next()
+			if errors.Is(err, io.EOF) {
+				require.NoError(t, f.Wait(t.Context()))
+				continue
+			}
+
+			require.Equal(t, line.Text, got.Text)
+			require.Equal(t, line.Offset, got.Offset)
+			return
+		}
+	}
+
 	t.Run(name, func(t *testing.T) {
 		var (
 			content string
@@ -551,7 +586,7 @@ func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encodin
 			StartFromEnd: true,
 		})
 		require.NoError(t, err)
-		defer file.Stop()
+		defer file.Close()
 
 		go func() {
 			time.Sleep(100 * time.Millisecond)
@@ -559,7 +594,7 @@ func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encodin
 		}()
 
 		for _, line := range expected {
-			verifyResult(t, file, &line, nil)
+			verify(t, file, &line)
 		}
 	})
 }
@@ -631,7 +666,6 @@ func createCompressedFile(t *testing.T, name, compression string, reader io.Read
 func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
 	t.Helper()
 	line, err := f.Next()
-
 	require.ErrorIs(t, err, expectedErr)
 	if expectedLine == nil {
 		require.Nil(t, line)
@@ -658,9 +692,6 @@ func BenchmarkFile(b *testing.B) {
 			WatcherConfig: WatcherConfig{},
 		})
 		require.NoError(b, err)
-		// Disable waiting at EOF so Next returns io.EOF after the file is fully consumed.
-		file.waitAtEOF = false
-
 		for {
 			var err error
 			benchLine, err = file.Next()
@@ -670,6 +701,6 @@ func BenchmarkFile(b *testing.B) {
 			require.NoError(b, err)
 		}
 
-		file.Stop()
+		file.Close()
 	}
 }

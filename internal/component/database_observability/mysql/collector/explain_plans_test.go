@@ -1864,7 +1864,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 0, len(c.queryCache))
 		require.Equal(t, 1, len(c.queryDenylist))
-		require.Equal(t, 1, c.queryDenylist[queryUnderTestHash].failureCount)
+		require.Contains(t, c.queryDenylist, queryUnderTestHash)
 	})
 
 	t.Run("denylisted queries are not added to query cache", func(t *testing.T) {

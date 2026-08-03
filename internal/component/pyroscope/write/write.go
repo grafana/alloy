@@ -78,6 +78,7 @@ type EndpointOptions struct {
 	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
 	MaxBackoff             time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
 	MaxBackoffRetries      int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	RetryOnHTTP429         bool                     `alloy:"retry_on_http_429,attr,optional"`
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
@@ -88,6 +89,7 @@ func GetDefaultEndpointOptions() EndpointOptions {
 		MaxBackoff:             5 * time.Minute,
 		MaxBackoffRetries:      10,
 		HTTPClientConfig:       config.CloneDefaultHTTPClientConfig(),
+		RetryOnHTTP429:         true,
 	}
 
 	return defaultEndpointOptions
@@ -381,7 +383,7 @@ func (f *fanOutClient) Push(
 					"retries", backoff.NumRetries(),
 					"err", err,
 				)
-				if !shouldRetry(err) {
+				if !shouldRetry(err, ec.options.RetryOnHTTP429) {
 					break
 				}
 				backoff.Wait()
@@ -406,7 +408,7 @@ func (f *fanOutClient) Push(
 	return connect.NewResponse(&pushv1.PushResponse{}), nil
 }
 
-func shouldRetry(err error) bool {
+func shouldRetry(err error, retryOnHTTP429 bool) bool {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
@@ -414,7 +416,10 @@ func shouldRetry(err error) bool {
 	var writeErr *PyroscopeWriteError
 	if errors.As(err, &writeErr) {
 		status := writeErr.StatusCode
-		if status == http.StatusTooManyRequests || status == http.StatusRequestTimeout {
+		if status == http.StatusTooManyRequests {
+			return retryOnHTTP429
+		}
+		if status == http.StatusRequestTimeout {
 			return true
 		}
 		return status >= http.StatusInternalServerError
@@ -422,9 +427,10 @@ func shouldRetry(err error) bool {
 
 	switch connect.CodeOf(err) {
 	case connect.CodeDeadlineExceeded, connect.CodeUnknown,
-		connect.CodeResourceExhausted, connect.CodeInternal,
-		connect.CodeUnavailable, connect.CodeDataLoss, connect.CodeAborted:
+		connect.CodeInternal, connect.CodeUnavailable, connect.CodeDataLoss, connect.CodeAborted:
 		return true
+	case connect.CodeResourceExhausted:
+		return retryOnHTTP429
 	}
 	return false
 }
@@ -650,7 +656,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
 					"err", err)
-				if !shouldRetry(err) {
+				if !shouldRetry(err, ec.options.RetryOnHTTP429) {
 					break
 				}
 				backoff.Wait()

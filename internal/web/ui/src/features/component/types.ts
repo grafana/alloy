@@ -52,6 +52,11 @@ export interface ComponentInfo {
    * Used to indicate if live debugging is available for the component
    */
   liveDebuggingEnabled: boolean;
+
+  /**
+   * Module IDs created by this component when it is a module loader / custom component.
+   */
+  createdModuleIDs?: string[];
 }
 
 /**

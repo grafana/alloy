@@ -155,6 +155,9 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				HTTP: &jaeger_remote_sampling.HTTPServerArguments{
 					Endpoint:              "0.0.0.0:5778",
 					CompressionAlgorithms: otelcol.DefaultCompressionAlgorithms,
+					IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+					ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+					WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 				},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{
@@ -194,6 +197,9 @@ func TestUnmarshalUsesDefaults(t *testing.T) {
 				HTTP: &jaeger_remote_sampling.HTTPServerArguments{
 					Endpoint:              "blerg",
 					CompressionAlgorithms: otelcol.DefaultCompressionAlgorithms,
+					IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+					ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+					WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 				},
 				Source: jaeger_remote_sampling.ArgumentsSource{File: "remote.json"},
 				DebugMetrics: otelcolCfg.DebugMetricsArguments{

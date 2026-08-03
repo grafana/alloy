@@ -10,16 +10,17 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"go.opentelemetry.io/ebpf-profiler/interpreter/interpreterconfig"
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
@@ -36,7 +37,6 @@ import (
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -347,23 +347,25 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval:      15 * time.Second,
-		SampleRate:           19,
-		Demangle:             "none",
-		PythonEnabled:        true,
-		PerlEnabled:          true,
-		PHPEnabled:           true,
-		HotspotEnabled:       true,
-		RubyEnabled:          true,
-		V8Enabled:            true,
-		DotNetEnabled:        true,
-		OffCPUThreshold:      0,
-		GoEnabled:            true,
-		LoadProbe:            false,
-		UProbeLinks:          []string{},
-		VerboseMode:          false,
-		LazyMode:             false,
-		NoKernelVersionCheck: false,
+		CollectInterval:          15 * time.Second,
+		SampleRate:               19,
+		Demangle:                 "none",
+		PythonEnabled:            true,
+		PerlEnabled:              true,
+		PHPEnabled:               true,
+		HotspotEnabled:           true,
+		RubyEnabled:              true,
+		V8Enabled:                true,
+		DotNetEnabled:            true,
+		OffCPUThreshold:          0,
+		BPFFSRoot:                "/sys/fs/bpf/",
+		OBIProcessContextEnabled: true,
+		GoEnabled:                true,
+		LoadProbe:                false,
+		ProbeLinks:               []string{},
+		VerboseMode:              false,
+		LazyMode:                 false,
+		NoKernelVersionCheck:     false,
 
 		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
@@ -401,42 +403,36 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.SendErrorFrames = true
 	cfg.ReporterInterval = args.CollectInterval
 	cfg.SamplesPerSecond = args.SampleRate
-	cfg.Tracers = args.tracers()
+	interpreters := interpreterconfig.AllInterpreters()
+	interpreters.Python.Disabled = !args.PythonEnabled
+	interpreters.Perl.Disabled = !args.PerlEnabled
+	interpreters.PHP.Disabled = !args.PHPEnabled
+	interpreters.Hotspot.Disabled = !args.HotspotEnabled
+	interpreters.Ruby.Disabled = !args.RubyEnabled
+	interpreters.V8.Disabled = !args.V8Enabled
+	interpreters.Dotnet.Disabled = !args.DotNetEnabled
+	interpreters.Go.Disabled = !args.GoEnabled
+	cfg.Interpreters = interpreters
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.BPFFSRoot = args.BPFFSRoot
+	cfg.OBIProcessCtx = args.OBIProcessContextEnabled
 	cfg.LoadProbe = args.LoadProbe
-	cfg.ProbeLinks = args.UProbeLinks
+	cfg.ProbeLinks = args.probeLinks()
 	cfg.VerboseMode = args.VerboseMode
 	cfg.NoKernelVersionCheck = args.NoKernelVersionCheck
 	return cfg, nil
 }
 
-func (args *Arguments) tracers() string {
-	var tracers []string
-	if args.PythonEnabled {
-		tracers = append(tracers, "python")
+func (args *Arguments) probeLinks() []string {
+	if len(args.ProbeLinks) > 0 {
+		return args.ProbeLinks
 	}
-	if args.PerlEnabled {
-		tracers = append(tracers, "perl")
+
+	probeLinks := make([]string, len(args.DeprecatedArguments.UProbeLinks))
+	for i, link := range args.DeprecatedArguments.UProbeLinks {
+		probeLinks[i] = "uprobe:" + link
 	}
-	if args.PHPEnabled {
-		tracers = append(tracers, "php")
-	}
-	if args.HotspotEnabled {
-		tracers = append(tracers, "hotspot")
-	}
-	if args.V8Enabled {
-		tracers = append(tracers, "v8")
-	}
-	if args.RubyEnabled {
-		tracers = append(tracers, "ruby")
-	}
-	if args.DotNetEnabled {
-		tracers = append(tracers, "dotnet")
-	}
-	if args.GoEnabled {
-		tracers = append(tracers, "go")
-	}
-	return strings.Join(tracers, ",")
+	return probeLinks
 }
 
 func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) alloydiscovery.TargetsOptions {

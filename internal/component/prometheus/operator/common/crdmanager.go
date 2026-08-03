@@ -181,11 +181,14 @@ func (c *crdManager) Run(ctx context.Context) error {
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
 	defer alloyAppendable.Clear()
 
-	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
 	scrapeOpts := &scrape.Options{
 		AppendMetadata:          c.args.Scrape.HonorMetadata,
 		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
 		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
+		// ParseST extracts the start timestamp from the scrape formats;
+		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
+		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
 	}
 	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
 	if err != nil {
@@ -509,7 +512,8 @@ func (c *crdManager) addDebugInfo(ns string, name string, err error) {
 	}
 	if data, err := c.opts.GetServiceData(http.ServiceName); err == nil {
 		if hdata, ok := data.(http.Data); ok {
-			debug.ScrapeConfigsURL = fmt.Sprintf("%s%s/scrapeConfig/%s/%s", hdata.HTTPListenAddr, hdata.HTTPPathForComponent(c.opts.ID), ns, name)
+			// HTTPPathForComponent already returns a path with a trailing slash.
+			debug.ScrapeConfigsURL = fmt.Sprintf("%s%sscrapeConfig/%s/%s", hdata.HTTPListenAddr, hdata.HTTPPathForComponent(c.opts.ID), ns, name)
 		}
 	}
 	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)

@@ -22,6 +22,7 @@ import (
 )
 
 var errUnknownFile = errors.New("unknown file")
+var vdsoPathName = libpf.Intern(process.VdsoPathName)
 
 type cachedMarker int
 
@@ -198,7 +199,7 @@ func (c *Resolver) ObserveExecutable(fid libpf.FileID, md *reporter.ExecutableMe
 	if md.MappingFile == (libpf.FrameMappingFile{}) {
 		return fmt.Errorf("invalid mapping file")
 	}
-	if md.MappingFile.Value().FileName == process.VdsoPathName {
+	if md.MappingFile.Value().FileName == vdsoPathName {
 		c.cache.Add(fid, cached)
 		return nil
 	}

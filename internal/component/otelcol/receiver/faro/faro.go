@@ -45,6 +45,9 @@ func (args *Arguments) SetToDefault() {
 		HTTPServer: otelcol.HTTPServerArguments{
 			Endpoint:              "localhost:8080",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
 	}
 	args.DebugMetrics.SetToDefault()

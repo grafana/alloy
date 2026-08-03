@@ -148,9 +148,9 @@ The following arguments are supported:
 | `s3_bucket` | `string` | Configures which resource attribute's value should be used as the S3 prefix. |         | yes      |
 | `s3_prefix` | `string` | Configures which resource attribute's value should be used as the S3 bucket. |         | no      |
 
-When `s3_prefix` or `s3_bucket` are set, they dynamically override the [`s3_uploader`][s3_uploader] attributes.
+When `s3_prefix` or `s3_bucket` are set, they dynamically override the [`s3_uploader`](#s3_uploader) attributes.
 If the specified resource attribute exists in the data, its value will be used.
-Otherwise, the [`s3_uploader`][s3_uploader] attribute will serve as the fallback.
+Otherwise, the [`s3_uploader`](#s3_uploader) attribute will serve as the fallback.
 
 ### Compression
 

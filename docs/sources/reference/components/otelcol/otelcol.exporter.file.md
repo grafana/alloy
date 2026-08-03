@@ -43,8 +43,6 @@ You can use the following arguments with `otelcol.exporter.file`:
 | `flush_interval` | `duration` | Time between flushes to disk. Must be greater than zero. | `"1s"`   | no       |
 | `format`         | `string`   | Data format. Must be `"json"` or `"proto"`.              | `"json"` | no       |
 
-You can't enable `append` and `compression` together.
-
 {{< admonition type="note" >}}
 The upstream `encoding` argument isn't supported.
 Use `format` instead.

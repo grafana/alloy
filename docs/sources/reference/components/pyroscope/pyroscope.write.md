@@ -90,18 +90,23 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`   | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |           | no       |
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no       |
+| `retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.                                                  | `true`    | no       |
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`oauth2`][oauth2] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#endpoint) argument
+* [`bearer_token`](#endpoint) argument
+* [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 When you provide multiple `endpoint` blocks, profiles are concurrently forwarded to all configured locations.
+
+The `retry_on_http_429` argument specifies whether `HTTP 429` status code responses should be treated as recoverable errors.
+Other `HTTP 4xx` status code responses are never considered recoverable errors, with the exception of `HTTP 408 Request Timeout`, which is always retried.
+When `retry_on_http_429` is enabled, the retry mechanism is governed by the backoff configuration specified through `min_backoff_period`, `max_backoff_period` and `max_backoff_retries` attributes.
 
 ### `authorization`
 

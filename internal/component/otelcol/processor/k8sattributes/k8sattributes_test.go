@@ -47,7 +47,34 @@ func Test_Extract(t *testing.T) {
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
 
-	require.True(t, extract.DeploymentNameFromReplicaSet)
+	require.True(t, extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+}
+
+func Test_DeploymentNameFromReplicaSet(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	t.Run("default", func(t *testing.T) {
+		otelObj := convert(t, `
+			output {}
+		`)
+		require.True(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				deployment_name_from_replicaset = false
+			}
+			output {}
+		`)
+		require.False(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+	})
 }
 
 func Test_ExtractAnnotations(t *testing.T) {
@@ -402,5 +429,41 @@ func Test_WaitForMetadata(t *testing.T) {
 
 		require.True(t, otelObj.WaitForMetadata)
 		require.Equal(t, 14*time.Second, otelObj.WaitForMetadataTimeout)
+	})
+}
+
+func Test_WatchSyncPeriod(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 5*time.Minute, otelObj.WatchSyncPeriod)
+	})
+
+	t.Run("non_default", func(t *testing.T) {
+		cfg := `
+		watch_sync_period = "30s"
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 30*time.Second, otelObj.WatchSyncPeriod)
 	})
 }

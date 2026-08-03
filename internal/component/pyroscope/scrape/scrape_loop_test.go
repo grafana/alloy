@@ -149,12 +149,16 @@ func TestScrapeLoop(t *testing.T) {
 			model.SchemeLabel, "http",
 			model.AddressLabel, strings.TrimPrefix(server.URL, "http://"),
 			ProfilePath, "/debug/pprof/profile",
+			pyroscope.LabelOtelScopeName, "user-scope",
+			pyroscope.LabelOtelScopeVersion, "user-version",
 		), url.Values{
 			"seconds": []string{"1"},
 		}),
 		server.Client(),
 		pyroscope.AppendableFunc(func(_ context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 			appendTotal.Inc()
+			require.Equal(t, "user-scope", labels.Get(pyroscope.LabelOtelScopeName))
+			require.Equal(t, "user-version", labels.Get(pyroscope.LabelOtelScopeVersion))
 			require.Equal(t, []byte{0x0A, 0x02, 0x6F, 0x6B}, samples[0].RawProfile)
 			return nil
 		}),

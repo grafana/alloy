@@ -14,6 +14,7 @@ otelcol.receiver.vcenter "default" {
 			enabled = false
 		}
 	}
+	max_query_metrics = 0
 
 	output {
 		traces = [otelcol.exporter.otlp.default.input]

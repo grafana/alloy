@@ -261,7 +261,7 @@ stage.drop {
 
 ### `stage.eventlogmessage`
 
-Deprecated in favor of the [`stage.windowsevent`][stage.windowsevent] block.
+Deprecated in favor of the [`stage.windowsevent`](#stagewindowsevent) block.
 
 The `eventlogmessage` stage extracts data from the Message string that appears in the Windows Event Log.
 
@@ -591,7 +591,7 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
-For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+For labels that are static, refer to [`stage.static_labels`](#stagestatic_labels)
 
 The following arguments are supported:
 
@@ -720,24 +720,28 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                    | Default          | Required |
-| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
-| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
-| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
+| Name          | Type     | Description                                                                  | Default          | Required |
+| ------------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.                | `""`             | no       |
+| `min_length`  | `int`    | Minimum length of digits to consider                                         | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                              | `"**REDACTED**"` | no       |
+| `skip_regex`  | `string` | A regular expression identifying substrings to exclude from Luhn evaluation. | `""`             | no       |
+| `source`      | `string` | Source of the data to parse.                                                 | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
 
-If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4242-4242-4242-4242`, you can configure the `delimiters` field with the expected delimiters.
+
+When `skip_regex` is set to a non-empty regular expression, any substring matching it is excluded from Luhn evaluation.
+This is useful when log lines contain values, such as UUIDs, whose digit groups happen to pass the Luhn check, which would otherwise cause them to be incorrectly redacted.
 
 #### Example
 
 The following example log line contains an approved credit card number.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032032513548443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -755,7 +759,7 @@ time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit 
 The following example log line contains an approved credit card number, represented with dash characters between each group of four digits.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032-0325-1354-8443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242-4242-4242-4242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -767,6 +771,27 @@ The stage parses the log line, redacts the credit card number, and produces the 
 
 ```text
 time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=example_name"
+```
+
+#### Example with `skip_regex`
+
+The following example log line contains both a credit card number and a session UUID whose last segment (`424242424242`) is itself a 12-digit Luhn-valid number.
+Without `skip_regex`, the stage would incorrectly redact part of the UUID.
+
+```alloy
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
+
+stage.luhn {
+    replacement = "**DELETED**"
+    min_length  = 12
+    skip_regex  = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+}
+```
+
+The stage redacts the credit card number but leaves the UUID intact:
+
+```text
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
 ```
 
 ### `stage.match`
@@ -1513,7 +1538,7 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
-For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+For labels that are dynamic, refer to [`stage.labels`](#stagelabels)
 
 The following arguments are supported:
 
@@ -2088,10 +2113,10 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit](#stagelimit).
 * `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
-* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
-* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri](#stagecri).
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri](#stagecri).
 
 ## Example
 

@@ -21,6 +21,8 @@ body:
       - beyla.ebpf
       - database_observability.mysql
       - database_observability.postgres
+      - database_observability.sql_server
+      - discovery.aws
       - discovery.azure
       - discovery.consul
       - discovery.consulagent
@@ -120,6 +122,7 @@ body:
       - otelcol.processor.memory_limiter
       - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
+      - otelcol.processor.redaction
       - otelcol.processor.resourcedetection
       - otelcol.processor.span
       - otelcol.processor.tail_sampling
@@ -232,6 +235,12 @@ body:
       label: Logs
       description: Provide logs relevant to the issue. Remove sensitive information before sharing. This will be formatted into a code block; don't add backtick code fences.
       render: text
+  - type: checkboxes
+    attributes:
+      label: AI disclosure
+      description: See the [Generative AI Contribution Policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md).
+      options:
+        - label: This issue was substantially generated with AI assistance.
   - type: dropdown
     attributes:
       label: Tip

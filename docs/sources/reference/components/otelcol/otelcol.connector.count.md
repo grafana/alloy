@@ -98,6 +98,8 @@ If you don't define any `spanevents` blocks, the connector emits a default metri
 This block shares the same configuration structure as [`spans`][spans].
 Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
 
+[spans]: #spans
+
 ### `metrics`
 
 The `metrics` block configures a custom metric for counting metrics.

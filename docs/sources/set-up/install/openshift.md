@@ -24,7 +24,7 @@ You must configure Role-Based Access Control (RBAC) to allow secure access to Ku
 
 ## Run {{% param "PRODUCT_NAME" %}} as a non-root user
 
-You must configure {{< param "PRODUCT_NAME" >}} to [run as a non-root user][nonroot].
+You must configure {{< param "PRODUCT_NAME" >}} [access and permissions on Kubernetes][access-kubernetes].
 This ensures that {{< param "PRODUCT_NAME" >}} complies with your OCP security policies.
 
 ## Apply security context constraints
@@ -158,7 +158,7 @@ Refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy] for more information
 
 [rbac.yaml]: https://github.com/grafana/alloy/blob/main/operations/helm/charts/alloy/templates/rbac.yaml
 [rbac]: https://docs.openshift.com/container-platform/latest/authentication/using-rbac.html
-[nonroot]: ../../../configure/nonroot/
+[access-kubernetes]: ../../../access_permissions/kubernetes/
 [scc]: https://docs.openshift.com/container-platform/latest/authentication/managing-security-context-constraints.html
 [Configure]: ../../../configure/linux/
 [deploy]: ../../deploy/
