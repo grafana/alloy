@@ -10,9 +10,10 @@ import (
 )
 
 // newRLBenchLogger builds a real *Logger that writes to io.Discard, using
-// the given RateLimitingOptions. It sets up a fresh metrics registry, so the
-// drop path exercises the alloy_logging_suppressed_lines_total counter, the
-// same as in production.
+// the given RateLimitingOptions. New builds the root handler first, and
+// InitRateLimitMetrics runs after, the same order production code uses. The
+// drop path exercises the live alloy_logging_suppressed_lines_total counter,
+// the same as in production.
 func newRLBenchLogger(b *testing.B, rl RateLimitingOptions) *Logger {
 	b.Helper()
 	l, err := New(io.Discard, Options{

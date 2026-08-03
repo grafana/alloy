@@ -53,13 +53,20 @@ type Logger struct {
 	// limiting off), and Update swaps it atomically. The stored version
 	// increases on each swap, so samplingInjector instances know to rebuild
 	// their cached, per-component replay of the root handler.
-	rlHolder  atomic.Pointer[versionedHandler]
-	rlMetrics *rateLimitMetrics
+	rlHolder atomic.Pointer[versionedHandler]
+	// rlMetrics holds the suppressed-lines metric, or nil before
+	// InitRateLimitMetrics runs. buildRoot's OnDropped closure reads this
+	// pointer live on every drop, so it is an atomic.Pointer rather than a
+	// plain field: InitRateLimitMetrics can set it at any time, even after
+	// an earlier Update already built the root handler, and drops that
+	// follow will still be counted.
+	rlMetrics atomic.Pointer[rateLimitMetrics]
 
-	// rlMut guards the rate-limiting block in Update: the rlApplied check,
-	// buildRoot call, version increase, and rlHolder store must happen as
-	// one unit. rlMut also guards rlMetrics, which Update reads without any
-	// other synchronization against InitRateLimitMetrics.
+	// rlMut guards the rate-limiting block in Update (the rlApplied check,
+	// buildRoot call, version increase, and rlHolder store, which must
+	// happen as one unit) and InitRateLimitMetrics's one-time set of
+	// rlMetrics. Reading rlMetrics is lock-free (atomic); rlMut is not
+	// needed for that.
 	rlMut sync.Mutex
 	// rlApplied is the RateLimitingOptions last used to build the current
 	// rlHolder root. It is nil until the first Update runs. Update rebuilds
@@ -171,7 +178,7 @@ func (l *Logger) Update(o Options) error {
 
 	l.rlMut.Lock()
 	if l.rlApplied == nil || *l.rlApplied != rlOpts {
-		root := buildRoot(rlOpts, l.handler, l.rlMetrics)
+		root := buildRoot(rlOpts, l.handler, &l.rlMetrics)
 		next := l.rlHolder.Load().version + 1
 		l.rlHolder.Store(&versionedHandler{version: next, h: root})
 		applied := rlOpts
@@ -211,12 +218,15 @@ func (l *Logger) flushBuffer() {
 	}
 }
 
-// InitRateLimitMetrics sets up the suppressed-lines metric. Call this once, before the logger is shared.
+// InitRateLimitMetrics sets up the suppressed-lines metric. Call this once.
+// It takes effect right away, including for a logger that already has an
+// Update call behind it: buildRoot's OnDropped closure reads rlMetrics live,
+// so InitRateLimitMetrics does not need to run before the first Update.
 func (l *Logger) InitRateLimitMetrics(reg prometheus.Registerer) {
 	l.rlMut.Lock()
 	defer l.rlMut.Unlock()
-	if l.rlMetrics == nil {
-		l.rlMetrics = newRateLimitMetrics(reg)
+	if l.rlMetrics.Load() == nil {
+		l.rlMetrics.Store(newRateLimitMetrics(reg))
 	}
 }
 

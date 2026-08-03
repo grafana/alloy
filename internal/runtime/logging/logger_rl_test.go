@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 )
@@ -180,6 +181,42 @@ func TestUpdateChangedOptionsRebuilds(t *testing.T) {
 	log.Info("changed")
 	log.Info("changed") // 2nd: over the NEW threshold of 1, dropped
 	require.Equal(t, 1, strings.Count(buf.String(), "msg=changed"))
+}
+
+// TestMetricInitAfterUpdateStillCounts checks that InitRateLimitMetrics
+// takes effect even when it runs after the first Update already built the
+// root handler. Before the fix, buildRoot closed over the *rateLimitMetrics
+// value at build time; a nil value at that point (metrics not yet
+// initialized) meant the counter stayed silently disabled forever, no
+// matter when InitRateLimitMetrics ran afterward.
+func TestMetricInitAfterUpdateStillCounts(t *testing.T) {
+	defer goleak.VerifyNone(t)
+	var buf bytes.Buffer
+	// New runs the first Update with no metrics registered yet.
+	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
+		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 1, Rate: 0, MaxSignatures: 100}})
+	require.NoError(t, err)
+
+	// Metrics are initialized only now, after the root handler already exists.
+	reg := prometheus.NewRegistry()
+	l.InitRateLimitMetrics(reg)
+
+	log := l.Slog()
+	log.Info("late-metric")
+	log.Info("late-metric") // 2nd dropped: over threshold
+
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+	var total float64
+	for _, mf := range mfs {
+		if mf.GetName() != "alloy_logging_suppressed_lines_total" {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			total += m.GetCounter().GetValue()
+		}
+	}
+	require.GreaterOrEqual(t, total, float64(1), "suppressed-lines counter must increment even when InitRateLimitMetrics runs after the first Update")
 }
 
 // TestConcurrentUpdatesNoRace calls Update from many goroutines at once,

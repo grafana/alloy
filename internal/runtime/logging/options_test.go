@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -110,6 +111,7 @@ func TestRateLimitingValidate(t *testing.T) {
 		func(o *RateLimitingOptions) { o.Threshold = 0 },
 		func(o *RateLimitingOptions) { o.Rate = -0.1 },
 		func(o *RateLimitingOptions) { o.Rate = 1.1 },
+		func(o *RateLimitingOptions) { o.Rate = math.NaN() },
 		func(o *RateLimitingOptions) { o.MaxSignatures = 0 },
 	} {
 		bad := valid

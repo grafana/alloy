@@ -14,9 +14,10 @@ import (
 
 type componentInfo struct{ id, path string }
 
-// sniffComponent reads component_id, controller_id, and component_path from
-// attrs and merges them onto base. It returns the result.
-// If component_id is set, it wins over controller_id.
+// sniffComponent reads component_id, controller_id, component_path, and
+// controller_path from attrs and merges them onto base. It returns the
+// result. If component_id is set, it wins over controller_id; the same
+// precedence applies to component_path over controller_path.
 func sniffComponent(base componentInfo, attrs []slog.Attr) componentInfo {
 	c := base
 	for _, a := range attrs {
@@ -29,6 +30,10 @@ func sniffComponent(base componentInfo, attrs []slog.Attr) componentInfo {
 			}
 		case "component_path":
 			c.path = a.Value.String()
+		case "controller_path":
+			if c.path == "" {
+				c.path = a.Value.String()
+			}
 		}
 	}
 	return c
@@ -117,17 +122,29 @@ func (m *rateLimitMetrics) onDropped(ctx context.Context, r slog.Record) {
 
 // buildRoot wraps terminal with sampling when rate limiting is enabled.
 // Otherwise it returns terminal unchanged.
-func buildRoot(o RateLimitingOptions, terminal slog.Handler, m *rateLimitMetrics) slog.Handler {
+//
+// metrics is a live pointer, not a captured value: OnDropped reads
+// metrics.Load() on every drop, instead of closing over one
+// *rateLimitMetrics snapshot at build time. This lets InitRateLimitMetrics
+// take effect even when it runs after the root handler was already built by
+// an earlier Update call.
+func buildRoot(o RateLimitingOptions, terminal slog.Handler, metrics *atomic.Pointer[rateLimitMetrics]) slog.Handler {
 	if !o.Enabled {
 		return terminal
 	}
 	opt := slogsampling.ThresholdSamplingOption{
-		Tick:                o.Tick,
-		Threshold:           o.Threshold,
-		Rate:                o.Rate,
-		Matcher:             compMatcher,
-		Buffer:              buffer.NewLRUBuffer[string](o.MaxSignatures),
-		OnDropped:           m.onDropped,
+		Tick:      o.Tick,
+		Threshold: o.Threshold,
+		Rate:      o.Rate,
+		Matcher:   compMatcher,
+		Buffer:    buffer.NewLRUBuffer[string](o.MaxSignatures),
+		OnDropped: func(ctx context.Context, r slog.Record) {
+			if metrics != nil {
+				if m := metrics.Load(); m != nil {
+					m.onDropped(ctx, r)
+				}
+			}
+		},
 		IncludeDroppedCount: true,
 	}
 	return opt.NewMiddleware()(terminal)

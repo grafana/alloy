@@ -68,6 +68,38 @@ func TestSniffComponent(t *testing.T) {
 	})
 }
 
+// TestSniffComponentControllerPath checks a past bug, where sniffComponent
+// ignored controller_path. Controller log lines carry controller_id and
+// controller_path, not component_id and component_path. Without this case,
+// every controller log line got path="", so two nested controllers with the
+// same leaf controller_id under different parents shared one rate-limit
+// bucket and cross-suppressed each other.
+func TestSniffComponentControllerPath(t *testing.T) {
+	t.Run("controller_path used when component_path absent", func(t *testing.T) {
+		c := sniffComponent(componentInfo{}, []slog.Attr{
+			slog.String("controller_id", "controller_id"),
+			slog.String("controller_path", "controller_path"),
+		})
+		require.Equal(t, componentInfo{id: "controller_id", path: "controller_path"}, c)
+	})
+
+	t.Run("component_path wins over controller_path", func(t *testing.T) {
+		c := sniffComponent(componentInfo{}, []slog.Attr{
+			slog.String("controller_path", "/ctrl"),
+			slog.String("component_path", "/comp"),
+		})
+		require.Equal(t, "/comp", c.path)
+	})
+
+	t.Run("component_path wins over controller_path regardless of attr order", func(t *testing.T) {
+		c := sniffComponent(componentInfo{}, []slog.Attr{
+			slog.String("component_path", "/comp"),
+			slog.String("controller_path", "/ctrl"),
+		})
+		require.Equal(t, "/comp", c.path)
+	})
+}
+
 func TestCompMatcherKeysOnPathIDLevelMessage(t *testing.T) {
 	mk := func(path, id string, level slog.Level, msg string) string {
 		ctx := withComponent(context.Background(), componentInfo{path: path, id: id})

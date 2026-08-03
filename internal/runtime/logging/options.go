@@ -198,7 +198,7 @@ func (o RateLimitingOptions) Validate() error {
 		return fmt.Errorf("logging rate_limiting.tick must be > 0, got %v", o.Tick)
 	case o.Threshold == 0:
 		return fmt.Errorf("logging rate_limiting.threshold must be > 0")
-	case o.Rate < 0 || o.Rate > 1:
+	case math.IsNaN(o.Rate) || o.Rate < 0 || o.Rate > 1:
 		return fmt.Errorf("logging rate_limiting.rate must be in [0,1], got %v", o.Rate)
 	case o.MaxSignatures <= 0:
 		return fmt.Errorf("logging rate_limiting.max_signatures must be > 0, got %d", o.MaxSignatures)
