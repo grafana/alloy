@@ -17,6 +17,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		username = "user"
 		password = "pass"
 		collection_interval = "2m"
+		max_query_metrics = 128
 
 		resource_attributes {
 			vcenter.datacenter.name {
@@ -244,6 +245,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.Equal(t, 2*time.Minute, otelArgs.ControllerConfig.CollectionInterval)
 	require.Equal(t, time.Second, otelArgs.ControllerConfig.InitialDelay)
 	require.Equal(t, 0*time.Second, otelArgs.ControllerConfig.Timeout)
+	require.Equal(t, 128, otelArgs.MaxQueryMetrics)
 
 	// Verify ResourceAttributesConfig fields
 	require.True(t, otelArgs.ResourceAttributes.VcenterClusterName.Enabled)

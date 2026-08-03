@@ -197,6 +197,8 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
 
+[OTTL Context]: #ottl-context
+
 ### `metric_statements`
 
 The `metric_statements` block specifies statements which transform metric telemetry signals.

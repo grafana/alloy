@@ -58,6 +58,10 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
@@ -68,6 +72,10 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 
 ## Blocks
 
@@ -130,6 +138,7 @@ The `logs` block configures how to send logs to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                                                                       | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which logs will be exported.                                                                                        | `"otlp_logs"`  | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
@@ -140,6 +149,7 @@ The `metrics` block configures how to send metrics to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default          | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding`                | `string` | The encoding for metrics. Refer to [Supported encodings](#supported-encodings).                                                                   | `"otlp_proto"`   | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_metrics_by_resource_attributes`. | `""`             | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which metrics will be exported.                                                                                     | `"otlp_metrics"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
@@ -150,6 +160,7 @@ The `traces` block configures how to send traces to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for traces. Refer to [Supported encodings](#supported-encodings).                                                                     | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_traces_by_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which traces will be exported.                                                                                      | `"otlp_spans"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 

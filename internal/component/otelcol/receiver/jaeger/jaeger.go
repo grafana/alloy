@@ -159,6 +159,9 @@ func (args *ThriftHTTP) SetToDefault() {
 		HTTPServerArguments: &otelcol.HTTPServerArguments{
 			Endpoint:              "0.0.0.0:14268",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
 	}
 }

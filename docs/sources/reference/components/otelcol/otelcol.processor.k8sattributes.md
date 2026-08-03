@@ -45,6 +45,7 @@ You can use the following arguments with `otelcol.processor.k8sattributes`:
 | `passthrough`               | `bool`     | Pass through signals as-is, only adding a `k8s.pod.ip` resource attribute.     | `false`            | no       |
 | `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`            | no       |
 | `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`            | no       |
+| `watch_sync_period`         | `duration` | The resync period for the Kubernetes informers. `0` disables periodic resync.  | `"5m"`             | no       |
 
 The supported values for `auth_type` are:
 

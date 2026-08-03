@@ -1,8 +1,12 @@
 package collector
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +17,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -999,4 +1004,199 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestQueryDetails_QueryAssociation_OnEmitsFingerprint checks that with
+// enable_error_logs_processing = true the op stays "query_association" and the
+// body carries a query_fingerprint matching fingerprint.Fingerprint.
+func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
+	if !fingerprint.Supported() {
+		t.Skip("query_association fingerprints require SQL fingerprinting, which needs a cgo build")
+	}
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:                        db,
+		CollectInterval:           200 * time.Millisecond,
+		StatementsLimit:           100,
+		EntryHandler:              lokiClient,
+		EnableErrorLogsProcessing: true,
+		Logger:                    util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	const q = "SELECT * FROM users WHERE id = $1"
+	fp, err := fingerprint.Fingerprint(q)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", q, "books_store"))
+
+	require.NoError(t, c.Start(t.Context()))
+	defer c.Stop()
+
+	require.Eventually(t, func() bool {
+		for _, e := range lokiClient.Received() {
+			if e.Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(e.Line, "query_fingerprint=") {
+				return true
+			}
+		}
+		return false
+	}, 3*time.Second, 50*time.Millisecond, "fingerprinted query_association op should be emitted")
+
+	c.Stop()
+	lokiClient.Stop()
+
+	entries := lokiClient.Received()
+	var assoc *loki.Entry
+	for i := range entries {
+		if entries[i].Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(entries[i].Line, "query_fingerprint=") {
+			assoc = &entries[i]
+			break
+		}
+	}
+	require.NotNil(t, assoc, "expected at least one fingerprinted query_association entry")
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, assoc.Labels)
+	expectedBody := fmt.Sprintf(`level="info" queryid="abc123" query_fingerprint="%s" querytext=%q datname="books_store"`, fp, q)
+	require.Equal(t, expectedBody, assoc.Line)
+}
+
+// TestQueryDetails_QueryAssociation_OffOmitsFingerprint confirms that with
+// enable_error_logs_processing = false (default) the body carries no
+// query_fingerprint field.
+func TestQueryDetails_QueryAssociation_OffOmitsFingerprint(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: 200 * time.Millisecond,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+		// EnableErrorLogsProcessing intentionally omitted — defaults to false
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", "SELECT 1", "books_store"))
+
+	require.NoError(t, c.Start(t.Context()))
+	defer c.Stop()
+
+	require.Eventually(t, func() bool {
+		for _, e := range lokiClient.Received() {
+			if e.Labels["op"] == OP_QUERY_ASSOCIATION {
+				return true
+			}
+		}
+		return false
+	}, 3*time.Second, 50*time.Millisecond, "legacy op should be emitted when flag is off")
+
+	c.Stop()
+	lokiClient.Stop()
+
+	for _, e := range lokiClient.Received() {
+		require.NotContains(t, e.Line, "query_fingerprint=", "no body should carry query_fingerprint when flag is off")
+	}
+}
+
+// TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack checks that with
+// enable_error_logs_processing = true, a row that yields no fingerprint still
+// emits a query_association entry without the query_fingerprint field, plus a
+// warning carrying the queryid — rather than dropping the association.
+func TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack(t *testing.T) {
+	if !fingerprint.Supported() {
+		t.Skip("query_association fingerprints require SQL fingerprinting, which needs a cgo build")
+	}
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	// Capture logs so we can assert the warning is emitted for the skipped row.
+	var logBuf lockedBuffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:                        db,
+		CollectInterval:           200 * time.Millisecond,
+		StatementsLimit:           100,
+		EntryHandler:              lokiClient,
+		EnableErrorLogsProcessing: true,
+		Logger:                    logger,
+	})
+	require.NoError(t, err)
+
+	// "empty1" (empty text → no fingerprint) is ordered first so that once the
+	// valid row's fingerprinted association appears, empty1 is already processed.
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("empty1", "", "books_store").
+			AddRow("valid1", "SELECT 1", "books_store"))
+
+	require.NoError(t, c.Start(t.Context()))
+	defer c.Stop()
+
+	require.Eventually(t, func() bool {
+		for _, e := range lokiClient.Received() {
+			if e.Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(e.Line, "query_fingerprint=") {
+				return true
+			}
+		}
+		return false
+	}, 3*time.Second, 50*time.Millisecond, "valid row should emit a fingerprinted query_association")
+
+	c.Stop()
+	lokiClient.Stop()
+
+	received := lokiClient.Received()
+	var emptyAssoc *loki.Entry
+	for i := range received {
+		require.NotContains(t, received[i].Line, `query_fingerprint=""`, "must never emit an empty query_fingerprint")
+		if received[i].Labels["op"] == OP_QUERY_ASSOCIATION && strings.Contains(received[i].Line, `queryid="empty1"`) {
+			emptyAssoc = &received[i]
+		}
+	}
+	require.NotNil(t, emptyAssoc, "empty-fingerprint row should still emit a query_association entry")
+	require.NotContains(t, emptyAssoc.Line, "query_fingerprint=", "empty-fingerprint row must omit the query_fingerprint field")
+
+	logs := logBuf.String()
+	require.Contains(t, logs, "could not compute query fingerprint")
+	require.Contains(t, logs, "queryid=empty1")
+}
+
+// lockedBuffer is a concurrency-safe writer for capturing logs emitted from the
+// collector's collect goroutine in tests.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }

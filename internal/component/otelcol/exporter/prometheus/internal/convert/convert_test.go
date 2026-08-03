@@ -1812,3 +1812,213 @@ func (a *strictMetadataAppender) AppendHistogramSTZeroSample(ref storage.SeriesR
 }
 
 func (a *strictMetadataAppender) SetOptions(o *storage.AppendOptions) {}
+
+// TestConverterStartTimestampZeroIngestion verifies that a zero sample is
+// injected at the start timestamp of cumulative series when the feature is
+// enabled, and only then.
+func TestConverterStartTimestampZeroIngestion(t *testing.T) {
+	// start_time_unix_nano = 50s, time_unix_nano = 100s.
+	counter := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_metric_seconds_total",
+					"sum": {
+						"aggregation_temporality": 2,
+						"is_monotonic": true,
+						"data_points": [{
+							"start_time_unix_nano": 50000000000,
+							"time_unix_nano": 100000000000,
+							"as_double": 15
+						}]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	// Non-monotonic sum -> gauge; a start timestamp is meaningless.
+	gauge := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_metric_seconds",
+					"sum": {
+						"aggregation_temporality": 2,
+						"is_monotonic": false,
+						"data_points": [{
+							"start_time_unix_nano": 50000000000,
+							"time_unix_nano": 100000000000,
+							"as_double": 15
+						}]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	// Counter without a start timestamp.
+	counterNoStart := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_metric_seconds_total",
+					"sum": {
+						"aggregation_temporality": 2,
+						"is_monotonic": true,
+						"data_points": [{
+							"time_unix_nano": 100000000000,
+							"as_double": 15
+						}]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	tt := []struct {
+		name             string
+		input            string
+		enable           bool
+		expectZeroSample bool
+	}{
+		{name: "counter, enabled", input: counter, enable: true, expectZeroSample: true},
+		{name: "counter, disabled", input: counter, enable: false, expectZeroSample: false},
+		{name: "gauge, enabled", input: gauge, enable: true, expectZeroSample: false},
+		{name: "counter without start timestamp, enabled", input: counterNoStart, enable: true, expectZeroSample: false},
+	}
+
+	decoder := &pmetric.JSONUnmarshaler{}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			payload, err := decoder.UnmarshalMetrics([]byte(tc.input))
+			require.NoError(t, err)
+
+			app := &recordingAppender{}
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
+				EnableStartTimestampZeroIngestion: tc.enable,
+			})
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
+
+			var zeroSamples []recordedSample
+			for _, s := range app.samples {
+				if s.method == "append_st_zero" {
+					zeroSamples = append(zeroSamples, s)
+				}
+			}
+
+			if !tc.expectZeroSample {
+				require.Empty(t, zeroSamples)
+				return
+			}
+
+			require.Len(t, zeroSamples, 1)
+			require.Equal(t, int64(100000), zeroSamples[0].t) // sample timestamp, 100s in ms
+			require.Equal(t, int64(50000), zeroSamples[0].st) // start timestamp, 50s in ms
+
+			// The zero sample is injected ahead of the real sample for the same series.
+			require.Equal(t, "append_st_zero", app.samples[0].method)
+			require.Equal(t, "append", app.samples[1].method)
+			require.Equal(t, app.samples[0].labels, app.samples[1].labels)
+		})
+	}
+}
+
+// TestConverterStartTimestampZeroIngestionDedup verifies that when a single
+// batch contains multiple data points for the same series, all carrying the
+// same start timestamp, only one zero sample is injected.
+func TestConverterStartTimestampZeroIngestionDedup(t *testing.T) {
+	// Two data points, same series (no attributes), same start timestamp (50s),
+	// different sample timestamps (100s, 200s).
+	input := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_metric_seconds_total",
+					"sum": {
+						"aggregation_temporality": 2,
+						"is_monotonic": true,
+						"data_points": [
+							{ "start_time_unix_nano": 50000000000, "time_unix_nano": 100000000000, "as_double": 15 },
+							{ "start_time_unix_nano": 50000000000, "time_unix_nano": 200000000000, "as_double": 20 }
+						]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	payload, err := (&pmetric.JSONUnmarshaler{}).UnmarshalMetrics([]byte(input))
+	require.NoError(t, err)
+
+	app := &recordingAppender{}
+	l := util.TestAlloyLogger(t)
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
+		EnableStartTimestampZeroIngestion: true,
+	})
+	require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
+
+	var zeroSamples, realSamples []recordedSample
+	for _, s := range app.samples {
+		switch s.method {
+		case "append_st_zero":
+			zeroSamples = append(zeroSamples, s)
+		case "append":
+			realSamples = append(realSamples, s)
+		}
+	}
+
+	// Exactly one zero sample despite two data points sharing the start timestamp.
+	require.Len(t, zeroSamples, 1)
+	require.Equal(t, int64(50000), zeroSamples[0].st)
+	// Both real samples are still written.
+	require.Len(t, realSamples, 2)
+}
+
+type recordedSample struct {
+	method string
+	labels string
+	t, st  int64
+	v      float64
+}
+
+// recordingAppender records the order and arguments of append calls so tests
+// can assert start-timestamp zero-sample injection.
+type recordingAppender struct {
+	samples []recordedSample
+}
+
+var _ storage.Appender = (*recordingAppender)(nil)
+
+func (a *recordingAppender) Append(_ storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	a.samples = append(a.samples, recordedSample{method: "append", labels: l.String(), t: t, v: v})
+	return 0, nil
+}
+
+func (a *recordingAppender) AppendSTZeroSample(_ storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
+	a.samples = append(a.samples, recordedSample{method: "append_st_zero", labels: l.String(), t: t, st: st})
+	return 0, nil
+}
+
+func (a *recordingAppender) AppendHistogram(_ storage.SeriesRef, l labels.Labels, t int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	a.samples = append(a.samples, recordedSample{method: "append_histogram", labels: l.String(), t: t})
+	return 0, nil
+}
+
+func (a *recordingAppender) AppendHistogramSTZeroSample(_ storage.SeriesRef, l labels.Labels, t, st int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	a.samples = append(a.samples, recordedSample{method: "append_histogram_st_zero", labels: l.String(), t: t, st: st})
+	return 0, nil
+}
+
+func (a *recordingAppender) AppendExemplar(storage.SeriesRef, labels.Labels, exemplar.Exemplar) (storage.SeriesRef, error) {
+	return 0, nil
+}
+
+func (a *recordingAppender) UpdateMetadata(storage.SeriesRef, labels.Labels, metadata.Metadata) (storage.SeriesRef, error) {
+	return 0, nil
+}
+
+func (a *recordingAppender) Commit() error                     { return nil }
+func (a *recordingAppender) Rollback() error                   { return nil }
+func (a *recordingAppender) SetOptions(*storage.AppendOptions) {}

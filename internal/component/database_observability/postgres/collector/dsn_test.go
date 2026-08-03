@@ -51,6 +51,24 @@ func TestReplaceDatabaseNameInDSN(t *testing.T) {
 			expected:  "postgres://user:pass@localhost:5432/new_db",
 		},
 		{
+			name:      "unix socket - minimum postgres DSN",
+			dsn:       "postgres:///mydb?host=/run/postgresql",
+			newDBName: "newdb",
+			expected:  "postgres:///newdb?host=/run/postgresql",
+		},
+		{
+			name:      "unix socket - general postgres DSN",
+			dsn:       "postgres://user:@/mydb?host=/run/postgresql",
+			newDBName: "newdb",
+			expected:  "postgres://user:@/newdb?host=/run/postgresql",
+		},
+		{
+			name:      "hostname with special characters",
+			dsn:       "postgres://user:pass@ex-amp_le.com:5432/mydb",
+			newDBName: "new_db",
+			expected:  "postgres://user:pass@ex-amp_le.com:5432/new_db",
+		},
+		{
 			name:        "invalid DSN format",
 			dsn:         "invalid-dsn-format",
 			newDBName:   "newdb",

@@ -47,9 +47,7 @@ func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadog
 	)
 
 	return &datadog.Arguments{
-		HTTPServer:  *toHTTPServerArguments(&cfg.ServerConfig),
-		ReadTimeout: cfg.ReadTimeout,
-
+		HTTPServer:   *toHTTPServerArguments(&cfg.ServerConfig),
 		DebugMetrics: common.DefaultValue[datadog.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{

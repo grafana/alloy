@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/prometheus/storage/remote/googleiam"
 	"github.com/prometheus/sigv4"
 	"github.com/stretchr/testify/require"
 
@@ -223,23 +224,119 @@ func TestAlloyConfig(t *testing.T) {
 				url  = "http://0.0.0.0:11111/api/v1/write"
 
 				sigv4 {
-					region     = "us-east-1"
-					access_key = "example_access_key"
-					secret_key = "example_secret_key"
-					profile    = "example_profile"
-					role_arn   = "example_role_arn"
+					region                = "us-east-1"
+					access_key            = "example_access_key"
+					secret_key            = "example_secret_key"
+					profile               = "example_profile"
+					role_arn              = "example_role_arn"
+					external_id           = "example_external_id"
+					use_fips_sts_endpoint = true
+					service_name          = "aps"
 				}
 			}`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
 				c.RemoteWriteConfigs[0].SigV4Config = &sigv4.SigV4Config{
-					Region:    "us-east-1",
-					AccessKey: "example_access_key",
-					SecretKey: commonconfig.Secret("example_secret_key"),
-					Profile:   "example_profile",
-					RoleARN:   "example_role_arn",
+					Region:             "us-east-1",
+					AccessKey:          "example_access_key",
+					SecretKey:          commonconfig.Secret("example_secret_key"),
+					Profile:            "example_profile",
+					RoleARN:            "example_role_arn",
+					ExternalID:         "example_external_id",
+					UseFIPSSTSEndpoint: true,
+					ServiceName:        "aps",
 				}
 				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
+		},
+		{
+			testName: "AzureAD_WorkloadIdentity",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					workload_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+						tenant_id = "9f4ac10b-58cc-0372-8567-0e02b2c3d480"
+					}
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzurePublic",
+					WorkloadIdentity: &azuread.WorkloadIdentityConfig{
+						ClientID:      "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+						TenantID:      "9f4ac10b-58cc-0372-8567-0e02b2c3d480",
+						TokenFilePath: azuread.DefaultWorkloadIdentityTokenPath,
+					},
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "AzureAD_Scope",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					scope = "https://monitor.azure.com/.default"
+					managed_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+					}
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzurePublic",
+					ManagedIdentity: &azuread.ManagedIdentityConfig{
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+					},
+					Scope: "https://monitor.azure.com/.default",
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "GoogleIAM",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				google_iam {
+					credentials_file = "/path/to/creds.json"
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].GoogleIAMConfig = &googleiam.Config{
+					CredentialsFile: "/path/to/creds.json",
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "RoundRobinDNS",
+			cfg: `
+			endpoint {
+				url             = "http://0.0.0.0:11111/api/v1/write"
+				round_robin_dns = true
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].RoundRobinDNS = true
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "SigV4ExternalIDWithoutRoleARN",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				sigv4 {
+					external_id = "example_external_id"
+				}
+			}`,
+			errorMsg: "external_id can only be used with role_arn",
 		},
 		{
 			testName: "TooManyAuth1",
@@ -250,7 +347,7 @@ func TestAlloyConfig(t *testing.T) {
 				sigv4 {}
 				bearer_token = "token"
 			}`,
-			errorMsg: "at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured",
+			errorMsg: "at most one of sigv4, azuread, google_iam, basic_auth, oauth2, bearer_token & bearer_token_file must be configured",
 		},
 		{
 			testName: "TooManyAuth2",
@@ -265,7 +362,7 @@ func TestAlloyConfig(t *testing.T) {
 					}
 				}
 			}`,
-			errorMsg: "at most one of sigv4, azuread, basic_auth, oauth2, bearer_token & bearer_token_file must be configured",
+			errorMsg: "at most one of sigv4, azuread, google_iam, basic_auth, oauth2, bearer_token & bearer_token_file must be configured",
 		},
 		{
 			testName: "BadAzureClientId",

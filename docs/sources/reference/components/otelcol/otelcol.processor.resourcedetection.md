@@ -82,8 +82,8 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 {{< /column-list >}}
 
 You can customize most detectors with the relevant block.
-For example, you can customize the `ec2` detector with the [ec2][] block.
-If you omit the [ec2][] block, the defaults specified in the [ec2][] block documentation are used.
+For example, you can customize the `ec2` detector with the [`ec2`][ec2] block.
+If you omit the [`ec2`][ec2] block, the defaults specified in the [`ec2`][ec2] block documentation are used.
 
 If multiple detectors are inserting the same attribute name, the first detector to insert wins.
 For example, if you had `detectors = ["eks", "ec2"]` then `cloud.platform` will be `aws_eks` instead of `ec2`.
@@ -96,7 +96,13 @@ The following order is recommended for AWS:
 1. [`ecs`][ecs]
 1. [`ec2`][ec2]
 
-There are several delectors which are not configured through blocks:
+There are several detectors which are not configured through blocks:
+
+[ec2]: #ec2
+[ecs]: #ecs
+[eks]: #eks
+[elasticbeanstalk]: #elasticbeanstalk
+[lambda]: #lambda
 
 ### `env` detector
 
@@ -206,6 +212,8 @@ The `resource_attributes` block supports the following blocks:
 Example values:
 
 - `cloud.provider`: `"akamai"`
+
+[res-attr-cfg]: #resource-attribute-configuration
 
 ### `aks`
 
@@ -1331,7 +1339,7 @@ otelcol.processor.resourcedetection "default" {
 This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 
 There is no need to put in a `kubernetes_node {}` block.
-The `kubernetes_node` defaults are applied automatically, as specified in [`kubernetes_node`][kubernetes_node].
+The `kubernetes_node` defaults are applied automatically, as specified in [`kubernetes_node`](#kubernetes_node).
 
 ```alloy
 otelcol.processor.resourcedetection "default" {

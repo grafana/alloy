@@ -307,7 +307,7 @@ The following arguments are supported:
 | `include_unsuccessful` | `bool` | Whether failed forwards should be marked as read.                  | `false` | no       |
 
 By default, a Kafka message is marked as read immediately after it's retrieved from the Kafka broker.
-If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in [the `output` block][output].
+If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in the [`output`](#output) block.
 
 When `after_execution` is true, messages are only marked as read when they're decoded successfully and components where the data was forwarded didn't return an error.
 If the `include_unsuccessful` argument is true, messages are marked as read even if decoding or forwarding failed.

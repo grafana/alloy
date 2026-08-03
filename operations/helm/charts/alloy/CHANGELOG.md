@@ -12,7 +12,16 @@ Unreleased
 
 ### Enhancements
 
+- Harden the default `securityContext` for the config reloader sidecar: disable privilege escalation, use a read-only root filesystem, drop all capabilities, run as non-root, and set the `RuntimeDefault` seccomp profile. (@petewall)
+
+1.11.0 (2026-07-20)
+----------
+
+### Enhancements
+
 - Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
+
+- Update to Grafana Alloy v1.18.0 (@blewis12)
 
 1.10.1 (2026-06-29)
 ----------

@@ -192,6 +192,11 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		IncludeMetadata:    cfg.IncludeMetadata,
 
 		CompressionAlgorithms: compressionAlgorithms,
+
+		IdleTimeout:       cfg.IdleTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
 	}
 }
 

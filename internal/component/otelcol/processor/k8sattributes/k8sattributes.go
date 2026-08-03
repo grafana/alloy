@@ -48,6 +48,9 @@ type Arguments struct {
 	// The maximum time the processor will wait for the k8s metadata to be synced.
 	WaitForMetadataTimeout time.Duration `alloy:"wait_for_metadata_timeout,attr,optional"`
 
+	// WatchSyncPeriod determines the resync period for the k8s informers. 0 disables periodic resync.
+	WatchSyncPeriod time.Duration `alloy:"watch_sync_period,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -66,6 +69,7 @@ func (args *Arguments) SetToDefault() {
 		},
 	}
 	args.WaitForMetadataTimeout = 10 * time.Second
+	args.WatchSyncPeriod = 5 * time.Minute
 	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
@@ -120,6 +124,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// Set the timeout after the decoding step.
 	// That way we don't have to convert a duration to a string.
 	result.WaitForMetadataTimeout = args.WaitForMetadataTimeout
+	result.WatchSyncPeriod = args.WatchSyncPeriod
 
 	return &result, nil
 }

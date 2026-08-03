@@ -4,13 +4,16 @@ description: Shared content, sigv4 block
 headless: true
 ---
 
-| Name         | Type     | Description                                         | Default | Required |
-| ------------ | -------- | --------------------------------------------------- | ------- | -------- |
-| `access_key` | `string` | AWS API access key.                                 |         | no       |
-| `profile`    | `string` | Named AWS profile used to authenticate.             |         | no       |
-| `region`     | `string` | AWS region.                                         |         | no       |
-| `role_arn`   | `string` | AWS Role ARN, an alternative to using AWS API keys. |         | no       |
-| `secret_key` | `secret` | AWS API secret key.                                 |         | no       |
+| Name                    | Type     | Description                                            | Default | Required |
+|-------------------------|----------|--------------------------------------------------------|---------|----------|
+| `access_key`            | `string` | AWS API access key.                                    |         | no       |
+| `external_id`           | `string` | AWS External ID used when assuming a role through STS. |         | no       |
+| `profile`               | `string` | Named AWS profile used to authenticate.                |         | no       |
+| `region`                | `string` | AWS region.                                            |         | no       |
+| `role_arn`              | `string` | AWS Role ARN, an alternative to using AWS API keys.    |         | no       |
+| `secret_key`            | `secret` | AWS API secret key.                                    |         | no       |
+| `service_name`          | `string` | AWS service name to sign requests for.                 | `"aps"` | no       |
+| `use_fips_sts_endpoint` | `bool`   | Whether to use a FIPS-compliant AWS STS endpoint.      | `false` | no       |
 
 If `region` is left blank, the region from the default credentials chain is used.
 

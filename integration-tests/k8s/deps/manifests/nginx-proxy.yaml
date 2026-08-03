@@ -1,0 +1,92 @@
+---
+# nginx reverse proxy in front of Mimir's push path. It logs the User-Agent of
+# every /api/v1/push request as a JSON line on stdout (readable via
+# `kubectl logs`) and transparently forwards the request to Mimir. This lets a
+# test assert which User-Agent Alloy sends while still exercising the real
+# remote_write path end to end.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-proxy-config
+  labels:
+    app: nginx-proxy
+data:
+  nginx.conf: |
+    worker_processes 1;
+    events { worker_connections 1024; }
+    http {
+      # escape=json makes each access log line valid JSON, so the test can
+      # parse it without regex.
+      log_format push_clients escape=json
+        '{"time":"$time_iso8601","user_agent":"$http_user_agent","status":$status}';
+
+      server {
+        listen 8080;
+
+        # The Prometheus remote_write path: log the User-Agent, then forward to
+        # Mimir. The literal upstream resolves at startup via the pod's kube-dns;
+        # Mimir is installed before this proxy, so the Service already exists.
+        location = /api/v1/push {
+          access_log /dev/stdout push_clients;
+          proxy_pass http://mimir:9009/api/v1/push;
+        }
+
+        # The OTLP metrics path: same logging, used by native otelcol exporters.
+        location = /otlp/v1/metrics {
+          access_log /dev/stdout push_clients;
+          proxy_pass http://mimir:9009/otlp/v1/metrics;
+        }
+
+        # Everything else proxied normally, without per-request logging.
+        location / {
+          access_log off;
+          proxy_pass http://mimir:9009;
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-proxy
+  labels:
+    app: nginx-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-proxy
+  template:
+    metadata:
+      labels:
+        app: nginx-proxy
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: config
+          configMap:
+            name: nginx-proxy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-proxy
+  labels:
+    app: nginx-proxy
+spec:
+  selector:
+    app: nginx-proxy
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

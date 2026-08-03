@@ -149,6 +149,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			metrics_flush_interval = "33s"
 			metrics_expiration = "44s"
+			series_expiration = "55s"
 			namespace = "test.namespace"
 			exemplars {
 				enabled = true
@@ -191,6 +192,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				MetricsFlushInterval: 33 * time.Second,
 				MetricsExpiration:    44 * time.Second,
+				SeriesExpiration:     55 * time.Second,
 				Namespace:            "test.namespace",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled:         true,
@@ -238,6 +240,62 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled:         false,
 					MaxPerDataPoint: 5,
+				},
+			},
+		},
+		{
+			testName: "includeCollectorInstanceID",
+			cfg: `
+			include_collector_instance_id = true
+
+			histogram {
+				explicit {}
+			}
+
+			output {}
+			`,
+			expected: spanmetricsconnector.Config{
+				Dimensions:               []spanmetricsconnector.Dimension{},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
+				ExcludeDimensions:        []string(nil),
+				TimestampCacheSize:       &defaultTimestampCacheSize,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
+				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
+					Disable:     false,
+					Unit:        0,
+					Exponential: configoptional.None[spanmetricsconnector.ExponentialHistogramConfig](),
+					Explicit: configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{
+						Buckets: []time.Duration{
+							2 * time.Millisecond,
+							4 * time.Millisecond,
+							6 * time.Millisecond,
+							8 * time.Millisecond,
+							10 * time.Millisecond,
+							50 * time.Millisecond,
+							100 * time.Millisecond,
+							200 * time.Millisecond,
+							400 * time.Millisecond,
+							800 * time.Millisecond,
+							1 * time.Second,
+							1400 * time.Millisecond,
+							2 * time.Second,
+							5 * time.Second,
+							10 * time.Second,
+							15 * time.Second,
+						},
+					}),
+				},
+				MetricsFlushInterval: 60 * time.Second,
+				Namespace:            "traces.span.metrics",
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
+				},
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
 				},
 			},
 		},

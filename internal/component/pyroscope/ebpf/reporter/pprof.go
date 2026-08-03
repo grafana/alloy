@@ -5,7 +5,7 @@ package reporter
 import (
 	"bytes"
 	"context"
-	"errors"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
@@ -22,13 +23,14 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
 	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
-	"go.opentelemetry.io/ebpf-profiler/support"
+	"go.opentelemetry.io/ebpf-profiler/traceutil"
 )
+
+var vdsoPathName = libpf.Intern(process.VdsoPathName)
 
 type PPROF struct {
 	Raw    []byte
 	Labels labels.Labels
-	Origin libpf.Origin
 }
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
@@ -75,16 +77,9 @@ func NewPPROF(log *slog.Logger,
 	}
 }
 
-var errUnknownOrigin = errors.New("unknown trace origin")
-
 func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.TraceEventMeta) error {
-	switch meta.Origin {
-	case support.TraceOriginSampling:
-	case support.TraceOriginOffCPU:
-	case support.TraceOriginProbe:
-	default:
-		return fmt.Errorf("skip reporting trace for %d origin: %w", meta.Origin,
-			errUnknownOrigin)
+	if meta.ProfileType == nil {
+		return fmt.Errorf("skip reporting trace: profile type is nil")
 	}
 
 	key := samples.ResourceKey{
@@ -100,31 +95,33 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 	if _, exists := (*eventsTree)[key]; !exists {
 		(*eventsTree)[key] = samples.ResourceToProfiles{
 			EnvVars: meta.EnvVars,
-			Events:  make(map[libpf.Origin]samples.SampleToEvents),
+			Events:  make(map[*samples.TypeMetadata]samples.SampleToEvents),
 		}
 	}
 
 	rtp := (*eventsTree)[key]
-	if _, exists := rtp.Events[meta.Origin]; !exists {
-		rtp.Events[meta.Origin] = make(samples.SampleToEvents)
+	if _, exists := rtp.Events[meta.ProfileType]; !exists {
+		rtp.Events[meta.ProfileType] = make(samples.SampleToEvents)
 	}
 
 	sampleKey := samples.SampleKey{
-		Hash: trace.Hash,
-		Comm: meta.Comm,
-		TID:  int64(meta.TID),
-		CPU:  int64(meta.CPU),
+		Hash:    traceutil.HashTrace(trace),
+		Comm:    meta.Comm,
+		TID:     int64(meta.TID),
+		CPU:     int64(meta.CPU),
+		SpanID:  meta.SpanID,
+		TraceID: meta.TraceID,
 	}
-	if events, exists := rtp.Events[meta.Origin][sampleKey]; exists {
+	if events, exists := rtp.Events[meta.ProfileType][sampleKey]; exists {
 		events.Timestamps = append(events.Timestamps, uint64(meta.Timestamp))
-		events.OffTimes = append(events.OffTimes, meta.OffTime)
+		events.Values = append(events.Values, meta.Value)
 		return nil
 	}
 
-	rtp.Events[meta.Origin][sampleKey] = &samples.TraceEvents{
+	rtp.Events[meta.ProfileType][sampleKey] = &samples.TraceEvents{
 		Frames:     trace.Frames,
 		Timestamps: []uint64{uint64(meta.Timestamp)},
-		OffTimes:   []int64{meta.OffTime},
+		Values:     []int64{meta.Value},
 		Labels:     trace.CustomLabels,
 	}
 	return nil
@@ -167,8 +164,8 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
 	for resourceKey, rtp := range reportedEvents {
-		for origin, events := range rtp.Events {
-			pp := p.createProfile(resourceKey, origin, events)
+		for profileType, events := range rtp.Events {
+			pp := p.createProfile(resourceKey, profileType, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -181,7 +178,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	p.log.Debug("pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin libpf.Origin, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileType *samples.TypeMetadata, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.symbols != nil {
 			p.symbols.Cleanup()
@@ -191,7 +188,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 	bs := NewProfileBuilders(BuildersOptions{
 		SampleRate:    p.cfg.SamplesPerSecond,
 		PerPIDProfile: true,
-		Origin:        origin,
+		ProfileType:   profileType,
 	})
 
 	for sampleKey, traceInfo := range events {
@@ -199,7 +196,11 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 		if target == nil {
 			continue
 		}
-		b := bs.BuilderForSample(target, uint32(resourceKey.PID))
+		b, err := bs.BuilderForSample(target, uint32(resourceKey.PID))
+		if err != nil {
+			p.log.Error("failed to create profile builder", "err", err)
+			return nil
+		}
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
@@ -211,20 +212,23 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 		if p.cfg.PIDLabel {
 			sampleLabels["pid"] = []string{strconv.FormatInt(resourceKey.PID, 10)}
 		}
+		if sampleKey.SpanID != libpf.InvalidAPMSpanID {
+			sampleLabels["span_id"] = []string{hex.EncodeToString(sampleKey.SpanID[:])}
+		}
+		if sampleKey.TraceID != libpf.InvalidAPMTraceID {
+			sampleLabels["trace_id"] = []string{hex.EncodeToString(sampleKey.TraceID[:])}
+		}
 		if len(sampleLabels) > 0 {
 			s.Label = sampleLabels
 		}
 
-		switch origin {
-		case support.TraceOriginSampling:
-			b.AddValue(int64(len(traceInfo.Timestamps)), s)
-		case support.TraceOriginOffCPU:
+		if profileType.ReportValues {
 			sum := int64(0)
-			for _, t := range traceInfo.OffTimes {
+			for _, t := range traceInfo.Values {
 				sum += t
 			}
 			b.AddValue(sum, s)
-		case support.TraceOriginProbe:
+		} else {
 			b.AddValue(int64(len(traceInfo.Timestamps)), s)
 		}
 
@@ -317,20 +321,16 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 		}
 		_, ls := b.Target.Labels()
 		metric := discovery.MetricValueProcessCPU
-		if origin == support.TraceOriginOffCPU {
+		if profileType.ReportValues {
 			metric = discovery.MetricValueOffCPU
 		}
 
-		builder := labels.NewScratchBuilder(ls.Len() + 1)
-		ls.Range(func(l labels.Label) {
-			builder.Add(l.Name, l.Value)
-		})
-		builder.Add(model.MetricNameLabel, metric)
-		builder.Sort()
+		builder := labels.NewBuilder(ls)
+		builder.Set(model.MetricNameLabel, metric)
+		pyroscope.AddScopeLabels(builder, pyroscope.ScopeNameEBPF)
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),
 			Labels: builder.Labels(),
-			Origin: origin,
 		})
 	}
 	return res
@@ -346,7 +346,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 		return
 	}
 	mappingFile := fr.Mapping.Value().File.Value()
-	if mappingFile.FileName == process.VdsoPathName {
+	if mappingFile.FileName == vdsoPathName {
 		return
 	}
 	if p.symbols == nil {

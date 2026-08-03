@@ -95,9 +95,10 @@ type Arguments struct {
 }
 
 type KafkaExporterSignalConfig struct {
-	Topic                string `alloy:"topic,attr,optional"`
-	TopicFromMetadataKey string `alloy:"topic_from_metadata_key,attr,optional"`
-	Encoding             string `alloy:"encoding,attr,optional"`
+	Topic                     string `alloy:"topic,attr,optional"`
+	TopicFromMetadataKey      string `alloy:"topic_from_metadata_key,attr,optional"`
+	Encoding                  string `alloy:"encoding,attr,optional"`
+	MessageKeyFromMetadataKey string `alloy:"message_key_from_metadata_key,attr,optional"`
 }
 
 // RecordPartitionerConfig selects the strategy used to assign Kafka records to partitions.
@@ -148,6 +149,7 @@ func (c *KafkaExporterSignalConfig) convert(topic, encoding deprecatedArg) kafka
 			result.Encoding = c.Encoding
 		}
 		result.TopicFromMetadataKey = c.TopicFromMetadataKey
+		result.MessageKeyFromMetadataKey = c.MessageKeyFromMetadataKey
 	} else { // Try to use deprecated attributes only if the new block is not set.
 		if len(topic.value) > 0 {
 			result.Topic = topic.value
