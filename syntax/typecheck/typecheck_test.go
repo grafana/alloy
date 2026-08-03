@@ -380,6 +380,29 @@ func TestBlockMap(t *testing.T) {
 	require.Len(t, diag, 0)
 }
 
+func TestObjectAttr(t *testing.T) {
+	type Struct struct {
+		Str string `alloy:"str,attr"`
+	}
+
+	type Args struct {
+		Structs []Struct `alloy:"structs,attr"`
+		Struct  Struct   `alloy:"struct,attr"`
+	}
+
+	src := []byte(`
+		test "name" {
+			struct =  {str = "test"}
+			structs = [{str= "test"}]	
+		}
+	`)
+
+	file, err := parser.ParseFile("", src)
+	require.NoError(t, err)
+	diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
+	require.Len(t, diag, 0, diag)
+}
+
 type ValidatedString string
 
 func (s *ValidatedString) UnmarshalText(text []byte) error {
