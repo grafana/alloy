@@ -180,7 +180,7 @@ func supervisorConfigFromEnv() (*config.Supervisor, *authCredentials, error) {
 		missing = append(missing, envAPIToken)
 	}
 
-	storageDir := os.Getenv(envStorageDir)
+	storageDir := strings.TrimSpace(os.Getenv(envStorageDir))
 	if storageDir == "" {
 		missing = append(missing, envStorageDir)
 	}
