@@ -39,6 +39,14 @@ type Logger struct {
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
 
+	// rootInjector is the samplingInjector at the root of the deferred
+	// handler tree. buildHandlers reuses this single instance on every
+	// Update, instead of building a fresh one, because the root injector
+	// needs only rlHolder and handler, both stable for the life of the
+	// Logger. Config changes reach it through rlHolder's version, not
+	// through rebuilding the injector itself.
+	rootInjector *samplingInjector
+
 	// rlHolder holds the current root handler used by the samplingInjector
 	// in the deferred handler tree. This handler may be wrapped for
 	// rate-limit sampling. It starts as the bare terminal handler (rate
@@ -54,12 +62,14 @@ type Logger struct {
 	// other synchronization against InitRateLimitMetrics.
 	rlMut sync.Mutex
 	// rlApplied is the RateLimitingOptions last used to build the current
-	// rlHolder root. nil means no Update has applied rate limiting yet.
-	// Update rebuilds the sampler, and bumps the stored version, only when
-	// the new options differ from rlApplied. This way, a config reload that
-	// does not change rate limiting does not reset rate-limit budgets that
-	// are already in use.
-	rlApplied *RateLimitingOptions
+	// rlHolder root. rlAppliedSet is false until the first Update runs; after
+	// that, rlApplied always holds the last-applied options. Update rebuilds
+	// the sampler, and bumps the stored version, only when rlAppliedSet is
+	// false or the new options differ from rlApplied. This way, a config
+	// reload that does not change rate limiting does not reset rate-limit
+	// budgets that are already in use.
+	rlApplied    RateLimitingOptions
+	rlAppliedSet bool
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -122,6 +132,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 	// terminal handler, so logging works as it did before rate limiting
 	// existed, until the first config Update enables it.
 	l.rlHolder.Store(&versionedHandler{version: 0, h: bh})
+	l.rootInjector = newSamplingInjector(&l.rlHolder, l.handler)
 	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
@@ -162,12 +173,12 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Unlock()
 
 	l.rlMut.Lock()
-	if l.rlApplied == nil || *l.rlApplied != rlOpts {
+	if !l.rlAppliedSet || l.rlApplied != rlOpts {
 		root := buildRoot(rlOpts, l.handler, l.rlMetrics)
 		next := l.rlHolder.Load().version + 1
 		l.rlHolder.Store(&versionedHandler{version: next, h: root})
-		applied := rlOpts
-		l.rlApplied = &applied
+		l.rlApplied = rlOpts
+		l.rlAppliedSet = true
 	}
 	l.rlMut.Unlock()
 

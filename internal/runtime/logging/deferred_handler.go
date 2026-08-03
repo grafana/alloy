@@ -88,12 +88,14 @@ func (d *deferredSlogHandler) buildHandlers(parent slog.Handler) {
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
-	// The root node has no attrs or groups. Route it through the
-	// samplingInjector, so the shared root handler (l.rlHolder), which may
-	// be rate-limited, sits between component loggers and the terminal
-	// handler.
+	// The root node has no attrs or groups. Route it through the Logger's
+	// persistent rootInjector, so the shared root handler (l.rlHolder),
+	// which may be rate-limited, sits between component loggers and the
+	// terminal handler. Reusing rootInjector, instead of building a new
+	// samplingInjector on every Update, avoids an allocation on config
+	// reloads that do not touch rate limiting.
 	if parent == nil {
-		d.handle = newSamplingInjector(&d.l.rlHolder, d.l.handler)
+		d.handle = d.l.rootInjector
 	} else {
 		if d.group != "" {
 			d.handle = parent.WithGroup(d.group)

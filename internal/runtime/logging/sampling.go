@@ -140,20 +140,22 @@ type replayOp struct {
 	group string
 }
 
-// versionedHandler pairs the current root handler with a version number.
-// Update increases the version each time the rate-limiting config changes.
-// samplingInjector compares versions to know when its cached handler is
-// stale and must be rebuilt.
+// versionedHandler pairs a handler with a version number. Logger's rlHolder
+// uses it to hold the current root handler; Update increases the version
+// each time the rate-limiting config changes. samplingInjector's cache uses
+// the same type to hold its replay of that root handler, keyed by the same
+// version, so it can compare versions to know when the replay is stale and
+// must be rebuilt.
 type versionedHandler struct {
 	version uint64
 	h       slog.Handler
 }
 
-// cachedHandler is a samplingInjector's saved replay of its ops onto one
-// version of the root handler.
-type cachedHandler struct {
-	version uint64
-	h       slog.Handler
+// handlerBox wraps a slog.Handler so bareCache can store it in an
+// atomic.Pointer. atomic.Pointer needs a concrete type, and slog.Handler is
+// an interface, so the box supplies that concrete type.
+type handlerBox struct {
+	h slog.Handler
 }
 
 // samplingInjector is a slog.Handler between component loggers and the
@@ -182,8 +184,8 @@ type samplingInjector struct {
 	// admit path; see Handle.
 	bgCtx context.Context
 
-	cache     atomic.Pointer[cachedHandler]
-	bareCache atomic.Pointer[slog.Handler]
+	cache     atomic.Pointer[versionedHandler]
+	bareCache atomic.Pointer[handlerBox]
 }
 
 // newSamplingInjector creates a samplingInjector. holder points to the
@@ -265,16 +267,15 @@ func (s *samplingInjector) Handle(ctx context.Context, r slog.Record) error {
 		// Skip the sampler: unrelated no-message records must not share one signature.
 		bh := s.bareCache.Load()
 		if bh == nil {
-			h := replay(s.bare, s.ops)
-			bh = &h
+			bh = &handlerBox{h: replay(s.bare, s.ops)}
 			s.bareCache.Store(bh)
 		}
-		return (*bh).Handle(ctx, r)
+		return bh.h.Handle(ctx, r)
 	}
 	vh := s.holder.Load()
 	c := s.cache.Load()
 	if c == nil || c.version != vh.version {
-		c = &cachedHandler{version: vh.version, h: replay(vh.h, s.ops)}
+		c = &versionedHandler{version: vh.version, h: replay(vh.h, s.ops)}
 		s.cache.Store(c)
 	}
 	// slog.Logger.Info/Warn/Error always pass context.Background(). Reuse
