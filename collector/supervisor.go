@@ -226,7 +226,7 @@ func supervisorConfigFromFile(cfgPath string) (*config.Supervisor, error) {
 	}
 
 	resolverSettings := confmap.ResolverSettings{
-		DefaultScheme: "env",
+		DefaultScheme: "file",
 		URIs:          []string{cfgPath},
 		ProviderFactories: []confmap.ProviderFactory{
 			fileprovider.NewFactory(),
