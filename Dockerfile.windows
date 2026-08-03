@@ -83,7 +83,7 @@ COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/Grafan
 # OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
 COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
 
-# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor as PID 1
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor.
 COPY ["packaging/docker/otel-supervisor.cmd", "C:/Program Files/GrafanaLabs/Alloy/otel-supervisor.cmd"]
 
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]

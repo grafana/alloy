@@ -123,7 +123,7 @@ func runSupervisor(cfgPath string) error {
 	}()
 
 	if cfg.Agent.Executable != "" && cfg.Agent.Executable != exe {
-		logger.Sugar().Warnf("warning: ignoring agent.executable %q from supervisor config; forcing the running Alloy binary %q\n", cfg.Agent.Executable, exe)
+		logger.Sugar().Warnf("warning: ignoring agent.executable %q from supervisor config; forcing the running Alloy binary %q", cfg.Agent.Executable, exe)
 	}
 	cfg.Agent.Executable = exe
 
