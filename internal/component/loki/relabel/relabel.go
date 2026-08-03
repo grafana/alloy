@@ -59,28 +59,26 @@ type Exports struct {
 	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
-// Component implements the loki.relabel component.
-type Component struct {
-	opts    component.Options
-	metrics *metrics
-
-	mut      sync.RWMutex
-	rcs      []*relabel.Config
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
-
-	cache        *lru.Cache
-	maxCacheSize int
-
-	debugDataPublisher livedebugging.DebugDataPublisher
-
-	builder labels.ScratchBuilder
-}
-
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
 )
+
+// Component implements the loki.relabel component.
+type Component struct {
+	opts     component.Options
+	metrics  *metrics
+	receiver loki.LogsReceiver
+	fanout   *loki.Fanout
+
+	mut          sync.RWMutex
+	rcs          []*relabel.Config
+	builder      labels.ScratchBuilder
+	maxCacheSize int
+	cache        *lru.Cache
+
+	debugDataPublisher livedebugging.DebugDataPublisher
+}
 
 // New creates a new loki.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
@@ -173,20 +171,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
-
 	return nil
-}
-
-func relabelingChanged(prev, next []*relabel.Config) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
 }
 
 type cacheItem struct {
@@ -272,3 +257,15 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 }
 
 func (c *Component) LiveDebugging() {}
+
+func relabelingChanged(prev, next []*relabel.Config) bool {
+	if len(prev) != len(next) {
+		return true
+	}
+	for i := range prev {
+		if !reflect.DeepEqual(prev[i], next[i]) {
+			return true
+		}
+	}
+	return false
+}
