@@ -70,12 +70,11 @@ type Component struct {
 	metrics  *metrics
 	receiver loki.LogsReceiver
 	fanout   *loki.Fanout
+	cache    *lru.Cache
 
 	mut          sync.RWMutex
 	rcs          []*relabel.Config
-	builder      labels.ScratchBuilder
 	maxCacheSize int
-	cache        *lru.Cache
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -98,16 +97,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
-		builder:            labels.NewScratchBuilder(0),
 		fanout:             loki.NewFanout(args.ForwardTo),
+		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 	}
 
-	// Create and immediately export the receiver which remains the same for
-	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
-	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.RelabelConfigs})
-
-	// Call to Update() to set the relabelling rules once at the start.
+	// Call to Update() to set the relabelling rules once at the start and export rules and receiver.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -169,8 +163,8 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.rcs = newRCS
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
-
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
+
 	return nil
 }
 
@@ -234,23 +228,19 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 	rcs := c.rcs
 	c.mut.RUnlock()
 
-	c.builder.Reset()
+	br := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range e.Labels {
-		c.builder.Add(string(k), string(v))
+		br.Set(string(k), string(v))
 	}
-	c.builder.Sort()
-	lbls := c.builder.Labels()
 
 	if len(c.rcs) > 0 {
-		lb := labels.NewBuilder(lbls)
-		if !relabel.ProcessBuilder(lb, rcs...) {
+		if !relabel.ProcessBuilder(br, rcs...) {
 			return nil
 		}
-		lbls = lb.Labels()
 	}
 
-	relabeled := make(model.LabelSet, lbls.Len())
-	lbls.Range(func(lbl labels.Label) {
+	relabeled := make(model.LabelSet, len(e.Labels))
+	br.Range(func(lbl labels.Label) {
 		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})
 	return relabeled
