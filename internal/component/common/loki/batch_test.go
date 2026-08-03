@@ -81,19 +81,20 @@ func TestBatch_FilterMapStreams(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 3, b.StreamLen())
 
-	b.FilterMapStreams(func(stream Stream) (model.LabelSet, bool) {
+	b.FilterMapStreams(func(stream *Stream) bool {
 		action := stream.Labels["job"]
 
 		switch action {
 		case "keep":
-			return stream.Labels, true
+			return true
 		case "move":
-			return stream3, true
+			stream.Labels = stream3
+			return true
 		case "drop":
-			return nil, false
+			return false
 		default:
 			t.Fatalf("unexpected stream %q", stream)
-			return nil, false
+			return false
 		}
 	})
 

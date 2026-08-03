@@ -119,45 +119,33 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 	b.streams = b.streams[:streamDst]
 }
 
-// FilterMapStreams calls fn once for each stream in the batch. If fn returns
-// true the stream is kept, if fn returns false the stream and all of its
-// entries are dropped. The returned labels replace the labels of a kept stream,
-// and a stream whose labels change is merged into another stream if that stream
-// already carries the returned labels.
-func (b *Batch) FilterMapStreams(fn func(stream Stream) (labels model.LabelSet, keep bool)) {
-	type movedStream struct {
-		labels  model.LabelSet
-		entries []push.Entry
-	}
-
+// FilterMapStreams calls fn once for each stream in the batch, passing a mutable
+// view of that stream. If fn returns true the stream is kept, if fn returns
+// false the stream and all of its entries are dropped.
+func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	var (
 		newLen int
 		dst    int
-		moves  []movedStream
+		moves  []Stream
 	)
 
-	// Compact the stream set in place. Kept streams are written back, dropped
-	// streams are skipped, and streams whose labels changed are deferred so we do
-	// not mutate the stream set while iterating it.
-	for _, stream := range b.streams {
-		// A stream without entries has nothing to relabel and should not survive.
-		if len(stream.Entries) == 0 {
-			continue
+	for i := range b.streams {
+		stream := Stream{
+			// FIXME(kalleep): Once the new batched pipeline owns this path, consider
+			// copy-on-write label mutation methods so unchanged streams skip the copy.
+			Labels:  b.streams[i].Labels.Clone(),
+			Entries: b.streams[i].Entries,
 		}
 
-		labels, keep := fn(stream)
+		keep := fn(&stream)
 		if !keep {
 			continue
 		}
 
 		newLen += len(stream.Entries)
 
-		if !stream.Labels.Equal(labels) {
-			moves = append(moves, movedStream{
-				labels:  labels,
-				entries: stream.Entries,
-			})
-
+		if !b.streams[i].Labels.Equal(stream.Labels) {
+			moves = append(moves, stream)
 			continue
 		}
 
@@ -169,7 +157,7 @@ func (b *Batch) FilterMapStreams(fn func(stream Stream) (labels model.LabelSet, 
 
 	// Reinsert streams whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.labels, moved.entries...)
+		b.add(moved.Labels, moved.Entries...)
 	}
 
 	b.entryLen = newLen
