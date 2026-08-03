@@ -44,9 +44,7 @@ type Logger struct {
 	// rate-limit sampling. It starts as the bare terminal handler (rate
 	// limiting off), and Update swaps it atomically. The stored version
 	// increases on each swap, so samplingInjector instances know to rebuild
-	// their cached, per-component replay of the root handler. rlHolder is
-	// only ever stored while rlMut is held, so reading its version and
-	// storing version+1 is race-free even though the load itself is atomic.
+	// their cached, per-component replay of the root handler.
 	rlHolder  atomic.Pointer[versionedHandler]
 	rlMetrics *rateLimitMetrics
 
