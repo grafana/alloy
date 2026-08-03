@@ -16,8 +16,8 @@ import (
 )
 
 // TestSpikeThresholdAdmitsThenDrops confirms the Threshold middleware wraps a
-// terminal handler, keys via our Matcher, and admits `Threshold` per tick then
-// drops (rate=0). This validates the exact library wiring the design relies on.
+// terminal handler, keys records with our Matcher, and admits `Threshold`
+// records per tick, then drops the rest (rate=0).
 func TestSpikeThresholdAdmitsThenDrops(t *testing.T) {
 	var buf bytes.Buffer
 	terminal := slog.NewTextHandler(&buf, nil)
@@ -113,10 +113,10 @@ func TestInjectorRendersAttrsAndGroups(t *testing.T) {
 func TestInjectorEmptyMessageBypassesSampler(t *testing.T) {
 	var termBuf bytes.Buffer
 	term := slog.NewTextHandler(&termBuf, nil)
-	// A root that drops everything, to prove empty-message goes to `bare` (term) not root.
-	// AbsoluteSamplingOption panics when Max == 0, so we build the drop-all root
-	// with ThresholdSamplingOption{Threshold: 0, Rate: 0} instead, which admits
-	// nothing (confirmed against slog-sampling v1.6.0 in Task 2's spike).
+	// A root that drops everything, to prove empty-message records go to
+	// `bare` (term), not root. AbsoluteSamplingOption panics when Max == 0,
+	// so we build the drop-all root with ThresholdSamplingOption{Threshold:
+	// 0, Rate: 0} instead, which admits nothing.
 	dropAll := slogsampling.ThresholdSamplingOption{
 		Tick:      time.Hour,
 		Threshold: 0,
@@ -131,12 +131,11 @@ func TestInjectorEmptyMessageBypassesSampler(t *testing.T) {
 	require.Contains(t, termBuf.String(), "k=v") // empty-msg reached bare terminal
 }
 
-// TestInjectorEnabledMatchesTerminalLevel guards optimization A: Enabled must
-// delegate to the bare terminal handler (whose leveler reflects the current,
-// live-updatable level), not to the sampling-wrapped root. Here root reports
-// everything enabled (LevelDebug) while bare is gated at Info, so if Enabled
-// mistakenly consulted root instead of bare, the LevelDebug assertion below
-// would fail.
+// TestInjectorEnabledMatchesTerminalLevel checks that Enabled calls the bare
+// terminal handler, whose leveler reflects the current, live-updatable
+// level, not the sampling-wrapped root. Root reports everything enabled
+// (LevelDebug), while bare is gated at Info. If Enabled called root instead
+// of bare, the LevelDebug assertion below would fail.
 func TestInjectorEnabledMatchesTerminalLevel(t *testing.T) {
 	root := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelDebug})
 	bare := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelInfo})

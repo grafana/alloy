@@ -9,10 +9,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// newRLBenchLogger builds a real *Logger writing to io.Discard, configured
-// with the given RateLimitingOptions, and wires a fresh metrics registry so
-// the drop path exercises the alloy_logging_suppressed_lines_total counter
-// (matching production wiring).
+// newRLBenchLogger builds a real *Logger that writes to io.Discard, using
+// the given RateLimitingOptions. It sets up a fresh metrics registry, so the
+// drop path exercises the alloy_logging_suppressed_lines_total counter, the
+// same as in production.
 func newRLBenchLogger(b *testing.B, rl RateLimitingOptions) *Logger {
 	b.Helper()
 	l, err := New(io.Discard, Options{
@@ -40,9 +40,9 @@ func BenchmarkRL_Disabled(b *testing.B) {
 	}
 }
 
-// BenchmarkRL_AdmitHot measures the steady-state admit path: threshold is
-// effectively unbounded, so every call is admitted (matcher key build +
-// counter Inc + terminal write).
+// BenchmarkRL_AdmitHot measures the steady-state admit path. The threshold
+// is effectively unbounded, so every call is admitted: build the matcher
+// key, increase the counter, and write to the terminal.
 func BenchmarkRL_AdmitHot(b *testing.B) {
 	l := newRLBenchLogger(b, RateLimitingOptions{
 		Enabled:       true,
@@ -60,9 +60,9 @@ func BenchmarkRL_AdmitHot(b *testing.B) {
 	}
 }
 
-// BenchmarkRL_DropHot measures the drop path: after the first call, every
-// identical call is dropped (matcher + counter + OnDropped metric, no
-// terminal write).
+// BenchmarkRL_DropHot measures the drop path. After the first call, every
+// identical call is dropped: matcher, counter, and OnDropped metric, but no
+// terminal write.
 func BenchmarkRL_DropHot(b *testing.B) {
 	l := newRLBenchLogger(b, RateLimitingOptions{
 		Enabled:       true,

@@ -16,12 +16,11 @@ import (
 func TestLoggerRateLimitEndToEnd(t *testing.T) {
 	defer goleak.VerifyNone(t) // PROOF: no goroutine leaked by this feature
 	var buf bytes.Buffer
-	// Tick is short (but long enough that the initial burst of 10 calls
-	// lands in a single window even under -race) so the test can also
-	// observe the dropped-count annotation, which slog-sampling only
-	// attaches to the first admitted record of a *new* tick window (see
-	// samber/slog-sampling middleware_threshold.go); it never appears
-	// within the window that produced the drops.
+	// Tick is short, but long enough that the first burst of 10 calls lands
+	// in one window, even under -race. This lets the test also see the
+	// dropped-count annotation. slog-sampling adds this annotation only to
+	// the first admitted record of a new tick window, never to the window
+	// that produced the drops.
 	l, err := New(&buf, Options{
 		Level: LevelInfo, Format: FormatLogfmt,
 		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: 100 * time.Millisecond, Threshold: 2, Rate: 0, MaxSignatures: 100},
@@ -53,10 +52,10 @@ func TestLoggerDistinctComponentsNoCrossSuppress(t *testing.T) {
 	require.Equal(t, 2, strings.Count(buf.String(), "msg=same"))
 }
 
-// TestLoggerSamePathDistinctComponentIDNoCrossSuppress guards against the
-// bug where compMatcher keyed only on component_path (the parent/module
-// path, e.g. "/" for every top-level component) and message/level. Two
-// distinct top-level components sharing the same parent path but different
+// TestLoggerSamePathDistinctComponentIDNoCrossSuppress checks a past bug,
+// where compMatcher keyed only on component_path (the parent path, for
+// example "/" for every top-level component), message, and level. Two
+// top-level components with the same parent path but different
 // component_id must not share a rate-limit bucket.
 func TestLoggerSamePathDistinctComponentIDNoCrossSuppress(t *testing.T) {
 	defer goleak.VerifyNone(t)
@@ -76,11 +75,12 @@ func TestLoggerSamePathDistinctComponentIDNoCrossSuppress(t *testing.T) {
 // context.Background() ctx for TestInjectorComponentKeyingViaContextVariant.
 type ctxVariantKey struct{}
 
-// TestInjectorComponentKeyingViaContextVariant guards optimization B's
-// fallback path: when Handle is reached via a NON-Background ctx (e.g.
-// slog's *Context logging variants), component identity must still be
-// threaded through withComponent(ctx, s.comp) rather than the precomputed
-// bgCtx, so distinct components sharing a signature don't cross-suppress.
+// TestInjectorComponentKeyingViaContextVariant checks Handle's fallback
+// path: when Handle gets a ctx other than context.Background(), for example
+// from slog's *Context logging methods, it must still add component
+// identity through withComponent(ctx, s.comp), not the cached bgCtx. This
+// keeps distinct components with the same signature from suppressing each
+// other.
 func TestInjectorComponentKeyingViaContextVariant(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var buf bytes.Buffer
@@ -134,11 +134,11 @@ func TestUpdateInvalidRateLimitingLeavesStateUnchanged(t *testing.T) {
 	require.Contains(t, buf.String(), "still-info")
 }
 
-// TestUpdateSameOptionsPreservesBudget guards against re-applying an
-// unchanged RateLimitingOptions on every Update (e.g. from an unrelated
-// config reload) resetting the sampler's per-signature counters. Before the
-// fix, Update unconditionally rebuilt the sampler (fresh LRU/counters) on
-// every call, so the repeated call below would spuriously re-admit the
+// TestUpdateSameOptionsPreservesBudget checks that re-applying the same
+// RateLimitingOptions on every Update, for example from an unrelated config
+// reload, does not reset the sampler's per-signature counters. Before this
+// fix, Update always rebuilt the sampler with a fresh LRU and counters on
+// every call, so the repeated call below would wrongly re-admit the
 // already-throttled line.
 func TestUpdateSameOptionsPreservesBudget(t *testing.T) {
 	defer goleak.VerifyNone(t)
@@ -163,10 +163,9 @@ func TestUpdateSameOptionsPreservesBudget(t *testing.T) {
 }
 
 // TestUpdateChangedOptionsRebuilds confirms that when rate_limiting options
-// actually change across Update, the new configuration takes effect for a
-// pre-existing logger. This overlaps with TestLoggerLiveRetune but pins down
-// the specific contract exercised by the conditional-rebuild fix: a change
-// must still trigger a rebuild (not just "same options are a no-op").
+// change across an Update call, the new configuration takes effect for an
+// existing logger. A change must still trigger a rebuild, not just skip it
+// like unchanged options do.
 func TestUpdateChangedOptionsRebuilds(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var buf bytes.Buffer
@@ -183,10 +182,9 @@ func TestUpdateChangedOptionsRebuilds(t *testing.T) {
 	require.Equal(t, 1, strings.Count(buf.String(), "msg=changed"))
 }
 
-// TestConcurrentUpdatesNoRace exercises many goroutines calling Update
-// concurrently with valid (possibly differing) options. It asserts -race
-// stays clean, nothing panics, and the logger is still functional
-// afterward.
+// TestConcurrentUpdatesNoRace calls Update from many goroutines at once,
+// with valid options that may differ. It checks that -race stays clean,
+// nothing panics, and the logger still works afterward.
 func TestConcurrentUpdatesNoRace(t *testing.T) {
 	defer goleak.VerifyNone(t)
 	var buf bytes.Buffer

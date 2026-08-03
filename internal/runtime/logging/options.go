@@ -51,7 +51,7 @@ func defaultDestination() LogDestination {
 	return LogDestinationStderr
 }
 
-// defaultRateLimitingOptions returns the default rate limiting configuration.
+// defaultRateLimitingOptions returns the default rate-limiting configuration.
 func defaultRateLimitingOptions() RateLimitingOptions {
 	return RateLimitingOptions{Enabled: true, Tick: time.Second, Threshold: 10, Rate: 0, MaxSignatures: 1000}
 }
@@ -168,8 +168,9 @@ func (ll *Format) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// RateLimitingOptions configures per-(component, message) log rate limiting,
-// backed by github.com/samber/slog-sampling. Enabled by default.
+// RateLimitingOptions configures log rate limiting per component and
+// message. It is backed by github.com/samber/slog-sampling and is enabled
+// by default.
 type RateLimitingOptions struct {
 	Enabled       bool          `alloy:"enabled,attr,optional"`
 	Tick          time.Duration `alloy:"tick,attr,optional"`

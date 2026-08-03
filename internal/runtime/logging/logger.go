@@ -39,28 +39,27 @@ type Logger struct {
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
 
-	// rlHolder holds the current, possibly rate-limit-sampling-wrapped, root
-	// handler used by the samplingInjector rooted at the deferred handler
-	// tree. It starts pointing at the bare terminal handler (rate limiting
-	// disabled) and is swapped atomically by Update. rlVersion is bumped on
-	// every swap so samplingInjector instances know to re-derive their
-	// cached, per-component replay of the root handler.
+	// rlHolder holds the current root handler used by the samplingInjector
+	// in the deferred handler tree. This handler may be wrapped for
+	// rate-limit sampling. It starts as the bare terminal handler (rate
+	// limiting off), and Update swaps it atomically. rlVersion increases on
+	// each swap, so samplingInjector instances know to rebuild their cached,
+	// per-component replay of the root handler.
 	rlHolder  atomic.Pointer[versionedHandler]
 	rlVersion atomic.Uint64
 	rlMetrics *rateLimitMetrics
 
-	// rlMut guards the rate-limiting apply block in Update (the
-	// rlApplied comparison, buildRoot, rlVersion bump, and rlHolder
-	// store must happen as one atomic unit) as well as writes/reads of
-	// rlMetrics, which is otherwise read in Update without
-	// synchronization against SetRateLimitMetrics.
+	// rlMut guards the rate-limiting block in Update: the rlApplied check,
+	// buildRoot call, rlVersion increase, and rlHolder store must happen as
+	// one unit. rlMut also guards rlMetrics, which Update reads without any
+	// other synchronization against SetRateLimitMetrics.
 	rlMut sync.Mutex
-	// rlApplied is the RateLimitingOptions last used to build the
-	// current rlHolder root. nil means no Update has applied rate
-	// limiting yet. Update only rebuilds the sampler (and bumps
-	// rlVersion) when the incoming options differ from rlApplied, so
-	// unrelated config reloads don't reset in-flight rate-limit
-	// budgets.
+	// rlApplied is the RateLimitingOptions last used to build the current
+	// rlHolder root. nil means no Update has applied rate limiting yet.
+	// Update rebuilds the sampler, and increases rlVersion, only when the
+	// new options differ from rlApplied. This way, a config reload that
+	// does not change rate limiting does not reset rate-limit budgets that
+	// are already in use.
 	rlApplied *RateLimitingOptions
 }
 
@@ -120,9 +119,9 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		writer:  writer,
 		handler: bh,
 	}
-	// Disabled until the first Update: the injector's root is the bare
-	// terminal handler, so logging behaves exactly as it did before rate
-	// limiting existed until a config Update explicitly enables it.
+	// Rate limiting starts disabled: the injector's root is the bare
+	// terminal handler, so logging works as it did before rate limiting
+	// existed, until the first config Update enables it.
 	l.rlHolder.Store(&versionedHandler{version: 0, h: bh})
 	l.deferredSlog = newDeferredHandler(l)
 
@@ -205,7 +204,7 @@ func (l *Logger) flushBuffer() {
 	}
 }
 
-// SetRateLimitMetrics wires the suppressed-lines metric. Call once before the logger is shared.
+// SetRateLimitMetrics sets up the suppressed-lines metric. Call this once, before the logger is shared.
 func (l *Logger) SetRateLimitMetrics(reg prometheus.Registerer) {
 	l.rlMut.Lock()
 	defer l.rlMut.Unlock()
