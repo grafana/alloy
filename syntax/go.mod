@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/fatih/color v1.19.0
-	github.com/ohler55/ojg v1.28.1
+	github.com/ohler55/ojg v1.28.2
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
