@@ -57,8 +57,8 @@ type Logger struct {
 	rlMut sync.Mutex
 	// rlApplied is the RateLimitingOptions last used to build the current
 	// rlHolder root. nil means no Update has applied rate limiting yet.
-	// Update rebuilds the sampler, and increases rlVersion, only when the
-	// new options differ from rlApplied. This way, a config reload that
+	// Update rebuilds the sampler, and bumps the stored version, only when
+	// the new options differ from rlApplied. This way, a config reload that
 	// does not change rate limiting does not reset rate-limit budgets that
 	// are already in use.
 	rlApplied *RateLimitingOptions
