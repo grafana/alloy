@@ -3,7 +3,8 @@ package logging
 import (
 	"context"
 	"log/slog"
-	"sync/atomic"
+
+	"go.uber.org/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 	slogsampling "github.com/samber/slog-sampling"
@@ -104,7 +105,7 @@ func newRateLimitMetrics(reg prometheus.Registerer) *rateLimitMetrics {
 	if existing := metricsutil.MustRegisterOrReturnExisting(reg, cv); existing != nil {
 		cvExisting, ok := existing.(*prometheus.CounterVec)
 		if !ok {
-			return nil
+			panic("alloy_logging_suppressed_lines_total already registered with unexpected collector type")
 		}
 		cv = cvExisting
 	}

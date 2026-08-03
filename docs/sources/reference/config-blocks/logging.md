@@ -80,8 +80,8 @@ The `rate_limiting` block enables per-message rate limiting and sampling of repe
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
 | `enabled` | `bool` | Enable per-message rate limiting. | `true` | no |
-| `max_signatures` | `number` | Distinct signatures tracked; least-recently-used is evicted when full. | `1000` | no |
-| `rate` | `number` | Fraction (0–1) of the over-threshold tail still admitted; `0` drops all excess. | `0` | no |
+| `max_signatures` | `number` | Distinct signatures tracked; least recently used is evicted when full. | `1000` | no |
+| `rate` | `number` | Fraction (0-1) of the over-threshold tail still admitted; `0` drops all excess. | `0` | no |
 | `threshold` | `number` | Identical lines admitted per (component, level, message) per tick before sampling. | `10` | no |
 | `tick` | `duration` | Sampling window. | `"10s"` | no |
 

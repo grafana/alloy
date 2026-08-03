@@ -6,9 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"go.uber.org/atomic"
 
 	slogsampling "github.com/samber/slog-sampling"
 	"github.com/samber/slog-sampling/buffer"

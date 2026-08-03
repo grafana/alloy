@@ -8,8 +8,8 @@ import "github.com/prometheus/client_golang/prometheus"
 
 // MustRegisterOrReturnExisting registers c on reg. If c is already
 // registered, for example because multiple callers share one registerer, it
-// returns the existing collector instead of panicking.
-// If registration fails for any other reason, it panics.
+// returns the existing collector instead of panicking. If registration succeeds,
+// it returns nil. If registration fails for any other reason, it panics.
 func MustRegisterOrReturnExisting(reg prometheus.Registerer, c prometheus.Collector) prometheus.Collector {
 	if err := reg.Register(c); err != nil {
 		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
