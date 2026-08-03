@@ -216,17 +216,22 @@ func (t *Target) ConvertFrom(src any) error {
 		labelSet := make(commonlabels.LabelSet, len(src))
 		for k, v := range src {
 			var strValue string
+			rv := v.Reflect()
 			switch {
 			case v.IsString():
 				strValue = v.Text()
-			case v.Reflect().CanInterface():
+			case !rv.IsValid():
+				// A nil capsule value has no underlying Go value to read, so
+				// there is nothing usable to put in a label.
+				return fmt.Errorf("target::ConvertFrom: cannot convert a nil value to a target value")
+			case rv.CanInterface():
 				// Some capsule values wrap a string and are commonly used as
 				// target values, such as the content exported by local.file.
 				// Use the wrapped string rather than the Go struct's default
 				// formatting, which would otherwise render something like
 				// "{false value}". A genuine secret is never usable as a target
 				// value, so reject it rather than leak its contents into a label.
-				switch raw := v.Reflect().Interface().(type) {
+				switch raw := rv.Interface().(type) {
 				case alloytypes.Secret:
 					return fmt.Errorf("target::ConvertFrom: cannot use a secret as a target value")
 				case alloytypes.OptionalSecret:

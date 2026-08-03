@@ -236,6 +236,8 @@ func TestDecodeMapWithSecretValues(t *testing.T) {
 		expectErr bool
 	}
 
+	secretPtrValue := alloytypes.Secret("10.0.0.1:9090")
+
 	tests := []testCase{
 		{
 			name:     "non-secret OptionalSecret",
@@ -253,6 +255,34 @@ func TestDecodeMapWithSecretValues(t *testing.T) {
 			name:      "Secret",
 			input:     `{ "__address__" = secret }`,
 			scope:     map[string]any{"secret": alloytypes.Secret("10.0.0.1:9090")},
+			expectErr: true,
+		},
+		{
+			// The syntax layer dereferences pointer capsules before they reach
+			// ConvertFrom, so a pointer must hit the same rejection as a value.
+			name:      "secret OptionalSecret pointer",
+			input:     `{ "__address__" = optional }`,
+			scope:     map[string]any{"optional": &alloytypes.OptionalSecret{IsSecret: true, Value: "10.0.0.1:9090"}},
+			expectErr: true,
+		},
+		{
+			name:     "non-secret OptionalSecret pointer",
+			input:    `{ "__address__" = optional }`,
+			scope:    map[string]any{"optional": &alloytypes.OptionalSecret{IsSecret: false, Value: "10.0.0.1:9090"}},
+			expected: map[string]string{"__address__": "10.0.0.1:9090"},
+		},
+		{
+			name:      "Secret pointer",
+			input:     `{ "__address__" = secret }`,
+			scope:     map[string]any{"secret": &secretPtrValue},
+			expectErr: true,
+		},
+		{
+			// A typed nil has no value to dereference, so reflection yields a
+			// zero Value. This used to panic before reaching the type switch.
+			name:      "nil OptionalSecret pointer",
+			input:     `{ "__address__" = optional }`,
+			scope:     map[string]any{"optional": (*alloytypes.OptionalSecret)(nil)},
 			expectErr: true,
 		},
 	}
