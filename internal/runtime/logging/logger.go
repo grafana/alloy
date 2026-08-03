@@ -62,14 +62,11 @@ type Logger struct {
 	// other synchronization against InitRateLimitMetrics.
 	rlMut sync.Mutex
 	// rlApplied is the RateLimitingOptions last used to build the current
-	// rlHolder root. rlAppliedSet is false until the first Update runs; after
-	// that, rlApplied always holds the last-applied options. Update rebuilds
-	// the sampler, and bumps the stored version, only when rlAppliedSet is
-	// false or the new options differ from rlApplied. This way, a config
-	// reload that does not change rate limiting does not reset rate-limit
-	// budgets that are already in use.
-	rlApplied    RateLimitingOptions
-	rlAppliedSet bool
+	// rlHolder root. It is nil until the first Update runs. Update rebuilds
+	// the sampler, and bumps the stored version, only when rlApplied is nil
+	// or the new options differ from it. This way, a config reload that does
+	// not change rate limiting does not reset rate-limit budgets already in use.
+	rlApplied *RateLimitingOptions
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -173,12 +170,12 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Unlock()
 
 	l.rlMut.Lock()
-	if !l.rlAppliedSet || l.rlApplied != rlOpts {
+	if l.rlApplied == nil || *l.rlApplied != rlOpts {
 		root := buildRoot(rlOpts, l.handler, l.rlMetrics)
 		next := l.rlHolder.Load().version + 1
 		l.rlHolder.Store(&versionedHandler{version: next, h: root})
-		l.rlApplied = rlOpts
-		l.rlAppliedSet = true
+		applied := rlOpts
+		l.rlApplied = &applied
 	}
 	l.rlMut.Unlock()
 
