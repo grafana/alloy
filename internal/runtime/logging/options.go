@@ -53,7 +53,7 @@ func defaultDestination() LogDestination {
 
 // defaultRateLimitingOptions returns the default rate-limiting configuration.
 func defaultRateLimitingOptions() RateLimitingOptions {
-	return RateLimitingOptions{Enabled: true, Tick: time.Second, Threshold: 10, Rate: 0, MaxSignatures: 1000}
+	return RateLimitingOptions{Enabled: true, Tick: 10 * time.Second, Threshold: 10, Rate: 0, MaxSignatures: 1000}
 }
 
 // defaultOptions builds a fresh set of Logger defaults, evaluating the

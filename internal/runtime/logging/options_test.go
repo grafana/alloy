@@ -95,7 +95,7 @@ func TestOptionsDefaultEnablesRateLimiting(t *testing.T) {
 	o.SetToDefault()
 	require.NotNil(t, o.RateLimiting)
 	require.True(t, o.RateLimiting.Enabled)
-	require.Equal(t, time.Second, o.RateLimiting.Tick)
+	require.Equal(t, 10*time.Second, o.RateLimiting.Tick)
 	require.Equal(t, uint64(10), o.RateLimiting.Threshold)
 	require.Equal(t, 0.0, o.RateLimiting.Rate)
 	require.Equal(t, 1000, o.RateLimiting.MaxSignatures)

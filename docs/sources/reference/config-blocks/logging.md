@@ -83,7 +83,7 @@ The `rate_limiting` block enables per-message rate limiting and sampling of repe
 | `max_signatures` | `number` | Distinct signatures tracked; least-recently-used is evicted when full. | `1000` | no |
 | `rate` | `number` | Fraction (0–1) of the over-threshold tail still admitted; `0` drops all excess. | `0` | no |
 | `threshold` | `number` | Identical lines admitted per (component, level, message) per tick before sampling. | `10` | no |
-| `tick` | `duration` | Sampling window. | `"1s"` | no |
+| `tick` | `duration` | Sampling window. | `"10s"` | no |
 
 Rate limiting keys on the component, the log level, and the log message text (not attributes/fields).
 Only identical repeated lines from the same component at the same level are throttled; distinct components/messages are independent (LRU-bounded by `max_signatures`).
