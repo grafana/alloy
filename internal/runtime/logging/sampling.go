@@ -8,6 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	slogsampling "github.com/samber/slog-sampling"
 	"github.com/samber/slog-sampling/buffer"
+
+	"github.com/grafana/alloy/internal/util/metricsutil"
 )
 
 type componentInfo struct{ id, path string }
@@ -94,7 +96,7 @@ func newRateLimitMetrics(reg prometheus.Registerer) *rateLimitMetrics {
 		Name: "alloy_logging_suppressed_lines_total",
 		Help: "Total log lines dropped by the logger's rate limiter, by level and component.",
 	}, []string{"level", "component_id"})
-	if existing := mustRegisterOrReturnExisting(reg, cv); existing != nil {
+	if existing := metricsutil.MustRegisterOrReturnExisting(reg, cv); existing != nil {
 		cvExisting, ok := existing.(*prometheus.CounterVec)
 		if !ok {
 			return nil
@@ -111,21 +113,6 @@ func (m *rateLimitMetrics) onDropped(ctx context.Context, r slog.Record) {
 		return
 	}
 	m.suppressed.WithLabelValues(levelString(r.Level), componentFromCtx(ctx).id).Inc()
-}
-
-// mustRegisterOrReturnExisting registers c on reg. If c is already
-// registered, for example because multiple Logger instances share one
-// registerer, it returns the existing collector instead of a panic.
-// This is a local copy rather than a call to internal/util, which would
-// create an import cycle.
-func mustRegisterOrReturnExisting(reg prometheus.Registerer, c prometheus.Collector) prometheus.Collector {
-	if err := reg.Register(c); err != nil {
-		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
-			return are.ExistingCollector
-		}
-		panic(err)
-	}
-	return nil
 }
 
 // buildRoot wraps terminal with sampling when rate limiting is enabled.

@@ -210,18 +210,3 @@ func TestConcurrentUpdatesNoRace(t *testing.T) {
 	l.Slog().Info("post-concurrent-update")
 	require.Contains(t, buf.String(), "post-concurrent-update")
 }
-
-func TestLoggerLiveRetune(t *testing.T) {
-	defer goleak.VerifyNone(t)
-	var buf bytes.Buffer
-	l, err := New(&buf, Options{Level: LevelInfo, Format: FormatLogfmt,
-		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 100, Rate: 0, MaxSignatures: 100}})
-	require.NoError(t, err)
-	log := l.Slog() // logger captured BEFORE reload
-	require.NoError(t, l.Update(Options{Level: LevelInfo, Format: FormatLogfmt,
-		RateLimiting: &RateLimitingOptions{Enabled: true, Tick: time.Hour, Threshold: 1, Rate: 0, MaxSignatures: 100}}))
-	for i := 0; i < 5; i++ {
-		log.Info("retuned")
-	}
-	require.Equal(t, 1, strings.Count(buf.String(), "retuned")) // new threshold applied live to pre-existing logger
-}

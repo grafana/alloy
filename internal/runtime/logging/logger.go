@@ -42,17 +42,18 @@ type Logger struct {
 	// rlHolder holds the current root handler used by the samplingInjector
 	// in the deferred handler tree. This handler may be wrapped for
 	// rate-limit sampling. It starts as the bare terminal handler (rate
-	// limiting off), and Update swaps it atomically. rlVersion increases on
-	// each swap, so samplingInjector instances know to rebuild their cached,
-	// per-component replay of the root handler.
+	// limiting off), and Update swaps it atomically. The stored version
+	// increases on each swap, so samplingInjector instances know to rebuild
+	// their cached, per-component replay of the root handler. rlHolder is
+	// only ever stored while rlMut is held, so reading its version and
+	// storing version+1 is race-free even though the load itself is atomic.
 	rlHolder  atomic.Pointer[versionedHandler]
-	rlVersion atomic.Uint64
 	rlMetrics *rateLimitMetrics
 
 	// rlMut guards the rate-limiting block in Update: the rlApplied check,
-	// buildRoot call, rlVersion increase, and rlHolder store must happen as
+	// buildRoot call, version increase, and rlHolder store must happen as
 	// one unit. rlMut also guards rlMetrics, which Update reads without any
-	// other synchronization against SetRateLimitMetrics.
+	// other synchronization against InitRateLimitMetrics.
 	rlMut sync.Mutex
 	// rlApplied is the RateLimitingOptions last used to build the current
 	// rlHolder root. nil means no Update has applied rate limiting yet.
@@ -165,8 +166,8 @@ func (l *Logger) Update(o Options) error {
 	l.rlMut.Lock()
 	if l.rlApplied == nil || *l.rlApplied != rlOpts {
 		root := buildRoot(rlOpts, l.handler, l.rlMetrics)
-		v := l.rlVersion.Add(1)
-		l.rlHolder.Store(&versionedHandler{version: v, h: root})
+		next := l.rlHolder.Load().version + 1
+		l.rlHolder.Store(&versionedHandler{version: next, h: root})
 		applied := rlOpts
 		l.rlApplied = &applied
 	}
@@ -204,8 +205,8 @@ func (l *Logger) flushBuffer() {
 	}
 }
 
-// SetRateLimitMetrics sets up the suppressed-lines metric. Call this once, before the logger is shared.
-func (l *Logger) SetRateLimitMetrics(reg prometheus.Registerer) {
+// InitRateLimitMetrics sets up the suppressed-lines metric. Call this once, before the logger is shared.
+func (l *Logger) InitRateLimitMetrics(reg prometheus.Registerer) {
 	l.rlMut.Lock()
 	defer l.rlMut.Unlock()
 	if l.rlMetrics == nil {

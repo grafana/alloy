@@ -23,7 +23,7 @@ func newRLBenchLogger(b *testing.B, rl RateLimitingOptions) *Logger {
 	if err != nil {
 		b.Fatalf("failed to create logger: %v", err)
 	}
-	l.SetRateLimitMetrics(prometheus.NewRegistry())
+	l.InitRateLimitMetrics(prometheus.NewRegistry())
 	return l
 }
 
