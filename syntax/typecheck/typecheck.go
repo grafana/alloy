@@ -314,6 +314,7 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 		return nil
 	}
 
+	rv = reflectutil.DeferencePointer(rv)
 	switch rv.Kind() {
 	case reflect.Map:
 		return typecheckMapExpr(expr, rv)
@@ -325,7 +326,7 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 			Severity: diag.SeverityLevelError,
 			StartPos: ast.StartPos(expr).Position(),
 			EndPos:   ast.EndPos(expr).Position(),
-			Message:  fmt.Sprintf("expected %s, got %s", expectedType, rv.Kind()),
+			Message:  fmt.Sprintf("expected %s, got object", expectedType),
 		}}
 	}
 }

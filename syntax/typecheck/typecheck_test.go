@@ -386,14 +386,16 @@ func TestObjectAttr(t *testing.T) {
 	}
 
 	type Args struct {
-		Structs []Struct `alloy:"structs,attr"`
-		Struct  Struct   `alloy:"struct,attr"`
+		Structs   []Struct `alloy:"structs,attr"`
+		Struct    Struct   `alloy:"struct,attr"`
+		StructPtr *Struct  `alloy:"struct_ptr,attr,optional"`
 	}
 
 	src := []byte(`
 		test "name" {
 			struct =  {str = "test"}
 			structs = [{str= "test"}]	
+			struct_ptr =  {str = "test"}
 		}
 	`)
 
