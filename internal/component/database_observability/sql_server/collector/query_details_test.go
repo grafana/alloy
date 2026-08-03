@@ -13,6 +13,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -237,6 +238,7 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 
 	base := time.Now()
 	c.now = func() time.Time { return base }
+	key := queryMetricsKey{database: testDatabase, queryHash: testHash}
 
 	poll := func() {
 		t.Helper()
@@ -247,19 +249,22 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 
 	// First cycle emits the association + parsed table (2 entries).
 	poll()
-	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, base, c.lastEmittedAt[key])
 
-	// Second cycle within emitInterval: the query still runs but nothing new is emitted.
-	c.now = func() time.Time { return base.Add(emitInterval / 2) }
+	// Second cycle within EmitInterval: the query still runs but nothing new is emitted.
+	c.now = func() time.Time { return base.Add(database_observability.EmitInterval / 2) }
 	poll()
-	require.Never(t, func() bool { return len(lokiClient.Received()) != 2 }, 500*time.Millisecond, 50*time.Millisecond)
+	require.Equal(t, base, c.lastEmittedAt[key])
 
-	// Once emitInterval has elapsed, the query is emitted again (2 more entries).
-	c.now = func() time.Time { return base.Add(emitInterval + time.Minute) }
+	// Once EmitInterval has elapsed, the query is emitted again (2 more entries).
+	afterInterval := base.Add(database_observability.EmitInterval + time.Minute)
+	c.now = func() time.Time { return afterInterval }
 	poll()
-	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, afterInterval, c.lastEmittedAt[key])
 
 	require.NoError(t, mock.ExpectationsWereMet())
+	lokiClient.Stop()
+	require.Len(t, lokiClient.Received(), 4)
 }
 
 func TestBuildQueryTextStatement(t *testing.T) {

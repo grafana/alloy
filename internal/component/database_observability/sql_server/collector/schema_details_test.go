@@ -425,7 +425,7 @@ func TestSchemaDetails(t *testing.T) {
 			}))
 
 		// Second scrape: only the tables list. The scrape is throttled (still
-		// within emitInterval) so it must not trigger any metadata queries.
+		// within EmitInterval) so it must not trigger any metadata queries.
 		expectListDatabases(mock, "some_db")
 		expectUseDatabase(mock, "some_db")
 
@@ -435,7 +435,7 @@ func TestSchemaDetails(t *testing.T) {
 			}).AddRow("some_db", "dbo", "some_table", "BASE TABLE"))
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(time.Minute) // well within emitInterval
+		fakeNow = fakeNow.Add(time.Minute) // well within EmitInterval
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		// First scrape emits OP_TABLE_DETECTION + OP_CREATE_STATEMENT; second
@@ -503,7 +503,7 @@ func TestSchemaDetails(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(database_observability.EmitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		require.Eventually(t, func() bool {
@@ -577,7 +577,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.Contains(t, collector.lastEmittedAt["some_db"], schemaTableKey("dbo", "table_b"))
 
 		// Second scrape: only table_a remains. table_b should be evicted from
-		// the throttle map. Since table_a is still within emitInterval, no
+		// the throttle map. Since table_a is still within EmitInterval, no
 		// metadata queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		expectListDatabases(mock, "some_db")
@@ -1102,7 +1102,7 @@ func TestSchemaDetailsMultiDatabase_UseFailureContinues(t *testing.T) {
 // TestSchemaDetailsUseFailurePreservesThrottle verifies that a USE failure
 // for one database does not evict its throttle entries. Without this
 // guarantee a flapping database would re-emit OP_CREATE_STATEMENT on every
-// recovery, defeating emitInterval.
+// recovery, defeating EmitInterval.
 func TestSchemaDetailsUseFailurePreservesThrottle(t *testing.T) {
 	defer goleak.VerifyNone(t)
 

@@ -24,11 +24,6 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-// emitInterval is the minimum amount of time that must elapse between
-// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
-// the configured collect_interval.
-const emitInterval = 30 * time.Minute
-
 const (
 	selectTablesTemplate = `
 	SELECT
@@ -281,13 +276,13 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 
 	// Compute the due set: tables that have never emitted OP_CREATE_STATEMENT
-	// or whose last emission is older than emitInterval.
+	// or whose last emission is older than EmitInterval.
 	// Group by schema to preserve the iteration order from the tables-list query.
 	dueBySchema := map[string][]*tableInfo{}
 	dueSchemas := []string{}
 	for _, t := range tables {
 		k := fullyQualifiedName(t.schema, t.tableName)
-		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < emitInterval {
+		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < database_observability.EmitInterval {
 			continue
 		}
 		if _, exists := dueBySchema[t.schema]; !exists {
