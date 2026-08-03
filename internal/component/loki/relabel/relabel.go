@@ -163,7 +163,8 @@ func (c *Component) Update(args component.Arguments) error {
 		c.metrics.cacheSize.Set(0)
 	}
 	if newArgs.MaxCacheSize != c.maxCacheSize {
-		evicted := c.cache.Resize(newArgs.MaxCacheSize)
+		c.maxCacheSize = newArgs.MaxCacheSize
+		evicted := c.cache.Resize(c.maxCacheSize)
 		if evicted > 0 {
 			c.opts.Logger.Debug("resizing the cache led to evicting items", "len_items_evicted", evicted)
 		}
