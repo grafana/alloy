@@ -245,15 +245,20 @@ func (c *Component) relabel(e loki.Entry) (loki.Entry, bool) {
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {
+	c.mut.RLock()
+	rcs := c.rcs
+	c.mut.RUnlock()
+
 	c.builder.Reset()
 	for k, v := range e.Labels {
 		c.builder.Add(string(k), string(v))
 	}
 	c.builder.Sort()
 	lbls := c.builder.Labels()
+
 	if len(c.rcs) > 0 {
 		lb := labels.NewBuilder(lbls)
-		if !relabel.ProcessBuilder(lb, c.rcs...) {
+		if !relabel.ProcessBuilder(lb, rcs...) {
 			return nil
 		}
 		lbls = lb.Labels()
