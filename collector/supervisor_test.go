@@ -30,14 +30,16 @@ func TestSupervisorConfigFromEnv(t *testing.T) {
 			storageDir := t.TempDir()
 			t.Setenv(envFleetManagementURL, tt.fmURL)
 			t.Setenv(envInstanceID, " 123 ")
-			t.Setenv(envOTLPToken, " token ")
+			t.Setenv(envAPIToken, " token ")
 			t.Setenv(envStorageDir, storageDir)
 
-			cfg, basicAuth, err := supervisorConfigFromEnv()
+			cfg, creds, err := supervisorConfigFromEnv()
 			require.NoError(t, err)
 			require.Equal(t, tt.wantEndpoint, cfg.Server.Endpoint)
-			require.Equal(t, "MTIzOnRva2Vu", basicAuth)
-			require.Equal(t, "Basic "+basicAuth, cfg.Server.Headers.Get("Authorization"))
+			require.NotNil(t, creds)
+			require.Equal(t, "MTIzOnRva2Vu", creds.basicAuthCredentials)
+			require.Equal(t, "token", creds.apiToken)
+			require.Equal(t, "Basic "+creds.basicAuthCredentials, cfg.Server.Headers.Get("Authorization"))
 			require.True(t, cfg.Capabilities.AcceptsRemoteConfig)
 			require.True(t, cfg.Capabilities.ReportsRemoteConfig)
 			require.Equal(t, []string{"otel"}, cfg.Agent.Arguments)
@@ -49,19 +51,19 @@ func TestSupervisorConfigFromEnv(t *testing.T) {
 	t.Run("missing env vars", func(t *testing.T) {
 		t.Setenv(envFleetManagementURL, "")
 		t.Setenv(envInstanceID, "")
-		t.Setenv(envOTLPToken, "")
+		t.Setenv(envAPIToken, "")
 		t.Setenv(envStorageDir, "")
 
-		cfg, basicAuth, err := supervisorConfigFromEnv()
+		cfg, creds, err := supervisorConfigFromEnv()
 		require.Nil(t, cfg)
-		require.Empty(t, basicAuth)
+		require.Nil(t, creds)
 
 		var missingErr *missingEnvVarsError
 		require.ErrorAs(t, err, &missingErr)
 		require.Equal(t, []string{
 			envFleetManagementURL,
 			envInstanceID,
-			envOTLPToken,
+			envAPIToken,
 			envStorageDir,
 		}, missingErr.missing)
 	})

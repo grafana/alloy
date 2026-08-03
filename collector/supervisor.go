@@ -24,7 +24,7 @@ import (
 const (
 	envFleetManagementURL = "GCLOUD_FM_URL"
 	envInstanceID         = "GCLOUD_INSTANCE_ID"
-	envOTLPToken          = "OTLP_TOKEN"
+	envAPIToken           = "GCLOUD_RW_API_KEY"
 	envStorageDir         = "STORAGE_DIR"
 	envBasicAuthBase64    = "GCLOUD_BASIC_AUTH_BASE64"
 )
@@ -46,7 +46,7 @@ Configuration can be provided in two ways:
    GCLOUD_INSTANCE_ID
      Grafana Cloud instance ID.
 
-   OTLP_TOKEN
+   GCLOUD_RW_API_KEY
      Grafana Cloud API token.
 
    STORAGE_DIR
@@ -60,7 +60,7 @@ func newOtelSupervisorCommand() *cobra.Command {
 		Use:           "otel-supervisor",
 		Short:         "Run the embedded OpAMP supervisor for Alloy's OTel engine",
 		Long:          svCmdDoc,
-		Hidden:        false,
+		Hidden:        true, // TODO: unhide the command after the docs are ready.
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -80,12 +80,12 @@ func runSupervisor(cfgPath string) error {
 	}
 
 	var (
-		cfg       *config.Supervisor
-		basicAuth string
+		cfg   *config.Supervisor
+		creds *authCredentials
 	)
 	if cfgPath == "" {
 		// Build config from env vars and Grafana Cloud defaults if config is unset.
-		cfg, basicAuth, err = supervisorConfigFromEnv()
+		cfg, creds, err = supervisorConfigFromEnv()
 	} else {
 		cfg, err = supervisorConfigFromFile(cfgPath)
 	}
@@ -101,11 +101,16 @@ func runSupervisor(cfgPath string) error {
 		return err
 	}
 
-	if basicAuth != "" {
+	if creds != nil {
 		// Expose auth credentials to the supervised collector process.
 		// The FM collector health config uses this env var in its Basic auth header.
-		if err := os.Setenv(envBasicAuthBase64, basicAuth); err != nil {
+		if err := os.Setenv(envBasicAuthBase64, creds.basicAuthCredentials); err != nil {
 			return fmt.Errorf("cannot set %s environment variable: %w", envBasicAuthBase64, err)
+		}
+
+		// Fallback env var for "ping_otlp" configuration.
+		if err := os.Setenv("OTLP_TOKEN", creds.apiToken); err != nil {
+			return fmt.Errorf("cannot set %s environment variable: %w", "OTLP_TOKEN", err)
 		}
 	}
 
@@ -153,7 +158,12 @@ func (err *missingEnvVarsError) Error() string {
 
 const opAmpEndpoint = "/v1/opamp"
 
-func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
+type authCredentials struct {
+	basicAuthCredentials string
+	apiToken             string
+}
+
+func supervisorConfigFromEnv() (*config.Supervisor, *authCredentials, error) {
 	var missing []string
 	fmURL := strings.TrimSpace(os.Getenv(envFleetManagementURL))
 	if fmURL == "" {
@@ -165,9 +175,9 @@ func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
 		missing = append(missing, envInstanceID)
 	}
 
-	token := strings.TrimSpace(os.Getenv(envOTLPToken))
+	token := strings.TrimSpace(os.Getenv(envAPIToken))
 	if token == "" {
-		missing = append(missing, envOTLPToken)
+		missing = append(missing, envAPIToken)
 	}
 
 	storageDir := os.Getenv(envStorageDir)
@@ -176,7 +186,7 @@ func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
 	}
 
 	if len(missing) > 0 {
-		return nil, "", &missingEnvVarsError{missing: missing}
+		return nil, nil, &missingEnvVarsError{missing: missing}
 	}
 
 	// Append OpAMP endpoint if not defined
@@ -200,10 +210,14 @@ func supervisorConfigFromEnv() (*config.Supervisor, string, error) {
 	cfg.Storage.Directory = storageDir
 
 	if err := cfg.Validate(); err != nil {
-		return nil, "", fmt.Errorf("cannot validate generated supervisor config: %w", err)
+		return nil, nil, fmt.Errorf("cannot validate generated supervisor config: %w", err)
 	}
 
-	return &cfg, authStr, nil
+	creds := &authCredentials{
+		basicAuthCredentials: authStr,
+		apiToken:             token,
+	}
+	return &cfg, creds, nil
 }
 
 func supervisorConfigFromFile(cfgPath string) (*config.Supervisor, error) {
