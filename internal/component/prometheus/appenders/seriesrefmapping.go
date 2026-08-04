@@ -186,11 +186,9 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		return ref, nil
 	}
 
-	// No existing mapping. Forward 0, not ref: a nonzero ref here is a store-issued
-	// unique ref that means nothing to a child and could collide with one of its own
-	// series. Zero makes each child resolve by labels and hand back its real ref.
+	// No mapping for this ref, so pass 0: each child resolves by labels rather than
+	// risking the ref matching an unrelated series of its own.
 	var nonZeroCount int
-	var nonZeroRef storage.SeriesRef
 	for _, child := range s.children {
 		childRef, err := af(child, 0)
 		if err != nil {
@@ -200,7 +198,6 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		s.childRefs = append(s.childRefs, childRef)
 		if childRef != 0 {
 			nonZeroCount++
-			nonZeroRef = childRef
 		}
 	}
 
@@ -209,15 +206,11 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	}
 
 	if nonZeroCount == 0 {
-		// All children returned ref 0, so return the input ref
+		// No child allocated a ref, so there's nothing to map; return the input ref.
 		return ref, nil
 	}
 
-	if nonZeroCount == 1 {
-		// Only one child allocated a ref; return it directly — no mapping needed.
-		return nonZeroRef, nil
-	}
-
+	// At least one child allocated a ref, so create a mapping.
 	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
 	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
