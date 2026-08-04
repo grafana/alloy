@@ -30,6 +30,7 @@ import (
 func TestGeneratePodMonitorConfig(t *testing.T) {
 	var (
 		falsePtr    = ptr.To(false)
+		truePtr     = ptr.To(true)
 		proxyURL    = "https://proxy:8080"
 		httpsScheme = promopv1.Scheme("https")
 	)
@@ -66,7 +67,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  target_label: pod
 				- target_label: job
 				  replacement: operator/podmonitor
-				
+
 			`),
 			expected: &config.ScrapeConfig{
 				JobName:                "podMonitor/operator/podmonitor/1",
@@ -373,6 +374,9 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				Spec: promopv1.PodMonitorSpec{
 					JobLabel:        "abc",
 					PodTargetLabels: []string{"label_a", "label_b"},
+					NativeHistogramConfig: promopv1.NativeHistogramConfig{
+						ScrapeNativeHistograms: truePtr,
+					},
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"foo": "bar"},
 						MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -535,7 +539,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
 				ExtraScrapeMetrics:             falsePtr,
-				ScrapeNativeHistograms:         falsePtr,
+				ScrapeNativeHistograms:         truePtr,
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
