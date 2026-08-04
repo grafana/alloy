@@ -319,5 +319,5 @@ type sourceInfo struct {
 }
 
 func requiresReset(newClient, oldClient client.APIClient, newRcs, oldRcs []*relabel.Config) bool {
-	return newClient != oldClient || reflect.DeepEqual(newRcs, oldRcs)
+	return newClient != oldClient || !reflect.DeepEqual(newRcs, oldRcs)
 }
