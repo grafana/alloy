@@ -109,7 +109,7 @@ type Component struct {
 
 	mut       sync.RWMutex
 	args      Arguments
-	scheduler *source.Scheduler[string]
+	scheduler *source.Scheduler[positions.Entry]
 	client    client.APIClient
 	handler   loki.LogsReceiver
 	posFile   positions.Positions
@@ -139,7 +139,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:   newMetrics(o.Registerer),
 		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
-		scheduler: source.NewScheduler[string](),
+		scheduler: source.NewScheduler[positions.Entry](),
 		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 	}
@@ -218,19 +218,21 @@ func (c *Component) Update(args component.Arguments) error {
 		c.opts.Logger,
 		c.scheduler,
 		slices.Values(promTargets),
-		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
-		func(containerID string, target promTarget) (source.Source[string], error) {
-			if containerID == "" {
+		func(target promTarget) positions.Entry {
+			return positions.Entry{Path: string(target.labels[dockerLabelContainerID]), Labels: target.labels.Merge(defaultLabels).String()}
+		},
+		func(entry positions.Entry, target promTarget) (source.Source[positions.Entry], error) {
+			if entry.Path == "" {
 				c.opts.Logger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
 				return nil, source.ErrSkip
 			}
 
 			return newTailer(
 				c.metrics,
-				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", entry.Path)),
 				c.handler,
 				c.posFile,
-				containerID,
+				entry.Path,
 				target.labels.Merge(defaultLabels),
 				c.rcs,
 				client,
