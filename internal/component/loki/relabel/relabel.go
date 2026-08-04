@@ -75,6 +75,7 @@ type Component struct {
 	interceptor *loki.InterceptorConsumer
 
 	mut          sync.RWMutex
+	stopped      bool
 	rcs          []*relabel.Config
 	maxCacheSize int
 
@@ -112,14 +113,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			c.mut.RLock()
 			defer c.mut.RUnlock()
 
+			if c.stopped {
+				return loki.Batch{}, loki.ErrConsumerStopped
+			}
+
 			c.metrics.entriesProcessed.Add(float64(batch.EntryLen()))
 
 			batch.FilterMapStreams(func(stream *loki.Stream) bool {
 				relabeled, ok := c.relabel(stream.Labels)
 
-				count := uint64(len(stream.Entries))
-				if !ok {
-					count = 0
+				var count uint64
+				if ok {
+					count = uint64(len(stream.Entries))
 				}
 
 				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -144,6 +149,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
 			c.mut.RLock()
 			defer c.mut.RUnlock()
+
+			if c.stopped {
+				return loki.Entry{}, false, loki.ErrConsumerStopped
+			}
 
 			c.metrics.entriesProcessed.Inc()
 
@@ -185,6 +194,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
 	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
 		c.mut.RLock()
 		defer c.mut.RUnlock()
