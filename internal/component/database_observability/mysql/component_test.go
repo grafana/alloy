@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -24,11 +26,23 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
+
+// testGetServiceData stubs the services the component requests: HTTP service
+// data and a single-node mock cluster.
+func testGetServiceData(name string) (any, error) {
+	switch name {
+	case cluster.ServiceName:
+		return cluster.Mock(), nil
+	default:
+		return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+	}
+}
 
 func Test_defaultExclusions(t *testing.T) {
 	exampleDBO11yAlloyConfig := `
@@ -416,12 +430,10 @@ func Test_addLokiLabels(t *testing.T) {
 func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
 	opts := cmp.Options{
-		ID:     "test.mysql",
-		Logger: logging.NewSlogNop(),
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
-		},
-		OnStateChange: func(e cmp.Exports) {},
+		ID:             "test.mysql",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) {},
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -451,12 +463,10 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	}
 	var gotExports cmp.Exports
 	opts := cmp.Options{
-		ID:     "test.mysql",
-		Logger: logging.NewSlogNop(),
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
-		},
-		OnStateChange: func(e cmp.Exports) { gotExports = e },
+		ID:             "test.mysql",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
 	}
 
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
@@ -497,12 +507,10 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 func TestMySQL_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test",
-			Logger:        logging.NewSlogNop(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
+			ID:             "test",
+			Logger:         logging.NewSlogNop(),
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -523,12 +531,10 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test",
-			Logger:        logging.NewSlogNop(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
+			ID:             "test",
+			Logger:         logging.NewSlogNop(),
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -592,12 +598,10 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test",
-			Logger:        logging.NewSlogNop(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
+			ID:             "test",
+			Logger:         logging.NewSlogNop(),
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -841,12 +845,10 @@ func TestMySQL_MultipleDatabases(t *testing.T) {
 
 	var gotExports cmp.Exports
 	opts := cmp.Options{
-		ID:     "test.mysql",
-		Logger: logging.NewSlogNop(),
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
-		},
-		OnStateChange: func(e cmp.Exports) { gotExports = e },
+		ID:             "test.mysql",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
 	}
 
 	dbA := multiDatabaseTestMockDB(t, "uuid-a")
@@ -905,12 +907,10 @@ func TestMySQL_MultipleDatabases_PartialFailure(t *testing.T) {
 
 	var gotExports cmp.Exports
 	opts := cmp.Options{
-		ID:     "test.mysql",
-		Logger: logging.NewSlogNop(),
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
-		},
-		OnStateChange: func(e cmp.Exports) { gotExports = e },
+		ID:             "test.mysql",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
 	}
 
 	dbA := multiDatabaseTestMockDB(t, "uuid-a")
@@ -952,7 +952,7 @@ func TestMySQL_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
 			if failGetServiceData {
 				return nil, assert.AnError
 			}
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+			return testGetServiceData(name)
 		},
 		OnStateChange: func(e cmp.Exports) {},
 	}
@@ -982,4 +982,330 @@ func TestMySQL_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
 	assert.Same(t, before[0], after[0])
 	assert.NotEmpty(t, after[0].collectors)
 	assert.Equal(t, cmp.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
+// fakeCluster is a cluster.Cluster implementation with controllable
+// readiness and per-key ownership.
+type fakeCluster struct {
+	ready bool
+	owned map[shard.Key]bool
+	err   error
+}
+
+func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []peer.Peer{{Name: "peer", Self: f.owned[key]}}, nil
+}
+
+func (f *fakeCluster) Peers() []peer.Peer { return nil }
+
+func (f *fakeCluster) Ready() bool { return f.ready }
+
+var (
+	clusterKeyDB1 = shard.StringKey("tcp(127.0.0.1:3306)/db1")
+	clusterKeyDB2 = shard.StringKey("tcp(127.0.0.1:3306)/db2")
+)
+
+func clusteringTestOptions(t *testing.T, fake *fakeCluster, gotExports *cmp.Exports) cmp.Options {
+	t.Helper()
+
+	return cmp.Options{
+		ID:     "test.mysql",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			if name == cluster.ServiceName {
+				return fake, nil
+			}
+			return testGetServiceData(name)
+		},
+		OnStateChange: func(e cmp.Exports) { *gotExports = e },
+	}
+}
+
+func clusteringTestArgs() Arguments {
+	return Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "a", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db1"},
+			{Name: "b", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db2"},
+		},
+		Clustering:        cluster.ComponentBlock{Enabled: true},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+}
+
+func TestMySQL_Clustering_DistributesDatabases(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+	var connected []string
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		connected = append(connected, dsn)
+		return dbA, nil
+	})
+	require.NoError(t, err)
+
+	// Only the owned database runs and connects.
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db1", instances[0].instanceKey)
+	require.Len(t, connected, 1)
+	assert.Contains(t, connected[0], "/db1")
+
+	// Only the owned database exports its target.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db1", instance)
+}
+
+func TestMySQL_Clustering_NotReadyOwnsNothing(t *testing.T) {
+	// The hash owns both databases, so only the readiness gate can produce
+	// zero instances: this pins the Ready() check specifically.
+	fake := &fakeCluster{ready: false, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true}}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while the cluster is not ready")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+}
+
+func TestMySQL_Clustering_DisabledOwnsEverything(t *testing.T) {
+	// The cluster owns nothing locally, but with the clustering block
+	// disabled the component must ignore it entirely.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Clustering.Enabled = false
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+	dbB := multiDatabaseTestMockDB(t, "uuid-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestMySQL_Clustering_ReconcileOnOwnershipChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+	dbB := multiDatabaseTestMockDB(t, "uuid-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 1)
+	require.Equal(t, "tcp(127.0.0.1:3306)/db1", before[0].instanceKey)
+
+	// Unchanged ownership: reconciling is a no-op that keeps the same instances.
+	c.reconcileCluster()
+	after := c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Same(t, before[0], after[0])
+
+	// Ownership moves to db2: the db1 instance stops and db2 starts.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.reconcileCluster()
+
+	after = c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db2", after[0].instanceKey)
+	assert.Empty(t, before[0].collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db2", instance)
+}
+
+func TestMySQL_Clustering_NotifyClusterChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "uuid-a")
+	dbB := multiDatabaseTestMockDB(t, "uuid-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		_ = c.Run(ctx)
+	}()
+
+	// The channel send in NotifyClusterChange orders this write before the
+	// reconcile goroutine's read of the fake cluster.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.NotifyClusterChange()
+
+	require.Eventually(t, func() bool {
+		instances := c.loadInstances()
+		return len(instances) == 1 && instances[0].instanceKey == "tcp(127.0.0.1:3306)/db2"
+	}, 5*time.Second, 10*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not exit after context cancellation")
+	}
+}
+
+func TestMySQL_Clustering_SingleDatabaseStandby(t *testing.T) {
+	// The single-DSN form participates in clustering too: a node that
+	// doesn't own the database goes standby instead of collecting.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{shard.StringKey("tcp(127.0.0.1:3306)/db"): false}}
+	var gotExports cmp.Exports
+
+	args := Arguments{
+		DataSourceName:    "user:pass@tcp(127.0.0.1:3306)/db",
+		Clustering:        cluster.ComponentBlock{Enabled: true},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection on a non-owning node")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+}
+
+func TestMySQL_Clustering_UpdateRecomputesOwnership(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("tcp(127.0.0.1:3306)/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db3"):
+			return multiDatabaseTestMockDB(t, "uuid-c"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "uuid-a"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Len(t, c.loadInstances(), 1)
+
+	// A config reload re-applies the ownership filter to the new database set.
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "c", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db3"})
+	require.NoError(t, c.Update(args))
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 2)
+	assert.ElementsMatch(t,
+		[]string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"},
+		[]string{instances[0].instanceKey, instances[1].instanceKey})
+}
+
+func TestMySQL_Clustering_LookupErrorFailsOpen(t *testing.T) {
+	// Ownership lookup errors fail open to local ownership, so a broken
+	// cluster degrades to collecting everything rather than nothing.
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "uuid-a"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "uuid-b"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("tcp(127.0.0.1:3306)/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true, clusterKeyDB3: false}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "c", DataSourceName: "user:pass@tcp(127.0.0.1:3306)/db3"})
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "uuid-a"), nil
+		case strings.Contains(dsn, "/db2"):
+			return multiDatabaseTestMockDB(t, "uuid-b"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "uuid-c"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 2)
+	instA, instB := before[0], before[1]
+	require.Equal(t, "tcp(127.0.0.1:3306)/db1", instA.instanceKey)
+	require.Equal(t, "tcp(127.0.0.1:3306)/db2", instB.instanceKey)
+
+	// db2 moves away and db3 moves in: db1 must keep running untouched.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}
+	c.reconcileCluster()
+
+	after := c.loadInstances()
+	require.Len(t, after, 2)
+	assert.Same(t, instA, after[0])
+	assert.NotEmpty(t, instA.collectors)
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db3", after[1].instanceKey)
+	assert.NotEmpty(t, after[1].collectors)
+	assert.Empty(t, instB.collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+	first, _ := exported.Targets[0].Get("instance")
+	second, _ := exported.Targets[1].Get("instance")
+	assert.Equal(t, []string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"}, []string{first, second})
 }
