@@ -42,6 +42,16 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 		cfg.ScrapeProtocols = protocols
 	}
 
+	if m.Spec.ScrapeClassicHistograms != nil {
+		// Requires a pointer so we want to copy and then point to new value.
+		cfg.AlwaysScrapeClassicHistograms = &(*m.Spec.ScrapeClassicHistograms)
+	}
+
+	if m.Spec.ScrapeNativeHistograms != nil {
+		// Requires a pointer so we want to copy and then point to new value.
+		cfg.ScrapeNativeHistograms = &(*m.Spec.ScrapeNativeHistograms)
+	}
+
 	if ep.Interval != "" {
 		if cfg.ScrapeInterval, err = model.ParseDuration(string(ep.Interval)); err != nil {
 			return nil, fmt.Errorf("parsing interval from serviceMonitor: %w", err)
