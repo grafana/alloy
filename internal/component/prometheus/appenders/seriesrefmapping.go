@@ -186,11 +186,13 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		return ref, nil
 	}
 
-	// No existing mapping, proceed with normal append to all children.
+	// No existing mapping. Forward 0, not ref: a nonzero ref here is a store-issued
+	// unique ref that means nothing to a child and could collide with one of its own
+	// series. Zero makes each child resolve by labels and hand back its real ref.
 	var nonZeroCount int
 	var nonZeroRef storage.SeriesRef
 	for _, child := range s.children {
-		childRef, err := af(child, ref)
+		childRef, err := af(child, 0)
 		if err != nil {
 			appendErr = multierror.Append(appendErr, err)
 		}
