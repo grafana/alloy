@@ -218,7 +218,7 @@ _ "github.com/grafana/alloy/internal/component/otelcol/processor/example"       
 
 The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set.
 
-Only non-community components are bundled in the OTel Engine. If your component is a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/), skip this step: community components live in the Default Engine only, and users who want them in the OTel Engine add them through a custom OCB build. For a non-community component, make it available in the OTel Engine by adding it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
+The OTel Engine doesn't include community components. If an OTel Engine user needs a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/), they can add it through a [custom OCB build][ocb]. For a non-community component, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
 
 ```yaml
 processors:
