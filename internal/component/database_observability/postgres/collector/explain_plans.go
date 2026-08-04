@@ -542,7 +542,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
 	if err != nil {
 		logger.Error("failed to check for reserved keywords", "err", err)
-		err := c.sendExplainPlansOutput(
+		sendErr := c.sendExplainPlansOutput(
 			qi.datname,
 			qi.queryId,
 			generatedAt,
@@ -550,14 +550,14 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 			fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
 			nil,
 		)
-		if err != nil {
-			c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
+		if sendErr != nil {
+			logger.Error("failed to send reserved keyword check error explain plan output", "err", sendErr)
 		}
 		return false
 	}
 
 	if containsReservedWord {
-		err := c.sendExplainPlansOutput(
+		sendErr := c.sendExplainPlansOutput(
 			qi.datname,
 			qi.queryId,
 			generatedAt,
@@ -565,8 +565,8 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 			"query contains reserved word",
 			nil,
 		)
-		if err != nil {
-			c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
+		if sendErr != nil {
+			logger.Error("failed to send reserved keyword skip explain plan output", "err", sendErr)
 		}
 		return false
 	}
