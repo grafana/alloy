@@ -2914,6 +2914,41 @@ func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
 	assert.Equal(t, database_observability.ExplainPlanJoinAlgorithmHash, *result.Details.JoinAlgorithm)
 }
 
+func TestExplainPlanBatchSizeLimitsProcessing(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlan(ExplainPlansArguments{
+		Logger:         logging.NewSlogNop(),
+		ScrapeInterval: time.Second,
+		PerScrapeRatio: 1,
+		EntryHandler:   lokiClient,
+		DBVersion:      "17.0",
+	})
+	require.NoError(t, err)
+
+	c.queryCache = map[string]*queryInfo{
+		explainPlanQueryKey("db", "1"): newQueryInfo("db", "1", "select * from table_1 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "2"): newQueryInfo("db", "2", "select * from table_2 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "3"): newQueryInfo("db", "3", "select * from table_3 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "4"): newQueryInfo("db", "4", "select * from table_4 where ...", 1, time.Now()),
+	}
+	c.currentBatchSize = 2
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.Len(t, c.queryCache, 2, "batch size limit should leave unprocessed items in cache")
+	require.Len(t, c.finishedQueryCache, 2)
+	require.Empty(t, c.queryDenylist)
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 2 },
+		5*time.Second,
+		10*time.Millisecond,
+		"expected exactly 2 Loki entries, got %d",
+		len(lokiClient.Received()),
+	)
+}
+
 func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
