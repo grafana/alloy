@@ -434,42 +434,65 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 	for {
 		select {
 		case <-ticker.C:
-			cutoffTime := time.Now().Add(-15 * time.Minute).Unix()
-
-			// Hold both locks to prevent race condition where a ref could be
-			// appended after we delete it from uniqueRefCell but before
-			// we delete it from uniqueRefToChildRefs
-			s.timestampTrackingMu.Lock()
-			s.refMappingMu.Lock()
-
-			staleRefCount := 0
-			for ref, ts := range s.uniqueRefTimestamps {
-				if ts < cutoffTime {
-					staleRefCount++
-
-					v, ok := s.uniqueRefToChildRefs[ref]
-					if ok {
-						delete(s.labelHashToUniqueRef, v.labelHash)
-					}
-
-					delete(s.uniqueRefTimestamps, ref)
-					delete(s.uniqueRefToChildRefs, ref)
-				}
-			}
-
-			// Update metrics
-			if staleRefCount > 0 {
-				s.refsCleaned.Add(float64(staleRefCount))
-				s.activeMappings.Sub(float64(staleRefCount))
-				s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
-			}
-
-			s.refMappingMu.Unlock()
-			s.timestampTrackingMu.Unlock()
-
+			s.removeStaleRefs(time.Now().Add(-15 * time.Minute).Unix())
 		case <-s.stopCleanup:
 			return
 		}
+	}
+}
+
+// staleRefDeleteChunk bounds how many mappings we delete per refMappingMu
+// acquisition, so a cleanup never holds the write lock for the whole map.
+const staleRefDeleteChunk = 8192
+
+// removeStaleRefs evicts every ref last appended before cutoff.
+//
+// The scan is split across the two locks instead of holding both at once. The
+// O(N) scan runs under timestampTrackingMu only, so GetMapping (the append read
+// hot path, under refMappingMu.RLock) never convoys behind it. Mappings are then
+// deleted in bounded chunks under short refMappingMu writes.
+//
+// Splitting the locks relaxes the old both-locks invariant: a ref can be
+// re-appended between the two phases, so we may delete a mapping that just went
+// live again. That is self-correcting per GetMapping's contract (the next append
+// misses and re-creates the mapping) and never misattributes (the label-hash
+// guard holds), so it is safe.
+func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
+	// Phase 1: find and drop stale timestamps under timestampTrackingMu only.
+	s.timestampTrackingMu.Lock()
+	staleRefs := make([]storage.SeriesRef, 0)
+	for ref, ts := range s.uniqueRefTimestamps {
+		if ts < cutoff {
+			staleRefs = append(staleRefs, ref)
+			delete(s.uniqueRefTimestamps, ref)
+		}
+	}
+	s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
+	s.timestampTrackingMu.Unlock()
+
+	if len(staleRefs) == 0 {
+		return
+	}
+
+	// Phase 2: delete the mappings in bounded chunks under refMappingMu.
+	cleaned := 0
+	for start := 0; start < len(staleRefs); start += staleRefDeleteChunk {
+		end := min(start+staleRefDeleteChunk, len(staleRefs))
+
+		s.refMappingMu.Lock()
+		for _, ref := range staleRefs[start:end] {
+			if v, ok := s.uniqueRefToChildRefs[ref]; ok {
+				delete(s.labelHashToUniqueRef, v.labelHash)
+				delete(s.uniqueRefToChildRefs, ref)
+				cleaned++
+			}
+		}
+		s.refMappingMu.Unlock()
+	}
+
+	if cleaned > 0 {
+		s.refsCleaned.Add(float64(cleaned))
+		s.activeMappings.Sub(float64(cleaned))
 	}
 }
 

@@ -210,6 +210,59 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 	})
 }
 
+func TestSeriesRefMappingStore_RemoveStaleRefs_RemovesStaleKeepsFresh(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	staleLbls := labels.FromStrings("k", "stale")
+	freshLbls := labels.FromStrings("k", "fresh")
+	staleRef := store.CreateMapping([]storage.SeriesRef{1, 2}, staleLbls)
+	freshRef := store.CreateMapping([]storage.SeriesRef{3, 4}, freshLbls)
+
+	now := time.Now().Unix()
+	trackRef(store, staleRef, now-3600)
+	trackRef(store, freshRef, now)
+
+	store.removeStaleRefs(now - 60)
+
+	require.Nil(t, store.GetMapping(staleRef, staleLbls), "stale mapping should be removed")
+	require.NotNil(t, store.GetMapping(freshRef, freshLbls), "fresh mapping should survive")
+
+	// Both maps and the timestamp index must drop only the stale ref.
+	require.NotContains(t, store.uniqueRefToChildRefs, staleRef)
+	require.NotContains(t, store.uniqueRefTimestamps, staleRef)
+	require.Contains(t, store.uniqueRefToChildRefs, freshRef)
+	require.Contains(t, store.uniqueRefTimestamps, freshRef)
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_DeletesAcrossChunkBoundary(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	// More stale refs than a single chunk so the chunked delete loop runs twice.
+	total := staleRefDeleteChunk + 100
+	old := time.Now().Unix() - 3600
+	refs := make([]storage.SeriesRef, 0, total)
+	for i := range total {
+		ref := store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i)}, labels.FromStrings("k", strconv.Itoa(i)))
+		refs = append(refs, ref)
+		trackRef(store, ref, old)
+	}
+
+	store.removeStaleRefs(time.Now().Unix() - 60)
+
+	require.Empty(t, store.uniqueRefToChildRefs)
+	require.Empty(t, store.uniqueRefTimestamps)
+	require.Empty(t, store.labelHashToUniqueRef)
+}
+
+// trackRef records ts as ref's last-append time via the normal tracking path.
+func trackRef(store *SeriesRefMappingStore, ref storage.SeriesRef, ts int64) {
+	cell := store.GetCellForAppendedSeries()
+	cell.Refs = append(cell.Refs, ref)
+	store.TrackAppendedSeries(ts, cell)
+}
+
 func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	lbls := labels.EmptyLabels()
