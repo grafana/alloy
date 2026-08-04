@@ -13,6 +13,10 @@ var ErrSkip = errors.New("skip source")
 // The key is used to uniquely identify sources in the scheduler.
 type KeyFn[Key comparable, Input any] func(Input) Key
 
+// DedupFn extracts a comparable key of type Dedup from an input value of type Input.
+// Inputs that share a key are treated as the same source.
+type DedupFn[Dedup comparable, Input any] func(Input) Dedup
+
 // SourceFactoryFn creates a Source[Key] from a key and input value.
 // It returns the created source (or nil if creation failed or should be skipped)
 // and an error. Return ErrSkip to indicate that the source should not be scheduled
@@ -23,24 +27,43 @@ type SourceFactoryFn[Key comparable, Input any] func(Key, Input) (Source[Key], e
 // It iterates over inputs, creates sources for new items, and stops sources that are
 // no longer needed.
 func Reconcile[Key comparable, Input any](
-	logger *slog.Logger,
+	l *slog.Logger,
 	s *Scheduler[Key],
 	it iter.Seq[Input],
 	keyFn KeyFn[Key, Input],
 	sourceFactoryFn SourceFactoryFn[Key, Input],
 ) {
-	// shouldRun tracks the set of keys that should be active after reconciliation.
-	shouldRun := make(map[Key]struct{})
+	ReconcileWithDedup(l, s, it, keyFn, DedupFn[Key, Input](keyFn), sourceFactoryFn)
+}
+
+// ReconcileWithDedup behaves like Reconcile, but deduplicates inputs on a key that
+// is independent of the one used by the scheduler. When several inputs share a dedup
+// key only the first one is used, so callers control which one wins through the order
+// of inputs.
+func ReconcileWithDedup[Key, Dedup comparable, Input any](
+	l *slog.Logger,
+	s *Scheduler[Key],
+	it iter.Seq[Input],
+	keyFn KeyFn[Key, Input],
+	dedupFn DedupFn[Dedup, Input],
+	sourceFactoryFn SourceFactoryFn[Key, Input],
+) {
+	var (
+		// seen is used to deduplicate targets.
+		seen = make(map[Dedup]struct{})
+		// shouldRun tracks the set of keys that should be active after reconciliation.
+		shouldRun = make(map[Key]struct{})
+	)
 
 	// Process all inputs and create sources for new items.
 	for i := range it {
-		key := keyFn(i)
-
-		// Skip if we've already processed this key in this iteration.
-		if _, ok := shouldRun[key]; ok {
+		dedupKey, key := dedupFn(i), keyFn(i)
+		// Skip if we've already processed this input in this iteration.
+		if _, ok := seen[dedupKey]; ok {
 			continue
 		}
 
+		seen[dedupKey] = struct{}{}
 		shouldRun[key] = struct{}{}
 
 		// Skip if a source with this key is already running.
@@ -51,7 +74,7 @@ func Reconcile[Key comparable, Input any](
 		source, err := sourceFactoryFn(key, i)
 		if err != nil {
 			if !errors.Is(err, ErrSkip) {
-				logger.Error("failed to create source, skipping", "error", err, "key", key)
+				l.Error("failed to create source, skipping", "error", err, "key", key)
 			}
 			delete(shouldRun, key)
 			continue

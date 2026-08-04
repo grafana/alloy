@@ -215,12 +215,15 @@ func (c *Component) Update(args component.Arguments) error {
 		return targets[i].fingerPrint < targets[j].fingerPrint
 	})
 
-	source.Reconcile(
+	source.ReconcileWithDedup(
 		c.opts.Logger,
 		c.scheduler,
 		slices.Values(targets),
 		func(target containerTarget) positions.Entry {
 			return positions.Entry{Path: string(target.labels[dockerLabelContainerID]), Labels: target.labels.Merge(defaultLabels).String()}
+		},
+		func(target containerTarget) string {
+			return string(target.labels[dockerLabelContainerID])
 		},
 		func(entry positions.Entry, target containerTarget) (source.Source[positions.Entry], error) {
 			if entry.Path == "" {
