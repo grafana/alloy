@@ -41,7 +41,7 @@ type Fanout struct {
 	lastSeriesCount atomic.Int64
 
 	useLabelStore         bool
-	seriesRefMappingStore *appenders.SeriesRefMappingStore
+	seriesRefMappingStore appenders.MappingStore
 	// deadRefThreshold is updated on every children change. Any store-issued ref
 	// below this value was issued before the last topology change and must be
 	// zeroed before forwarding to a child appender.

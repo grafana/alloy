@@ -2,6 +2,7 @@ package appenders
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -106,14 +108,14 @@ func TestSeriesRefMappingStore_UpdateMappingWithZeroRefDoesNothing(t *testing.T)
 	require.Nil(t, store.GetMapping(0, lbls))
 }
 
-func TestSeriesRefMappingStore_TrackAppendedSeriesDoesNotPanic(t *testing.T) {
+func TestSeriesRefMappingStore_OnCommitTrackingDoesNotPanic(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
 	cell := store.GetCellForAppendedSeries()
 	cell.Refs = append(cell.Refs, 1, 2, 3)
 
 	require.NotPanics(t, func() {
-		store.TrackAppendedSeries(time.Now().Unix(), cell)
+		store.OnCommit(time.Now().Unix(), cell)
 	})
 }
 
@@ -122,7 +124,7 @@ func TestSeriesRefMappingStore_SliceIsEmptyAfterReturn(t *testing.T) {
 
 	cell1 := store.GetCellForAppendedSeries()
 	cell1.Refs = append(cell1.Refs, 1, 2, 3)
-	store.TrackAppendedSeries(time.Now().Unix(), cell1)
+	store.OnCommit(time.Now().Unix(), cell1)
 
 	cell2 := store.GetCellForAppendedSeries()
 	require.NotNil(t, cell2)
@@ -142,7 +144,7 @@ func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		cell := store.GetCellForAppendedSeries()
 		cell.Refs = append(cell.Refs, uniqueRef)
-		store.TrackAppendedSeries(oldTimestamp, cell)
+		store.OnCommit(oldTimestamp, cell)
 
 		// Verify mapping exists initially
 		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
@@ -168,7 +170,7 @@ func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) 
 		recentTimestamp := time.Now().Unix()
 		cell := store.GetCellForAppendedSeries()
 		cell.Refs = append(cell.Refs, uniqueRef)
-		store.TrackAppendedSeries(recentTimestamp, cell)
+		store.OnCommit(recentTimestamp, cell)
 
 		// Wait for a cleanup cycle
 		time.Sleep(16 * time.Minute)
@@ -191,7 +193,7 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		cell1 := store.GetCellForAppendedSeries()
 		cell1.Refs = append(cell1.Refs, uniqueRef)
-		store.TrackAppendedSeries(oldTimestamp, cell1)
+		store.OnCommit(oldTimestamp, cell1)
 
 		// Wait a bit
 		time.Sleep(1 * time.Minute)
@@ -200,7 +202,7 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		currentTimestamp := time.Now().Unix()
 		cell2 := store.GetCellForAppendedSeries()
 		cell2.Refs = append(cell2.Refs, uniqueRef)
-		store.TrackAppendedSeries(currentTimestamp, cell2)
+		store.OnCommit(currentTimestamp, cell2)
 
 		// Wait for cleanup cycle
 		time.Sleep(16 * time.Minute)
@@ -242,10 +244,8 @@ func TestSeriesRefMappingStore_RemoveStaleRefs_DeletesAcrossChunkBoundary(t *tes
 	// More stale refs than a single chunk so the chunked delete loop runs twice.
 	total := staleRefDeleteChunk + 100
 	old := time.Now().Unix() - 3600
-	refs := make([]storage.SeriesRef, 0, total)
 	for i := range total {
 		ref := store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i)}, labels.FromStrings("k", strconv.Itoa(i)))
-		refs = append(refs, ref)
 		trackRef(store, ref, old)
 	}
 
@@ -256,11 +256,45 @@ func TestSeriesRefMappingStore_RemoveStaleRefs_DeletesAcrossChunkBoundary(t *tes
 	require.Empty(t, store.labelHashToUniqueRef)
 }
 
+func TestSeriesRefMappingStore_OnCommitEvictsStaleMapping(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	lbls := labels.FromStrings("k", "v")
+	ref := store.CreateMapping([]storage.SeriesRef{1, 2}, lbls)
+	trackRef(store, ref, time.Now().Unix())
+
+	cell := store.GetCellForAppendedSeries()
+	cell.StaleRefs = append(cell.StaleRefs, EvictItem{ref: ref, labelHash: lbls.Hash()})
+	store.OnCommit(time.Now().Unix(), cell)
+
+	require.Nil(t, store.GetMapping(ref, lbls))
+	require.NotContains(t, store.uniqueRefToChildRefs, ref)
+	require.NotContains(t, store.uniqueRefTimestamps, ref)
+	require.NotContains(t, store.labelHashToUniqueRef, lbls.Hash())
+}
+
+func TestSeriesRefMappingStore_OnCommitLabelHashGuardSkipsCollision(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	lbls := labels.FromStrings("k", "v")
+	ref := store.CreateMapping([]storage.SeriesRef{1, 2}, lbls)
+
+	// A stale ref that numerically collides but carries a different label hash
+	// must not evict the live mapping.
+	cell := store.GetCellForAppendedSeries()
+	cell.StaleRefs = append(cell.StaleRefs, EvictItem{ref: ref, labelHash: lbls.Hash() + 1})
+	store.OnCommit(time.Now().Unix(), cell)
+
+	require.NotNil(t, store.GetMapping(ref, lbls), "collision must not evict the live mapping")
+}
+
 // trackRef records ts as ref's last-append time via the normal tracking path.
 func trackRef(store *SeriesRefMappingStore, ref storage.SeriesRef, ts int64) {
 	cell := store.GetCellForAppendedSeries()
 	cell.Refs = append(cell.Refs, ref)
-	store.TrackAppendedSeries(ts, cell)
+	store.OnCommit(ts, cell)
 }
 
 func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
@@ -277,7 +311,7 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 		// Track them
 		cell := store.GetCellForAppendedSeries()
 		cell.Refs = append(cell.Refs, uniqueRef)
-		store.TrackAppendedSeries(time.Now().Unix(), cell)
+		store.OnCommit(time.Now().Unix(), cell)
 	}
 
 	// Verify they exist
@@ -431,7 +465,7 @@ func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 			for j := id; j < len(uniqueRefs); j += numTrackers {
 				cell := store.GetCellForAppendedSeries()
 				cell.Refs = append(cell.Refs, uniqueRefs[j])
-				store.TrackAppendedSeries(time.Now().Unix(), cell)
+				store.OnCommit(time.Now().Unix(), cell)
 			}
 		}(i)
 	}
@@ -441,6 +475,72 @@ func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 	// All refs should still be retrievable (tracking shouldn't break anything)
 	for _, ref := range uniqueRefs {
 		require.NotNil(t, store.GetMapping(ref, lbls))
+	}
+}
+
+// TestSeriesRefMappingStore_ConcurrentEvictionIsCorrect drives evictStale
+// (refMappingMu) concurrently with tracking (timestampTrackingMu) so the two
+// OnCommit lock paths collide under -race. Evicted mappings must be gone and
+// survivors must remain.
+func TestSeriesRefMappingStore_ConcurrentEvictionIsCorrect(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	// Distinct labels per ref so the eviction label-hash guard matches its owner.
+	makeLabels := func(i int) labels.Labels { return labels.FromStrings("id", strconv.Itoa(i)) }
+
+	const total = 100
+	var keep, evict []storage.SeriesRef
+	lblsByRef := make(map[storage.SeriesRef]labels.Labels)
+	for i := range total {
+		lbls := makeLabels(i)
+		ref := store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i)}, lbls)
+		lblsByRef[ref] = lbls
+		if i%2 == 0 {
+			evict = append(evict, ref)
+		} else {
+			keep = append(keep, ref)
+		}
+	}
+
+	var wg sync.WaitGroup
+	const numWorkers = 10
+
+	// Evictors: each evicts a disjoint subset via OnCommit with StaleRefs populated.
+	for w := range numWorkers {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := id; j < len(evict); j += numWorkers {
+				ref := evict[j]
+				cell := store.GetCellForAppendedSeries()
+				cell.StaleRefs = append(cell.StaleRefs, EvictItem{ref: ref, labelHash: lblsByRef[ref].Hash()})
+				store.OnCommit(time.Now().Unix(), cell)
+			}
+		}(w)
+	}
+
+	// Trackers: keep timestamping survivors so the timestamp-lock path runs
+	// alongside eviction's mapping-lock path.
+	for w := range numWorkers {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for j := id; j < len(keep); j += numWorkers {
+				cell := store.GetCellForAppendedSeries()
+				cell.Refs = append(cell.Refs, keep[j])
+				store.OnCommit(time.Now().Unix(), cell)
+			}
+		}(w)
+	}
+
+	wg.Wait()
+
+	for _, ref := range evict {
+		require.Nil(t, store.GetMapping(ref, lblsByRef[ref]), "evicted mapping should be gone")
+	}
+	for _, ref := range keep {
+		require.NotNil(t, store.GetMapping(ref, lblsByRef[ref]), "survivor mapping should remain")
 	}
 }
 
@@ -701,6 +801,84 @@ func TestSeriesRefMapping_ChildRefChangeUpdatesMapping(t *testing.T) {
 	require.Equal(t, storage.SeriesRef(9999), child2.appendRefs[2])
 }
 
+func newTestAppender(t *testing.T, store MappingStore, children ...storage.Appender) storage.Appender {
+	t.Helper()
+	wl := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_stalenan_latency_" + t.Name(), Help: "test"})
+	sf := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_stalenan_forwarded_" + t.Name(), Help: "test"})
+	return NewSeriesRefMapping(children, store, wl, sf)
+}
+
+func TestSeriesRefMapping_StaleNaNAppendEvictsMappingOnCommit(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+
+	child1 := &mockAppender{}
+	child2 := &mockAppender{}
+	app := newTestAppender(t, store, child1, child2)
+
+	lbls := labels.FromStrings("job", "test")
+	ref, err := app.Append(77, lbls, 1, math.Float64frombits(value.StaleNaN))
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(77), ref)
+
+	// The marker is still forwarded to every child.
+	require.Equal(t, []storage.SeriesRef{101}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{202}, child2.appendRefs)
+
+	// Nothing is evicted until Commit.
+	require.Empty(t, store.evictCalls)
+
+	require.NoError(t, app.Commit())
+	require.Len(t, store.evictCalls, 1)
+	require.Equal(t, []EvictItem{{ref: 77, labelHash: lbls.Hash()}}, store.evictCalls[0])
+}
+
+func TestSeriesRefMapping_StaleNaNAppendDoesNotEvictOnRollback(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+
+	app := newTestAppender(t, store, &mockAppender{}, &mockAppender{})
+
+	_, err := app.Append(77, labels.FromStrings("job", "test"), 1, math.Float64frombits(value.StaleNaN))
+	require.NoError(t, err)
+
+	require.NoError(t, app.Rollback())
+	require.Empty(t, store.evictCalls, "rolled-back markers must not evict")
+}
+
+func TestSeriesRefMapping_NonStaleAppendDoesNotEvict(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+
+	app := newTestAppender(t, store, &mockAppender{}, &mockAppender{})
+
+	_, err := app.Append(77, labels.FromStrings("job", "test"), 1, 42)
+	require.NoError(t, err)
+
+	require.NoError(t, app.Commit())
+	require.Empty(t, store.evictCalls)
+}
+
+func TestSeriesRefMapping_MultipleStaleNaNBatchedIntoOneEvictCall(t *testing.T) {
+	store := newMockMappingStore()
+	store.mappingByRef[10] = []storage.SeriesRef{1, 2}
+	store.mappingByRef[20] = []storage.SeriesRef{3, 4}
+	store.mappingByRef[30] = []storage.SeriesRef{5, 6}
+
+	app := newTestAppender(t, store, &mockAppender{}, &mockAppender{})
+
+	staleNaN := math.Float64frombits(value.StaleNaN)
+	lbls := labels.FromStrings("job", "test")
+	for _, ref := range []storage.SeriesRef{10, 20, 30} {
+		_, err := app.Append(ref, lbls, 1, staleNaN)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, app.Commit())
+	require.Len(t, store.evictCalls, 1, "a whole batch of markers should evict in one store call")
+	require.Len(t, store.evictCalls[0], 3)
+}
+
 type createCall struct {
 	refs []storage.SeriesRef
 	lbls labels.Labels
@@ -723,6 +901,7 @@ type mockMappingStore struct {
 	createCalls   []createCall
 	updateCalls   []updateCall
 	trackCalls    []trackCall
+	evictCalls    [][]EvictItem
 	createRef     storage.SeriesRef
 	cell          *Cell
 }
@@ -772,13 +951,40 @@ func (m *mockMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults
 	m.updateCalls = append(m.updateCalls, updateCall{uniqueRef: uniqueRef, refs: copiedRefs, lbls: lbls})
 }
 
-func (m *mockMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
+func (m *mockMappingStore) OnCommit(ts int64, cell *Cell) {
+	m.trackCalls = append(m.trackCalls, trackCall{ts: ts, refs: copyRefs(cell.Refs)})
+
+	if len(cell.StaleRefs) > 0 {
+		batch := make([]EvictItem, len(cell.StaleRefs))
+		copy(batch, cell.StaleRefs)
+		m.evictCalls = append(m.evictCalls, batch)
+
+		for _, it := range cell.StaleRefs {
+			if _, ok := m.mappingByRef[it.ref]; ok {
+				delete(m.mappingByRef, it.ref)
+				delete(m.mappingByHash, it.labelHash)
+			}
+		}
+	}
+
+	cell.Refs = cell.Refs[:0]
+	cell.StaleRefs = cell.StaleRefs[:0]
+}
+
+func (m *mockMappingStore) OnRollback(ts int64, cell *Cell) {
 	m.trackCalls = append(m.trackCalls, trackCall{ts: ts, refs: copyRefs(cell.Refs)})
 	cell.Refs = cell.Refs[:0]
+	cell.StaleRefs = cell.StaleRefs[:0]
 }
 
 func (m *mockMappingStore) GetCellForAppendedSeries() *Cell {
 	return m.cell
+}
+
+func (m *mockMappingStore) Clear() storage.SeriesRef {
+	m.mappingByRef = map[storage.SeriesRef][]storage.SeriesRef{}
+	m.mappingByHash = map[uint64]storage.SeriesRef{}
+	return 0
 }
 
 func copyRefs(in []storage.SeriesRef) []storage.SeriesRef {

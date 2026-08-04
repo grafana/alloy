@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
 )
@@ -18,8 +19,21 @@ type MappingStore interface {
 	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
 	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
 	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels)
-	TrackAppendedSeries(ts int64, cell *Cell)
 	GetCellForAppendedSeries() *Cell
+	// OnCommit and OnRollback mark the end of an append batch; the appender calls
+	// the one matching its own Commit or Rollback.
+	OnCommit(ts int64, cell *Cell)
+	OnRollback(ts int64, cell *Cell)
+	// Clear drops all mappings and returns the new generation boundary.
+	Clear() storage.SeriesRef
+}
+
+// EvictItem names one mapping to drop: its unique ref and the label hash of the
+// series that owns it. The hash lets a drop skip a ref that now belongs to a
+// different series.
+type EvictItem struct {
+	ref       storage.SeriesRef
+	labelHash uint64
 }
 
 type seriesRefMapping struct {
@@ -59,7 +73,7 @@ func (s *seriesRefMapping) SetOptions(opts *storage.AppendOptions) {
 func (s *seriesRefMapping) Commit() error {
 	defer s.recordLatency()
 
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
+	s.store.OnCommit(time.Now().Unix(), s.uniqueRefCell)
 
 	var multiErr error
 	for _, c := range s.children {
@@ -74,9 +88,7 @@ func (s *seriesRefMapping) Commit() error {
 func (s *seriesRefMapping) Rollback() error {
 	defer s.recordLatency()
 
-	// We still track rolled back series so we can properly
-	// clean up any series that was appended
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
+	s.store.OnRollback(time.Now().Unix(), s.uniqueRefCell)
 
 	var multiErr error
 	for _, c := range s.children {
@@ -103,13 +115,21 @@ func (s *seriesRefMapping) resetFields() {
 }
 
 func (s *seriesRefMapping) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		newRef, err := appender.Append(ref, l, t, v)
-		if err == nil {
+	newRef, err := s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		childRef, appendErr := appender.Append(ref, l, t, v)
+		if appendErr == nil {
 			s.samplesForwarded.Inc()
 		}
-		return newRef, err
+		return childRef, appendErr
 	})
+
+	// A staleness marker is the series' last sample; queue its mapping so Commit
+	// reclaims it promptly instead of waiting for the timestamp GC.
+	if err == nil && value.IsStaleNaN(v) {
+		s.uniqueRefCell.StaleRefs = append(s.uniqueRefCell.StaleRefs, EvictItem{ref: newRef, labelHash: l.Hash()})
+	}
+
+	return newRef, err
 }
 
 func (s *seriesRefMapping) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
@@ -244,7 +264,7 @@ type SeriesRefMappingStore struct {
 	timestampTrackingMu sync.Mutex
 	// uniqueRefTimestamps maps unique refs to their last append timestamp
 	uniqueRefTimestamps map[storage.SeriesRef]int64
-	// cellPool is used to pool slices of SeriesRefs used for tracking unique refs in TrackAppendedSeries.
+	// cellPool pools the per-batch Cells handed to appenders for tracking unique refs.
 	cellPool sync.Pool
 
 	// Cleanup goroutine coordination (no lock required)
@@ -257,6 +277,7 @@ type SeriesRefMappingStore struct {
 	activeMappings  prometheus.Gauge
 	trackedRefs     prometheus.Gauge
 	refsCleaned     prometheus.Counter
+	staleNaNEvicted prometheus.Counter
 	uniqueRefsTotal prometheus.Counter
 }
 
@@ -273,6 +294,10 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		Name: "alloy_fanout_mapping_store_refs_cleaned_total",
 		Help: "Total number of stale refs cleaned up over time.",
 	})
+	staleNaNEvicted := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "alloy_fanout_mapping_store_stale_nan_evictions_total",
+		Help: "Total number of mappings evicted promptly on a staleness marker.",
+	})
 	uniqueRefsTotal := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "alloy_fanout_mapping_store_unique_refs_created_total",
 		Help: "Total number of unique refs created.",
@@ -282,6 +307,7 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		_ = reg.Register(activeMappings)
 		_ = reg.Register(trackedRefs)
 		_ = reg.Register(refsCleaned)
+		_ = reg.Register(staleNaNEvicted)
 		_ = reg.Register(uniqueRefsTotal)
 	}
 
@@ -300,12 +326,15 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 		activeMappings:  activeMappings,
 		trackedRefs:     trackedRefs,
 		refsCleaned:     refsCleaned,
+		staleNaNEvicted: staleNaNEvicted,
 		uniqueRefsTotal: uniqueRefsTotal,
 	}
 }
 
 type Cell struct {
 	Refs []storage.SeriesRef
+	// StaleRefs are mappings to evict on Commit: series that went stale this batch.
+	StaleRefs []EvictItem
 }
 
 // GetMapping returns existing child ref results for the given unique ref if one exists.
@@ -407,17 +436,68 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 	}
 }
 
-func (s *SeriesRefMappingStore) TrackAppendedSeries(ts int64, cell *Cell) {
-	s.timestampTrackingMu.Lock()
-	defer s.timestampTrackingMu.Unlock()
+func (s *SeriesRefMappingStore) OnCommit(ts int64, cell *Cell) {
+	evicted := s.evictStale(cell.StaleRefs)
+	s.trackTimestamps(ts, cell, evicted)
+}
 
+func (s *SeriesRefMappingStore) OnRollback(ts int64, cell *Cell) {
+	// nil: a rolled-back batch never committed downstream, so reclaim nothing.
+	s.trackTimestamps(ts, cell, nil)
+}
+
+// evictStale drops the mappings named by items and returns the refs actually
+// removed.
+func (s *SeriesRefMappingStore) evictStale(items []EvictItem) []storage.SeriesRef {
+	if len(items) == 0 {
+		return nil
+	}
+
+	evicted := make([]storage.SeriesRef, 0, len(items))
+
+	// Evict under refMappingMu alone; OnCommit tracks under timestampTrackingMu
+	// afterward, so the two store locks are never held together.
+	s.refMappingMu.Lock()
+	for _, it := range items {
+		// Skip refs from a past generation or recycled to another series. A ref
+		// re-appended mid-drop self-corrects: the next append re-creates its mapping.
+		if it.ref == 0 || it.ref < s.firstRefOfCurrentGeneration {
+			continue
+		}
+		v, ok := s.uniqueRefToChildRefs[it.ref]
+		if !ok || v.labelHash != it.labelHash {
+			continue
+		}
+		delete(s.uniqueRefToChildRefs, it.ref)
+		delete(s.labelHashToUniqueRef, v.labelHash)
+		evicted = append(evicted, it.ref)
+	}
+	// Adjust activeMappings under refMappingMu: Clear zeroes it under the same lock,
+	// so a Sub outside could race that reset and drive the gauge negative.
+	if len(evicted) > 0 {
+		s.activeMappings.Sub(float64(len(evicted)))
+		s.staleNaNEvicted.Add(float64(len(evicted)))
+	}
+	s.refMappingMu.Unlock()
+
+	return evicted
+}
+
+// trackTimestamps timestamps the batch's refs, drops the timestamps of any refs
+// just evicted, and returns the cell to the pool.
+func (s *SeriesRefMappingStore) trackTimestamps(ts int64, cell *Cell, evicted []storage.SeriesRef) {
+	s.timestampTrackingMu.Lock()
 	for _, r := range cell.Refs {
 		s.uniqueRefTimestamps[r] = ts
 	}
-
+	for _, r := range evicted {
+		delete(s.uniqueRefTimestamps, r)
+	}
 	s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
+	s.timestampTrackingMu.Unlock()
 
 	cell.Refs = cell.Refs[:0]
+	cell.StaleRefs = cell.StaleRefs[:0]
 	s.cellPool.Put(cell)
 }
 
@@ -441,24 +521,16 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 	}
 }
 
-// staleRefDeleteChunk bounds how many mappings we delete per refMappingMu
-// acquisition, so a cleanup never holds the write lock for the whole map.
+// staleRefDeleteChunk bounds the mappings deleted per refMappingMu acquisition,
+// so cleanup holds the write lock only briefly at a time rather than across the
+// whole map.
 const staleRefDeleteChunk = 8192
 
-// removeStaleRefs evicts every ref last appended before cutoff.
-//
-// The scan is split across the two locks instead of holding both at once. The
-// O(N) scan runs under timestampTrackingMu only, so GetMapping (the append read
-// hot path, under refMappingMu.RLock) never convoys behind it. Mappings are then
-// deleted in bounded chunks under short refMappingMu writes.
-//
-// Splitting the locks relaxes the old both-locks invariant: a ref can be
-// re-appended between the two phases, so we may delete a mapping that just went
-// live again. That is self-correcting per GetMapping's contract (the next append
-// misses and re-creates the mapping) and never misattributes (the label-hash
-// guard holds), so it is safe.
+// removeStaleRefs removes every ref last appended before cutoff.
 func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
-	// Phase 1: find and drop stale timestamps under timestampTrackingMu only.
+	// Scan for stale refs under timestampTrackingMu alone. The two store locks are
+	// never held together, so appends reading GetMapping under refMappingMu don't
+	// block on this O(N) scan.
 	s.timestampTrackingMu.Lock()
 	staleRefs := make([]storage.SeriesRef, 0)
 	for ref, ts := range s.uniqueRefTimestamps {
@@ -474,7 +546,10 @@ func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
 		return
 	}
 
-	// Phase 2: delete the mappings in bounded chunks under refMappingMu.
+	// Delete the mappings in bounded chunks so each refMappingMu write stays short.
+	// A ref re-appended between the scan and here may be dropped though it's live
+	// again; that's self-correcting (the next append misses and re-creates it), and
+	// the label-hash guard on GetMapping prevents misattribution.
 	cleaned := 0
 	for start := 0; start < len(staleRefs); start += staleRefDeleteChunk {
 		end := min(start+staleRefDeleteChunk, len(staleRefs))
@@ -512,9 +587,9 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 		}
 	}
 
-	// We need to hold both locks to do this safely and we do it in the same order as
-	// cleanupStaleRefs. We stopped and waited for the background worker that calls it
-	// to finish but some extra safety won't hurt.
+	// Clearing all three maps must be atomic against in-flight appends, so hold both
+	// locks. This is the only site that holds them together; any code path that does
+	// must take timestampTrackingMu before refMappingMu to avoid deadlock.
 	s.timestampTrackingMu.Lock()
 	defer s.timestampTrackingMu.Unlock()
 
