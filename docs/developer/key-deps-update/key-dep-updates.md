@@ -185,10 +185,15 @@ The bullets here are judgment calls the "Steps to update key dependencies" secti
 
 ### Tests, docs, and change notes (Steps 7, 9, and 10)
 
-- **Newly-required upstream config: expose it, don't hardcode.**
-  - Problem: if upstream makes a field required, hardcoding its default hides it from users.
-  - Fix: expose it as Alloy config defaulting to the upstream factory value (zero behavior change unless set). Keep the scope tight and defer *purely-optional* new fields to a follow-up.
-  - Example: exposed kafka `record_partitioner` and googlecloudpubsub `flow_control`, parked the optional ones. The `tail_sampling` processor's `sampling_strategy` couldn't be exposed at all because upstream keeps the type unexported through v0.154, so it needs a reflection shim.
+- **Newly-required upstream config: expose it, don't hardcode. Everything else waits.**
+  - Problem: if upstream makes a field required, hardcoding its default hides it from users. But it's just as tempting to expose every *other* new field you notice while already touching a component's code, which turns a version-bump PR into a feature PR and bloats its review surface.
+  - Fix: in the bump PR, expose only fields upstream now requires, defaulting to the upstream factory value (zero behavior change unless set). Defer every purely optional new field, however trivial, to a follow-up, even if it means parking the commit at a throwaway tag.
+  - Example: exposed kafka `record_partitioner` and googlecloudpubsub `flow_control` (required) in the bump PR; parked kafka `record_headers` and half a dozen other optional fields at a `parked-otel-new-fields` tag. The `tail_sampling` processor's `sampling_strategy` couldn't be exposed at all because upstream keeps the type unexported through v0.154, so it needs a reflection shim.
+
+- **Find the deferred optional fields with a per-component subagent sweep, not by eyeballing the diff.**
+  - Problem: manually scanning a multi-hundred-component version diff for new optional fields misses things and doesn't scale.
+  - Fix: once the bump PR is in, fan out parallel subagents by component category (receivers, exporters, processors/connectors/extensions/auth, shared wrappers, plus any native, non-otelcol components), each diffing the old and new upstream versions for that category. Consolidate the results into a backlog doc, then bundle the small fields into one follow-up PR per theme; file a design proposal instead when a field needs a feature Alloy doesn't have yet.
+  - Example: a 5-subagent sweep across the v0.151 to v0.153 delta plus a native `prometheus.*` audit surfaced a `prometheus.remote_write` auth-fields PR, a bundle of 8 small otelcol fields, and a middleware-extension design proposal (#6638) for a field with no Alloy-side component to plug into yet.
 
 - **A major bump can regress runtime *defaults*, not just APIs.**
   - Problem: even when everything compiles, default behaviors can quietly change from the prior major.
