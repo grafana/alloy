@@ -13,7 +13,7 @@ As of today there are two write-ahead-log (WAL) implementations for prometheus m
 - Perceived as inheriting concepts that are relevant for a database, IE caring about “active series”, which is an implementation tradeoff rather than a database concept that was inherited
 - One of the most used components in Alloy
 
-[prometheus.write.queue](https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.write.queue/) (referred to as write.queue)
+prometheus.write.queue - now removed - (referred to as write.queue)
 - Built to solve issues related to remote write such as,
     - Reduce memory overhead as “active series” increase
     - Add ability to replay data on startup
