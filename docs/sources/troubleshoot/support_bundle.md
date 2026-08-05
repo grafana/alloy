@@ -12,9 +12,11 @@ weight: 300
 Generate support bundle isn't available on {{< param "PRODUCT_NAME" >}} v1.4 and older.
 {{< /admonition >}}
 
-The `/-/support?duration=N` endpoint returns a support bundle, a compressed file that contains information
-about a running {{< param "PRODUCT_NAME" >}} instance, and can be used as a baseline of information when trying
-to debug an [issue][alloy-repo].
+The `/-/support` endpoint returns a support bundle as a ZIP file with information about a live {{< param "PRODUCT_NAME" >}} instance.
+You can use this bundle as a baseline when you debug an [issue][alloy-repo].
+
+Add `?duration=N` to the URL to limit data collection to `N` seconds.
+If you omit `duration`, {{< param "PRODUCT_NAME" >}} collects data for the HTTP server write timeout.
 
 This feature isn't covered by the [backward-compatibility][backward-compatibility] guarantees.
 
