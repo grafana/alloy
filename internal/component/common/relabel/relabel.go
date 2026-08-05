@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/grafana/regexp"
@@ -129,6 +130,10 @@ func (re Regexp) String() string {
 	return str[5 : len(str)-2]
 }
 
+func (re Regexp) Equal(other Regexp) bool {
+	return re.String() == other.String()
+}
+
 // Config describes a relabelling step to be applied on a target.
 type Config struct {
 	SourceLabels []string `alloy:"source_labels,attr,optional"`
@@ -218,6 +223,20 @@ func (rc *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// Equal reports whether rc and other describe the same relabelling step.
+func (rc *Config) Equal(other *Config) bool {
+	if rc == nil || other == nil {
+		return rc == other
+	}
+	return slices.Equal(rc.SourceLabels, other.SourceLabels) &&
+		rc.Separator == other.Separator &&
+		rc.Regex.Equal(other.Regex) &&
+		rc.Modulus == other.Modulus &&
+		rc.TargetLabel == other.TargetLabel &&
+		rc.Replacement == other.Replacement &&
+		rc.Action == other.Action
 }
 
 // ProcessBuilder should be called with lb LabelBuilder containing the initial set of labels,
@@ -347,3 +366,10 @@ type Rules []*Config
 // AlloyCapsule marks the alias defined above as a "capsule type" so that it
 // cannot be invoked by Alloy code.
 func (r Rules) AlloyCapsule() {}
+
+// Equal reports whether r and other hold the same rules in the same order.
+func (r Rules) Equal(other Rules) bool {
+	return slices.EqualFunc(r, other, func(a, b *Config) bool {
+		return a.Equal(b)
+	})
+}
