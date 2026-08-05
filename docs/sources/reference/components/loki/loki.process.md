@@ -1823,7 +1823,7 @@ stage.tenant {
 ### `stage.timestamp`
 
 The `stage.timestamp` inner block configures a processing stage that sets the timestamp of log entries before they're forwarded to the next component.
-When no timestamp stage is set, the log entry timestamp defaults to the time when the log entry was scraped.
+When no timestamp stage is set, `loki.process` keeps the timestamp already attached to the entry by the upstream component (for example a `loki.source.*` component). Many sources default that to the time the entry was received; others can use a timestamp embedded in the log when configured to do so. Leaving out `stage.timestamp` does not by itself rewrite or sanitize timestamps, and Loki may still reject entries that fall outside its configured acceptance window (for example far-future or out-of-order timestamps).
 
 The following arguments are supported:
 
