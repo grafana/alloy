@@ -1548,13 +1548,13 @@ The following arguments are supported:
 
 The `source` field defines the source of data to split.
 By default, this is the log line itself, but it can also be a previously extracted value.
-If you set `source`, it can't be an empty string.
+{{< param "PRODUCT_NAME" >}} rejects an empty `source` string when it loads the configuration.
 
 When the input is a top-level JSON array, the stage replaces the log entry with one entry for each array element, in array order.
 Each new log line is the raw text of its array element, exactly as it appears in the input.
 The stage doesn't re-encode the element.
 The stage also doesn't split nested arrays: an element that's itself an array becomes the log line of a single entry.
-Each new entry keeps the timestamp of the original entry and gets its own copy of the original entry's labels, extracted map, and structured metadata, so later stages can modify one entry without affecting the others.
+Each new entry keeps the timestamp of the original entry, and the emitted entries have independent labels, top-level extracted maps, and structured metadata, so later stages can modify one entry without affecting the others.
 
 An empty array produces no entries: the original entry is dropped and the stage emits nothing.
 

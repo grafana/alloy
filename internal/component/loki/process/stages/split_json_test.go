@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
@@ -20,9 +21,10 @@ var (
 	splitJSONTestCreated = int64(1714979289123456)
 )
 
-// newSplitJSONEntry populates every per-entry field, including the private
-// created timestamp and Parsed, which the stock newEntry helper leaves at
-// their zero values and would therefore mask preservation bugs.
+// newSplitJSONEntry populates the per-entry fields the stage must preserve,
+// including the private created timestamp, which the stock newEntry helper
+// leaves at its zero value and would therefore mask preservation bugs.
+// (push.Entry.Parsed stays zero: it's loki-internal and unused in Alloy.)
 func newSplitJSONEntry(line string, extracted map[string]any) Entry {
 	if extracted == nil {
 		extracted = map[string]any{"other": "keep"}
@@ -36,7 +38,6 @@ func newSplitJSONEntry(line string, extracted map[string]any) Entry {
 				Timestamp:          splitJSONTestTime,
 				Line:               line,
 				StructuredMetadata: push.LabelsAdapter{{Name: "trace_id", Value: "123"}},
-				Parsed:             push.LabelsAdapter{{Name: "level", Value: "info"}},
 			},
 		),
 	}
@@ -45,8 +46,7 @@ func newSplitJSONEntry(line string, extracted map[string]any) Entry {
 func TestSplitJSONStage_SplitsTopLevelArray(t *testing.T) {
 	t.Parallel()
 
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
-	require.NoError(t, err)
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
 
 	parent := newSplitJSONEntry(`[{"a":1},{"b":2}]`, nil)
 	out := processEntries(stage, parent)
@@ -59,7 +59,6 @@ func TestSplitJSONStage_SplitsTopLevelArray(t *testing.T) {
 		assert.Equal(t, parent.Timestamp, child.Timestamp)
 		assert.Equal(t, parent.StructuredMetadata, child.StructuredMetadata)
 		assert.Equal(t, parent.Extracted, child.Extracted)
-		assert.Equal(t, parent.Parsed, child.Parsed)
 		assert.Equal(t, parent.Created(), child.Created())
 	}
 }
@@ -67,8 +66,7 @@ func TestSplitJSONStage_SplitsTopLevelArray(t *testing.T) {
 func TestSplitJSONStage_LineMode(t *testing.T) {
 	t.Parallel()
 
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
-	require.NoError(t, err)
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
 
 	tests := map[string]struct {
 		line          string
@@ -145,8 +143,7 @@ func TestSplitJSONStage_LineMode(t *testing.T) {
 func TestSplitJSONStage_PassThrough(t *testing.T) {
 	t.Parallel()
 
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
-	require.NoError(t, err)
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
 
 	tests := map[string]string{
 		"unterminated array":               `[{"a":1}`,
@@ -180,9 +177,8 @@ func TestSplitJSONStage_PassThrough(t *testing.T) {
 func TestSplitJSONStage_SourceMode(t *testing.T) {
 	t.Parallel()
 
-	source := "records"
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
-	require.NoError(t, err)
+	source := Source("records")
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
 
 	extracted := map[string]any{
 		"records": `[{"a":1},{"b":2}]`,
@@ -201,9 +197,8 @@ func TestSplitJSONStage_SourceMode(t *testing.T) {
 func TestSplitJSONStage_SourceModePassThrough(t *testing.T) {
 	t.Parallel()
 
-	source := "records"
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
-	require.NoError(t, err)
+	source := Source("records")
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
 
 	tests := map[string]map[string]any{
 		"source key absent":                   {"other": "keep"},
@@ -230,55 +225,61 @@ func TestSplitJSONStage_SourceModePassThrough(t *testing.T) {
 func TestSplitJSONStage_SourceModeEmptyArray(t *testing.T) {
 	t.Parallel()
 
-	source := "records"
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
-	require.NoError(t, err)
+	source := Source("records")
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &source})
 
 	out := processEntries(stage, newSplitJSONEntry(`[{"a":1}]`, map[string]any{"records": `[]`}))
 	require.Empty(t, out)
 }
 
-func TestSplitJSONStage_ValidatesConfig(t *testing.T) {
+// An empty source is rejected when the configuration is decoded, before any
+// stage is constructed.
+func TestSplitJSONStage_EmptySourceRejectedAtDecode(t *testing.T) {
 	t.Parallel()
 
-	empty := ""
-	_, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{Source: &empty})
-	require.EqualError(t, err, ErrEmptySplitJSONStageSource)
+	var config Configs
+	err := syntax.Unmarshal([]byte(`
+stage.split_json {
+    source = ""
+}
+`), &config)
+	require.ErrorContains(t, err, "source cannot be empty")
 }
 
 func TestSplitJSONStage_ChildStateIsolation(t *testing.T) {
 	t.Parallel()
 
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
-	require.NoError(t, err)
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
 
-	parent := newSplitJSONEntry(`[{"a":1},{"b":2}]`, nil)
+	// Three elements exercise both branches: cloned children (all but the
+	// last) and the final child that reuses the original's allocations.
+	parent := newSplitJSONEntry(`[{"a":1},{"b":2},{"c":3}]`, nil)
 	out := processEntries(stage, parent)
-	require.Len(t, out, 2)
+	require.Len(t, out, 3)
 
 	for _, child := range out {
 		assert.Equal(t, splitJSONTestCreated, child.Created())
-		assert.Equal(t, parent.Parsed, child.Parsed)
 	}
 
-	out[0].Labels["app"] = "mutated"
-	out[0].Extracted["other"] = "mutated"
-	out[0].StructuredMetadata[0].Value = "mutated"
-	out[0].Parsed[0].Value = "mutated"
+	// Mutating both non-final children catches any aliasing between cloned
+	// children as well as against the reused final child and the parent.
+	for _, i := range []int{0, 1} {
+		out[i].Labels["app"] = "mutated"
+		out[i].Extracted["other"] = "mutated"
+		out[i].StructuredMetadata[0].Value = "mutated"
+	}
 
-	for _, e := range []Entry{out[1], parent} {
+	for _, e := range []Entry{out[2], parent} {
 		assert.Equal(t, model.LabelValue("test"), e.Labels["app"])
 		assert.Equal(t, "keep", e.Extracted["other"])
 		assert.Equal(t, "123", e.StructuredMetadata[0].Value)
-		assert.Equal(t, "info", e.Parsed[0].Value)
 	}
 }
 
 func TestSplitJSONStage_CrossParentOrdering(t *testing.T) {
 	t.Parallel()
 
-	stage, err := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
-	require.NoError(t, err)
+	stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
 
 	out := processEntries(stage,
 		newSplitJSONEntry(`[{"a":1},{"a":2}]`, nil),
@@ -323,7 +324,7 @@ func TestSplitJSONPipeline(t *testing.T) {
 	require.Len(t, stages, 1)
 	require.NotNil(t, stages[0].SplitJSONConfig)
 	require.NotNil(t, stages[0].SplitJSONConfig.Source)
-	assert.Equal(t, "x", *stages[0].SplitJSONConfig.Source)
+	assert.Equal(t, Source("x"), *stages[0].SplitJSONConfig.Source)
 
 	pl, err = NewPipeline(logging.NewSlogNop(), stages, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
