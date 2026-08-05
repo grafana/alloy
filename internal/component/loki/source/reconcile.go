@@ -41,7 +41,7 @@ func Reconcile[Key comparable, Input any](
 // is independent of the one used by the scheduler. When several inputs share a dedup
 // key only the first one is used, so callers control which one wins through the order
 // of inputs.
-func ReconcileWithDedup[Key, Dedup comparable, Input any](
+func ReconcileWithDedup[Key comparable, Dedup comparable, Input any](
 	l *slog.Logger,
 	s *Scheduler[Key],
 	it iter.Seq[Input],
