@@ -70,14 +70,16 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.Append(ref, l, t, v)
 			}
 
-			debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				liveDebuggingComponentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
-				},
-			))
+			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
+				debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					liveDebuggingComponentID,
+					livedebugging.PrometheusMetric,
+					1,
+					func() string {
+						return fmt.Sprintf("sample: ts=%d, labels=%s, value=%f", t, l, v)
+					},
+				))
+			}
 			return finalRef, err
 		}),
 		prometheus.WithHistogramHook(func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
@@ -99,22 +101,24 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.AppendHistogram(ref, l, t, h, fh)
 			}
 
-			debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				liveDebuggingComponentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					var data string
-					if h != nil {
-						data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
-					} else if fh != nil {
-						data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
-					} else {
-						data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
-					}
-					return data
-				},
-			))
+			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
+				debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					liveDebuggingComponentID,
+					livedebugging.PrometheusMetric,
+					1,
+					func() string {
+						var data string
+						if h != nil {
+							data = fmt.Sprintf("histogram: ts=%d, labels=%s, value=%s", t, l, h.String())
+						} else if fh != nil {
+							data = fmt.Sprintf("float_histogram: ts=%d, labels=%s, value=%s", t, l, fh.String())
+						} else {
+							data = fmt.Sprintf("histogram_with_no_value: ts=%d, labels=%s", t, l)
+						}
+						return data
+					},
+				))
+			}
 			return finalRef, err
 		}),
 		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
@@ -167,14 +171,16 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.AppendExemplar(ref, l, e)
 			}
 
-			debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				liveDebuggingComponentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
-				},
-			))
+			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
+				debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					liveDebuggingComponentID,
+					livedebugging.PrometheusMetric,
+					1,
+					func() string {
+						return fmt.Sprintf("exemplar: ts=%d, labels=%s, exemplar_labels=%s, value=%f", e.Ts, l, e.Labels, e.Value)
+					},
+				))
+			}
 			return finalRef, err
 		}),
 	)
