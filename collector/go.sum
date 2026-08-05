@@ -756,8 +756,6 @@ github.com/davecgh/go-xdr v0.0.0-20161123171359-e6a2ba005892/go.mod h1:CTDl0pzVz
 github.com/dchest/siphash v1.2.3/go.mod h1:0NvQU092bT0ipiFN++/rXm69QG9tVxLAlQHIXMPAkHc=
 github.com/deckarep/golang-set/v2 v2.6.0 h1:XfcQbWM1LlMB8BsJ8N9vW5ehnnPVIw0je80NsVHagjM=
 github.com/deckarep/golang-set/v2 v2.6.0/go.mod h1:VAky9rY/yGXJOLEDv3OMci+7wtDpOF4IN+y82NBOac4=
-github.com/deneonet/benc v1.1.7 h1:0XPxTTVJZq/ulxXvMn2Mzjx5XquekVky3wX6eTgA0vA=
-github.com/deneonet/benc v1.1.7/go.mod h1:UCfkM5Od0B2huwv/ZItvtUb7QnALFt9YXtX8NXX4Lts=
 github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 h1:ue4Es4Xzz255hWQ7NAWzZxuXG+YOV7URzzusLLSe0zU=
 github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1/go.mod h1:MYsOV9Dgsec3FFSOjywi0QK5r6TeBbdWxdrMGtiYXHA=
 github.com/dennwc/ioctl v1.0.0 h1:DsWAAjIxRqNcLn9x6mwfuf2pet3iB7aK90K4tF16rLg=
@@ -1245,8 +1243,6 @@ github.com/grafana/snowflake-prometheus-exporter v0.0.0-20260428133429-b41d19e32
 github.com/grafana/snowflake-prometheus-exporter v0.0.0-20260428133429-b41d19e3211f/go.mod h1:FKkf3WN4SEUS/10o5oE1KOYlZHNpyOdeHqAaMfsmOCw=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329 h1:Rs4H1yv2Abk3xE82qpyhMGGA8rswAOA0HQZde/BYkFo=
 github.com/grafana/vmware_exporter v0.0.5-beta.0.20250218170317-73398ba08329/go.mod h1:Z28219aViNlsLlPvuCnlgHDagRdZBAZ7JOnQg1b3eWg=
-github.com/grafana/walqueue v0.0.0-20260122211421-92af63e5c3dd h1:ComDURq6l4q7yY5YLzkmx4he9n3y6FaLEJzFylp88RQ=
-github.com/grafana/walqueue v0.0.0-20260122211421-92af63e5c3dd/go.mod h1:ERLl/P/W7OzHhdrLSYPhhIBQQ+xl5+niVvGrxb3Mr6A=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 h1:FlKQKUYPZ5yDCN248M3R7x8yu2E3yEZ0H7aLomE4EoE=
 github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445/go.mod h1:L69/dBlPQlWkcnU76WgcppK5e4rrxzQdi6LhLnK/ytA=
 github.com/grpc-ecosystem/go-grpc-middleware v1.0.0/go.mod h1:FiyG127CGDf3tlThmgyCl78X/SZQqEOJBCDaAfeWzPs=
@@ -2831,8 +2827,6 @@ go4.org v0.0.0-20230225012048-214862532bf5 h1:nifaUDeh+rPaBCMPMQHZmvJf+QdpLFnuQP
 go4.org v0.0.0-20230225012048-214862532bf5/go.mod h1:F57wTi5Lrj6WLyswp5EYV1ncrEbFGHD4hhz6S1ZYeaU=
 go4.org/netipx v0.0.0-20230125063823-8449b0a6169f h1:ketMxHg+vWm3yccyYiq+uK8D3fRmna2Fcj+awpQp84s=
 go4.org/netipx v0.0.0-20230125063823-8449b0a6169f/go.mod h1:tgPU4N2u9RByaTN3NC2p9xOzyFpte4jYwsIIRF7XlSc=
-golang.design/x/chann v0.1.2 h1:eHF9wjuQnpp+j4ryWhyxC/pFuYzbvMAkudA/I5ALovY=
-golang.design/x/chann v0.1.2/go.mod h1:Rh5KhCAp+0qu9+FfKPymHpu8onmjl89sFwMeiw3SK14=
 golang.org/x/arch v0.28.0 h1:wVwVdqsTuUbJvhYVCspQYwZXHNYeLSoZnmHD+ggddpQ=
 golang.org/x/arch v0.28.0/go.mod h1:0X+GdSIP+kL5wPmpK7sdkEVTt2XoYP0cSjQSbZBwOi8=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=

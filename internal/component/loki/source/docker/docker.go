@@ -109,7 +109,7 @@ type Component struct {
 
 	mut       sync.RWMutex
 	args      Arguments
-	scheduler *source.Scheduler[string]
+	scheduler *source.Scheduler[positions.Entry]
 	client    client.APIClient
 	handler   loki.LogsReceiver
 	posFile   positions.Positions
@@ -139,7 +139,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:   newMetrics(o.Registerer),
 		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
-		scheduler: source.NewScheduler[string](),
+		scheduler: source.NewScheduler[positions.Entry](),
 		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 	}
@@ -170,7 +170,9 @@ func (c *Component) Run(ctx context.Context) error {
 	return nil
 }
 
-type promTarget struct {
+type containerTarget struct {
+	containerID string
+	// labels is the target's own labels merged with the component's default labels.
 	labels      model.LabelSet
 	fingerPrint model.Fingerprint
 }
@@ -189,7 +191,10 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	if client != c.client {
+	rcs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+
+	if requiresReset(client, c.client, rcs, c.rcs) {
+		c.rcs = rcs
 		c.client = client
 		// Stop all tailers because we need to restart them.
 		c.scheduler.Reset()
@@ -200,38 +205,45 @@ func (c *Component) Update(args component.Arguments) error {
 		defaultLabels[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-
-	promTargets := make([]promTarget, len(newArgs.Targets))
+	targets := make([]containerTarget, len(newArgs.Targets))
 	for i, target := range newArgs.Targets {
-		labelsCopy := target.LabelSet()
-		promTargets[i] = promTarget{labels: labelsCopy, fingerPrint: labelsCopy.Fingerprint()}
+		lbls := target.LabelSet().Merge(defaultLabels)
+		targets[i] = containerTarget{
+			containerID: string(lbls[dockerLabelContainerID]),
+			labels:      lbls,
+			fingerPrint: lbls.Fingerprint(),
+		}
 	}
 
 	// Sorting the targets before filtering ensures consistent filtering of targets
 	// when multiple targets share the same containerID.
-	sort.Slice(promTargets, func(i, j int) bool {
-		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
+	sort.Slice(targets, func(i, j int) bool {
+		return targets[i].fingerPrint < targets[j].fingerPrint
 	})
 
-	source.Reconcile(
+	source.ReconcileWithDedup(
 		c.opts.Logger,
 		c.scheduler,
-		slices.Values(promTargets),
-		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
-		func(containerID string, target promTarget) (source.Source[string], error) {
-			if containerID == "" {
+		slices.Values(targets),
+		func(target containerTarget) positions.Entry {
+			return positions.Entry{Path: target.containerID, Labels: target.labels.String()}
+		},
+		func(target containerTarget) string {
+			return target.containerID
+		},
+		func(entry positions.Entry, target containerTarget) (source.Source[positions.Entry], error) {
+			if entry.Path == "" {
 				c.opts.Logger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
 				return nil, source.ErrSkip
 			}
 
 			return newTailer(
 				c.metrics,
-				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", entry.Path)),
 				c.handler,
 				c.posFile,
-				containerID,
-				target.labels.Merge(defaultLabels),
+				entry.Path,
+				target.labels,
 				c.rcs,
 				client,
 				5*time.Second,
@@ -313,4 +325,8 @@ type sourceInfo struct {
 	Labels     string `alloy:"labels,attr"`
 	IsRunning  bool   `alloy:"is_running,attr"`
 	ReadOffset string `alloy:"read_offset,attr"`
+}
+
+func requiresReset(newClient, oldClient client.APIClient, newRcs, oldRcs []*relabel.Config) bool {
+	return newClient != oldClient || !reflect.DeepEqual(newRcs, oldRcs)
 }

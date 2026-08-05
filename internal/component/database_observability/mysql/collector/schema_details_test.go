@@ -528,7 +528,7 @@ func TestSchemaDetails(t *testing.T) {
 				AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"))
 
 		// Second scrape: only the tables list. The scrape is throttled (still
-		// within emitInterval) so it must not trigger any create-statement
+		// within EmitInterval) so it must not trigger any create-statement
 		// related queries.
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -540,7 +540,7 @@ func TestSchemaDetails(t *testing.T) {
 			))
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(time.Minute) // well within emitInterval
+		fakeNow = fakeNow.Add(time.Minute) // well within EmitInterval
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		// First scrape emits OP_TABLE_DETECTION + OP_CREATE_STATEMENT; second
@@ -620,7 +620,7 @@ func TestSchemaDetails(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(database_observability.EmitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		require.Eventually(t, func() bool {
@@ -713,7 +713,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than emitInterval ago, no further fetch queries are expected.
+		// less than EmitInterval ago, no further fetch queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
