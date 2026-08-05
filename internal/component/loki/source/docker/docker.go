@@ -1,7 +1,5 @@
 package docker
 
-// NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
-
 import (
 	"context"
 	"fmt"
@@ -9,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"sort"
 	"sync"
@@ -186,16 +183,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	client, err := c.getClient(newArgs)
-	if err != nil {
-		return err
-	}
+	if requiresReset(newArgs, c.args) {
+		client, err := newClient(newArgs)
+		if err != nil {
+			return fmt.Errorf("failed to create docker client: %w", err)
+		}
 
-	rcs := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-
-	if requiresReset(client, c.client, rcs, c.rcs) {
-		c.rcs = rcs
 		c.client = client
+		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 		// Stop all tailers because we need to restart them.
 		c.scheduler.Reset()
 	}
@@ -245,7 +240,7 @@ func (c *Component) Update(args component.Arguments) error {
 				entry.Path,
 				target.labels,
 				c.rcs,
-				client,
+				c.client,
 				5*time.Second,
 				func() bool { return c.exited.Load() },
 			)
@@ -254,52 +249,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = newArgs
 	return nil
-}
-
-// getClient creates a client from args. If args hasn't changed
-// from the last call to getClient, c.client is returned.
-// getClient must only be called when c.mut is held.
-func (c *Component) getClient(args Arguments) (client.APIClient, error) {
-	if reflect.DeepEqual(c.args.Host, args.Host) && c.client != nil {
-		return c.client, nil
-	}
-
-	hostURL, err := url.Parse(args.Host)
-	if err != nil {
-		return c.client, err
-	}
-
-	opts := []client.Opt{
-		client.WithHost(args.Host),
-	}
-
-	// There are other protocols than HTTP supported by the Docker daemon, like
-	// unix, which are not supported by the HTTP client. Passing HTTP client
-	// options to the Docker client makes those non-HTTP requests fail.
-	if hostURL.Scheme == "http" || hostURL.Scheme == "https" {
-		rt, err := config.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "docker_sd")
-		if err != nil {
-			return c.client, err
-		}
-		opts = append(opts,
-			client.WithHTTPClient(&http.Client{
-				Transport: rt,
-				Timeout:   args.RefreshInterval,
-			}),
-			client.WithScheme(hostURL.Scheme),
-			client.WithHTTPHeaders(map[string]string{
-				"User-Agent": userAgent,
-			}),
-		)
-	}
-
-	client, err := client.New(opts...)
-	if err != nil {
-		c.opts.Logger.Error("could not create new Docker client", "err", err)
-		return c.client, fmt.Errorf("failed to build docker client: %w", err)
-	}
-
-	return client, nil
 }
 
 // DebugInfo returns information about the status of tailed targets.
@@ -327,6 +276,47 @@ type sourceInfo struct {
 	ReadOffset string `alloy:"read_offset,attr"`
 }
 
-func requiresReset(newClient, oldClient client.APIClient, newRcs, oldRcs []*relabel.Config) bool {
-	return newClient != oldClient || !reflect.DeepEqual(newRcs, oldRcs)
+func newClient(args Arguments) (client.APIClient, error) {
+	hostURL, err := url.Parse(args.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []client.Opt{
+		client.WithHost(args.Host),
+	}
+
+	// There are other protocols than HTTP supported by the Docker daemon, like
+	// unix, which are not supported by the HTTP client. Passing HTTP client
+	// options to the Docker client makes those non-HTTP requests fail.
+	if hostURL.Scheme == "http" || hostURL.Scheme == "https" {
+		rt, err := config.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "docker_sd")
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts,
+			client.WithHTTPClient(&http.Client{
+				Transport: rt,
+				Timeout:   args.RefreshInterval,
+			}),
+			client.WithScheme(hostURL.Scheme),
+			client.WithHTTPHeaders(map[string]string{
+				"User-Agent": userAgent,
+			}),
+		)
+	}
+
+	client, err := client.New(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func requiresReset(newArgs, oldArgs Arguments) bool {
+	return newArgs.Host != oldArgs.Host ||
+		newArgs.RefreshInterval != oldArgs.RefreshInterval ||
+		newArgs.HTTPClientConfig.Equal(oldArgs.HTTPClientConfig) ||
+		newArgs.RelabelRules.Equal(oldArgs.RelabelRules)
 }
