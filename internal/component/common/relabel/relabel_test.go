@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/regexp"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
@@ -44,7 +45,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("f(.*)"),
+					Regex:        MustNewRegexp("f(.*)"),
 					TargetLabel:  "d",
 					Separator:    ";",
 					Replacement:  "ch${1}-ch${1}",
@@ -67,7 +68,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a", "b"},
-					Regex:        mustNewRegexp("f(.*);(.*)r"),
+					Regex:        MustNewRegexp("f(.*);(.*)r"),
 					TargetLabel:  "a",
 					Separator:    ";",
 					Replacement:  "b${1}${2}m", // boobam
@@ -75,7 +76,7 @@ func TestRelabel(t *testing.T) {
 				},
 				{
 					SourceLabels: []string{"c", "a"},
-					Regex:        mustNewRegexp("(b).*b(.*)ba(.*)"),
+					Regex:        MustNewRegexp("(b).*b(.*)ba(.*)"),
 					TargetLabel:  "d",
 					Separator:    ";",
 					Replacement:  "$1$2$2$3",
@@ -96,11 +97,11 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp(".*o.*"),
+					Regex:        MustNewRegexp(".*o.*"),
 					Action:       Drop,
 				}, {
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("f(.*)"),
+					Regex:        MustNewRegexp("f(.*)"),
 					TargetLabel:  "d",
 					Separator:    ";",
 					Replacement:  "ch$1-ch$1",
@@ -117,7 +118,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp(".*o.*"),
+					Regex:        MustNewRegexp(".*o.*"),
 					Action:       Drop,
 				},
 			},
@@ -130,7 +131,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp(".*(b).*"),
+					Regex:        MustNewRegexp(".*(b).*"),
 					TargetLabel:  "d",
 					Separator:    ";",
 					Replacement:  "$1",
@@ -149,7 +150,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("no-match"),
+					Regex:        MustNewRegexp("no-match"),
 					Action:       Drop,
 				},
 			},
@@ -164,7 +165,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("f|o"),
+					Regex:        MustNewRegexp("f|o"),
 					Action:       Drop,
 				},
 			},
@@ -179,7 +180,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("no-match"),
+					Regex:        MustNewRegexp("no-match"),
 					Action:       Keep,
 				},
 			},
@@ -192,7 +193,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("f.*"),
+					Regex:        MustNewRegexp("f.*"),
 					Action:       Keep,
 				},
 			},
@@ -208,7 +209,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("f"),
+					Regex:        MustNewRegexp("f"),
 					TargetLabel:  "b",
 					Replacement:  "bar",
 					Action:       Replace,
@@ -227,7 +228,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("(f).*"),
+					Regex:        MustNewRegexp("(f).*"),
 					TargetLabel:  "$1",
 					Replacement:  "$2",
 					Action:       Replace,
@@ -285,7 +286,7 @@ func TestRelabel(t *testing.T) {
 			}),
 			relabel: []*Config{
 				{
-					Regex:       mustNewRegexp("(b.*)"),
+					Regex:       MustNewRegexp("(b.*)"),
 					Replacement: "bar_${1}",
 					Action:      LabelMap,
 				},
@@ -307,7 +308,7 @@ func TestRelabel(t *testing.T) {
 			}),
 			relabel: []*Config{
 				{
-					Regex:       mustNewRegexp("__meta_(my.*)"),
+					Regex:       MustNewRegexp("__meta_(my.*)"),
 					Replacement: "${1}",
 					Action:      LabelMap,
 				},
@@ -328,7 +329,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+					Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 					Action:       Replace,
 					Replacement:  "${2}",
 					TargetLabel:  "${1}",
@@ -346,7 +347,7 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+					Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 					Action:       Replace,
 					Replacement:  "${3}",
 					TargetLabel:  "${1}",
@@ -363,21 +364,21 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+					Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 					Action:       Replace,
 					Replacement:  "${1}",
 					TargetLabel:  "${3}",
 				},
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+					Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 					Action:       Replace,
 					Replacement:  "${1}",
 					TargetLabel:  "${3}",
 				},
 				{
 					SourceLabels: []string{"a"},
-					Regex:        mustNewRegexp("some-([^-]+)(-[^,]+)"),
+					Regex:        MustNewRegexp("some-([^-]+)(-[^,]+)"),
 					Action:       Replace,
 					Replacement:  "${1}",
 					TargetLabel:  "${3}",
@@ -394,21 +395,21 @@ func TestRelabel(t *testing.T) {
 			relabel: []*Config{
 				{
 					SourceLabels: []string{"__meta_sd_tags"},
-					Regex:        mustNewRegexp("(?:.+,|^)path:(/[^,]+).*"),
+					Regex:        MustNewRegexp("(?:.+,|^)path:(/[^,]+).*"),
 					Action:       Replace,
 					Replacement:  "${1}",
 					TargetLabel:  "__metrics_path__",
 				},
 				{
 					SourceLabels: []string{"__meta_sd_tags"},
-					Regex:        mustNewRegexp("(?:.+,|^)job:([^,]+).*"),
+					Regex:        MustNewRegexp("(?:.+,|^)job:([^,]+).*"),
 					Action:       Replace,
 					Replacement:  "${1}",
 					TargetLabel:  "job",
 				},
 				{
 					SourceLabels: []string{"__meta_sd_tags"},
-					Regex:        mustNewRegexp("(?:.+,|^)label:([^=]+)=([^,]+).*"),
+					Regex:        MustNewRegexp("(?:.+,|^)label:([^=]+)=([^,]+).*"),
 					Action:       Replace,
 					Replacement:  "${2}",
 					TargetLabel:  "${1}",
@@ -428,19 +429,19 @@ func TestRelabel(t *testing.T) {
 			}),
 			relabel: []*Config{
 				{
-					Regex:  mustNewRegexp("^__meta_kubernetes_pod_container_port_name$"),
+					Regex:  MustNewRegexp("^__meta_kubernetes_pod_container_port_name$"),
 					Action: LabelDrop,
 				},
 				{
 					SourceLabels: []string{"__meta_kubernetes_pod_annotation_XXX_metrics_port"},
-					Regex:        mustNewRegexp("(.+)"),
+					Regex:        MustNewRegexp("(.+)"),
 					Action:       Replace,
 					Replacement:  "metrics",
 					TargetLabel:  "__meta_kubernetes_pod_container_port_name",
 				},
 				{
 					SourceLabels: []string{"__meta_kubernetes_pod_container_port_name"},
-					Regex:        mustNewRegexp("^metrics$"),
+					Regex:        MustNewRegexp("^metrics$"),
 					Action:       Keep,
 				},
 			},
@@ -457,7 +458,7 @@ func TestRelabel(t *testing.T) {
 			}),
 			relabel: []*Config{
 				{
-					Regex:  mustNewRegexp("(b.*)"),
+					Regex:  MustNewRegexp("(b.*)"),
 					Action: LabelKeep,
 				},
 			},
@@ -474,7 +475,7 @@ func TestRelabel(t *testing.T) {
 			}),
 			relabel: []*Config{
 				{
-					Regex:  mustNewRegexp("(b.*)"),
+					Regex:  MustNewRegexp("(b.*)"),
 					Action: LabelDrop,
 				},
 			},
@@ -634,7 +635,7 @@ func TestRelabelValidate(t *testing.T) {
 		{
 			config: Config{
 				SourceLabels: []string{"a"},
-				Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+				Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 				Action:       Replace,
 				Replacement:  "${1}",
 				TargetLabel:  "${3}",
@@ -643,7 +644,7 @@ func TestRelabelValidate(t *testing.T) {
 		{
 			config: Config{
 				SourceLabels: []string{"a"},
-				Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+				Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 				Action:       Replace,
 				Replacement:  "${1}",
 				TargetLabel:  "0${3}",
@@ -653,7 +654,7 @@ func TestRelabelValidate(t *testing.T) {
 		{
 			config: Config{
 				SourceLabels: []string{"a"},
-				Regex:        mustNewRegexp("some-([^-]+)-([^,]+)"),
+				Regex:        MustNewRegexp("some-([^-]+)-([^,]+)"),
 				Action:       Replace,
 				Replacement:  "${1}",
 				TargetLabel:  "-${3}",
@@ -873,166 +874,20 @@ func TestComponentToPromRelabelConfigs(t *testing.T) {
 	}
 }
 
-func TestConfigEqual(t *testing.T) {
-	tests := []struct {
-		desc     string
-		a, b     *Config
-		expected bool
-	}{
-		{
-			desc:     "both nil",
-			a:        nil,
-			b:        nil,
-			expected: true,
-		},
-		{
-			desc:     "nil and empty",
-			a:        nil,
-			b:        &Config{},
-			expected: false,
-		},
-		{
-			desc: "all fields set and identical",
-			a: &Config{
-				SourceLabels: []string{"a", "b"},
-				Separator:    ";",
-				Regex:        mustNewRegexp("f(.*)"),
-				Modulus:      3,
-				TargetLabel:  "c",
-				Replacement:  "$1",
-				Action:       Replace,
-			},
-			b: &Config{
-				SourceLabels: []string{"a", "b"},
-				Separator:    ";",
-				Regex:        mustNewRegexp("f(.*)"),
-				Modulus:      3,
-				TargetLabel:  "c",
-				Replacement:  "$1",
-				Action:       Replace,
-			},
-			expected: true,
-		},
-		{
-			desc:     "different source labels",
-			a:        &Config{SourceLabels: []string{"a"}},
-			b:        &Config{SourceLabels: []string{"b"}},
-			expected: false,
-		},
-		{
-			desc:     "reordered source labels",
-			a:        &Config{SourceLabels: []string{"a", "b"}},
-			b:        &Config{SourceLabels: []string{"b", "a"}},
-			expected: false,
-		},
-		{
-			desc:     "nil and empty source labels",
-			a:        &Config{SourceLabels: nil},
-			b:        &Config{SourceLabels: []string{}},
-			expected: true,
-		},
-		{
-			desc:     "different separator",
-			a:        &Config{Separator: ";"},
-			b:        &Config{Separator: ","},
-			expected: false,
-		},
-		{
-			desc:     "different regex",
-			a:        &Config{Regex: mustNewRegexp("f(.*)")},
-			b:        &Config{Regex: mustNewRegexp("b(.*)")},
-			expected: false,
-		},
-		{
-			desc:     "equivalent regex compiled twice",
-			a:        &Config{Regex: mustNewRegexp("f(.*)")},
-			b:        &Config{Regex: mustNewRegexp("f(.*)")},
-			expected: true,
-		},
-		{
-			desc:     "different modulus",
-			a:        &Config{Modulus: 1},
-			b:        &Config{Modulus: 2},
-			expected: false,
-		},
-		{
-			desc:     "different target label",
-			a:        &Config{TargetLabel: "a"},
-			b:        &Config{TargetLabel: "b"},
-			expected: false,
-		},
-		{
-			desc:     "different replacement",
-			a:        &Config{Replacement: "$1"},
-			b:        &Config{Replacement: "$2"},
-			expected: false,
-		},
-		{
-			desc:     "different action",
-			a:        &Config{Action: Keep},
-			b:        &Config{Action: Drop},
-			expected: false,
-		},
+// MustNewRegexp works like NewRegexp, but panics if the regular expression does not compile.
+func MustNewRegexp(s string) Regexp {
+	re, err := NewRegexp(s)
+	if err != nil {
+		panic(err)
 	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			require.Equal(t, tc.expected, tc.a.Equal(tc.b))
-			require.Equal(t, tc.expected, tc.b.Equal(tc.a))
-		})
-	}
+	return re
 }
 
-func TestRulesEqual(t *testing.T) {
-	tests := []struct {
-		desc     string
-		a, b     Rules
-		expected bool
-	}{
-		{
-			desc:     "both nil",
-			a:        nil,
-			b:        nil,
-			expected: true,
-		},
-		{
-			desc:     "nil and empty",
-			a:        nil,
-			b:        Rules{},
-			expected: true,
-		},
-		{
-			desc:     "same single rule",
-			a:        Rules{{Action: Drop, Regex: mustNewRegexp("f(.*)")}},
-			b:        Rules{{Action: Drop, Regex: mustNewRegexp("f(.*)")}},
-			expected: true,
-		},
-		{
-			desc:     "different rule",
-			a:        Rules{{Action: Drop, Regex: mustNewRegexp("f(.*)")}},
-			b:        Rules{{Action: Keep, Regex: mustNewRegexp("f(.*)")}},
-			expected: false,
-		},
-		{
-			desc:     "different number of rules",
-			a:        Rules{{Action: Drop}},
-			b:        Rules{{Action: Drop}, {Action: Keep}},
-			expected: false,
-		},
-		{
-			desc:     "same rules in different order",
-			a:        Rules{{Action: Drop}, {Action: Keep}},
-			b:        Rules{{Action: Keep}, {Action: Drop}},
-			expected: false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.desc, func(t *testing.T) {
-			require.Equal(t, tc.expected, tc.a.Equal(tc.b))
-			require.Equal(t, tc.expected, tc.b.Equal(tc.a))
-		})
-	}
+// NewRegexp creates a new anchored Regexp and returns an error if the
+// passed-in regular expression does not compile.
+func NewRegexp(s string) (Regexp, error) {
+	regex, err := regexp.Compile("^(?s:" + s + ")$")
+	return Regexp{Regexp: regex}, err
 }
 
 type builderAdapter struct {

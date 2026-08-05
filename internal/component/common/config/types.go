@@ -4,9 +4,7 @@ package config
 
 import (
 	"fmt"
-	"maps"
 	"net/url"
-	"slices"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -103,25 +101,6 @@ func (h *HTTPClientConfig) Convert() *config.HTTPClientConfig {
 	}
 }
 
-// Equal reports whether h and other describe the same HTTP client
-// configuration.
-func (h *HTTPClientConfig) Equal(other *HTTPClientConfig) bool {
-	if h == nil || other == nil {
-		return h == nil && other == nil
-	}
-
-	return h.BasicAuth.Equal(other.BasicAuth) &&
-		h.Authorization.Equal(other.Authorization) &&
-		h.OAuth2.Equal(other.OAuth2) &&
-		h.BearerToken == other.BearerToken &&
-		h.BearerTokenFile == other.BearerTokenFile &&
-		h.ProxyConfig.Equal(other.ProxyConfig) &&
-		h.TLSConfig.Equal(&other.TLSConfig) &&
-		h.FollowRedirects == other.FollowRedirects &&
-		h.EnableHTTP2 == other.EnableHTTP2 &&
-		h.HTTPHeaders.Equal(other.HTTPHeaders)
-}
-
 // Clone creates a shallow clone of h.
 func CloneDefaultHTTPClientConfig() *HTTPClientConfig {
 	clone := DefaultHTTPClientConfig
@@ -165,14 +144,6 @@ func (b *BasicAuth) Validate() error {
 	return nil
 }
 
-// Equal reports whether b and other describe the same credentials.
-func (b *BasicAuth) Equal(other *BasicAuth) bool {
-	if b == nil || other == nil {
-		return b == nil && other == nil
-	}
-	return *b == *other
-}
-
 type ProxyConfig struct {
 	ProxyURL             URL         `alloy:"proxy_url,attr,optional"`
 	NoProxy              string      `alloy:"no_proxy,attr,optional"`
@@ -214,17 +185,6 @@ func (p *ProxyConfig) Validate() error {
 	return nil
 }
 
-// Equal reports whether p and other describe the same proxy configuration.
-func (p *ProxyConfig) Equal(other *ProxyConfig) bool {
-	if p == nil || other == nil {
-		return p == nil && other == nil
-	}
-	return p.ProxyURL.Equal(other.ProxyURL) &&
-		p.NoProxy == other.NoProxy &&
-		p.ProxyFromEnvironment == other.ProxyFromEnvironment &&
-		p.ProxyConnectHeader.Equal(&other.ProxyConnectHeader)
-}
-
 type Headers struct {
 	Headers map[string][]alloytypes.Secret `alloy:"http_headers,attr,optional"`
 }
@@ -258,15 +218,6 @@ func (p *Headers) Validate() error {
 
 	promHeaders := p.Convert()
 	return promHeaders.Validate()
-}
-
-// Equal reports whether p and other hold the same headers. A nil map and an
-// empty map are considered equal.
-func (p *Headers) Equal(other *Headers) bool {
-	if p == nil || other == nil {
-		return p == nil && other == nil
-	}
-	return maps.EqualFunc(p.Headers, other.Headers, slices.Equal[[]alloytypes.Secret])
 }
 
 // URL mirrors config.URL
@@ -304,15 +255,6 @@ func (u *URL) Convert() config.URL {
 	return config.URL{URL: u.URL}
 }
 
-// Equal reports whether u and other point at the same URL.
-func (u URL) Equal(other URL) bool {
-	if u.URL == nil || other.URL == nil {
-		return u.URL == other.URL
-	}
-
-	return u.String() == other.String()
-}
-
 type ProxyHeader struct {
 	Header map[string][]alloytypes.Secret `alloy:"proxy_connect_header,attr,optional"`
 }
@@ -333,15 +275,6 @@ func (h *ProxyHeader) Convert() config.ProxyHeader {
 		header[name] = s
 	}
 	return header
-}
-
-// Equal reports whether h and other hold the same headers. A nil map and an
-// empty map are considered equal.
-func (h *ProxyHeader) Equal(other *ProxyHeader) bool {
-	if h == nil || other == nil {
-		return h == nil && other == nil
-	}
-	return maps.EqualFunc(h.Header, other.Header, slices.Equal[[]alloytypes.Secret])
 }
 
 // Authorization sets up HTTP authorization credentials.
@@ -383,14 +316,6 @@ func (a *Authorization) Validate() error {
 	}
 
 	return nil
-}
-
-// Equal reports whether a and other describe the same credentials.
-func (a *Authorization) Equal(other *Authorization) bool {
-	if a == nil || other == nil {
-		return a == nil && other == nil
-	}
-	return *a == *other
 }
 
 // TLSVersion mirrors config.TLSVersion
@@ -472,14 +397,6 @@ func (t *TLSConfig) Validate() error {
 	return nil
 }
 
-// Equal reports whether t and other describe the same TLS configuration.
-func (t *TLSConfig) Equal(other *TLSConfig) bool {
-	if t == nil || other == nil {
-		return t == nil && other == nil
-	}
-	return *t == *other
-}
-
 // OAuth2Config sets up the OAuth2 client.
 type OAuth2Config struct {
 	ClientID         string            `alloy:"client_id,attr,optional"`
@@ -531,21 +448,6 @@ func (o *OAuth2Config) Validate() error {
 	}
 
 	return o.ProxyConfig.Validate()
-}
-
-// Equal reports whether o and other describe the same OAuth2 client.
-func (o *OAuth2Config) Equal(other *OAuth2Config) bool {
-	if o == nil || other == nil {
-		return o == nil && other == nil
-	}
-	return o.ClientID == other.ClientID &&
-		o.ClientSecret == other.ClientSecret &&
-		o.ClientSecretFile == other.ClientSecretFile &&
-		slices.Equal(o.Scopes, other.Scopes) &&
-		o.TokenURL == other.TokenURL &&
-		maps.Equal(o.EndpointParams, other.EndpointParams) &&
-		o.ProxyConfig.Equal(other.ProxyConfig) &&
-		o.TLSConfig.Equal(other.TLSConfig)
 }
 
 type SysLogFormat string
