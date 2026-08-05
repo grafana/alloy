@@ -34,7 +34,7 @@ func Reconcile[Key comparable, Input any](
 	sourceFactoryFn SourceFactoryFn[Key, Input],
 ) {
 
-	ReconcileWithDedup(l, s, it, keyFn, DedupFn[Key, Input](keyFn), sourceFactoryFn)
+	reconcile(l, s, it, func(i Input) (Key, Key) { key := keyFn(i); return key, key }, sourceFactoryFn)
 }
 
 // ReconcileWithDedup behaves like Reconcile, but deduplicates inputs on a key that
@@ -50,6 +50,17 @@ func ReconcileWithDedup[Key, Dedup comparable, Input any](
 	sourceFactoryFn SourceFactoryFn[Key, Input],
 ) {
 
+	reconcile(l, s, it, func(i Input) (Key, Dedup) { return keyFn(i), dedupFn(i) }, sourceFactoryFn)
+}
+
+func reconcile[Key, Dedup comparable, Input any](
+	l *slog.Logger,
+	s *Scheduler[Key],
+	it iter.Seq[Input],
+	keysFn func(Input) (Key, Dedup),
+	sourceFactoryFn SourceFactoryFn[Key, Input],
+) {
+
 	var (
 		// seen is used to deduplicate targets.
 		seen = make(map[Dedup]struct{})
@@ -59,7 +70,7 @@ func ReconcileWithDedup[Key, Dedup comparable, Input any](
 
 	// Process all inputs and create sources for new items.
 	for i := range it {
-		dedupKey, key := dedupFn(i), keyFn(i)
+		key, dedupKey := keysFn(i)
 		// Skip if we've already processed this input in this iteration.
 		if _, ok := seen[dedupKey]; ok {
 			continue

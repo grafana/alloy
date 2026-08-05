@@ -171,6 +171,8 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 type containerTarget struct {
+	containerID string
+	// labels is the target's own labels merged with the component's default labels.
 	labels      model.LabelSet
 	fingerPrint model.Fingerprint
 }
@@ -205,8 +207,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	targets := make([]containerTarget, len(newArgs.Targets))
 	for i, target := range newArgs.Targets {
-		lset := target.LabelSet()
-		targets[i] = containerTarget{labels: lset, fingerPrint: lset.Fingerprint()}
+		lbls := target.LabelSet().Merge(defaultLabels)
+		targets[i] = containerTarget{
+			containerID: string(lbls[dockerLabelContainerID]),
+			labels:      lbls,
+			fingerPrint: lbls.Fingerprint(),
+		}
 	}
 
 	// Sorting the targets before filtering ensures consistent filtering of targets
@@ -220,10 +226,10 @@ func (c *Component) Update(args component.Arguments) error {
 		c.scheduler,
 		slices.Values(targets),
 		func(target containerTarget) positions.Entry {
-			return positions.Entry{Path: string(target.labels[dockerLabelContainerID]), Labels: target.labels.Merge(defaultLabels).String()}
+			return positions.Entry{Path: target.containerID, Labels: target.labels.String()}
 		},
 		func(target containerTarget) string {
-			return string(target.labels[dockerLabelContainerID])
+			return target.containerID
 		},
 		func(entry positions.Entry, target containerTarget) (source.Source[positions.Entry], error) {
 			if entry.Path == "" {
@@ -237,7 +243,7 @@ func (c *Component) Update(args component.Arguments) error {
 				c.handler,
 				c.posFile,
 				entry.Path,
-				target.labels.Merge(defaultLabels),
+				target.labels,
 				c.rcs,
 				client,
 				5*time.Second,
