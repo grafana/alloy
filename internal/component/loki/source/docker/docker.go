@@ -317,6 +317,6 @@ func newClient(args Arguments) (client.APIClient, error) {
 func requiresReset(newArgs, oldArgs Arguments) bool {
 	return newArgs.Host != oldArgs.Host ||
 		newArgs.RefreshInterval != oldArgs.RefreshInterval ||
-		newArgs.HTTPClientConfig.Equal(oldArgs.HTTPClientConfig) ||
-		newArgs.RelabelRules.Equal(oldArgs.RelabelRules)
+		!newArgs.HTTPClientConfig.Equal(oldArgs.HTTPClientConfig) ||
+		!newArgs.RelabelRules.Equal(oldArgs.RelabelRules)
 }
