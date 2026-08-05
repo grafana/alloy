@@ -20,8 +20,6 @@ type splitJSONStage struct {
 }
 
 // newSplitJSONStage creates a new split_json pipeline stage from a config.
-// An Alloy-decoded config cannot carry an empty source (Source rejects it at
-// decode time), so construction cannot fail.
 func newSplitJSONStage(logger *slog.Logger, cfg SplitJSONConfig) Stage {
 	return &splitJSONStage{
 		cfg:    cfg,
@@ -44,16 +42,16 @@ func (s *splitJSONStage) Run(in chan Entry) chan Entry {
 				continue
 			}
 			for i, raw := range elems {
-				child := e // struct copy keeps scalar fields, incl. the private created field
+				child := e
 				if i < len(elems)-1 {
 					child.Entry = e.Entry.Clone()
 					child.Extracted = maps.Clone(e.Extracted)
 				}
-				// #nosec G103 nosemgrep: use-of-unsafe-block
 				// Safety: json.RawMessage's UnmarshalJSON contract copies each
 				// value into its own backing slice, which is never exposed or
 				// mutated after this point, so the string's bytes stay immutable.
-				child.Line = unsafe.String(unsafe.SliceData(raw), len(raw))
+				// nosemgrep: use-of-unsafe-block
+				child.Line = unsafe.String(unsafe.SliceData(raw), len(raw)) // #nosec G103
 				out <- child
 			}
 		}
