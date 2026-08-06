@@ -75,6 +75,36 @@ jobs:
       img-name: alloy
       ref: ${{ github.ref_name }}
 
+  sign_linux_container:
+    needs: publish_linux_container
+    if: ${{ needs.publish_linux_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_linux_container.outputs.image }}
+
+  sign_linux_boringcrypto_container:
+    needs: publish_linux_boringcrypto_container
+    if: ${{ needs.publish_linux_boringcrypto_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_linux_boringcrypto_container.outputs.image }}
+
+  sign_windows_container:
+    needs: publish_windows_container
+    if: ${{ needs.publish_windows_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_windows_container.outputs.image }}
+
   build_alloy:
     name: Build Alloy
     container: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
