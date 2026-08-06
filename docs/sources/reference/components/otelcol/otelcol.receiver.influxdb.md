@@ -171,7 +171,7 @@ otelcol.exporter.prometheus "influx_output" {
 
 prometheus.remote_write "mimir" {
   endpoint {
-    url = "https://prometheus-xxx.grafana.net/api/prom/push"
+    url = "https://prometheus-xxx.grafana.net/api/v1/write"
 
     basic_auth {
       username = "xxxxx"

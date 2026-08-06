@@ -130,7 +130,7 @@ scrape_configs:
 
 remote_write:
   - name: "grafana-cloud"
-    url: "https://prometheus-us-central1.grafana.net/api/prom/push"
+    url: "https://prometheus-us-central1.grafana.net/api/v1/write"
     basic_auth:
       username: <USERNAME>
       password: <PASSWORD>
@@ -162,7 +162,7 @@ prometheus.scrape "prometheus" {
 prometheus.remote_write "default" {
   endpoint {
     name = "grafana-cloud"
-    url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
+    url  = "https://prometheus-us-central1.grafana.net/api/v1/write"
 
     basic_auth {
       username = "USERNAME"
