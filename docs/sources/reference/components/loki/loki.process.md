@@ -1556,12 +1556,13 @@ The stage doesn't re-encode the element.
 The stage also doesn't split nested arrays: an element that's itself an array becomes the log line of a single entry.
 Each new entry keeps the timestamp of the original entry, and the emitted entries have independent labels, top-level extracted maps, and structured metadata, so later stages can modify one entry without affecting the others.
 
-An empty array produces no entries: the original entry is dropped and the stage emits nothing.
+An empty array produces no entries.
+The stage drops the original entry and emits nothing.
 
 In all other cases, the log entry passes through the stage unchanged.
 This happens when the input isn't valid JSON, or is valid JSON that's not an array, such as an object, a string, or a number.
-When `source` is set, this also happens when the extracted value is missing or can't be converted to a string.
-The stage never falls back to the log line when `source` is set.
+When you set `source`, the log entry also passes through unchanged when the extracted value is missing or can't be converted to a string.
+When you set `source`, the stage never falls back to the log line and only reads the extracted value named by `source`.
 
 The following stage omits `source`, so it splits log lines that are top-level JSON arrays:
 

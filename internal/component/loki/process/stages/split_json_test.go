@@ -1,6 +1,8 @@
 package stages
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -364,4 +366,49 @@ func TestSplitJSONPipeline_Continuation(t *testing.T) {
 	assert.Equal(t, `{"ts":"2024-05-06T08:00:00Z"}`, out[1].Line)
 	assert.Equal(t, time.Date(2024, 5, 6, 7, 0, 0, 0, time.UTC), out[0].Timestamp.UTC())
 	assert.Equal(t, time.Date(2024, 5, 6, 8, 0, 0, 0, time.UTC), out[1].Timestamp.UTC())
+}
+
+// benchSplitJSONLine builds a top-level JSON array of n objects, each padded
+// to exactly objectSize bytes.
+func benchSplitJSONLine(n, objectSize int) string {
+	elems := make([]string, n)
+	for i := range elems {
+		pad := objectSize - len(fmt.Sprintf(`{"id":%d,"payload":""}`, i))
+		elems[i] = fmt.Sprintf(`{"id":%d,"payload":"%s"}`, i, strings.Repeat("a", pad))
+	}
+	return "[" + strings.Join(elems, ",") + "]"
+}
+
+func BenchmarkSplitJSONStage(b *testing.B) {
+	benchmarks := []struct {
+		name       string
+		elements   int
+		objectSize int
+	}{
+		{"10x1KiB", 10, 1024},
+		{"100x120B", 100, 120},
+	}
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
+			entry := newSplitJSONEntry(benchSplitJSONLine(bm.elements, bm.objectSize), nil)
+
+			in := make(chan Entry)
+			out := stage.Run(in)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				for range out {
+				}
+			}()
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				in <- entry
+			}
+			close(in)
+			<-done
+		})
+	}
 }

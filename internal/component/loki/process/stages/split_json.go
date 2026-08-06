@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 	"reflect"
+	"strings"
 	"unsafe"
 )
 
@@ -83,14 +84,11 @@ func (s *splitJSONStage) split(e Entry) ([]json.RawMessage, bool) {
 		input = str
 	}
 
-	// Skip only the four JSON whitespace bytes (RFC 8259) — not
-	// strings.TrimSpace, which would also strip non-JSON Unicode whitespace —
-	// and pass through anything that is not a top-level array.
-	i := 0
-	for i < len(input) && (input[i] == ' ' || input[i] == '\t' || input[i] == '\r' || input[i] == '\n') {
-		i++
-	}
-	if i == len(input) || input[i] != '[' {
+	// Trim only the four JSON whitespace bytes (RFC 8259) as an explicit
+	// cutset — not strings.TrimSpace, which would also strip non-JSON Unicode
+	// whitespace — and pass through anything that is not a top-level array.
+	trimmed := strings.TrimLeft(input, " \t\r\n")
+	if !strings.HasPrefix(trimmed, "[") {
 		return nil, false
 	}
 
