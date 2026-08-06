@@ -188,6 +188,29 @@ Docker log entries are formatted as JSON with the following keys:
 * `log`: The content of log line.
 * `stream`: Either `stdout` or `stderr`.
 * `time`: The timestamp string of the log line.
+* `attrs` (optional): Extra attributes from the logging driver, for example when the json-file `tag` option is set.
+
+`stage.docker` only unpacks `log`, `stream`, and `time`. It rewrites the log line to the value of `log` and sets the stream label and timestamp. Any other top-level JSON fields, including `attrs`, are dropped unless you copy them out first.
+
+If you need values from `attrs` (or another sidecar field) **and** the docker stage (for example to reassemble split lines), extract those fields with `stage.json` **before** `stage.docker`:
+
+```alloy
+// docker compose json-file tag example: tag = "{{.ImageName}}|{{.Name}}|..."
+stage.json {
+  expressions = {
+    attrs = "",
+  }
+}
+
+stage.docker {}
+
+stage.json {
+  expressions = {
+    tag = "",
+  }
+  source = "attrs"
+}
+```
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
