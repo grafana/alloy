@@ -28,10 +28,9 @@ func newSplitJSONStage(logger *slog.Logger, cfg SplitJSONConfig) Stage {
 	}
 }
 
-// Run implements Stage. Non-final children are cloned and sent one at a time
-// rather than materialized as a batch, so channel backpressure applies per
-// child; the final child reuses the original entry's allocations, which the
-// stage never touches again.
+// Run implements Stage. An entry that holds a JSON array of N elements
+// becomes N entries. Every other entry passes through unchanged. The stage
+// sends each new entry as it builds it.
 func (s *splitJSONStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
 	go func() {
