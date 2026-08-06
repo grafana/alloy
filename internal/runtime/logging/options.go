@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/syntax"
@@ -16,7 +17,8 @@ type Options struct {
 	Format      Format         `alloy:"format,attr,optional"`
 	Destination LogDestination `alloy:"destination,attr,optional"`
 
-	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
+	WriteTo      []loki.LogsReceiver  `alloy:"write_to,attr,optional"`
+	RateLimiting *RateLimitingOptions `alloy:"rate_limiting,block,optional"`
 }
 
 // LogDestination is where to send the primary log output.
@@ -49,13 +51,20 @@ func defaultDestination() LogDestination {
 	return LogDestinationStderr
 }
 
+// defaultRateLimitingOptions returns the default rate-limiting configuration.
+func defaultRateLimitingOptions() RateLimitingOptions {
+	return RateLimitingOptions{Enabled: true, Tick: 10 * time.Second, Threshold: 10, Rate: 0, MaxSignatures: 1000}
+}
+
 // defaultOptions builds a fresh set of Logger defaults, evaluating the
 // platform-appropriate destination at call time.
 func defaultOptions() Options {
+	rl := defaultRateLimitingOptions()
 	return Options{
-		Level:       LevelDefault,
-		Format:      FormatDefault,
-		Destination: defaultDestination(),
+		Level:        LevelDefault,
+		Format:       FormatDefault,
+		Destination:  defaultDestination(),
+		RateLimiting: &rl,
 	}
 }
 
@@ -155,6 +164,44 @@ func (ll *Format) UnmarshalText(text []byte) error {
 		*ll = Format(text)
 	default:
 		return fmt.Errorf("unrecognized log format %q", string(text))
+	}
+	return nil
+}
+
+// RateLimitingOptions configures log rate limiting per component and
+// message. It is backed by github.com/samber/slog-sampling and is enabled
+// by default.
+type RateLimitingOptions struct {
+	Enabled       bool          `alloy:"enabled,attr,optional"`
+	Tick          time.Duration `alloy:"tick,attr,optional"`
+	Threshold     uint64        `alloy:"threshold,attr,optional"`
+	Rate          float64       `alloy:"rate,attr,optional"`
+	MaxSignatures int           `alloy:"max_signatures,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*RateLimitingOptions)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (o *RateLimitingOptions) SetToDefault() {
+	*o = defaultRateLimitingOptions()
+}
+
+var _ syntax.Validator = (*RateLimitingOptions)(nil)
+
+// Validate implements syntax.Validator.
+func (o RateLimitingOptions) Validate() error {
+	if !o.Enabled {
+		return nil
+	}
+	switch {
+	case o.Tick <= 0:
+		return fmt.Errorf("logging rate_limiting.tick must be > 0, got %v", o.Tick)
+	case o.Threshold == 0:
+		return fmt.Errorf("logging rate_limiting.threshold must be > 0")
+	case math.IsNaN(o.Rate) || o.Rate < 0 || o.Rate > 1:
+		return fmt.Errorf("logging rate_limiting.rate must be in [0,1], got %v", o.Rate)
+	case o.MaxSignatures <= 0:
+		return fmt.Errorf("logging rate_limiting.max_signatures must be > 0, got %d", o.MaxSignatures)
 	}
 	return nil
 }

@@ -25,6 +25,7 @@ type LoggingConfigNode struct {
 // NewLoggingConfigNode creates a new LoggingConfigNode from an initial ast.BlockStmt.
 // The underlying config isn't applied until Evaluate is called.
 func NewLoggingConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *LoggingConfigNode {
+	globals.Logger.InitRateLimitMetrics(globals.Registerer)
 	return &LoggingConfigNode{
 		nodeID:        BlockComponentID(block).String(),
 		componentName: block.GetBlockName(),
@@ -38,6 +39,7 @@ func NewLoggingConfigNode(block *ast.BlockStmt, globals ComponentGlobals) *Loggi
 // NewDefaultLoggingConfigNode creates a new LoggingConfigNode with nil block and eval.
 // This will force evaluate to use the default logging options for this node.
 func NewDefaultLoggingConfigNode(globals ComponentGlobals) *LoggingConfigNode {
+	globals.Logger.InitRateLimitMetrics(globals.Registerer)
 	return &LoggingConfigNode{
 		nodeID:        loggingBlockID,
 		componentName: loggingBlockID,

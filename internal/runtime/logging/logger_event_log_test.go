@@ -229,6 +229,11 @@ func TestUpdate_NoLossDuringConcurrentDestinationFlips(t *testing.T) {
 		Level:       LevelInfo,
 		Format:      FormatLogfmt,
 		Destination: LogDestinationStderr,
+		// This test hammers an identical "hammer" message ~8000 times and
+		// asserts an exact delivery count; rate limiting (on by default)
+		// would suppress most of them under the same signature. Disable it
+		// so this remains a pure destination-flip delivery test.
+		RateLimiting: &RateLimitingOptions{Enabled: false},
 	}))
 
 	sl := l.Slog()
@@ -265,9 +270,10 @@ func TestUpdate_NoLossDuringConcurrentDestinationFlips(t *testing.T) {
 				dest = LogDestinationWindowsEventLog
 			}
 			err := l.Update(Options{
-				Level:       LevelInfo,
-				Format:      FormatLogfmt,
-				Destination: dest,
+				Level:        LevelInfo,
+				Format:       FormatLogfmt,
+				Destination:  dest,
+				RateLimiting: &RateLimitingOptions{Enabled: false},
 			})
 			if err != nil {
 				t.Errorf("Update failed: %v", err)
@@ -294,9 +300,10 @@ func TestUpdate_NoLossDuringConcurrentDestinationFlips(t *testing.T) {
 	// End the test in the default destination so the final accounting is
 	// stable.
 	require.NoError(t, l.Update(Options{
-		Level:       LevelInfo,
-		Format:      FormatLogfmt,
-		Destination: LogDestinationStderr,
+		Level:        LevelInfo,
+		Format:       FormatLogfmt,
+		Destination:  LogDestinationStderr,
+		RateLimiting: &RateLimitingOptions{Enabled: false},
 	}))
 
 	innerLines := inner.Lines()
