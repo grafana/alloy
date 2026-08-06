@@ -16,9 +16,8 @@ type CustomEquality interface {
 // DeepEqual is a wrapper around reflect.DeepEqual, which first checks if arguments implement CustomEquality. If they
 // do, their Equals method is used for comparison instead of reflect.DeepEqual.
 // For simplicity, DeepEqual requires x and y to be of the same type before calling CustomEquality.Equals.
-// NOTE: structs, slices, maps and arrays that contain a mix of values implementing CustomEquality and not implementing it
-// are not supported. Unexported fields are not supported either. In those cases, implement CustomEquality on higher
-// level of your object hierarchy.
+// Structs, slices, maps, and arrays may contain a mix of values implementing CustomEquality and basic values. Unexported
+// fields are not supported; in those cases, implement CustomEquality on a higher-level exported type.
 func DeepEqual(x, y any) bool {
 	if x == nil || y == nil {
 		return x == y
@@ -118,6 +117,13 @@ func deepCustomEqual(v1, v2 reflect.Value) result {
 			}
 		}
 		return comparedAndEqual
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.String:
+		if !v1.CanInterface() {
+			return couldNotCompare
+		}
+		return successfulCompare(v1.Equal(v2))
 	default:
 		return couldNotCompare
 	}
