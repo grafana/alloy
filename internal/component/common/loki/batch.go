@@ -53,14 +53,9 @@ func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
 // entry is kept, if fn returns false the entry is dropped. Kept entries are
 // written back, and entries whose labels change are moved to a different stream.
 func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
-	type movedEntry struct {
-		labels model.LabelSet
-		entry  push.Entry
-	}
-
 	var (
 		newLen int
-		moves  []movedEntry
+		moves  []Entry
 	)
 
 	// Process each entry and compact each stream in place.
@@ -69,6 +64,9 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 	// so we do not mutate the stream set while iterating it.
 	for i := range b.streams {
 		var (
+			// dst is where the next kept entry is written. It only moves forward
+			// when an entry is kept, so it never gets ahead of the entry being read
+			// and we only write to slots the loop has already read.
 			dst    = 0
 			stream = &b.streams[i]
 		)
@@ -84,10 +82,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 			}
 
 			if !stream.Labels.Equal(entry.Labels) {
-				moves = append(moves, movedEntry{
-					labels: entry.Labels,
-					entry:  entry.Entry,
-				})
+				moves = append(moves, entry)
 				newLen++
 
 				continue
@@ -98,12 +93,14 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 			newLen++
 		}
 
+		// Entries from dst onwards were either dropped or saved in moves, so it is
+		// safe to cut them here and let add reuse that spare capacity.
 		stream.Entries = stream.Entries[:dst]
 	}
 
 	// Reinsert entries whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.labels, moved.entry)
+		b.add(moved.Labels, moved.Entry)
 	}
 	b.entryLen = newLen
 
@@ -125,10 +122,17 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	var (
 		newLen int
-		dst    int
-		moves  []Stream
+		// dst is where the next kept stream is written. It only moves forward when
+		// a stream is kept, so it never gets ahead of i and we only write to slots
+		// the loop has already read.
+		dst   int
+		moves []Stream
 	)
 
+	// Process each stream and compact the stream slice in place. Dropped streams
+	// are skipped, and streams whose labels changed are deferred into moves so we
+	// do not mutate the stream set while iterating it. They are reinserted below
+	// and may merge into an existing stream.
 	for i := range b.streams {
 		stream := Stream{
 			// FIXME(kalleep): Once the new batched pipeline owns this path, consider
@@ -153,6 +157,8 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 		dst++
 	}
 
+	// Streams from dst onwards were either dropped or saved in moves, so it is
+	// safe to cut them here and let add reuse those slots.
 	b.streams = b.streams[:dst]
 
 	// Reinsert streams whose labels changed into their destination streams.
