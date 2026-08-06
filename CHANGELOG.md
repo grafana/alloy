@@ -1,5 +1,60 @@
 # Changelog
 
+## [1.19.0](https://github.com/grafana/alloy/compare/v1.18.0...v1.19.0) (2026-08-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* Remove the prometheus.write.queue component ([#6814](https://github.com/grafana/alloy/issues/6814))
+
+### Features 🌟
+
+* Add ability to exempt lines matching a configured regex pattern from loki.process stage.luhn ([#6608](https://github.com/grafana/alloy/issues/6608)) ([2e0748d](https://github.com/grafana/alloy/commit/2e0748d3f87e666095dd4969411aa0dcc8b6c14a))
+* Add start_timestamp_zero_ingestion to Prometheus metric components ([#6610](https://github.com/grafana/alloy/issues/6610)) ([1a9ed95](https://github.com/grafana/alloy/commit/1a9ed956fa34a172b97b0d11c72d2e9232f359f2))
+* **beyla.ebpf:** Run Beyla as a subprocess ([#6695](https://github.com/grafana/alloy/issues/6695)) ([61ec3d2](https://github.com/grafana/alloy/commit/61ec3d29587322974d76a1cacace9e192eed9825))
+* Binary Alloy Homebrew Formula ([#6723](https://github.com/grafana/alloy/issues/6723)) ([024d224](https://github.com/grafana/alloy/commit/024d22432ebcf8214cfd6f832c91d99754cfbc1d))
+* Check imports of inline Alloy config in OTel mode ([#6677](https://github.com/grafana/alloy/issues/6677)) ([fda0449](https://github.com/grafana/alloy/commit/fda0449505c9d9391f532047d50df23aacaf200a))
+* **database_observability.mysql:** Add support for clustering mode ([#6775](https://github.com/grafana/alloy/issues/6775)) ([0cfa960](https://github.com/grafana/alloy/commit/0cfa96016fd4c33d9fa766190a7cd189f4234df0))
+* **database_observability.postgres:** Add user, pid, and sqlstate fields to op=error_message ([#6770](https://github.com/grafana/alloy/issues/6770)) ([73e29dc](https://github.com/grafana/alloy/commit/73e29dc24bf0746b12d7c73df308381b777d1c7a))
+* **database_observability.postgres:** Emit op=query_association_v2 carrying query_fingerprint ([#6297](https://github.com/grafana/alloy/issues/6297)) ([75239d0](https://github.com/grafana/alloy/commit/75239d0108be1a732162c445ba14df5952391cf4))
+* **database_observability.sql_server:** Add `query_details` collector ([#6788](https://github.com/grafana/alloy/issues/6788)) ([cec31b2](https://github.com/grafana/alloy/commit/cec31b2ad0e59cfdb5f424754e49b1c0c6d6acb1))
+* **database_observability.sql_server:** Add `query_metrics` collector ([#6743](https://github.com/grafana/alloy/issues/6743)) ([35babfd](https://github.com/grafana/alloy/commit/35babfd996c3547cb2d934e4e53b40d02f6f6960))
+* **database_observability.sql_server:** Support csp metadata for SQL Server ([#6689](https://github.com/grafana/alloy/issues/6689)) ([24c7207](https://github.com/grafana/alloy/commit/24c7207eda9e203fc5a7f671efcda25a350945db))
+* **discovery.azure:** Add "sdk_auth" and "workload_identity" auth options ([#6671](https://github.com/grafana/alloy/issues/6671)) ([9fa8b51](https://github.com/grafana/alloy/commit/9fa8b519925bb5f03cba70ddf42ab87acaa10e9b))
+* **loki.secretfilter:** Promote loki.secretfilter to public preview ([#6724](https://github.com/grafana/alloy/issues/6724)) ([4053610](https://github.com/grafana/alloy/commit/4053610e700b60334262c186a6ba2f71f7d9e284))
+* **otelcol:** Add otelcol.processor.redaction ([#6647](https://github.com/grafana/alloy/issues/6647)) ([ea35e8a](https://github.com/grafana/alloy/commit/ea35e8a8c3739e28f5b97a96eae7a892d51e57db))
+* **prometheus.exporter.mssql:** Add a new `max_connection_lifetime` config attribute ([#6700](https://github.com/grafana/alloy/issues/6700)) ([5286dd6](https://github.com/grafana/alloy/commit/5286dd655602863c21c7c0a719449b4536732342))
+* **prometheus.operator:** Add missing native histogram scrape for parity with scrape ([#6406](https://github.com/grafana/alloy/issues/6406)) ([368f772](https://github.com/grafana/alloy/commit/368f772684a558547be5b9e3ed61c15bde8c7ac2))
+* **pyroscope.java:** Add tlab profiling config option for TLAB-based allocation events ([#6754](https://github.com/grafana/alloy/issues/6754)) ([b955613](https://github.com/grafana/alloy/commit/b955613851ace4e591f7c7170510bab999cdad73))
+* **pyroscope.java:** Update async-profiler binaries to v4.5 ([#6739](https://github.com/grafana/alloy/issues/6739)) ([9b8aa87](https://github.com/grafana/alloy/commit/9b8aa87f5b53735a0f2451f945c80a3d71f8100a))
+* **pyroscope.write:** Add retry_on_http_429 endpoint option ([#6763](https://github.com/grafana/alloy/issues/6763)) ([bcd909d](https://github.com/grafana/alloy/commit/bcd909df4313362bebb94cd4b57cbb5cd866d046))
+* **pyroscope:** Support span context propagation from OBI (including Beyla component) ([#6298](https://github.com/grafana/alloy/issues/6298)) ([24d66d0](https://github.com/grafana/alloy/commit/24d66d0725cbe4706b591f0084e541eaeb672524))
+
+
+### Bug Fixes 🐛
+
+* Add nop receiver to OTel Engine ([#6751](https://github.com/grafana/alloy/issues/6751)) ([8b7703c](https://github.com/grafana/alloy/commit/8b7703c011c4d940aa60daab5fa3405091c35b98))
+* Clashing cross compilation env variables when building/generating alloy ([#6793](https://github.com/grafana/alloy/issues/6793)) ([0c7af36](https://github.com/grafana/alloy/commit/0c7af3609f1852ffa6ed993070dd823cccc3e196))
+* **database_observability.postgres:** Restore cgo SQL fingerprinting on Windows ([#6746](https://github.com/grafana/alloy/issues/6746)) ([bc33331](https://github.com/grafana/alloy/commit/bc33331133ec534daa3791071aed90bff5f919f9))
+* **database_observability.postgres:** Roll back op=query_association_v2, fold fingerprint into op=query_association ([#6745](https://github.com/grafana/alloy/issues/6745)) ([40e8f1e](https://github.com/grafana/alloy/commit/40e8f1ec4b217806c3707cf11d3aca100482a2ce))
+* **dependencies:** Upgrade golang.org/x/text to v0.39.0 ([#6744](https://github.com/grafana/alloy/issues/6744)) ([105ecf6](https://github.com/grafana/alloy/commit/105ecf69a77ad8d2a1d144e09a7f96ba7f0afedc))
+* **discovery.relabel:** Use the underlying string of secret target values ([#6605](https://github.com/grafana/alloy/issues/6605)) ([171aea1](https://github.com/grafana/alloy/commit/171aea15fc42a6c6740c0e4ce4c600ef4d21adf1))
+* Harden the configmap reloader container ([#6780](https://github.com/grafana/alloy/issues/6780)) ([e49e090](https://github.com/grafana/alloy/commit/e49e090aa1ee2527cd06219f7f6988ce9c5613d7))
+* **loki.process:** Return errors from metric registration instead of panicking ([#6078](https://github.com/grafana/alloy/issues/6078)) ([a388da5](https://github.com/grafana/alloy/commit/a388da5be3097f65e45d91d14070651570fff00e))
+* **loki.source.docker:** Respect label changes ([#6818](https://github.com/grafana/alloy/issues/6818)) ([d0525a9](https://github.com/grafana/alloy/commit/d0525a976b7f802977cbc41f2ebd526116b340f8))
+* **loki.source.docker:** Restart tailers when config changes ([#6826](https://github.com/grafana/alloy/issues/6826)) ([eb7f3ef](https://github.com/grafana/alloy/commit/eb7f3efe9be50467c6eada62c545005df87068c1))
+* **loki.source.docker:** Stop tailer when container no longer exists ([#6309](https://github.com/grafana/alloy/issues/6309)) ([44f0377](https://github.com/grafana/alloy/commit/44f0377a2479460c1914599a40151c9bacf58730))
+* **loki.source.windowsevent:** Use octal notation for file permissions ([#6077](https://github.com/grafana/alloy/issues/6077)) ([789140d](https://github.com/grafana/alloy/commit/789140dfec9c65be1ba041766644a2773a435f06))
+* **otelcol.exporter.loadbalancing:** Change default Kubernetes resolver timeout to 1m ([#6702](https://github.com/grafana/alloy/issues/6702)) ([d425ad9](https://github.com/grafana/alloy/commit/d425ad9b1bb7d8eba18d1a0af5761ad33899aefd))
+* **prometheus:** Reduce metadata pipeline allocation overhead ([#6698](https://github.com/grafana/alloy/issues/6698)) ([1fef867](https://github.com/grafana/alloy/commit/1fef867c159db775d0758e55b8d2d63e87bc1cff))
+* **security/UNKNOWN/:** Update module google.golang.org/grpc to v1.82.1 [SECURITY] ([#6735](https://github.com/grafana/alloy/issues/6735)) ([bffcf59](https://github.com/grafana/alloy/commit/bffcf59141db5c3b207e8de39617a81e7467a0dc))
+* Upgrade go-re2 to v1.12.0 to allow MemoryDenyWriteExecute=true with loki.secretfilter ([#6737](https://github.com/grafana/alloy/issues/6737)) ([f34140a](https://github.com/grafana/alloy/commit/f34140a1ff712a976ec0b9b2f8bb7219087ea8e7))
+
+
+### Chores
+
+* Remove the prometheus.write.queue component ([#6814](https://github.com/grafana/alloy/issues/6814)) ([b168d0e](https://github.com/grafana/alloy/commit/b168d0ec5e5d2db665c5495d01fc6b12f97d2997))
+
 ## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-07-17)
 
 
