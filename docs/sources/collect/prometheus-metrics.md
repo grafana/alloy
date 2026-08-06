@@ -76,11 +76,11 @@ The following example demonstrates configuring `prometheus.remote_write` with mu
 ```alloy
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 
   endpoint {
-    url = "https://prometheus-us-central1.grafana.net/api/prom/push"
+    url = "https://prometheus-us-central1.grafana.net/api/v1/write"
 
     // Get basic authentication based on environment variables.
     basic_auth {
@@ -221,7 +221,7 @@ prometheus.scrape "pods" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```
@@ -347,7 +347,7 @@ prometheus.scrape "services" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```
@@ -416,7 +416,7 @@ prometheus.scrape "custom_targets" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```
