@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/grafana/alloy/compare/v1.18.0...v1.18.1) (2026-08-06)
+
+
+### Bug Fixes 🐛
+
+* Add nop receiver to OTel Engine [backport] ([#6755](https://github.com/grafana/alloy/issues/6755)) ([d7588f8](https://github.com/grafana/alloy/commit/d7588f8dd0c7ed31fb4206fe46f57c25d20bd6a3))
+* Backport dependency upgrades to address CVE's GO-2026-6061 & GO-2026-5970 ([#6836](https://github.com/grafana/alloy/issues/6836)) ([4c3e8a6](https://github.com/grafana/alloy/commit/4c3e8a627085f2500bfa35552bb7c59fa5ff45ca))
+
 ## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-07-17)
 
 
