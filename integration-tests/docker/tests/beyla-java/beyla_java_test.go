@@ -25,7 +25,7 @@ func waitForJavaApp(t *testing.T, client *http.Client) {
 		}
 		defer resp.Body.Close()
 		return resp.StatusCode >= 200 && resp.StatusCode < 400
-	}, common.DefaultTimeout, common.DefaultRetryInterval)
+	}, common.TestTimeout(t), common.DefaultRetryInterval)
 }
 
 func triggerJavaRequest(client *http.Client) func(c *assert.CollectT) {
