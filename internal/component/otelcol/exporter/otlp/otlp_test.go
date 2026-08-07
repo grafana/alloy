@@ -9,6 +9,8 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pprofile"
+	"go.opentelemetry.io/collector/pdata/pprofile/pprofileotlp"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
@@ -24,8 +26,9 @@ import (
 // Test performs a basic integration test which runs the otelcol.exporter.otlp
 // component and ensures that it can pass data to an OTLP gRPC server.
 func Test(t *testing.T) {
-	traceCh := make(chan ptrace.Traces)
-	tracesServer := makeTracesServer(t, traceCh)
+	traceCh := make(chan ptrace.Traces, 1)
+	profilesCh := make(chan pprofile.Profiles, 1)
+	otlpServer := makeOTLPServer(t, traceCh, profilesCh)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -50,7 +53,7 @@ func Test(t *testing.T) {
 		debug_metrics {
 			disable_high_cardinality_metrics = true
 		}
-	`, tracesServer)
+	`, otlpServer)
 	var args otlp.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	require.Equal(t, args.DebugMetricsConfig().DisableHighCardinalityMetrics, true)
@@ -62,11 +65,10 @@ func Test(t *testing.T) {
 
 	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
 	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	exports := ctrl.Exports().(otelcol.ConsumerExports)
 
 	// Send traces in the background to our exporter.
 	go func() {
-		exports := ctrl.Exports().(otelcol.ConsumerExports)
-
 		bo := backoff.New(ctx, backoff.Config{
 			MinBackoff: 10 * time.Millisecond,
 			MaxBackoff: 100 * time.Millisecond,
@@ -83,6 +85,24 @@ func Test(t *testing.T) {
 		}
 	}()
 
+	// Send profiles in the background to our exporter.
+	go func() {
+		bo := backoff.New(ctx, backoff.Config{
+			MinBackoff: 10 * time.Millisecond,
+			MaxBackoff: 100 * time.Millisecond,
+		})
+		for bo.Ongoing() {
+			err := exports.Input.ConsumeProfiles(ctx, createTestProfiles())
+			if err != nil {
+				l.Error("failed to send profiles", "err", err)
+				bo.Wait()
+				continue
+			}
+
+			return
+		}
+	}()
+
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	select {
 	case <-time.After(time.Second):
@@ -90,18 +110,26 @@ func Test(t *testing.T) {
 	case tr := <-traceCh:
 		require.Equal(t, 1, tr.SpanCount())
 	}
+
+	select {
+	case <-time.After(time.Second):
+		require.FailNow(t, "failed waiting for profiles")
+	case profiles := <-profilesCh:
+		require.Equal(t, 1, profiles.ProfileCount())
+	}
 }
 
-// makeTracesServer returns a host:port which will accept traces over insecure
-// gRPC.
-func makeTracesServer(t *testing.T, ch chan ptrace.Traces) string {
+// makeOTLPServer returns a host:port which will accept traces and profiles over
+// insecure gRPC.
+func makeOTLPServer(t *testing.T, tracesCh chan ptrace.Traces, profilesCh chan pprofile.Profiles) string {
 	t.Helper()
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
 	srv := grpc.NewServer()
-	ptraceotlp.RegisterGRPCServer(srv, &mockTracesReceiver{ch: ch})
+	ptraceotlp.RegisterGRPCServer(srv, &mockTracesReceiver{ch: tracesCh})
+	pprofileotlp.RegisterGRPCServer(srv, &mockProfilesReceiver{ch: profilesCh})
 
 	go func() {
 		err := srv.Serve(lis)
@@ -110,6 +138,18 @@ func makeTracesServer(t *testing.T, ch chan ptrace.Traces) string {
 	t.Cleanup(srv.Stop)
 
 	return lis.Addr().String()
+}
+
+type mockProfilesReceiver struct {
+	pprofileotlp.UnimplementedGRPCServer
+	ch chan pprofile.Profiles
+}
+
+var _ pprofileotlp.GRPCServer = (*mockProfilesReceiver)(nil)
+
+func (ms *mockProfilesReceiver) Export(_ context.Context, req pprofileotlp.ExportRequest) (pprofileotlp.ExportResponse, error) {
+	ms.ch <- req.Profiles()
+	return pprofileotlp.NewExportResponse(), nil
 }
 
 type mockTracesReceiver struct {
@@ -142,6 +182,12 @@ func createTestTraces() ptrace.Traces {
 	if err != nil {
 		panic(err)
 	}
+	return data
+}
+
+func createTestProfiles() pprofile.Profiles {
+	data := pprofile.NewProfiles()
+	data.ResourceProfiles().AppendEmpty().ScopeProfiles().AppendEmpty().Profiles().AppendEmpty()
 	return data
 }
 
