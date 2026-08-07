@@ -48,7 +48,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/github/smimesign v0.2.0
 	github.com/githubexporter/github-exporter v1.3.1
-	github.com/go-git/go-git/v5 v5.19.1
+	github.com/go-git/go-git/v5 v5.19.2
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-kit/log v0.2.1
 	github.com/go-logfmt/logfmt v0.6.1
