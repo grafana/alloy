@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelexporter "go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/exporter/xexporter"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -49,12 +50,14 @@ type Arguments interface {
 type TypeSignal byte
 
 const (
-	TypeLogs    TypeSignal = 1 << iota // 1
-	TypeMetrics                        // 2
-	TypeTraces                         // 4
+	TypeLogs     TypeSignal = 1 << iota // 1
+	TypeMetrics                         // 2
+	TypeTraces                          // 4
+	TypeProfiles                        // 8
 )
 
-// TypeAll indicates that the exporter supports all telemetry signals.
+// TypeAll indicates that the exporter supports all stable telemetry signals.
+// Experimental signals must be enabled explicitly.
 const TypeAll = TypeLogs | TypeMetrics | TypeTraces
 
 // SupportsLogs returns true if the exporter supports logs.
@@ -70,6 +73,11 @@ func (s TypeSignal) SupportsMetrics() bool {
 // SupportsTraces returns true if the exporter supports traces.
 func (s TypeSignal) SupportsTraces() bool {
 	return s&TypeTraces != 0
+}
+
+// SupportsProfiles returns true if the exporter supports profiles.
+func (s TypeSignal) SupportsProfiles() bool {
+	return s&TypeProfiles != 0
 }
 
 type TypeSignalFunc func(component.Options, component.Arguments) TypeSignal
@@ -237,8 +245,23 @@ func (e *Exporter) Update(args component.Arguments) error {
 		}
 	}
 
+	var profilesExporter xexporter.Profiles
+	if supportedSignals.SupportsProfiles() {
+		profilesFactory, ok := e.factory.(xexporter.Factory)
+		if !ok {
+			return pipeline.ErrSignalNotSupported
+		}
+
+		profilesExporter, err = profilesFactory.CreateProfiles(e.ctx, settings, exporterConfig)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+			return err
+		} else if profilesExporter != nil {
+			components = append(components, profilesExporter)
+		}
+	}
+
 	updateConsumersFunc := func() {
-		e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter)
+		e.consumer.SetConsumers(tracesExporter, metricsExporter, logsExporter, profilesExporter)
 	}
 
 	// Schedule the components to run once our component is running.
