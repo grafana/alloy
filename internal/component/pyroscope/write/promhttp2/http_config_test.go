@@ -2108,7 +2108,11 @@ func TestTLSRoundTripper_NoCAConfigured(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = c.Do(req)
-	require.ErrorContainsf(t, err, "unable to use specified CA cert: none configured", "Expected error to mention missing CA cert")
+	// prometheus/common v0.69.0 reworked the TLS round tripper so that a client
+	// with no CA configured no longer reports "unable to use specified CA cert:
+	// none configured" when the cert files change. The error now names the actual
+	// problem, which is the unparseable client certificate written above.
+	require.ErrorContainsf(t, err, "unable to use specified client cert", "Expected error to mention the unusable client cert")
 }
 
 // loadHTTPConfigJSON parses the JSON input s into a commonconfig.HTTPClientConfig.

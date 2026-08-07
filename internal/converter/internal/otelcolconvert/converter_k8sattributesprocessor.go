@@ -52,7 +52,7 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 	)
 
 	return &k8sattributes.Arguments{
-		AuthType:    string(cfg.AuthType),
+		AuthType:    string(cfg.APIConfig.AuthType),
 		Passthrough: cfg.Passthrough,
 		ExtractConfig: k8sattributes.ExtractConfig{
 			Metadata:                     cfg.Extract.Metadata,
