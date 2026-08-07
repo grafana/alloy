@@ -41,7 +41,7 @@ func Test_Extract(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
-	authType := &otelObj.AuthType
+	authType := &otelObj.APIConfig.AuthType
 	require.Equal(t, string(*authType), "kubeConfig")
 
 	extract := &otelObj.Extract
@@ -232,7 +232,7 @@ func Test_DefaultToServiceAccountAuth(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
-	authType := &otelObj.AuthType
+	authType := &otelObj.APIConfig.AuthType
 	require.True(t, *authType == "serviceAccount") // Default value
 }
 
