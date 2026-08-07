@@ -35,6 +35,7 @@ This approach reduces operational complexity while giving you the flexibility to
 - [Requirements and expectations][Requirements]: Review deployment considerations and constraints
 - [Supported platforms][Supported platforms]: Check platform compatibility
 - [Estimate resource usage][Estimate resource usage]: Plan your deployment
+- [Access and permissions][Access and permissions]: Hardening, identity, network exposure, and secrets
 - [Migrate from other collectors][migrate]: Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
 
 [OpenTelemetry]: https://opentelemetry.io/docs/collector/distributions/
