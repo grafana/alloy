@@ -19,6 +19,8 @@ The default configuration file location for {{< param "PRODUCT_NAME" >}} is:
 
 This section includes information that helps you configure {{< param "PRODUCT_NAME" >}}.
 
+For process identity, network exposure, TLS, secrets, and platform permission models, refer to [Access and permissions](../access_permissions/).
+
 {{< section >}}
 
 [installed]: ../set-up/install/
