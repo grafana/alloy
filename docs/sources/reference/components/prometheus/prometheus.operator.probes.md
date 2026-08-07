@@ -49,19 +49,25 @@ You can use the following blocks with `prometheus.operator.probes`:
 
 {{< docs/alloy-config >}}
 
-| Name                                                | Description                                                                                 | Required |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| [`client`][client]                                  | Configures Kubernetes client used to find Probes.                                           | no       |
-| `client` > [`authorization`][authorization]         | Configure generic authorization to the Kubernetes API.                                      | no       |
-| `client` > [`basic_auth`][basic_auth]               | Configure basic authentication to the Kubernetes API.                                       | no       |
-| `client` > [`oauth2`][oauth2]                       | Configure OAuth 2.0 for authenticating to the Kubernetes API.                               | no       |
-| `client` > [`tls_config`][tls_config]               | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
-| `client` > `oauth2` > [`tls_config`][tls_config]    | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
-| [`clustering`][clustering]                          | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
-| [`rule`][rule]                                      | Relabeling rules to apply to discovered targets.                                            | no       |
-| [`scrape`][scrape]                                  | Default scrape configuration to apply to discovered targets.                                | no       |
-| [`selector`][selector]                              | Label selector for which Probes to discover.                                                | no       |
-| `selector` > [`match_expression`][match_expression] | Label selector expression for which Probes to discover.                                     | no       |
+| Name                                                          | Description                                                                                 | Required |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| [`client`][client]                                            | Configures Kubernetes client used to find Probes.                                           | no       |
+| `client` > [`authorization`][authorization]                   | Configure generic authorization to the Kubernetes API.                                      | no       |
+| `client` > [`basic_auth`][basic_auth]                         | Configure basic authentication to the Kubernetes API.                                       | no       |
+| `client` > [`oauth2`][oauth2]                                 | Configure OAuth 2.0 for authenticating to the Kubernetes API.                               | no       |
+| `client` > [`tls_config`][tls_config]                         | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| `client` > `oauth2` > [`tls_config`][tls_config]              | Configure TLS settings for connecting to the Kubernetes API.                                | no       |
+| [`clustering`][clustering]                                    | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| [`rule`][rule]                                                | Relabeling rules to apply to discovered targets.                                            | no       |
+| [`scrape`][scrape]                                            | Default scrape configuration to apply to discovered targets.                                | no       |
+| [`scrape_class`][scrape_class]                                | Define named scrape classes that discovered resources can reference.                        | no       |
+| `scrape_class` > [`attach_metadata`][attach_metadata]         | Configure metadata attached to targets discovered for this scrape class.                    | no       |
+| `scrape_class` > [`authorization`][authorization]             | Configure generic authorization for this scrape class.                                      | no       |
+| `scrape_class` > [`metric_relabel_rule`][metric_relabel_rule] | Metric relabeling rules appended to the resource's metric relabeling rules.                 | no       |
+| `scrape_class` > [`relabel_rule`][relabel_rule]               | Relabeling rules prepended to the resource's relabeling rules.                              | no       |
+| `scrape_class` > [`tls_config`][tls_config]                   | Configure TLS settings for this scrape class.                                               | no       |
+| [`selector`][selector]                                        | Label selector for which Probes to discover.                                                | no       |
+| `selector` > [`match_expression`][match_expression]           | Label selector expression for which Probes to discover.                                     | no       |
 
 [client]: #client
 [basic_auth]: #basic_auth
@@ -72,6 +78,10 @@ You can use the following blocks with `prometheus.operator.probes`:
 [match_expression]: #match_expression
 [rule]: #rule
 [scrape]: #scrape
+[scrape_class]: #scrape_class
+[relabel_rule]: #relabel_rule
+[metric_relabel_rule]: #metric_relabel_rule
+[attach_metadata]: #attach_metadata
 [clustering]: #clustering
 
 {{< /docs/alloy-config >}}
@@ -149,6 +159,22 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 ### `scrape`
 
 {{< docs/shared lookup="reference/components/prom-operator-scrape.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `scrape_class`
+
+{{< docs/shared lookup="reference/components/prom-operator-scrape-class.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `relabel_rule`
+
+{{< docs/shared lookup="reference/components/prom-operator-scrape-class-relabel-rule.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `metric_relabel_rule`
+
+{{< docs/shared lookup="reference/components/prom-operator-scrape-class-metric-relabel-rule.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `attach_metadata`
+
+{{< docs/shared lookup="reference/components/prom-operator-scrape-class-attach-metadata.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `selector`
 

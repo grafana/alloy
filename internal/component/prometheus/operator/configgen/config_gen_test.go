@@ -38,6 +38,39 @@ var (
 	}
 )
 
+// scrapeClassTestGenerator returns a generator with a single default scrape
+// class that sets every field a class can carry.
+func scrapeClassTestGenerator() *ConfigGenerator {
+	return &ConfigGenerator{
+		Client: &kubernetes.ClientArguments{},
+		ScrapeClasses: []operator.ScrapeClass{
+			{
+				Name:          "secure",
+				Default:       true,
+				TLSConfig:     &config.TLSConfig{InsecureSkipVerify: true},
+				Authorization: &config.Authorization{Type: "Bearer", Credentials: "class-token"},
+				Relabelings: []*alloy_relabel.Config{
+					{TargetLabel: "from_class", Replacement: "yes"},
+				},
+				MetricRelabelings: []*alloy_relabel.Config{
+					{TargetLabel: "metric_from_class", Replacement: "yes"},
+				},
+				AttachMetadata: &operator.AttachMetadataConfig{Node: true},
+			},
+		},
+	}
+}
+
+// indexOfTargetLabel returns the position of the rule writing to label, or -1.
+func indexOfTargetLabel(cfgs []*relabel.Config, label string) int {
+	for i, c := range cfgs {
+		if c.TargetLabel == label {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestGenerateK8SSDConfig(t *testing.T) {
 	nsDiscovery := promk8s.NamespaceDiscovery{
 		Names: []string{""},

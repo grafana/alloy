@@ -337,3 +337,27 @@ func TestGenerateHTTPScrapeConfigConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateScrapeConfigConfigScrapeClass(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1alpha1.ScrapeConfig{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sc"},
+		Spec: promopv1alpha1.ScrapeConfigSpec{
+			StaticConfigs:        []promopv1alpha1.StaticConfig{{Targets: []promopv1alpha1.Target{"1.2.3.4:9090"}}},
+			RelabelConfigs:       []promopv1.RelabelConfig{{TargetLabel: "from_endpoint", Replacement: ptr.To("yes")}},
+			MetricRelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "metric_from_endpoint", Replacement: ptr.To("yes")}},
+		},
+	}
+
+	cfgs, errs := cg.GenerateScrapeConfigConfigs(m)
+	require.Empty(t, errs)
+	require.Len(t, cfgs, 1)
+	cfg := cfgs[0]
+
+	assert.True(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify)
+	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
+	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
+
+	assert.Less(t, indexOfTargetLabel(cfg.RelabelConfigs, "from_class"), indexOfTargetLabel(cfg.RelabelConfigs, "from_endpoint"))
+	assert.Greater(t, indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_class"), indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_endpoint"))
+}

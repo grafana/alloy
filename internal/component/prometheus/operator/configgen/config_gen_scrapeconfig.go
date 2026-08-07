@@ -123,6 +123,10 @@ func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.Scra
 
 func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, _ int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
+	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	if err != nil {
+		return nil, err
+	}
 	if m.Spec.HonorLabels != nil {
 		cfg.HonorLabels = *m.Spec.HonorLabels
 	}
@@ -175,6 +179,10 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 			return nil, err
 		}
 	}
+	epHasTLS := m.Spec.TLSConfig != nil
+	epHasAuth := m.Spec.BasicAuth != nil || m.Spec.Authorization != nil
+	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
+
 	relabels.add(&relabel.Config{
 		Replacement: m.Namespace,
 		TargetLabel: "__meta_kubernetes_scrapeconfig_namespace",
@@ -183,12 +191,16 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		TargetLabel: "__meta_kubernetes_scrapeconfig_name",
 	})
 	labeler := namespacelabeler.New("", nil, false)
+	// Scrape class relabelings are prepended to the resource's own.
+	relabels.addScrapeClassRelabelings(scrapeClass)
 	if err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.RelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing relabel configs: %w", err)
 	}
 	if err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.MetricRelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing metric relabel configs: %w", err)
 	}
+	// Scrape class metric relabelings are appended to the resource's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
 	cfg.TargetLimit = uint(defaultIfNil(m.Spec.TargetLimit, 0))
 	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))

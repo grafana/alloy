@@ -19,12 +19,18 @@ import (
 func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonitor, ep promopv1.Endpoint, i int, role promk8s.Role) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
+	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
 	cfg.HonorLabels = ep.HonorLabels
 	if ep.HonorTimestamps != nil {
 		cfg.HonorTimestamps = *ep.HonorTimestamps
 	}
-	dConfig := cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, role, m.Spec.AttachMetadata)
+	attachMetadata := scrapeClassAttachMetadata(m.Spec.AttachMetadata, scrapeClass)
+	dConfig := cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, role, attachMetadata)
 	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, dConfig)
 
 	if m.Spec.ScrapeProtocols != nil {
@@ -99,6 +105,12 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 			return nil, err
 		}
 	}
+
+	epHasTLS := ep.TLSConfig != nil
+	epHasAuth := ep.BearerTokenFile != "" || //nolint:staticcheck
+		(ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "") || //nolint:staticcheck
+		ep.BasicAuth != nil || ep.OAuth2 != nil || ep.Authorization != nil
+	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
 
 	relabels := cg.initRelabelings()
 
@@ -297,6 +309,8 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	}
 
 	labeler := namespacelabeler.New("", nil, false)
+	// Scrape class relabelings are prepended to the endpoint's own relabelings.
+	relabels.addScrapeClassRelabelings(scrapeClass)
 	err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, ep.RelabelConfigs)...)
 	if err != nil {
 		return nil, err
@@ -308,6 +322,8 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	if err != nil {
 		return nil, err
 	}
+	// Scrape class metric relabelings are appended to the endpoint's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
 	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))
