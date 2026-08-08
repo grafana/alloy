@@ -154,6 +154,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.162.0
@@ -877,7 +878,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/azure v0.162.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.162.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.162.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.162.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.162.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.162.0 // indirect
 	github.com/opencontainers/cgroups v0.0.6 // indirect

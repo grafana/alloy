@@ -41,7 +41,7 @@ type RawSample struct {
 }
 
 type IncomingProfile struct {
-	// RawBody is the set of bytes of the pprof profile, as its sent by the client
+	// RawBody is the opaque /ingest request body as sent by the client.
 	RawBody []byte
 	// ContentType is the content type of the RawBody. This must be sent on to the endpoints.
 	ContentType []string
