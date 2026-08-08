@@ -187,7 +187,6 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 
 {{< collapse title="otelcol" >}}
 - [`otelcol.receiver.prometheus`](../components/otelcol/otelcol.receiver.prometheus)
-- [`otelcol.receiver.pyroscope`](../components/otelcol/otelcol.receiver.pyroscope)
 {{< /collapse >}}
 
 {{< collapse title="prometheus" >}}

@@ -12,7 +12,7 @@ title: otelcol.receiver.pyroscope
 
 # `otelcol.receiver.pyroscope`
 
-`otelcol.receiver.pyroscope` receives pprof profiles from `pyroscope.*` components, converts them to the OpenTelemetry profiles format, and forwards them to other `otelcol.*` components.
+`otelcol.receiver.pyroscope` receives pprof profiles from `pyroscope.*` components, converts them to the OpenTelemetry profiles format, and forwards them to profiles-capable `otelcol.*` components.
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -54,6 +54,10 @@ You can use the following blocks with `otelcol.receiver.pyroscope`:
 
 `otelcol.receiver.pyroscope` only forwards data to the consumers listed in the `profiles` argument.
 The `profiles` argument must contain at least one consumer.
+Connect the `profiles` argument only to components that support the profiles signal.
+Currently, [`otelcol.exporter.otlp`][otelcol.exporter.otlp] is the only `otelcol.*` component that accepts profiles.
+
+[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
 The component maps the `service_name` Pyroscope label to the `service.name` OpenTelemetry resource attribute.
 It maps the `otel.scope.name` and `otel.scope.version` labels to the OpenTelemetry instrumentation scope.
