@@ -1,0 +1,38 @@
+receivers:
+  otlp:
+
+exporters:
+  azure_blob:
+    url: "https://example.blob.core.windows.net"
+    auth:
+      type: connection_string
+      connection_string: "DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=dGVzdGtleQ==;EndpointSuffix=core.windows.net"
+    container:
+      logs: otel-logs
+      metrics: otel-metrics
+      traces: otel-traces
+    blob_name_format:
+      metrics_format: "2006/01/02/metrics_15_04_05.json"
+      logs_format: "2006/01/02/logs_15_04_05.json"
+      traces_format: "2006/01/02/traces_15_04_05.json"
+      serial_num_enabled: true
+      serial_num_range: 10000
+      timezone: UTC
+      template_enabled: false
+      time_parser_enabled: true
+    format: json
+    append_blob:
+      enabled: false
+      separator: "\n"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [azure_blob]
+    metrics:
+      receivers: [otlp]
+      exporters: [azure_blob]
+    logs:
+      receivers: [otlp]
+      exporters: [azure_blob]

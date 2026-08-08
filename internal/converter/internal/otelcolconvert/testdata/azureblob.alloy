@@ -1,0 +1,25 @@
+otelcol.receiver.otlp "default" {
+	output {
+		metrics = [otelcol.exporter.azureblob.default.input]
+		logs    = [otelcol.exporter.azureblob.default.input]
+		traces  = [otelcol.exporter.azureblob.default.input]
+	}
+}
+
+otelcol.exporter.azureblob "default" {
+	url = "https://example.blob.core.windows.net"
+
+	auth {
+		connection_string = "DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=dGVzdGtleQ==;EndpointSuffix=core.windows.net"
+	}
+
+	container {
+		logs    = "otel-logs"
+		metrics = "otel-metrics"
+		traces  = "otel-traces"
+	}
+
+	blob_name_format {
+		timezone = "UTC"
+	}
+}
