@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"net"
 	"testing"
 	"time"
 
@@ -100,7 +101,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 	}
 
 	actual := transformException(logger, store, mockException(), "123")
-	require.Equal(t, []string{"http://localhost:1234/foo.js", "http://localhost:1234/foo.js.map"}, httpClient.requests)
+	require.Equal(t, []string{"http://example.com:1234/foo.js", "http://example.com:1234/foo.js.map"}, httpClient.requests)
 	require.Equal(t, expect, actual)
 }
 
@@ -134,7 +135,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 
 	expect := mockException()
 	actual := transformException(logger, store, expect, "123")
-	require.Equal(t, []string{"http://localhost:1234/foo.js"}, httpClient.requests)
+	require.Equal(t, []string{"http://example.com:1234/foo.js"}, httpClient.requests)
 	require.Equal(t, expect, actual)
 }
 
@@ -1076,13 +1077,13 @@ func mockException() *payload.Exception {
 			Frames: []payload.Frame{
 				{
 					Colno:    6,
-					Filename: "http://localhost:1234/foo.js",
+					Filename: "http://example.com:1234/foo.js",
 					Function: "eval",
 					Lineno:   5,
 				},
 				{
 					Colno:    5,
-					Filename: "http://localhost:1234/foo.js",
+					Filename: "http://example.com:1234/foo.js",
 					Function: "callUndefined",
 					Lineno:   6,
 				},
@@ -1108,4 +1109,48 @@ func newTestFileService() *testFileService {
 		stats:         make([]string, 0),
 		reads:         make([]string, 0),
 	}
+}
+
+
+func Test_isUnsafeDownloadURL(t *testing.T) {
+	t.Parallel()
+	require.True(t, isUnsafeDownloadURL("http://127.0.0.1/map.js"))
+	require.True(t, isUnsafeDownloadURL("http://169.254.169.254/latest/meta-data/"))
+	require.True(t, isUnsafeDownloadURL("http://10.0.0.1/x.js"))
+	require.True(t, isUnsafeDownloadURL("http://[::1]/8080/x.js"))
+	require.True(t, isUnsafeDownloadURL("file:///etc/passwd"))
+}
+
+func Test_isBlockedIP(t *testing.T) {
+	t.Parallel()
+	require.True(t, isBlockedIP(net.ParseIP("127.0.0.1")))
+	require.True(t, isBlockedIP(net.ParseIP("10.1.2.3")))
+	require.True(t, isBlockedIP(net.ParseIP("192.168.1.1")))
+	require.True(t, isBlockedIP(net.ParseIP("169.254.169.254")))
+	require.True(t, isBlockedIP(net.ParseIP("100.64.0.1")))
+	require.False(t, isBlockedIP(net.ParseIP("8.8.8.8")))
+}
+
+
+func Test_sourceMapsStoreImpl_BlockPrivateDownloadURL(t *testing.T) {
+	var (
+		logger = alloyutil.TestAlloyLogger(t).Slog()
+		httpClient = &mockHTTPClient{}
+		store = newSourceMapsStore(
+			logger,
+			SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"*"}},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
+			newTestFileService(),
+		)
+	)
+	ex := &payload.Exception{Stacktrace: &payload.Stacktrace{Frames: []payload.Frame{{
+		Filename: "http://169.254.169.254/latest/meta-data/",
+		Lineno:   1,
+		Colno:    1,
+		Function: "x",
+	}}}}
+	actual := transformException(logger, store, ex, "1")
+	require.Equal(t, ex, actual)
+	require.Empty(t, httpClient.requests)
 }
