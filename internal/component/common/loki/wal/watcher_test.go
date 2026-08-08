@@ -1,7 +1,10 @@
 package wal
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"log/slog"
 	"testing"
 	"time"
@@ -777,5 +780,37 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		require.InDelta(t, time.Second*10, time.Since(now), float64(time.Millisecond*2000), "expected the drain procedure to take around 15s")
 		require.Less(t, int(writeTo.entriesReceived.Load()), 20, "expected watcher to have not consumed WAL fully")
 		require.InDelta(t, 15, int(writeTo.entriesReceived.Load()), 1.0, "expected Watcher to consume at most +/- 1 entry from the WAL")
+	})
+}
+
+// TestLiveReaderRecordSpanningPage is a regression test for a crash in the
+// watcher's segment reading: wlog.LiveReader.readRecord dereferences its
+// metrics unconditionally when a record spans a page boundary, so building
+// the reader with nil metrics panics on that input instead of tolerating it.
+//
+// The page bytes encode a small valid record first, so the reader is
+// mid-page when it hits a second record header whose declared length runs
+// past the WAL page size, which is the condition seen in the wild.
+func TestLiveReaderRecordSpanningPage(t *testing.T) {
+	const recFull = byte(1)
+
+	payload := make([]byte, 10)
+	crc := crc32.Checksum(payload, crc32.MakeTable(crc32.Castagnoli))
+
+	var page bytes.Buffer
+	page.WriteByte(recFull)
+	binary.Write(&page, binary.BigEndian, uint16(len(payload)))
+	binary.Write(&page, binary.BigEndian, crc)
+	page.Write(payload)
+	page.WriteByte(recFull)
+	binary.Write(&page, binary.BigEndian, uint16(32750))
+	binary.Write(&page, binary.BigEndian, uint32(0))
+
+	logger := autil.TestAlloyLogger(t).Slog()
+	reader := newLiveReader(logger, bytes.NewReader(page.Bytes()))
+
+	require.NotPanics(t, func() {
+		for reader.Next() {
+		}
 	})
 }
