@@ -126,6 +126,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/nginx"                   // Import otelcol.receiver.nginx
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"                    // Import otelcol.receiver.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus"              // Import otelcol.receiver.prometheus
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/pyroscope"               // Import otelcol.receiver.pyroscope
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/solace"                  // Import otelcol.receiver.solace
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/splunkhec"               // Import otelcol.receiver.splunkhec
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/syslog"                  // Import otelcol.receiver.syslog

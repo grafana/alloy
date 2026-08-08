@@ -1896,6 +1896,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger 
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.153.0/go.mod h1:/ikMbfElbQ+9njeq9gbk91y+ABPTx7AsEGG36pAAruY=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.153.0 h1:VMoCf1STF2WTjPqOGcADuIJNMPb0kbTZ4qU87ygLEbs=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.153.0/go.mod h1:VYsrcd+6Ew4D0aS2nsNXEPn1pgVcKNoBhICCGisonEg=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.155.0 h1:I7/CMACKBzhGihOIVlILzRMdsXcaLUJGdnuHmgC5aJY=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.155.0/go.mod h1:c4AwvQZ/gxpKBZNOmjd1NHRKJOpKZ/KlLGiF9sAIJGc=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.153.0 h1:i7LGGDczVjOd5v1qw+OHrSF6qyjlH7ItkJtsDjeqj3Y=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.153.0/go.mod h1:jLFqF0BJK6slTdAYvcXaOzAZGqbfA/f7jOhd5Hkx+qU=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.153.0 h1:dRaI/ayPoTpGzBVeibRb3jKITIef+zEG/SEKfBNukBA=

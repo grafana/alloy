@@ -144,6 +144,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.153.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.155.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.153.0
