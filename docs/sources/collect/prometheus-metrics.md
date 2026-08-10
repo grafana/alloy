@@ -80,7 +80,7 @@ prometheus.remote_write "default" {
   }
 
   endpoint {
-    url = "https://prometheus-us-central1.grafana.net/api/v1/write"
+    url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
     // Get basic authentication based on environment variables.
     basic_auth {
