@@ -61,3 +61,19 @@ func (c *CollectingConsumer) Entries() []Entry {
 	defer c.mut.Unlock()
 	return slices.Clone(c.entries)
 }
+
+var _ Consumer = (*NopConsumer)(nil)
+
+func NewNopConsumer() *NopConsumer {
+	return &NopConsumer{}
+}
+
+type NopConsumer struct{}
+
+func (n *NopConsumer) Consume(_ context.Context, _ Batch) error {
+	return nil
+}
+
+func (n *NopConsumer) ConsumeEntry(_ context.Context, _ Entry) error {
+	return nil
+}
