@@ -64,11 +64,11 @@ Exercise caution when using `otelcol.processor.filter`:
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-**Span-level only.** `otelcol.processor.filter` evaluates each span (or log/metric) independently.
-It does **not** keep or drop an entire trace based on a child span matching a URL or attribute, and it does not rewrite the root span's name or service after filtering siblings.
+Span-level only. `otelcol.processor.filter` evaluates each span (or log/metric) independently.
+It doesn't keep or drop an entire trace based on a child span matching a URL or attribute, and it doesn't rewrite the root span's name or service after filtering siblings.
 
-For whole-trace keep/drop decisions, use [`otelcol.processor.tail_sampling`][otelcol.processor.tail_sampling] (policies run after the full trace is buffered).
-Tempo also documents common tail-sampling strategies in the [Tempo collector setup guide](https://grafana.com/docs/tempo/latest/set-up-for-tracing/instrument-send/set-up-collector/tail-sampling/policies-strategies/).
+For whole-trace keep/drop decisions, use [`otelcol.processor.tail_sampling`][otelcol.processor.tail_sampling].
+Tail sampling makes a trace decision from buffered data, and `decision_wait` controls how long it waits after the first span before deciding.
 
 [otelcol.processor.tail_sampling]: ../otelcol.processor.tail_sampling/
 {{< /admonition >}}
