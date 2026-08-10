@@ -215,12 +215,13 @@ The `producer` block configures how to retry retrieving metadata when retrieval 
 
 The following arguments are supported:
 
-| Name                 | Type     | Description                                         | Default   | Required |
-| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `compression`        | `string` | The level of compression to use on messages.        | `"none"`  | no       |
-| `flush_max_messages` | `number` | The maximum number of messages in one request.      | `10000`   | no       |
-| `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
-| `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
+| Name                     | Type     | Description                                                                                          | Default     | Required |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| `compression`            | `string` | The level of compression to use on messages.                                                         | `"none"`    | no       |
+| `flush_max_messages`     | `number` | The maximum number of messages in one request.                                                       | `10000`     | no       |
+| `max_message_bytes`      | `number` | The maximum permitted size of a message in bytes.                                                    | `1000000`   | no       |
+| `max_broker_write_bytes` | `number` | The maximum bytes the producer writes to a broker in a single request. Must be at least 100 MiB.     | `104857600` | no       |
+| `required_acks`          | `number` | Controls when a message is regarded as transmitted.                                                  | `1`         | no       |
 
 Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
 

@@ -1,0 +1,29 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  cardinality_guardian:
+    max_cardinality_delta_per_epoch: 500
+    epoch_duration_seconds: 300
+    never_drop_labels: [region, http.status_code]
+    enforcement_mode: overflow_attribute
+    estimated_cost_per_metric_month: 0.05
+    top_offenders_count: 10
+    max_tracker_count: 100000
+    metric_overrides:
+      http.server.request.duration: 5000
+    drop_log_max_per_epoch: 10
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [cardinality_guardian]
+      exporters: [otlp]

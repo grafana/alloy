@@ -1,0 +1,36 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	output {
+		metrics = [otelcol.processor.cardinality_guardian.default.input]
+	}
+}
+
+otelcol.processor.cardinality_guardian "default" {
+	max_cardinality_delta_per_epoch = 500
+	never_drop_labels               = ["region", "http.status_code"]
+	enforcement_mode                = "overflow_attribute"
+	max_tracker_count               = 100000
+	metric_overrides                = {
+		"http.server.request.duration" = 5000,
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
