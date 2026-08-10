@@ -219,7 +219,7 @@ foreach "redis" {
 
 prometheus.remote_write "mimir" {
     endpoint {
-        url = "https://prometheus-xxx.grafana.net/api/v1/write"
+        url = "https://prometheus-xxx.grafana.net/api/prom/push"
 
         basic_auth {
             username = sys.env("<PROMETHEUS_USERNAME>")

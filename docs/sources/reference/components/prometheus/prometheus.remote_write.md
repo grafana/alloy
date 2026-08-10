@@ -394,7 +394,7 @@ The Prometheus username and the Grafana Cloud API Key are injected in this examp
 ```alloy
 prometheus.remote_write "default" {
   endpoint {
-    url = "https://prometheus-xxx.grafana.net/api/v1/write"
+    url = "https://prometheus-xxx.grafana.net/api/prom/push"
       basic_auth {
         username = sys.env("PROMETHEUS_USERNAME")
         password = sys.env("GRAFANA_CLOUD_API_KEY")

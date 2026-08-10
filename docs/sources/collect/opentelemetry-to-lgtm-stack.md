@@ -221,7 +221,7 @@ otelcol.exporter.prometheus "grafana_cloud_metrics" {
 
 prometheus.remote_write "grafana_cloud_metrics" {
     endpoint {
-        url = "https://prometheus-us-central1.grafana.net/api/v1/write"
+        url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
             username = "12690"
@@ -280,7 +280,7 @@ otelcol.exporter.prometheus "grafana_cloud_metrics" {
 
 prometheus.remote_write "grafana_cloud_metrics" {
     endpoint {
-        url = "https://prometheus-us-central1.grafana.net/api/v1/write"
+        url = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
             username = "12690"
@@ -318,11 +318,11 @@ ts=2023-05-09T09:37:15.301334Z level=info trace_id=6466516c9e1a556422df7a84c0ade
 ts=2023-05-09T09:37:15.303138Z component=prometheus.remote_write.grafana_cloud_metrics level=info subcomponent=wal msg="replaying WAL, this may take a while" dir=data-alloy/prometheus.remote_write.grafana_cloud_metrics/wal
 ts=2023-05-09T09:37:15.303257Z component=prometheus.remote_write.grafana_cloud_metrics level=info subcomponent=wal msg="WAL segment loaded" segment=0 maxSegment=1
 ts=2023-05-09T09:37:15.303302Z component=prometheus.remote_write.grafana_cloud_metrics level=info subcomponent=wal msg="WAL segment loaded" segment=1 maxSegment=1
-ts=2023-05-09T09:37:15.303507Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/v1/write msg="Starting WAL watcher" queue=7f623a
-ts=2023-05-09T09:37:15.303515Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/v1/write msg="Starting scraped metadata watcher"
+ts=2023-05-09T09:37:15.303507Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/prom/push msg="Starting WAL watcher" queue=7f623a
+ts=2023-05-09T09:37:15.303515Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/prom/push msg="Starting scraped metadata watcher"
 ts=2023-05-09T09:37:15.303522Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=prometheus.remote_write.grafana_cloud_metrics duration=2.181958ms
 ts=2023-05-09T09:37:15.303557Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=otelcol.exporter.prometheus.grafana_cloud_metrics duration=30.083µs
-ts=2023-05-09T09:37:15.303611Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/v1/write msg="Replaying WAL" queue=7f623a
+ts=2023-05-09T09:37:15.303611Z component=prometheus.remote_write.grafana_cloud_metrics subcomponent=rw level=info remote_name=7f623a url=https://prometheus-us-central1.grafana.net/api/prom/push msg="Replaying WAL" queue=7f623a
 ts=2023-05-09T09:37:15.303618Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=otelcol.auth.basic.grafana_cloud_traces duration=52.5µs
 ts=2023-05-09T09:37:15.303694Z level=info trace_id=6466516c9e1a556422df7a84c0ade6b0 msg="finished node evaluation" node_id=otelcol.exporter.otlphttp.grafana_cloud_traces duration=70.375µs
 ts=2023-05-09T09:37:15.303782Z component=otelcol.processor.memory_limiter.default level=info msg="Memory limiter configured" limit_mib=150 spike_limit_mib=30 check_interval=1s

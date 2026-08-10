@@ -115,7 +115,7 @@ otelcol.exporter.prometheus "otlp_metrics" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "https://prometheus-xxx.grafana.net/api/v1/write"
+    url = "https://prometheus-xxx.grafana.net/api/prom/push"
     basic_auth {
       username = sys.env("<PROMETHEUS_USERNAME>")
       password = sys.env("<GRAFANA_CLOUD_API_KEY>")

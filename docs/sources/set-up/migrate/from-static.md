@@ -132,7 +132,7 @@ metrics:
   global:
     scrape_interval: 15s
     remote_write:
-      - url: https://prometheus-us-central1.grafana.net/api/v1/write
+      - url: https://prometheus-us-central1.grafana.net/api/prom/push
         basic_auth:
           username: USERNAME
           password: PASSWORD
@@ -222,7 +222,7 @@ prometheus.scrape "metrics_test_local_agent" {
 prometheus.remote_write "metrics_test" {
     endpoint {
         name = "test-4dec64"
-        url  = "https://prometheus-us-central1.grafana.net/api/v1/write"
+        url  = "https://prometheus-us-central1.grafana.net/api/prom/push"
 
         basic_auth {
             username = "<USERNAME>"
