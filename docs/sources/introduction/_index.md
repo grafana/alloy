@@ -48,6 +48,7 @@ This approach reduces operational complexity while giving you the flexibility to
 [Requirements]: ./requirements/
 [Supported platforms]: ../set-up/supported-platforms/
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
+[Access and permissions]: ../access_permissions/
 [migrate]: ../set-up/migrate/
 [beginners]: https://github.com/grafana/Grafana-Alloy-for-Beginners
 [scenarios]: https://github.com/grafana/alloy-scenarios
