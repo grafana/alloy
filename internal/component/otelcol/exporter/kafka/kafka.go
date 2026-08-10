@@ -175,6 +175,11 @@ type Producer struct {
 	// Maximum message bytes the producer will accept to produce.
 	MaxMessageBytes int `alloy:"max_message_bytes,attr,optional"`
 
+	// Maximum bytes the producer will write to a broker in a single request.
+	// Must be at least 100 MiB (the franz-go minimum) and greater than or
+	// equal to max_message_bytes.
+	MaxBrokerWriteBytes int `alloy:"max_broker_write_bytes,attr,optional"`
+
 	// RequiredAcks Number of acknowledgements required to assume that a message has been sent.
 	// https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
 	// The options are:
@@ -204,6 +209,7 @@ type Producer struct {
 func (args Producer) Convert() configkafka.ProducerConfig {
 	return configkafka.ProducerConfig{
 		MaxMessageBytes:        args.MaxMessageBytes,
+		MaxBrokerWriteBytes:    args.MaxBrokerWriteBytes,
 		RequiredAcks:           configkafka.RequiredAcks(args.RequiredAcks),
 		Compression:            args.Compression,
 		CompressionParams:      args.CompressionParams.Convert(),
@@ -244,9 +250,10 @@ func (args *Arguments) SetToDefault() {
 			},
 		},
 		Producer: Producer{
-			MaxMessageBytes: 1000000,
-			RequiredAcks:    1,
-			Compression:     "none",
+			MaxMessageBytes:     1000000,
+			MaxBrokerWriteBytes: 104857600, // 100 MiB, the franz-go minimum.
+			RequiredAcks:        1,
+			Compression:         "none",
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},

@@ -94,6 +94,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling" // Import otelcol.extension.jaeger_remote_sampling
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/attributes"             // Import otelcol.processor.attributes
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/batch"                  // Import otelcol.processor.batch
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/cardinalityguardian"    // Import otelcol.processor.cardinality_guardian
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/cumulativetodelta"      // Import otelcol.processor.cumulativetodelta
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative"      // Import otelcol.processor.deltatocumulative
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/discovery"              // Import otelcol.processor.discovery

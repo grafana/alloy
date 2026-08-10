@@ -94,6 +94,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
 		MaxMessageBytes:        cfg.MaxMessageBytes,
+		MaxBrokerWriteBytes:    cfg.MaxBrokerWriteBytes,
 		Compression:            cfg.Compression,
 		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
 		RequiredAcks:           int(cfg.RequiredAcks),

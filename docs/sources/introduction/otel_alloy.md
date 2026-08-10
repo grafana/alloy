@@ -114,6 +114,7 @@ The following sections list all included components:
 {{< collapse title="Processors" >}}
 
 - [attributes](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/attributesprocessor/README.md)
+- [cardinalityguardian](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/cardinalityguardianprocessor/README.md)
 - [cumulativetodelta](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/cumulativetodeltaprocessor/README.md)
 - [deltatocumulative](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/deltatocumulativeprocessor/README.md)
 - [filter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/filterprocessor/README.md)

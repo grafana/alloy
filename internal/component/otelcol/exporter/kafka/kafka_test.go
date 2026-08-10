@@ -79,9 +79,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 			Producer: configkafka.ProducerConfig{
-				MaxMessageBytes: 1000000,
-				RequiredAcks:    1,
-				Compression:     "none",
+				MaxMessageBytes:     1000000,
+				MaxBrokerWriteBytes: 104857600,
+				RequiredAcks:        1,
+				Compression:         "none",
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
@@ -344,9 +345,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				Producer: configkafka.ProducerConfig{
-					MaxMessageBytes: 2000001,
-					RequiredAcks:    0,
-					Compression:     "gzip",
+					MaxMessageBytes:     2000001,
+					MaxBrokerWriteBytes: 104857600,
+					RequiredAcks:        0,
+					Compression:         "gzip",
 					CompressionParams: configcompression.CompressionParams{
 						Level: 9,
 					},
