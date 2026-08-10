@@ -201,11 +201,6 @@ type Producer struct {
 }
 
 // Convert converts args into the upstream type.
-//
-// Start from the upstream factory default rather than a bare struct so fields
-// Alloy does not expose keep their upstream values. Building the struct from
-// scratch left max_broker_write_bytes at 0, which upstream rejects because
-// franz-go requires at least 100 MiB, and linger at 0 instead of 10ms.
 func (args Producer) Convert() configkafka.ProducerConfig {
 	cfg := configkafka.NewDefaultProducerConfig()
 	cfg.MaxMessageBytes = args.MaxMessageBytes
