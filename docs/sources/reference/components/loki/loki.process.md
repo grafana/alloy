@@ -1803,7 +1803,7 @@ When no timestamp stage is set, the log entry timestamp defaults to the time whe
 The following arguments are supported:
 
 | Name                            | Type           | Description                                                 | Default   | Required |
-| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| ------------------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
 | `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
 | `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
