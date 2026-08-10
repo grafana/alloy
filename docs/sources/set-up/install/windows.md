@@ -79,13 +79,13 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 - `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
 - `/USERNAME="<username>"` Set the fully qualified user that Windows uses to run the service. Default: `NT AUTHORITY\LocalSystem`
 - `/PASSWORD="<password>"` Set the password of the user that Windows uses to run the service. This isn't required for standard Windows Service Accounts like LocalSystem. Default: ``
-- `/D=<path>` Set the installation directory. This is an NSIS built-in option (not Alloy-specific). It must be the last argument on the command line and must not be quoted. Default: `%PROGRAMFILES%\GrafanaLabs\Alloy`
+- `/D=<path>` Set the installation directory. It must be the last argument on the command line and must not be quoted. Default: `%PROGRAMFILES%\GrafanaLabs\Alloy`
 
-  Example:
+Example:
 
-  ```cmd
-  alloy-installer-windows-amd64.exe /S /CONFIG=C:\alloy\config.alloy /D=C:\GrafanaLabs\Alloy
-  ```
+```cmd
+<PATH>\alloy-installer-windows-amd64.exe /S /CONFIG=C:\alloy\config.alloy /D=C:\GrafanaLabs\Alloy
+```
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [public preview][stability] and isn't covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
