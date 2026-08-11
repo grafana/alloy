@@ -96,7 +96,7 @@ Supported strategies are:
 
 {{< admonition type="note" >}}
 The upstream OpenTelemetry Collector setting behind `group_rebalance_strategy` is deprecated in favor of an ordered list of strategies.
-`group_rebalance_strategy` continues to work, and Alloy's `range` default is unchanged.
+`group_rebalance_strategy` continues to work, and the `range` default is unchanged.
 {{< /admonition >}}
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
