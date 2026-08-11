@@ -111,9 +111,9 @@ replaces:
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
   # <BEGIN_SHARED_REPLACE_DIRECTIVES>
-  # OTel supervisor that embedded in Alloy, imports cmd/opampsupervisor, but OCB does not list it as a component,
-  # so `go mod tidy` would otherwise resolve it to @latest and break the filelogreceiver family.
-  # Pin it to the v0.153 contrib train
+  # The OTel supervisor that's embedded in Alloy imports cmd/opampsupervisor, but OCB does not list it as a component.
+  # This would cause `go mod tidy` to resolve it to @latest and break the filelogreceiver family.
+  # Pin it to the v0.153 contrib train to prevent this.
   - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
