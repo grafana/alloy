@@ -190,6 +190,31 @@ Docker log entries are formatted as JSON with the following keys:
 * `log`: The content of log line.
 * `stream`: Either `stdout` or `stderr`.
 * `time`: The timestamp string of the log line.
+* `attrs` (optional): Extra attributes from the logging driver, for example when the json-file `tag` option is set.
+
+`stage.docker` only unpacks `log`, `stream`, and `time`.
+It rewrites the log line to the value of `log` and sets the stream label and timestamp.
+Any other top-level JSON fields, including `attrs`, are dropped unless you copy them out first.
+
+If you need values from `attrs` or another sidecar field **and** the docker stage, for example to reassemble split lines, extract those fields with `stage.json` **before** `stage.docker`:
+
+```alloy
+// docker compose json-file tag example: tag = "{{.ImageName}}|{{.Name}}|..."
+stage.json {
+  expressions = {
+    attrs = "",
+  }
+}
+
+stage.docker {}
+
+stage.json {
+  expressions = {
+    tag = "",
+  }
+  source = "attrs"
+}
+```
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
@@ -1904,12 +1929,15 @@ stage.tenant {
 ### `stage.timestamp`
 
 The `stage.timestamp` inner block configures a processing stage that sets the timestamp of log entries before they're forwarded to the next component.
-When no timestamp stage is set, the log entry timestamp defaults to the time when the log entry was scraped.
+When no timestamp stage is set, `loki.process` keeps the timestamp that the upstream component already attached to the entry, for example a `loki.source.*` component.
+Many sources set that timestamp to the time they receive the entry by default.
+Other sources can use a timestamp embedded in the log when you enable incoming-timestamp options.
+If you leave out `stage.timestamp`, `loki.process` does not rewrite or sanitize timestamps by itself, and Loki may still reject entries that fall outside its configured acceptance window, for example far-future or out-of-order timestamps.
 
 The following arguments are supported:
 
 | Name                            | Type           | Description                                                 | Default   | Required |
-| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| ------------------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
 | `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
 | `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
