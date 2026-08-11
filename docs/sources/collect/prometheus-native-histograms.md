@@ -24,7 +24,7 @@ This topic shows a minimal end-to-end pipeline that:
 ## Before you begin
 
 * A scrape target that exposes native histograms over the Prometheus Protobuf format.
-* A remote endpoint that accepts native histograms (for example Grafana Mimir or Grafana Cloud Metrics with native histograms enabled).
+* A remote endpoint that accepts native histograms, for example Grafana Mimir or Grafana Cloud Metrics with native histograms enabled.
 
 ## Configure delivery
 
