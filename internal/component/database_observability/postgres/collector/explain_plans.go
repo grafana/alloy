@@ -203,12 +203,16 @@ type processedQueryInfo struct {
 	callsReset time.Time
 }
 
+func explainPlanQueryKey(datname, queryId string) string {
+	return fmt.Sprintf("%s:%s", datname, queryId)
+}
+
 func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
 	return &queryInfo{
 		datname:    datname,
 		queryId:    queryId,
 		queryText:  queryText,
-		uniqueKey:  datname + queryId,
+		uniqueKey:  explainPlanQueryKey(datname, queryId),
 		calls:      calls,
 		callsReset: callsReset,
 	}
@@ -241,6 +245,8 @@ type ExplainPlans struct {
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
+	lastEmittedAt       map[string]time.Time
+	now                 func() time.Time
 	logger              *slog.Logger
 	running             *atomic.Bool
 	ctx                 context.Context
@@ -260,6 +266,8 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]struct{}),
 		finishedQueryCache:  make(map[string]processedQueryInfo),
+		lastEmittedAt:       make(map[string]time.Time),
+		now:                 time.Now,
 		entryHandler:        args.EntryHandler,
 		logger:              args.Logger.With("collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
@@ -273,6 +281,43 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 	ep.dbVersion = engineSemver
 
 	return ep, nil
+}
+
+func (c *ExplainPlans) currentTime() time.Time {
+	if c.now != nil {
+		return c.now()
+	}
+	return time.Now()
+}
+
+func (c *ExplainPlans) isThrottled(key string) bool {
+	last, ok := c.lastEmittedAt[key]
+	return ok && c.currentTime().Sub(last) < database_observability.EmitInterval
+}
+
+func (c *ExplainPlans) recordEmission(key string) {
+	if c.lastEmittedAt == nil {
+		c.lastEmittedAt = make(map[string]time.Time)
+	}
+	c.lastEmittedAt[key] = c.currentTime()
+}
+
+func (c *ExplainPlans) markFinished(qi *queryInfo) {
+	if c.finishedQueryCache == nil {
+		c.finishedQueryCache = make(map[string]processedQueryInfo)
+	}
+	c.finishedQueryCache[qi.uniqueKey] = processedQueryInfo{
+		calls:      qi.calls,
+		callsReset: qi.callsReset,
+	}
+}
+
+func (c *ExplainPlans) pruneThrottle(seen map[string]struct{}) {
+	for key := range c.lastEmittedAt {
+		if _, ok := seen[key]; !ok {
+			delete(c.lastEmittedAt, key)
+		}
+	}
 }
 
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
@@ -307,6 +352,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 		OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
+	c.recordEmission(explainPlanQueryKey(schemaName, digest))
 
 	return nil
 }
@@ -382,6 +428,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	seen := make(map[string]struct{})
 	for rs.Next() {
 		generatedAt := time.Now().Format(time.RFC3339)
 		var datname, queryId, query string
@@ -396,37 +443,46 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			statsReset = ls
 		}
 		qi := newQueryInfo(datname, queryId, query, calls, statsReset)
-		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
-			if previous, ok := c.finishedQueryCache[qi.uniqueKey]; ok {
-				if calls == previous.calls {
-					continue
+		seen[qi.uniqueKey] = struct{}{}
+
+		if _, ok := c.queryDenylist[qi.uniqueKey]; ok {
+			if !c.isThrottled(qi.uniqueKey) {
+				err := c.sendExplainPlansOutput(
+					datname,
+					queryId,
+					generatedAt,
+					database_observability.ExplainProcessingResultSkipped,
+					"query denylisted",
+					nil,
+				)
+				if err != nil {
+					c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
 				}
-				if calls < previous.calls && (statsReset.Equal(previous.callsReset) || statsReset.Before(previous.callsReset)) {
-					continue
-				}
-				delete(c.finishedQueryCache, qi.uniqueKey)
-			}
-			c.queryCache[qi.uniqueKey] = qi
-		} else {
-			err := c.sendExplainPlansOutput(
-				datname,
-				queryId,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query denylisted",
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
 			}
 			continue
 		}
+
+		if previous, ok := c.finishedQueryCache[qi.uniqueKey]; ok {
+			if calls == previous.calls {
+				continue
+			}
+			if calls < previous.calls && (statsReset.Equal(previous.callsReset) || statsReset.Before(previous.callsReset)) {
+				continue
+			}
+		}
+		if c.isThrottled(qi.uniqueKey) {
+			c.markFinished(qi)
+			continue
+		}
+		delete(c.finishedQueryCache, qi.uniqueKey)
+		c.queryCache[qi.uniqueKey] = qi
 	}
 
 	if err := rs.Err(); err != nil {
 		return fmt.Errorf("failed to iterate query rows for explain plans: %w", err)
 	}
 
+	c.pruneThrottle(seen)
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
 	c.logger.Debug("populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	return nil
@@ -443,6 +499,11 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 	for _, qi := range c.queryCache {
 		generatedAt := time.Now().Format(time.RFC3339)
 		nonRecoverableFailureOccurred := false
+		if c.isThrottled(qi.uniqueKey) {
+			c.markFinished(qi)
+			delete(c.queryCache, qi.uniqueKey)
+			continue
+		}
 		if processedCount >= c.currentBatchSize {
 			break
 		}
@@ -452,10 +513,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			if *nonRecoverableFailureOccurred {
 				c.queryDenylist[qi.uniqueKey] = struct{}{}
 			} else {
-				c.finishedQueryCache[qi.uniqueKey] = processedQueryInfo{
-					calls:      qi.calls,
-					callsReset: qi.callsReset,
-				}
+				c.markFinished(qi)
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++

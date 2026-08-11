@@ -66,7 +66,7 @@ type QueryDetails struct {
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
 	// was last emitted for a (database, query_hash), used to throttle logging
-	// to at most one emission per emitInterval per query.
+	// to at most one emission per EmitInterval per query.
 	lastEmittedAt map[queryMetricsKey]time.Time
 
 	// now allows overriding time.Now() in tests.
@@ -206,7 +206,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		}
 		seen[key] = struct{}{}
 
-		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < emitInterval {
+		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
 			continue
 		}
 
