@@ -31,9 +31,11 @@ This endpoint only accepts data and isn't available to view in a browser.
 - The version of {{< param "PRODUCT_NAME" >}}.
 - The operating system where {{< param "PRODUCT_NAME" >}} runs.
 - The system architecture where {{< param "PRODUCT_NAME" >}} runs.
-- Which engine is running: the Default Engine (`alloy run`) or the OTel Engine (`alloy otel`).
-- When running the Default Engine, a list of enabled [components][].
-- When running the OTel Engine, the configured OpenTelemetry Collector component types, grouped by kind: `receivers`, `processors`, `exporters`, `connectors`, and `extensions`. For example, an `otlp` receiver is reported separately from an `otlp` exporter. If the `alloyengine` extension is used, the list of {{< param "PRODUCT_NAME" >}} components it runs is also reported.
+- Which engine is running: the {{< param "DEFAULT_ENGINE" >}} with `alloy run`, or the {{< param "OTEL_ENGINE" >}} with `alloy otel`.
+- When running the {{< param "DEFAULT_ENGINE" >}}, a list of enabled [components][].
+- When running the {{< param "OTEL_ENGINE" >}}, the configured OpenTelemetry Collector component types, grouped by kind: `receivers`, `processors`, `exporters`, `connectors`, and `extensions`.
+  For example, an `otlp` receiver is reported separately from an `otlp` exporter.
+  If the `alloyengine` extension is used, the list of {{< param "PRODUCT_NAME" >}} components it runs is also reported.
 - The deployment method, such as `docker`, `helm`, `operator`, `deb`, `rpm`, `brew`, or `binary`.
 
 {{< admonition type="note" >}}
@@ -167,7 +169,7 @@ Replace the following:
 
 ### OTel Engine
 
-When you run the OTel Engine, add `--disable-reporting` to the `alloy otel` command:
+When you run the {{< param "OTEL_ENGINE" >}}, add `--disable-reporting` to the `alloy otel` command:
 
 ```shell
 <BINARY_PATH> otel --config <CONFIG_PATH> --disable-reporting
