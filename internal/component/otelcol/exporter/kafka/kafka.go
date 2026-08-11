@@ -355,11 +355,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
-	if args.TLS != nil {
-		tlsCfg := args.TLS.Convert()
-		result.ClientConfig.TLS = tlsCfg
-	}
-
 	return &result, nil
 }
 
