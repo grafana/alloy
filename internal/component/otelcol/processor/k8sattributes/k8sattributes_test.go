@@ -467,3 +467,41 @@ func Test_WatchSyncPeriod(t *testing.T) {
 		require.Equal(t, 30*time.Second, otelObj.WatchSyncPeriod)
 	})
 }
+
+func Test_ExtractMetadata(t *testing.T) {
+	t.Run("omitted metadata inside an extract block is nil", func(t *testing.T) {
+		cfg := `
+		extract {
+			deployment_name_from_replicaset = true
+		}
+
+		output {}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Nil(t, otelObj.Extract.Metadata)
+	})
+
+	t.Run("configured metadata is passed through", func(t *testing.T) {
+		cfg := `
+		extract {
+			metadata = ["k8s.pod.name"]
+		}
+
+		output {}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, []string{"k8s.pod.name"}, otelObj.Extract.Metadata)
+	})
+}
