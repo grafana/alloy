@@ -2,6 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/collect/prometheus-native-histograms/
 description: Learn how to scrape and forward Prometheus native histograms with Grafana Alloy
 title: Collect Prometheus native histograms
+docTitle: Collect Prometheus native histograms
 weight: 310
 ---
 
@@ -57,6 +58,7 @@ prometheus.scrape "app" {
     "PrometheusProto",
     "OpenMetricsText1.0.0",
     "OpenMetricsText0.0.1",
+    "PrometheusText1.0.0",
     "PrometheusText0.0.4",
   ]
 
@@ -87,6 +89,7 @@ prometheus.scrape "app" {
     "PrometheusProto",
     "OpenMetricsText1.0.0",
     "OpenMetricsText0.0.1",
+    "PrometheusText1.0.0",
     "PrometheusText0.0.4",
   ]
 
@@ -108,8 +111,9 @@ Other pipeline components such as `prometheus.relabel` do not need extra flags f
 
 * [`prometheus.scrape` native histogram arguments][prometheus.scrape]
 * [`prometheus.remote_write` `send_native_histograms`][prometheus.remote_write]
-* [Collect Prometheus metrics](../prometheus-metrics/)
+* [Collect Prometheus metrics][]
 
 [Prometheus native histograms]: https://prometheus.io/docs/specs/native_histograms/
+[Collect Prometheus metrics]: ../prometheus-metrics/
 [prometheus.remote_write]: ../../reference/components/prometheus/prometheus.remote_write/
 [prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/
