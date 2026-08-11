@@ -19,7 +19,7 @@ import (
 func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonitor, ep promopv1.Endpoint, i int, role promk8s.Role) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
-	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	scrapeClass, err := cg.ScrapeClasses.Get(m.Spec.ScrapeClassName)
 	if err != nil {
 		return nil, err
 	}
@@ -318,12 +318,12 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	cfg.RelabelConfigs = relabels.configs
 
 	metricRelabels := relabeler{}
+	// Scrape class metric relabelings are prepended to the endpoint's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, ep.MetricRelabelConfigs)...)
 	if err != nil {
 		return nil, err
 	}
-	// Scrape class metric relabelings are appended to the endpoint's own.
-	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
 	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))

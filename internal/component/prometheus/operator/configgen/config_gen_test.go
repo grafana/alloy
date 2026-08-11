@@ -18,6 +18,7 @@ import (
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -43,7 +44,7 @@ var (
 func scrapeClassTestGenerator() *ConfigGenerator {
 	return &ConfigGenerator{
 		Client: &kubernetes.ClientArguments{},
-		ScrapeClasses: []operator.ScrapeClass{
+		ScrapeClasses: operator.NewScrapeClassIndex([]operator.ScrapeClass{
 			{
 				Name:          "secure",
 				Default:       true,
@@ -57,7 +58,7 @@ func scrapeClassTestGenerator() *ConfigGenerator {
 				},
 				AttachMetadata: &operator.AttachMetadataConfig{Node: true},
 			},
-		},
+		}),
 	}
 }
 
@@ -69,6 +70,17 @@ func indexOfTargetLabel(cfgs []*relabel.Config, label string) int {
 		}
 	}
 	return -1
+}
+
+// requireRuleOrder asserts that both rules are present and that the rule
+// writing to first comes before the rule writing to second.
+func requireRuleOrder(t *testing.T, cfgs []*relabel.Config, first, second string) {
+	t.Helper()
+	firstIdx := indexOfTargetLabel(cfgs, first)
+	secondIdx := indexOfTargetLabel(cfgs, second)
+	require.NotEqual(t, -1, firstIdx, "no rule writing to %s", first)
+	require.NotEqual(t, -1, secondIdx, "no rule writing to %s", second)
+	require.Less(t, firstIdx, secondIdx, "%s should come before %s", first, second)
 }
 
 func TestGenerateK8SSDConfig(t *testing.T) {

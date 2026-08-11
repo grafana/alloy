@@ -29,7 +29,7 @@ var (
 func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep promopv1.PodMetricsEndpoint, i int) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
-	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	scrapeClass, err := cg.ScrapeClasses.Get(m.Spec.ScrapeClassName)
 	if err != nil {
 		return nil, err
 	}
@@ -294,11 +294,11 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	cfg.RelabelConfigs = relabels.configs
 
 	metricRelabels := relabeler{}
+	// Scrape class metric relabelings are prepended to the endpoint's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	if err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, ep.MetricRelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing metric relabel configs: %w", err)
 	}
-	// Scrape class metric relabelings are appended to the endpoint's own.
-	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
 	cfg.SampleLimit = uint(defaultIfNil(m.Spec.SampleLimit, 0))

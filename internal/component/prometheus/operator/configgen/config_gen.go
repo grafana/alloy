@@ -25,28 +25,7 @@ type ConfigGenerator struct {
 	Secrets                  SecretFetcher
 	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
-	ScrapeClasses            []operator.ScrapeClass
-}
-
-// scrapeClassFor returns the scrape class that applies to a resource. When the
-// resource references a class by name, that class is returned (or an error if
-// it is not defined). When the reference is empty, the class marked as default
-// is returned, if any.
-func (cg *ConfigGenerator) scrapeClassFor(name *string) (*operator.ScrapeClass, error) {
-	var def *operator.ScrapeClass
-	for i := range cg.ScrapeClasses {
-		sc := &cg.ScrapeClasses[i]
-		if sc.Default {
-			def = sc
-		}
-		if name != nil && *name != "" && *name == sc.Name {
-			return sc, nil
-		}
-	}
-	if name != nil && *name != "" {
-		return nil, fmt.Errorf("scrape class %q is not defined", *name)
-	}
-	return def, nil
+	ScrapeClasses            operator.ScrapeClassIndex
 }
 
 // applyScrapeClassHTTPClientConfig fills in TLS and authorization from the
@@ -90,8 +69,8 @@ func (r *relabeler) addScrapeClassRelabelings(sc *operator.ScrapeClass) {
 }
 
 // addScrapeClassMetricRelabelings adds the scrape class metric relabelings to
-// the relabeler. Call this after adding the endpoint's own metric relabelings so
-// the class rules are appended.
+// the relabeler. Call this before adding the endpoint's own metric relabelings
+// so the class rules are prepended.
 func (r *relabeler) addScrapeClassMetricRelabelings(sc *operator.ScrapeClass) {
 	if sc == nil {
 		return

@@ -105,7 +105,7 @@ You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 | [`scrape`][scrape]                                            | Default scrape configuration to apply to discovered targets.                                | no       |
 | [`scrape_class`][scrape_class]                                | Define named scrape classes that discovered resources can reference.                        | no       |
 | `scrape_class` > [`authorization`][authorization]             | Configure generic authorization for this scrape class.                                      | no       |
-| `scrape_class` > [`metric_relabel_rule`][metric_relabel_rule] | Metric relabeling rules appended to the resource's metric relabeling rules.                 | no       |
+| `scrape_class` > [`metric_relabel_rule`][metric_relabel_rule] | Metric relabeling rules prepended to the resource's metric relabeling rules.                | no       |
 | `scrape_class` > [`relabel_rule`][relabel_rule]               | Relabeling rules prepended to the resource's relabeling rules.                              | no       |
 | `scrape_class` > [`tls_config`][tls_config]                   | Configure TLS settings for this scrape class.                                               | no       |
 | [`selector`][selector]                                        | Label selector for which `scrapeconfigs` to discover.                                       | no       |

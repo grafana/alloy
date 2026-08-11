@@ -8,12 +8,12 @@ The `scrape_class` block defines a named set of scrape settings that discovered 
 This mirrors the [Prometheus Operator ScrapeClass](https://prometheus-operator.dev/docs/developer/scrapeclass/) feature.
 You can define multiple `scrape_class` blocks.
 
-| Name      | Type     | Description                                                               | Default | Required |
-| --------- | -------- | ------------------------------------------------------------------------- | ------- | -------- |
-| `name`    | `string` | Name of the scrape class, referenced by a resource's `scrapeClass` field. |         | yes      |
-| `default` | `bool`   | Apply this class to resources that don't reference a scrape class.        | `false` | no       |
+| Name      | Type     | Description                                                                                 | Default | Required |
+| --------- | -------- | ------------------------------------------------------------------------------------------- | ------- | -------- |
+| `name`    | `string` | Unique, non-empty name of the scrape class, referenced by a resource's `scrapeClass` field. |         | yes      |
+| `default` | `bool`   | Apply this class to resources that don't reference a scrape class.                          | `false` | no       |
 
 At most one `scrape_class` block can set `default` to `true`.
 A resource's own settings take precedence over the scrape class.
-Scrape class relabeling rules are prepended to the resource's relabeling rules, and metric relabeling rules are appended.
+Scrape class relabeling rules and metric relabeling rules are prepended to the resource's own rules, matching the Prometheus Operator.
 Referencing a scrape class that isn't defined is an error.

@@ -358,6 +358,6 @@ func TestGenerateScrapeConfigConfigScrapeClass(t *testing.T) {
 	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
 	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
 
-	assert.Less(t, indexOfTargetLabel(cfg.RelabelConfigs, "from_class"), indexOfTargetLabel(cfg.RelabelConfigs, "from_endpoint"))
-	assert.Greater(t, indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_class"), indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_endpoint"))
+	requireRuleOrder(t, cfg.RelabelConfigs, "from_class", "from_endpoint")
+	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
 }

@@ -689,17 +689,8 @@ func TestGenerateServiceMonitorConfigScrapeClassDefaultApplied(t *testing.T) {
 	require.True(t, ok)
 	assert.True(t, sd.AttachMetadata.Node)
 
-	classIdx := indexOfTargetLabel(cfg.RelabelConfigs, "from_class")
-	epIdx := indexOfTargetLabel(cfg.RelabelConfigs, "from_endpoint")
-	require.NotEqual(t, -1, classIdx)
-	require.NotEqual(t, -1, epIdx)
-	assert.Less(t, classIdx, epIdx, "class relabelings should be prepended before endpoint relabelings")
-
-	classMetricIdx := indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_class")
-	epMetricIdx := indexOfTargetLabel(cfg.MetricRelabelConfigs, "metric_from_endpoint")
-	require.NotEqual(t, -1, classMetricIdx)
-	require.NotEqual(t, -1, epMetricIdx)
-	assert.Greater(t, classMetricIdx, epMetricIdx, "class metric relabelings should be appended after endpoint metric relabelings")
+	requireRuleOrder(t, cfg.RelabelConfigs, "from_class", "from_endpoint")
+	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
 }
 
 func TestGenerateServiceMonitorConfigScrapeClassEndpointOverridesTLS(t *testing.T) {

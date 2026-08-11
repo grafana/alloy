@@ -5,6 +5,6 @@ headless: true
 ---
 
 The `metric_relabel_rule` block has the same arguments as the `rule` block.
-Rules defined here are appended to the metric relabeling rules of resources that reference the scrape class.
+Rules defined here are prepended to the metric relabeling rules of resources that reference the scrape class.
 
 {{< docs/shared lookup="reference/components/rule-block.md" source="alloy" version="<ALLOY_VERSION>" >}}

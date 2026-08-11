@@ -23,7 +23,7 @@ import (
 func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
-	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	scrapeClass, err := cg.ScrapeClasses.Get(m.Spec.ScrapeClassName)
 	if err != nil {
 		return nil, err
 	}
@@ -247,12 +247,12 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
 
 	metricRelabels := relabeler{}
+	// Scrape class metric relabelings are prepended to the resource's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.MetricRelabelConfigs)...)
 	if err != nil {
 		return nil, err
 	}
-	// Scrape class metric relabelings are appended to the resource's own.
-	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())

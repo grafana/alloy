@@ -70,13 +70,48 @@ type ScrapeClass struct {
 	// endpoints.
 	Relabelings []*alloy_relabel.Config `alloy:"relabel_rule,block,optional"`
 
-	// MetricRelabelings are appended to the metric relabel rules of the
+	// MetricRelabelings are prepended to the metric relabel rules of the
 	// resource's endpoints.
 	MetricRelabelings []*alloy_relabel.Config `alloy:"metric_relabel_rule,block,optional"`
 
 	// AttachMetadata is applied to a resource unless the resource sets its own
 	// attach metadata configuration.
 	AttachMetadata *AttachMetadataConfig `alloy:"attach_metadata,block,optional"`
+}
+
+// ScrapeClassIndex looks up scrape classes by name and holds the class marked
+// as default. Build it once per configuration with NewScrapeClassIndex.
+type ScrapeClassIndex struct {
+	byName       map[string]*ScrapeClass
+	defaultClass *ScrapeClass
+}
+
+// NewScrapeClassIndex indexes classes by name and resolves the default class.
+// Arguments.Validate guarantees unique names and at most one default.
+func NewScrapeClassIndex(classes []ScrapeClass) ScrapeClassIndex {
+	index := ScrapeClassIndex{byName: make(map[string]*ScrapeClass, len(classes))}
+	for i := range classes {
+		sc := &classes[i]
+		index.byName[sc.Name] = sc
+		if sc.Default {
+			index.defaultClass = sc
+		}
+	}
+	return index
+}
+
+// Get returns the class a resource references by name, or the default class
+// when the resource references none. Referencing an undefined class is an
+// error.
+func (index ScrapeClassIndex) Get(name *string) (*ScrapeClass, error) {
+	if name == nil || *name == "" {
+		return index.defaultClass, nil
+	}
+	sc, ok := index.byName[*name]
+	if !ok {
+		return nil, fmt.Errorf("scrape class %q is not defined", *name)
+	}
+	return sc, nil
 }
 
 // AttachMetadataConfig mirrors the Prometheus Operator AttachMetadata type.
