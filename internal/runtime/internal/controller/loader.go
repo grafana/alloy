@@ -29,8 +29,8 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/util"
 	astutil "github.com/grafana/alloy/internal/util/ast"
+	"github.com/grafana/alloy/internal/util/metricsutil"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/vm"
@@ -120,12 +120,12 @@ func NewLoader(opts LoaderOptions) (*Loader, error) {
 		// These metrics already being registered indicates there's already a loader which exists for this controller.
 		// Creating duplicate loaders should only happen in error states where we should not proceed further. One know
 		// case of this is when remotecfg loads an invalid config and attempts to reload the prior config.
-		existing := util.MustRegisterOrReturnExisting(globals.Registerer, l.cc)
+		existing := metricsutil.MustRegisterOrReturnExisting(globals.Registerer, l.cc)
 		if existing != nil {
 			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
 		}
 
-		existing = util.MustRegisterOrReturnExisting(globals.Registerer, l.cm)
+		existing = metricsutil.MustRegisterOrReturnExisting(globals.Registerer, l.cm)
 		if existing != nil {
 			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
 		}
