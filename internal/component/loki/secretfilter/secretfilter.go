@@ -315,7 +315,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				))
 				*entry = newEntry
 				return true
-
 			})
 
 			return batch, terminalErr
