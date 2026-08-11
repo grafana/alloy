@@ -68,6 +68,45 @@ func TestBatch_FilterMap(t *testing.T) {
 	require.Equal(t, []push.Entry{{Line: "moved"}}, streams[1].Entries)
 }
 
+func TestBatch_FilterMapStreams(t *testing.T) {
+	stream1 := model.LabelSet{"job": "move"}
+	stream2 := model.LabelSet{"job": "drop"}
+	stream3 := model.LabelSet{"job": "keep"}
+
+	var b Batch
+	b.Add(NewStream(stream1, push.Entry{Line: "1"}))
+	b.Add(NewStream(stream2, push.Entry{Line: "2"}))
+	b.Add(NewStream(stream3, push.Entry{Line: "3"}))
+
+	require.Equal(t, 3, b.EntryLen())
+	require.Equal(t, 3, b.StreamLen())
+
+	b.FilterMapStreams(func(stream *Stream) bool {
+		action := stream.Labels[model.LabelName("job")]
+
+		switch action {
+		case "keep":
+			return true
+		case "move":
+			stream.Labels = stream3
+			return true
+		case "drop":
+			return false
+		default:
+			t.Fatalf("unexpected stream labels %v", stream.Labels)
+			return false
+		}
+	})
+
+	require.Equal(t, 2, b.EntryLen())
+	require.Equal(t, 1, b.StreamLen())
+
+	streams := collectStreams(&b)
+	require.Equal(t, stream3, streams[0].Labels)
+	require.Contains(t, streams[0].Entries, push.Entry{Line: "1"})
+	require.Contains(t, streams[0].Entries, push.Entry{Line: "3"})
+}
+
 func TestBatch_ConsumeStreams(t *testing.T) {
 	foo := model.LabelSet{"job": "foo"}
 	bar := model.LabelSet{"job": "bar"}

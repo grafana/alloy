@@ -78,7 +78,16 @@ jobs:
         with:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
-      - name: Checkout
+      - name: Checkout helm-charts
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          repository: grafana/helm-charts
+          ref: gh-pages
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Checkout Alloy
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
@@ -89,21 +98,6 @@ jobs:
       - name: Configure Git
         run: |
           cd source
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-
-      - name: Checkout helm-charts
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          fetch-depth: 0
-          repository: grafana/helm-charts
-          path: helm-charts
-          token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: false
-
-      - name: Configure Git for helm-charts
-        run: |
-          cd helm-charts
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
@@ -146,7 +140,6 @@ jobs:
         env:
           CHART_PATH: ${{ steps.parse-chart.outputs.chartpath }}
 
-
       - name: Create tag and check if exists on origin
         run: |
           cd source
@@ -154,7 +147,6 @@ jobs:
           git tag "${TAG_NAME}"
         env:
           TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
-
 
       # Note that this creates a release in grafana/helm-charts with a new tag.
       # The tag name in grafana/helm-charts is <package>-<version>, while the
@@ -185,8 +177,17 @@ jobs:
 
       - name: Update helm-charts index.yaml
         run: |
-          cd helm-charts
-          "${CR_TOOL_PATH}/cr" index --config "${CR_CONFIGFILE}" --token "${TOKEN}" --index-path "${CR_INDEX_PATH}" --package-path "${CR_PACKAGE_PATH}" --push
+          "${CR_TOOL_PATH}/cr" index --config "${CR_CONFIGFILE}" --token "${TOKEN}" --index-path "${CR_INDEX_PATH}" --package-path "${CR_PACKAGE_PATH}"
+          cp "${CR_INDEX_PATH}/index.yaml" "${{ github.workspace }}/index.yaml"
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
-          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
+
+      - name: Publish index.yaml to gh-pages
+        uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
+        with:
+          commit_message: "Update index.yaml for ${{ steps.parse-chart.outputs.tagname }}"
+          repo: grafana/helm-charts
+          branch: gh-pages
+          file_pattern: index.yaml
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

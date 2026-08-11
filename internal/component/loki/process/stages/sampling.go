@@ -35,13 +35,18 @@ func (s *SamplingConfig) Validate() error {
 }
 
 // newSamplingStage creates a SamplingStage from config using the shared probabilistic sampler.
-func newSamplingStage(logger *slog.Logger, cfg SamplingConfig, registerer prometheus.Registerer) Stage {
+func newSamplingStage(logger *slog.Logger, cfg SamplingConfig, registerer prometheus.Registerer) (Stage, error) {
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &samplingStage{
 		logger:    logger.With("stage", "sampling"),
 		cfg:       cfg,
-		dropCount: getDropCountMetric(registerer),
+		dropCount: dropCount,
 		sampler:   sampling.NewSampler(cfg.SamplingRate),
-	}
+	}, nil
 }
 
 type samplingStage struct {

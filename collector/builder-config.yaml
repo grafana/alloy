@@ -2,11 +2,11 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.17.0 # x-release-please-version
+  version: v1.18.0 # x-release-please-version
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy v1.17.0 # x-release-please-version
+  - gomod: github.com/grafana/alloy v1.18.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.153.0
@@ -24,17 +24,12 @@ extensions:
 
 exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.153.0
-  #   TODO: Address this as part of https://github.com/grafana/alloy/issues/5348
-  #  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.153.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.153.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.153.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter v0.153.0
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.153.0
@@ -52,6 +47,7 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor v0.153.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor v0.153.0
@@ -70,7 +66,6 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver v0.153.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.153.0
@@ -87,6 +82,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.153.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.153.0
+  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.153.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.153.0
 
 connectors:
@@ -139,14 +135,10 @@ replaces:
   - github.com/prometheus-community/yet-another-cloudwatch-exporter => github.com/kgeckhart/yet-another-cloudwatch-exporter v0.64.1-0.20260629154816-440211eac126
   # Use Grafana fork of smimesign
   - github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
-  # Replace OpenTelemetry OBI with Grafana fork
-  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.328.0
   # Replace OpenTelemetry eBPF profiler with Grafana fork
-  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
+  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260724093640-8e512d53d10a
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
-  # Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
-  - github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
   # Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
   - github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
   # Replace controller-runtime with pinned version

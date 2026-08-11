@@ -1,6 +1,7 @@
 package java
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -29,6 +30,7 @@ type ProfilingConfig struct {
 	LogLevel        string        `alloy:"log_level,attr,optional"`
 	Quiet           bool          `alloy:"quiet,attr,optional"`
 	CustomArguments []string      `alloy:"custom_arguments,attr,optional"`
+	Tlab            bool          `alloy:"tlab,attr,optional"`
 }
 
 func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
@@ -38,6 +40,9 @@ func (rc *Arguments) UnmarshalAlloy(f func(any) error) error {
 }
 
 func (arg *Arguments) Validate() error {
+	if len(arg.ProfilingConfig.CustomArguments) == 0 && arg.ProfilingConfig.Tlab && arg.ProfilingConfig.Alloc == "" {
+		return fmt.Errorf("profiling_config.tlab requires profiling_config.alloc to be set")
+	}
 	return nil
 }
 
@@ -55,6 +60,7 @@ func DefaultArguments() Arguments {
 			LogLevel:        "INFO",
 			Quiet:           false,
 			CustomArguments: []string{},
+			Tlab:            false,
 		},
 	}
 }

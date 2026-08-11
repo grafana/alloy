@@ -14,10 +14,7 @@ Make sure Docker is running.
 
 ## Update CloudWatch docs
 
-First, inside the `docs/` folder run `make check-cloudwatch-integration` to verify that the CloudWatch docs needs updating.
-
-If the check fails, then the doc supported services list should be updated.
-For that, run `make generate-cloudwatch-integration` to get the updated list, which should replace the old one in [the docs](./sources/static/configuration/integrations/cloudwatch-exporter-config.md).
+From the repository root, run `task docs:cloudwatch-sync` to update the supported services list in the [CloudWatch exporter documentation](./sources/reference/components/prometheus/prometheus.exporter.cloudwatch.md).
 
 ## Update generated reference docs
 

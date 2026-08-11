@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
@@ -26,6 +27,9 @@ const (
 
 const ModulePath = "module_path"
 
+// ImportContentHook is a hook that is invoked with the parsed content of an imported config.
+type ImportContentHook func(fileName string, content *ast.File, source ImportSource)
+
 // ImportSource retrieves a module from a source.
 type ImportSource interface {
 	// Evaluate updates the arguments provided via the Alloy block.
@@ -38,6 +42,9 @@ type ImportSource interface {
 	SetEval(eval *vm.Evaluator)
 	// ModulePath is the path where the module is stored locally.
 	ModulePath() string
+	// InheritsModulePath reports whether this source derives its module_path from the parent
+	// scope (true for import.string) rather than defining its own (import.file/git/http).
+	InheritsModulePath() bool
 }
 
 // NewImportSource creates a new ImportSource depending on the type.

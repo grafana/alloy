@@ -531,6 +531,7 @@ func (s *Service) Data() any {
 		HTTPListenAddr:   s.opts.HTTPListenAddr,
 		MemoryListenAddr: s.opts.MemoryListenAddr,
 		BaseHTTPPath:     s.componentHttpPathPrefix,
+		EnablePProf:      s.opts.EnablePProf,
 
 		DialFunc: func(ctx context.Context, network, address string) (net.Conn, error) {
 			switch address {
@@ -559,6 +560,11 @@ type Data struct {
 	// address is MemoryListenAddr. If address is not MemoryListenAddr, DialFunc
 	// establishes an outbound network connection.
 	DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
+
+	// EnablePProf reports whether the HTTP service is exposing /debug/pprof
+	// endpoints. Components that spawn subprocesses use this to mirror Alloy's
+	// profiling toggle on their own subprocess.
+	EnablePProf bool
 }
 
 // HTTPPathForComponent returns the full HTTP path for a given global component
