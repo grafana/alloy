@@ -71,6 +71,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.regex`][stage.regex]                                       | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                                   | Configures a `replace` processing stage.                       | no       |
 | [`stage.sampling`][stage.sampling]                                 | Configures a `sampling` processing stage.                      | no       |
+| [`stage.split_json`][stage.split_json]                             | Configures a `split_json` processing stage.                    | no       |
 | [`stage.static_labels`][stage.static_labels]                       | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata]           | Configures a structured metadata processing stage.             | no       |
 | [`stage.structured_metadata_drop`][stage.structured_metadata_drop] | Configures a `structured_metadata_drop` processing stage.      | no       |
@@ -102,6 +103,7 @@ You can use the following blocks with `loki.process`:
 [stage.regex]: #stageregex
 [stage.replace]: #stagereplace
 [stage.sampling]: #stagesampling
+[stage.split_json]: #stagesplit_json
 [stage.static_labels]: #stagestatic_labels
 [stage.structured_metadata]: #stagestructured_metadata
 [stage.structured_metadata_drop]: #stagestructured_metadata_drop
@@ -188,6 +190,31 @@ Docker log entries are formatted as JSON with the following keys:
 * `log`: The content of log line.
 * `stream`: Either `stdout` or `stderr`.
 * `time`: The timestamp string of the log line.
+* `attrs` (optional): Extra attributes from the logging driver, for example when the json-file `tag` option is set.
+
+`stage.docker` only unpacks `log`, `stream`, and `time`.
+It rewrites the log line to the value of `log` and sets the stream label and timestamp.
+Any other top-level JSON fields, including `attrs`, are dropped unless you copy them out first.
+
+If you need values from `attrs` or another sidecar field **and** the docker stage, for example to reassemble split lines, extract those fields with `stage.json` **before** `stage.docker`:
+
+```alloy
+// docker compose json-file tag example: tag = "{{.ImageName}}|{{.Name}}|..."
+stage.json {
+  expressions = {
+    attrs = "",
+  }
+}
+
+stage.docker {}
+
+stage.json {
+  expressions = {
+    tag = "",
+  }
+  source = "attrs"
+}
+```
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
@@ -1534,6 +1561,85 @@ stage.sampling {
 }
 ```
 
+### `stage.split_json`
+
+The `stage.split_json` inner block configures a processing stage that splits a top-level JSON array into one log entry for each array element.
+
+The following arguments are supported:
+
+| Name     | Type     | Description                  | Default | Required |
+| -------- | -------- | ---------------------------- | ------- | -------- |
+| `source` | `string` | Source of the data to split. |         | no       |
+
+The `source` field defines the source of data to split.
+By default, this is the log line itself, but it can also be a previously extracted value.
+{{< param "PRODUCT_NAME" >}} rejects an empty `source` string when it loads the configuration.
+
+When the input is a top-level JSON array, the stage replaces the log entry with one entry for each array element, in array order.
+Each new log line is the raw text of its array element, exactly as it appears in the input.
+The stage doesn't re-encode the element.
+The stage also doesn't split nested arrays: an element that's itself an array becomes the log line of a single entry.
+Each new entry keeps the timestamp of the original entry, and the emitted entries have independent labels, top-level extracted maps, and structured metadata, so later stages can modify one entry without affecting the others.
+
+An empty array produces no entries.
+The stage drops the original entry and emits nothing.
+
+In all other cases, the log entry passes through the stage unchanged.
+This happens when the input isn't valid JSON, or is valid JSON that's not an array, such as an object, a string, or a number.
+When you set `source`, the log entry also passes through unchanged when the extracted value is missing or can't be converted to a string.
+When you set `source`, the stage never falls back to the log line and only reads the extracted value named by `source`.
+
+The following stage omits `source`, so it splits log lines that are top-level JSON arrays:
+
+```alloy
+stage.split_json {}
+```
+
+Given the following log line:
+
+```text
+[{"level":"info","msg":"one"},{"level":"error","msg":"two"}]
+```
+
+The stage replaces it with the following two entries:
+
+```text
+{"level":"info","msg":"one"}
+{"level":"error","msg":"two"}
+```
+
+Both entries keep the timestamp, labels, extracted values, and structured metadata of the original entry.
+
+In the following example, each log line holds a batch of events in a `records` array.
+The first stage extracts the array into the shared map of extracted values, and the second stage splits it:
+
+```alloy
+stage.json {
+    expressions = {records = ""}
+}
+
+stage.split_json {
+    source = "records"
+}
+```
+
+Given the following log line:
+
+```text
+{"stream":"batch","records":[{"ts":"2024-01-01T01:00:00Z","msg":"start"},{"ts":"2024-01-01T01:00:01Z","msg":"stop"}]}
+```
+
+The first stage stores the `records` array in the extracted data as JSON text.
+The second stage splits that value into two entries:
+
+```text
+{"ts":"2024-01-01T01:00:00Z","msg":"start"}
+{"ts":"2024-01-01T01:00:01Z","msg":"stop"}
+```
+
+Later stages can process each entry separately.
+For example, `stage.json` followed by `stage.timestamp` can set each entry's timestamp from its `ts` field.
+
 ### `stage.static_labels`
 
 The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
@@ -1823,12 +1929,15 @@ stage.tenant {
 ### `stage.timestamp`
 
 The `stage.timestamp` inner block configures a processing stage that sets the timestamp of log entries before they're forwarded to the next component.
-When no timestamp stage is set, the log entry timestamp defaults to the time when the log entry was scraped.
+When no timestamp stage is set, `loki.process` keeps the timestamp that the upstream component already attached to the entry, for example a `loki.source.*` component.
+Many sources set that timestamp to the time they receive the entry by default.
+Other sources can use a timestamp embedded in the log when you enable incoming-timestamp options.
+If you leave out `stage.timestamp`, `loki.process` does not rewrite or sanitize timestamps by itself, and Loki may still reject entries that fall outside its configured acceptance window, for example far-future or out-of-order timestamps.
 
 The following arguments are supported:
 
 | Name                            | Type           | Description                                                 | Default   | Required |
-| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| ------------------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
 | `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
 | `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
