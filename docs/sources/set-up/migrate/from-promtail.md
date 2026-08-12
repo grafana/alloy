@@ -10,6 +10,11 @@ weight: 300
 
 # Migrate from Promtail to {{% param "FULL_PRODUCT_NAME" %}}
 
+{{< admonition type="caution" >}}
+Promtail reached end of life (EOL) on March 2, 2026 and is no longer maintained.
+If you are currently using Promtail, you must migrate to {{< param "PRODUCT_NAME" >}}.
+{{< /admonition >}}
+
 The built-in {{< param "PRODUCT_NAME" >}} convert command can migrate your [Promtail][] configuration to an {{< param "PRODUCT_NAME" >}} configuration.
 
 This topic describes how to:
@@ -87,9 +92,8 @@ This conversion allows you to take full advantage of the many additional feature
 
 ## Run a Promtail configuration
 
-If you're not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Promtail configuration.
+If you need time to migrate incrementally, you can run {{< param "PRODUCT_NAME" >}} using your existing Promtail configuration as a temporary transition step.
 The `--config.format=promtail` flag tells {{< param "PRODUCT_NAME" >}} to convert your Promtail configuration to {{< param "PRODUCT_NAME" >}} and load it directly without saving the new configuration.
-This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Promtail configuration infrastructure.
 
 > In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Promtail configuration.
 
@@ -164,7 +168,7 @@ loki.write "default" {
 
 ### Convert a systemd journal scrape configuration
 
-Promtail is a common way to collect Linux host logs from the systemd journal.
+Promtail was a common way to collect Linux host logs from the systemd journal.
 The following typical Promtail configuration for servers, containers, and VMs that run `systemd-journald`:
 
 ```yaml
@@ -232,7 +236,7 @@ After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} co
 The following list is specific to the convert command and not {{< param "PRODUCT_NAME" >}}:
 
 * Check if you are using any extra command line arguments with Promtail that aren't present in your configuration file. For example, `-max-line-size`.
-* Check if you are setting any environment variables, whether [expanded in the configuration file][] itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
+* Check if you are setting any environment variables, whether expanded in the configuration file itself or consumed directly by Promtail, such as `JAEGER_AGENT_HOST`.
 * In {{< param "PRODUCT_NAME" >}}, the positions file is saved at a different location.
   Refer to the [`loki.source.file`][loki.source.file] documentation for more details.
   Check if you have any setup, for example, a Kubernetes Persistent Volume, that you must update to use the new positions path.
@@ -242,9 +246,8 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][], which differs from the Promtail Web UI.
 * If you are converting a Promtail configuration and not deploying as a Kubernetes daemonset, [modify the generated configuration][single-node-discovery] to ensure `discovery.kubernetes` discovery behaves as expected. The converter makes the same assumption as promtail that any `pod` discovery is for a daemonset deployment.
 
-[Promtail]: https://www.grafana.com/docs/loki/latest/clients/promtail/
+[Promtail]: https://grafana.com/docs/loki/latest/send-data/promtail/
 [debugging]: #debugging
-[expanded in the configuration file]: https://www.grafana.com/docs/loki/latest/clients/promtail/configuration/#use-environment-variables-in-the-configuration
 [local.file_match]: ../../../reference/components/local/local.file_match/
 [loki.source.file]: ../../../reference/components/loki/loki.source.file/
 [loki.source.journal]: ../../../reference/components/loki/loki.source.journal/

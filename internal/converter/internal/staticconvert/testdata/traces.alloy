@@ -58,10 +58,6 @@ discovery.azure "_0_default_prometheus1" {
 		tenant_id     = "tenant1"
 		client_secret = "secret1"
 	}
-
-	managed_identity {
-		client_id = "client1"
-	}
 }
 
 discovery.lightsail "_0_default_prometheus1" {
