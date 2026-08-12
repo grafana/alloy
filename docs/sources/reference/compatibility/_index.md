@@ -417,6 +417,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.receiver.nginx](../components/otelcol/otelcol.receiver.nginx)
 - [otelcol.receiver.otlp](../components/otelcol/otelcol.receiver.otlp)
 - [otelcol.receiver.prometheus](../components/otelcol/otelcol.receiver.prometheus)
+- [otelcol.receiver.pyroscope](../components/otelcol/otelcol.receiver.pyroscope)
 - [otelcol.receiver.solace](../components/otelcol/otelcol.receiver.solace)
 - [otelcol.receiver.splunkhec](../components/otelcol/otelcol.receiver.splunkhec)
 - [otelcol.receiver.syslog](../components/otelcol/otelcol.receiver.syslog)
@@ -440,6 +441,10 @@ Use the following components to build your Pyroscope profiles pipeline:
 The following components, grouped by namespace, _export_ Pyroscope `ProfilesReceiver`.
 
 <!-- START GENERATED SECTION: EXPORTERS OF Pyroscope `ProfilesReceiver` -->
+
+{{< collapse title="otelcol" >}}
+- [otelcol.receiver.pyroscope](../components/otelcol/otelcol.receiver.pyroscope)
+{{< /collapse >}}
 
 {{< collapse title="pyroscope" >}}
 - [pyroscope.enrich](../components/pyroscope/pyroscope.enrich)

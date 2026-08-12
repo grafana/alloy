@@ -748,6 +748,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/faro v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/jaeger v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki v0.153.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.155.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.153.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.153.0 // indirect
