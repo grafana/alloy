@@ -286,3 +286,23 @@ func TestArguments_Validate(t *testing.T) {
 func ptr(s string) *string {
 	return &s
 }
+
+func TestInitialLookback(t *testing.T) {
+	var args awscloudwatch.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		region = "us-east-1"
+		logs {
+			initial_lookback = "45m"
+			groups {
+				autodiscover { limit = 1 }
+			}
+		}
+		output {}
+	`), &args))
+
+	converted, err := args.Convert()
+	require.NoError(t, err)
+	cfg := converted.(*awscloudwatchreceiver.Config)
+
+	require.Equal(t, 45*time.Minute, cfg.Logs.InitialLookback)
+}
