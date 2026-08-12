@@ -159,3 +159,17 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestUniverseDomain(t *testing.T) {
+	var args googlecloudpubsub.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		topic           = "projects/my-project/topics/my-topic"
+		universe_domain = "example-sovereign.example.com"
+	`), &args))
+
+	converted, err := args.Convert()
+	require.NoError(t, err)
+	cfg := converted.(*googlecloudpubsubexporter.Config)
+
+	require.Equal(t, "example-sovereign.example.com", cfg.UniverseDomain)
+}
