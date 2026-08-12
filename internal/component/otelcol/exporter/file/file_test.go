@@ -234,3 +234,29 @@ group_by {
 	require.Equal(t, "fileexporter.path_segment", args.GroupBy.ResourceAttribute)
 	require.Equal(t, 100, args.GroupBy.MaxOpenFiles)
 }
+
+func TestCompressionParams(t *testing.T) {
+	t.Run("unset leaves the zero value", func(t *testing.T) {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(`path = "/tmp/out.json"`), &args))
+
+		converted, err := args.Convert()
+		require.NoError(t, err)
+		require.Equal(t, 0, int(converted.(*fileexporter.Config).CompressionParams.Level))
+	})
+
+	t.Run("level is passed through", func(t *testing.T) {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(`
+			path        = "/tmp/out.json"
+			compression = "zstd"
+			compression_params {
+				level = 6
+			}
+		`), &args))
+
+		converted, err := args.Convert()
+		require.NoError(t, err)
+		require.Equal(t, 6, int(converted.(*fileexporter.Config).CompressionParams.Level))
+	})
+}
