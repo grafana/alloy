@@ -176,7 +176,7 @@ type syncNarrowCapable interface {
 // RunWithSkip's convention).
 //
 // Only two kinds of stage qualify: stages wrapped by toStage (docker,
-// label_drop, label_keep, logfmt, luhn, output, pattern, replace,
+// label_drop, label_keep, logfmt, luhn, output, pattern, regex, replace,
 // static_labels, template, tenant, timestamp) via the Processor interface —
 // none of which can ever drop or fan an entry out, since Processor.Process
 // has no return value to signal either — and composite stages

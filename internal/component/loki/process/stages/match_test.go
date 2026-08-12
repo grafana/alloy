@@ -406,4 +406,64 @@ stage.match {
 	assert.Equal(t, model.LabelValue("true"), out[0].Labels["inner_ran"])
 }
 
+// TestMatchNarrowFusionDropThenIndependentKeep checks composeNarrow's skip
+// semantics across two INDEPENDENT top-level match blocks: a drop followed
+// by a keep whose selector doesn't depend on the first match at all. This
+// exercises the same skip-short-circuit as TestMatchNarrowFusionDropAlwaysQualifies,
+// but through Pipeline.Run's real fuse chain (both blocks qualify and fuse
+// into one goroutine) rather than a bare matcherStage, and confirms a
+// dropped entry never reaches the second match's selector check.
+func TestMatchNarrowFusionDropThenIndependentKeep(t *testing.T) {
+	pl, err := newPipelineFromConfig(`
+stage.match {
+	selector = "{app=\"drop-me\"}"
+	action   = "drop"
+}
+stage.match {
+	selector = "{app=\"loki\"}"
+	action   = "keep"
+	stage.static_labels {
+		values = { tag = "matched" }
+	}
+}`)
+	require.NoError(t, err)
+
+	out := processEntries(pl,
+		newEntry(nil, model.LabelSet{"app": "drop-me"}, "line1", time.Now()),
+		newEntry(nil, model.LabelSet{"app": "loki"}, "line2", time.Now()),
+		newEntry(nil, model.LabelSet{"app": "other"}, "line3", time.Now()),
+	)
+	require.Len(t, out, 2, "the drop-me entry should never reach the second match, let alone the output")
+	assert.Equal(t, "line2", out[0].Line)
+	assert.Equal(t, model.LabelValue("matched"), out[0].Labels["tag"])
+	assert.Equal(t, "line3", out[1].Line)
+	assert.NotContains(t, out[1].Labels, model.LabelName("tag"))
+}
+
+// TestPipelineNarrowFusionBoundary checks Pipeline.Run's fuse/flush boundary
+// logic with qualifying stages on BOTH SIDES of a non-qualifying one in the
+// same top-level pipeline: static_labels (qualifies) -> json (doesn't) ->
+// static_labels (qualifies). The second fused segment needs its own new
+// channel/goroutine restarted after the flush, and the entry must still
+// flow correctly end to end.
+func TestPipelineNarrowFusionBoundary(t *testing.T) {
+	pl, err := newPipelineFromConfig(`
+stage.static_labels {
+	values = { s1 = "true" }
+}
+stage.json {
+	expressions = { msg = "" }
+}
+stage.static_labels {
+	values = { s3 = "true" }
+}`)
+	require.NoError(t, err)
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{}, `{"msg":"hi"}`, time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["s1"])
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["s3"])
+	assert.Equal(t, "hi", out[0].Extracted["msg"])
+}
+
 func ptrStr(s string) *string { return &s }
