@@ -98,7 +98,7 @@ func (ff *alloyFmt) Run(configFile string) error {
 	}
 }
 
-func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool, writeFile writeFileFunc) error {
+func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool, writeFileFn writeFileFunc) error {
 	bb, err := io.ReadAll(r)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool,
 		return nil
 	}
 
-	return writeFile(filename, fi, &buf)
+	return writeFileFn(filename, fi, &buf)
 }
 
 func writeFile(filename string, fi os.FileInfo, r io.Reader) error {
