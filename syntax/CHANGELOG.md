@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/grafana/alloy/compare/syntax/v0.1.1...syntax/v0.1.2) (2026-08-12)
+
+
+### Bug Fixes 🐛
+
+* **validation:** Typecheck attribute object [backport] ([#6806](https://github.com/grafana/alloy/issues/6806)) ([93bb020](https://github.com/grafana/alloy/commit/93bb020b21d26eb7840f17a499fabc66a727356c))
+
 ## [0.1.1](https://github.com/grafana/alloy/compare/syntax/v0.1.0...syntax/v0.1.1) (2026-07-09)
 
 
