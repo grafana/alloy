@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -260,3 +261,149 @@ stage.match {
 func TestMatchNestedLimitShutdown(t *testing.T) {
 	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)
 }
+
+// TestMatchNarrowFusionProcessorOnly checks that a keep match whose nested
+// pipeline is entirely Processor-wrapped stages (static_labels here)
+// qualifies for narrow fusion (syncNarrowFn gets set), and that its
+// behavior for both a matching and a non-matching entry is unaffected.
+//
+// This goes through a Pipeline (not a bare matcherStage.Run) because
+// that's the only path that actually uses trySyncNarrow/syncNarrowFn —
+// matcherStage.Run is untouched and always uses the old channel-based
+// runKeep/runDrop, regardless of whether syncNarrowFn is set. It's also
+// the only path with a strict per-entry ordering guarantee: the old
+// runKeep can reorder a matched entry (routed through an async nested
+// pipeline) relative to an unmatched one (sent directly), which is exactly
+// why a bare matcherStage.Run isn't the right thing to assert order
+// against.
+func TestMatchNarrowFusionProcessorOnly(t *testing.T) {
+	s, err := newMatcherStage(util.TestAlloyLogger(t).Slog(), MatchConfig{
+		Selector: `{app="loki"}`,
+		Action:   MatchActionKeep,
+		Stages: []StageConfig{
+			{StaticLabelsConfig: &StaticLabelsConfig{Values: map[string]*string{"tag": ptrStr("matched")}}},
+		},
+	}, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	ms := s.(*matcherStage)
+	require.NotNil(t, ms.syncNarrowFn, "nested pipeline is Processor-only, should qualify for narrow fusion")
+
+	pl := &Pipeline{stages: []Stage{s}}
+	out := processEntries(pl,
+		newEntry(nil, model.LabelSet{"app": "loki"}, "line1", time.Now()),
+		newEntry(nil, model.LabelSet{"app": "other"}, "line2", time.Now()),
+	)
+	require.Len(t, out, 2)
+	assert.Equal(t, model.LabelValue("matched"), out[0].Labels["tag"])
+	assert.NotContains(t, out[1].Labels, model.LabelName("tag"))
+}
+
+// TestMatchNarrowFusionHandRolledFallsBack checks that a keep match nesting
+// even one hand-rolled stage (stage.json here, which is common in the
+// motivating adaptive-logs use case) does NOT qualify for narrow fusion,
+// and that it still behaves correctly via the existing channel-based path.
+func TestMatchNarrowFusionHandRolledFallsBack(t *testing.T) {
+	s, err := newMatcherStage(util.TestAlloyLogger(t).Slog(), MatchConfig{
+		Selector: `{app="loki"}`,
+		Action:   MatchActionKeep,
+		Stages: []StageConfig{
+			{JSONConfig: &JSONConfig{Expressions: map[string]string{"msg": ""}}},
+		},
+	}, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	ms := s.(*matcherStage)
+	require.Nil(t, ms.syncNarrowFn, "nested pipeline has a hand-rolled stage, should not qualify")
+
+	out := processEntries(s, newEntry(nil, model.LabelSet{"app": "loki"}, `{"msg":"hello"}`, time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, "hello", out[0].Extracted["msg"])
+}
+
+// TestMatchNarrowFusionDropAlwaysQualifies checks that a drop match always
+// qualifies for narrow fusion (it never has a nested pipeline to disqualify
+// it) and preserves drop semantics.
+func TestMatchNarrowFusionDropAlwaysQualifies(t *testing.T) {
+	s, err := newMatcherStage(util.TestAlloyLogger(t).Slog(), MatchConfig{
+		Selector: `{app="loki"}`,
+		Action:   MatchActionDrop,
+	}, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	ms := s.(*matcherStage)
+	fn, ok := ms.trySyncNarrow()
+	require.True(t, ok)
+	require.NotNil(t, fn)
+
+	out := processEntries(s,
+		newEntry(nil, model.LabelSet{"app": "loki"}, "dropped", time.Now()),
+		newEntry(nil, model.LabelSet{"app": "other"}, "kept", time.Now()),
+	)
+	require.Len(t, out, 1)
+	assert.Equal(t, "kept", out[0].Line)
+}
+
+// testSequentialReinjectionAlloy has two independent top-level match
+// blocks, each with a Processor-only nested pipeline (so both should
+// qualify for narrow fusion and get fused into the same goroutine by
+// Pipeline.Run). The second match's selector only fires on a label the
+// first match's nested pipeline sets — this is exactly the property a
+// naive "shared drainer" fusion design would break: each match must see
+// the PREVIOUS match's output, not the original entry, or match 2 would
+// never fire.
+var testSequentialReinjectionAlloy = `
+stage.match {
+	selector = "{app=\"loki\"}"
+	action   = "keep"
+	stage.static_labels {
+		values = { stage1_ran = "true" }
+	}
+}
+stage.match {
+	selector = "{stage1_ran=\"true\"}"
+	action   = "keep"
+	stage.static_labels {
+		values = { stage2_ran = "true" }
+	}
+}`
+
+func TestMatchNarrowFusionSequentialReinjection(t *testing.T) {
+	pl, err := newPipelineFromConfig(testSequentialReinjectionAlloy)
+	require.NoError(t, err)
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{"app": "loki"}, "line", time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["stage1_ran"])
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["stage2_ran"], "second match should have seen the first match's output, not the original entry")
+}
+
+// TestMatchNarrowFusionNestedMatch checks that narrow fusion propagates
+// recursively: a keep match nesting another keep match, both with
+// Processor-only content, should have the OUTER match's syncNarrowFn set
+// too.
+func TestMatchNarrowFusionNestedMatch(t *testing.T) {
+	pl, err := newPipelineFromConfig(`
+stage.match {
+	selector = "{app=\"loki\"}"
+	action   = "keep"
+	stage.match {
+		selector = "{app=\"loki\"}"
+		action   = "keep"
+		stage.static_labels {
+			values = { inner_ran = "true" }
+		}
+	}
+}`)
+	require.NoError(t, err)
+	require.Len(t, pl.stages, 1)
+	outer, ok := pl.stages[0].(*matcherStage)
+	require.True(t, ok)
+	require.NotNil(t, outer.syncNarrowFn, "outer match's nested pipeline is itself a fully-qualifying match, should be fused")
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{"app": "loki"}, "line", time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["inner_ran"])
+}
+
+func ptrStr(s string) *string { return &s }

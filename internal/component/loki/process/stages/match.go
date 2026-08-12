@@ -92,14 +92,26 @@ func newMatcherStage(slogger *slog.Logger, config MatchConfig, registerer promet
 		return nil, err
 	}
 
-	return &matcherStage{
+	m := &matcherStage{
 		dropReason: dropReason,
 		dropCount:  dropCount,
 		matchers:   selector.Matchers(),
 		pipeline:   pl,
 		action:     config.Action,
 		filter:     filter,
-	}, nil
+	}
+
+	// Cache the nested pipeline's narrowly-fused function once, if it has
+	// one: every stage nested under this "keep" match (including further
+	// nested match blocks) needs to itself qualify for narrow fusion (see
+	// trySyncNarrow) for the whole thing to collapse into a single function
+	// call. If it doesn't, syncNarrowFn stays nil and this match stage
+	// falls back to its existing channel-based runKeep.
+	if pl != nil {
+		m.syncNarrowFn, _ = pl.trySyncNarrow()
+	}
+
+	return m, nil
 }
 
 func getDropCountMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
@@ -126,6 +138,11 @@ type matcherStage struct {
 	filter     logql.Filter
 	pipeline   *Pipeline
 	action     string
+
+	// syncNarrowFn is pipeline's narrowly-fused function, cached once at
+	// construction; nil if the nested pipeline doesn't qualify (see
+	// trySyncNarrow) or for MatchActionDrop, which has no nested pipeline.
+	syncNarrowFn func(Entry) (Entry, bool)
 }
 
 func (m *matcherStage) Run(in chan Entry) chan Entry {
@@ -175,6 +192,40 @@ func (m *matcherStage) runDrop(in chan Entry) chan Entry {
 		}
 	}()
 	return out
+}
+
+// trySyncNarrow implements syncNarrowCapable. A drop match always
+// qualifies (it has no nested pipeline); a keep match qualifies only if
+// its nested pipeline does, i.e. syncNarrowFn was successfully cached at
+// construction.
+func (m *matcherStage) trySyncNarrow() (func(Entry) (Entry, bool), bool) {
+	switch m.action {
+	case MatchActionDrop:
+		return m.processDropSync, true
+	case MatchActionKeep:
+		if m.syncNarrowFn == nil {
+			return nil, false
+		}
+		return m.processKeepSync, true
+	}
+	panic("unexpected action")
+}
+
+func (m *matcherStage) processDropSync(e Entry) (Entry, bool) {
+	e, matched := m.processLogQL(e)
+	if !matched {
+		return e, false
+	}
+	m.dropCount.WithLabelValues(m.dropReason).Inc()
+	return e, true
+}
+
+func (m *matcherStage) processKeepSync(e Entry) (Entry, bool) {
+	e, matched := m.processLogQL(e)
+	if !matched {
+		return e, false
+	}
+	return m.syncNarrowFn(e)
 }
 
 func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {

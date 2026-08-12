@@ -122,21 +122,132 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 	})
 }
 
-// Run implements Stage
+// Run implements Stage.
+//
+// Naively, this chains every stage through its own channel and goroutine.
+// Run instead fuses a maximal run of narrowly-sync-capable stages (see
+// trySyncNarrow) into a single goroutine and channel hop, and only drops
+// into a stage's own Run (its own channel and goroutine) for stages that
+// don't qualify.
 func (p *Pipeline) Run(in chan Entry) chan Entry {
-	in = RunWith(in, func(e Entry) Entry {
-		// Initialize the extracted map with the initial labels (ie. "filename"),
-		// so that stages can operate on initial labels too
-		for labelName, labelValue := range e.Labels {
-			e.Extracted[string(labelName)] = string(labelValue)
+	var fused []func(Entry) (Entry, bool)
+	flush := func() {
+		if len(fused) == 0 {
+			return
 		}
-		return e
-	})
-	// chain all stages together.
-	for _, m := range p.stages {
-		in = m.Run(in)
+		in = RunWithSkip(in, composeNarrow(fused))
+		fused = nil
 	}
+
+	fused = append(fused, initEntryNarrow)
+	for _, s := range p.stages {
+		if fn, ok := trySyncNarrow(s); ok {
+			fused = append(fused, fn)
+			continue
+		}
+		flush()
+		in = s.Run(in)
+	}
+	flush()
 	return in
+}
+
+// initEntryNarrow initializes the extracted map with the initial labels
+// (ie. "filename"), so that stages can operate on initial labels too. It's
+// the first step of every pipeline, fused in like any other narrowly-sync
+// stage (see Run) instead of getting its own channel and goroutine.
+func initEntryNarrow(e Entry) (Entry, bool) {
+	for labelName, labelValue := range e.Labels {
+		e.Extracted[string(labelName)] = string(labelValue)
+	}
+	return e, false
+}
+
+// syncNarrowCapable is implemented by composite stages (Pipeline,
+// matcherStage) whose own eligibility for narrow fusion depends on what's
+// nested inside them. See trySyncNarrow.
+type syncNarrowCapable interface {
+	trySyncNarrow() (process func(Entry) (Entry, bool), ok bool)
+}
+
+// trySyncNarrow reports whether s can run as a plain function call within a
+// fused run instead of needing its own channel and goroutine, and if so
+// returns its process function (skip=true drops the entry, matching
+// RunWithSkip's convention).
+//
+// Only two kinds of stage qualify: stages wrapped by toStage (docker,
+// label_drop, label_keep, logfmt, luhn, output, pattern, replace,
+// static_labels, template, tenant, timestamp) via the Processor interface —
+// none of which can ever drop or fan an entry out, since Processor.Process
+// has no return value to signal either — and composite stages
+// (Pipeline, matcherStage) built entirely from stages that themselves
+// qualify. Every other stage (json, labels, structured_metadata, drop,
+// sampling, limit, metric, pack, truncate, windowsevent, decolorize,
+// eventlogmessage, geoip, structured_metadata_drop, multiline, cri,
+// split_json, and any match block nesting one of them) keeps its existing
+// Run()-based channel behavior untouched — deliberately: several of these
+// can drop or fan out an entry, which this narrow fast path doesn't attempt
+// to support.
+func trySyncNarrow(s Stage) (func(Entry) (Entry, bool), bool) {
+	if sp, ok := s.(*stageProcessor); ok {
+		return func(e Entry) (Entry, bool) {
+			sp.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
+			return e, false
+		}, true
+	}
+	if sn, ok := s.(syncNarrowCapable); ok {
+		return sn.trySyncNarrow()
+	}
+	return nil, false
+}
+
+// composeNarrow chains process functions (same skip convention as
+// RunWithSkip) into one.
+func composeNarrow(fns []func(Entry) (Entry, bool)) func(Entry) (Entry, bool) {
+	return func(e Entry) (Entry, bool) {
+		for _, fn := range fns {
+			var skip bool
+			e, skip = fn(e)
+			if skip {
+				return e, true
+			}
+		}
+		return e, false
+	}
+}
+
+// trySyncNarrow implements syncNarrowCapable, letting a Pipeline nested
+// inside a matcherStage's "keep" action be fused into its parent's chain
+// instead of requiring its own channels, as long as every one of its own
+// stages (and the synthetic initEntryNarrow step) themselves qualify.
+func (p *Pipeline) trySyncNarrow() (func(Entry) (Entry, bool), bool) {
+	fns := make([]func(Entry) (Entry, bool), 0, len(p.stages)+1)
+	fns = append(fns, initEntryNarrow)
+	for _, s := range p.stages {
+		fn, ok := trySyncNarrow(s)
+		if !ok {
+			return nil, false
+		}
+		fns = append(fns, fn)
+	}
+	return composeNarrow(fns), true
+}
+
+// RunWithSkip is RunWith for a process function that can also drop an entry
+// (skip=true) instead of forwarding it.
+func RunWithSkip(input chan Entry, process func(Entry) (Entry, bool)) chan Entry {
+	out := make(chan Entry)
+	go func() {
+		defer close(out)
+		for e := range input {
+			e, skip := process(e)
+			if skip {
+				continue
+			}
+			out <- e
+		}
+	}()
+	return out
 }
 
 // Cleanup implements Stage.
