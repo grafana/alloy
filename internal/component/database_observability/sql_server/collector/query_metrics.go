@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,15 +14,6 @@ import (
 )
 
 const QueryMetricsCollector = "query_metrics"
-
-// selectQueryStoreState reads the connected database's Query Store state
-const selectQueryStoreState = `
-SELECT
-	DB_NAME(),
-	actual_state_desc,
-	query_capture_mode_desc,
-	readonly_reason
-FROM sys.database_query_store_options`
 
 // selectQueryMetrics ranks the top-N queries by duration within the recent lookback
 // window, then sums their full retained Query Store history so the emitted
@@ -149,6 +138,14 @@ func (c *QueryMetrics) Name() string {
 	return QueryMetricsCollector
 }
 
+// Tracker exposes the collector's query-tracking state so other collectors
+// (e.g. query_details) can restrict their work to the query_hashes that are
+// currently tracked here. The returned value is safe for concurrent use and
+// remains valid across collector restarts.
+func (c *QueryMetrics) Tracker() QueryTracker {
+	return c.state
+}
+
 func (c *QueryMetrics) Start(ctx context.Context) error {
 	c.logger.Debug("collector started")
 
@@ -215,7 +212,7 @@ func (c *QueryMetrics) collectWithTimeout(ctx context.Context) error {
 }
 
 func (c *QueryMetrics) collect(ctx context.Context) error {
-	database, ok := c.checkQueryStoreState(ctx)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
 	if !ok {
 		// Query Store is unavailable on the connected database, skip this cycle.
 		// Existing counters and baselines are preserved if this is a transient error.
@@ -231,37 +228,9 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 	return nil
 }
 
-// checkQueryStoreState reports whether Query Store is available on the connected database
-// and returns that database's name.
-func (c *QueryMetrics) checkQueryStoreState(ctx context.Context) (string, bool) {
-	var database, actualState, captureMode sql.NullString
-	var readonlyReason sql.NullInt64
-
-	err := c.dbConnection.QueryRowContext(ctx, selectQueryStoreState).
-		Scan(&database, &actualState, &captureMode, &readonlyReason)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		c.logger.Warn("Query Store options are unavailable: the login may lack VIEW DATABASE STATE, or the connected database has no Query Store")
-		return "", false
-	}
-	if err != nil {
-		c.logger.Warn("failed to inspect Query Store state; skipping collection", "err", err)
-		return "", false
-	}
-
-	if state := strings.ToUpper(strings.TrimSpace(actualState.String)); state != "READ_WRITE" {
-		c.logger.Warn("Query Store is not READ_WRITE; skipping collection",
-			"actual_state", actualState.String,
-			"capture_mode", captureMode.String,
-			"readonly_reason", readonlyReason.Int64)
-		return "", false
-	}
-
-	return database.String, true
-}
-
 func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
-	rows, err := c.dbConnection.QueryContext(ctx, selectQueryMetrics,
+	rows, err := c.dbConnection.QueryContext(
+		ctx, selectQueryMetrics,
 		sql.Named("limit", c.limit),
 		sql.Named("lookback_window", int(c.lookback/time.Second)),
 	)

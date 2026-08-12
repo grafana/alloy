@@ -48,9 +48,9 @@ func toNginxReceiver(state *State, id componentstatus.InstanceID, cfg *nginxrece
 	nextMetrics := state.Next(id, pipeline.SignalMetrics)
 
 	return &nginx.Arguments{
-		Endpoint:           cfg.Endpoint,
-		CollectionInterval: cfg.CollectionInterval,
-		InitialDelay:       cfg.InitialDelay,
+		Endpoint:           cfg.ClientConfig.Endpoint,
+		CollectionInterval: cfg.ControllerConfig.CollectionInterval,
+		InitialDelay:       cfg.ControllerConfig.InitialDelay,
 		DebugMetrics:       common.DefaultValue[nginx.Arguments]().DebugMetrics,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

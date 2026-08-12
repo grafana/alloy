@@ -40,10 +40,11 @@ You can use the following arguments with `database_observability.sql_server`:
 
 The following collectors are configurable:
 
-| Name              | Description                                                  | Enabled by default |
-|-------------------|--------------------------------------------------------------|--------------------|
-| `schema_details`  | Collect schemas and tables from `information_schema`. | yes                |
+| Name              | Description                                                                   | Enabled by default |
+|-------------------|-------------------------------------------------------------------------------|--------------------|
+| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 | `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
 
 ## Blocks
 
@@ -59,6 +60,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
@@ -66,6 +68,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [gcp]: #gcp
 [schema_details]: #schema_details
 [query_metrics]: #query_metrics
+[query_details]: #query_details
 
 {{< /docs/alloy-config >}}
 
@@ -125,21 +128,21 @@ The collector scans every database that the login can access on the instance and
 | `statements_limit`    | `int`      | Maximum number of queries to track, ranked by recent duration.    | `50`   | no       |
 | `statements_lookback` | `duration` | Only queries executed within this window are eligible for tracking.| `"1h"`  | no       |
 
-The `query_metrics` collector reads [Query Store][query-store] for the database selected in the `data_source_name`, not every database on the instance.
+The `query_metrics` collector reads [Query Store][query_store] for the database selected in the `data_source_name`, not every database on the instance.
 Configure the `data_source_name` to select a user database that has Query Store enabled.
 When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection and remains healthy.
 
 The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
 
-The collector exports the following counters, each labeled with `database` and `query_hash`:
-
-| Metric                                              | Description                                                      |
-|-----------------------------------------------------|------------------------------------------------------------------|
-| `database_observability_query_executions_total`     | Total number of query executions observed while the query is selected. |
-| `database_observability_query_errors_total`         | Total number of failed executions (aborted or exception) observed while the query is selected. |
-| `database_observability_query_duration_seconds_total`| Total query execution duration in seconds observed while the query is selected. |
-
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
+
+### `query_details`
+
+| Name               | Type       | Description                                            | Default | Required |
+|--------------------|------------|--------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+
+The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
 
 ## Example
 
