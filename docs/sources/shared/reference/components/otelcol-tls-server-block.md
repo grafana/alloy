@@ -13,6 +13,7 @@ The following arguments are supported:
 | `cert_file`                    | `string`       | Path to the TLS certificate.                                                                 |             | no       |
 | `cert_pem`                     | `string`       | Certificate PEM-encoded text for client authentication.                                      |             | no       |
 | `cipher_suites`                | `list(string)` | A list of TLS cipher suites that the TLS transport can use.                                  | `[]`        | no       |
+| `include_insecure_cipher_suites` | `boolean`      | Whether `cipher_suites` may select suites Go considers insecure.                             | `false`     | no       |
 | `client_ca_file`               | `string`       | Path to the TLS cert to use by the server to verify a client certificate.                    |             | no       |
 | `curve_preferences`            | `list(string)` | Set of elliptic curves to use in a handshake.                                                | `[]`        | no       |
 | `include_system_ca_certs_pool` | `boolean`      | Whether to load the system certificate authorities pool alongside the certificate authority. | `false`     | no       |
@@ -31,6 +32,7 @@ The following pairs of arguments are mutually exclusive and can't both be set si
 * `key_pem` and `key_file`
 
 If `cipher_suites` is left blank, a safe default list is used.
+Set `include_insecure_cipher_suites` to `true` to allow `cipher_suites` to select suites that Go considers insecure.
 Refer to the [Go Cipher Suites documentation][golang-cipher-suites] for a list of supported cipher suites.
 
 `client_ca_file` sets the `ClientCA` and `ClientAuth` to `RequireAndVerifyClientCert` in the `TLSConfig`. 
