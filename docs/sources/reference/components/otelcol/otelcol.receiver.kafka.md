@@ -52,6 +52,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `group_id`                                 | `string`       | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
 | `group_instance_id`                        | `string`       | A unique identifier for the consumer instance within a consumer group.                                                | `""`               | no       |
 | `group_rebalance_strategy`                 | `string`       | The strategy used to assign partitions to consumers within a consumer group.                                          | `"range"`          | no       |
+| `group_rebalance_strategies`               | `list(string)` | The ordered list of strategies to advertise to the group coordinator.                                                 | `[]`               | no       |
 | `heartbeat_interval`                       | `duration`     | The expected time between heartbeats to the consumer coordinator when using Kafka group management.                   | `"3s"`             | no       |
 | `initial_offset`                           | `string`       | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
@@ -94,9 +95,17 @@ Supported strategies are:
 - `cooperative-sticky`: This strategy uses incremental cooperative rebalancing to reduce partition movement during rebalances.
   For more information, refer to the Kafka CooperativeStickyAssignor documentation, refer to [CooperativeStickyAssignor][].
 
+Use `group_rebalance_strategies` to advertise more than one strategy to the group coordinator, in order of preference.
+It accepts the same values as `group_rebalance_strategy`:
+
+```alloy
+group_rebalance_strategies = ["cooperative-sticky", "range"]
+```
+
 {{< admonition type="note" >}}
-The upstream OpenTelemetry Collector setting behind `group_rebalance_strategy` is deprecated in favor of an ordered list of strategies.
+The upstream OpenTelemetry Collector setting behind `group_rebalance_strategy` is deprecated in favor of `group_rebalance_strategies`.
 `group_rebalance_strategy` continues to work, and the `range` default is unchanged.
+The two arguments are mutually exclusive, so setting both fails to load.
 {{< /admonition >}}
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
