@@ -103,7 +103,7 @@ type metricStage struct {
 }
 
 func (m *metricStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 

@@ -32,7 +32,7 @@ func newSplitJSONStage(logger *slog.Logger, cfg SplitJSONConfig) Stage {
 // becomes N entries. Every other entry passes through unchanged. The stage
 // sends each new entry as it builds it.
 func (s *splitJSONStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range in {

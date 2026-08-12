@@ -106,7 +106,7 @@ type dropStage struct {
 }
 
 func (m *dropStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range in {

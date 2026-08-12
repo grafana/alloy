@@ -96,7 +96,7 @@ func newMultilineStage(logger *slog.Logger, config MultilineConfig) (Stage, erro
 }
 
 func (m *multilineStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 

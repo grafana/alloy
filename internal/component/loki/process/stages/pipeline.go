@@ -12,6 +12,19 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
+// entryChanBufferSize is the buffer size used for every inter-stage
+// channel. Experiment: does giving each stage-to-stage handoff some slack
+// (instead of requiring a synchronous unbuffered rendezvous) reduce the
+// goroutine park/wake cost that dominates a pipeline with many stages? 0
+// keeps the original unbuffered behavior.
+const entryChanBufferSize = 16
+
+// newEntryChan is the single place that creates an inter-stage channel, so
+// entryChanBufferSize can be swept without touching every call site.
+func newEntryChan() chan Entry {
+	return make(chan Entry, entryChanBufferSize)
+}
+
 // StageConfig defines a single stage in a processing pipeline.
 // We define these as pointers types so we can use reflection to check that
 // exactly one is set.
@@ -81,7 +94,7 @@ func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer promethe
 func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	pipelineIn := make(chan Entry)
+	pipelineIn := newEntryChan()
 	pipelineOut := p.Run(pipelineIn)
 
 	var (
@@ -162,7 +175,7 @@ func (p *Pipeline) Stop() {
 
 // RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
 func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range input {
@@ -175,7 +188,7 @@ func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
 // RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
 // sending the batch to output channel, if `process` functions returns `skip` true.
 func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range input {

@@ -139,8 +139,8 @@ func (m *matcherStage) Run(in chan Entry) chan Entry {
 }
 
 func (m *matcherStage) runKeep(in chan Entry) chan Entry {
-	next := make(chan Entry)
-	out := make(chan Entry)
+	next := newEntryChan()
+	out := newEntryChan()
 	outNext := m.pipeline.Run(next)
 	go func() {
 		defer close(out)
@@ -163,7 +163,7 @@ func (m *matcherStage) runKeep(in chan Entry) chan Entry {
 }
 
 func (m *matcherStage) runDrop(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range in {
