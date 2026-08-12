@@ -114,7 +114,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		input["exclude"] = exclude
 	}
 
-	var result k8sattributesprocessor.Config
+	result := *k8sattributesprocessor.NewFactory().CreateDefaultConfig().(*k8sattributesprocessor.Config)
 	err := mapstructure.Decode(input, &result)
 
 	if err != nil {
