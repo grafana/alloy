@@ -137,15 +137,8 @@ type packStage struct {
 	dropCount *prometheus.CounterVec
 }
 
-func (m *packStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			out <- m.pack(e)
-		}
-	}()
-	return out
+func (m *packStage) Process(e Entry) (Entry, bool) {
+	return m.pack(e), false
 }
 
 func (m *packStage) pack(e Entry) Entry {

@@ -89,19 +89,12 @@ func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
 	}, nil
 }
 
-func (j *jsonStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			err := j.processEntry(e.Extracted, &e.Line)
-			if err != nil && j.cfg.DropMalformed {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
+func (j *jsonStage) Process(e Entry) (Entry, bool) {
+	err := j.processEntry(e.Extracted, &e.Line)
+	if err != nil && j.cfg.DropMalformed {
+		return e, true
+	}
+	return e, false
 }
 
 func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error {

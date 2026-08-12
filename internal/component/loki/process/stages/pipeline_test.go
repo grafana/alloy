@@ -37,8 +37,27 @@ func withInboundEntries(entries ...Entry) chan Entry {
 	return in
 }
 
+// processEntries drives entries through a stage the same way regardless of
+// whether it's a SyncStage (called directly, no channel) or a ChannelStage
+// (fed through Run), so tests don't need to know which one a given stage is.
 func processEntries(s Stage, entries ...Entry) []Entry {
-	out := s.Run(withInboundEntries(entries...))
+	if ss, ok := s.(SyncStage); ok {
+		var res []Entry
+		for _, e := range entries {
+			e, skip := ss.Process(e)
+			if skip {
+				continue
+			}
+			res = append(res, e)
+		}
+		return res
+	}
+
+	cs, ok := s.(ChannelStage)
+	if !ok {
+		panic(fmt.Sprintf("stage %T implements neither SyncStage nor ChannelStage", s))
+	}
+	out := cs.Run(withInboundEntries(entries...))
 	var res []Entry
 	for e := range out {
 		res = append(res, e)

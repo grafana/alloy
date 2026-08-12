@@ -51,20 +51,11 @@ func newWindowsEventStage(logger *slog.Logger, cfg *WindowsEventConfig) Stage {
 	}
 }
 
-func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	key := w.cfg.Source
-	go func() {
-		defer close(out)
-		for e := range in {
-			err := w.processEntry(e.Extracted, key)
-			if err != nil {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
+func (w *WindowsEventStage) Process(e Entry) (Entry, bool) {
+	if err := w.processEntry(e.Extracted, w.cfg.Source); err != nil {
+		return e, true
+	}
+	return e, false
 }
 
 // Process a windows event message from extracted with the specified key, adding additional

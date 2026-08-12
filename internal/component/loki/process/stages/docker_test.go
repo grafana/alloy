@@ -120,16 +120,14 @@ var (
 )
 
 func BenchmarkDocker(b *testing.B) {
-	p, _ := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	s, _ := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p := s.(SyncStage)
 	e := newEntry(nil, model.LabelSet{}, benchDockerLine, benchDockerTime)
-	in := make(chan Entry)
-	out := p.Run(in)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for b.Loop() {
-		in <- e
-		benchDockerEntry = <-out
+		benchDockerEntry, _ = p.Process(e)
 	}
 }

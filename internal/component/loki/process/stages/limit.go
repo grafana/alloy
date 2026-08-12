@@ -98,18 +98,11 @@ func (m *limitStage) Stop() {
 	m.cancel()
 }
 
-func (m *limitStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			if !m.shouldThrottle(e.Labels) {
-				out <- e
-				continue
-			}
-		}
-	}()
-	return out
+func (m *limitStage) Process(e Entry) (Entry, bool) {
+	if m.shouldThrottle(e.Labels) {
+		return e, true
+	}
+	return e, false
 }
 
 func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {

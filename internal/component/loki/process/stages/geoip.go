@@ -126,26 +126,19 @@ type geoIPStage struct {
 	valuesExpressions map[string]jmespath.JMESPath
 }
 
-// Run implements Stage
-func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		defer g.close()
-		for e := range in {
-			g.process(e.Labels, e.Extracted)
-			out <- e
-		}
-	}()
-	return out
+// Process implements SyncStage.
+func (g *geoIPStage) Process(e Entry) (Entry, bool) {
+	g.lookup(e.Labels, e.Extracted)
+	return e, false
 }
 
-// Cleanup implements Stage.
-func (*geoIPStage) Cleanup() {
-	// no-op
+// Cleanup implements Stage. mmdb is closed here, rather than in Process,
+// since Process has nowhere else to hook a close on shutdown.
+func (g *geoIPStage) Cleanup() {
+	g.close()
 }
 
-func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
+func (g *geoIPStage) lookup(_ model.LabelSet, extracted map[string]any) {
 	var ip net.IP
 	if g.cfgs.Source != nil {
 		if _, ok := extracted[*g.cfgs.Source]; !ok {

@@ -102,21 +102,12 @@ type metricStage struct {
 	metrics map[string]cfgCollector
 }
 
-func (m *metricStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-
-		for e := range in {
-			m.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-			out <- e
-		}
-	}()
-	return out
+func (m *metricStage) Process(e Entry) (Entry, bool) {
+	m.recordMetrics(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
+	return e, false
 }
 
-// Process implements Stage
-func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _ *time.Time, entry *string) {
+func (m *metricStage) recordMetrics(labels model.LabelSet, extracted map[string]any, _ *time.Time, entry *string) {
 	for name, cc := range m.metrics {
 		// There is a special case for counters where we count even if there is no match in the extracted map.
 		if c, ok := cc.collector.(*metric.Counters); ok {

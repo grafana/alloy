@@ -2,6 +2,7 @@ package stages
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -265,9 +266,8 @@ func TestLuhnFilterStageSkipRegexEndToEnd(t *testing.T) {
 			stage, err := newLuhnFilterStage(config)
 			require.NoError(t, err)
 
-			entry := tc.entry
-			stage.(Processor).Process(nil, tc.extracted, nil, &entry)
-			require.Equal(t, tc.want, entry)
+			out, _ := stage.(SyncStage).Process(newEntry(tc.extracted, nil, tc.entry, time.Time{}))
+			require.Equal(t, tc.want, out.Line)
 		})
 	}
 }
@@ -321,12 +321,12 @@ func BenchmarkLuhnFilterStage(b *testing.B) {
 					SkipRegex:   sr.skipRegex,
 				})
 				require.NoError(b, err)
-				processor := stage.(Processor)
+				ss := stage.(SyncStage)
+				e := newEntry(nil, nil, fx.entry, time.Time{})
 
 				b.ReportAllocs()
 				for i := 0; i < b.N; i++ {
-					entry := fx.entry
-					processor.Process(nil, nil, nil, &entry)
+					ss.Process(e)
 				}
 			})
 		}

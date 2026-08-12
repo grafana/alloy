@@ -42,34 +42,28 @@ func newSamplingStage(logger *slog.Logger, cfg SamplingConfig, registerer promet
 	}
 
 	return &samplingStage{
-		logger:    logger.With("stage", "sampling"),
-		cfg:       cfg,
-		dropCount: dropCount,
-		sampler:   sampling.NewSampler(cfg.SamplingRate),
+		logger:      logger.With("stage", "sampling"),
+		cfg:         cfg,
+		dropCount:   dropCount,
+		dropCounter: dropCount.WithLabelValues(cfg.DropReason),
+		sampler:     sampling.NewSampler(cfg.SamplingRate),
 	}, nil
 }
 
 type samplingStage struct {
-	logger    *slog.Logger
-	cfg       SamplingConfig
-	dropCount *prometheus.CounterVec
-	sampler   *sampling.Sampler
+	logger      *slog.Logger
+	cfg         SamplingConfig
+	dropCount   *prometheus.CounterVec
+	dropCounter prometheus.Counter
+	sampler     *sampling.Sampler
 }
 
-func (m *samplingStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		counter := m.dropCount.WithLabelValues(m.cfg.DropReason)
-		for e := range in {
-			if m.sampler.ShouldSample() {
-				out <- e
-				continue
-			}
-			counter.Inc()
-		}
-	}()
-	return out
+func (m *samplingStage) Process(e Entry) (Entry, bool) {
+	if m.sampler.ShouldSample() {
+		return e, false
+	}
+	m.dropCounter.Inc()
+	return e, true
 }
 
 // Cleanup implements Stage.

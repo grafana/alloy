@@ -105,19 +105,12 @@ type dropStage struct {
 	dropCount *prometheus.CounterVec
 }
 
-func (m *dropStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			if !m.shouldDrop(e) {
-				out <- e
-				continue
-			}
-			m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
-		}
-	}()
-	return out
+func (m *dropStage) Process(e Entry) (Entry, bool) {
+	if !m.shouldDrop(e) {
+		return e, false
+	}
+	m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+	return e, true
 }
 
 func (m *dropStage) shouldDrop(e Entry) bool {

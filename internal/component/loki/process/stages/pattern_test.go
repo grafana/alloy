@@ -481,17 +481,11 @@ func BenchmarkPatternStage(b *testing.B) {
 			labels := model.LabelSet{}
 			ts := time.Now()
 			extr := map[string]any{}
+			ss := stage.(SyncStage)
 
-			in := make(chan Entry)
-			out := stage.Run(in)
-			go func() {
-				for range out {
-				}
-			}()
 			for i := 0; i < b.N; i++ {
-				in <- newEntry(extr, labels, bm.entry, ts)
+				ss.Process(newEntry(extr, labels, bm.entry, ts))
 			}
-			close(in)
 		})
 	}
 }

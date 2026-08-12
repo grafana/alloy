@@ -73,36 +73,34 @@ func (*structuredMetadataStage) Cleanup() {
 	// no-op
 }
 
-func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
-			metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
+func (s *structuredMetadataStage) Process(e Entry) (Entry, bool) {
+	appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
+		metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
 
-			i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
-				return label.Name == metadata.Name
-			})
-			if i != -1 {
-				e.StructuredMetadata[i] = metadata
-				return
-			}
-
-			e.StructuredMetadata = append(e.StructuredMetadata, metadata)
+		i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
+			return label.Name == metadata.Name
+		})
+		if i != -1 {
+			e.StructuredMetadata[i] = metadata
+			return
 		}
 
-		// Try to add structured metadata from extracted map using labelsConfig.
-		processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
+		e.StructuredMetadata = append(e.StructuredMetadata, metadata)
+	}
 
-		// Try to add structured metadata from extracted map using regex.
-		processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
+	// Try to add structured metadata from extracted map using labelsConfig.
+	processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
 
-		// Try to add structured metadata from labels using labelsConfig.
-		processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
+	// Try to add structured metadata from extracted map using regex.
+	processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
 
-		// Try to add structured metadata from labels using regex.
-		processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+	// Try to add structured metadata from labels using labelsConfig.
+	processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
 
-		return e
-	})
+	// Try to add structured metadata from labels using regex.
+	processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+
+	return e, false
 }
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)

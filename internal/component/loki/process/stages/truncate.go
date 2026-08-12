@@ -80,80 +80,73 @@ type truncateStage struct {
 	truncatedCount *prometheus.CounterVec
 }
 
-func (m *truncateStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			truncated := map[string]struct{}{}
-			for _, r := range m.cfg.Rules {
-				switch r.SourceType {
-				case SourceTypeLine:
-					limit := r.effectiveLimit()
-					if len(e.Line) > int(limit) {
-						e.Line = e.Line[:limit] + r.Suffix
-						markTruncated(m.truncatedCount, truncated, truncateLineField)
+func (m *truncateStage) Process(e Entry) (Entry, bool) {
+	truncated := map[string]struct{}{}
+	for _, r := range m.cfg.Rules {
+		switch r.SourceType {
+		case SourceTypeLine:
+			limit := r.effectiveLimit()
+			if len(e.Line) > int(limit) {
+				e.Line = e.Line[:limit] + r.Suffix
+				markTruncated(m.truncatedCount, truncated, truncateLineField)
 
-						if debugEnabled(m.logger) {
-							m.logger.Debug("line has been truncated", "limit", limit, "truncated_line", e.Line)
-						}
-					}
-				case SourceTypeLabel:
-					if len(r.Sources) > 0 {
-						for _, source := range r.Sources {
-							name := model.LabelName(source)
-							if v, ok := e.Labels[name]; ok {
-								m.tryTruncateLabel(r, e.Labels, name, v, truncated)
-							}
-						}
-					} else {
-						for k, v := range e.Labels {
-							m.tryTruncateLabel(r, e.Labels, k, v, truncated)
-						}
-					}
-				case SourceTypeStructuredMetadata:
-					if len(r.Sources) > 0 {
-						for i, v := range e.StructuredMetadata {
-							if slices.Contains(r.Sources, v.Name) {
-								// Returns unmodified if no truncation was required
-								e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
-							}
-						}
-					} else {
-						for i, v := range e.StructuredMetadata {
-							// Returns unmodified if no truncation was required
-							e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
-						}
-					}
-				case SourceTypeExtractedMap:
-					if len(r.Sources) > 0 {
-						for _, source := range r.Sources {
-							if v, ok := e.Extracted[source]; ok {
-								m.tryTruncateExtracted(r, e.Extracted, source, v, truncated)
-							}
-						}
-					} else {
-						for k, v := range e.Extracted {
-							m.tryTruncateExtracted(r, e.Extracted, k, v, truncated)
-						}
-					}
-				}
-				if len(truncated) > 0 {
-					// Ensure that we properly support multiple stages truncating different fields
-					if existing, ok := e.Extracted["truncated"]; ok {
-						if strExisting, ok := existing.(string); ok {
-							for s := range strings.SplitSeq(strExisting, ",") {
-								truncated[s] = struct{}{}
-							}
-						}
-					}
-					e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
+				if debugEnabled(m.logger) {
+					m.logger.Debug("line has been truncated", "limit", limit, "truncated_line", e.Line)
 				}
 			}
-			out <- e
+		case SourceTypeLabel:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					name := model.LabelName(source)
+					if v, ok := e.Labels[name]; ok {
+						m.tryTruncateLabel(r, e.Labels, name, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Labels {
+					m.tryTruncateLabel(r, e.Labels, k, v, truncated)
+				}
+			}
+		case SourceTypeStructuredMetadata:
+			if len(r.Sources) > 0 {
+				for i, v := range e.StructuredMetadata {
+					if slices.Contains(r.Sources, v.Name) {
+						// Returns unmodified if no truncation was required
+						e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+					}
+				}
+			} else {
+				for i, v := range e.StructuredMetadata {
+					// Returns unmodified if no truncation was required
+					e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+				}
+			}
+		case SourceTypeExtractedMap:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					if v, ok := e.Extracted[source]; ok {
+						m.tryTruncateExtracted(r, e.Extracted, source, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Extracted {
+					m.tryTruncateExtracted(r, e.Extracted, k, v, truncated)
+				}
+			}
 		}
-	}()
-	return out
+		if len(truncated) > 0 {
+			// Ensure that we properly support multiple stages truncating different fields
+			if existing, ok := e.Extracted["truncated"]; ok {
+				if strExisting, ok := existing.(string); ok {
+					for s := range strings.SplitSeq(strExisting, ",") {
+						truncated[s] = struct{}{}
+					}
+				}
+			}
+			e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
+		}
+	}
+	return e, false
 }
 
 func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, name model.LabelName, val model.LabelValue, truncated map[string]struct{}) {

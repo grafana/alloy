@@ -22,10 +22,37 @@ type Entry struct {
 	loki.Entry
 }
 
-// Stage can receive entries via an inbound channel and forward mutated entries to an outbound channel.
+// Stage is implemented by every pipeline stage.
 type Stage interface {
-	Run(chan Entry) chan Entry
 	Cleanup()
+}
+
+// SyncStage is implemented by a stage that processes a single entry
+// synchronously: no dedicated goroutine, and no state (like a wall-clock
+// timeout) that needs to act independently of being called. This is nearly
+// every stage; Pipeline composes them as plain function calls chained
+// together (see composeFuncs), which is what keeps a pipeline built from
+// many stages (e.g. one generated from many independent stage.match rules)
+// cheap — no per-stage channel or goroutine.
+//
+// Process is 1:1 (one entry in, one entry out or dropped) — a stage that can
+// fan one entry out into several (split_json, cri) is a ChannelStage
+// instead, so composeFuncs never needs to allocate a slice per stage per
+// entry. skip=true means the entry is dropped, not forwarded.
+type SyncStage interface {
+	Stage
+	Process(Entry) (entry Entry, skip bool)
+}
+
+// ChannelStage is implemented by the few stages that need their own channel
+// and goroutine because they can produce output that isn't in lockstep with
+// their input — e.g. multiline's wall-clock-driven flush of a stale block,
+// which must happen even when no new entry has arrived. Pipeline builds a
+// channel boundary around a ChannelStage; everything else stays a plain
+// function call.
+type ChannelStage interface {
+	Stage
+	Run(chan Entry) chan Entry
 }
 
 // Stopper is an optional interface for stages that need an out-of-band signal
@@ -35,16 +62,14 @@ type Stopper interface {
 	Stop()
 }
 
-// stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
+// stageProcessor adapts a Processor (old synchronous pipeline stage) to SyncStage.
 type stageProcessor struct {
 	Processor
 }
 
-func (s stageProcessor) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-		return e
-	})
+func (s stageProcessor) Process(e Entry) (Entry, bool) {
+	s.Processor.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
+	return e, false
 }
 
 func toStage(p Processor) Stage {

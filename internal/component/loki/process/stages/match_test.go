@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -256,6 +257,91 @@ stage.match {
 				drop  = false
 		}
 }`
+
+// testDoubleNestedAsyncMatchAlloy nests a match inside a match, with a
+// multiline stage at the innermost level. A multiline stage forces its own
+// pipeline to become an asyncMatchStage (see newMatcherStage), and that in
+// turn forces every match wrapping it to become an asyncMatchStage too, all
+// the way up. This exercises that propagation two levels deep instead of
+// just one.
+var testDoubleNestedAsyncMatchAlloy = `
+stage.match {
+		selector = "{app=\"loki\"}"
+		action   = "keep"
+		stage.match {
+				selector = "{app=\"loki\"}"
+				action   = "keep"
+				stage.multiline {
+						firstline     = "^NEVER_MATCHES"
+						max_wait_time = "3s"
+				}
+				stage.static_labels {
+						values = { inner_ran = "true" }
+				}
+		}
+}`
+
+func TestNestedAsyncMatch(t *testing.T) {
+	pl, err := newPipelineFromConfig(testDoubleNestedAsyncMatchAlloy)
+	require.NoError(t, err)
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{"app": "loki"}, "plain line", time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, model.LabelValue("true"), out[0].Labels["inner_ran"])
+}
+
+// testMatchNestedLimitWithOuterStagesAlloy sandwiches a keep-match around a
+// blocking stage.limit between a sync stage before and after it, so a
+// single entry must pass through: fused sync stage -> asyncMatchStage
+// channel boundary -> fused sync stage.
+var testMatchNestedLimitWithOuterStagesAlloy = `
+stage.static_labels {
+		values = { before = "yes" }
+}
+stage.match {
+		selector = "{app=\"loki\"}"
+		action   = "keep"
+		stage.limit {
+				rate  = 100
+				burst = 100
+				drop  = false
+		}
+}
+stage.static_labels {
+		values = { after = "yes" }
+}`
+
+func TestMatchNestedLimitWithOuterStages(t *testing.T) {
+	pl, err := newPipelineFromConfig(testMatchNestedLimitWithOuterStagesAlloy)
+	require.NoError(t, err)
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{"app": "loki"}, "line", time.Now()))
+	require.Len(t, out, 1)
+	assert.Equal(t, model.LabelValue("yes"), out[0].Labels["before"])
+	assert.Equal(t, model.LabelValue("yes"), out[0].Labels["after"])
+}
+
+// testMatchNestedSplitJSONAlloy nests a fan-out stage (split_json, a
+// ChannelStage) inside a keep-match, forcing that match to become an
+// asyncMatchStage. This checks the fan-out is relayed out of the match
+// boundary intact, rather than only ever being tested at the top level.
+var testMatchNestedSplitJSONAlloy = `
+stage.match {
+		selector = "{app=\"loki\"}"
+		action   = "keep"
+		stage.split_json {}
+}`
+
+func TestMatchNestedSplitJSON(t *testing.T) {
+	pl, err := newPipelineFromConfig(testMatchNestedSplitJSONAlloy)
+	require.NoError(t, err)
+
+	out := processEntries(pl, newEntry(nil, model.LabelSet{"app": "loki"}, `[{"a":1},{"b":2},{"c":3}]`, time.Now()))
+	require.Len(t, out, 3)
+	assert.Equal(t, `{"a":1}`, out[0].Line)
+	assert.Equal(t, `{"b":2}`, out[1].Line)
+	assert.Equal(t, `{"c":3}`, out[2].Line)
+}
 
 func TestMatchNestedLimitShutdown(t *testing.T) {
 	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)

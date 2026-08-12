@@ -84,22 +84,15 @@ type labelStage struct {
 	logger       *slog.Logger
 }
 
-// Run implements Stage
-func (l *labelStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			switch l.cfg.SourceType {
-			case SourceTypeExtractedMap:
-				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
-			case SourceTypeStructuredMetadata:
-				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
-			}
-			out <- e
-		}
-	}()
-	return out
+// Process implements SyncStage.
+func (l *labelStage) Process(e Entry) (Entry, bool) {
+	switch l.cfg.SourceType {
+	case SourceTypeExtractedMap:
+		l.addLabelFromExtractedMap(e.Labels, e.Extracted)
+	case SourceTypeStructuredMetadata:
+		l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
+	}
+	return e, false
 }
 
 func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted map[string]any) {

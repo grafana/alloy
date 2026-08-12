@@ -37,14 +37,12 @@ func (*structuredMetadataDropStage) Cleanup() {
 	// no-op
 }
 
-// Run implements Stage
-func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		for _, value := range s.config.Values {
-			e.StructuredMetadata = slices.DeleteFunc(e.StructuredMetadata, func(l push.LabelAdapter) bool {
-				return l.Name == value
-			})
-		}
-		return e
-	})
+// Process implements SyncStage.
+func (s *structuredMetadataDropStage) Process(e Entry) (Entry, bool) {
+	for _, value := range s.config.Values {
+		e.StructuredMetadata = slices.DeleteFunc(e.StructuredMetadata, func(l push.LabelAdapter) bool {
+			return l.Name == value
+		})
+	}
+	return e, false
 }

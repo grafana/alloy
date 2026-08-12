@@ -250,7 +250,8 @@ var (
 )
 
 func BenchmarkCRI(b *testing.B) {
-	p, _ := NewCRI(logging.NewSlogNop(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	s, _ := NewCRI(logging.NewSlogNop(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p := s.(ChannelStage)
 	e := newEntry(nil, model.LabelSet{}, benchCRILine, benchCRITime)
 	in := make(chan Entry)
 	out := p.Run(in)

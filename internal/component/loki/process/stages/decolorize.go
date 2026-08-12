@@ -17,18 +17,11 @@ const ansiPattern = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\
 
 var ansiRegex = regexp.MustCompile(ansiPattern)
 
-// Run implements Stage
-func (m *decolorizeStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			decolorizedLine := ansiRegex.ReplaceAll([]byte(e.Line), []byte{})
-			e.Entry.Line = string(decolorizedLine)
-			out <- e
-		}
-	}()
-	return out
+// Process implements SyncStage.
+func (m *decolorizeStage) Process(e Entry) (Entry, bool) {
+	decolorizedLine := ansiRegex.ReplaceAll([]byte(e.Line), []byte{})
+	e.Entry.Line = string(decolorizedLine)
+	return e, false
 }
 
 // Cleanup implements Stage.

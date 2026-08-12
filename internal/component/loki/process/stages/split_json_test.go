@@ -390,7 +390,7 @@ func BenchmarkSplitJSONStage(b *testing.B) {
 	}
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{})
+			stage := newSplitJSONStage(logging.NewSlogNop(), SplitJSONConfig{}).(ChannelStage)
 			entry := newSplitJSONEntry(benchSplitJSONLine(bm.elements, bm.objectSize), nil)
 
 			in := make(chan Entry)

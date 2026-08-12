@@ -44,20 +44,11 @@ func newEventLogMessageStage(logger *slog.Logger, cfg *EventLogMessageConfig) St
 	}
 }
 
-func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	key := m.cfg.Source
-	go func() {
-		defer close(out)
-		for e := range in {
-			err := m.processEntry(e.Extracted, key)
-			if err != nil {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
+func (m *eventLogMessageStage) Process(e Entry) (Entry, bool) {
+	if err := m.processEntry(e.Extracted, m.cfg.Source); err != nil {
+		return e, true
+	}
+	return e, false
 }
 
 // Process a event log message from extracted with the specified key, adding additional

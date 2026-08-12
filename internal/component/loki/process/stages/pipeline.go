@@ -53,6 +53,11 @@ type StageConfig struct {
 type Pipeline struct {
 	stages    []Stage
 	dropCount *prometheus.CounterVec
+
+	// syncFn is non-nil only if every stage is a SyncStage, in which case
+	// it's the whole pipeline fused into a single function: see
+	// buildSyncFunc and SyncFunc.
+	syncFn func(Entry) (Entry, bool)
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
@@ -73,7 +78,33 @@ func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer promethe
 	return &Pipeline{
 		stages:    st,
 		dropCount: dropCount,
+		syncFn:    buildSyncFunc(st),
 	}, nil
+}
+
+// buildSyncFunc returns a single function fusing initEntry with every
+// stage's Process, or nil if any stage isn't a SyncStage (i.e. needs a
+// channel of its own).
+func buildSyncFunc(stages []Stage) func(Entry) (Entry, bool) {
+	fns := make([]func(Entry) (Entry, bool), 0, len(stages)+1)
+	fns = append(fns, initEntry)
+	for _, s := range stages {
+		ss, ok := s.(SyncStage)
+		if !ok {
+			return nil
+		}
+		fns = append(fns, ss.Process)
+	}
+	return composeFuncs(fns)
+}
+
+// SyncFunc returns the pipeline fused into a single function, and whether
+// that was possible (i.e. every stage in it is a SyncStage). newMatcherStage
+// uses this to decide whether a "keep" match's nested pipeline can become a
+// syncMatchStage (fused into its own Process call) or must be an
+// asyncMatchStage (needing its own channel).
+func (p *Pipeline) SyncFunc() (func(Entry) (Entry, bool), bool) {
+	return p.syncFn, p.syncFn != nil
 }
 
 // Start will start the pipeline and forward entries to next.
@@ -122,20 +153,57 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 	})
 }
 
-// Run implements Stage
-func (p *Pipeline) Run(in chan Entry) chan Entry {
-	in = RunWith(in, func(e Entry) Entry {
-		// Initialize the extracted map with the initial labels (ie. "filename"),
-		// so that stages can operate on initial labels too
-		for labelName, labelValue := range e.Labels {
-			e.Extracted[string(labelName)] = string(labelValue)
-		}
-		return e
-	})
-	// chain all stages together.
-	for _, m := range p.stages {
-		in = m.Run(in)
+// initEntry initializes the extracted map with the initial labels (ie.
+// "filename"), so that stages can operate on initial labels too. It is the
+// first step of every pipeline, fused in like any other SyncStage (see Run)
+// instead of getting its own channel and goroutine.
+func initEntry(e Entry) (Entry, bool) {
+	for labelName, labelValue := range e.Labels {
+		e.Extracted[string(labelName)] = string(labelValue)
 	}
+	return e, false
+}
+
+// Run turns the pipeline into a single input/output channel pair for
+// Start (and tests) to drive.
+//
+// Naively, this would give every stage its own channel and goroutine,
+// chained in sequence. For a pipeline built from many stages (e.g. one
+// generated from many independent stage.match rules), that means every
+// entry pays for a goroutine handoff per stage even though most stages are
+// pure, synchronous, single-entry transforms with no need for a dedicated
+// goroutine.
+//
+// If the whole pipeline is a SyncStage (syncFn != nil, the common case),
+// this is just that one function wrapped in a single goroutine. Otherwise,
+// it fuses maximal runs of SyncStages into a single goroutine and channel
+// hop each (see composeFuncs), and only drops into a stage's own Run (its
+// own channel and goroutine) for the ChannelStages that actually need one,
+// such as multiline's wall-clock-based buffering.
+func (p *Pipeline) Run(in chan Entry) chan Entry {
+	if p.syncFn != nil {
+		return RunWithSkip(in, p.syncFn)
+	}
+
+	var fused []func(Entry) (Entry, bool)
+	flush := func() {
+		if len(fused) == 0 {
+			return
+		}
+		in = RunWithSkip(in, composeFuncs(fused))
+		fused = nil
+	}
+
+	fused = append(fused, initEntry)
+	for _, s := range p.stages {
+		if ss, ok := s.(SyncStage); ok {
+			fused = append(fused, ss.Process)
+			continue
+		}
+		flush()
+		in = s.(ChannelStage).Run(in)
+	}
+	flush()
 	return in
 }
 
@@ -160,20 +228,9 @@ func (p *Pipeline) Stop() {
 	}
 }
 
-// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
-func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			out <- process(e)
-		}
-	}()
-	return out
-}
-
-// RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
-// sending the batch to output channel, if `process` functions returns `skip` true.
+// RunWithSkipOrSendMany is RunWithSkip for a process function that can send
+// zero, one, or many entries for a single input entry (e.g. split_json
+// fanning one entry out into several).
 func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
 	out := make(chan Entry)
 	go func() {
@@ -190,4 +247,40 @@ func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, boo
 	}()
 
 	return out
+}
+
+// RunWithSkip reads entries from the input channel, mutates each with the
+// process function, and forwards it to the output channel unless process
+// returns skip=true, in which case the entry is dropped instead.
+func RunWithSkip(input chan Entry, process func(Entry) (Entry, bool)) chan Entry {
+	out := make(chan Entry)
+	go func() {
+		defer close(out)
+		for e := range input {
+			e, skip := process(e)
+			if skip {
+				continue
+			}
+			out <- e
+		}
+	}()
+	return out
+}
+
+// composeFuncs chains single-entry process functions into one, in the same
+// skip convention as RunWithSkip: skip=true short-circuits the rest of the
+// chain. This only handles 1:1 stages; a stage that can fan one entry out
+// into several (split_json, cri) is a ChannelStage, not a SyncStage, and so
+// never reaches here, keeping this allocation-free.
+func composeFuncs(fns []func(Entry) (Entry, bool)) func(Entry) (Entry, bool) {
+	return func(e Entry) (Entry, bool) {
+		for _, fn := range fns {
+			var skip bool
+			e, skip = fn(e)
+			if skip {
+				return e, true
+			}
+		}
+		return e, false
+	}
 }
