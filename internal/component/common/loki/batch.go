@@ -36,6 +36,15 @@ func (b *Batch) Add(stream Stream) {
 	b.entryLen += len(stream.Entries)
 }
 
+func (b *Batch) AddEntry(entry Entry) {
+	if b.created == 0 {
+		b.created = time.Now().UnixMicro()
+	}
+
+	b.add(entry.Labels, entry.Entry)
+	b.entryLen += 1
+}
+
 func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
 	i := slices.IndexFunc(b.streams, func(s Stream) bool {
 		return s.Labels.Equal(labels)

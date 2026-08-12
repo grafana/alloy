@@ -2,8 +2,10 @@ package stages
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -24,16 +26,26 @@ func TestPipeline2(t *testing.T) {
 				newStaticLabelsStage2([]string{"inner", "true"}),
 			}),
 		)
+		multilineMatch = newMatchStage2(
+			func(e Entry) bool { return e.Labels["app"] == "multiline" },
+			MatchActionKeep,
+			NewPipeline2([]Stage2{
+				newMultilineStage2(regexp.MustCompile("^START"), 10, 50*time.Millisecond, true),
+			}),
+		)
 		labels = newStaticLabelsStage2([]string{"outer", "test"})
 	)
 
-	pipeline := NewPipeline2([]Stage2{cri, match, labels})
+	pipeline := NewPipeline2([]Stage2{cri, match, multilineMatch, labels})
 
 	criLabels := model.LabelSet{"app": "foo"}
 	plainLabels := model.LabelSet{"app": "bar"}
+	multilineLabels := model.LabelSet{"app": "multiline"}
 
 	// Batch in, same as a Consumer boundary would receive: one stream
-	// carrying the CRI partial/full pair, one stream with a plain line.
+	// carrying the CRI partial/full pair, one stream with a plain line,
+	// and one stream exercising multilineMatch: a start line, a
+	// continuation, and a second start line that begins a new block.
 	in := loki.NewBatch()
 	in.Add(loki.NewStream(criLabels,
 		push.Entry{Line: "2024-01-01T00:00:00.000000000Z stdout P Hello "},
@@ -42,14 +54,18 @@ func TestPipeline2(t *testing.T) {
 	in.Add(loki.NewStream(plainLabels,
 		push.Entry{Line: "plain line"},
 	))
+	in.Add(loki.NewStream(multilineLabels,
+		push.Entry{Line: "START of the line"},
+		push.Entry{Line: "continue"},
+		push.Entry{Line: "START of a new line"},
+	))
 
 	out := loki.NewBatch()
 	err := in.ConsumeStreams(func(stream loki.Stream, created int64) error {
 		collect := EmitterFunc(func(_ context.Context, e Entry) error {
-			out.Add(loki.NewStream(e.Labels, e.Entry.Entry))
+			out.AddEntry(e.Entry)
 			return nil
 		})
-
 		for _, pe := range stream.Entries {
 			entry := Entry{
 				Extracted: map[string]any{},
@@ -63,15 +79,13 @@ func TestPipeline2(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// The partial line is held by criStage until the full line arrives,
-	// so three input entries produce two output entries.
-	require.Equal(t, 2, out.EntryLen())
+	// The partial CRI line is held until its full line arrives, and the
+	// second "START" line is held until it's explicitly flushed below, so
+	// this batch's 6 input entries produce 3 output entries so far.
+	require.Equal(t, 3, out.EntryLen())
 
-	var outStreams []loki.Stream
-	require.NoError(t, out.ConsumeStreams(func(s loki.Stream, _ int64) error {
-		outStreams = append(outStreams, s)
-		return nil
-	}))
+	outStreams := collectStreams(out)
+	require.Len(t, outStreams, 3)
 
 	// "Hello " + "World" merged by criStage; the merged line contains
 	// "World" so matchStage2 routed it through the nested pipeline
@@ -88,4 +102,44 @@ func TestPipeline2(t *testing.T) {
 	require.Equal(t, model.LabelSet{"app": "bar", "outer": "test"}, outStreams[1].Labels)
 	require.Len(t, outStreams[1].Entries, 1)
 	require.Equal(t, "plain line", outStreams[1].Entries[0].Line)
+
+	// "START of the line" + "continue" were merged by multilineStage2,
+	// nested inside multilineMatch, and flushed synchronously the moment
+	// the second "START" line arrived and started a new block. That
+	// second block sat held until the Flush call above emitted it as its
+	// own entry, joining the same stream.
+	require.Equal(t, model.LabelSet{"app": "multiline", "outer": "test"}, outStreams[2].Labels)
+	require.Len(t, outStreams[2].Entries, 1)
+	require.Equal(t, "START of the line\ncontinue", outStreams[2].Entries[0].Line)
+
+	// Nothing is due yet: the second "START" block was just created.
+	require.True(t, pipeline.NextDeadline().After(time.Now()))
+
+	// Once maxWaitTime has passed, the held block becomes due.
+	time.Sleep(100 * time.Millisecond)
+
+	// asyncBatch are entries collected by a "async" flush.
+	asyncBatch := loki.NewBatch()
+	collect := EmitterFunc(func(ctx context.Context, e Entry) error {
+		asyncBatch.AddEntry(e.Entry)
+		return nil
+	})
+
+	require.NoError(t, pipeline.Flush(ctx, collect))
+	require.Equal(t, 1, asyncBatch.EntryLen())
+	require.Equal(t, 1, asyncBatch.StreamLen())
+	asyncStreams := collectStreams(asyncBatch)
+
+	require.Equal(t, model.LabelSet{"app": "multiline", "outer": "test"}, asyncStreams[0].Labels)
+	require.Equal(t, "START of a new line", asyncStreams[0].Entries[0].Line)
+
+}
+
+func collectStreams(b loki.Batch) []loki.Stream {
+	out := make([]loki.Stream, 0, b.StreamLen())
+	b.ConsumeStreams(func(stream loki.Stream, _ int64) error {
+		out = append(out, stream)
+		return nil
+	})
+	return out
 }
