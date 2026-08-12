@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
@@ -198,6 +199,65 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "https",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					discovery.StaticConfig{
+						&targetgroup.Group{
+							Targets: []model.LabelSet{{model.AddressLabel: model.LabelValue("foo")}, {model.AddressLabel: model.LabelValue("bar")}},
+							Labels:  model.LabelSet{},
+							Source:  "scrapeConfig/operator/scrapeconfig/static/1",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "body size limit and compression",
+			m: &promopv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "scrapeconfig",
+				},
+				Spec: promopv1alpha1.ScrapeConfigSpec{
+					EnableCompression: ptr.To(false),
+					BodySizeLimit:     ptr.To(promopv1.ByteSize("15MiB")),
+				},
+			},
+			ep: promopv1alpha1.StaticConfig{
+				Targets: []promopv1alpha1.Target{"foo", "bar"},
+			},
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- replacement: operator
+				  target_label: __meta_kubernetes_scrapeconfig_namespace
+				- replacement: scrapeconfig
+				  target_label: __meta_kubernetes_scrapeconfig_name
+				- source_labels: [__address__]
+				  target_label: instance
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:                        "scrapeConfig/operator/scrapeconfig/static/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Hour),
+				ScrapeTimeout:                  model.Duration(42 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              false,
+				BodySizeLimit:                  15 * units.MiB,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{

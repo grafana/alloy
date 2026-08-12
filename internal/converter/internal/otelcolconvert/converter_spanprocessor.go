@@ -65,8 +65,8 @@ func toSpanProcessor(state *State, id componentstatus.InstanceID, cfg *spanproce
 
 	return &span.Arguments{
 		Match: otelcol.MatchConfig{
-			Include: toMatchProperties(encodeMapstruct(cfg.Include)),
-			Exclude: toMatchProperties(encodeMapstruct(cfg.Exclude)),
+			Include: toMatchProperties(encodeMapstruct(cfg.MatchConfig.Include)),
+			Exclude: toMatchProperties(encodeMapstruct(cfg.MatchConfig.Exclude)),
 		},
 		Name: span.Name{
 			FromAttributes: cfg.Rename.FromAttributes,

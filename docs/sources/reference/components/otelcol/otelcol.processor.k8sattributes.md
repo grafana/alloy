@@ -187,7 +187,6 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 * `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
 * `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
-* `k8s.container.name` (requires an additional attribute to be set: `container.id`)
 * `k8s.deployment.name` (if the Pod is controlled by a deployment)
 * `k8s.namespace.name`
 * `k8s.node.name`

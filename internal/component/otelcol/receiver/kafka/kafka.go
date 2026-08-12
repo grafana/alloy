@@ -214,29 +214,29 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	result.Brokers = args.Brokers
-	result.ProtocolVersion = args.ProtocolVersion
-	result.SessionTimeout = args.SessionTimeout
-	result.HeartbeatInterval = args.HeartbeatInterval
+	result.ClientConfig.Brokers = args.Brokers
+	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
+	result.ConsumerConfig.SessionTimeout = args.SessionTimeout
+	result.ConsumerConfig.HeartbeatInterval = args.HeartbeatInterval
 	// Do not set the encoding argument - it is deprecated.
 	// result.Encoding = args.Encoding
-	result.GroupID = args.GroupID
-	result.ClientID = args.ClientID
-	result.InitialOffset = args.InitialOffset
-	result.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
-	result.Metadata = args.Metadata.Convert()
-	result.AutoCommit = args.AutoCommit.Convert()
+	result.ConsumerConfig.GroupID = args.GroupID
+	result.ClientConfig.ClientID = args.ClientID
+	result.ConsumerConfig.InitialOffset = args.InitialOffset
+	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
+	result.ClientConfig.Metadata = args.Metadata.Convert()
+	result.ConsumerConfig.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
-	result.MinFetchSize = args.MinFetchSize
-	result.MaxFetchSize = args.MaxFetchSize
-	result.MaxPartitionFetchSize = args.MaxPartitionFetchSize
-	result.MaxFetchWait = args.MaxFetchWait
-	result.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
-	result.GroupInstanceID = args.GroupInstanceID
-	result.RackID = args.RackID
-	result.UseLeaderEpoch = args.UseLeaderEpoch
-	result.ConnIdleTimeout = args.ConnIdleTimeout
+	result.ConsumerConfig.MinFetchSize = args.MinFetchSize
+	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
+	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
+	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
+	result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
+	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
+	result.ClientConfig.RackID = args.RackID
+	result.ClientConfig.UseLeaderEpoch = args.UseLeaderEpoch
+	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
 	result.Logs = args.Logs.convert()
@@ -245,7 +245,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
+		result.ClientConfig.TLS = tlsCfg
 	}
 
 	if err := result.Validate(); err != nil {

@@ -440,7 +440,7 @@ func TestConfigConversion(t *testing.T) {
 					K8sSvc: configoptional.Some(loadbalancingexporter.K8sSvcResolver{
 						Service:         "lb-svc.lb-ns",
 						Ports:           []int32{4317},
-						Timeout:         1 * time.Second,
+						Timeout:         1 * time.Minute,
 						ReturnHostnames: false,
 					}),
 				},

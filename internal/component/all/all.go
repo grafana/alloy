@@ -104,6 +104,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"          // Import otelcol.processor.memory_limiter
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/metricstarttime"        // Import otelcol.processor.metric_start_time
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"  // Import otelcol.processor.probabilistic_sampler
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/redaction"              // Import otelcol.processor.redaction
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"      // Import otelcol.processor.resourcedetection
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/span"                   // Import otelcol.processor.span
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling"          // Import otelcol.processor.tail_sampling
@@ -171,7 +172,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
-	_ "github.com/grafana/alloy/internal/component/prometheus/write/queue"                   // Import prometheus.write.queue
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/enrich"                         // Import pyroscope.enrich
 	_ "github.com/grafana/alloy/internal/component/pyroscope/java"                           // Import pyroscope.java

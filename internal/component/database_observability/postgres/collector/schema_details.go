@@ -25,11 +25,6 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-// emitInterval is the minimum amount of time that must elapse between
-// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
-// the configured collect_interval.
-const emitInterval = 30 * time.Minute
-
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
 	selectAllDatabases = `
@@ -331,7 +326,7 @@ type SchemaDetails struct {
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
 	// the inner key is "schema.table". Used to throttle logging to at most
-	// one per emitInterval per table.
+	// one per EmitInterval per table.
 	lastEmittedAt map[database]map[string]time.Time
 
 	// now allows overriding time.Now() in tests
@@ -539,7 +534,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	for _, table := range tables {
 		key := schemaTableKey(table.schema, table.tableName)
 		if inner := c.lastEmittedAt[db]; inner != nil {
-			if last, ok := inner[key]; ok && now.Sub(last) < emitInterval {
+			if last, ok := inner[key]; ok && now.Sub(last) < database_observability.EmitInterval {
 				continue
 			}
 		}
