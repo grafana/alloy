@@ -65,7 +65,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 	// build and attach it here based on the selected role. For numeric fields we
 	// mirror upstream's "override the per-role default only when set" semantics,
 	// sourcing the defaults from upstream's Default*SDConfig rather than hardcoding.
-	// https://github.com/prometheus/prometheus/blob/v3.12.0/discovery/aws/aws.go#L101
+	// https://github.com/prometheus/prometheus/blob/v3.13.2/discovery/aws/aws.go#L107
 	cfg := &promaws.SDConfig{Role: role}
 	switch role {
 	case promaws.RoleEC2:
@@ -83,7 +83,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			HTTPClientConfig: httpClient,
 		}
 		for _, f := range args.Filters {
-			sub.Filters = append(sub.Filters, &promaws.EC2Filter{Name: f.Name, Values: f.Values})
+			sub.Filters = append(sub.Filters, &promaws.Filter{Name: f.Name, Values: f.Values})
 		}
 		cfg.EC2SDConfig = sub
 	case promaws.RoleECS:

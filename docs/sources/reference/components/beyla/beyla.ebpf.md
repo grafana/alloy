@@ -764,7 +764,6 @@ The `metrics` block configures which metrics Beyla collects.
 | `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
 | `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
 | `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
-| `native_histograms`                   | `bool`         | Use Prometheus native histograms.                          | `false` | no |
 
 `exemplar_filter` controls when exemplars are attached to Prometheus metrics, mirroring the `OTEL_METRICS_EXEMPLAR_FILTER` specification.
 The accepted values are `always_on`, `always_off`, and `trace_based`.

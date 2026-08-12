@@ -80,13 +80,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 			Producer: configkafka.ProducerConfig{
 				MaxMessageBytes: 1000000,
-				RequiredAcks:    1,
-				Compression:     "none",
+				// Not exposed by Alloy; inherited from the upstream factory default.
+				MaxBrokerWriteBytes: 104857600,
+				RequiredAcks:        1,
+				Compression:         "none",
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
 				FlushMaxMessages:       10000,
 				AllowAutoTopicCreation: true,
+				// Not exposed by Alloy; inherited from the upstream factory default.
+				Linger: 10 * time.Millisecond,
 			},
 		}
 	}
@@ -345,13 +349,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				Producer: configkafka.ProducerConfig{
 					MaxMessageBytes: 2000001,
-					RequiredAcks:    0,
-					Compression:     "gzip",
+					// Not exposed by Alloy; inherited from the upstream factory default.
+					MaxBrokerWriteBytes: 104857600,
+					RequiredAcks:        0,
+					Compression:         "gzip",
 					CompressionParams: configcompression.CompressionParams{
 						Level: 9,
 					},
 					FlushMaxMessages:       101,
 					AllowAutoTopicCreation: true,
+					// Not exposed by Alloy; inherited from the upstream factory default.
+					Linger: 10 * time.Millisecond,
 				},
 				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
