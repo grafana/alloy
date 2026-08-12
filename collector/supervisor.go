@@ -29,6 +29,8 @@ const (
 	envBasicAuthBase64    = "GCLOUD_BASIC_AUTH_BASE64"
 )
 
+const opAmpEndpoint = "/v1/opamp"
+
 const svCmdDoc = `[EXPERIMENTAL] Run an embedded OpAMP supervisor that manages alloy as a supervised agent
 
 Configuration can be provided in two ways:
@@ -104,13 +106,8 @@ func runSupervisor(cfgPath string) error {
 	if creds != nil {
 		// Expose auth credentials to the supervised collector process.
 		// The FM collector health config uses this env var in its Basic auth header.
-		if err := os.Setenv(envBasicAuthBase64, creds.basicAuthCredentials); err != nil {
+		if err := os.Setenv(envBasicAuthBase64, creds.basicAuthBase64); err != nil {
 			return fmt.Errorf("cannot set %s environment variable: %w", envBasicAuthBase64, err)
-		}
-
-		// Fallback env var for "ping_otlp" configuration.
-		if err := os.Setenv("OTLP_TOKEN", creds.apiToken); err != nil {
-			return fmt.Errorf("cannot set %s environment variable: %w", "OTLP_TOKEN", err)
 		}
 	}
 
@@ -156,11 +153,9 @@ func (err *missingEnvVarsError) Error() string {
 	return fmt.Sprintf("missing environment variables: %s", strings.Join(err.missing, ", "))
 }
 
-const opAmpEndpoint = "/v1/opamp"
-
 type authCredentials struct {
-	basicAuthCredentials string
-	apiToken             string
+	basicAuthBase64 string
+	apiToken        string
 }
 
 func supervisorConfigFromEnv() (*config.Supervisor, *authCredentials, error) {
@@ -210,12 +205,12 @@ func supervisorConfigFromEnv() (*config.Supervisor, *authCredentials, error) {
 	cfg.Storage.Directory = storageDir
 
 	if err := cfg.Validate(); err != nil {
-		return nil, nil, fmt.Errorf("cannot validate generated supervisor config: %w", err)
+		return nil, nil, fmt.Errorf("invalid supervisor config: %w", err)
 	}
 
 	creds := &authCredentials{
-		basicAuthCredentials: authStr,
-		apiToken:             token,
+		basicAuthBase64: authStr,
+		apiToken:        token,
 	}
 	return &cfg, creds, nil
 }
