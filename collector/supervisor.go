@@ -17,6 +17,7 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/envprovider"
 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
+	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
 )
@@ -76,30 +77,8 @@ func newOtelSupervisorCommand() *cobra.Command {
 }
 
 func runSupervisor(cfgPath string) error {
-	exe, err := os.Executable()
+	cfg, creds, err := buildSupervisorConfig(cfgPath)
 	if err != nil {
-		return fmt.Errorf("unable to get executable path: %w", err)
-	}
-
-	var (
-		cfg   *config.Supervisor
-		creds *authCredentials
-	)
-	if cfgPath == "" {
-		// Build config from env vars and Grafana Cloud defaults if config is unset.
-		cfg, creds, err = supervisorConfigFromEnv()
-	} else {
-		cfg, err = supervisorConfigFromFile(cfgPath)
-	}
-
-	if err != nil {
-		if e, ok := errors.AsType[*missingEnvVarsError](err); ok {
-			return fmt.Errorf(
-				"missing configuration: specify --config flag, or set the following environment variable(s): %s",
-				strings.Join(e.missing, ", "),
-			)
-		}
-
 		return err
 	}
 
@@ -119,19 +98,14 @@ func runSupervisor(cfgPath string) error {
 		_ = logger.Sync()
 	}()
 
-	if cfg.Agent.Executable != "" && cfg.Agent.Executable != exe {
-		logger.Sugar().Warnf("warning: ignoring agent.executable %q from supervisor config; forcing the running Alloy binary %q", cfg.Agent.Executable, exe)
-	}
-	cfg.Agent.Executable = exe
-
 	// Passed context should remain alive until graceful shutdown completes.
 	// Cancelling the context doesn't shutdown the supervisor and can interrupt cleanup.
 	runCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sup, err := supervisor.NewSupervisor(runCtx, logger.Named("supervisor"), *cfg)
+	sup, err := newSupervisor(runCtx, logger, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to create supervisor: %w", err)
+		return err
 	}
 
 	if err := sup.Start(runCtx); err != nil {
@@ -143,6 +117,47 @@ func runSupervisor(cfgPath string) error {
 	<-interrupt
 	sup.Shutdown()
 	return nil
+}
+
+func newSupervisor(ctx context.Context, logger *zap.Logger, cfg *config.Supervisor) (*supervisor.Supervisor, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get executable path: %w", err)
+	}
+
+	if cfg.Agent.Executable != "" && cfg.Agent.Executable != exe {
+		logger.Sugar().Warnf("warning: ignoring agent.executable %q from supervisor config; forcing the running Alloy binary %q", cfg.Agent.Executable, exe)
+	}
+	cfg.Agent.Executable = exe
+
+	sup, err := supervisor.NewSupervisor(ctx, logger.Named("supervisor"), *cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create supervisor: %w", err)
+	}
+
+	return sup, nil
+}
+
+func buildSupervisorConfig(cfgPath string) (*config.Supervisor, *authCredentials, error) {
+	if cfgPath != "" {
+		cfg, err := supervisorConfigFromFile(cfgPath)
+		return cfg, nil, err
+	}
+
+	// Build config from env vars and Grafana Cloud defaults if config is unset.
+	cfg, creds, err := supervisorConfigFromEnv()
+	if err != nil {
+		if e, ok := errors.AsType[*missingEnvVarsError](err); ok {
+			return nil, nil, fmt.Errorf(
+				"missing configuration: specify --config flag, or set the following environment variable(s): %s",
+				strings.Join(e.missing, ", "),
+			)
+		}
+
+		return nil, nil, err
+	}
+
+	return cfg, creds, nil
 }
 
 type missingEnvVarsError struct {
