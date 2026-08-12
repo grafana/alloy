@@ -1097,7 +1097,7 @@ Replace the following:
 * _`<OPEN_PORT>`_: The port of the running service to instrument with eBPF.
 * _`<SERVICE_NAME>`_: The name to assign to the instrumented service in exported metrics and traces.
 
-For a complete working example that collects both metrics and traces from a running service using `beyla.ebpf`, refer to the [beyla-zero-code-instrumentation Alloy scenario][beyla-zero-code-instrumentation scenario].
+For a complete working example that collects both metrics and traces from a running service using `beyla.ebpf`, refer to the [Zero-code instrumentation with Beyla][beyla-zero-code-instrumentation scenario] scenario.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF website]: https://ebpf.io/
