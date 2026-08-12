@@ -53,26 +53,26 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 	)
 
 	var tlsCfgPtr *otelcol.TLSClientArguments
-	if cfg.TLS != nil {
-		tlsCfg := toTLSClientArguments(*cfg.TLS)
+	if cfg.ClientConfig.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.ClientConfig.TLS)
 		tlsCfgPtr = &tlsCfg
 	}
 
 	return &kafka.Arguments{
-		Brokers:           cfg.Brokers,
-		ProtocolVersion:   cfg.ProtocolVersion,
-		SessionTimeout:    cfg.SessionTimeout,
-		HeartbeatInterval: cfg.HeartbeatInterval,
-		GroupID:           cfg.GroupID,
-		ClientID:          cfg.ClientID,
-		InitialOffset:     cfg.InitialOffset,
-		ConnIdleTimeout:   cfg.ConnIdleTimeout,
+		Brokers:           cfg.ClientConfig.Brokers,
+		ProtocolVersion:   cfg.ClientConfig.ProtocolVersion,
+		SessionTimeout:    cfg.ConsumerConfig.SessionTimeout,
+		HeartbeatInterval: cfg.ConsumerConfig.HeartbeatInterval,
+		GroupID:           cfg.ConsumerConfig.GroupID,
+		ClientID:          cfg.ClientConfig.ClientID,
+		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
+		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
 
-		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
+		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
 
-		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
-		Metadata:         toKafkaMetadata(cfg.Metadata),
-		AutoCommit:       toKafkaAutoCommit(cfg.AutoCommit),
+		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
+		AutoCommit:       toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
@@ -82,14 +82,14 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
 		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
 
-		MinFetchSize:           cfg.MinFetchSize,
-		MaxFetchSize:           cfg.MaxFetchSize,
-		MaxPartitionFetchSize:  cfg.MaxPartitionFetchSize,
-		MaxFetchWait:           cfg.MaxFetchWait,
-		RackID:                 cfg.RackID,
-		UseLeaderEpoch:         cfg.UseLeaderEpoch,
-		GroupRebalanceStrategy: string(cfg.GroupRebalanceStrategy),
-		GroupInstanceID:        cfg.GroupInstanceID,
+		MinFetchSize:           cfg.ConsumerConfig.MinFetchSize,
+		MaxFetchSize:           cfg.ConsumerConfig.MaxFetchSize,
+		MaxPartitionFetchSize:  cfg.ConsumerConfig.MaxPartitionFetchSize,
+		MaxFetchWait:           cfg.ConsumerConfig.MaxFetchWait,
+		RackID:                 cfg.ClientConfig.RackID,
+		UseLeaderEpoch:         cfg.ClientConfig.UseLeaderEpoch,
+		GroupRebalanceStrategy: string(cfg.ConsumerConfig.GroupRebalanceStrategy),
+		GroupInstanceID:        cfg.ConsumerConfig.GroupInstanceID,
 
 		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
 

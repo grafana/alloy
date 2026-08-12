@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -40,6 +41,7 @@ type queryMetricsState struct {
 	errors     *prometheus.CounterVec
 	duration   *prometheus.CounterVec
 
+	mu      sync.RWMutex
 	entries map[queryMetricsKey]queryMetricsEntry
 	ttl     time.Duration
 	now     func() time.Time
@@ -59,6 +61,9 @@ func newQueryMetricsState(executions, errors, duration *prometheus.CounterVec, t
 // update folds one poll's cumulative totals into the counters and prunes any
 // series that has aged out of the TTL window.
 func (s *queryMetricsState) update(sources []queryMetricSource) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	now := s.now()
 
 	for _, source := range sources {
@@ -111,9 +116,25 @@ func (s *queryMetricsState) update(sources []queryMetricSource) {
 	s.prune(now)
 }
 
+// GetQueryHashes returns a snapshot of the query_hashes currently tracked for
+// the given database, i.e. those observed within the TTL window.
+func (s *queryMetricsState) GetQueryHashes(database string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	hashes := make([]string, 0, len(s.entries))
+	for key := range s.entries {
+		if key.database == database {
+			hashes = append(hashes, key.queryHash)
+		}
+	}
+	return hashes
+}
+
 // prune deletes state and series for hashes not observed within the TTL window.
-// A hash that flaps around the top-N boundary keeps its baseline until then, so
-// activity accrued while it was absent is counted on re-entry.
+// A hash that flaps around the top-N boundary keeps its baseline until
+// then, so activity accrued while it was absent is counted on re-entry.
+// Callers must hold s.mu.
 func (s *queryMetricsState) prune(now time.Time) {
 	for key, entry := range s.entries {
 		if now.Sub(entry.lastSeen) <= s.ttl {
@@ -128,6 +149,8 @@ func (s *queryMetricsState) prune(now time.Time) {
 
 // reset drops all accumulated state and series. Used when the collector stops.
 func (s *queryMetricsState) reset() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.executions.Reset()
 	s.errors.Reset()
 	s.duration.Reset()
