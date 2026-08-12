@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
 	commonConfig "github.com/prometheus/common/config"
@@ -291,6 +292,11 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
 	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
 	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
+	if m.Spec.BodySizeLimit != nil {
+		if cfg.BodySizeLimit, err = units.ParseBase2Bytes(string(*m.Spec.BodySizeLimit)); err != nil {
+			return nil, fmt.Errorf("parsing bodySizeLimit from podMonitor: %w", err)
+		}
+	}
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }
