@@ -405,36 +405,6 @@ prometheus.scrape "integrations_memcached_exporter" {
 	}
 }
 
-prometheus.exporter.mssql "integrations_mssql" {
-	connection_string = "sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>"
-}
-
-discovery.relabel "integrations_mssql" {
-	targets = prometheus.exporter.mssql.integrations_mssql.targets
-
-	rule {
-		target_label = "instance"
-		replacement  = "instance-key-value"
-	}
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/mssql"
-	}
-}
-
-prometheus.scrape "integrations_mssql" {
-	targets    = discovery.relabel.integrations_mssql.output
-	forward_to = [prometheus.remote_write.integrations.receiver]
-	job_name   = "integrations/mssql"
-
-	tls_config {
-		ca_file   = "/something7.cert"
-		cert_file = "/something8.cert"
-		key_file  = "/something9.cert"
-	}
-}
-
 prometheus.exporter.mysql "integrations_mysqld_exporter" {
 	data_source_name = "root@(server-a:3306)/"
 }
@@ -731,6 +701,36 @@ prometheus.scrape "integrations_gcp_exporter" {
 	targets    = discovery.relabel.integrations_gcp_exporter.output
 	forward_to = [prometheus.remote_write.integrations.receiver]
 	job_name   = "integrations/gcp_exporter"
+
+	tls_config {
+		ca_file   = "/something7.cert"
+		cert_file = "/something8.cert"
+		key_file  = "/something9.cert"
+	}
+}
+
+prometheus.exporter.mssql "integrations_mssql" {
+	connection_string = "sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>"
+}
+
+discovery.relabel "integrations_mssql" {
+	targets = prometheus.exporter.mssql.integrations_mssql.targets
+
+	rule {
+		target_label = "instance"
+		replacement  = "instance-key-value"
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/mssql"
+	}
+}
+
+prometheus.scrape "integrations_mssql" {
+	targets    = discovery.relabel.integrations_mssql.output
+	forward_to = [prometheus.remote_write.integrations.receiver]
+	job_name   = "integrations/mssql"
 
 	tls_config {
 		ca_file   = "/something7.cert"

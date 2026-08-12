@@ -4,15 +4,19 @@ description: Shared content, prom operator scrape
 headless: true
 ---
 
-| Name                             | Type       | Description                                                                                                                  | Default | Required |
-|----------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `start_timestamp_zero_ingestion` | `bool`     | (Experimental) Parse the start timestamp and inject a zero sample at it for cumulative metrics.                              | `false` | no       |
-| `default_sample_limit`           | `int`      | The default maximum samples per scrape. Used as the default if the target resource doesn't provide a sample limit.           |         | no       |
-| `default_scrape_interval`        | `duration` | The default interval between scraping targets. Used as the default if the target resource doesn't provide a scrape interval. | `1m`    | no       |
-| `default_scrape_timeout`         | `duration` | The default timeout for scrape requests. Used as the default if the target resource doesn't provide a scrape timeout.        | `10s`   | no       |
-| `enable_type_and_unit_labels`    | `bool`     | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                                | `false` | no       |
-| `honor_metadata`                 | `bool`     | (Experimental) Indicates whether to send metric metadata to downstream components.                                           | `false` | no       |
-| `scrape_native_histograms`       | `bool`     | Whether to scrape native histograms from targets.                                                                            | `false` | no       |
+| Name                                 | Type       | Description                                                                                                                  | Default | Required |
+|--------------------------------------|------------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `start_timestamp_zero_ingestion`     | `bool`     | (Experimental) Parse the start timestamp and inject a zero sample at it for cumulative metrics.                              | `false` | no       |
+| `default_sample_limit`               | `int`      | The default maximum samples per scrape. Used as the default if the target resource doesn't provide a sample limit.           |         | no       |
+| `default_scrape_interval`            | `duration` | The default interval between scraping targets. Used as the default if the target resource doesn't provide a scrape interval. | `1m`    | no       |
+| `default_scrape_timeout`             | `duration` | The default timeout for scrape requests. Used as the default if the target resource doesn't provide a scrape timeout.        | `10s`   | no       |
+| `convert_classic_histograms_to_nhcb` | `bool`     | Whether to convert classic histograms to native histograms with custom buckets (NHCB).                                       | `false` | no       |
+| `enable_type_and_unit_labels`        | `bool`     | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                                | `false` | no       |
+| `honor_metadata`                     | `bool`     | (Experimental) Indicates whether to send metric metadata to downstream components.                                           | `false` | no       |
+| `native_histogram_bucket_limit`      | `uint`     | Native histogram buckets will be merged to stay within this limit. Disabled when set to zero.                                | `0`     | no       |
+| `native_histogram_min_bucket_factor` | `float64`  | If the growth from one bucket to the next is smaller than this, buckets will be merged. Disabled when set to zero.           | `0`     | no       |
+| `scrape_classic_histograms`          | `bool`     | Whether to scrape a classic histogram that's also exposed as a native histogram.                                             | `false` | no       |
+| `scrape_native_histograms`           | `bool`     | Whether to scrape native histograms from targets.                                                                            | `false` | no       |
 
 > **EXPERIMENTAL**: The `honor_metadata`, `enable_type_and_unit_labels`, and `start_timestamp_zero_ingestion` arguments are [experimental][] features.
 > 
@@ -22,7 +26,6 @@ headless: true
 >
 > * `otelcol.receiver.prometheus`
 > * `prometheus.remote_write` only when configured for Remote Write v2.
-> * `prometheus.write_queue`
 > 
 > When `enable_type_and_unit_labels` argument is enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
 > This provides additional schema information about metrics directly in the label set.

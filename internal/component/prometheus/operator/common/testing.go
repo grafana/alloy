@@ -10,6 +10,7 @@ import (
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -275,6 +276,19 @@ func (f *TestCrdManagerFactory) GetScrapeConfigJobNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// GetScrapeConfigForJob returns the scrape config for a specific job name, or nil if not found.
+func (f *TestCrdManagerFactory) GetScrapeConfigForJob(jobName string) *promconfig.ScrapeConfig {
+	f.mu.RLock()
+	m := f.manager
+	f.mu.RUnlock()
+	if m == nil {
+		return nil
+	}
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	return m.scrapeConfigs[jobName]
 }
 
 // InjectStaticTargets injects static targets for a job, replacing k8s service discovery.
