@@ -200,6 +200,7 @@ The following attributes are supported:
 |-----------|----------|--------------------------------------------------|---------|----------|
 | `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
 | `default` | `string` | Value to use if the attribute is missing.        |         | no       |
+| `glob`    | `string` | Match attribute keys by pattern instead of exact name.|         | no       |
 
 `otelcol.connector.spanmetrics` looks for the `name` attribute in the span's collection of attributes.
 If it's not found, the resource attributes will be checked.

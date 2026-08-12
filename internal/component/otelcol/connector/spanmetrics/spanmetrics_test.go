@@ -721,3 +721,28 @@ func Test_ComponentIO(t *testing.T) {
 		})
 	}
 }
+
+func TestDimensionGlob(t *testing.T) {
+	var args spanmetrics.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		dimension {
+			name = "http.method"
+			glob = "http.*"
+		}
+		histogram {
+			unit = "ms"
+			exponential {
+				max_size = 10
+			}
+		}
+		output {}
+	`), &args))
+
+	converted, err := args.Convert()
+	require.NoError(t, err)
+	cfg := converted.(*spanmetricsconnector.Config)
+
+	require.Len(t, cfg.Dimensions, 1)
+	require.Equal(t, "http.method", cfg.Dimensions[0].Name)
+	require.Equal(t, "http.*", cfg.Dimensions[0].Glob)
+}

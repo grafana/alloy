@@ -15,11 +15,13 @@ import (
 type Dimension struct {
 	Name    string  `alloy:"name,attr"`
 	Default *string `alloy:"default,attr,optional"`
+	Glob    string  `alloy:"glob,attr,optional"`
 }
 
 func (d Dimension) Convert() spanmetricsconnector.Dimension {
 	res := spanmetricsconnector.Dimension{
 		Name: d.Name,
+		Glob: d.Glob,
 	}
 
 	if d.Default != nil {
