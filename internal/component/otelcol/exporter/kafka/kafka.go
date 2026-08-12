@@ -15,7 +15,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -202,14 +202,14 @@ type Producer struct {
 
 // Convert converts args into the upstream type.
 func (args Producer) Convert() configkafka.ProducerConfig {
-	return configkafka.ProducerConfig{
-		MaxMessageBytes:        args.MaxMessageBytes,
-		RequiredAcks:           configkafka.RequiredAcks(args.RequiredAcks),
-		Compression:            args.Compression,
-		CompressionParams:      args.CompressionParams.Convert(),
-		FlushMaxMessages:       args.FlushMaxMessages,
-		AllowAutoTopicCreation: args.AllowAutoTopicCreation,
-	}
+	cfg := configkafka.NewDefaultProducerConfig()
+	cfg.MaxMessageBytes = args.MaxMessageBytes
+	cfg.RequiredAcks = configkafka.RequiredAcks(args.RequiredAcks)
+	cfg.Compression = args.Compression
+	cfg.CompressionParams = args.CompressionParams.Convert()
+	cfg.FlushMaxMessages = args.FlushMaxMessages
+	cfg.AllowAutoTopicCreation = args.AllowAutoTopicCreation
+	return cfg
 }
 
 type CompressionParams struct {
@@ -269,7 +269,7 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 	kafkaCfg := otelCfg.(*kafkaexporter.Config)
-	return xconfmap.Validate(kafkaCfg)
+	return confmap.Validate(kafkaCfg)
 }
 
 // Convert implements exporter.Arguments.
@@ -283,10 +283,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	result.Brokers = args.Brokers
-	result.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
-	result.ProtocolVersion = args.ProtocolVersion
-	result.ClientID = args.ClientID
+	result.ClientConfig.Brokers = args.Brokers
+	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
+	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
+	result.ClientConfig.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute
 	// Do not set the encoding argument - it is deprecated.
 	// result.Encoding = args.Encoding
@@ -298,8 +298,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}
-	result.ConnIdleTimeout = args.ConnIdleTimeout
-	result.Metadata = args.Metadata.Convert()
+	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
+	result.ClientConfig.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 
 	result.Logs = args.Logs.convert(
@@ -337,7 +337,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
+		result.ClientConfig.TLS = tlsCfg
 	}
 
 	q, err := args.Queue.Convert()
@@ -353,11 +353,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		result.RecordPartitioner = kafkaexporter.RecordPartitionerConfig{
 			StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
 		}
-	}
-
-	if args.TLS != nil {
-		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
 	}
 
 	return &result, nil

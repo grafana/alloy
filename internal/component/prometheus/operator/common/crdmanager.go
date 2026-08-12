@@ -512,7 +512,8 @@ func (c *crdManager) addDebugInfo(ns string, name string, err error) {
 	}
 	if data, err := c.opts.GetServiceData(http.ServiceName); err == nil {
 		if hdata, ok := data.(http.Data); ok {
-			debug.ScrapeConfigsURL = fmt.Sprintf("%s%s/scrapeConfig/%s/%s", hdata.HTTPListenAddr, hdata.HTTPPathForComponent(c.opts.ID), ns, name)
+			// HTTPPathForComponent already returns a path with a trailing slash.
+			debug.ScrapeConfigsURL = fmt.Sprintf("%s%sscrapeConfig/%s/%s", hdata.HTTPListenAddr, hdata.HTTPPathForComponent(c.opts.ID), ns, name)
 		}
 	}
 	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)

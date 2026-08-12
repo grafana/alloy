@@ -176,7 +176,10 @@ func (cg *ConfigGenerator) generateAuthorization(a promopv1.SafeAuthorization, n
 func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	opt := cg.ScrapeOptions
 
-	copyScrapeNativeHistograms := opt.ScrapeNativeHistograms // make a copy as Prometheus wants a pointer.
+	// Copies required because Prometheus ScrapeConfig fields take pointers.
+	copyScrapeNativeHistograms := opt.ScrapeNativeHistograms
+	copyScrapeClassicHistograms := opt.ScrapeClassicHistograms
+	copyConvertClassicHistogramsToNHCB := opt.ConvertClassicHistogramsToNHCB
 
 	c := config.DefaultScrapeConfig
 	c.ScrapeInterval = config.DefaultGlobalConfig.ScrapeInterval
@@ -184,6 +187,10 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	c.ScrapeProtocols = config.DefaultGlobalConfig.ScrapeProtocols
 	c.ScrapeFallbackProtocol = config.PrometheusText0_0_4 // Keep the same as Prometheus V2
 	c.ScrapeNativeHistograms = &copyScrapeNativeHistograms
+	c.AlwaysScrapeClassicHistograms = &copyScrapeClassicHistograms
+	c.ConvertClassicHistogramsToNHCB = &copyConvertClassicHistogramsToNHCB
+	c.NativeHistogramBucketLimit = opt.NativeHistogramBucketLimit
+	c.NativeHistogramMinBucketFactor = opt.NativeHistogramMinBucketFactor
 
 	if opt.DefaultScrapeInterval != 0 {
 		c.ScrapeInterval = model.Duration(opt.DefaultScrapeInterval)
