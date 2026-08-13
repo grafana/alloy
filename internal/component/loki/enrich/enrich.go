@@ -49,11 +49,14 @@ type Exports struct {
 }
 
 type Component struct {
-	opts     component.Options
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
+	opts component.Options
+
+	receiver    loki.LogsReceiver
+	fanout      *loki.Fanout
+	interceptor *loki.InterceptorConsumer
 
 	mut          sync.RWMutex
+	stopped      bool
 	args         Arguments
 	targetsCache map[string]model.LabelSet
 }
@@ -67,6 +70,36 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		fanout:       loki.NewFanout(args.ForwardTo),
 	}
 
+	c.interceptor = loki.NewInterceptorConsumer(
+		opts.ID,
+		loki.NewNopConsumer(),
+		loki.WithConsumeHook(func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+			c.mut.RLock()
+			defer c.mut.RUnlock()
+			if c.stopped {
+				return loki.Batch{}, loki.ErrConsumerStopped
+			}
+
+			batch.FilterMapStreams(func(stream *loki.Stream) (keep bool) {
+				stream.Labels = c.process(stream.Labels, false)
+				return true
+			})
+
+			return batch, nil
+		}),
+		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
+			c.mut.RLock()
+			defer c.mut.RUnlock()
+
+			if c.stopped {
+				return loki.Entry{}, false, loki.ErrConsumerStopped
+			}
+
+			entry.Labels = c.process(entry.Labels, true)
+			return entry, true, nil
+		}),
+	)
+
 	opts.OnStateChange(Exports{Receiver: c.receiver})
 
 	if err := c.Update(args); err != nil {
@@ -78,58 +111,20 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
 	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
-		return c.processLog(e), true
+		c.mut.RLock()
+		defer c.mut.RUnlock()
+
+		e.Labels = c.process(e.Labels, true)
+		return e, true
 	})
 	return nil
-}
-
-func (c *Component) processLog(entry loki.Entry) loki.Entry {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
-
-	targetMatchLabel := c.args.TargetMatchLabel
-	logsMatchLabel := c.args.LogsMatchLabel
-	labelsToCopy := append([]string(nil), c.args.LabelsToCopy...)
-
-	// Determine which label to use for matching
-	matchLabel := logsMatchLabel
-	if matchLabel == "" {
-		matchLabel = targetMatchLabel
-	}
-
-	// Get the source value to match against discovered targets
-	sourceValue := string(entry.Labels[model.LabelName(matchLabel)])
-	if sourceValue == "" {
-		// No match label, forward as-is
-		return entry
-	}
-
-	// Look up matching target
-	targetLabels, found := c.targetsCache[sourceValue]
-
-	if !found {
-		// No matching target, forward as-is
-		return entry
-	}
-
-	// Copy entry in case it was forwarded to several components.
-	newEntry := entry.Clone()
-	if len(labelsToCopy) == 0 {
-		// If no specific labels are requested, copy all labels
-		for k, v := range targetLabels {
-			newEntry.Labels[k] = v
-		}
-	} else {
-		// Copy only requested labels
-		for _, label := range labelsToCopy {
-			if value := targetLabels[model.LabelName(label)]; value != "" {
-				newEntry.Labels[model.LabelName(label)] = value
-			}
-		}
-	}
-
-	return newEntry
 }
 
 func (c *Component) Update(args component.Arguments) error {
@@ -146,20 +141,56 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
-	newCache := make(map[string]model.LabelSet)
-
-	for _, target := range targets {
-		labelSet := make(model.LabelSet)
-		// Copy both own and group labels
-		target.ForEachLabel(func(k, v string) bool {
-			labelSet[model.LabelName(k)] = model.LabelValue(v)
-			return true
-		})
-		if matchValue := string(labelSet[model.LabelName(c.args.TargetMatchLabel)]); matchValue != "" {
-			newCache[matchValue] = labelSet
-		}
+// process returns lset enriched with labels from a matching target. Set
+// needsClone when the caller does not own lset.
+func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet {
+	// Determine which label to use for matching
+	matchLabel := c.args.LogsMatchLabel
+	if matchLabel == "" {
+		matchLabel = c.args.TargetMatchLabel
 	}
 
+	// Get the source value to match against discovered targets
+	sourceValue := string(lset[model.LabelName(matchLabel)])
+	if sourceValue == "" {
+		// No match label, forward as-is
+		return lset
+	}
+
+	// Look up matching target
+	targetLabels, found := c.targetsCache[sourceValue]
+	if !found {
+		// No matching target, forward as-is
+		return lset
+	}
+
+	if needsClone {
+		lset = lset.Clone()
+	}
+
+	if len(c.args.LabelsToCopy) == 0 {
+		// If no specific labels are requested, copy all labels
+		for k, v := range targetLabels {
+			lset[k] = v
+		}
+	} else {
+		// Copy only requested labels
+		for _, label := range c.args.LabelsToCopy {
+			if value := targetLabels[model.LabelName(label)]; value != "" {
+				lset[model.LabelName(label)] = value
+			}
+		}
+	}
+	return lset
+}
+
+func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
+	newCache := make(map[string]model.LabelSet)
+	for _, target := range targets {
+		lset := target.LabelSet()
+		if matchValue := string(lset[model.LabelName(c.args.TargetMatchLabel)]); matchValue != "" {
+			newCache[matchValue] = lset
+		}
+	}
 	c.targetsCache = newCache
 }

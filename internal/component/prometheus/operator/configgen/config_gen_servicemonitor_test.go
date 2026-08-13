@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -390,6 +391,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
+					BodySizeLimit:         ptr.To(promopv1.ByteSize("15MiB")),
 				},
 			},
 			ep: promopv1.Endpoint{
@@ -536,6 +538,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
+				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
 				ScrapeNativeHistograms:         falsePtr,
 				AlwaysScrapeClassicHistograms:  falsePtr,
