@@ -6,6 +6,7 @@ go 1.26.5
 
 require (
 	github.com/grafana/alloy v1.18.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.158.0
@@ -97,6 +98,7 @@ require (
 	go.opentelemetry.io/collector/receiver/nopreceiver v0.158.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.158.0
 	go.opentelemetry.io/collector/service v0.158.0
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -626,7 +628,9 @@ require (
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
+	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
+	github.com/knadh/koanf/providers/rawbytes v1.0.0 // indirect
 	github.com/knadh/koanf/v2 v2.3.5 // indirect
 	github.com/kolo/xmlrpc v0.0.0-20220921171641-a4b6fa1dd06b // indirect
 	github.com/krallistic/kazoo-go v0.0.0-20170526135507-a15279744f4e // indirect
@@ -1029,7 +1033,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.28.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
@@ -1089,6 +1092,8 @@ replace github.com/grafana/alloy => ../
 
 replace github.com/grafana/alloy/syntax => ../syntax
 
+replace github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
+
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
 replace github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
@@ -1130,3 +1135,5 @@ replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
 
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+
+exclude github.com/knadh/koanf v1.5.0

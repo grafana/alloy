@@ -1109,6 +1109,11 @@ tool github.com/99designs/gqlgen
 // Add shared remote replace directives to collector/builder-config.yaml.
 // ======================================================================
 
+// The OTel supervisor that's embedded in Alloy imports cmd/opampsupervisor, but OCB does not list it as a component. (auto-synced from collector/builder-config.yaml)
+// This would cause `go mod tidy` to resolve it to @latest (auto-synced from collector/builder-config.yaml)
+// Pin it to current contrib train version to prevent this. (auto-synced from collector/builder-config.yaml)
+replace github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
+
 // Replace yaml.v2 with fork (auto-synced from collector/builder-config.yaml)
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
