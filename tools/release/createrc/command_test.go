@@ -98,3 +98,56 @@ func TestSelectMainModuleReleasePR(t *testing.T) {
 		})
 	}
 }
+
+func TestRootReleaseVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		baseManifest string
+		headManifest string
+		want         string
+		wantErr      bool
+	}{
+		{
+			name:         "returns updated root version",
+			baseManifest: `{".":"1.17.0","syntax":"0.1.1"}`,
+			headManifest: `{".":"1.18.0","syntax":"0.1.2"}`,
+			want:         "1.18.0",
+		},
+		{
+			name:         "rejects component-only release",
+			baseManifest: `{".":"1.17.0","syntax":"0.1.1"}`,
+			headManifest: `{".":"1.17.0","syntax":"0.1.2"}`,
+			wantErr:      true,
+		},
+		{
+			name:         "rejects missing root version",
+			baseManifest: `{".":"1.17.0"}`,
+			headManifest: `{"syntax":"0.1.2"}`,
+			wantErr:      true,
+		},
+		{
+			name:         "rejects invalid manifest",
+			baseManifest: `{".":"1.17.0"}`,
+			headManifest: `{`,
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := findRootReleaseVersion([]byte(tt.baseManifest), []byte(tt.headManifest))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got version %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got version %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
