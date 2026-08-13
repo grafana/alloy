@@ -86,20 +86,19 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-		Brokers:                []string{"localhost:9092"},
-		ClientID:               "otel-collector",
-		GroupID:                "otel-collector",
-		InitialOffset:          "latest",
-		SessionTimeout:         10 * time.Second,
-		HeartbeatInterval:      3 * time.Second,
-		MinFetchSize:           1,
-		MaxFetchSize:           1048576,
-		MaxPartitionFetchSize:  1048576,
-		MaxFetchWait:           250 * time.Millisecond,
-		GroupRebalanceStrategy: "range",
-		RackID:                 "",
-		UseLeaderEpoch:         true,
-		ConnIdleTimeout:        9 * time.Minute,
+		Brokers:               []string{"localhost:9092"},
+		ClientID:              "otel-collector",
+		GroupID:               "otel-collector",
+		InitialOffset:         "latest",
+		SessionTimeout:        10 * time.Second,
+		HeartbeatInterval:     3 * time.Second,
+		MinFetchSize:          1,
+		MaxFetchSize:          1048576,
+		MaxPartitionFetchSize: 1048576,
+		MaxFetchWait:          250 * time.Millisecond,
+		RackID:                "",
+		UseLeaderEpoch:        true,
+		ConnIdleTimeout:       9 * time.Minute,
 		Logs: KafkaReceiverTopicEncodingConfig{
 			Topics:   []string{"otlp_logs"},
 			Encoding: "otlp_proto",
@@ -132,20 +131,22 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	// Upstream rejects setting both forms. group_rebalance_strategy keeps its "range"
-	// default, so only treat a non-default value as an explicit conflict.
-	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != defaultGroupRebalanceStrategy {
+	// Upstream rejects setting both forms, whatever their values.
+	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != "" {
 		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
 	}
 
-	if len(args.GroupRebalanceStrategies) > 0 {
-		for _, strategy := range args.GroupRebalanceStrategies {
-			if err := validateGroupRebalanceStrategy(strategy); err != nil {
-				return err
-			}
+	for _, strategy := range args.GroupRebalanceStrategies {
+		if err := validateGroupRebalanceStrategy(strategy); err != nil {
+			return err
 		}
-	} else if err := validateGroupRebalanceStrategy(args.GroupRebalanceStrategy); err != nil {
-		return err
+	}
+
+	// An empty singular means unset; Convert applies the default.
+	if args.GroupRebalanceStrategy != "" {
+		if err := validateGroupRebalanceStrategy(args.GroupRebalanceStrategy); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -262,8 +263,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 		result.ConsumerConfig.GroupRebalanceStrategies = strategies
 		result.ConsumerConfig.GroupRebalanceStrategy = ""
-	} else {
+	} else if args.GroupRebalanceStrategy != "" {
 		result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
+	} else {
+		result.ConsumerConfig.GroupRebalanceStrategy = defaultGroupRebalanceStrategy
 	}
 	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
 	result.ClientConfig.RackID = args.RackID

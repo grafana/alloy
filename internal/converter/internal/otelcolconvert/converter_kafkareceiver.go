@@ -58,6 +58,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		tlsCfgPtr = &tlsCfg
 	}
 
+	rebalanceStrategy, rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
 	return &kafka.Arguments{
 		Brokers:           cfg.ClientConfig.Brokers,
 		ProtocolVersion:   cfg.ClientConfig.ProtocolVersion,
@@ -82,14 +83,15 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
 		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
 
-		MinFetchSize:           cfg.ConsumerConfig.MinFetchSize,
-		MaxFetchSize:           cfg.ConsumerConfig.MaxFetchSize,
-		MaxPartitionFetchSize:  cfg.ConsumerConfig.MaxPartitionFetchSize,
-		MaxFetchWait:           cfg.ConsumerConfig.MaxFetchWait,
-		RackID:                 cfg.ClientConfig.RackID,
-		UseLeaderEpoch:         cfg.ClientConfig.UseLeaderEpoch,
-		GroupRebalanceStrategy: string(cfg.ConsumerConfig.GroupRebalanceStrategy),
-		GroupInstanceID:        cfg.ConsumerConfig.GroupInstanceID,
+		MinFetchSize:             cfg.ConsumerConfig.MinFetchSize,
+		MaxFetchSize:             cfg.ConsumerConfig.MaxFetchSize,
+		MaxPartitionFetchSize:    cfg.ConsumerConfig.MaxPartitionFetchSize,
+		MaxFetchWait:             cfg.ConsumerConfig.MaxFetchWait,
+		RackID:                   cfg.ClientConfig.RackID,
+		UseLeaderEpoch:           cfg.ClientConfig.UseLeaderEpoch,
+		GroupRebalanceStrategy:   rebalanceStrategy,
+		GroupRebalanceStrategies: rebalanceStrategies,
+		GroupInstanceID:          cfg.ConsumerConfig.GroupInstanceID,
 
 		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
 
@@ -239,5 +241,20 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	return kafka.HeaderExtraction{
 		ExtractHeaders: cfg.ExtractHeaders,
 		Headers:        cfg.Headers,
+	}
+}
+
+func toKafkaRebalance(cfg configkafka.ConsumerConfig) (strategy string, strategies []string) {
+	switch {
+	case len(cfg.GroupRebalanceStrategies) > 0:
+		strategies = make([]string, 0, len(cfg.GroupRebalanceStrategies))
+		for _, s := range cfg.GroupRebalanceStrategies {
+			strategies = append(strategies, string(s))
+		}
+		return "", strategies
+	case cfg.GroupRebalanceStrategy != "":
+		return string(cfg.GroupRebalanceStrategy), nil
+	default:
+		return string(configkafka.CooperativeStickyBalanceStrategy), nil
 	}
 }
