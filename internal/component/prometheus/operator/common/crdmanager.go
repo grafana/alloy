@@ -587,6 +587,8 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	}
 
 	mapKeys := []string{}
+	discoveryConfigs := map[string]discovery.Configs{}
+	scrapeConfigs := map[string]*config.ScrapeConfig{}
 	for i, ep := range sm.Spec.Endpoints {
 		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
 
@@ -598,16 +600,20 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 			break
 		}
 		mapKeys = append(mapKeys, scrapeConfig.JobName)
-		c.mut.Lock()
-		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
-		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
-		c.mut.Unlock()
+		discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
 	}
 	if err != nil {
 		c.addDebugInfo(sm.Namespace, sm.Name, err)
 		return
 	}
 	c.mut.Lock()
+	for k, v := range discoveryConfigs {
+		c.discoveryConfigs[k] = v
+	}
+	for k, v := range scrapeConfigs {
+		c.scrapeConfigs[k] = v
+	}
 	c.crdsToMapKeys[fmt.Sprintf("%s/%s", sm.Namespace, sm.Name)] = mapKeys
 	c.mut.Unlock()
 	if err = c.apply(); err != nil {

@@ -169,6 +169,33 @@ func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T
 	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
 }
 
+func TestAddServiceMonitorDoesNotStorePartialConfigsOnError(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	args := operator.DefaultArguments
+	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+
+	targetPort := intstr.FromInt(9090)
+	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Endpoints: []promopv1.Endpoint{
+				{TargetPort: &targetPort},
+				{BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"}, //nolint:staticcheck
+			},
+		},
+	})
+
+	require.Empty(t, m.discoveryConfigs)
+	require.Empty(t, m.scrapeConfigs)
+	require.Empty(t, m.crdsToMapKeys)
+	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
+	require.NotNil(t, debugInfo)
+	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
+}
+
 func TestClearConfigsProbe(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	m := newCrdManager(
