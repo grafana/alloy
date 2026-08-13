@@ -226,7 +226,7 @@ The following arguments are supported:
 
 Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
 
-`max_broker_write_bytes` must be at least `104857600` (100 MiB), and `max_message_bytes` must be less than or equal to it.
+`max_broker_write_bytes` must be at least `104857600` (100 MiB), and `max_message_bytes` must be less than or equal to `max_broker_write_bytes`.
 Raise `max_broker_write_bytes` if you need a `max_message_bytes` larger than the default.
 
 Set `linger` to `"0s"` to send records as soon as they arrive, at the cost of less effective batching.
