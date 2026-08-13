@@ -98,7 +98,7 @@ To monitor and remotely configure an {{< param "OTEL_ENGINE" >}} deployment, fol
 Grafana continues to improve the {{< param "OTEL_ENGINE" >}} and its integration with Grafana products.
 The goal is a first-class collection experience for users who choose standard OpenTelemetry Collector workflows.
 
-The {{< param "DEFAULT_ENGINE" >}} will continue to be in active development.
+{{< param "DEFAULT_ENGINE" >}} continues to be in active development.
 It remains the default, stable engine, and Grafana continues to add features to it.
 The two engines can evolve toward the same outcomes without requiring every feature to have an identical implementation.
 
