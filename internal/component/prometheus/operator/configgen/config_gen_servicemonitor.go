@@ -22,7 +22,7 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
 	if cg.DisallowArbitraryFileAccess {
-		if field := serviceMonitorEndpointArbitraryFileField(ep); field != "" {
+		if field := ServiceMonitorEndpointArbitraryFileField(ep); field != "" {
 			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed by disallow_arbitrary_file_access; use secret or authorization fields instead", m.Namespace, m.Name, i, field)
 		}
 	}
@@ -331,7 +331,8 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }
 
-func serviceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
+// ServiceMonitorEndpointArbitraryFileField returns the first arbitrary file field set on a ServiceMonitor endpoint.
+func ServiceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
 	if ep.BearerTokenFile != "" { //nolint:staticcheck
 		return "bearerTokenFile"
 	}

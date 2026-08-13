@@ -617,7 +617,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 }
 
 func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.ServiceMonitor, endpointIndex int, ep promopv1.Endpoint) {
-	field := serviceMonitorEndpointArbitraryFileField(ep)
+	field := configgen.ServiceMonitorEndpointArbitraryFileField(ep)
 	if field == "" {
 		return
 	}
@@ -630,25 +630,6 @@ func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.Servi
 		"field", field,
 		"mitigation", "remove the file reference or set disallow_arbitrary_file_access to false to opt out",
 	)
-}
-
-func serviceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
-	if ep.BearerTokenFile != "" { //nolint:staticcheck
-		return "bearerTokenFile"
-	}
-	if ep.TLSConfig == nil {
-		return ""
-	}
-	if ep.TLSConfig.CAFile != "" {
-		return "tlsConfig.caFile"
-	}
-	if ep.TLSConfig.CertFile != "" {
-		return "tlsConfig.certFile"
-	}
-	if ep.TLSConfig.KeyFile != "" {
-		return "tlsConfig.keyFile"
-	}
-	return ""
 }
 
 func (c *crdManager) onAddServiceMonitor(obj any) {
