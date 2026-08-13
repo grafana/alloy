@@ -86,7 +86,7 @@ type labelStage struct {
 
 // Run implements Stage
 func (l *labelStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range in {

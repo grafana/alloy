@@ -57,7 +57,7 @@ type samplingStage struct {
 }
 
 func (m *samplingStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		counter := m.dropCount.WithLabelValues(m.cfg.DropReason)

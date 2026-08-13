@@ -52,7 +52,7 @@ func newWindowsEventStage(logger *slog.Logger, cfg *WindowsEventConfig) Stage {
 }
 
 func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	key := w.cfg.Source
 	go func() {
 		defer close(out)

@@ -19,7 +19,7 @@ var ansiRegex = regexp.MustCompile(ansiPattern)
 
 // Run implements Stage
 func (m *decolorizeStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		for e := range in {

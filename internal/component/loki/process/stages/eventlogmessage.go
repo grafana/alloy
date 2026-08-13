@@ -45,7 +45,7 @@ func newEventLogMessageStage(logger *slog.Logger, cfg *EventLogMessageConfig) St
 }
 
 func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	key := m.cfg.Source
 	go func() {
 		defer close(out)

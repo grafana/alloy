@@ -128,7 +128,7 @@ type geoIPStage struct {
 
 // Run implements Stage
 func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
+	out := newEntryChan()
 	go func() {
 		defer close(out)
 		defer g.close()
