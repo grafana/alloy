@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"golang.org/x/exp/maps"
@@ -115,8 +116,8 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	reg := prometheus.NewRegistry()
 	args := operator.DefaultArguments
-	args.DisallowArbitraryFileAccess = false
 	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, reg)
+	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -144,6 +145,38 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	require.Contains(t, logs.String(), "field=bearerTokenFile")
 	require.Contains(t, logs.String(), "endpoint=1")
 	require.Contains(t, logs.String(), "field=tlsConfig.caFile")
+}
+
+func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	args := operator.DefaultArguments
+	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
+
+	sm := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       "monitoring",
+			Name:            "svcmonitor",
+			ResourceVersion: "1",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Endpoints: []promopv1.Endpoint{
+				{BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"}, //nolint:staticcheck
+			},
+		},
+	}
+
+	m.onAddServiceMonitor(sm)
+	m.onAddServiceMonitor(sm)
+
+	require.Equal(t, 1, strings.Count(logs.String(), "field=bearerTokenFile"))
+
+	updated := sm.DeepCopy()
+	updated.ResourceVersion = "2"
+	m.onUpdateServiceMonitor(sm, updated)
+
+	require.Equal(t, 2, strings.Count(logs.String(), "field=bearerTokenFile"))
 }
 
 func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T) {

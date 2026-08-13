@@ -230,8 +230,9 @@ type TestCrdManagerFactory struct {
 }
 
 // New implements crdManagerFactory.
-func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings serviceMonitorSettings) crdManagerInterface {
 	m := newCrdManager(opts, cluster, logger, args, kind, ls)
+	m.serviceMonitorSettings = serviceMonitorSettings
 
 	// Create and inject the FakeK8sFactory
 	f.mu.Lock()

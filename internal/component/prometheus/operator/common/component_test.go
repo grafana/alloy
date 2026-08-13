@@ -29,7 +29,7 @@ type crdManagerFactoryHungRun struct {
 	stopRun         chan struct{}
 }
 
-func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore) crdManagerInterface {
+func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore, _ serviceMonitorSettings) crdManagerInterface {
 	return &crdManagerHungRun{m.running, m.contextCanceled, m.stopRun}
 }
 
@@ -56,6 +56,36 @@ func (c *crdManagerHungRun) DebugInfo() any {
 
 func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 	return nil
+}
+
+type testServiceMonitorArguments struct {
+	operator.Arguments
+	disallowArbitraryFileAccess bool
+}
+
+func (args testServiceMonitorArguments) OperatorArguments() operator.Arguments {
+	return args.Arguments
+}
+
+func (args testServiceMonitorArguments) ServiceMonitorDisallowArbitraryFileAccess() bool {
+	return args.disallowArbitraryFileAccess
+}
+
+func TestConvertArguments(t *testing.T) {
+	args := operator.DefaultArguments
+	cfg, settings, err := convertArguments(args)
+	require.NoError(t, err)
+	require.Equal(t, args, cfg)
+	require.True(t, settings.disallowArbitraryFileAccess)
+
+	serviceMonitorArgs := testServiceMonitorArguments{
+		Arguments:                   args,
+		disallowArbitraryFileAccess: false,
+	}
+	cfg, settings, err = convertArguments(serviceMonitorArgs)
+	require.NoError(t, err)
+	require.Equal(t, args, cfg)
+	require.False(t, settings.disallowArbitraryFileAccess)
 }
 
 func TestRunExit(t *testing.T) {

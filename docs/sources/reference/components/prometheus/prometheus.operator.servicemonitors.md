@@ -30,7 +30,7 @@ In these cases, the secrets are loaded and refreshed only when the ServiceMonito
 By default, `disallow_arbitrary_file_access` prevents ServiceMonitor endpoints from referencing files on the {{< param "PRODUCT_NAME" >}} filesystem through `bearerTokenFile`, `tlsConfig.caFile`, `tlsConfig.certFile`, or `tlsConfig.keyFile`.
 This is important in multi-tenant Kubernetes clusters where ServiceMonitor resources may be created by users who don't have the same permissions as {{< param "PRODUCT_NAME" >}}.
 
-Use `bearerTokenSecret`, `authorization`, or TLS secret and config map references in the ServiceMonitor instead of local file references.
+Use `bearerTokenSecret`, `authorization`, or TLS secret and `ConfigMap` references in the ServiceMonitor instead of local file references.
 
 ## Usage
 
