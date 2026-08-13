@@ -25,6 +25,13 @@ You can run it from outside the cluster by supplying connection info in the `cli
 ServiceMonitors may reference secrets for authenticating to targets to scrape them.
 In these cases, the secrets are loaded and refreshed only when the ServiceMonitor is updated or when this component refreshes its' internal state, which happens on a 5-minute refresh cycle.
 
+## Security considerations
+
+By default, `disallow_arbitrary_file_access` prevents ServiceMonitor endpoints from referencing files on the {{< param "PRODUCT_NAME" >}} filesystem through `bearerTokenFile`, `tlsConfig.caFile`, `tlsConfig.certFile`, or `tlsConfig.keyFile`.
+This is important in multi-tenant Kubernetes clusters where ServiceMonitor resources may be created by users who don't have the same permissions as {{< param "PRODUCT_NAME" >}}.
+
+Use `bearerTokenSecret`, `authorization`, or TLS secret and config map references in the ServiceMonitor instead of local file references.
+
 ## Usage
 
 ```alloy
@@ -37,12 +44,13 @@ prometheus.operator.servicemonitors "<LABEL>" {
 
 You can use the following arguments with `prometheus.operator.servicemonitors`:
 
-| Name                    | Type                    | Description                                                                                               | Default       | Required |
-| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------------- | -------- |
-| `forward_to`            | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |               | yes      |
-| `informer_sync_timeout` | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `"1m"`        | no       |
-| `kubernetes_role`       | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `"endpoints"` | no       |
-| `namespaces`            | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |               | no       |
+| Name                               | Type                    | Description                                                                                               | Default       | Required |
+| ---------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `disallow_arbitrary_file_access`   | `bool`                  | Disallow ServiceMonitor endpoints that reference arbitrary files on the {{< param "PRODUCT_NAME" >}} filesystem. | `true`        | no       |
+| `forward_to`                       | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |               | yes      |
+| `informer_sync_timeout`            | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `"1m"`        | no       |
+| `kubernetes_role`                  | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `"endpoints"` | no       |
+| `namespaces`                       | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |               | no       |
 
 ## Blocks
 

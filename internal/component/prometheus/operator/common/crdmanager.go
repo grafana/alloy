@@ -579,14 +579,17 @@ func (c *crdManager) onDeletePodMonitor(obj any) {
 func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	var err error
 	gen := configgen.ConfigGenerator{
-		Secrets:                  configgen.NewSecretManager(c.client),
-		Client:                   &c.args.Client,
-		AdditionalRelabelConfigs: c.args.RelabelConfigs,
-		ScrapeOptions:            c.args.Scrape,
+		Secrets:                     configgen.NewSecretManager(c.client),
+		Client:                      &c.args.Client,
+		DisallowArbitraryFileAccess: c.args.DisallowArbitraryFileAccess,
+		AdditionalRelabelConfigs:    c.args.RelabelConfigs,
+		ScrapeOptions:               c.args.Scrape,
 	}
 
 	mapKeys := []string{}
 	for i, ep := range sm.Spec.Endpoints {
+		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
+
 		var scrapeConfig *config.ScrapeConfig
 		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
 		if err != nil {
@@ -611,6 +614,41 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		c.logger.Error("error applying scrape configs", "name", sm.Name, "err", err)
 	}
 	c.addDebugInfo(sm.Namespace, sm.Name, err)
+}
+
+func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.ServiceMonitor, endpointIndex int, ep promopv1.Endpoint) {
+	field := serviceMonitorEndpointArbitraryFileField(ep)
+	if field == "" {
+		return
+	}
+
+	c.logger.Warn(
+		"serviceMonitor endpoint references an arbitrary file from Alloy's filesystem",
+		"namespace", sm.Namespace,
+		"name", sm.Name,
+		"endpoint", endpointIndex,
+		"field", field,
+		"mitigation", "remove the file reference or set disallow_arbitrary_file_access to false to opt out",
+	)
+}
+
+func serviceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
+	if ep.BearerTokenFile != "" { //nolint:staticcheck
+		return "bearerTokenFile"
+	}
+	if ep.TLSConfig == nil {
+		return ""
+	}
+	if ep.TLSConfig.CAFile != "" {
+		return "tlsConfig.caFile"
+	}
+	if ep.TLSConfig.CertFile != "" {
+		return "tlsConfig.certFile"
+	}
+	if ep.TLSConfig.KeyFile != "" {
+		return "tlsConfig.keyFile"
+	}
+	return ""
 }
 
 func (c *crdManager) onAddServiceMonitor(obj any) {

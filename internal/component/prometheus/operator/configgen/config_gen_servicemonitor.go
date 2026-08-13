@@ -21,6 +21,12 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	cfg = cg.generateDefaultScrapeConfig()
 
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
+	if cg.DisallowArbitraryFileAccess {
+		if field := serviceMonitorEndpointArbitraryFileField(ep); field != "" {
+			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed by disallow_arbitrary_file_access; use secret or authorization fields instead", m.Namespace, m.Name, i, field)
+		}
+	}
+
 	cfg.HonorLabels = ep.HonorLabels
 	if ep.HonorTimestamps != nil {
 		cfg.HonorTimestamps = *ep.HonorTimestamps
@@ -323,4 +329,23 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	}
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
+}
+
+func serviceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
+	if ep.BearerTokenFile != "" { //nolint:staticcheck
+		return "bearerTokenFile"
+	}
+	if ep.TLSConfig == nil {
+		return ""
+	}
+	if ep.TLSConfig.CAFile != "" {
+		return "tlsConfig.caFile"
+	}
+	if ep.TLSConfig.CertFile != "" {
+		return "tlsConfig.certFile"
+	}
+	if ep.TLSConfig.KeyFile != "" {
+		return "tlsConfig.keyFile"
+	}
+	return ""
 }

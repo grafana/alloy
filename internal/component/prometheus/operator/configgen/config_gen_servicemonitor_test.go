@@ -672,3 +672,124 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
+	serviceMonitor := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "operator",
+			Name:      "svcmonitor",
+		},
+	}
+
+	tests := []struct {
+		name                        string
+		disallowArbitraryFileAccess bool
+		ep                          promopv1.Endpoint
+		expectedBearerTokenFile     string
+		expectedTLSConfig           commonConfig.TLSConfig
+		expectedErr                 string
+	}{
+		{
+			name: "flag off honors bearer token file",
+			ep: promopv1.Endpoint{
+				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
+			},
+			expectedBearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		},
+		{
+			name: "flag off honors tls file fields",
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{
+								CAFile:   "/etc/prometheus/ca.crt",
+								CertFile: "/etc/prometheus/client.crt",
+								KeyFile:  "/etc/prometheus/client.key",
+							},
+						},
+					},
+				},
+			},
+			expectedTLSConfig: commonConfig.TLSConfig{
+				CAFile:   "/etc/prometheus/ca.crt",
+				CertFile: "/etc/prometheus/client.crt",
+				KeyFile:  "/etc/prometheus/client.key",
+			},
+		},
+		{
+			name:                        "flag on rejects bearer token file",
+			disallowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
+			},
+			expectedErr: "bearerTokenFile, which is disallowed by disallow_arbitrary_file_access",
+		},
+		{
+			name:                        "flag on rejects tls ca file",
+			disallowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/etc/prometheus/ca.crt"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.caFile, which is disallowed by disallow_arbitrary_file_access",
+		},
+		{
+			name:                        "flag on rejects tls cert file",
+			disallowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{CertFile: "/etc/prometheus/client.crt"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.certFile, which is disallowed by disallow_arbitrary_file_access",
+		},
+		{
+			name:                        "flag on rejects tls key file",
+			disallowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{KeyFile: "/etc/prometheus/client.key"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.keyFile, which is disallowed by disallow_arbitrary_file_access",
+		},
+		{
+			name:                        "flag on allows endpoints without file fields",
+			disallowArbitraryFileAccess: true,
+			ep:                          promopv1.Endpoint{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cg := &ConfigGenerator{
+				Client:                      &kubernetes.ClientArguments{},
+				DisallowArbitraryFileAccess: tc.disallowArbitraryFileAccess,
+			}
+
+			cfg, err := cg.GenerateServiceMonitorConfig(serviceMonitor, tc.ep, 0, promk8s.RoleEndpoint)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedBearerTokenFile, cfg.HTTPClientConfig.BearerTokenFile)
+			require.Equal(t, tc.expectedTLSConfig, cfg.HTTPClientConfig.TLSConfig)
+		})
+	}
+}

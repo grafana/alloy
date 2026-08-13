@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"log/slog"
 	"testing"
 
@@ -23,6 +24,26 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+func newTestCrdManager(t *testing.T, logger *slog.Logger, args *operator.Arguments, kind string, reg prometheus.Registerer) *crdManager {
+	t.Helper()
+
+	m := newCrdManager(
+		component.Options{
+			Logger:         logger,
+			Registerer:     reg,
+			GetServiceData: func(name string) (any, error) { return nil, nil },
+		},
+		cluster.Mock(),
+		logger,
+		args,
+		kind,
+		labelstore.New(logger, prometheus.NewRegistry()),
+	)
+	m.discoveryManager = newMockDiscoveryManager()
+	m.scrapeManager = newMockScrapeManager()
+	return m
+}
 
 func TestClearConfigsSameNsSamePrefix(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
@@ -87,6 +108,65 @@ func TestClearConfigsSameNsSamePrefix(t *testing.T) {
 	require.ElementsMatch(t, []string{"monitoring/svcmonitor", "monitoring/svcmonitor-another"}, maps.Keys(m.crdsToMapKeys))
 	require.ElementsMatch(t, []string{"serviceMonitor/monitoring/svcmonitor-another/0"}, maps.Keys(m.discoveryConfigs))
 	require.ElementsMatch(t, []string{"serviceMonitor/monitoring/svcmonitor-another"}, maps.Keys(m.debugInfo))
+}
+
+func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	reg := prometheus.NewRegistry()
+	args := operator.DefaultArguments
+	args.DisallowArbitraryFileAccess = false
+	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, reg)
+
+	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Endpoints: []promopv1.Endpoint{
+				{BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"}, //nolint:staticcheck
+				{
+					HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+						HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+							TLSConfig: &promopv1.TLSConfig{
+								TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/etc/prometheus/ca.crt"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	require.Contains(t, logs.String(), "serviceMonitor endpoint references an arbitrary file")
+	require.Contains(t, logs.String(), "endpoint=0")
+	require.Contains(t, logs.String(), "field=bearerTokenFile")
+	require.Contains(t, logs.String(), "endpoint=1")
+	require.Contains(t, logs.String(), "field=tlsConfig.caFile")
+}
+
+func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	args := operator.DefaultArguments
+	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+
+	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Endpoints: []promopv1.Endpoint{
+				{BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"}, //nolint:staticcheck
+			},
+		},
+	})
+
+	require.Empty(t, m.scrapeConfigs)
+	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
+	require.NotNil(t, debugInfo)
+	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
 }
 
 func TestClearConfigsProbe(t *testing.T) {

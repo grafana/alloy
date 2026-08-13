@@ -21,8 +21,10 @@ import (
 )
 
 type ConfigGenerator struct {
-	Client                   *k8sConfig.ClientArguments
-	Secrets                  SecretFetcher
+	Client                      *k8sConfig.ClientArguments
+	Secrets                     SecretFetcher
+	DisallowArbitraryFileAccess bool
+
 	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
 }

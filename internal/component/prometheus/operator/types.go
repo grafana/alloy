@@ -27,6 +27,9 @@ type Arguments struct {
 	// Namespaces to search for monitor resources. Empty implies All namespaces
 	Namespaces []string `alloy:"namespaces,attr,optional"`
 
+	// DisallowArbitraryFileAccess disallows arbitrary file access on ServiceMonitor endpoints.
+	DisallowArbitraryFileAccess bool `alloy:"disallow_arbitrary_file_access,attr,optional"`
+
 	KubernetesRole string `alloy:"kubernetes_role,attr,optional"`
 
 	// LabelSelector allows filtering discovered monitor resources by labels
@@ -97,8 +100,9 @@ var DefaultArguments = Arguments{
 	Client: kubernetes.ClientArguments{
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	},
-	KubernetesRole:      string(promk8s.RoleEndpoint),
-	InformerSyncTimeout: time.Minute,
+	DisallowArbitraryFileAccess: true,
+	KubernetesRole:              string(promk8s.RoleEndpoint),
+	InformerSyncTimeout:         time.Minute,
 }
 
 // SetToDefault implements syntax.Defaulter.
