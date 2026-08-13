@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestCrdManager(t *testing.T, logger *slog.Logger, args *operator.Arguments, kind string, reg prometheus.Registerer) *crdManager {
+func newTestCrdManager(t *testing.T, logger *slog.Logger, args *operator.Arguments, reg prometheus.Registerer) *crdManager {
 	t.Helper()
 
 	m := newCrdManager(
@@ -38,7 +38,7 @@ func newTestCrdManager(t *testing.T, logger *slog.Logger, args *operator.Argumen
 		cluster.Mock(),
 		logger,
 		args,
-		kind,
+		KindServiceMonitor,
 		labelstore.New(logger, prometheus.NewRegistry()),
 	)
 	m.discoveryManager = newMockDiscoveryManager()
@@ -116,7 +116,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	reg := prometheus.NewRegistry()
 	args := operator.DefaultArguments
-	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, reg)
+	m := newTestCrdManager(t, logger, &args, reg)
 	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
@@ -151,7 +151,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	args := operator.DefaultArguments
-	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
 	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
 
 	sm := &promopv1.ServiceMonitor{
@@ -182,7 +182,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(
 func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	args := operator.DefaultArguments
-	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -205,7 +205,7 @@ func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T
 func TestAddServiceMonitorDoesNotStorePartialConfigsOnError(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	args := operator.DefaultArguments
-	m := newTestCrdManager(t, logger, &args, KindServiceMonitor, prometheus.NewRegistry())
+	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
 
 	targetPort := intstr.FromInt(9090)
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
