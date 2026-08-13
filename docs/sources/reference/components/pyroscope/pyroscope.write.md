@@ -74,7 +74,7 @@ The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default   | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------- | -------- |
-| `url`                    | `string`            | Full URL to send metrics to.                                                                     |           | yes      |
+| `url`                    | `string`            | Full URL to send profiles to.                                                                    |           | yes      |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
@@ -166,7 +166,7 @@ All metrics include an `endpoint` label identifying the specific endpoint URL. T
 
 ```alloy
 pyroscope.write "staging" {
-  // Send metrics to a locally running Pyroscope instance.
+  // Send profiles to a locally running Pyroscope instance.
   endpoint {
     url = "http://pyroscope:4040"
     headers = {
