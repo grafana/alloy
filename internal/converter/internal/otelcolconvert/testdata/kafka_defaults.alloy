@@ -26,12 +26,4 @@ otelcol.exporter.kafka "default" {
 		topic    = "otlp_spans"
 		encoding = "otlp_proto"
 	}
-
-	producer {
-		max_message_bytes         = 1000000
-		required_acks             = 1
-		compression               = "none"
-		flush_max_messages        = 10000
-		allow_auto_topic_creation = true
-	}
 }
