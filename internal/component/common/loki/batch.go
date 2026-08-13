@@ -36,12 +36,12 @@ func (b *Batch) Add(stream Stream) {
 	b.entryLen += len(stream.Entries)
 }
 
-func (b *Batch) AddEntry(entry Entry) {
+func (b *Batch) AddEntry(lbls model.LabelSet, entry push.Entry) {
 	if b.created == 0 {
 		b.created = time.Now().UnixMicro()
 	}
 
-	b.add(entry.Labels, entry.Entry)
+	b.add(lbls, entry)
 	b.entryLen += 1
 }
 

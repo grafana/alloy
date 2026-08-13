@@ -11,6 +11,7 @@ import (
 
 	"github.com/prometheus/common/model"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 )
 
@@ -71,6 +72,43 @@ func NewPipeline2(stages []Stage2) *Pipeline2 {
 	return p
 }
 
+func (p *Pipeline2) ProcessEntry(ctx context.Context, entry loki.Entry) ([]Entry, error) {
+	var entries []Entry
+	err := p.Process(ctx, Entry{Extracted: make(map[string]any, len(entry.Labels)), Entry: entry}, EmitterFunc(func(ctx context.Context, e Entry) error {
+		entries = append(entries, e)
+		return nil
+	}))
+
+	return entries, err
+}
+
+func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+	out := loki.NewBatchWithCreatedUnixMicro(batch.Created())
+
+	err := batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
+		for _, e := range stream.Entries {
+			err := p.Process(
+				ctx,
+				Entry{
+					Extracted: make(map[string]any, len(stream.Labels)),
+					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e)},
+				EmitterFunc(func(ctx context.Context, e Entry) error {
+					out.AddEntry(e.Labels, e.Entry.Entry)
+					return nil
+				}),
+			)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return out, err
+}
+
 // Process pushes a single entry through the pipeline, starting at the
 // first stage. Whatever the last stage emits is handed to next.
 func (p *Pipeline2) Process(ctx context.Context, e Entry, next Emitter) error {
@@ -90,22 +128,27 @@ func (p *Pipeline2) NextDeadline() time.Time {
 	return nearest
 }
 
-// Flush flushes whichever Stage2WithFlush stages have a deadline that
-// has already passed, routing whatever each one emits through the rest
-// of the pipeline into next.
-func (p *Pipeline2) Flush(ctx context.Context, next Emitter) error {
+// Flush flushes whichever Stage3WithFlush stages have a deadline that has
+// already passed, running whatever each one returns through the rest of
+// the pipeline.
+// FIXME(maybe iterator)
+func (p *Pipeline2) Flush(ctx context.Context) ([]Entry, error) {
 	now := time.Now()
+	var out []Entry
 	for _, fl := range p.flushers {
 		dl := fl.f.NextDeadline()
 		if dl.IsZero() || dl.After(now) {
 			continue
 		}
-		next := p.chainFrom(fl.idx+1, next)
+		next := p.chainFrom(fl.idx+1, EmitterFunc(func(ctx context.Context, e Entry) error {
+			out = append(out, e)
+			return nil
+		}))
 		if err := fl.f.Flush(ctx, next); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return out, nil
 }
 
 // chainFrom builds an Emitter that runs stages[from:] in order before
@@ -403,5 +446,16 @@ func (m *matchStage2) Flush(ctx context.Context, next Emitter) error {
 	if m.pipeline == nil {
 		return nil
 	}
-	return m.pipeline.Flush(ctx, next)
+
+	entries, err := m.pipeline.Flush(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range entries {
+		if err := next.Emit(ctx, e); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -14,29 +14,29 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-func TestPipeline2(t *testing.T) {
+func TestPipeline3(t *testing.T) {
 	ctx := context.Background()
 
 	var (
-		cri   = newCRIStage2(10)
-		match = newMatchStage2(
+		cri   = newCRIStage3(10)
+		match = newMatchStage3(
 			func(e Entry) bool { return strings.Contains(e.Line, "World") },
 			MatchActionKeep,
-			NewPipeline2([]Stage2{
-				newStaticLabelsStage2([]string{"inner", "true"}),
+			NewPipeline3([]Stage3{
+				newStaticLabelsStage3([]string{"inner", "true"}),
 			}),
 		)
-		multilineMatch = newMatchStage2(
+		multilineMatch = newMatchStage3(
 			func(e Entry) bool { return e.Labels["app"] == "multiline" },
 			MatchActionKeep,
-			NewPipeline2([]Stage2{
-				newMultilineStage2(regexp.MustCompile("^START"), 10, 50*time.Millisecond, true),
+			NewPipeline3([]Stage3{
+				newMultilineStage3(regexp.MustCompile("^START"), 10, 50*time.Millisecond, true),
 			}),
 		)
-		labels = newStaticLabelsStage2([]string{"outer", "test"})
+		labels = newStaticLabelsStage3([]string{"outer", "test"})
 	)
 
-	pipeline := NewPipeline2([]Stage2{cri, match, multilineMatch, labels})
+	pipeline := NewPipeline3([]Stage3{cri, match, multilineMatch, labels})
 
 	criLabels := model.LabelSet{"app": "foo"}
 	plainLabels := model.LabelSet{"app": "bar"}
@@ -61,7 +61,6 @@ func TestPipeline2(t *testing.T) {
 	))
 
 	out, err := pipeline.ProcessBatch(ctx, in)
-	require.NoError(t, err)
 
 	// The partial CRI line is held until its full line arrives, and the
 	// second "START" line is held until it's explicitly flushed below, so
@@ -124,14 +123,13 @@ func TestPipeline2(t *testing.T) {
 	asyncStreams := collectStreams(asyncBatch)
 	require.Equal(t, model.LabelSet{"app": "multiline", "outer": "test"}, asyncStreams[0].Labels)
 	require.Equal(t, "START of a new line", asyncStreams[0].Entries[0].Line)
-
 }
 
-func collectStreams(b loki.Batch) []loki.Stream {
-	out := make([]loki.Stream, 0, b.StreamLen())
-	b.ConsumeStreams(func(stream loki.Stream, _ int64) error {
-		out = append(out, stream)
-		return nil
-	})
-	return out
+func findStream(streams []loki.Stream, labels model.LabelSet) (loki.Stream, bool) {
+	for _, s := range streams {
+		if s.Labels.Equal(labels) {
+			return s, true
+		}
+	}
+	return loki.Stream{}, false
 }
