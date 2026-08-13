@@ -77,20 +77,23 @@ func (p *Pipeline2) ProcessEntry(ctx context.Context, entry loki.Entry) ([]Entry
 func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
 	out := loki.NewBatchWithCreatedUnixMicro(batch.Created())
 
+	// collect and chain are built once for the whole batch, since the
+	// terminal destination and the stage topology are both constant
+	// across every entry -- Process alone can't assume that (a lone
+	// caller might never reuse next), but ProcessBatch knows it will.
+	collect := func(ctx context.Context, e Entry) error {
+		out.AddEntry(e.Labels, e.Entry.Entry)
+		return nil
+	}
+	chain := p.chainFrom(0, collect)
+
 	err := batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
 		for _, e := range stream.Entries {
-			err := p.Process(
-				ctx,
-				Entry{
-					Extracted: make(map[string]any, len(stream.Labels)),
-					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e)},
-				func(ctx context.Context, e Entry) error {
-					out.AddEntry(e.Labels, e.Entry.Entry)
-					return nil
-				},
-			)
-
-			if err != nil {
+			entry := Entry{
+				Extracted: make(map[string]any, len(stream.Labels)),
+				Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
+			}
+			if err := chain(ctx, entry); err != nil {
 				return err
 			}
 		}
