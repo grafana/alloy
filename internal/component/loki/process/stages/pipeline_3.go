@@ -426,6 +426,12 @@ func (m *matchStage3) Process(ctx context.Context, entries []Entry) ([]Entry, er
 	case MatchActionDrop:
 		return unmatched, nil
 	case MatchActionKeep:
+		if len(matched) == 0 {
+			// Nothing matched: skip the nested pipeline entirely, so a
+			// stateful stage nested inside it (e.g. multilineStage3)
+			// doesn't pay for its lock when there's nothing for it to do.
+			return unmatched, nil
+		}
 		kept, err := m.pipeline.Process(ctx, matched)
 		if err != nil {
 			return nil, err

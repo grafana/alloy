@@ -15,15 +15,7 @@ import (
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 )
 
-// Emitter receives entries produced by a stage or a chain of stages.
-type Emitter interface {
-	Emit(ctx context.Context, e Entry) error
-}
-
-// EmitterFunc adapts a function to an Emitter.
-type EmitterFunc func(ctx context.Context, e Entry) error
-
-func (f EmitterFunc) Emit(ctx context.Context, e Entry) error { return f(ctx, e) }
+type Emitter func(ctx context.Context, e Entry) error
 
 // Stage2 is a stage in a continuation-passing pipeline: given an entry
 // and an Emitter representing everything after it, Process decides
@@ -74,10 +66,10 @@ func NewPipeline2(stages []Stage2) *Pipeline2 {
 
 func (p *Pipeline2) ProcessEntry(ctx context.Context, entry loki.Entry) ([]Entry, error) {
 	var entries []Entry
-	err := p.Process(ctx, Entry{Extracted: make(map[string]any, len(entry.Labels)), Entry: entry}, EmitterFunc(func(ctx context.Context, e Entry) error {
+	err := p.Process(ctx, Entry{Extracted: make(map[string]any, len(entry.Labels)), Entry: entry}, func(ctx context.Context, e Entry) error {
 		entries = append(entries, e)
 		return nil
-	}))
+	})
 
 	return entries, err
 }
@@ -92,10 +84,10 @@ func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) (loki.Ba
 				Entry{
 					Extracted: make(map[string]any, len(stream.Labels)),
 					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e)},
-				EmitterFunc(func(ctx context.Context, e Entry) error {
+				func(ctx context.Context, e Entry) error {
 					out.AddEntry(e.Labels, e.Entry.Entry)
 					return nil
-				}),
+				},
 			)
 
 			if err != nil {
@@ -112,7 +104,7 @@ func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) (loki.Ba
 // Process pushes a single entry through the pipeline, starting at the
 // first stage. Whatever the last stage emits is handed to next.
 func (p *Pipeline2) Process(ctx context.Context, e Entry, next Emitter) error {
-	return p.chainFrom(0, next).Emit(ctx, e)
+	return p.chainFrom(0, next)(ctx, e)
 }
 
 // NextDeadline reports the earliest deadline across every stage that
@@ -140,10 +132,10 @@ func (p *Pipeline2) Flush(ctx context.Context) ([]Entry, error) {
 		if dl.IsZero() || dl.After(now) {
 			continue
 		}
-		next := p.chainFrom(fl.idx+1, EmitterFunc(func(ctx context.Context, e Entry) error {
+		next := p.chainFrom(fl.idx+1, func(ctx context.Context, e Entry) error {
 			out = append(out, e)
 			return nil
-		}))
+		})
 		if err := fl.f.Flush(ctx, next); err != nil {
 			return nil, err
 		}
@@ -157,9 +149,9 @@ func (p *Pipeline2) chainFrom(from int, next Emitter) Emitter {
 	chain := next
 	for _, stage := range slices.Backward(p.stages[from:]) {
 		cur := chain
-		chain = EmitterFunc(func(ctx context.Context, e Entry) error {
+		chain = func(ctx context.Context, e Entry) error {
 			return stage.Process(ctx, e, cur)
-		})
+		}
 	}
 	return chain
 }
@@ -189,7 +181,7 @@ func newCRIStage2(maxPartialLines int) *criStage2 {
 func (c *criStage2) Process(ctx context.Context, e Entry, next Emitter) error {
 	parsed, ok := crip.ParseCRI(e.Line)
 	if !ok {
-		return next.Emit(ctx, e)
+		return next(ctx, e)
 	}
 	e.Line = parsed.Content
 
@@ -213,7 +205,7 @@ func (c *criStage2) Process(ctx context.Context, e Entry, next Emitter) error {
 		c.mu.Unlock()
 
 		for _, buffered := range entries {
-			if err := next.Emit(ctx, buffered); err != nil {
+			if err := next(ctx, buffered); err != nil {
 				return err
 			}
 		}
@@ -226,7 +218,7 @@ func (c *criStage2) Process(ctx context.Context, e Entry, next Emitter) error {
 	}
 	c.mu.Unlock()
 
-	return next.Emit(ctx, e)
+	return next(ctx, e)
 }
 
 func (c *criStage2) Cleanup() {}
@@ -276,7 +268,7 @@ func (m *multilineStage2) Process(ctx context.Context, e Entry, next Emitter) er
 	if !ok && !isFirstLine {
 		m.mu.Unlock()
 		// never part of a block: pass through
-		return next.Emit(ctx, e)
+		return next(ctx, e)
 	}
 
 	// A new entry arriving for a stream that's already gone stale
@@ -315,7 +307,7 @@ func (m *multilineStage2) Process(ctx context.Context, e Entry, next Emitter) er
 	m.mu.Unlock()
 
 	for _, r := range resolved {
-		if err := next.Emit(ctx, r); err != nil {
+		if err := next(ctx, r); err != nil {
 			return err
 		}
 	}
@@ -357,7 +349,7 @@ func (m *multilineStage2) Flush(ctx context.Context, next Emitter) error {
 	m.mu.Unlock()
 
 	for _, e := range resolved {
-		if err := next.Emit(ctx, e); err != nil {
+		if err := next(ctx, e); err != nil {
 			return err
 		}
 	}
@@ -394,7 +386,7 @@ func (s *staticLabelsStage2) Process(ctx context.Context, e Entry, next Emitter)
 	for i := 0; i < len(s.values); i += 2 {
 		e.Labels[model.LabelName(s.values[i])] = model.LabelValue(s.values[i+1])
 	}
-	return next.Emit(ctx, e)
+	return next(ctx, e)
 }
 
 func (s *staticLabelsStage2) Cleanup() {}
@@ -415,7 +407,7 @@ func newMatchStage2(match func(Entry) bool, action string, pipeline *Pipeline2) 
 
 func (m *matchStage2) Process(ctx context.Context, e Entry, next Emitter) error {
 	if !m.match(e) {
-		return next.Emit(ctx, e)
+		return next(ctx, e)
 	}
 
 	switch m.action {
@@ -424,7 +416,7 @@ func (m *matchStage2) Process(ctx context.Context, e Entry, next Emitter) error 
 	case MatchActionKeep:
 		return m.pipeline.Process(ctx, e, next)
 	default:
-		return next.Emit(ctx, e)
+		return next(ctx, e)
 	}
 }
 
@@ -453,7 +445,7 @@ func (m *matchStage2) Flush(ctx context.Context, next Emitter) error {
 	}
 
 	for _, e := range entries {
-		if err := next.Emit(ctx, e); err != nil {
+		if err := next(ctx, e); err != nil {
 			return err
 		}
 	}
