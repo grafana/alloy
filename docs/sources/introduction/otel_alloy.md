@@ -31,15 +31,41 @@ Grafana is committed to providing a first-class OpenTelemetry collection experie
 
 The following tree shows how the engines and the {{< param "PRODUCT_NAME" >}} Engine extension fit inside the {{< param "PRODUCT_NAME" >}} executable:
 
-```text
-Grafana Alloy executable
-├── alloy run
-│   └── Default Engine
-└── alloy otel
-    └── OTel Engine
-        └── alloyengine extension (optional)
-            └── Default Engine pipeline
-```
+{{< mermaid >}}
+---
+config:
+  flowchart:
+    subGraphTitleMargin:
+      top: 10
+      bottom: 10
+    rankSpacing: 10
+---
+
+flowchart TD
+    subgraph EXEC["Grafana Alloy executable"]
+        direction TB
+        run(["'alloy run' command"])
+        otel(["'alloy otel' command"])
+        DE["Default Engine<br/><small>Traditional Alloy pipeline</small>"]
+        run --> DE
+
+        subgraph OE["OTel Engine"]
+            direction TB
+            subgraph EXT["alloyengine extension <small>(optional)</small>"]
+                DEP["Default Engine<br/><small>Traditional Alloy pipeline</small>"]
+            end
+        end
+        otel --> OE
+    end
+
+    style EXEC fill:#fdefe5,stroke:#000000,color:#000000,rx:10,ry:10
+    style OE fill:#cce5ff,stroke:#000000,color:#000000,rx:10,ry:10
+    style EXT fill:#cce5ff,stroke:#000000,color:#000000,stroke-dasharray: 4 3,rx:10,ry:10
+    style DE fill:#ff8833,stroke:#000000,color:#000000,rx:10,ry:10
+    style DEP fill:#ff8833,stroke:#000000,color:#000000,rx:10,ry:10
+    style run fill:#ffffff,stroke:#000000,color:#000000,rx:10,ry:10
+    style otel fill:#ffffff,stroke:#000000,color:#000000,rx:10,ry:10
+{{< /mermaid >}}
 
 ## Choose an engine
 
