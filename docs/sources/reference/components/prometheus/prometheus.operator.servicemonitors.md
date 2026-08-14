@@ -25,13 +25,6 @@ You can run it from outside the cluster by supplying connection info in the `cli
 ServiceMonitors may reference secrets for authenticating to targets to scrape them.
 In these cases, the secrets are loaded and refreshed only when the ServiceMonitor is updated or when this component refreshes its' internal state, which happens on a 5-minute refresh cycle.
 
-## Security considerations
-
-By default, `disallow_arbitrary_file_access` prevents ServiceMonitor endpoints from referencing files on the {{< param "PRODUCT_NAME" >}} filesystem through `bearerTokenFile`, `tlsConfig.caFile`, `tlsConfig.certFile`, or `tlsConfig.keyFile`.
-This is important in multi-tenant Kubernetes clusters where ServiceMonitor resources may be created by users who don't have the same permissions as {{< param "PRODUCT_NAME" >}}.
-
-Use `bearerTokenSecret`, `authorization`, or TLS secret and `ConfigMap` references in the ServiceMonitor instead of local file references.
-
 ## Usage
 
 ```alloy
@@ -46,11 +39,25 @@ You can use the following arguments with `prometheus.operator.servicemonitors`:
 
 | Name                               | Type                    | Description                                                                                               | Default       | Required |
 | ---------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- | ------------- | -------- |
-| `disallow_arbitrary_file_access`   | `bool`                  | Disallow ServiceMonitor endpoints that reference arbitrary files on the {{< param "PRODUCT_NAME" >}} filesystem. | `true`        | no       |
 | `forward_to`                       | `list(MetricsReceiver)` | List of receivers to send scraped metrics to.                                                             |               | yes      |
+| `disallow_arbitrary_file_access`   | `bool`                  | Disallow ServiceMonitor endpoints that reference arbitrary files on the {{< param "PRODUCT_NAME" >}} filesystem. | `true`        | no       |
 | `informer_sync_timeout`            | `duration`              | Timeout for initial sync of ServiceMonitor resources.                                                     | `"1m"`        | no       |
 | `kubernetes_role`                  | `string`                | The Kubernetes role used for discovery. Supports `endpoints` or `endpointslice`.                          | `"endpoints"` | no       |
 | `namespaces`                       | `list(string)`          | List of namespaces to search for ServiceMonitor resources. If not specified, all namespaces are searched. |               | no       |
+
+{{< admonition type="caution" >}}
+By default, `disallow_arbitrary_file_access` prevents ServiceMonitor endpoints from referencing files on the {{< param "PRODUCT_NAME" >}} filesystem through `bearerTokenFile`, `tlsConfig.caFile`, `tlsConfig.certFile`, or `tlsConfig.keyFile`.
+This is important in multi-tenant Kubernetes clusters where ServiceMonitor resources may be created by users who don't have the same permissions as {{< param "PRODUCT_NAME" >}}.
+
+When `disallow_arbitrary_file_access` is `true`, {{< param "PRODUCT_NAME" >}} rejects the generated scrape configuration for a ServiceMonitor that references local files and records the reason in the component debug information.
+Other ServiceMonitor resources and components continue to run.
+{{< param "PRODUCT_NAME" >}} also writes a warning log that includes the ServiceMonitor namespace, name, endpoint index, and field.
+
+Set `disallow_arbitrary_file_access` to `false` only for trusted ServiceMonitor resources that need local file references.
+When set to `false`, {{< param "PRODUCT_NAME" >}} allows the file references but still writes warning logs when it reconciles a changed ServiceMonitor that references local files.
+
+Use `bearerTokenSecret`, `authorization`, or TLS secret and `ConfigMap` references in the ServiceMonitor instead of local file references.
+{{< /admonition >}}
 
 ## Blocks
 
