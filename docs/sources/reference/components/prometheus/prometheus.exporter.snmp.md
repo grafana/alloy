@@ -52,11 +52,8 @@ You can use the following arguments with `prometheus.exporter.snmp`:
 | `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                         |             | no       |
 | `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |             | no       |
 
-The `config_files` argument points to YAML files defining which snmp_exporter
-modules to use. Refer to [snmp_exporter]
-(https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >
-}}?tab=readme-ov-file#configuration) for details on how to generate
-configuration files.
+The `config_files` argument points to YAML files that define which `snmp_exporter` modules to use.
+Refer to [Configuration](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) in the Prometheus `snmp_exporter` documentation for configuration-generation details.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and authorizations to use.
 `config` is typically loaded by using the exports of another component.
