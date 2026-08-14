@@ -72,10 +72,10 @@ func (args *Arguments) SetToDefault() {
 			{Name: "jaeger-collector"},
 		},
 	}
-	args.WaitForMetadataTimeout = 10 * time.Second
-	args.WatchSyncPeriod = 5 * time.Minute
-	args.PodDeleteGracePeriod = k8sattributesprocessor.NewFactory().
-		CreateDefaultConfig().(*k8sattributesprocessor.Config).PodDeleteGracePeriod
+	def := k8sattributesprocessor.NewFactory().CreateDefaultConfig().(*k8sattributesprocessor.Config)
+	args.WaitForMetadataTimeout = def.WaitForMetadataTimeout
+	args.WatchSyncPeriod = def.WatchSyncPeriod
+	args.PodDeleteGracePeriod = def.PodDeleteGracePeriod
 	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
