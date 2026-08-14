@@ -41,7 +41,7 @@ func Test_Extract(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
-	authType := &otelObj.AuthType
+	authType := &otelObj.APIConfig.AuthType
 	require.Equal(t, string(*authType), "kubeConfig")
 
 	extract := &otelObj.Extract
@@ -232,7 +232,7 @@ func Test_DefaultToServiceAccountAuth(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
-	authType := &otelObj.AuthType
+	authType := &otelObj.APIConfig.AuthType
 	require.True(t, *authType == "serviceAccount") // Default value
 }
 
@@ -465,5 +465,53 @@ func Test_WatchSyncPeriod(t *testing.T) {
 		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
 
 		require.Equal(t, 30*time.Second, otelObj.WatchSyncPeriod)
+	})
+}
+
+func Test_ExtractMetadata(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	upstreamDefaults := []string{
+		"container.image.name",
+		"container.image.tag",
+		"k8s.deployment.name",
+		"k8s.namespace.name",
+		"k8s.node.name",
+		"k8s.pod.name",
+		"k8s.pod.start_time",
+		"k8s.pod.uid",
+	}
+
+	t.Run("no extract block uses the upstream defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			output {}
+		`)
+		require.ElementsMatch(t, upstreamDefaults, otelObj.Extract.Metadata)
+	})
+
+	t.Run("omitted metadata inside an extract block uses the upstream defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				deployment_name_from_replicaset = true
+			}
+			output {}
+		`)
+		require.ElementsMatch(t, upstreamDefaults, otelObj.Extract.Metadata)
+	})
+
+	t.Run("configured metadata overrides the defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				metadata = ["k8s.pod.name"]
+			}
+			output {}
+		`)
+		require.Equal(t, []string{"k8s.pod.name"}, otelObj.Extract.Metadata)
 	})
 }

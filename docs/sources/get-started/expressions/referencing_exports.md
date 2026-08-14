@@ -40,7 +40,7 @@ prometheus.scrape "default" {
 
 prometheus.remote_write "onprem" {
   endpoint {
-    url = "http://prometheus:9009/api/prom/push"
+    url = "http://prometheus:9009/api/v1/push"
   }
 }
 ```

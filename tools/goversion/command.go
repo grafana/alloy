@@ -107,7 +107,6 @@ func updateBuildImage(root string, version string) error {
 	paths := []string{
 		".github/workflows/create_build_image.yml",
 		".github/workflows/check-linux-build-image.yml",
-		"build-tools/build-image/windows/Dockerfile",
 	}
 
 	for _, path := range paths {

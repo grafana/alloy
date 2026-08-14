@@ -62,7 +62,7 @@ You can use the following arguments with `pyroscope.scrape`:
 | `scrape_interval`          | `duration`               | How frequently to scrape the targets of this scrape configuration.                               | `"15s"`        | no       |
 | `scrape_timeout`           | `duration`               | The timeout for scraping targets of this configuration. Must be larger than `scrape_interval`.   | `"18s"`        | no       |
 | `delta_profiling_duration` | `duration`               | The duration for a delta profiling to be scraped. Must be larger than 1 second.                  | `"14s"`        | no       |
-| `scheme`                   | `string`                 | The URL scheme with which to fetch metrics from targets.                                         | `"http"`       | no       |
+| `scheme`                   | `string`                 | The URL scheme with which to fetch profiles from targets.                                        | `"http"`       | no       |
 | `bearer_token_file`        | `string`                 | File containing a bearer token to authenticate with.                                             |                | no       |
 | `bearer_token`             | `secret`                 | Bearer token to authenticate with.                                                               |                | no       |
 | `enable_http2`             | `bool`                   | Whether HTTP2 is supported for requests.                                                         | `true`         | no       |

@@ -132,6 +132,9 @@ Endpoints can be named for easier identification in debug metrics using the `nam
 If the `name` argument isn't provided, a name is generated based on a hash of the endpoint settings.
 
 When `send_native_histograms` is `true`, native Prometheus histogram samples sent to `prometheus.remote_write` are forwarded to the configured endpoint.
+
+For an end-to-end scrape-and-forward example, refer to [Collect Prometheus native histograms](../../../collect/prometheus-native-histograms/).
+
 If the endpoint doesn't support receiving native histogram samples, pushing metrics fails.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
