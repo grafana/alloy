@@ -83,11 +83,11 @@ The `logs` block configures how logs are collected from CloudWatch.
 The following arguments are supported:
 
 | Name                     | Type       | Description                                                    | Default | Required |
-|--------------------------|------------|----------------------------------------------------------------|---------|----------|
+| ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
+| `initial_lookback`       | `duration` | How far back to poll on the first collection.                  |         | no       |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to CloudWatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 | `start_from`             | `string`   | Timestamp in RFC3339 format where to start reading logs.       | `""`    | no       |
-| `initial_lookback`       | `duration` | How far back to poll on the first collection.                  |         | no       |
 
 The `logs` block supports the following blocks:
 
