@@ -7,6 +7,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/collector/consumer"
@@ -27,7 +28,7 @@ type appendable struct {
 	obsrecv  *receiverhelper.ObsReport
 }
 
-// NewAppendable returns a storage.Appendable instance that emits metrics to the sink.
+// NewAppendable returns a storage.AppendableV2 instance that emits metrics to the sink.
 func NewAppendable(
 	sink consumer.Metrics,
 	set receiver.Settings,
@@ -36,7 +37,7 @@ func NewAppendable(
 	useMetadata bool,
 	externalLabels labels.Labels,
 	trimSuffixes bool,
-) (storage.Appendable, error) {
+) (storage.AppendableV2, error) {
 	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{ReceiverID: set.ID, Transport: transport, ReceiverCreateSettings: set})
 	if err != nil {
 		return nil, err
@@ -56,4 +57,8 @@ func NewAppendable(
 
 func (o *appendable) Appender(ctx context.Context) storage.Appender {
 	return newTransaction(ctx, o.sink, o.externalLabels, o.settings, o.obsrecv, o.trimSuffixes, o.useMetadata)
+}
+
+func (o *appendable) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: o.Appender(ctx)}
 }

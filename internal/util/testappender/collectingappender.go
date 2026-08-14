@@ -182,4 +182,11 @@ func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
 	return c.Inner
 }
 
-var _ storage.Appendable = &ConstantAppendable{}
+func (c ConstantAppendable) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("ConstantAppendable: AppenderV2 not implemented")
+}
+
+var (
+	_ storage.Appendable   = &ConstantAppendable{}
+	_ storage.AppendableV2 = &ConstantAppendable{}
+)

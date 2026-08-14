@@ -40,7 +40,7 @@ type Arguments struct {
 }
 
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 var DefaultArguments = Arguments{
@@ -52,8 +52,9 @@ func (args *Arguments) SetToDefault() {
 }
 
 var (
-	_ component.Component = (*Component)(nil)
-	_ storage.Appendable  = (*Component)(nil)
+	_ component.Component  = (*Component)(nil)
+	_ storage.Appendable   = (*Component)(nil)
+	_ storage.AppendableV2 = (*Component)(nil)
 )
 
 type Component struct {
@@ -88,18 +89,35 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+func (c *Component) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	c.mut.RLock()
+	format := c.args.Format
+	c.mut.RUnlock()
+
+	return &echoAppenderV2{
+		logger:          c.opts.Logger,
+		format:          format,
+		samples:         make(map[string]sample),
+		exemplars:       make(map[string]seriesExemplar),
+		histograms:      make(map[string]seriesHistogram),
+		floatHistograms: make(map[string]seriesFloatHistogram),
+		metadata:        make(map[string]metadata.Metadata),
+	}
+}
+
 func (c *Component) Appender(ctx context.Context) storage.Appender {
 	c.mut.RLock()
 	format := c.args.Format
 	c.mut.RUnlock()
 
 	return &echoAppender{
-		logger:     c.opts.Logger,
-		format:     format,
-		samples:    make(map[string]sample),
-		exemplars:  make(map[string]seriesExemplar),
-		histograms: make(map[string]seriesHistogram),
-		metadata:   make(map[string]metadata.Metadata),
+		logger:          c.opts.Logger,
+		format:          format,
+		samples:         make(map[string]sample),
+		exemplars:       make(map[string]seriesExemplar),
+		histograms:      make(map[string]seriesHistogram),
+		floatHistograms: make(map[string]seriesFloatHistogram),
+		metadata:        make(map[string]metadata.Metadata),
 	}
 }
 
@@ -108,10 +126,11 @@ type echoAppender struct {
 	format string
 	mut    sync.Mutex
 
-	samples    map[string]sample
-	exemplars  map[string]seriesExemplar
-	histograms map[string]seriesHistogram
-	metadata   map[string]metadata.Metadata
+	samples         map[string]sample
+	exemplars       map[string]seriesExemplar
+	histograms      map[string]seriesHistogram
+	floatHistograms map[string]seriesFloatHistogram
+	metadata        map[string]metadata.Metadata
 }
 
 type sample struct {
@@ -129,6 +148,11 @@ type seriesExemplar struct {
 type seriesHistogram struct {
 	Labels    labels.Labels
 	Histogram histogram.Histogram
+}
+
+type seriesFloatHistogram struct {
+	Labels         labels.Labels
+	FloatHistogram histogram.FloatHistogram
 }
 
 func (a *echoAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -278,6 +302,9 @@ func (a *echoAppender) clearStorage() {
 	for k := range a.histograms {
 		delete(a.histograms, k)
 	}
+	for k := range a.floatHistograms {
+		delete(a.floatHistograms, k)
+	}
 	for k := range a.metadata {
 		delete(a.metadata, k)
 	}
@@ -285,10 +312,11 @@ func (a *echoAppender) clearStorage() {
 
 func (a *echoAppender) buildMetricFamilies() []*dto.MetricFamily {
 	b := builder{
-		samples:    a.samples,
-		exemplars:  a.exemplars,
-		metadata:   a.metadata,
-		histograms: a.histograms,
+		samples:         a.samples,
+		exemplars:       a.exemplars,
+		metadata:        a.metadata,
+		histograms:      a.histograms,
+		floatHistograms: a.floatHistograms,
 
 		familyLookup: make(map[string]*dto.MetricFamily),
 	}
@@ -296,10 +324,11 @@ func (a *echoAppender) buildMetricFamilies() []*dto.MetricFamily {
 }
 
 type builder struct {
-	samples    map[string]sample
-	exemplars  map[string]seriesExemplar
-	metadata   map[string]metadata.Metadata
-	histograms map[string]seriesHistogram
+	samples         map[string]sample
+	exemplars       map[string]seriesExemplar
+	metadata        map[string]metadata.Metadata
+	histograms      map[string]seriesHistogram
+	floatHistograms map[string]seriesFloatHistogram
 
 	families     []*dto.MetricFamily
 	familyLookup map[string]*dto.MetricFamily
@@ -367,32 +396,39 @@ func (b *builder) buildMetricsFromSamples() {
 
 func (b *builder) buildHistograms() {
 	for _, hist := range b.histograms {
-		metricName := hist.Labels.Get(model.MetricNameLabel)
-		if metricName == "" {
-			continue
-		}
-
-		family := b.getOrCreateFamily(metricName)
-		family.Type = ptr.To(dto.MetricType_HISTOGRAM)
-
-		metric := &dto.Metric{}
-
-		hist.Labels.Range(func(label labels.Label) {
-			if label.Name != model.MetricNameLabel {
-				metric.Label = append(metric.Label, &dto.LabelPair{
-					Name:  ptr.To(label.Name),
-					Value: ptr.To(label.Value),
-				})
-			}
-		})
-
-		metric.Histogram = &dto.Histogram{
-			SampleCount: ptr.To(hist.Histogram.Count),
-			SampleSum:   ptr.To(hist.Histogram.Sum),
-		}
-
-		family.Metric = append(family.Metric, metric)
+		b.addHistogramMetric(hist.Labels, hist.Histogram.Count, hist.Histogram.Sum)
 	}
+	for _, hist := range b.floatHistograms {
+		b.addHistogramMetric(hist.Labels, uint64(hist.FloatHistogram.Count), hist.FloatHistogram.Sum)
+	}
+}
+
+func (b *builder) addHistogramMetric(ls labels.Labels, count uint64, sum float64) {
+	metricName := ls.Get(model.MetricNameLabel)
+	if metricName == "" {
+		return
+	}
+
+	family := b.getOrCreateFamily(metricName)
+	family.Type = ptr.To(dto.MetricType_HISTOGRAM)
+
+	metric := &dto.Metric{}
+	ls.Range(func(label labels.Label) {
+		if label.Name == model.MetricNameLabel {
+			return
+		}
+		metric.Label = append(metric.Label, &dto.LabelPair{
+			Name:  ptr.To(label.Name),
+			Value: ptr.To(label.Value),
+		})
+	})
+
+	metric.Histogram = &dto.Histogram{
+		SampleCount: ptr.To(count),
+		SampleSum:   ptr.To(sum),
+	}
+
+	family.Metric = append(family.Metric, metric)
 }
 
 func (b *builder) assignExemplars() {
@@ -485,6 +521,116 @@ func (b *builder) sortFamilies() {
 			return b.compareMetrics(family.Metric[i], family.Metric[j])
 		})
 	}
+}
+
+type echoAppenderV2 struct {
+	logger *slog.Logger
+	format string
+	mut    sync.Mutex
+
+	samples         map[string]sample
+	exemplars       map[string]seriesExemplar
+	histograms      map[string]seriesHistogram
+	floatHistograms map[string]seriesFloatHistogram
+	metadata        map[string]metadata.Metadata
+}
+
+var _ storage.AppenderV2 = (*echoAppenderV2)(nil)
+
+func (a *echoAppenderV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	key := ls.String()
+
+	switch {
+	case fh != nil:
+		a.floatHistograms[key] = seriesFloatHistogram{
+			Labels:         ls.Copy(),
+			FloatHistogram: *fh,
+		}
+	case h != nil:
+		a.histograms[key] = seriesHistogram{
+			Labels:    ls.Copy(),
+			Histogram: *h,
+		}
+	default:
+		a.samples[key] = sample{
+			Labels:         ls.Copy(),
+			Timestamp:      t,
+			Value:          v,
+			PrintTimestamp: t > 0,
+		}
+	}
+
+	metricName := ls.Get(model.MetricNameLabel)
+	if metricName != "" && (opts.Metadata != metadata.Metadata{}) {
+		a.metadata[metricName] = opts.Metadata
+	}
+
+	for _, e := range opts.Exemplars {
+		a.exemplars[key] = seriesExemplar{
+			Labels:   ls.Copy(),
+			Exemplar: e,
+		}
+	}
+
+	return 0, nil
+}
+
+func (a *echoAppenderV2) Commit() error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	b := builder{
+		samples:         a.samples,
+		exemplars:       a.exemplars,
+		metadata:        a.metadata,
+		histograms:      a.histograms,
+		floatHistograms: a.floatHistograms,
+		familyLookup:    make(map[string]*dto.MetricFamily),
+	}
+	families := b.build()
+
+	var buf bytes.Buffer
+	var expFormat expfmt.Format
+
+	switch a.format {
+	case "openmetrics":
+		expFormat = expfmt.NewFormat(expfmt.TypeOpenMetrics)
+	case "text", "":
+		expFormat = expfmt.NewFormat(expfmt.TypeTextPlain)
+	default:
+		a.logger.Warn("unknown format, using text", "format", a.format)
+		expFormat = expfmt.NewFormat(expfmt.TypeTextPlain)
+	}
+
+	encoder := expfmt.NewEncoder(&buf, expFormat)
+	for _, family := range families {
+		if err := encoder.Encode(family); err != nil {
+			a.logger.Error("failed to encode metric family", "family", family.GetName(), "err", err)
+			continue
+		}
+	}
+
+	a.logger.Info("received metrics", "metrics", buf.String())
+	clear(a.samples)
+	clear(a.exemplars)
+	clear(a.histograms)
+	clear(a.floatHistograms)
+	clear(a.metadata)
+	return nil
+}
+
+func (a *echoAppenderV2) Rollback() error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+	clear(a.samples)
+	clear(a.exemplars)
+	clear(a.histograms)
+	clear(a.floatHistograms)
+	clear(a.metadata)
+	return nil
 }
 
 func (b *builder) compareMetrics(a, bb *dto.Metric) bool {

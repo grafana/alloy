@@ -140,7 +140,7 @@ func TestDetectingMovedTargets(t *testing.T) {
 			args := testArgs()
 
 			appender := testappender.NewCollectingAppender()
-			args.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
+			args.ForwardTo = []storage.AppendableV2{testappender.ConstantAppendable{Inner: appender}}
 
 			testTargets, shutdownTargets := createTestTargets(tc)
 			defer shutdownTargets()

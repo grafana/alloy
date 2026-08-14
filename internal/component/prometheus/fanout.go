@@ -23,13 +23,14 @@ import (
 )
 
 var _ storage.Appendable = (*Fanout)(nil)
+var _ storage.AppendableV2 = (*Fanout)(nil)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 // It also maintains the responsibility of assigning global ref IDs to a series via the label store.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
-	children []storage.Appendable
+	children []storage.AppendableV2
 	// ComponentID is what component this belongs to.
 	componentID    string
 	writeLatency   prometheus.Histogram
@@ -48,17 +49,17 @@ type Fanout struct {
 	deadRefThreshold storage.SeriesRef
 }
 
-func normalizeChildren(children []storage.Appendable) []storage.Appendable {
+func normalizeChildren(children []storage.AppendableV2) []storage.AppendableV2 {
 	if len(children) == 0 {
 		return nil
 	}
 
 	cloned := slices.Clone(children)
-	return slices.DeleteFunc(cloned, func(i storage.Appendable) bool { return i == nil })
+	return slices.DeleteFunc(cloned, func(i storage.AppendableV2) bool { return i == nil })
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
+func NewFanout(children []storage.AppendableV2, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:                            "prometheus_fanout_latency",
 		Help:                            "Write latency for sending to direct and indirect components",
@@ -105,7 +106,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 // seriesRefMapping → passthrough: a cached store-issued unique ref is meaningless to
 // the child and must not be forwarded. Clear returns the new generation boundary;
 // the passthrough zeros any ref below it before forwarding.
-func (f *Fanout) UpdateChildren(children []storage.Appendable) {
+func (f *Fanout) UpdateChildren(children []storage.AppendableV2) {
 	c := normalizeChildren(children)
 
 	f.mut.Lock()
@@ -143,7 +144,9 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	children := make([]storage.Appender, 0, len(f.children))
 	for _, c := range f.children {
-		children = append(children, c.Appender(ctx))
+		if v1, ok := c.(storage.Appendable); ok {
+			children = append(children, v1.Appender(ctx))
+		}
 	}
 
 	if f.useLabelStore {
@@ -162,6 +165,118 @@ func (f *Fanout) Clear() {
 	defer f.mut.Unlock()
 
 	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+func (f *Fanout) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+
+	t, ok := scrape.TargetFromContext(ctx)
+	if !ok || t == nil {
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+	}
+
+	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
+	if !ok || s == nil {
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	}
+
+	children := make([]storage.AppenderV2, 0, len(f.children))
+	for _, c := range f.children {
+		children = append(children, c.AppenderV2(ctx))
+	}
+
+	if f.useLabelStore {
+		return &appenderV2{
+			children:          children,
+			fanout:            f,
+			stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
+		}
+	}
+
+	return appenders.NewV2(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
+}
+
+var _ storage.AppenderV2 = (*appenderV2)(nil)
+
+type appenderV2 struct {
+	children          []storage.AppenderV2
+	start             time.Time
+	stalenessTrackers []labelstore.StalenessTracker
+	fanout            *Fanout
+}
+
+// Append satisfies the AppenderV2 interface.
+func (a *appenderV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(ls))
+	}
+	a.stalenessTrackers = append(a.stalenessTrackers, labelstore.StalenessTracker{
+		GlobalRefID: uint64(ref),
+		Labels:      ls,
+		Value:       v,
+	})
+	var multiErr error
+	updated := false
+	for _, x := range a.children {
+		_, err := x.Append(ref, ls, st, t, v, h, fh, opts)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		} else {
+			updated = true
+		}
+	}
+	if updated {
+		a.fanout.samplesCounter.Inc()
+	}
+	return ref, multiErr
+}
+
+// Commit satisfies the AppenderV2 interface.
+func (a *appenderV2) Commit() error {
+	defer a.recordLatency()
+	var multiErr error
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
+	for _, x := range a.children {
+		err := x.Commit()
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+// Rollback satisfies the AppenderV2 interface.
+func (a *appenderV2) Rollback() error {
+	defer a.recordLatency()
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
+	var multiErr error
+	for _, x := range a.children {
+		err := x.Rollback()
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (a *appenderV2) recordLatency() {
+	if a.start.IsZero() {
+		return
+	}
+	duration := time.Since(a.start)
+	a.fanout.writeLatency.Observe(duration.Seconds())
 }
 
 type appender struct {

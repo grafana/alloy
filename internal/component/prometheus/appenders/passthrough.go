@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
+var _ storage.AppenderV2 = (*passthroughV2)(nil)
+
 type passthrough struct {
 	wrapping         storage.Appender
 	start            time.Time
@@ -108,4 +110,58 @@ func (p *passthrough) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels,
 		p.start = time.Now()
 	}
 	return p.wrapping.AppendSTZeroSample(p.sanitizeRef(ref), l, t, st)
+}
+
+type passthroughV2 struct {
+	wrapping         storage.AppenderV2
+	start            time.Time
+	writeLatency     prometheus.Histogram
+	samplesForwarded prometheus.Counter
+	deadRefThreshold storage.SeriesRef
+}
+
+func NewPassthroughV2(wrapping storage.AppenderV2, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.AppenderV2 {
+	return &passthroughV2{
+		wrapping:         wrapping,
+		deadRefThreshold: deadRefThreshold,
+		writeLatency:     writeLatency,
+		samplesForwarded: samplesForwarded,
+	}
+}
+
+func (p *passthroughV2) sanitizeRef(ref storage.SeriesRef) storage.SeriesRef {
+	if ref != 0 && ref < p.deadRefThreshold {
+		return 0
+	}
+	return ref
+}
+
+func (p *passthroughV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	if p.start.IsZero() {
+		p.start = time.Now()
+	}
+
+	ref, err := p.wrapping.Append(p.sanitizeRef(ref), ls, st, t, v, h, fh, opts)
+	if err == nil {
+		p.samplesForwarded.Inc()
+	}
+	return ref, err
+}
+
+func (p *passthroughV2) Commit() error {
+	defer p.recordLatency()
+	return p.wrapping.Commit()
+}
+
+func (p *passthroughV2) Rollback() error {
+	defer p.recordLatency()
+	return p.wrapping.Rollback()
+}
+
+func (p *passthroughV2) recordLatency() {
+	if p.start.IsZero() {
+		return
+	}
+	duration := time.Since(p.start)
+	p.writeLatency.Observe(duration.Seconds())
 }

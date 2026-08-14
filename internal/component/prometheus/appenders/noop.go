@@ -10,11 +10,34 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
+var (
+	_ storage.Appendable   = Noop{}
+	_ storage.AppendableV2 = Noop{}
+)
+
 type Noop struct {
 }
 
 func (n Noop) Appender(_ context.Context) storage.Appender {
 	return n
+}
+
+func (n Noop) AppenderV2(_ context.Context) storage.AppenderV2 {
+	return noopV2{}
+}
+
+type noopV2 struct{}
+
+func (n noopV2) Append(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n noopV2) Commit() error {
+	return nil
+}
+
+func (n noopV2) Rollback() error {
+	return nil
 }
 
 func (n Noop) Append(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {

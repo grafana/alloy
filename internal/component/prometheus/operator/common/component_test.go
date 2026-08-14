@@ -82,7 +82,7 @@ func TestRunExit(t *testing.T) {
 		},
 	}
 
-	nilReceivers := []storage.Appendable{nil, nil}
+	nilReceivers := []storage.AppendableV2{nil, nil}
 
 	var args operator.Arguments
 	args.SetToDefault()
@@ -176,7 +176,7 @@ func TestExperimentalFeatures(t *testing.T) {
 				},
 			}
 
-			nilReceivers := []storage.Appendable{nil, nil}
+			nilReceivers := []storage.AppendableV2{nil, nil}
 
 			var args operator.Arguments
 			args.SetToDefault()
