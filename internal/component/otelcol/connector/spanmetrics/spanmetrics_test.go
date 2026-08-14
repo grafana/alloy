@@ -300,6 +300,87 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "dimensionGlobOnly",
+			cfg: `
+			dimension {
+				glob = "http.*"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			expected: spanmetricsconnector.Config{
+				Dimensions: []spanmetricsconnector.Dimension{
+					{Glob: "http.*"},
+				},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
+				ExcludeDimensions:        []string{"collector.instance.id"},
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
+				TimestampCacheSize:       &defaultTimestampCacheSize,
+				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
+					Unit:        0,
+					Exponential: configoptional.Some(spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160}),
+					Explicit:    configoptional.None[spanmetricsconnector.ExplicitHistogramConfig](),
+				},
+				MetricsFlushInterval: 60 * time.Second,
+				Namespace:            "traces.span.metrics",
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
+				},
+			},
+		},
+		{
+			testName: "invalidDimensionNameAndGlob",
+			cfg: `
+			dimension {
+				name = "http.method"
+				glob = "http.*"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "must set only one of `name` or `glob`",
+		},
+		{
+			testName: "invalidDimensionNeitherNameNorGlob",
+			cfg: `
+			dimension {}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "must set one of `name` or `glob`",
+		},
+		{
+			testName: "invalidDimensionDefaultWithGlob",
+			cfg: `
+			dimension {
+				glob    = "http.*"
+				default = "unknown"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "`default` is not supported on `glob` dimension",
+		},
+		{
 			testName: "invalidAggregationTemporality",
 			cfg: `
 			aggregation_temporality = "badVal"
@@ -720,29 +801,4 @@ func Test_ComponentIO(t *testing.T) {
 			testRunProcessor(t, tt.cfg, processortest.NewTraceToMetricSignal(tt.inputTraceJson, tt.expectedOutputMetricJson))
 		})
 	}
-}
-
-func TestDimensionGlob(t *testing.T) {
-	var args spanmetrics.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(`
-		dimension {
-			name = "http.method"
-			glob = "http.*"
-		}
-		histogram {
-			unit = "ms"
-			exponential {
-				max_size = 10
-			}
-		}
-		output {}
-	`), &args))
-
-	converted, err := args.Convert()
-	require.NoError(t, err)
-	cfg := converted.(*spanmetricsconnector.Config)
-
-	require.Len(t, cfg.Dimensions, 1)
-	require.Equal(t, "http.method", cfg.Dimensions[0].Name)
-	require.Equal(t, "http.*", cfg.Dimensions[0].Glob)
 }

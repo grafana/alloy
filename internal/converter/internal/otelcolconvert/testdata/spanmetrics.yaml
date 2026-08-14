@@ -14,8 +14,7 @@ processors:
 connectors:
   spanmetrics:
     dimensions:
-      - name: http.method
-        glob: http.*
+      - glob: http.*
 
 service:
   pipelines:
