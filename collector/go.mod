@@ -2,7 +2,7 @@
 
 module github.com/grafana/alloy/otel_engine
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/grafana/alloy v1.18.0
