@@ -3,8 +3,6 @@
 class Alloy < Formula
   desc "Vendor-agnostic OpenTelemetry Collector distribution with programmable pipelines"
   homepage "https://grafana.com/docs/alloy/latest"
-  # Explicit version: the release zips carry no version in their filename, and
-  # Homebrew would otherwise misparse it (e.g. "64" from "amd64").
   version "{{.Version}}"
   license "Apache-2.0"
 
@@ -31,11 +29,7 @@ class Alloy < Formula
     end
   end
 
-  # Extra install steps from alloy.rb.original. Compilation steps removed.
   def install
-    # The release zip contains a single binary named alloy-<os>-<arch>, which
-    # Homebrew auto-extracts. Its executable bit is not preserved in the zip, so
-    # restore it after install.
     os = OS.mac? ? "darwin" : "linux"
     arch = Hardware::CPU.arm? ? "arm64" : "amd64"
     bin.install "alloy-#{os}-#{arch}" => "alloy"
