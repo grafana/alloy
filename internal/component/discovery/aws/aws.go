@@ -70,7 +70,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 	switch role {
 	case promaws.RoleEC2:
 		def := promaws.DefaultEC2SDConfig
-		sub := &promaws.EC2SDConfig{
+		cfg.EC2SDConfig = &promaws.EC2SDConfig{
 			Endpoint:         args.Endpoint,
 			Region:           args.Region,
 			AccessKey:        args.AccessKey,
@@ -81,9 +81,8 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			RefreshInterval:  nonZero(model.Duration(args.RefreshInterval), def.RefreshInterval),
 			Port:             nonZero(args.Port, def.Port),
 			HTTPClientConfig: httpClient,
+			Filters:          toFilters(args.Filters),
 		}
-		sub.Filters = toFilters(args.Filters)
-		cfg.EC2SDConfig = sub
 	case promaws.RoleECS:
 		def := promaws.DefaultECSSDConfig
 		cfg.ECSSDConfig = &promaws.ECSSDConfig{
@@ -148,7 +147,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 		}
 	case promaws.RoleRDS:
 		def := promaws.DefaultRDSSDConfig
-		sub := &promaws.RDSSDConfig{
+		cfg.RDSSDConfig = &promaws.RDSSDConfig{
 			Endpoint:           args.Endpoint,
 			Region:             args.Region,
 			AccessKey:          args.AccessKey,
@@ -161,9 +160,8 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			Port:               nonZero(args.Port, def.Port),
 			RequestConcurrency: nonZero(args.RequestConcurrency, def.RequestConcurrency),
 			HTTPClientConfig:   httpClient,
+			Filters:            toFilters(args.Filters),
 		}
-		sub.Filters = toFilters(args.Filters)
-		cfg.RDSSDConfig = sub
 	}
 	return cfg
 }
