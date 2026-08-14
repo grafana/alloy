@@ -23,11 +23,3 @@ func (args *Arguments) SetToDefault() {
 func (args *Arguments) Validate() error {
 	return args.Arguments.Validate()
 }
-
-func (args Arguments) OperatorArguments() operator.Arguments {
-	return args.Arguments
-}
-
-func (args Arguments) ServiceMonitorDisallowArbitraryFileAccess() bool {
-	return args.DisallowArbitraryFileAccess
-}

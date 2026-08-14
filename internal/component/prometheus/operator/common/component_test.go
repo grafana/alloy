@@ -29,7 +29,7 @@ type crdManagerFactoryHungRun struct {
 	stopRun         chan struct{}
 }
 
-func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore, _ serviceMonitorSettings) crdManagerInterface {
+func (m crdManagerFactoryHungRun) New(_ component.Options, _ cluster.Cluster, _ *slog.Logger, _ *operator.Arguments, _ string, _ labelstore.LabelStore, _ *ServiceMonitorSettings) crdManagerInterface {
 	return &crdManagerHungRun{m.running, m.contextCanceled, m.stopRun}
 }
 
@@ -58,34 +58,18 @@ func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeCon
 	return nil
 }
 
-type testServiceMonitorArguments struct {
-	operator.Arguments
-	disallowArbitraryFileAccess bool
-}
+func TestNewValidatesOptions(t *testing.T) {
+	_, err := New(component.Options{}, operator.DefaultArguments, DefaultOptions(KindServiceMonitor))
+	require.ErrorContains(t, err, "serviceMonitor settings are required")
 
-func (args testServiceMonitorArguments) OperatorArguments() operator.Arguments {
-	return args.Arguments
-}
+	settings := DefaultServiceMonitorSettings
+	opts := DefaultOptions(KindProbe)
+	opts.ServiceMonitorSettings = &settings
 
-func (args testServiceMonitorArguments) ServiceMonitorDisallowArbitraryFileAccess() bool {
-	return args.disallowArbitraryFileAccess
-}
+	_, err = New(component.Options{}, operator.DefaultArguments, opts)
+	require.ErrorContains(t, err, "serviceMonitor settings are only supported")
 
-func TestConvertArguments(t *testing.T) {
-	args := operator.DefaultArguments
-	cfg, settings, err := convertArguments(args)
-	require.NoError(t, err)
-	require.Equal(t, args, cfg)
-	require.True(t, settings.disallowArbitraryFileAccess)
-
-	serviceMonitorArgs := testServiceMonitorArguments{
-		Arguments:                   args,
-		disallowArbitraryFileAccess: false,
-	}
-	cfg, settings, err = convertArguments(serviceMonitorArgs)
-	require.NoError(t, err)
-	require.Equal(t, args, cfg)
-	require.False(t, settings.disallowArbitraryFileAccess)
+	require.NoError(t, ServiceMonitorOptions(settings).Validate())
 }
 
 func TestRunExit(t *testing.T) {
@@ -119,7 +103,7 @@ func TestRunExit(t *testing.T) {
 	args.ForwardTo = nilReceivers
 
 	// Create a Component
-	c, err := New(opts, args, "")
+	c, err := New(opts, args, DefaultOptions(""))
 	require.NoError(t, err)
 
 	stopRun := make(chan struct{})
@@ -213,11 +197,11 @@ func TestExperimentalFeatures(t *testing.T) {
 			args.ForwardTo = nilReceivers
 			tc.setConfig(&args)
 
-			_, err := New(opts, args, "")
+			_, err := New(opts, args, DefaultOptions(""))
 			require.ErrorContains(t, err, tc.featureName, "component should return a feature gate error when stability level is StabilityGenerallyAvailable")
 
 			opts.MinStability = tc.minStability
-			_, err = New(opts, args, "")
+			_, err = New(opts, args, DefaultOptions(""))
 			require.NoErrorf(t, err, "component shouldn't return an error when stability level is %q", tc.minStability)
 		})
 	}

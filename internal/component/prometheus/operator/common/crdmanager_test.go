@@ -117,7 +117,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, reg)
-	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
+	m.serviceMonitorSettings.DisallowArbitraryFileAccess = false
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -152,7 +152,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
-	m.serviceMonitorSettings.disallowArbitraryFileAccess = false
+	m.serviceMonitorSettings.DisallowArbitraryFileAccess = false
 
 	sm := &promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{

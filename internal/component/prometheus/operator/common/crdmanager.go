@@ -47,12 +47,12 @@ type crdManagerInterface interface {
 }
 
 type crdManagerFactory interface {
-	New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings serviceMonitorSettings) crdManagerInterface
+	New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface
 }
 
 type realCrdManagerFactory struct{}
 
-func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings serviceMonitorSettings) crdManagerInterface {
+func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface {
 	m := newCrdManager(opts, cluster, logger, args, kind, ls)
 	m.serviceMonitorSettings = serviceMonitorSettings
 	return m
@@ -122,7 +122,7 @@ type crdManager struct {
 	k8sFactory K8sFactory
 
 	kind                                      string
-	serviceMonitorSettings                    serviceMonitorSettings
+	serviceMonitorSettings                    *ServiceMonitorSettings
 	serviceMonitorArbitraryFileAccessWarnings map[string]string
 }
 
@@ -139,6 +139,12 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 	default:
 		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
 	}
+	serviceMonitorSettings := (*ServiceMonitorSettings)(nil)
+	if kind == KindServiceMonitor {
+		settings := DefaultServiceMonitorSettings
+		serviceMonitorSettings = &settings
+	}
+
 	return &crdManager{
 		opts:                   opts,
 		logger:                 logger.With("kind", kind),
@@ -152,7 +158,7 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 		clusteringUpdated:      make(chan struct{}, 1),
 		ls:                     ls,
 		k8sFactory:             defaultK8sFactory,
-		serviceMonitorSettings: defaultServiceMonitorSettings,
+		serviceMonitorSettings: serviceMonitorSettings,
 		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
 	}
 }
@@ -584,10 +590,15 @@ func (c *crdManager) onDeletePodMonitor(obj any) {
 
 func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	var err error
+	serviceMonitorSettings := DefaultServiceMonitorSettings
+	if c.serviceMonitorSettings != nil {
+		serviceMonitorSettings = *c.serviceMonitorSettings
+	}
+
 	gen := configgen.ConfigGenerator{
 		Secrets:                     configgen.NewSecretManager(c.client),
 		Client:                      &c.args.Client,
-		DisallowArbitraryFileAccess: c.serviceMonitorSettings.disallowArbitraryFileAccess,
+		DisallowArbitraryFileAccess: serviceMonitorSettings.DisallowArbitraryFileAccess,
 		AdditionalRelabelConfigs:    c.args.RelabelConfigs,
 		ScrapeOptions:               c.args.Scrape,
 	}
@@ -634,7 +645,7 @@ func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.Servi
 		return
 	}
 
-	if !c.shouldLogServiceMonitorArbitraryFileAccessWarning(sm, endpointIndex, field) {
+	if !c.recordServiceMonitorArbitraryFileAccessWarning(sm, endpointIndex, field) {
 		return
 	}
 
@@ -648,7 +659,7 @@ func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.Servi
 	)
 }
 
-func (c *crdManager) shouldLogServiceMonitorArbitraryFileAccessWarning(sm *promopv1.ServiceMonitor, endpointIndex int, field string) bool {
+func (c *crdManager) recordServiceMonitorArbitraryFileAccessWarning(sm *promopv1.ServiceMonitor, endpointIndex int, field string) bool {
 	key := fmt.Sprintf("%s/%s/%d/%s", sm.Namespace, sm.Name, endpointIndex, field)
 
 	c.mut.Lock()

@@ -32,23 +32,43 @@ type Component struct {
 
 	kind                   string
 	cluster                cluster.Cluster
-	serviceMonitorSettings serviceMonitorSettings
+	serviceMonitorSettings *ServiceMonitorSettings
 }
 
-type serviceMonitorArgumentProvider interface {
-	OperatorArguments() operator.Arguments
-	ServiceMonitorDisallowArbitraryFileAccess() bool
+type ServiceMonitorSettings struct {
+	DisallowArbitraryFileAccess bool
 }
 
-type serviceMonitorSettings struct {
-	disallowArbitraryFileAccess bool
+var DefaultServiceMonitorSettings = ServiceMonitorSettings{
+	DisallowArbitraryFileAccess: true,
 }
 
-var defaultServiceMonitorSettings = serviceMonitorSettings{
-	disallowArbitraryFileAccess: true,
+type Options struct {
+	Kind                   string
+	ServiceMonitorSettings *ServiceMonitorSettings
 }
 
-func New(o component.Options, args component.Arguments, kind string) (*Component, error) {
+func DefaultOptions(kind string) Options {
+	return Options{
+		Kind: kind,
+	}
+}
+
+// ServiceMonitorOptions marks Options as carrying ServiceMonitor-only settings.
+// Use it instead of DefaultOptions for ServiceMonitor components so settings such
+// as arbitrary file access cannot accidentally apply to other operator kinds.
+func ServiceMonitorOptions(settings ServiceMonitorSettings) Options {
+	return Options{
+		Kind:                   KindServiceMonitor,
+		ServiceMonitorSettings: &settings,
+	}
+}
+
+func New(o component.Options, args operator.Arguments, opts Options) (*Component, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+
 	data, err := o.GetServiceData(cluster.ServiceName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get information about cluster service: %w", err)
@@ -63,12 +83,22 @@ func New(o component.Options, args component.Arguments, kind string) (*Component
 	c := &Component{
 		opts:              o,
 		onUpdate:          make(chan struct{}, 1),
-		kind:              kind,
+		kind:              opts.Kind,
 		cluster:           clusterData,
 		ls:                ls,
 		crdManagerFactory: realCrdManagerFactory{},
 	}
-	return c, c.Update(args)
+	return c, c.UpdateOperatorArguments(args, opts.ServiceMonitorSettings)
+}
+
+func (opts Options) Validate() error {
+	if opts.Kind == KindServiceMonitor && opts.ServiceMonitorSettings == nil {
+		return fmt.Errorf("serviceMonitor settings are required for %s", KindServiceMonitor)
+	}
+	if opts.Kind != KindServiceMonitor && opts.ServiceMonitorSettings != nil {
+		return fmt.Errorf("serviceMonitor settings are only supported for %s", KindServiceMonitor)
+	}
+	return nil
 }
 
 func (c *Component) CurrentHealth() component.Health {
@@ -134,11 +164,15 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	// TODO(jcreixell): Initialize manager here so we can return errors back early to the caller.
 	// See https://github.com/grafana/agent/pull/2688#discussion_r1152384425
-	cfg, serviceMonitorSettings, err := convertArguments(args)
-	if err != nil {
-		return err
+	cfg, ok := args.(operator.Arguments)
+	if !ok {
+		return fmt.Errorf("unexpected prometheus operator arguments type %T", args)
 	}
 
+	return c.UpdateOperatorArguments(cfg, c.serviceMonitorSettings)
+}
+
+func (c *Component) UpdateOperatorArguments(cfg operator.Arguments, serviceMonitorSettings *ServiceMonitorSettings) error {
 	c.mut.Lock()
 	c.config = &cfg
 	c.serviceMonitorSettings = serviceMonitorSettings
@@ -157,19 +191,6 @@ func (c *Component) Update(args component.Arguments) error {
 	default:
 	}
 	return nil
-}
-
-func convertArguments(args component.Arguments) (operator.Arguments, serviceMonitorSettings, error) {
-	switch args := args.(type) {
-	case operator.Arguments:
-		return args, defaultServiceMonitorSettings, nil
-	case serviceMonitorArgumentProvider:
-		return args.OperatorArguments(), serviceMonitorSettings{
-			disallowArbitraryFileAccess: args.ServiceMonitorDisallowArbitraryFileAccess(),
-		}, nil
-	default:
-		return operator.Arguments{}, serviceMonitorSettings{}, fmt.Errorf("unexpected prometheus operator arguments type %T", args)
-	}
 }
 
 // NotifyClusterChange implements component.ClusterComponent.
