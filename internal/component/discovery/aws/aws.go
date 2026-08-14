@@ -46,7 +46,7 @@ type AWSArguments struct {
 	RefreshInterval time.Duration     `alloy:"refresh_interval,attr,optional"`
 	Port            int               `alloy:"port,attr,optional"`
 
-	// Filters applies only to the ec2 role.
+	// Filters applies only to the ec2 and rds roles.
 	Filters []*EC2Filter `alloy:"filter,block,optional"`
 	// Clusters and RequestConcurrency apply only to the ecs, elasticache, msk, and rds roles.
 	Clusters           []string `alloy:"clusters,attr,optional"`
@@ -82,9 +82,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			Port:             nonZero(args.Port, def.Port),
 			HTTPClientConfig: httpClient,
 		}
-		for _, f := range args.Filters {
-			sub.Filters = append(sub.Filters, &promaws.Filter{Name: f.Name, Values: f.Values})
-		}
+		sub.Filters = toFilters(args.Filters)
 		cfg.EC2SDConfig = sub
 	case promaws.RoleECS:
 		def := promaws.DefaultECSSDConfig
@@ -150,7 +148,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 		}
 	case promaws.RoleRDS:
 		def := promaws.DefaultRDSSDConfig
-		cfg.RDSSDConfig = &promaws.RDSSDConfig{
+		sub := &promaws.RDSSDConfig{
 			Endpoint:           args.Endpoint,
 			Region:             args.Region,
 			AccessKey:          args.AccessKey,
@@ -164,6 +162,8 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			RequestConcurrency: nonZero(args.RequestConcurrency, def.RequestConcurrency),
 			HTTPClientConfig:   httpClient,
 		}
+		sub.Filters = toFilters(args.Filters)
+		cfg.RDSSDConfig = sub
 	}
 	return cfg
 }
@@ -181,6 +181,14 @@ func nonZero[T int | model.Duration](v, roleDefault T) T {
 		return v
 	}
 	return roleDefault
+}
+
+func toFilters(filters []*EC2Filter) []*promaws.Filter {
+	var out []*promaws.Filter
+	for _, f := range filters {
+		out = append(out, &promaws.Filter{Name: f.Name, Values: f.Values})
+	}
+	return out
 }
 
 // resolveRegion mirrors upstream loadRegion: prefer the region from AWS
@@ -227,8 +235,8 @@ func (args *AWSArguments) Validate() error {
 		args.Region = region
 	}
 
-	if len(args.Filters) > 0 && role != promaws.RoleEC2 {
-		return fmt.Errorf("filter blocks are only supported with the ec2 role, not %q", args.Role)
+	if len(args.Filters) > 0 && role != promaws.RoleEC2 && role != promaws.RoleRDS {
+		return fmt.Errorf("filter blocks are only supported with the ec2 and rds roles, not %q", args.Role)
 	}
 	for _, f := range args.Filters {
 		if len(f.Values) == 0 {
