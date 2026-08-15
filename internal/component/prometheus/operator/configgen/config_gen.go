@@ -25,6 +25,59 @@ type ConfigGenerator struct {
 	Secrets                  SecretFetcher
 	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
+	ScrapeClasses            operator.ScrapeClassIndex
+}
+
+// applyScrapeClassHTTPClientConfig fills in TLS and authorization from the
+// scrape class when the resource's endpoint does not set them. The endpoint
+// always takes precedence.
+func applyScrapeClassHTTPClientConfig(httpCfg *commonConfig.HTTPClientConfig, sc *operator.ScrapeClass, epHasTLS, epHasAuth bool) {
+	if sc == nil {
+		return
+	}
+	if !epHasTLS && sc.TLSConfig != nil {
+		httpCfg.TLSConfig = *sc.TLSConfig.Convert()
+	}
+	if !epHasAuth && sc.Authorization != nil {
+		httpCfg.Authorization = sc.Authorization.Convert()
+	}
+}
+
+// scrapeClassAttachMetadata returns the attach metadata to use for a resource,
+// preferring the resource's own setting and falling back to the scrape class.
+func scrapeClassAttachMetadata(resource *promopv1.AttachMetadata, sc *operator.ScrapeClass) *promopv1.AttachMetadata {
+	if resource != nil {
+		return resource
+	}
+	if sc != nil && sc.AttachMetadata != nil {
+		node := sc.AttachMetadata.Node
+		return &promopv1.AttachMetadata{Node: &node}
+	}
+	return nil
+}
+
+// addScrapeClassRelabelings adds the scrape class relabelings to the relabeler.
+// Call this before adding the endpoint's own relabelings so the class rules are
+// prepended.
+func (r *relabeler) addScrapeClassRelabelings(sc *operator.ScrapeClass) {
+	if sc == nil {
+		return
+	}
+	for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(sc.Relabelings) {
+		r.add(c)
+	}
+}
+
+// addScrapeClassMetricRelabelings adds the scrape class metric relabelings to
+// the relabeler. Call this before adding the endpoint's own metric relabelings
+// so the class rules are prepended.
+func (r *relabeler) addScrapeClassMetricRelabelings(sc *operator.ScrapeClass) {
+	if sc == nil {
+		return
+	}
+	for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(sc.MetricRelabelings) {
+		r.add(c)
+	}
 }
 
 var (
