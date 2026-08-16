@@ -208,6 +208,7 @@ func toCORSArguments(cfg *confighttp.CORSConfig) *otelcol.CORSArguments {
 	return &otelcol.CORSArguments{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedHeaders: cfg.AllowedHeaders,
+		ExposedHeaders: cfg.ExposedHeaders,
 
 		MaxAge: cfg.MaxAge,
 	}
