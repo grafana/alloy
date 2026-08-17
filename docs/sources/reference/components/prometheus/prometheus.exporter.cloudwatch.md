@@ -334,8 +334,11 @@ Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWat
 | `period`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `period` in the parent job.                                                                           | no       |
 | `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
 | `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | The value of `add_cloudwatch_timestamp` in the parent job.                                                         | no       |
+| `export_all_data_points`   | `bool`         | When `true`, export every CloudWatch data point in the configured time range. This setting requires `add_cloudwatch_timestamp` to be `true`. | `false` | no |
 | `length`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `length` in the parent job.                                                                           | no       |
 | `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [`static`][static] or [`discovery`][discovery] block. `true` if not set in the parent block. | no       |
+
+To export historical data points, set both `add_cloudwatch_timestamp` and `export_all_data_points` to `true`. To export multiple historical data points, configure `length` to be longer than `period`.
 
 [period]: #period-and-length
 
