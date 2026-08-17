@@ -147,6 +147,47 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	require.Contains(t, logs.String(), "field=tlsConfig.caFile")
 }
 
+func TestAddServiceMonitorArbitraryFileAccessWarningLogsAllEndpointsWhenDisallowed(t *testing.T) {
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, nil))
+	reg := prometheus.NewRegistry()
+	args := operator.DefaultArguments
+	m := newTestCrdManager(t, logger, &args, reg)
+	m.serviceMonitorSettings.DisallowArbitraryFileAccess = true
+
+	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Endpoints: []promopv1.Endpoint{
+				{BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"}, //nolint:staticcheck
+				{
+					HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+						HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+							TLSConfig: &promopv1.TLSConfig{
+								TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/etc/prometheus/ca.crt"},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// Generation rejects and breaks at endpoint 0, but both endpoints should still have been observed.
+	require.Contains(t, logs.String(), "endpoint=0")
+	require.Contains(t, logs.String(), "field=bearerTokenFile")
+	require.Contains(t, logs.String(), "endpoint=1")
+	require.Contains(t, logs.String(), "field=tlsConfig.caFile")
+
+	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
+	require.NotNil(t, debugInfo)
+	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
+	require.Empty(t, m.scrapeConfigs)
+}
+
 func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logs, nil))

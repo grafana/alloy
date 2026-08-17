@@ -603,12 +603,14 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		ScrapeOptions:               c.args.Scrape,
 	}
 
+	for i, ep := range sm.Spec.Endpoints {
+		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
+	}
+
 	mapKeys := []string{}
 	discoveryConfigs := map[string]discovery.Configs{}
 	scrapeConfigs := map[string]*config.ScrapeConfig{}
 	for i, ep := range sm.Spec.Endpoints {
-		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
-
 		var scrapeConfig *config.ScrapeConfig
 		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
 		if err != nil {
