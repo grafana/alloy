@@ -46,6 +46,7 @@ You can use the following arguments with `otelcol.processor.k8sattributes`:
 | `wait_for_metadata_timeout` | `duration` | How long to wait for Kubernetes metadata to arrive.                            | `"10s"`            | no       |
 | `wait_for_metadata`         | `bool`     | Whether to wait for Kubernetes metadata to arrive before processing telemetry. | `false`            | no       |
 | `watch_sync_period`         | `duration` | The resync period for the Kubernetes informers. `0` disables periodic resync.  | `"5m"`             | no       |
+| `pod_delete_grace_period`   | `duration` | How long to keep a deleted Pod's metadata cached so in-flight telemetry can still be enriched.| `"120s"`           | no       |
 
 The supported values for `auth_type` are:
 
