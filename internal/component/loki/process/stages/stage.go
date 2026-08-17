@@ -53,8 +53,21 @@ func toStage(p Processor) Stage {
 	}
 }
 
+func (*stageProcessor) Cleanup() {}
+
 // newStage creates a new stage for the given type and configuration.
 func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+	return newStageWithNextFn(slogger, cfg, registerer, minStability, nil)
+}
+
+func newStageWithNextFn(
+	slogger *slog.Logger,
+	cfg StageConfig,
+	registerer prometheus.Registerer,
+	minStability featuregate.Stability,
+	_ NextFn,
+) (Stage, error) {
+
 	var (
 		s   Stage
 		err error
@@ -208,9 +221,4 @@ func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Regis
 	}
 
 	return s, nil
-}
-
-// Cleanup implements Stage.
-func (*stageProcessor) Cleanup() {
-	// no-op
 }
