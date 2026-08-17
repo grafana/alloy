@@ -84,6 +84,10 @@ func Handler(w http.ResponseWriter, r *http.Request, logger *slog.Logger, snmpCf
 			http.Error(w, fmt.Sprintf("Unknown module '%s'", moduleName), http.StatusBadRequest)
 			return
 		}
+		if module == nil {
+			http.Error(w, fmt.Sprintf("Module '%s' has an empty definition", moduleName), http.StatusBadRequest)
+			return
+		}
 
 		// override module connection details with custom walk params if provided
 		if walkParams != "" {
@@ -114,6 +118,10 @@ func Handler(w http.ResponseWriter, r *http.Request, logger *slog.Logger, snmpCf
 	auth, ok := (*snmpCfg).Auths[authName]
 	if !ok {
 		http.Error(w, fmt.Sprintf("Unknown auth '%s'", authName), http.StatusBadRequest)
+		return
+	}
+	if auth == nil {
+		http.Error(w, fmt.Sprintf("Auth '%s' has an empty definition", authName), http.StatusBadRequest)
 		return
 	}
 
