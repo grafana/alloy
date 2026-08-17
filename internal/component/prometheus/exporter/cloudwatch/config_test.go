@@ -850,7 +850,7 @@ var expectedCustomNamespaceJobPeriodConfig = yaceModel.JobsConfig{
 // add_cloudwatch_timestamp jobs
 //==============================
 
-// Shows that add_cloudwatch_timestamp is not supported on static jobs will be set to false on metrics.
+// Shows that historical data-point export can be enabled on a static-job metric.
 const staticJobAddCloudwatchTimestampConfig = `
 sts_region = "us-east-2"
 debug = true
@@ -864,6 +864,27 @@ static "test_instance" {
 		name = "CPUUtilization"
 		statistics = ["Average"]
 		period = "5m"
+		add_cloudwatch_timestamp = true
+		export_all_data_points = true
+	}
+}
+`
+
+// Shows that historical data-point export requires CloudWatch timestamps.
+const staticJobExportAllDataPointsWithoutTimestampConfig = `
+sts_region = "us-east-2"
+debug = true
+static "test_instance" {
+	regions = ["us-east-2"]
+	namespace = "AWS/EC2"
+	dimensions = {
+		"InstanceId" = "i-test",
+	}
+	metric {
+		name = "CPUUtilization"
+		statistics = ["Average"]
+		period = "5m"
+		export_all_data_points = true
 	}
 }
 `
@@ -890,7 +911,8 @@ var expectedStaticJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 				Length:                 300,
 				Delay:                  0,
 				NilToZero:              defaultNilToZero,
-				AddCloudwatchTimestamp: falsePtr,
+				AddCloudwatchTimestamp: truePtr,
+				ExportAllDataPoints:    truePtr,
 			}},
 		},
 	},
@@ -1285,6 +1307,10 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 		"custom namespace job period config": {
 			raw:      customNameSpaceJobPeriodConfig,
 			expected: expectedCustomNamespaceJobPeriodConfig,
+		},
+		"export all data points requires CloudWatch timestamps": {
+			raw:              staticJobExportAllDataPointsWithoutTimestampConfig,
+			expectConvertErr: true,
 		},
 		"static job add cloudwatch timestamp config": {
 			raw:      staticJobAddCloudwatchTimestampConfig,

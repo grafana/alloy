@@ -132,6 +132,7 @@ type Metric struct {
 	Length                 time.Duration `alloy:"length,attr,optional"`
 	NilToZero              *bool         `alloy:"nil_to_zero,attr,optional"`
 	AddCloudwatchTimestamp *bool         `alloy:"add_cloudwatch_timestamp,attr,optional"`
+	ExportAllDataPoints    *bool         `alloy:"export_all_data_points,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -294,6 +295,7 @@ func toYACEMetrics(ms []Metric, jobPeriod time.Duration, jobLength time.Duration
 
 			NilToZero:              m.NilToZero,
 			AddCloudwatchTimestamp: m.AddCloudwatchTimestamp,
+			ExportAllDataPoints:    m.ExportAllDataPoints,
 		})
 	}
 	return yaceMetrics
