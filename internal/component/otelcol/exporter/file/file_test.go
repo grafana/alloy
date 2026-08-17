@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 	"github.com/stretchr/testify/require"
@@ -102,10 +103,13 @@ func TestArguments_Convert_EncodingUnsupported(t *testing.T) {
 
 func TestArguments_Convert(t *testing.T) {
 	args := Arguments{
-		Path:          "/tmp/*/test.json",
-		Format:        "json",
-		Append:        false,
-		Compression:   "zstd",
+		Path:        "/tmp/*/test.json",
+		Format:      "json",
+		Append:      false,
+		Compression: "zstd",
+		CompressionParams: &otelcol.CompressionParams{
+			Level: 6,
+		},
 		FlushInterval: 5 * time.Second,
 		Rotation: &Rotation{
 			MaxMegabytes: 50,
@@ -131,6 +135,7 @@ func TestArguments_Convert(t *testing.T) {
 	require.Equal(t, "json", fileCfg.FormatType)
 	require.False(t, fileCfg.Append)
 	require.Equal(t, "zstd", fileCfg.Compression)
+	require.Equal(t, 6, int(fileCfg.CompressionParams.Level))
 	require.Equal(t, 5*time.Second, fileCfg.FlushInterval)
 
 	require.NotNil(t, fileCfg.Rotation)
@@ -151,6 +156,9 @@ path = "/tmp/*/test.json"
 format = "json"
 append = false
 compression = "zstd"
+compression_params {
+  level = 6
+}
 flush_interval = "5s"
 
 rotation {
@@ -177,6 +185,8 @@ group_by {
 	require.Equal(t, "json", args.Format)
 	require.False(t, args.Append)
 	require.Equal(t, "zstd", args.Compression)
+	require.NotNil(t, args.CompressionParams)
+	require.Equal(t, 6, args.CompressionParams.Level)
 	require.Equal(t, 5*time.Second, args.FlushInterval)
 
 	require.NotNil(t, args.Rotation)
@@ -233,30 +243,4 @@ group_by {
 	require.True(t, args.GroupBy.Enabled)
 	require.Equal(t, "fileexporter.path_segment", args.GroupBy.ResourceAttribute)
 	require.Equal(t, 100, args.GroupBy.MaxOpenFiles)
-}
-
-func TestCompressionParams(t *testing.T) {
-	t.Run("unset leaves the zero value", func(t *testing.T) {
-		var args Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(`path = "/tmp/out.json"`), &args))
-
-		converted, err := args.Convert()
-		require.NoError(t, err)
-		require.Equal(t, 0, int(converted.(*fileexporter.Config).CompressionParams.Level))
-	})
-
-	t.Run("level is passed through", func(t *testing.T) {
-		var args Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(`
-			path        = "/tmp/out.json"
-			compression = "zstd"
-			compression_params {
-				level = 6
-			}
-		`), &args))
-
-		converted, err := args.Convert()
-		require.NoError(t, err)
-		require.Equal(t, 6, int(converted.(*fileexporter.Config).CompressionParams.Level))
-	})
 }

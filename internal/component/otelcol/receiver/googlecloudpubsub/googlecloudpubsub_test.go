@@ -41,6 +41,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				project = "test-project"
 				user_agent = "custom-user-agent"
 				endpoint = "https://www.googleapis.com/"
+				universe_domain = "example-sovereign.example.com"
 				insecure = true
 				subscription = "projects/test-project/subscriptions/test-subscription"
 				encoding = "otlp_proto_log"
@@ -55,6 +56,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ProjectID:           "test-project",
 				UserAgent:           "custom-user-agent",
 				Endpoint:            "https://www.googleapis.com/",
+				UniverseDomain:      "example-sovereign.example.com",
 				Insecure:            true,
 				Subscription:        "projects/test-project/subscriptions/test-subscription",
 				Encoding:            "otlp_proto_log",
@@ -120,19 +122,4 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestUniverseDomain(t *testing.T) {
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(`
-		subscription    = "projects/my-project/subscriptions/my-sub"
-		universe_domain = "example-sovereign.example.com"
-		output {}
-	`), &args))
-
-	converted, err := args.Convert()
-	require.NoError(t, err)
-	cfg := converted.(*googlecloudpubsubreceiver.Config)
-
-	require.Equal(t, "example-sovereign.example.com", cfg.UniverseDomain)
 }

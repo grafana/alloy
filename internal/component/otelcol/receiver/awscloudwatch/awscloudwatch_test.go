@@ -47,6 +47,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				logs {
 					poll_interval = "1m"
 					max_events_per_request = 1000
+					initial_lookback = "45m"
 					groups {
 						autodiscover {
 							prefix = "app-"
@@ -67,6 +68,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Logs: awscloudwatchreceiver.LogsConfig{
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
+					InitialLookback:     45 * time.Minute,
 					Groups: awscloudwatchreceiver.GroupConfig{
 						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
 							Prefix: "app-",
@@ -285,24 +287,4 @@ func TestArguments_Validate(t *testing.T) {
 // Helper function to create string pointers
 func ptr(s string) *string {
 	return &s
-}
-
-func TestInitialLookback(t *testing.T) {
-	var args awscloudwatch.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(`
-		region = "us-east-1"
-		logs {
-			initial_lookback = "45m"
-			groups {
-				autodiscover { limit = 1 }
-			}
-		}
-		output {}
-	`), &args))
-
-	converted, err := args.Convert()
-	require.NoError(t, err)
-	cfg := converted.(*awscloudwatchreceiver.Config)
-
-	require.Equal(t, 45*time.Minute, cfg.Logs.InitialLookback)
 }
