@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/collector/config/configtls"
 )
 
-func Convert_Settings(t *testing.T) {
+func TestConvert_Settings(t *testing.T) {
 	t.Run("all fields populated", func(t *testing.T) {
 		args := &otelcol.TLSSetting{
 			CA:                          "ca-pem",

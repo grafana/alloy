@@ -501,7 +501,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			errorMsg: `invalid metric_timestamp_cache_size: 0, the cache size should be positive`,
+			errorMsg: `invalid delta timestamp cache size: 0, the maximum number of the items in the cache should be positive`,
 		},
 	}
 
