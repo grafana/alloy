@@ -12,24 +12,27 @@ weight: 230
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
 The {{< param "FULL_OTEL_ENGINE" >}} is an OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
-It lets you run {{< param "PRODUCT_NAME" >}} with the OpenTelemetry Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
+It lets you run {{< param "PRODUCT_NAME" >}} with the OpenTelemetry Collector while retaining access to {{< param "PRODUCT_NAME" >}} features and integrations through the {{< param "PRODUCT_NAME" >}} Engine extension.
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-## Why the OpenTelemetry Engine exists
+## Why the {{% param "OTEL_ENGINE" %}} exists
 
-OpenTelemetry Collector users expect a distribution to accept standard Collector YAML configuration and command-line arguments.
-Translating Collector configuration into another format can add friction, and the rapid pace of upstream development makes translation difficult to keep current.
+Standard OpenTelemetry Collector pipelines use YAML configuration, but {{< param "PRODUCT_NAME" >}} components require translating that configuration into {{< param "PRODUCT_NAME" >}} syntax.
+The {{< param "OTEL_ENGINE" >}} runs the Collector runtime directly, so you can use Collector YAML configurations without translation.
 
 The {{< param "OTEL_ENGINE" >}} addresses this by running the upstream Collector runtime directly from the {{< param "PRODUCT_NAME" >}} executable.
-You can bring an existing Collector configuration to {{< param "PRODUCT_NAME" >}}, use familiar Collector tooling, and choose from the [components bundled with the `otel` command](../../reference/cli/otel/#included-components).
+You can bring existing Collector configurations to {{< param "PRODUCT_NAME" >}}, use familiar Collector tooling, and choose from the [components bundled with the `otel` command](../../reference/cli/otel/#included-components).
 
 The {{< param "OTEL_ENGINE" >}} also gives Grafana a standards-native foundation for extending {{< param "PRODUCT_NAME" >}}.
 Grafana is committed to providing a first-class OpenTelemetry collection experience as this experimental engine matures.
 
 ## How the engines fit together
 
-The following tree shows how the engines and the {{< param "PRODUCT_NAME" >}} Engine extension fit inside the {{< param "PRODUCT_NAME" >}} executable:
+Both engines are built into the same {{< param "PRODUCT_NAME" >}} binary: `alloy run` starts the {{< param "DEFAULT_ENGINE" >}}, and `alloy otel` starts the {{< param "OTEL_ENGINE" >}}.
+The optional {{< param "PRODUCT_NAME" >}} Engine extension lets you run a {{< param "DEFAULT_ENGINE" >}} pipeline inside the {{< param "OTEL_ENGINE" >}}, in the same process.
+
+The following diagram shows how the engines and the extension fit inside the {{< param "PRODUCT_NAME" >}} executable:
 
 {{< mermaid >}}
 ---
