@@ -270,9 +270,7 @@ The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry C
 If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
 Grafana doesn't offer commercial support for custom builds.
 
-1. Clone the {{< param "PRODUCT_NAME" >}} repository.
-
-   Clone the Git repository and change to the repository root.
+1. Clone the {{< param "PRODUCT_NAME" >}} repository and change to the repository root.
    The following steps assume you run commands from this directory.
 
    ```shell
@@ -289,18 +287,13 @@ Grafana doesn't offer commercial support for custom builds.
 
    Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
 
-1. Start from the checked-in manifest.
+1. Add or remove components by editing the OCB manifest in [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
 
-   The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
-   You can:
+   To **Remove** a component, delete its `- gomod: ...` line from the appropriate section.
+   To **Add** a component, append a line that points at the module path and version you want.
+   Follow the same `- gomod:` pattern as the other entries.
 
-   - **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
-   - **Add** a component: append a line that points at the module path and version you want.
-     Follow the same `- gomod:` pattern as the other entries.
-
-1. Build the {{< param "PRODUCT_NAME" >}} binary.
-
-   Build the full {{< param "PRODUCT_NAME" >}} binary:
+1. Build the full {{< param "PRODUCT_NAME" >}} binary.
 
    ```shell
    make alloy
@@ -309,9 +302,7 @@ Grafana doesn't offer commercial support for custom builds.
    The binary in `build/` behaves like a standard `alloy` build.
    Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
-1. Build a Docker image.
-
-   To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
+1. Build the {{< param "PRODUCT_NAME" >}} Docker image.
 
    ```shell
    make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
