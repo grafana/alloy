@@ -270,55 +270,55 @@ The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry C
 If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
 Grafana doesn't offer commercial support for custom builds.
 
-### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
+1. Clone the {{< param "PRODUCT_NAME" >}} repository.
 
-Clone the Git repository and change to the repository root.
-The following steps assume you run commands from this directory.
+   Clone the Git repository and change to the repository root.
+   The following steps assume you run commands from this directory.
 
-```shell
-git clone https://github.com/grafana/alloy.git
-cd alloy
-```
+   ```shell
+   git clone https://github.com/grafana/alloy.git
+   cd alloy
+   ```
 
-To build from a **specific release**, fetch tags and check out the tag after you clone:
+   To build from a **specific release**, fetch tags and check out the tag after you clone:
 
-```shell
-git fetch --tags
-git checkout <RELEASE_TAG>
-```
+   ```shell
+   git fetch --tags
+   git checkout <RELEASE_TAG>
+   ```
 
-Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
+   Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
 
-### 2. Start from the checked-in manifest
+1. Start from the checked-in manifest.
 
-The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
-You can:
+   The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
+   You can:
 
-- **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
-- **Add** a component: append a line that points at the module path and version you want.
-  Follow the same `- gomod:` pattern as the other entries.
+   - **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
+   - **Add** a component: append a line that points at the module path and version you want.
+     Follow the same `- gomod:` pattern as the other entries.
 
-### 3. Build the {{< param "PRODUCT_NAME" >}} binary
+1. Build the {{< param "PRODUCT_NAME" >}} binary.
 
-Build the full {{< param "PRODUCT_NAME" >}} binary:
+   Build the full {{< param "PRODUCT_NAME" >}} binary:
 
-```shell
-make alloy
-```
+   ```shell
+   make alloy
+   ```
 
-The binary in `build/` behaves like a standard `alloy` build.
-Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+   The binary in `build/` behaves like a standard `alloy` build.
+   Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
-### 4. Build a Docker image
+1. Build a Docker image.
 
-To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
+   To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
 
-```shell
-make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
-```
+   ```shell
+   make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
+   ```
 
-Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
-If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
+   Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
+   If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
 
 ## Considerations
 
