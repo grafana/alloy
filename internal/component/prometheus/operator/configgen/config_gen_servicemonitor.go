@@ -21,9 +21,9 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	cfg = cg.generateDefaultScrapeConfig()
 
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
-	if cg.DisallowArbitraryFileAccess {
+	if !cg.AllowArbitraryFileAccess {
 		if field := ServiceMonitorEndpointArbitraryFileField(ep); field != "" {
-			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed by disallow_arbitrary_file_access; use secret or authorization fields instead", m.Namespace, m.Name, i, field)
+			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed because allow_arbitrary_file_access is false; use secret or authorization fields instead", m.Namespace, m.Name, i, field)
 		}
 	}
 

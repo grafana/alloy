@@ -36,11 +36,11 @@ type Component struct {
 }
 
 type ServiceMonitorSettings struct {
-	DisallowArbitraryFileAccess bool
+	AllowArbitraryFileAccess bool
 }
 
 var DefaultServiceMonitorSettings = ServiceMonitorSettings{
-	DisallowArbitraryFileAccess: true,
+	AllowArbitraryFileAccess: false,
 }
 
 type Options struct {

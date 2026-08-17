@@ -682,22 +682,24 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                        string
-		disallowArbitraryFileAccess bool
-		ep                          promopv1.Endpoint
-		expectedBearerTokenFile     string
-		expectedTLSConfig           commonConfig.TLSConfig
-		expectedErr                 string
+		name                     string
+		allowArbitraryFileAccess bool
+		ep                       promopv1.Endpoint
+		expectedBearerTokenFile  string
+		expectedTLSConfig        commonConfig.TLSConfig
+		expectedErr              string
 	}{
 		{
-			name: "flag off honors bearer token file",
+			name:                     "flag on honors bearer token file",
+			allowArbitraryFileAccess: true,
 			ep: promopv1.Endpoint{
 				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
 			},
 			expectedBearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
 		},
 		{
-			name: "flag off honors tls file fields",
+			name:                     "flag on honors tls file fields",
+			allowArbitraryFileAccess: true,
 			ep: promopv1.Endpoint{
 				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
 					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
@@ -718,16 +720,14 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 			},
 		},
 		{
-			name:                        "flag on rejects bearer token file",
-			disallowArbitraryFileAccess: true,
+			name: "flag off rejects bearer token file",
 			ep: promopv1.Endpoint{
 				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
 			},
-			expectedErr: "bearerTokenFile, which is disallowed by disallow_arbitrary_file_access",
+			expectedErr: "bearerTokenFile, which is disallowed because allow_arbitrary_file_access is false",
 		},
 		{
-			name:                        "flag on rejects tls ca file",
-			disallowArbitraryFileAccess: true,
+			name: "flag off rejects tls ca file",
 			ep: promopv1.Endpoint{
 				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
 					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
@@ -737,11 +737,10 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.caFile, which is disallowed by disallow_arbitrary_file_access",
+			expectedErr: "tlsConfig.caFile, which is disallowed because allow_arbitrary_file_access is false",
 		},
 		{
-			name:                        "flag on rejects tls cert file",
-			disallowArbitraryFileAccess: true,
+			name: "flag off rejects tls cert file",
 			ep: promopv1.Endpoint{
 				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
 					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
@@ -751,11 +750,10 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.certFile, which is disallowed by disallow_arbitrary_file_access",
+			expectedErr: "tlsConfig.certFile, which is disallowed because allow_arbitrary_file_access is false",
 		},
 		{
-			name:                        "flag on rejects tls key file",
-			disallowArbitraryFileAccess: true,
+			name: "flag off rejects tls key file",
 			ep: promopv1.Endpoint{
 				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
 					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
@@ -765,20 +763,19 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.keyFile, which is disallowed by disallow_arbitrary_file_access",
+			expectedErr: "tlsConfig.keyFile, which is disallowed because allow_arbitrary_file_access is false",
 		},
 		{
-			name:                        "flag on allows endpoints without file fields",
-			disallowArbitraryFileAccess: true,
-			ep:                          promopv1.Endpoint{},
+			name: "flag off allows endpoints without file fields",
+			ep:   promopv1.Endpoint{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cg := &ConfigGenerator{
-				Client:                      &kubernetes.ClientArguments{},
-				DisallowArbitraryFileAccess: tc.disallowArbitraryFileAccess,
+				Client:                   &kubernetes.ClientArguments{},
+				AllowArbitraryFileAccess: tc.allowArbitraryFileAccess,
 			}
 
 			cfg, err := cg.GenerateServiceMonitorConfig(serviceMonitor, tc.ep, 0, promk8s.RoleEndpoint)

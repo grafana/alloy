@@ -596,11 +596,11 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	}
 
 	gen := configgen.ConfigGenerator{
-		Secrets:                     configgen.NewSecretManager(c.client),
-		Client:                      &c.args.Client,
-		DisallowArbitraryFileAccess: serviceMonitorSettings.DisallowArbitraryFileAccess,
-		AdditionalRelabelConfigs:    c.args.RelabelConfigs,
-		ScrapeOptions:               c.args.Scrape,
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AllowArbitraryFileAccess: serviceMonitorSettings.AllowArbitraryFileAccess,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
 	}
 
 	for i, ep := range sm.Spec.Endpoints {
@@ -657,7 +657,7 @@ func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.Servi
 		"name", sm.Name,
 		"endpoint", endpointIndex,
 		"field", field,
-		"mitigation", "remove the file reference or set disallow_arbitrary_file_access to false to opt out",
+		"mitigation", "remove the file reference or set allow_arbitrary_file_access to true to opt out",
 	)
 }
 

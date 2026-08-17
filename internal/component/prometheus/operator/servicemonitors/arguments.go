@@ -5,13 +5,13 @@ import "github.com/grafana/alloy/internal/component/prometheus/operator"
 type Arguments struct {
 	Arguments operator.Arguments `alloy:",squash"`
 
-	// DisallowArbitraryFileAccess disallows arbitrary file access on ServiceMonitor endpoints.
-	DisallowArbitraryFileAccess bool `alloy:"disallow_arbitrary_file_access,attr,optional"`
+	// AllowArbitraryFileAccess allows arbitrary file access on ServiceMonitor endpoints.
+	AllowArbitraryFileAccess bool `alloy:"allow_arbitrary_file_access,attr,optional"`
 }
 
 var DefaultArguments = Arguments{
-	Arguments:                   operator.DefaultArguments,
-	DisallowArbitraryFileAccess: true,
+	Arguments:                operator.DefaultArguments,
+	AllowArbitraryFileAccess: false,
 }
 
 // SetToDefault implements syntax.Defaulter.

@@ -35,6 +35,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 func settingsFromArguments(args Arguments) common.ServiceMonitorSettings {
 	return common.ServiceMonitorSettings{
-		DisallowArbitraryFileAccess: args.DisallowArbitraryFileAccess,
+		AllowArbitraryFileAccess: args.AllowArbitraryFileAccess,
 	}
 }

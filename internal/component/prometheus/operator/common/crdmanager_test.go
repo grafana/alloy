@@ -117,7 +117,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarning(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, reg)
-	m.serviceMonitorSettings.DisallowArbitraryFileAccess = false
+	m.serviceMonitorSettings.AllowArbitraryFileAccess = true
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -153,7 +153,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningLogsAllEndpointsWhenDisallow
 	reg := prometheus.NewRegistry()
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, reg)
-	m.serviceMonitorSettings.DisallowArbitraryFileAccess = true
+	m.serviceMonitorSettings.AllowArbitraryFileAccess = false
 
 	m.onAddServiceMonitor(&promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -184,7 +184,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningLogsAllEndpointsWhenDisallow
 
 	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
 	require.NotNil(t, debugInfo)
-	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
+	require.Contains(t, debugInfo.ReconcileError, "disallowed because allow_arbitrary_file_access is false")
 	require.Empty(t, m.scrapeConfigs)
 }
 
@@ -193,7 +193,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(
 	logger := slog.New(slog.NewTextHandler(&logs, nil))
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
-	m.serviceMonitorSettings.DisallowArbitraryFileAccess = false
+	m.serviceMonitorSettings.AllowArbitraryFileAccess = true
 
 	sm := &promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
@@ -220,7 +220,7 @@ func TestAddServiceMonitorArbitraryFileAccessWarningDeduplicatesResourceVersion(
 	require.Equal(t, 2, strings.Count(logs.String(), "field=bearerTokenFile"))
 }
 
-func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T) {
+func TestAddServiceMonitorAllowArbitraryFileAccessThreadsThrough(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	args := operator.DefaultArguments
 	m := newTestCrdManager(t, logger, &args, prometheus.NewRegistry())
@@ -240,7 +240,7 @@ func TestAddServiceMonitorDisallowArbitraryFileAccessThreadsThrough(t *testing.T
 	require.Empty(t, m.scrapeConfigs)
 	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
 	require.NotNil(t, debugInfo)
-	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
+	require.Contains(t, debugInfo.ReconcileError, "disallowed because allow_arbitrary_file_access is false")
 }
 
 func TestAddServiceMonitorDoesNotStorePartialConfigsOnError(t *testing.T) {
@@ -267,7 +267,7 @@ func TestAddServiceMonitorDoesNotStorePartialConfigsOnError(t *testing.T) {
 	require.Empty(t, m.crdsToMapKeys)
 	debugInfo := m.debugInfo["serviceMonitor/monitoring/svcmonitor"]
 	require.NotNil(t, debugInfo)
-	require.Contains(t, debugInfo.ReconcileError, "disallowed by disallow_arbitrary_file_access")
+	require.Contains(t, debugInfo.ReconcileError, "disallowed because allow_arbitrary_file_access is false")
 }
 
 func TestClearConfigsProbe(t *testing.T) {
