@@ -53,8 +53,8 @@ func toStage(p Processor) Stage {
 	}
 }
 
-// New creates a new stage for the given type and configuration.
-func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+// newStage creates a new stage for the given type and configuration.
+func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	var (
 		s   Stage
 		err error

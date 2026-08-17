@@ -392,7 +392,7 @@ func TestJSONParser_Parse(t *testing.T) {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
-			p, err := New(logger.Slog(), tt.config, nil, featuregate.StabilityGenerallyAvailable)
+			p, err := newStage(logger.Slog(), tt.config, nil, featuregate.StabilityGenerallyAvailable)
 			assert.NoError(t, err, "failed to create json parser: %s", err)
 			out := processEntries(p, newEntry(tt.extracted, nil, tt.entry, time.Now()))[0]
 
