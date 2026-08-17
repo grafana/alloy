@@ -54,7 +54,7 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 | `project`         | `string`   | Google Cloud Platform project identifier.                                                                                                                              | Fetch from credentials                          | no       |
 | `timeout`         | `Duration` | Timeout for calls to the Pub/Sub API.                                                                                                                                  | `"12s"`                                         | no       |
 | `universe_domain` | `string`   | Universe domain for the Pub/Sub service. Set to support Sovereign Cloud regions.                                                                                       | `"googleapis.com"`                              | no       |
-| `user_agent`      | `string`   | Override the user agent string on requests to Cloud Monitoring. This only applies to metrics. Specify `{{version}}` to include the application version number.         | `"opentelemetry-collector-contrib {{version}}"` | no       |
+| `user_agent`      | `string`   | Override the user agent string used for Pub/Sub requests. Specify `{{version}}` to include the application version number.         | `"opentelemetry-collector-contrib {{version}}"` | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
 
