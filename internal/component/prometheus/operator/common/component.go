@@ -50,7 +50,8 @@ type Options struct {
 
 func DefaultOptions(kind string) Options {
 	return Options{
-		Kind: kind,
+		Kind:                   kind,
+		ServiceMonitorSettings: nil,
 	}
 }
 

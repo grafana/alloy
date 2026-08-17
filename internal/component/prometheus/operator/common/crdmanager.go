@@ -139,10 +139,10 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 	default:
 		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
 	}
-	serviceMonitorSettings := (*ServiceMonitorSettings)(nil)
+	defaultServiceMonitorSettings := (*ServiceMonitorSettings)(nil)
 	if kind == KindServiceMonitor {
 		settings := DefaultServiceMonitorSettings
-		serviceMonitorSettings = &settings
+		defaultServiceMonitorSettings = &settings
 	}
 
 	return &crdManager{
@@ -158,7 +158,7 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 		clusteringUpdated:      make(chan struct{}, 1),
 		ls:                     ls,
 		k8sFactory:             defaultK8sFactory,
-		serviceMonitorSettings: serviceMonitorSettings,
+		serviceMonitorSettings: defaultServiceMonitorSettings,
 		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
 	}
 }

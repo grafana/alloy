@@ -58,7 +58,7 @@ func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeCon
 	return nil
 }
 
-func TestNewValidatesOptions(t *testing.T) {
+func TestValidation(t *testing.T) {
 	_, err := New(component.Options{}, operator.DefaultArguments, DefaultOptions(KindServiceMonitor))
 	require.ErrorContains(t, err, "serviceMonitor settings are required")
 
