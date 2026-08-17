@@ -724,7 +724,7 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 			ep: promopv1.Endpoint{
 				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
 			},
-			expectedErr: "bearerTokenFile, which is disallowed because allow_arbitrary_file_access is false",
+			expectedErr: "bearerTokenFile, which is disallowed because allow_arbitrary_file_access is false; use bearerTokenSecret or authorization instead",
 		},
 		{
 			name: "flag off rejects tls ca file",
@@ -737,7 +737,7 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.caFile, which is disallowed because allow_arbitrary_file_access is false",
+			expectedErr: "tlsConfig.caFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.ca instead",
 		},
 		{
 			name: "flag off rejects tls cert file",
@@ -750,7 +750,7 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.certFile, which is disallowed because allow_arbitrary_file_access is false",
+			expectedErr: "tlsConfig.certFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.cert instead",
 		},
 		{
 			name: "flag off rejects tls key file",
@@ -763,7 +763,7 @@ func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: "tlsConfig.keyFile, which is disallowed because allow_arbitrary_file_access is false",
+			expectedErr: "tlsConfig.keyFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.keySecret instead",
 		},
 		{
 			name: "flag off allows endpoints without file fields",

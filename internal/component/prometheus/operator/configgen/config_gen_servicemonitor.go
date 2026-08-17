@@ -23,7 +23,7 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	cfg.JobName = fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)
 	if !cg.AllowArbitraryFileAccess {
 		if field := ServiceMonitorEndpointArbitraryFileField(ep); field != "" {
-			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed because allow_arbitrary_file_access is false; use secret or authorization fields instead", m.Namespace, m.Name, i, field)
+			return nil, fmt.Errorf("serviceMonitor %s/%s endpoint %d uses %s, which is disallowed because allow_arbitrary_file_access is false; use %s instead", m.Namespace, m.Name, i, field, arbitraryFileFieldReplacement(field))
 		}
 	}
 
@@ -349,4 +349,21 @@ func ServiceMonitorEndpointArbitraryFileField(ep promopv1.Endpoint) string {
 		return "tlsConfig.keyFile"
 	}
 	return ""
+}
+
+// arbitraryFileFieldReplacement returns the ServiceMonitor field that should be used instead
+// of the given arbitrary file field returned by ServiceMonitorEndpointArbitraryFileField.
+func arbitraryFileFieldReplacement(field string) string {
+	switch field {
+	case "bearerTokenFile":
+		return "bearerTokenSecret or authorization"
+	case "tlsConfig.caFile":
+		return "tlsConfig.ca"
+	case "tlsConfig.certFile":
+		return "tlsConfig.cert"
+	case "tlsConfig.keyFile":
+		return "tlsConfig.keySecret"
+	default:
+		return "secret or authorization fields"
+	}
 }
