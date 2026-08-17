@@ -1561,6 +1561,8 @@ github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e h1:Q6MvJtQK/iRcRt
 github.com/lufia/plan9stats v0.0.0-20260330125221-c963978e514e/go.mod h1:autxFIvghDt3jPTLoqZ9OZ7s9qTGNAWmYCjVFWPX/zg=
 github.com/mackerelio/go-osstat v0.2.5 h1:+MqTbZUhoIt4m8qzkVoXUJg1EuifwlAJSk4Yl2GXh+o=
 github.com/mackerelio/go-osstat v0.2.5/go.mod h1:atxwWF+POUZcdtR1wnsUcQxTytoHG4uhl2AKKzrOajY=
+github.com/madflojo/testcerts v1.5.0 h1:GhQllyAiGzXVZU+i8O/cQkPTHzN59RxMGtm3uETgXnU=
+github.com/madflojo/testcerts v1.5.0/go.mod h1:MW8sh39gLnkKh4K0Nc55AyHEDl9l/FBLDUsQhpmkuo0=
 github.com/magefile/mage v1.15.0 h1:BvGheCMAsG3bWUDbZ8AyXXpCNwU9u5CB6sM+HNb9HYg=
 github.com/magefile/mage v1.15.0/go.mod h1:z5UZb/iS3GoOSn0JgWuiw7dxlurVYTu+/jHXqQg881A=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
@@ -1750,6 +1752,8 @@ github.com/onsi/gomega v1.38.2 h1:eZCjf2xjZAqe+LeWvKb5weQ+NcPwX84kqJ0cZNxok2A=
 github.com/onsi/gomega v1.38.2/go.mod h1:W2MJcYxRGV63b418Ai34Ud0hEdTVXq9NW9+Sx6uXf3k=
 github.com/open-telemetry/opamp-go v0.23.0 h1:k7h7w/muprut9/DAhUC4anX4v7hIdgO02gIsSjV4uq0=
 github.com/open-telemetry/opamp-go v0.23.0/go.mod h1:DIIVdkLefdqPW5L+4I2twmAicVrTB0Bp5XJAfedZzAM=
+github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0 h1:0lB0cjkIyA8wL/8eJHxBwSgvh8QwdwAaprDorH7KWn8=
+github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0/go.mod h1:I8BJlcDlzswv/u4v+8QPbWTgZc56Jm35sW5esQFVmTA=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.158.0 h1:9BR4DCoGUQnGKHxRrBSe8goR8F66/mPiJojIbVMEsUE=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.158.0/go.mod h1:Rpo49b65Sh1ZDl+Qr1DOU9rf4CnUGXOJCdOUXR7tilM=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.158.0 h1:nv6KqxnAwn5unwNfoLh3TSI+U+gVl6P7cQrjA89qBUQ=
@@ -1992,6 +1996,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiv
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.158.0/go.mod h1:GmwETU5GkkSQ1ln/MkQB2mBvtt+db4MyCLhHqWWIEjA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.158.0 h1:0F4+ldWkOeCjgee8W5gphTSKv0F9bKK1w81kbtXXviA=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.158.0/go.mod h1:cOmbMK9ZbIGMhYROq9XVsk1GKAQg4EI3Or8K8wi8bjA=
+github.com/open-telemetry/opentelemetry-collector-contrib/testbed v0.158.0 h1:J0qJT0wA7i8nlCZ/maa9Vv7jaefn8UvYtQa1ZmT4J4k=
+github.com/open-telemetry/opentelemetry-collector-contrib/testbed v0.158.0/go.mod h1:kLgqUJ0QMl+p0FLLqHYZeW9ldou4Hrv5ya9T/xv0gbM=
 github.com/open-telemetry/sig-profiling/profcheck v0.0.0-20260630131031-91975af985b1 h1:q5drSTjEg3wnRHZni61QZ3mpFdCDZBFSq8xOdYLia1I=
 github.com/open-telemetry/sig-profiling/profcheck v0.0.0-20260630131031-91975af985b1/go.mod h1:WPdgk1BinVdvYdkbt1KIkgDw6qUiK8CnGq+ftaJ41Ns=
 github.com/opencontainers/cgroups v0.0.4 h1:XVj8P/IHVms/j+7eh8ggdkTLAxjz84ZzuFyGoE28DR4=
@@ -2876,8 +2882,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20260611194520-c48552f49976 h1:X8Hz2ImujgbmetVuW+w2YkyZChE3cBpZi2P158rTG9M=
-golang.org/x/exp v0.0.0-20260611194520-c48552f49976/go.mod h1:vnf4pv9iKZXY58sQE1L86zmNWJ4159e1RkcWiLCkeEY=
+golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 h1:qLvzZeaANDgyVOA8pyHCOStGlXn0rseXma+GQjeuv2g=
+golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597/go.mod h1:EdfpwwqSu+0Li0mzskwHU6FWDV3t9Q+RZDo3QMUtL3Q=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=

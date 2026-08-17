@@ -2,10 +2,11 @@
 
 module github.com/grafana/alloy/otel_engine
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/grafana/alloy v1.18.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.158.0
@@ -97,6 +98,7 @@ require (
 	go.opentelemetry.io/collector/receiver/nopreceiver v0.158.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.158.0
 	go.opentelemetry.io/collector/service v0.158.0
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -1029,7 +1031,6 @@ require (
 	go.uber.org/goleak v1.3.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.28.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
@@ -1039,7 +1040,7 @@ require (
 	golang.org/x/arch v0.28.0 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91 // indirect
-	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
+	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
@@ -1089,6 +1090,8 @@ replace github.com/grafana/alloy => ../
 
 replace github.com/grafana/alloy/syntax => ../syntax
 
+replace github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0
+
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
 replace github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
@@ -1130,3 +1133,5 @@ replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
 
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+
+exclude github.com/knadh/koanf v1.5.0
