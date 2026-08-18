@@ -2,23 +2,110 @@ package stages
 
 import (
 	"errors"
-	"fmt"
-	"net"
 	"testing"
+	"time"
 
-	"github.com/oschwald/geoip2-golang"
-	"github.com/oschwald/maxminddb-golang"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-var (
-	geoipTestIP     string = "192.0.2.1"
-	geoipTestSource string = "dummy"
-)
+/*
+NOTE:
+database schema: https://github.com/maxmind/MaxMind-DB/tree/main/source-data
+Script used to build the minimal binaries: https://github.com/vimt/MaxMind-DB-Writer-python
+*/
+func TestGeoIPStage(t *testing.T) {
+	var (
+		geoipTestIP     string = "192.0.2.1"
+		geoipTestSource string = "dummy"
+		geoipTestTime          = time.Now()
+	)
 
-func Test_ValidateConfigs(t *testing.T) {
+	type testCase struct {
+		name     string
+		cfg      GeoIPConfig
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
+		{
+			name: "asn",
+			cfg: GeoIPConfig{
+				DB:     "testdata/geoip_maxmind_asn.mmdb",
+				Source: &geoipTestSource,
+				DBType: "asn",
+			},
+			entries: []Entry{
+				newEntry(map[string]any{geoipTestSource: geoipTestIP}, model.LabelSet{}, "", geoipTestTime),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					geoipTestSource:                        geoipTestIP,
+					"geoip_autonomous_system_number":       uint(1337),
+					"geoip_autonomous_system_organization": "Just a Test",
+				}, model.LabelSet{}, "", geoipTestTime),
+			},
+		},
+		{
+			name: "city",
+			cfg: GeoIPConfig{
+				DB:     "testdata/geoip_maxmind_city.mmdb",
+				Source: &geoipTestSource,
+				DBType: "city",
+			},
+			entries: []Entry{
+				newEntry(map[string]any{geoipTestSource: geoipTestIP}, model.LabelSet{}, "", geoipTestTime),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					geoipTestSource:            geoipTestIP,
+					"geoip_city_name":          "London",
+					"geoip_country_name":       "United Kingdom",
+					"geoip_country_code":       "GB",
+					"geoip_continent_name":     "Europe",
+					"geoip_continent_code":     "EU",
+					"geoip_postal_code":        "OX1",
+					"geoip_timezone":           "Europe/London",
+					"geoip_location_latitude":  51.514198303222656,
+					"geoip_location_longitude": -0.09309999644756317,
+					"geoip_subdivision_name":   "England",
+					"geoip_subdivision_code":   "ENG",
+				}, model.LabelSet{}, "", geoipTestTime),
+			},
+		},
+		{
+			name: "country",
+			cfg: GeoIPConfig{
+				DB:     "testdata/geoip_maxmind_country.mmdb",
+				Source: &geoipTestSource,
+				DBType: "country",
+			},
+			entries: []Entry{
+				newEntry(map[string]any{geoipTestSource: geoipTestIP}, model.LabelSet{}, "", geoipTestTime),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					geoipTestSource:        geoipTestIP,
+					"geoip_country_name":   "United Kingdom",
+					"geoip_country_code":   "GB",
+					"geoip_continent_name": "Europe",
+					"geoip_continent_code": "EU",
+				}, model.LabelSet{}, "", geoipTestTime),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{GeoIPConfig: &tt.cfg}}, tt.entries, tt.expected, "")
+		})
+	}
+}
+
+func TestValidateGeoIPConfig(t *testing.T) {
 	source := "ip"
 	tests := []struct {
 		config    GeoIPConfig
@@ -55,21 +142,21 @@ func Test_ValidateConfigs(t *testing.T) {
 				DB:     "test",
 				Source: &source,
 			},
-			ErrEmptyDBTypeAndValuesGeoIPStageConfig,
+			errEmptyDBTypeAndValuesGeoIPStageConfig,
 		},
 		{
 			GeoIPConfig{
 				Source: &source,
 				DBType: "city",
 			},
-			ErrEmptyDBPathGeoIPStageConfig,
+			errEmptyDBPathGeoIPStageConfig,
 		},
 		{
 			GeoIPConfig{
 				DB:     "test",
 				DBType: "city",
 			},
-			ErrEmptySourceGeoIPStageConfig,
+			errEmptySourceGeoIPStageConfig,
 		},
 		{
 			GeoIPConfig{
@@ -77,7 +164,7 @@ func Test_ValidateConfigs(t *testing.T) {
 				DBType: "fake",
 				Source: &source,
 			},
-			ErrEmptyDBTypeGeoIPStageConfig,
+			errEmptyDBTypeGeoIPStageConfig,
 		},
 		{
 			GeoIPConfig{
@@ -97,156 +184,6 @@ func Test_ValidateConfigs(t *testing.T) {
 		}
 		if tt.wantError == nil {
 			require.Nil(t, err)
-		}
-	}
-}
-
-/*
-	NOTE:
-	database schema: https://github.com/maxmind/MaxMind-DB/tree/main/source-data
-	Script used to build the minimal binaries: https://github.com/vimt/MaxMind-DB-Writer-python
-*/
-
-func Test_MaxmindAsn(t *testing.T) {
-	mmdb, err := maxminddb.Open("testdata/geoip_maxmind_asn.mmdb")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer mmdb.Close()
-
-	var record geoip2.ASN
-	err = mmdb.Lookup(net.ParseIP(geoipTestIP), &record)
-	if err != nil {
-		t.Error(err)
-	}
-
-	config := GeoIPConfig{
-		DB:     "test",
-		Source: &geoipTestSource,
-		DBType: "asn",
-	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
-	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            logging.NewSlogNop(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
-	}
-
-	extracted := map[string]any{}
-	testStage.populateExtractedWithASNData(extracted, &record)
-
-	for _, field := range []string{
-		fields[ASN],
-		fields[ASNORG],
-	} {
-		_, present := extracted[field]
-		if !present {
-			t.Errorf("GeoIP label %v not present", field)
-		}
-	}
-}
-
-func Test_MaxmindCity(t *testing.T) {
-	mmdb, err := maxminddb.Open("testdata/geoip_maxmind_city.mmdb")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer mmdb.Close()
-
-	var record geoip2.City
-	err = mmdb.Lookup(net.ParseIP(geoipTestIP), &record)
-	if err != nil {
-		t.Error(err)
-	}
-
-	config := GeoIPConfig{
-		DB:     "test",
-		Source: &geoipTestSource,
-		DBType: "city",
-	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
-	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            logging.NewSlogNop(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
-	}
-
-	extracted := map[string]any{}
-	testStage.populateExtractedWithCityData(extracted, &record)
-
-	for _, field := range []string{
-		fields[COUNTRYNAME],
-		fields[COUNTRYCODE],
-		fields[CONTINENTNAME],
-		fields[CONTINENTCODE],
-		fields[CITYNAME],
-		fmt.Sprintf("%s_latitude", fields[LOCATION]),
-		fmt.Sprintf("%s_longitude", fields[LOCATION]),
-		fields[POSTALCODE],
-		fields[TIMEZONE],
-		fields[SUBDIVISIONNAME],
-		fields[SUBDIVISIONCODE],
-		fields[COUNTRYNAME],
-	} {
-		_, present := extracted[field]
-		if !present {
-			t.Errorf("GeoIP label %v not present", field)
-		}
-	}
-}
-
-func Test_MaxmindCountry(t *testing.T) {
-	mmdb, err := maxminddb.Open("testdata/geoip_maxmind_country.mmdb")
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	defer mmdb.Close()
-
-	var record geoip2.Country
-	err = mmdb.Lookup(net.ParseIP(geoipTestIP), &record)
-	if err != nil {
-		t.Error(err)
-	}
-
-	config := GeoIPConfig{
-		DB:     "test",
-		Source: &geoipTestSource,
-		DBType: "country",
-	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
-	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            logging.NewSlogNop(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
-	}
-
-	extracted := map[string]any{}
-	testStage.populateExtractedWithCountryData(extracted, &record)
-
-	for _, field := range []string{
-		fields[COUNTRYNAME],
-		fields[COUNTRYCODE],
-		fields[CONTINENTNAME],
-		fields[CONTINENTCODE],
-	} {
-		_, present := extracted[field]
-		if !present {
-			t.Errorf("GeoIP label %v not present", field)
 		}
 	}
 }
