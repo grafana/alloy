@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+ALLOY_BIN="${ALLOY_BIN:-/usr/bin/alloy}"
+CONFIG_FILE="${CONFIG_FILE:-/etc/alloy/config.alloy}"
+
+otel_mode=""
+case "${ALLOY_OTEL_MODE:-}" in
+  1 | true | yes | on) otel_mode="1" ;;
+esac
+
+if [ -n "$otel_mode" ]; then
+  if [ -d "$CONFIG_FILE" ]; then
+    config_dir="$CONFIG_FILE"
+  else
+    config_dir="$(dirname "$CONFIG_FILE")"
+  fi
+  config="${ALLOY_CONFIG:-$config_dir/config.yaml}"
+  exec "$ALLOY_BIN" otel --config="$config"
+else
+  config="${ALLOY_CONFIG:-$CONFIG_FILE}"
+  exec "$ALLOY_BIN" run ${CUSTOM_ARGS:-} --storage.path=/var/lib/alloy/data "$config"
+fi

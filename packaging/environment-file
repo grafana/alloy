@@ -9,8 +9,19 @@
 # The configuration file holding the Alloy config.
 CONFIG_FILE="/etc/alloy/config.alloy"
 
-# User-defined arguments to pass to the run command.
+# User-defined arguments to pass to the run command. Only applies to the
+# default engine (`alloy run`); it has no effect when ALLOY_OTEL_MODE below
+# is enabled.
 CUSTOM_ARGS=""
+
+# Set to (lowercase) 1, true, yes, or on to run the OTel engine (`alloy otel`)
+# instead of the default engine (`alloy run`). Unset or any other value keeps
+# the default engine.
+ALLOY_OTEL_MODE=""
+
+# Override the configuration file path. If unset, the default engine uses
+# CONFIG_FILE above, and the OTel engine uses config.yaml alongside it.
+ALLOY_CONFIG=""
 
 # Restart on system upgrade. Defaults to true.
 RESTART_ON_UPGRADE=true
