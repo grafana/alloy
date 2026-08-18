@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -174,7 +173,7 @@ func TestValidateGeoIPConfig(t *testing.T) {
 					"field": ".-badlookup",
 				},
 			},
-			errors.New(ErrCouldNotCompileJMES),
+			errCouldNotCompileJMES,
 		},
 	}
 	for _, tt := range tests {

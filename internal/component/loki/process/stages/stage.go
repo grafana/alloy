@@ -87,7 +87,7 @@ func newStageWithOpts(
 	case cfg.CRIConfig != nil:
 		s = newCRIStage(*cfg.CRIConfig, opts)
 	case cfg.JSONConfig != nil:
-		s, err = newJSONStage(opts.slogger, *cfg.JSONConfig)
+		s, err = newJSONStage(*cfg.JSONConfig, opts)
 		if err != nil {
 			return nil, err
 		}
