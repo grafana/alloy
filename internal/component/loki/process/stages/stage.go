@@ -153,7 +153,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.DropConfig != nil:
-		s, err = newDropStage(slogger, *cfg.DropConfig, registerer)
+		s, err = newDropStage(slogger, *cfg.DropConfig, registerer, next)
 		if err != nil {
 			return nil, err
 		}
