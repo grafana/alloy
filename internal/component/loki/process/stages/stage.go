@@ -167,8 +167,8 @@ func newStageWithNextFn(
 		if err != nil {
 			return nil, err
 		}
-	case cfg.LabelAllowConfig != nil:
-		s, err = newLabelAllowStage(*cfg.LabelAllowConfig)
+	case cfg.LabelKeepConfig != nil:
+		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, next)
 		if err != nil {
 			return nil, err
 		}
