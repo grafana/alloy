@@ -162,7 +162,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.DropConfig != nil:
-		s, err = newDropStage(opts.slogger, *cfg.DropConfig, opts.registerer)
+		s, err = newDropStage(*cfg.DropConfig, opts)
 		if err != nil {
 			return nil, err
 		}
