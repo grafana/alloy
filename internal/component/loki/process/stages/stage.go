@@ -78,7 +78,7 @@ func newStageWithNextFn(
 	case cfg.CRIConfig != nil:
 		s = newCRIStage(slogger, *cfg.CRIConfig, registerer, minStability, next)
 	case cfg.JSONConfig != nil:
-		s, err = newJSONStage(slogger, *cfg.JSONConfig)
+		s, err = newJSONStage(slogger, *cfg.JSONConfig, next)
 		if err != nil {
 			return nil, err
 		}

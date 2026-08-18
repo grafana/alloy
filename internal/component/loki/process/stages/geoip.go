@@ -94,7 +94,7 @@ func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 
 		expressions[key], err = jmespath.Compile(jmes)
 		if err != nil {
-			return nil, errors.New(ErrCouldNotCompileJMES)
+			return nil, errCouldNotCompileJMES
 		}
 	}
 	return expressions, nil
