@@ -2,7 +2,6 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.azureblob/
 description: Learn about otelcol.exporter.azureblob
 labels:
-  stage: experimental
   products:
     - oss
   tags:
@@ -14,8 +13,6 @@ title: otelcol.exporter.azureblob
 # `otelcol.exporter.azureblob`
 
 {{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.azureblob` receives telemetry data from other `otelcol` components and writes it to Azure Blob Storage.
 
@@ -68,9 +65,9 @@ You can use the following blocks with `otelcol.exporter.azureblob`:
 | Block                                  | Description                                                                    | Required |
 | -------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`auth`][auth]                         | Configures Azure authentication.                                               | yes      |
-| [`container`][container]               | Configures the container name for metrics, logs, and traces.                   | no       |
-| [`blob_name_format`][blob_name_format] | Configures the blob name format.                                               | no       |
 | [`append_blob`][append_blob]           | Enables append blob mode and separator.                                        | no       |
+| [`blob_name_format`][blob_name_format] | Configures the blob name format.                                               | no       |
+| [`container`][container]               | Configures the container name for metrics, logs, and traces.                   | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures retry backoff for failed requests.                                  | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                    | no       |
@@ -130,12 +127,12 @@ The following arguments are supported:
 | `metrics_format`              | `string`            | Blob name format for metrics.                     | `"2006/01/02/metrics_15_04_05.json"` | no       |
 | `logs_format`                 | `string`            | Blob name format for logs.                        | `"2006/01/02/logs_15_04_05.json"`    | no       |
 | `traces_format`               | `string`            | Blob name format for traces.                      | `"2006/01/02/traces_15_04_05.json"`  | no       |
-| `serial_num_enabled`          | `boolean`           | Whether to append a random serial number.         | `true`                               | no       |
+| `serial_num_enabled`          | `bool`              | Whether to append a random serial number.         | `true`                               | no       |
 | `serial_num_range`            | `int`               | Upper limit for the random serial suffix.         | `10000`                              | no       |
-| `serial_num_before_extension` | `boolean`           | Place serial before file extension.               | `false`                              | no       |
+| `serial_num_before_extension` | `bool`              | Place serial before file extension.               | `false`                              | no       |
 | `timezone`                    | `string`            | Timezone used when formatting blob names.         |                                      | no       |
-| `template_enabled`            | `boolean`           | Enable Go template expansion in blob name format. | `false`                              | no       |
-| `time_parser_enabled`         | `boolean`           | Enable time parsing in blob name format.          | `true`                               | no       |
+| `template_enabled`            | `bool`              | Enable Go template expansion in blob name format. | `false`                              | no       |
+| `time_parser_enabled`         | `bool`              | Enable time parsing in blob name format.          | `true`                               | no       |
 | `time_parser_ranges`          | `list(string)`      | Time ranges used by the time parser.              |                                      | no       |
 | `params`                      | `map(string)`       | Additional template parameters.                   | `{}`                                 | no       |
 
@@ -147,7 +144,7 @@ The following arguments are supported:
 
 | Name        | Type      | Description                            | Default | Required |
 | ----------- | --------- | -------------------------------------- | ------- | -------- |
-| `enabled`   | `boolean` | Enable append blob mode.               | `false` | no       |
+| `enabled`   | `bool`    | Enable append blob mode.               | `false` | no       |
 | `separator` | `string`  | Separator used when appending content. | `"\n"`  | no       |
 
 ### `debug_metrics`
@@ -162,7 +159,7 @@ The following arguments are supported:
 
 | Name                   | Type       | Description                              | Default | Required |
 | ---------------------- | ---------- | ---------------------------------------- | ------- | -------- |
-| `enabled`              | `boolean`  | Enable retries.                          | `true`  | no       |
+| `enabled`              | `bool`     | Enable retries.                          | `true`  | no       |
 | `initial_interval`     | `duration` | Initial backoff interval.                | `5s`    | no       |
 | `randomization_factor` | `float`    | Randomization factor for backoff jitter. | `0.5`   | no       |
 | `multiplier`           | `float`    | Exponential backoff multiplier.          | `1.5`   | no       |
