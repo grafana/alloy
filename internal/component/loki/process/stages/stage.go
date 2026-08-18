@@ -65,7 +65,7 @@ func newStageWithNextFn(
 	cfg StageConfig,
 	registerer prometheus.Registerer,
 	minStability featuregate.Stability,
-	_ NextFn,
+	next NextFn,
 ) (Stage, error) {
 
 	var (
@@ -79,10 +79,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.CRIConfig != nil:
-		s, err = NewCRI(slogger, *cfg.CRIConfig, registerer, minStability)
-		if err != nil {
-			return nil, err
-		}
+		s = newCRIStage(slogger, *cfg.CRIConfig, registerer, minStability, next)
 	case cfg.JSONConfig != nil:
 		s, err = newJSONStage(slogger, *cfg.JSONConfig)
 		if err != nil {
