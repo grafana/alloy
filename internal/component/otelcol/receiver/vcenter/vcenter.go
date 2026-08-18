@@ -404,10 +404,7 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := args.MetricsBuilderConfig.Convert()
 
-	result, ok := vcenterreceiver.NewFactory().CreateDefaultConfig().(*vcenterreceiver.Config)
-	if !ok {
-		return nil, fmt.Errorf("unexpected default config type for otelcol.receiver.vcenter")
-	}
+	result := vcenterreceiver.NewFactory().CreateDefaultConfig().(*vcenterreceiver.Config)
 
 	if err := mapstructure.Decode(cfg, result); err != nil {
 		return nil, err
