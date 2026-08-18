@@ -21,7 +21,8 @@ You can enable clustering when {{< param "PRODUCT_NAME" >}} is installed on Kube
 
 ### Before you begin
 
-Ensure that your `values.yaml` file has `controller.type` set to `statefulset`.
+For multi-replica clustering on Kubernetes, Grafana Alloy recommends setting `controller.type` to `statefulset`.
+Other controller types can still pass clustering flags when `alloy.clustering.enabled=true`, but `statefulset` is the recommended topology for stable clustered operation.
 
 ### Steps
 
