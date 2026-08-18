@@ -187,11 +187,18 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	c.mut.Lock()
 
-	out := make([]Entry, 0, len(entries))
+	// dst compacts entries in place, extra only grows when the
+	// MaxPartialLines branch below flushes held partial lines. So in
+	// the common case this call never allocates a new slice.
+	var (
+		dst   int
+		extra []Entry
+	)
 	for _, e := range entries {
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
-			out = append(out, e)
+			entries[dst] = e
+			dst++
 			continue
 		}
 
@@ -225,7 +232,7 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 
 				// Add existing partialLines
 				for _, v := range c.partialLines {
-					out = append(out, v)
+					extra = append(extra, v)
 				}
 
 				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
@@ -260,10 +267,20 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 			delete(c.partialLines, fingerprint)
 		}
 
-		out = append(out, e)
+		entries[dst] = e
+		dst++
 	}
 
 	c.mut.Unlock()
+
+	out := entries[:dst]
+	if len(extra) > 0 {
+		out = append(out, extra...)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
 
 	return c.next(ctx, out)
 }
