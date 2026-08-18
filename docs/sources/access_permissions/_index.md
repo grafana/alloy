@@ -19,7 +19,7 @@ Use only what matches your components and environment.
 1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. Restrict network exposure: bind the HTTP server and OpenTelemetry receivers to localhost when remote access isn't required, and use TLS and authentication when you expose listeners or connect to remote backends.
    Refer to [Network exposure][network-exposure].
-1. Include [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] and [`otelcol.processor.batch`][otelcol-processor-batch] on every OpenTelemetry pipeline to protect against memory exhaustion under traffic spikes.
+1. Include [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] after OpenTelemetry receivers, and configure exporter queue, retry, and timeout settings to protect against memory exhaustion under traffic spikes.
    Refer to [Pipeline resource limits](#pipeline-resource-limits).
 1. Avoid `insecure_skip_verify = true` in production.
    Refer to the TLS settings in the [component][components] reference, for example [`prometheus.remote_write`][prometheus-remote-write].
@@ -62,7 +62,7 @@ OpenTelemetry receivers such as [`otelcol.receiver.otlp`][otelcol-receiver-otlp]
 Many other HTTP-based receivers default to `localhost`.
 Confirm the `endpoint` default in the component reference before you deploy.
 
-If clients on the same host can reach the receiver, set `endpoint` to `127.0.0.1` or `localhost` instead of `0.0.0.0`.
+If all clients are on the same host as the receiver, set `endpoint` to `127.0.0.1` or `localhost` instead of `0.0.0.0`.
 An unauthenticated receiver that's reachable from other hosts lets anyone push metrics, logs, and traces into your pipeline.
 
 Because {{< param "PRODUCT_NAME" >}} implements these endpoints with OpenTelemetry Collector components, the same binding and authentication recommendations apply.
@@ -81,18 +81,19 @@ Refer to the TLS settings in the [component reference][components] for the compo
 ## Pipeline resource limits
 
 OpenTelemetry receivers can accept sudden traffic spikes large enough to exhaust process memory.
-The upstream OpenTelemetry Collector security guidance treats [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] and [`otelcol.processor.batch`][otelcol-processor-batch] as security controls, not only operational tuning.
+The upstream OpenTelemetry Collector security guidance recommends memory limits, exporter queues, and timeout and retry limits as safeguards for resource utilization.
 
 Place `otelcol.processor.memory_limiter` immediately after each receiver in the pipeline.
 It drops telemetry and triggers garbage collection when memory use exceeds configured soft and hard limits.
-Follow it with `otelcol.processor.batch`, which batches data before export and reduces outbound request volume.
+For each exporter that supports them, configure `sending_queue`, `retry_on_failure`, and `timeout` settings so backend failures don't accumulate too much data in memory.
+Some exporters also support `sending_queue > batch` settings to batch data before export.
 
 Refer to [OpenTelemetry Collector configuration best practices][otel-security-best-practices] for related guidance on queue sizes, filters, and exporter timeouts.
 
 ## Secrets and credentials
 
-Credentials can enter your observability stack in two ways: values you load into {{< param "PRODUCT_NAME" >}} configuration, and sensitive data that applications write into log lines {{< param "PRODUCT_NAME" >}} collects.
-Handle each separately.
+Secrets require different controls depending on where they appear.
+Protect credentials that {{< param "PRODUCT_NAME" >}} uses to access other systems, and protect sensitive data that applications write into telemetry.
 
 ### Configuration credentials
 
@@ -111,6 +112,7 @@ Log lines can contain API keys, tokens, and passwords that applications print to
 Runtime loading and the `secret` type don't apply to those values because they travel with the telemetry to your backends.
 
 Prevent secrets from appearing in logs at the application source where you can.
+When source-level controls aren't enough, you can use components such as [`loki.secretfilter`][loki-secretfilter], [`loki.process`][loki-process], or [`otelcol.processor.transform`][otelcol-processor-transform] to drop or redact sensitive fields before export.
 Restrict access to observability backends that store log data.
 
 ## Next steps
@@ -129,9 +131,11 @@ Restrict access to observability backends that store log data.
 [otelcol-exporter-otlp]: ../reference/components/otelcol/otelcol.exporter.otlp/
 [otelcol-receiver-otlp]: ../reference/components/otelcol/otelcol.receiver.otlp/
 [otelcol-processor-memory-limiter]: ../reference/components/otelcol/otelcol.processor.memory_limiter/
-[otelcol-processor-batch]: ../reference/components/otelcol/otelcol.processor.batch/
+[otelcol-processor-transform]: ../reference/components/otelcol/otelcol.processor.transform/
 [otelcol]: ../reference/components/otelcol/
 [otel-security-best-practices]: https://opentelemetry.io/docs/security/config-best-practices/
+[loki-secretfilter]: ../reference/components/loki/loki.secretfilter/
+[loki-process]: ../reference/components/loki/loki.process/
 [remote-vault]: ../reference/components/remote/remote.vault/
 [sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
