@@ -76,11 +76,18 @@ func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) error {
 			extracted[string(k)] = v
 		}
 
-		for _, e := range stream.Entries {
-			entries = append(entries, Entry{
-				Extracted: maps.Clone(extracted),
-				Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
-			})
+		for i, e := range stream.Entries {
+			if i == len(stream.Entries)-1 {
+				entries = append(entries, Entry{
+					Extracted: extracted,
+					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, created, e),
+				})
+			} else {
+				entries = append(entries, Entry{
+					Extracted: maps.Clone(extracted),
+					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
+				})
+			}
 		}
 		return nil
 	})
