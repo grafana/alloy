@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,12 +13,9 @@ import (
 )
 
 const (
-	ErrEmptyLabelStageConfig = "label stage config cannot be empty"
-	ErrInvalidLabelName      = "invalid label name: %s"
-	ErrInvalidSourceType     = "invalid labels source_type: %s. Can only be 'extracted' or 'structured_metadata'"
-
-	LabelsSourceStructuredMetadata string = "structured_metadata"
-	LabelsSourceExtractedMap       string = "extracted"
+	errEmptyLabelStageConfig = "label stage config cannot be empty"
+	errInvalidLabelName      = "invalid label name: %s"
+	errInvalidSourceType     = "invalid labels source_type: %s. Can only be 'extracted' or 'structured_metadata'"
 )
 
 // LabelsConfig is a set of labels to be extracted
@@ -29,7 +27,7 @@ type LabelsConfig struct {
 // validateLabelsConfig validates the Label stage configuration
 func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
 	if cfg.Values == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(errEmptyLabelStageConfig)
 	}
 
 	if cfg.SourceType == "" {
@@ -39,19 +37,19 @@ func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
 	switch cfg.SourceType {
 	case SourceTypeExtractedMap, SourceTypeStructuredMetadata:
 	default:
-		return nil, fmt.Errorf(ErrInvalidSourceType, cfg.SourceType)
+		return nil, fmt.Errorf(errInvalidSourceType, cfg.SourceType)
 	}
 
 	// We must not mutate the c.Values, create a copy with changes we need.
 	ret := map[string]string{}
 	if cfg.Values == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(errEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range cfg.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
+			return nil, fmt.Errorf(errInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
@@ -64,13 +62,19 @@ func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
 	return ret, nil
 }
 
+var (
+	_ Stage = (*labelStage)(nil)
+	_ stage = (*labelStage)(nil)
+)
+
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(logger *slog.Logger, configs LabelsConfig) (Stage, error) {
+func newLabelStage(logger *slog.Logger, configs LabelsConfig, next NextFn) (Stage, error) {
 	labelsConfig, err := validateLabelsConfig(&configs)
 	if err != nil {
 		return nil, err
 	}
 	return &labelStage{
+		next:         next,
 		cfg:          &configs,
 		labelsConfig: labelsConfig,
 		logger:       logger.With("stage", "labels"),
@@ -79,6 +83,7 @@ func newLabelStage(logger *slog.Logger, configs LabelsConfig) (Stage, error) {
 
 // labelStage sets labels from extracted data
 type labelStage struct {
+	next         NextFn
 	cfg          *LabelsConfig
 	labelsConfig map[string]string
 	logger       *slog.Logger
@@ -95,11 +100,27 @@ func (l *labelStage) Run(in chan Entry) chan Entry {
 				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
 			case SourceTypeStructuredMetadata:
 				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
+
 			}
 			out <- e
 		}
 	}()
 	return out
+}
+
+// process implements stage.
+func (l *labelStage) process(ctx context.Context, entries []Entry) error {
+	for _, e := range entries {
+		// FIXME(kallep): The function we call could be determined
+		// when the stage is created and we can avoid this switch.
+		switch l.cfg.SourceType {
+		case SourceTypeExtractedMap:
+			l.addLabelFromExtractedMap(e.Labels, e.Extracted)
+		case SourceTypeStructuredMetadata:
+			l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
+		}
+	}
+	return l.next(ctx, entries)
 }
 
 func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted map[string]any) {

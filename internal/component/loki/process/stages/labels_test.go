@@ -105,29 +105,154 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	}
 }
 
-var (
-	lv1 = "lv1"
-	lv3 = ""
-)
+func TestLabelsStage(t *testing.T) {
+	sourceName := "diff_source"
 
-var emptyLabelsConfig = LabelsConfig{nil, ""}
+	type testCase struct {
+		name     string
+		cfg      LabelsConfig
+		entries  []Entry
+		expected []Entry
+	}
 
-func TestLabels(t *testing.T) {
+	tests := []testCase{
+		{
+			name: "extract success extracted",
+			cfg: LabelsConfig{Values: map[string]*string{
+				"testLabel": nil,
+			}},
+			entries: []Entry{
+				newTestEntry(map[string]any{"testLabel": "testValue"}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{"testLabel": "testValue"}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{}),
+			},
+		},
+		{
+			name: "extract success structured metadata",
+			cfg: LabelsConfig{
+				SourceType: SourceTypeStructuredMetadata,
+				Values: map[string]*string{
+					"testLabel": ptr("testStrucuturedMetadata"),
+				},
+			},
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "testStrucuturedMetadata", Value: "testValue"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "testStrucuturedMetadata", Value: "testValue"},
+					},
+				}),
+			},
+		},
+		{
+			name: "different source name extracted",
+			cfg: LabelsConfig{Values: map[string]*string{
+				"testLabel": &sourceName,
+			}},
+			entries: []Entry{
+				newTestEntry(map[string]any{sourceName: "testValue"}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{sourceName: "testValue"}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{}),
+			},
+		},
+		{
+			name: "different source name structured metadata",
+			cfg: LabelsConfig{
+				SourceType: SourceTypeStructuredMetadata,
+				Values: map[string]*string{
+					"testLabel": &sourceName,
+				},
+			},
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: sourceName, Value: "testValue"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: sourceName, Value: "testValue"},
+					},
+				}),
+			},
+		},
+		{
+			name: "empty extracted data",
+			cfg: LabelsConfig{Values: map[string]*string{
+				"testLabel": &sourceName,
+			}},
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+		},
+		{
+			name: "empty structured metadata",
+			cfg: LabelsConfig{
+				SourceType: SourceTypeStructuredMetadata,
+				Values: map[string]*string{
+					"testLabel": &sourceName,
+				},
+			},
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{LabelsConfig: &tt.cfg}}, tt.entries, tt.expected, "")
+		})
+	}
+}
+
+func TestValidateLabelsConfig(t *testing.T) {
+	var (
+		lv1 = "lv1"
+		lv3 = ""
+	)
+
 	tests := map[string]struct {
 		config       LabelsConfig
 		err          error
 		expectedCfgs map[string]string
 	}{
 		"missing config": {
-			config:       emptyLabelsConfig,
-			err:          errors.New(ErrEmptyLabelStageConfig),
+			config:       LabelsConfig{},
+			err:          errors.New(errEmptyLabelStageConfig),
 			expectedCfgs: nil,
 		},
 		"invalid label name": {
 			config: LabelsConfig{
 				Values: map[string]*string{"\xfd": nil},
 			},
-			err:          fmt.Errorf(ErrInvalidLabelName, "\xfd"),
+			err:          fmt.Errorf(errInvalidLabelName, "\xfd"),
 			expectedCfgs: nil,
 		},
 		"invalid source type": {
@@ -185,109 +310,6 @@ func TestLabels(t *testing.T) {
 			if test.expectedCfgs != nil {
 				assert.Equal(t, test.expectedCfgs, actual)
 			}
-		})
-	}
-}
-
-func TestLabelsStage_Process(t *testing.T) {
-	sourceName := "diff_source"
-	tests := map[string]struct {
-		config            LabelsConfig
-		extractedData     map[string]any
-		strcturedMetadata push.LabelsAdapter
-		inputLabels       model.LabelSet
-		expectedLabels    model.LabelSet
-	}{
-		"extract_success_extracted": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": nil,
-			}},
-			map[string]any{
-				"testLabel": "testValue",
-			},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
-		},
-		"extract_success_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": ptr("testStrucuturedMetadata"),
-				}},
-			map[string]any{},
-			push.LabelsAdapter{
-				push.LabelAdapter{Name: "testStrucuturedMetadata", Value: "testValue"},
-			},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
-		},
-		"different_source_name_extracted": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": &sourceName,
-			}},
-			map[string]any{
-				sourceName: "testValue",
-			},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
-		},
-		"different_source_name_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": &sourceName,
-				}},
-			map[string]any{},
-			push.LabelsAdapter{
-				push.LabelAdapter{Name: sourceName, Value: "testValue"},
-			},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
-		},
-		"empty_extracted_data": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": &sourceName,
-			}},
-			map[string]any{},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{},
-		},
-		"empty_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": &sourceName,
-				}},
-			map[string]any{},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{},
-		},
-	}
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			st, err := newLabelStage(logging.NewSlogNop(), test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			entry := newEntry(test.extractedData, test.inputLabels, "", time.Time{})
-			entry.StructuredMetadata = test.strcturedMetadata
-			out := processEntries(st, entry)[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
 		})
 	}
 }
