@@ -183,6 +183,7 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 	})
 }
 
+// cleanup implements stage and is only used by our new pipeline.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	c.mut.Lock()
 
@@ -267,7 +268,27 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
-func (c *criStage) cleanup() {}
+// cleanup implements cleaner and is only used by our new pipeline.
+func (c *criStage) cleanup() {
+	c.mut.Lock()
+	out := make([]Entry, 0, len(c.partialLines))
+	for _, e := range c.partialLines {
+		out = append(out, e)
+	}
+	c.partialLines = nil
+	c.mut.Unlock()
+
+	if len(out) == 0 {
+		return
+	}
+
+	const flushTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
+	defer cancel()
+	if err := c.next(ctx, out); err != nil {
+		c.logger.Error("failed to flush held partial lines on cleanup", "err", err)
+	}
+}
 
 func (c *criStage) ensureTruncateIfRequired(e *Entry) {
 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
