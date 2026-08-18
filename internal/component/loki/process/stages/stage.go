@@ -173,7 +173,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.LabelDropConfig != nil:
-		s, err = newLabelDropStage(*cfg.LabelDropConfig)
+		s, err = newLabelDropStage(*cfg.LabelDropConfig, next)
 		if err != nil {
 			return nil, err
 		}
