@@ -191,10 +191,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.DecolorizeConfig != nil:
-		s, err = newDecolorizeStage(*cfg.DecolorizeConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newDecolorizeStage(*cfg.DecolorizeConfig, next)
 	case cfg.SamplingConfig != nil:
 		s, err = newSamplingStage(slogger, *cfg.SamplingConfig, registerer)
 		if err != nil {
