@@ -274,9 +274,9 @@ func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 
 // TestFanout_PassthroughToSeriesRefMappingTransition verifies that when the fanout
 // transitions from passthrough (1 child) to seriesRefMapping (2 children) via
-// UpdateChildren, a cached raw child ref that collides numerically with a new
-// store-issued unique ref for a different series is handled correctly via label
-// hash guards.
+// UpdateChildren, a cached raw child ref from the old topology is not forwarded to
+// the new children: it's zeroed so each child resolves the series by labels rather
+// than risk colliding with one of its own series.
 func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	walChild := newRecordingStore()
 	fanout := prometheus.NewFanout([]storage.Appendable{walChild}, "test", promclient.NewRegistry(), nil)
@@ -311,9 +311,10 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	require.NotEqual(t, storage.SeriesRef(1), refB,
 		"seriesB must not reuse seriesA's store-issued unique ref")
 
-	// Both children must have been called with passthroughRef for lblsB, not seriesA's child refs.
-	require.Equal(t, passthroughRef, child1.appender.appendRefs[1],
-		"child1 must be called with passthrough ref for seriesB")
-	require.Equal(t, passthroughRef, child2.appender.appendRefs[1],
-		"child2 must be called with passthrough ref for seriesB")
+	// The stale passthrough ref belonged to the old topology's child; it must not reach
+	// the new children. Each is called with 0 and resolves seriesB by labels.
+	require.Equal(t, storage.SeriesRef(0), child1.appender.appendRefs[1],
+		"child1 must be called with 0, not the stale passthrough ref")
+	require.Equal(t, storage.SeriesRef(0), child2.appender.appendRefs[1],
+		"child2 must be called with 0, not the stale passthrough ref")
 }

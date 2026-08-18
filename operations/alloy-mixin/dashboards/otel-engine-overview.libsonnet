@@ -431,12 +431,16 @@ local filename = 'alloy-otel-engine-overview.json';
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_spans_total{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by(${groupby}) (rate(otelcol_processor_refused_spans_total{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   legendFormat='{{${groupby}}} spans',
                 ),
                 panel.newQuery(
                   expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_metric_points_total{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   legendFormat='{{${groupby}}} metric points',

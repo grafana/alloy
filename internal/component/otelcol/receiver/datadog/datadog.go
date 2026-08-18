@@ -42,6 +42,10 @@ type Arguments struct {
 	// IdleSeriesCleanupInterval defines how frequently the receiver checks for stale series.
 	IdleSeriesCleanupInterval time.Duration `alloy:"idle_series_cleanup_interval,attr,optional"`
 
+	// DecodeJSONMessage parses a log record whose message is itself a JSON
+	// object and lifts its fields into the log record. Defaults to true
+	DecodeJSONMessage bool `alloy:"decode_json_message,attr,optional"`
+
 	Intake *IntakeArguments `alloy:"intake,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
@@ -111,6 +115,7 @@ func (args *Arguments) SetToDefault() {
 			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
 		IdleSeriesCleanupInterval: 5 * time.Minute,
+		DecodeJSONMessage:         true,
 	}
 	args.DebugMetrics.SetToDefault()
 }
@@ -127,6 +132,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		TraceIDCacheSize:          args.TraceIDCacheSize,
 		IdleSeriesTimeout:         args.IdleSeriesTimeout,
 		IdleSeriesCleanupInterval: args.IdleSeriesCleanupInterval,
+		Logs:                      datadogreceiver.LogsConfig{DecodeJSONMessage: args.DecodeJSONMessage},
 	}
 
 	if args.Intake != nil {

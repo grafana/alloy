@@ -515,3 +515,31 @@ func Test_ExtractMetadata(t *testing.T) {
 		require.Equal(t, []string{"k8s.pod.name"}, otelObj.Extract.Metadata)
 	})
 }
+
+func Test_PodDeleteGracePeriod(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	t.Run("default matches the upstream factory", func(t *testing.T) {
+		upstream := k8sattributesprocessor.NewFactory().
+			CreateDefaultConfig().(*k8sattributesprocessor.Config)
+
+		otelObj := convert(t, `output {}`)
+
+		require.Equal(t, upstream.PodDeleteGracePeriod, otelObj.PodDeleteGracePeriod)
+	})
+
+	t.Run("configured value is passed through", func(t *testing.T) {
+		otelObj := convert(t, `
+			pod_delete_grace_period = "30s"
+			output {}
+		`)
+
+		require.Equal(t, 30*time.Second, otelObj.PodDeleteGracePeriod)
+	})
+}
