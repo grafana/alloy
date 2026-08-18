@@ -5,58 +5,79 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestLabelDrop(t *testing.T) {
-	tests := []struct {
-		name           string
-		config         *LabelDropConfig
-		inputLabels    model.LabelSet
-		expectedLabels model.LabelSet
-	}{
+func TestLabelDropStage(t *testing.T) {
+	now := time.Now()
+
+	type testCase struct {
+		name     string
+		cfg      LabelDropConfig
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
 		{
-			name:   "drop one label",
-			config: &LabelDropConfig{Values: []string{"testLabel1"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			name: "drop one label",
+			cfg:  LabelDropConfig{Values: []string{"testLabel1"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel2": "testValue",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{
+					"testLabel2": "testValue",
+				}, "", now),
 			},
 		},
 		{
-			name:   "drop two labels",
-			config: &LabelDropConfig{Values: []string{"testLabel1", "testLabel2"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			name: "drop two labels",
+			cfg:  LabelDropConfig{Values: []string{"testLabel1", "testLabel2"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{}, "", now),
+			},
 		},
 		{
-			name:   "drop non-existing label",
-			config: &LabelDropConfig{Values: []string{"foobar"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			name: "drop non-existing label",
+			cfg:  LabelDropConfig{Values: []string{"foobar"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			st, err := newLabelDropStage(*test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out := processEntries(st, newEntry(nil, test.inputLabels, "", time.Now()))[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{LabelDropConfig: &tt.cfg}}, tt.entries, tt.expected, "")
 		})
 	}
 }
