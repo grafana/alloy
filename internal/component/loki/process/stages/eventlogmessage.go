@@ -1,11 +1,13 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/util/strutil"
 )
 
 const (
@@ -31,26 +33,31 @@ func (e *EventLogMessageConfig) SetToDefault() {
 	e.Source = defaultSource
 }
 
-type eventLogMessageStage struct {
-	cfg    *EventLogMessageConfig
-	logger *slog.Logger
-}
+var (
+	_ Stage = (*eventLogMessageStage)(nil)
+	_ stage = (*eventLogMessageStage)(nil)
+)
 
-// Create a event log message stage, including validating any supplied configuration
-func newEventLogMessageStage(logger *slog.Logger, cfg *EventLogMessageConfig) Stage {
+func newEventLogMessageStage(logger *slog.Logger, cfg *EventLogMessageConfig, next NextFn) Stage {
 	return &eventLogMessageStage{
+		next:   next,
 		cfg:    cfg,
 		logger: logger.With("stage", "eventlogmessage"),
 	}
 }
 
+type eventLogMessageStage struct {
+	next   NextFn
+	cfg    *EventLogMessageConfig
+	logger *slog.Logger
+}
+
 func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
-	key := m.cfg.Source
 	go func() {
 		defer close(out)
 		for e := range in {
-			err := m.processEntry(e.Extracted, key)
+			e, err := m.processEntry(e)
 			if err != nil {
 				continue
 			}
@@ -60,20 +67,38 @@ func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
+func (m *eventLogMessageStage) process(ctx context.Context, entries []Entry) error {
+	var dst int
+	for _, e := range entries {
+		e, err := m.processEntry(e)
+		if err != nil {
+			continue
+		}
+		entries[dst] = e
+		dst++
+	}
+
+	if dst == 0 {
+		return nil
+	}
+
+	return m.next(ctx, entries[:dst])
+}
+
 // Process a event log message from extracted with the specified key, adding additional
 // entries into the extracted map
-func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string) error {
-	value, ok := extracted[key]
+func (m *eventLogMessageStage) processEntry(e Entry) (Entry, error) {
+	value, ok := e.Extracted[m.cfg.Source]
 	if !ok {
 		if debugEnabled(m.logger) {
-			m.logger.Debug("source not in the extracted values", "source", key)
+			m.logger.Debug("source not in the extracted values", "source", m.cfg.Source)
 		}
-		return nil
+		return e, nil
 	}
 	s, err := getString(value)
 	if err != nil {
 		m.logger.Warn("invalid label value parsed", "value", value)
-		return err
+		return e, err
 	}
 	for line := range strings.SplitSeq(s, "\r\n") {
 		parts := strings.SplitN(line, ":", 2)
@@ -91,9 +116,9 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string
 				}
 				continue
 			}
-			mkey = SanitizeFullLabelName(mkey)
+			mkey = strutil.SanitizeFullLabelName(mkey)
 		}
-		if _, ok := extracted[mkey]; ok && !m.cfg.OverwriteExisting {
+		if _, ok := e.Extracted[mkey]; ok && !m.cfg.OverwriteExisting {
 			m.logger.Info("extracted key already existed, appending _extracted to key", "key", mkey)
 			mkey += "_extracted"
 		}
@@ -104,32 +129,12 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string
 			}
 			continue
 		}
-		extracted[mkey] = mval
+		e.Extracted[mkey] = mval
 	}
 	if debugEnabled(m.logger) {
-		m.logger.Debug("extracted data debug in event_log_message stage", "extracted_data", extracted)
+		m.logger.Debug("extracted data debug in event_log_message stage", "extracted_data", e.Extracted)
 	}
-	return nil
+	return e, nil
 }
 
-// Cleanup implements Stage.
-func (*eventLogMessageStage) Cleanup() {
-	// no-op
-}
-
-// Sanitize a input string to convert it into a valid prometheus label
-// TODO: switch to prometheus/prometheus/util/strutil/SanitizeFullLabelName
-func SanitizeFullLabelName(input string) string {
-	if len(input) == 0 {
-		return "_"
-	}
-	var validSb strings.Builder
-	for i, b := range input {
-		if !((b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || (b >= '0' && b <= '9' && i > 0)) {
-			validSb.WriteRune('_')
-		} else {
-			validSb.WriteRune(b)
-		}
-	}
-	return validSb.String()
-}
+func (*eventLogMessageStage) Cleanup() {}
