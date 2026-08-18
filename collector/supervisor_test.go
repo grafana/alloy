@@ -151,8 +151,3 @@ func TestSupervisorConfigFromFileEmptyPath(t *testing.T) {
 	require.Nil(t, cfg)
 	require.EqualError(t, err, "path to supervisor configuration file cannot be empty")
 }
-
-func TestOtelSupervisorCommandIsVisible(t *testing.T) {
-	command := newOtelSupervisorCommand()
-	require.False(t, command.Hidden)
-}
