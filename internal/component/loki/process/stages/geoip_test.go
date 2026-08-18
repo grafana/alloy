@@ -15,9 +15,9 @@ Script used to build the minimal binaries: https://github.com/vimt/MaxMind-DB-Wr
 */
 func TestGeoIPStage(t *testing.T) {
 	var (
-		geoipTestIP     string = "192.0.2.1"
-		geoipTestSource string = "dummy"
-		geoipTestTime          = time.Now()
+		geoipTestIP     = "192.0.2.1"
+		geoipTestSource = "dummy"
+		geoipTestTime   = time.Now()
 	)
 
 	type testCase struct {

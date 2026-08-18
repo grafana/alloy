@@ -107,7 +107,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(opts.slogger, *cfg.LabelsConfig)
+		s, err = newLabelStage(*cfg.LabelsConfig, opts)
 		if err != nil {
 			return nil, err
 		}
