@@ -64,4 +64,4 @@ To run it, use the following command:
 alloy otel-supervisor --config=<SUPERVISOR_CONFIG_FILE>
 ```
 
-Replace _`<SUPERVISOR_CONFIG_FILE>`_ with the path to an OpenTelemetry Collector OpAMP supervisor configuration file.
+Replace _`<SUPERVISOR_CONFIG_FILE>`_ with the path to an [OpenTelemetry Collector OpAMP supervisor configuration file](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/cmd/opampsupervisor/specification/README.md).
