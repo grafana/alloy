@@ -85,6 +85,13 @@ alloy otel --config=<CONFIG_FILE> [<FLAGS> ...]
 Metrics are also available on the default collector port and endpoint at `0.0.0.0:8888/metrics`.
 Since the {{< param "DEFAULT_ENGINE" >}} isn't running, the UI and metrics aren't available at `0.0.0.0:12345/metrics`.
 
+### Manage with Grafana Fleet Management
+
+Use the embedded `otel-supervisor` command to manage the {{< param "OTEL_ENGINE" >}} through Grafana Fleet Management.
+The supervisor starts {{< param "PRODUCT_NAME" >}} and receives OpenTelemetry Collector configuration from Grafana Fleet Management through OpAMP.
+
+Refer to [`otel-supervisor`](../../reference/cli/otel-supervisor/) for setup instructions and required environment variables.
+
 ### Run the {{% param "PRODUCT_NAME" %}} Engine extension
 
 You can also run the {{< param "OTEL_ENGINE" >}} with the {{< param "DEFAULT_ENGINE" >}}.
