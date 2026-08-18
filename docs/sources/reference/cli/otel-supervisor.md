@@ -19,29 +19,23 @@ weight: 360
 The `otel-supervisor` command runs {{< param "PRODUCT_NAME" >}} with the {{< param "OTEL_ENGINE" >}} under an embedded OpAMP supervisor.
 The supervisor connects to Grafana Fleet Management and receives the {{< param "OTEL_ENGINE" >}} configuration through OpAMP.
 
-{{< admonition type="note" >}}
-Grafana Fleet Management doesn't officially support {{< param "PRODUCT_NAME" >}}. Grafana Labs doesn't provide support for this configuration.
-{{< /admonition >}}
-
 ## Usage
 
-To use environment-based configuration, run the following command:
+The `otel-supervisor` command supports simple and manual modes.
+
+Simple mode helps you get started quickly with Grafana Fleet Management.
+Use manual mode to connect to an OpAMP server other than Grafana Fleet Management.
+
+## Run in simple mode
+
+Simple mode uses environment variables to configure the supervisor.
+To run it, use the following command:
 
 ```shell
 alloy otel-supervisor
 ```
 
-To use a supervisor configuration file, run the following command:
-
-```shell
-alloy otel-supervisor --config=<SUPERVISOR_CONFIG_FILE>
-```
-
-Replace _`<SUPERVISOR_CONFIG_FILE>`_ with the path to an OpAMP supervisor configuration file.
-
-## Configure with environment variables
-
-When you omit `--config`, the command reads the following environment variables:
+To configure simple mode, set the following environment variables:
 
 * `GCLOUD_FM_URL`: The Grafana Fleet Management base URL. The command adds `/v1/opamp` when the URL doesn't include it.
 * `GCLOUD_INSTANCE_ID`: Your Grafana Cloud instance ID.
@@ -60,3 +54,14 @@ alloy otel-supervisor
 ```
 
 For information about setting up Fleet Management, refer to the [Grafana Fleet Management documentation](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/).
+
+## Run in manual mode
+
+Manual mode uses a supervisor configuration file.
+To run it, use the following command:
+
+```shell
+alloy otel-supervisor --config=<SUPERVISOR_CONFIG_FILE>
+```
+
+Replace _`<SUPERVISOR_CONFIG_FILE>`_ with the path to an OpenTelemetry Collector OpAMP supervisor configuration file.
