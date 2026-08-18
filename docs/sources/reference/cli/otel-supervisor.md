@@ -11,10 +11,7 @@ weight: 360
 
 # `otel-supervisor`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `otel-supervisor` command runs {{< param "PRODUCT_NAME" >}} with the {{< param "OTEL_ENGINE" >}} under an embedded OpAMP supervisor.
 The supervisor connects to Grafana Fleet Management and receives the {{< param "OTEL_ENGINE" >}} configuration through OpAMP.
