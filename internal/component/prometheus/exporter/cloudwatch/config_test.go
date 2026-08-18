@@ -1050,6 +1050,21 @@ var expectedDiscoveryJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 	},
 }
 
+const discoveryJobHistoricalDataPointsWithInheritedTimestampConfig = `
+sts_region = "us-east-2"
+discovery {
+	type = "AWS/SQS"
+	regions = ["us-east-2"]
+	add_cloudwatch_timestamp = true
+	metric {
+		name = "NumberOfMessagesSent"
+		statistics = ["Sum"]
+		period = "1m"
+		export_all_data_points = true
+	}
+}
+`
+
 // ==========
 // delay jobs
 //===========
@@ -1358,4 +1373,22 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			require.EqualValues(t, tc.expected, converted)
 		})
 	}
+}
+
+func TestDiscoveryJobHistoricalDataPointsWithInheritedTimestamp(t *testing.T) {
+	args := Arguments{}
+	err := syntax.Unmarshal([]byte(discoveryJobHistoricalDataPointsWithInheritedTimestampConfig), &args)
+	require.NoError(t, err)
+
+	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	converted, err := ConvertToYACE(args, logger.Slog())
+	require.NoError(t, err)
+	require.Len(t, converted.DiscoveryJobs, 1)
+	require.Len(t, converted.DiscoveryJobs[0].Metrics, 1)
+
+	metric := converted.DiscoveryJobs[0].Metrics[0]
+	require.True(t, metric.AddCloudwatchTimestamp)
+	require.True(t, metric.ExportAllDataPoints)
 }
