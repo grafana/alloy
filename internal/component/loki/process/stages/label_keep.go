@@ -1,23 +1,26 @@
 package stages
 
 import (
+	"context"
 	"errors"
-	"time"
-
-	"github.com/prometheus/common/model"
 )
 
-// ErrEmptyLabelAllowStageConfig error is returned if the config is empty.
-var ErrEmptyLabelAllowStageConfig = errors.New("labelallow stage config cannot be empty")
+// errEmptyLabelKeepStageConfig error is returned if the config is empty.
+var errEmptyLabelKeepStageConfig = errors.New("labelkeep stage config cannot be empty")
 
-// LabelAllowConfig contains the slice of labels to allow through.
-type LabelAllowConfig struct {
+// LabelKeepConfig contains the slice of labels to allow through.
+type LabelKeepConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-func newLabelAllowStage(config LabelAllowConfig) (Stage, error) {
+var (
+	_ Stage          = (*labelKeepStage)(nil)
+	_ entryProcessor = (*labelKeepStage)(nil)
+)
+
+func newLabelKeepStage(config LabelKeepConfig, next NextFn) (*labelKeepStage, error) {
 	if len(config.Values) < 1 {
-		return nil, ErrEmptyLabelAllowStageConfig
+		return nil, errEmptyLabelKeepStageConfig
 	}
 
 	labelMap := make(map[string]struct{})
@@ -25,20 +28,40 @@ func newLabelAllowStage(config LabelAllowConfig) (Stage, error) {
 		labelMap[label] = struct{}{}
 	}
 
-	return toStage(&labelAllowStage{
+	return &labelKeepStage{
+		next:   next,
 		labels: labelMap,
-	}), nil
+	}, nil
 }
 
-type labelAllowStage struct {
+type labelKeepStage struct {
+	next   NextFn
 	labels map[string]struct{}
 }
 
-// Process implements Stage.
-func (l *labelAllowStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
-	for label := range labels {
-		if _, ok := l.labels[string(label)]; !ok {
-			delete(labels, label)
+// Run implements Stage.
+func (l *labelKeepStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		for label := range e.Labels {
+			if _, ok := l.labels[string(label)]; !ok {
+				delete(e.Labels, label)
+			}
+		}
+		return e
+	})
+}
+
+// process implements stage.
+func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
+	for _, e := range entries {
+		for label := range e.Labels {
+			if _, ok := l.labels[string(label)]; !ok {
+				delete(e.Labels, label)
+			}
 		}
 	}
+	return l.next(ctx, entries)
 }
+
+// Cleanup implements Stage.
+func (l *labelKeepStage) Cleanup() {}
