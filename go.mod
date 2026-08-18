@@ -48,7 +48,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/github/smimesign v0.2.0
 	github.com/githubexporter/github-exporter v1.3.1
-	github.com/go-git/go-git/v5 v5.19.1
+	github.com/go-git/go-git/v5 v5.19.2
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-kit/log v0.2.1
 	github.com/go-logfmt/logfmt v0.6.1
@@ -759,7 +759,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.158.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opencontainers/runc v1.3.3 // indirect
+	github.com/opencontainers/runc v1.3.6 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/selinux v1.13.0 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
