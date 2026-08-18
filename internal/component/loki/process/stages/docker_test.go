@@ -4,14 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/loki/pkg/push"
 )
 
 var (
@@ -19,80 +15,63 @@ var (
 
 	dockerProcessed = `level=info ts=2019-04-30T02:12:41.844179Z caller=filetargetmanager.go:180 msg="Adding target" key="{com_docker_deploy_namespace=\"docker\", com_docker_fry=\"compose.api\", com_docker_image_tag=\"v0.4.12\", container_name=\"compose\", instance=\"compose-api-cbff6dfc9-cqfr8\", job=\"docker/compose-api\", namespace=\"docker\", pod_template_hash=\"769928975\"}"
 `
+	dockerProcessedTime       = time.Date(2019, 4, 30, 02, 12, 41, 844351500, time.UTC)
 	dockerInvalidTimestampRaw = `{"log":"log message\n","stream":"stderr","time":"hi!"}`
 	dockerTestTimeNow         = time.Now()
 )
 
-func TestDocker(t *testing.T) {
+func TestDockerStage(t *testing.T) {
 	type testCase struct {
 		name     string
-		input    loki.Entry
-		expected loki.Entry
+		entries  []Entry
+		expected []Entry
 	}
 
 	tests := []testCase{
 		{
 			name: "happy path",
-			input: loki.Entry{
-				Entry: push.Entry{
-					Line:      dockerRaw,
-					Timestamp: time.Now(),
-				},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, dockerRaw, dockerTestTimeNow),
 			},
-			expected: loki.Entry{
-				Labels: model.LabelSet{"stream": "stderr"},
-				Entry: push.Entry{
-					Line:      dockerProcessed,
-					Timestamp: time.Date(2019, 4, 30, 02, 12, 41, 844351500, time.UTC),
-				},
+			expected: []Entry{
+				newEntry(
+					map[string]any{"output": dockerProcessed, "stream": "stderr", "timestamp": "2019-04-30T02:12:41.8443515Z"},
+					model.LabelSet{"stream": "stderr"},
+					dockerProcessed,
+					dockerProcessedTime,
+				),
 			},
 		},
 		{
 			name: "invalid timestamp",
-			input: loki.Entry{
-				Entry: push.Entry{
-					Line:      dockerInvalidTimestampRaw,
-					Timestamp: dockerTestTimeNow,
-				},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, dockerInvalidTimestampRaw, dockerTestTimeNow),
 			},
-			expected: loki.Entry{
-				Labels: model.LabelSet{"stream": "stderr"},
-				Entry: push.Entry{
-					Line:      "log message\n",
-					Timestamp: dockerTestTimeNow,
-				},
+			expected: []Entry{
+				newEntry(
+					map[string]any{"output": "log message\n", "stream": "stderr", "timestamp": "hi!"},
+					model.LabelSet{"stream": "stderr"},
+					"log message\n",
+					dockerTestTimeNow,
+				),
 			},
 		},
 		{
 			name: "not json",
-			input: loki.Entry{
-				Entry: push.Entry{
-					Line:      "i'm not json!",
-					Timestamp: dockerTestTimeNow,
-				},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "i'm not json!", dockerTestTimeNow),
 			},
-			expected: loki.Entry{
-				Labels: model.LabelSet{},
-				Entry: push.Entry{
-					Line:      "i'm not json!",
-					Timestamp: dockerTestTimeNow,
-				},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "i'm not json!", dockerTestTimeNow),
 			},
 		},
 		{
 			name: "json but not docker format",
-			input: loki.Entry{
-				Entry: push.Entry{
-					Line:      `{"msg": "test"}`,
-					Timestamp: dockerTestTimeNow,
-				},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"msg": "test"}`, dockerTestTimeNow),
 			},
-			expected: loki.Entry{
-				Labels: model.LabelSet{},
-				Entry: push.Entry{
-					Line:      `{"msg": "test"}`,
-					Timestamp: dockerTestTimeNow,
-				},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"msg": "test"}`, dockerTestTimeNow),
 			},
 		},
 	}
@@ -100,36 +79,17 @@ func TestDocker(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			p, err := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				t.Fatalf("failed to create Docker parser: %s", err)
-			}
-			out := processEntries(p, newEntry(nil, tt.input.Labels, tt.input.Line, tt.input.Timestamp))[0]
 
-			require.EqualValues(t, tt.expected.Labels, out.Entry.Labels)
-			require.Equal(t, tt.expected.Entry.Line, out.Entry.Line)
-			require.Equal(t, tt.expected.Entry.Timestamp, out.Entry.Timestamp)
+			runPipelineTest(t, []StageConfig{{DockerConfig: &DockerConfig{}}}, tt.entries, tt.expected, "")
 		})
 	}
 }
 
-var (
-	benchDockerTime  = time.Now()
-	benchDockerEntry Entry
-	benchDockerLine  = `{"log": "my cool logline", "stream": "stdout", "time": "2019-01-01T01:00:00.000000001Z"}`
-)
-
-func BenchmarkDocker(b *testing.B) {
-	p, _ := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	e := newEntry(nil, model.LabelSet{}, benchDockerLine, benchDockerTime)
-	in := make(chan Entry)
-	out := p.Run(in)
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		in <- e
-		benchDockerEntry = <-out
-	}
+func BenchmarkDockerStage(b *testing.B) {
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
+		Timestamp: time.Now(),
+		Line:      `{"log": "my cool logline", "stream": "stdout", "time": "2019-01-01T01:00:00.000000001Z"}`,
+	}))
+	runPipelineBenchmark(b, []StageConfig{{DockerConfig: &DockerConfig{}}}, batch)
 }

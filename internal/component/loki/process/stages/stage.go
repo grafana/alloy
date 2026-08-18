@@ -74,10 +74,7 @@ func newStageWithNextFn(
 	)
 	switch {
 	case cfg.DockerConfig != nil:
-		s, err = NewDocker(slogger, registerer, minStability)
-		if err != nil {
-			return nil, err
-		}
+		s = newDockerStage(slogger, registerer, minStability, next)
 	case cfg.CRIConfig != nil:
 		s = newCRIStage(slogger, *cfg.CRIConfig, registerer, minStability, next)
 	case cfg.JSONConfig != nil:
