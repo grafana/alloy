@@ -62,6 +62,10 @@ stage.labels {
 }
 `
 
+// TODO: convert TestLabelsPipeline_* to table tests using
+// runPipelineTest once every stage they configure (stage.json, stage.labels,
+// stage.static_labels, stage.structured_metadata) has been migrated to the
+// new pipeline interface.
 func TestLabelsPipeline_LabelsFromExtracted(t *testing.T) {
 	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
