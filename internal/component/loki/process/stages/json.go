@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,13 +12,11 @@ import (
 	json "github.com/json-iterator/go"
 )
 
-// Config Errors
-const (
-	ErrExpressionsOrRegexRequired = "JMES expressions or regex is required"
-	ErrCouldNotCompileJMES        = "could not compile JMES expression"
-	ErrEmptyJSONStageConfig       = "empty json stage configuration"
-	ErrEmptyJSONStageSource       = "empty source"
-	ErrMalformedJSON              = "malformed json"
+var (
+	errExpressionsOrRegexRequired = errors.New("JMES expressions or regex is required")
+	errCouldNotCompileJMES        = errors.New("could not compile JMES expression")
+	errEmptyJSONStageConfig       = errors.New("empty json stage configuration")
+	errEmptyJSONStageSource       = errors.New("empty source")
 )
 
 // JSONConfig represents a JSON Stage configuration
@@ -31,15 +30,15 @@ type JSONConfig struct {
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.
 func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Regexp, error) {
 	if c == nil {
-		return nil, nil, errors.New(ErrEmptyJSONStageConfig)
+		return nil, nil, errEmptyJSONStageConfig
 	}
 
 	if len(c.Expressions) == 0 && len(c.Regex) == 0 {
-		return nil, nil, errors.New(ErrExpressionsOrRegexRequired)
+		return nil, nil, errExpressionsOrRegexRequired
 	}
 
 	if c.Source != nil && *c.Source == "" {
-		return nil, nil, errors.New(ErrEmptyJSONStageSource)
+		return nil, nil, errEmptyJSONStageSource
 	}
 
 	expressions := map[string]jmespath.JMESPath{}
@@ -53,7 +52,7 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Re
 		}
 		expressions[n], err = jmespath.Compile(jmes)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", ErrCouldNotCompileJMES, err)
+			return nil, nil, fmt.Errorf("%w: %w", errCouldNotCompileJMES, err)
 		}
 	}
 
@@ -65,16 +64,13 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Re
 	return expressions, re, nil
 }
 
-// jsonStage sets extracted data using JMESPath expressions
-type jsonStage struct {
-	cfg         *JSONConfig
-	regex       regexp.Regexp
-	expressions map[string]jmespath.JMESPath
-	logger      *slog.Logger
-}
+var (
+	_ Stage          = (*jsonStage)(nil)
+	_ entryProcessor = (*jsonStage)(nil)
+)
 
 // newJSONStage creates a new json pipeline stage from a config.
-func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
+func newJSONStage(logger *slog.Logger, cfg JSONConfig, next NextFn) (Stage, error) {
 	expressions, regex, err := validateJSONConfig(&cfg)
 
 	if err != nil {
@@ -82,6 +78,7 @@ func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
 	}
 
 	return &jsonStage{
+		next:        next,
 		cfg:         &cfg,
 		regex:       *regex,
 		expressions: expressions,
@@ -89,13 +86,22 @@ func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
 	}, nil
 }
 
+// jsonStage sets extracted data using JMESPath expressions
+type jsonStage struct {
+	next        NextFn
+	cfg         *JSONConfig
+	regex       regexp.Regexp
+	expressions map[string]jmespath.JMESPath
+	logger      *slog.Logger
+}
+
 func (j *jsonStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
 	go func() {
 		defer close(out)
 		for e := range in {
-			err := j.processEntry(e.Extracted, &e.Line)
-			if err != nil && j.cfg.DropMalformed {
+			e, drop := j.processEntry(e)
+			if drop {
 				continue
 			}
 			out <- e
@@ -104,44 +110,56 @@ func (j *jsonStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error {
+func (j *jsonStage) process(ctx context.Context, entries []Entry) error {
+	var dst int
+	for _, e := range entries {
+		e, drop := j.processEntry(e)
+		if drop {
+			continue
+		}
+		entries[dst] = e
+		dst++
+	}
+
+	if dst == 0 {
+		return nil
+	}
+
+	return j.next(ctx, entries[:dst])
+}
+
+func (j *jsonStage) processEntry(e Entry) (Entry, bool) {
 	// If a source key is provided, the json stage should process it
 	// from the extracted map, otherwise should fall back to the entry
-	input := entry
+	input := e.Line
 
 	if j.cfg.Source != nil {
-		if _, ok := extracted[*j.cfg.Source]; !ok {
+		source := *j.cfg.Source
+		if _, ok := e.Extracted[source]; !ok {
 			if debugEnabled(j.logger) {
 				j.logger.Debug("source does not exist in the set of extracted values", "source", *j.cfg.Source)
 			}
-			return nil
+			return e, false
 		}
 
-		value, err := getString(extracted[*j.cfg.Source])
+		value, err := getString(e.Extracted[source])
 		if err != nil {
 			if debugEnabled(j.logger) {
-				j.logger.Debug("failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
+				j.logger.Debug("failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(e.Extracted[source]))
 			}
-			return nil
+			return e, false
 		}
 
-		input = &value
-	}
-
-	if input == nil {
-		if debugEnabled(j.logger) {
-			j.logger.Debug("cannot parse a nil entry")
-		}
-		return nil
+		input = value
 	}
 
 	var data map[string]any
 
-	if err := json.Unmarshal([]byte(*input), &data); err != nil {
+	if err := json.Unmarshal([]byte(input), &data); err != nil {
 		if debugEnabled(j.logger) {
 			j.logger.Debug("failed to unmarshal log line", "err", err)
 		}
-		return errors.New(ErrMalformedJSON)
+		return e, j.cfg.DropMalformed
 	}
 
 	for name, expr := range j.expressions {
@@ -154,7 +172,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		}
 		value, ok := j.simplifyType(rawResult)
 		if ok {
-			extracted[name] = value
+			e.Extracted[name] = value
 		}
 	}
 	if j.regex.String() != "" {
@@ -162,15 +180,15 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			if j.regex.MatchString(key) {
 				value, ok := j.simplifyType(rawValue)
 				if ok {
-					extracted[key] = value
+					e.Extracted[key] = value
 				}
 			}
 		}
 	}
 	if debugEnabled(j.logger) {
-		j.logger.Debug("extracted data debug in json stage", "extracted_data", extracted)
+		j.logger.Debug("extracted data debug in json stage", "extracted_data", e.Extracted)
 	}
-	return nil
+	return e, false
 }
 
 // simplifyType returns the value if it's a simple type (string, number, bool),
@@ -198,7 +216,4 @@ func (j *jsonStage) simplifyType(value any) (any, bool) {
 	}
 }
 
-// Cleanup implements Stage.
-func (*jsonStage) Cleanup() {
-	// no-op
-}
+func (*jsonStage) Cleanup() {}
