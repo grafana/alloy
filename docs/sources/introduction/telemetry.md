@@ -26,8 +26,8 @@ Components connect through exports, receiver references, and attributes such as 
 ## Follow the pipeline stages
 
 Connected components form pipelines.
-Most telemetry pipelines use some combination of four roles: discovery, ingestion, transformation, and output.
-Discovery and transformation are optional, and you can chain multiple components in the same role or branch to multiple outputs.
+Most telemetry pipelines use some combination of four functions: discovery, ingestion, transformation, and output.
+Discovery and transformation are optional, and you can chain multiple components in the same function or branch to multiple outputs.
 
 <!-- vale Grafana.WordList = NO -->
 <!-- vale Grafana.Spelling = NO -->
