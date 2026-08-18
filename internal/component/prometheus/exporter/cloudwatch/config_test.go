@@ -851,7 +851,7 @@ var expectedCustomNamespaceJobPeriodConfig = yaceModel.JobsConfig{
 //==============================
 
 // Shows that historical data-point export can be enabled on a static-job metric.
-const staticJobAddCloudwatchTimestampConfig = `
+const staticJobHistoricalDataPointsConfig = `
 sts_region = "us-east-2"
 debug = true
 static "test_instance" {
@@ -889,7 +889,7 @@ static "test_instance" {
 }
 `
 
-var expectedStaticJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
+var expectedStaticJobHistoricalDataPointsConfig = yaceModel.JobsConfig{
 	StsRegion: "us-east-2",
 	StaticJobs: []yaceModel.StaticJob{
 		{
@@ -1312,9 +1312,9 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			raw:              staticJobExportAllDataPointsWithoutTimestampConfig,
 			expectConvertErr: true,
 		},
-		"static job add cloudwatch timestamp config": {
-			raw:      staticJobAddCloudwatchTimestampConfig,
-			expected: expectedStaticJobAddCloudwatchTimestampConfig,
+		"static job historical data points config": {
+			raw:      staticJobHistoricalDataPointsConfig,
+			expected: expectedStaticJobHistoricalDataPointsConfig,
 		},
 		"custom namespace job add cloudwatch timestamp config": {
 			raw:      customNamespaceAddCloudwatchTimestampConfig,
