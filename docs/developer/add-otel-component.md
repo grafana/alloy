@@ -10,6 +10,61 @@ It's straightforward to add a component to Alloy, whether for your personal use 
 This document uses a simple example to show how you add a component to Alloy that exists in an upstream OpenTelemetry Collector repository.
 You can apply this information to add any part of an OpenTelemetry pipeline to Alloy.
 
+## Inclusion criteria
+
+The criteria below apply when a new component is proposed to be bundled into the official Alloy distribution.
+
+Alloy ships a curated subset of upstream OpenTelemetry components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
+Keeping that set small is what lets the Alloy team maintain the bundled components and keep the dependency and security surface manageable.
+These principles are about what the Alloy maintainers commit to maintain.
+Maintained components stay interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
+Components the Alloy maintainers don't intend to maintain become community components in the Default Engine and are excluded from the OTel Engine.
+It follows then that these criteria apply to any non-community `otelcol.*` component the Alloy maintainers would maintain, whether it targets the Default Engine or the OTel Engine.
+
+Before proposing a component, open a feature request and weigh it against the signals below.
+Referencing these criteria in the feature request helps maintainers evaluate the proposal.
+
+### Signals for inclusion
+
+These are positive signals that count towards accepting new OpenTelemetry components.
+
+| Signal | Why it matters |
+| --- | --- |
+| Grafana product compatibility | As the Grafana distribution of the OpenTelemetry Collector, Alloy aims for seamless integration with Grafana products |
+| Clear demand | A feature request with real motivation and community activity shows users need the component, and justifies taking on its maintenance. |
+| Ecosystem adoption | Wide use upstream, in other OpenTelemetry distributions, or in upstream Helm chart presets signals a proven component that users expect to find. |
+| Fills a genuine gap | No existing bundled component covers the use case, so adding it provides real new capability rather than duplicating what Alloy already ships. |
+
+### Signals against inclusion
+
+These are the carrying costs and risks a component has to justify.
+
+| Signal | Why it matters |
+| --- | --- |
+| Low stability or unmaintained | Contrib components vary widely in maturity, and an alpha or unmaintained component is a maintenance risk. |
+| Non-reputable source repository | Components from unknown or inactive repositories carry higher trust and maintenance risk. |
+| Heavy dependency or security footprint | Every bundled component adds ongoing cost, so a large dependency tree, a required fork, or known CVEs all raise the bar. |
+| Incompatible license | Alloy is licensed under Apache 2.0, so a component must be under a compatible license to be bundled. |
+
+### The decision process
+
+These are principles, not a scoring system.
+Maintainers weigh the signals together and make the final call, so meeting individual criteria doesn't guarantee inclusion.
+A proposal results in one of three outcomes:
+
+* **Bundled and maintained.** The component is added to both engines and maintained by the Alloy team.
+* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
+* **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
+
+## Component lifecycle and removal
+
+Bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
+
+* If a component is marked **deprecated** upstream, it's also marked deprecated in the Alloy distribution and kept for at least two more minor releases before removal.
+* If a component becomes **unmaintained** upstream, the same process applies and it's removed after it has been unmaintained for three months.
+
+In either case, notice is provided, and users can [create a custom build using OCB][ocb] to include a deprecated component.
+
 ## Before you begin
 
 The OpenTelemetry component must be the same version as the OpenTelemetry components included in the version of Alloy you are using.
@@ -161,7 +216,9 @@ _ "github.com/grafana/alloy/internal/component/otelcol/processor/example"       
 
 ## Add the component to the OTel engine
 
-The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set. To make the component available there too, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
+The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set.
+
+The OTel Engine doesn't include community components. If an OTel Engine user needs a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/), they can add it through a [custom OCB build][ocb]. For a non-community component, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
 
 ```yaml
 processors:
@@ -253,3 +310,5 @@ Let us know if you want to add components to Alloy or any other Alloy-related to
 You can find us most easily in the `#alloy` channel in the Grafana [community slack](https://slack.grafana.com/) or by raising a [GitHub issue](https://github.com/grafana/alloy/issues/new?template=feature_request.yaml).
 We also have monthly community calls that you can participate in.
 You can find more details in Slack or in the [community calendar](https://calendar.google.com/calendar/u/0/embed?src=grafana.com_n57lluqpn4h4edroeje6199o00@group.calendar.google.com).
+
+[ocb]: ../sources/introduction/otel_alloy.md#custom-builds-with-the-opentelemetry-collector-builder-ocb
