@@ -18,7 +18,7 @@ Use only what matches your components and environment.
 
 1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. Restrict network exposure: bind the HTTP server and OpenTelemetry receivers to localhost when remote access isn't required, and use TLS and authentication when you expose listeners or connect to remote backends.
-   Refer to [Network exposure](#network-exposure).
+   Refer to [Network exposure][network-exposure].
 1. Include [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] and [`otelcol.processor.batch`][otelcol-processor-batch] on every OpenTelemetry pipeline to protect against memory exhaustion under traffic spikes.
    Refer to [Pipeline resource limits](#pipeline-resource-limits).
 1. Avoid `insecure_skip_verify = true` in production.
@@ -27,9 +27,9 @@ Use only what matches your components and environment.
    Refer to [Secrets and credentials](#secrets-and-credentials).
 1. On Kubernetes, set RBAC to the permissions your configuration uses.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. For container deployments on Kubernetes, set `readOnlyRootFilesystem: true` and `allowPrivilegeEscalation: false` when your volume mounts and components allow it.
+1. For container deployments on Kubernetes, set `readOnlyRootFilesystem: true` when your volume mounts and components allow it.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
+1. For container deployments on Kubernetes, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access, for example [`beyla.ebpf`][beyla-ebpf] and [`pyroscope.ebpf`][pyroscope-ebpf].
    Refer to each component reference for required capabilities and privileges.
@@ -136,7 +136,6 @@ Restrict access to observability backends that store log data.
 [sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
-[loki-secretfilter]: ../reference/components/loki/loki.secretfilter/
 [types-values]: ../get-started/expressions/types_and_values/
 [components]: ../reference/components/
 [beyla-ebpf]: ../reference/components/beyla/beyla.ebpf/
