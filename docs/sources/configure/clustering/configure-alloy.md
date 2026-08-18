@@ -86,6 +86,15 @@ You can customize clustering behavior with additional flags:
 | `--cluster.wait-for-size`        | Minimum cluster size before traffic processing. | `0`        |
 | `--cluster.wait-timeout`         | Timeout for cluster size wait.                  | `0`        |
 
+For production deployments, set `--cluster.wait-for-size` to your expected cluster size and `--cluster.wait-timeout` to a reasonable duration.
+This ensures all nodes join before processing begins, which reduces duplicate scrapes and out-of-order samples at remote write during startup.
+
+If you leave `--cluster.wait-for-size` at the default `0`, nodes can scrape before enough peers have joined, so two nodes may write the same series and trigger errors.
+Refer to [Out of order errors][remote-write-out-of-order] for additional troubleshooting.
+
+The following example configures a 3-node cluster where each node waits up to 5 minutes for all cluster members to join before it starts processing traffic:
+
+
 Refer to the [`alloy run` reference][run] for complete details on all clustering flags.
 
 ## Verify cluster status
