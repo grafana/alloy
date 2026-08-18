@@ -65,3 +65,34 @@ alloy otel-supervisor --config=<SUPERVISOR_CONFIG_FILE>
 ```
 
 Replace _`<SUPERVISOR_CONFIG_FILE>`_ with the path to an [OpenTelemetry Collector OpAMP supervisor configuration file](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/cmd/opampsupervisor/specification/README.md).
+
+Alloy always sets `agent.executable` to the running Alloy binary.
+It ignores any `agent.executable` value in the supervisor configuration file.
+You can set `agent.args` to change the arguments passed to the Alloy binary.
+
+### Configure an OpAMP connection
+
+The following configuration connects the supervisor to Grafana Fleet Management:
+
+```yaml
+server:
+  endpoint: "${env:GCLOUD_FM_URL}/v1/opamp"
+  headers:
+    Authorization: "Basic ${env:GCLOUD_BASIC_AUTH_BASE64}"
+capabilities:
+  accepts_remote_config: true
+  reports_remote_config: true
+storage:
+  directory: ${env:STORAGE_DIR}
+```
+
+Set `GCLOUD_BASIC_AUTH_BASE64` to the base64-encoded Grafana Cloud instance ID and API token, separated by a colon.
+
+### Override Alloy arguments
+
+To pass different arguments to the Alloy binary, add an `agent` block to the supervisor configuration file:
+
+```yaml
+agent:
+  args: [otel, --feature-gates, +service.profilesSupport]
+```
