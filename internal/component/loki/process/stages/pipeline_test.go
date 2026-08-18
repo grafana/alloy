@@ -128,7 +128,6 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 			}
 		}, 2*time.Second, 100*time.Millisecond)
 	})
-
 }
 
 // benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
