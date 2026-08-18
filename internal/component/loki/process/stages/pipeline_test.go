@@ -95,6 +95,9 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		registry := prometheus.NewRegistry()
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
+		defer p.Cleanup()
+		defer p.Stop()
+
 		out := p.Run(withInboundEntries(cloned...))
 		var collected []Entry
 		for e := range out {
@@ -255,7 +258,7 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
 			}
 		}
 
-		require.NotEqual(t, -1, found)
+		require.NotEqual(t, -1, found, "no matching entry found for expected entry: %+v", exp)
 		remaining = append(remaining[:found], remaining[found+1:]...)
 	}
 }
