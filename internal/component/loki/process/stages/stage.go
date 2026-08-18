@@ -183,7 +183,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.GeoIPConfig != nil:
-		s, err = newGeoIPStage(slogger, *cfg.GeoIPConfig)
+		s, err = newGeoIPStage(slogger, *cfg.GeoIPConfig, next)
 		if err != nil {
 			return nil, err
 		}
