@@ -42,6 +42,7 @@ func NewPipeline2(
 	cfgs []StageConfig,
 	next NextFn,
 ) (*Pipeline2, error) {
+
 	var stages []stage
 
 	// We build stages from the back so we can pass the correct next function
