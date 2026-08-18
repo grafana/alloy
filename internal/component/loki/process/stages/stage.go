@@ -83,10 +83,7 @@ func newStageWithOpts(
 	)
 	switch {
 	case cfg.DockerConfig != nil:
-		s, err = NewDocker(opts.slogger, opts.registerer, opts.minStability)
-		if err != nil {
-			return nil, err
-		}
+		s = newDockerStage(opts)
 	case cfg.CRIConfig != nil:
 		s = newCRIStage(*cfg.CRIConfig, opts)
 	case cfg.JSONConfig != nil:
