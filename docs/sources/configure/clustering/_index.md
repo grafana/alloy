@@ -14,7 +14,7 @@ You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so tha
 
 To configure clustering, complete these two steps:
 
-1. **Enable clustering in {{< param "PRODUCT_NAME" >}}**: Configure {{< param "PRODUCT_NAME" >}} itself to join a cluster using Helm Chart settings or command-line flags.
+1. **Enable clustering in {{< param "PRODUCT_NAME" >}}**: Configure {{< param "PRODUCT_NAME" >}} itself to join a cluster using Helm chart settings or command-line flags.
 1. **Enable clustering in components**: Add a `clustering` block to each component that should participate in workload distribution.
 
 {{< admonition type="note" >}}

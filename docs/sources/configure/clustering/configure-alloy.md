@@ -8,16 +8,16 @@ weight: 100
 
 # Configure {{< param "PRODUCT_NAME" >}} for clustering
 
-You can enable clustering in {{< param "PRODUCT_NAME" >}} using Helm Chart settings or command-line flags.
+You can enable clustering in {{< param "PRODUCT_NAME" >}} with Helm chart settings or command-line flags.
 
 {{< admonition type="note" >}}
 Cluster mode in {{< param "PRODUCT_NAME" >}} allows instances to discover each other and form a cluster.
 To distribute workload, you must also [enable clustering in individual components][distribute-workload].
 {{< /admonition >}}
 
-## Configure clustering with Helm Chart
+## Configure clustering with a Helm chart
 
-You can enable clustering when {{< param "PRODUCT_NAME" >}} is installed on Kubernetes using the [Helm chart][install-helm].
+You can enable clustering when {{< param "PRODUCT_NAME" >}} is installed on Kubernetes with a [Helm chart][install-helm].
 
 ### Before you begin
 
