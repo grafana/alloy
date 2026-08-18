@@ -22,13 +22,13 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	// We must not mutate the c.Values, create a copy with changes we need.
 	ret := map[string]string{}
 	if c == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(errEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range c {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
+			return nil, fmt.Errorf(errInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
