@@ -98,7 +98,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(slogger, *cfg.LabelsConfig)
+		s, err = newLabelStage(slogger, *cfg.LabelsConfig, next)
 		if err != nil {
 			return nil, err
 		}
