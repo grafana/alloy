@@ -169,6 +169,10 @@ The bullets here are judgment calls the "Steps to update key dependencies" secti
   - Fix: bump it in the builder-config.
   - Example: the lone `httpsprovider` straggler was raised in builder-config, not go.mod, to keep the stable stack uniform without drift.
 
+- **The opamp supervisor pin lives outside the component list regeneration syncs — bump it separately.**
+  - Problem: `collector/builder-config.yaml` pins `github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor` via a `replace`, because OCB doesn't treat it as a component and `go mod tidy` would otherwise resolve it to `@latest`. Every other OTel dependency's target version lives in the `components:` list, so setting it there once and running `make generate-otel-collector-distro` propagates it everywhere. This pin isn't in that list, so regeneration never touches it, and it can silently lag behind.
+  - Fix: whenever the OTel version bumps, also bump this replace line to the same target version, then regenerate.
+
 - **Verify the commit, not just the working tree.**
   - Problem: `go build`, `test`, and `lint` run against the working tree, so they stay green even when a merge or amend captured pre-regeneration files.
   - Fix: regenerate the files first, then stage the updated files, and check `git status` before you push.

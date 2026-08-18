@@ -115,7 +115,7 @@ replaces:
   # The OTel supervisor that's embedded in Alloy imports cmd/opampsupervisor, but OCB does not list it as a component.
   # This would cause `go mod tidy` to resolve it to @latest
   # Pin it to current contrib train version to prevent this.
-  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
+  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Replace directives from Loki — Azure SDK
