@@ -75,14 +75,14 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 	result.QueueSettings = q
 
-	result.ProjectID = args.Project
-	result.DestinationProjectQuota = args.DestinationProjectQuota
-	result.UserAgent = args.UserAgent
+	result.Config.ProjectID = args.Project
+	result.Config.DestinationProjectQuota = args.DestinationProjectQuota
+	result.Config.UserAgent = args.UserAgent
 
-	result.ImpersonateConfig = args.Impersonate.Convert(result.ImpersonateConfig)
-	result.MetricConfig = args.Metric.Convert(result.MetricConfig)
-	result.TraceConfig = args.Trace.Convert(result.TraceConfig)
-	result.LogConfig = args.Log.Convert(result.LogConfig)
+	result.Config.ImpersonateConfig = args.Impersonate.Convert(result.Config.ImpersonateConfig)
+	result.Config.MetricConfig = args.Metric.Convert(result.Config.MetricConfig)
+	result.Config.TraceConfig = args.Trace.Convert(result.Config.TraceConfig)
+	result.Config.LogConfig = args.Log.Convert(result.Config.LogConfig)
 
 	return &result, nil
 }

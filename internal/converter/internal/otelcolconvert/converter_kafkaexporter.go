@@ -56,16 +56,16 @@ func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 	var tlsCfgPtr *otelcol.TLSClientArguments
-	if cfg.TLS != nil {
-		tlsCfg := toTLSClientArguments(*cfg.TLS)
+	if cfg.ClientConfig.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.ClientConfig.TLS)
 		tlsCfgPtr = &tlsCfg
 	}
 
 	return &kafka.Arguments{
-		Brokers:                              cfg.Brokers,
-		ProtocolVersion:                      cfg.ProtocolVersion,
-		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
-		ClientID:                             cfg.ClientID,
+		Brokers:                              cfg.ClientConfig.Brokers,
+		ProtocolVersion:                      cfg.ClientConfig.ProtocolVersion,
+		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		ClientID:                             cfg.ClientConfig.ClientID,
 		TopicFromAttribute:                   cfg.TopicFromAttribute,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
@@ -73,13 +73,13 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
 		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
-		ConnIdleTimeout:                      cfg.ConnIdleTimeout,
+		ConnIdleTimeout:                      cfg.ClientConfig.ConnIdleTimeout,
 		Logs:                                 toKafkaSignalConfig(cfg.Logs),
 		Metrics:                              toKafkaSignalConfig(cfg.Metrics),
 		Traces:                               toKafkaSignalConfig(cfg.Traces),
 
-		Authentication:    toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
-		Metadata:          toKafkaMetadata(cfg.Metadata),
+		Authentication:    toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:          toKafkaMetadata(cfg.ClientConfig.Metadata),
 		Retry:             toRetryArguments(cfg.BackOffConfig),
 		Queue:             toQueueArguments(cfg.QueueBatchConfig),
 		Producer:          toKafkaProducer(cfg.Producer),
@@ -94,11 +94,13 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
 		MaxMessageBytes:        cfg.MaxMessageBytes,
+		MaxBrokerWriteBytes:    cfg.MaxBrokerWriteBytes,
 		Compression:            cfg.Compression,
 		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
 		RequiredAcks:           int(cfg.RequiredAcks),
 		FlushMaxMessages:       cfg.FlushMaxMessages,
 		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
+		Linger:                 cfg.Linger,
 	}
 }
 

@@ -18,8 +18,8 @@
   "tag-separator": "/",
   "force-tag-creation": true,
   "draft-pull-request": true,
-  "separate-pull-requests": true,
-  "plugins": ["release-pr-output"],
+  "separate-pull-requests": false,
+  "group-pull-request-title-pattern": "chore${scope}: Release ${version}",
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
     ".": {
@@ -49,8 +49,7 @@
       "release-type": "go",
       "versioning": "minor-breaking",
       "changelog-path": "CHANGELOG.md",
-      "draft": false,
-      "pull-request-title-pattern": "fix(syntax): Release${component} ${version}",
+      "skip-github-release": true,
       "extra-files": [
         {
           "type": "generic",

@@ -52,7 +52,7 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 	)
 
 	return &k8sattributes.Arguments{
-		AuthType:    string(cfg.AuthType),
+		AuthType:    string(cfg.APIConfig.AuthType),
 		Passthrough: cfg.Passthrough,
 		ExtractConfig: k8sattributes.ExtractConfig{
 			Metadata:                     cfg.Extract.Metadata,
@@ -71,6 +71,8 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 		Exclude:                toExclude(cfg.Exclude),
 		WaitForMetadata:        cfg.WaitForMetadata,
 		WaitForMetadataTimeout: cfg.WaitForMetadataTimeout,
+		WatchSyncPeriod:        cfg.WatchSyncPeriod,
+		PodDeleteGracePeriod:   cfg.PodDeleteGracePeriod,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
