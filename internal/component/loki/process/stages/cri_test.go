@@ -2,18 +2,13 @@ package stages
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func TestCRIStage(t *testing.T) {
@@ -273,176 +268,11 @@ loki_process_cri_partial_lines_flushed_total %d
 	}
 }
 
-func TestCRI_tags(t *testing.T) {
-	type testEntry struct {
-		labels model.LabelSet
-		line   string
-	}
-
-	type testCase struct {
-		name                        string
-		expected                    []string
-		maxPartialLines             int
-		maxPartialLineSize          uint64
-		maxPartialLineSizeTruncate  bool
-		entries                     []testEntry
-		expectedPartialLinesFlushed int // expected value of the partial lines flushed metric
-		expectedLinesTruncated      int // expected value of the lines truncated metric
-	}
-
-	cases := []testCase{
-		{
-			name:            "tag F",
-			maxPartialLines: 100,
-			entries: []testEntry{
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout F some full line", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log", labels: model.LabelSet{"foo": "bar"}},
-			},
-			expected:                    []string{"some full line", "log"},
-			expectedPartialLinesFlushed: 0,
-			expectedLinesTruncated:      0,
-		},
-		{
-			name:            "tag P multi-stream",
-			maxPartialLines: 100,
-			entries: []testEntry{
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 1 ", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 2 ", labels: model.LabelSet{"foo": "bar2"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log finished", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F another full log", labels: model.LabelSet{"foo": "bar2"}},
-			},
-			expected: []string{
-				"partial line 1 log finished",     // belongs to stream `{foo="bar"}`
-				"partial line 2 another full log", // belongs to stream `{foo="bar2"}
-			},
-			expectedPartialLinesFlushed: 0,
-			expectedLinesTruncated:      0,
-		},
-		{
-			name: "tag P multi-stream with maxPartialLines exceeded",
-			entries: []testEntry{
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 1 ", labels: model.LabelSet{"label1": "val1", "label2": "val2"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 2 ", labels: model.LabelSet{"label1": "val1"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 3 ", labels: model.LabelSet{"label1": "val1", "label2": "val2"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 4 ", labels: model.LabelSet{"label1": "val3"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 5 ", labels: model.LabelSet{"label1": "val4"}}, // exceeded maxPartialLines as already 3 streams in flight.
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log finished", labels: model.LabelSet{"label1": "val1", "label2": "val2"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F another full log", labels: model.LabelSet{"label1": "val3"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F yet an another full log", labels: model.LabelSet{"label1": "val4"}},
-			},
-			maxPartialLines: 3,
-			expected: []string{
-				"partial line 1 partial line 3 ",
-				"partial line 2 ",
-				"partial line 4 ",
-				"log finished",
-				"another full log",
-				"partial line 5 yet an another full log",
-			},
-			expectedPartialLinesFlushed: 3, // 3 partial lines were flushed when limit was exceeded
-			expectedLinesTruncated:      0,
-		},
-		{
-			name: "tag P single stream",
-			entries: []testEntry{
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 1 ", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 2 ", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 3 ", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 4 ", labels: model.LabelSet{"foo": "bar"}}, // this exceeds the `MaxPartialLinesSize` of 3
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log finished", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F another full log", labels: model.LabelSet{"foo": "bar"}},
-			},
-			maxPartialLines: 3,
-			expected: []string{
-				"partial line 1 partial line 2 partial line 3 partial line 4 log finished",
-				"another full log",
-			},
-			expectedPartialLinesFlushed: 0, // single stream, no flush due to limit (partial lines merge within same stream)
-			expectedLinesTruncated:      0,
-		},
-		{
-			name: "tag P multi-stream with truncation",
-			entries: []testEntry{
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial line 1 ", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:50.904275087+00:00 stdout P partial", labels: model.LabelSet{"foo": "bar2"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F log finished", labels: model.LabelSet{"foo": "bar"}},
-				{line: "2019-05-07T18:57:55.904275087+00:00 stdout F full", labels: model.LabelSet{"foo": "bar2"}},
-			},
-			maxPartialLines:            100,
-			maxPartialLineSizeTruncate: true,
-			maxPartialLineSize:         11,
-			expected: []string{
-				"partial lin",
-				"partialfull",
-			},
-			expectedPartialLinesFlushed: 0,
-			expectedLinesTruncated:      2, // 2 lines were truncated due to max_partial_line_size
-		},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			registry := prometheus.NewRegistry()
-			cfg := CRIConfig{
-				MaxPartialLines:            tt.maxPartialLines,
-				MaxPartialLineSize:         tt.maxPartialLineSize,
-				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
-			}
-			p := newCRIStage(logging.NewSlogNop(), cfg, registry, featuregate.StabilityGenerallyAvailable, nil)
-			got := make([]string, 0)
-
-			for _, entry := range tt.entries {
-				out := processEntries(p, newEntry(nil, entry.labels, entry.line, time.Now()))
-				if len(out) > 0 {
-					for _, en := range out {
-						got = append(got, en.Line)
-					}
-				}
-			}
-
-			expectedMap := make(map[string]bool)
-			for _, v := range tt.expected {
-				expectedMap[v] = true
-			}
-
-			gotMap := make(map[string]bool)
-			for _, v := range got {
-				gotMap[v] = true
-			}
-
-			assert.Equal(t, expectedMap, gotMap)
-
-			// Verify the metrics
-			expectedMetrics := fmt.Sprintf(`
-# HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
-# TYPE loki_process_cri_lines_truncated_total counter
-loki_process_cri_lines_truncated_total %d
-# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
-# TYPE loki_process_cri_partial_lines_flushed_total counter
-loki_process_cri_partial_lines_flushed_total %d
-`, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
-			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
-		})
-	}
-}
-
-var (
-	benchCRITime  = time.Now()
-	benchCRIEntry Entry
-	benchCRILine  = "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test"
-)
-
-func BenchmarkCRI(b *testing.B) {
-	p := newCRIStage(logging.NewSlogNop(), defaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable, nil)
-	e := newEntry(nil, model.LabelSet{}, benchCRILine, benchCRITime)
-	in := make(chan Entry)
-	out := p.Run(in)
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		in <- e
-		benchCRIEntry = <-out
-	}
+func BenchmarkCRIStage(b *testing.B) {
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
+		Timestamp: time.Now(),
+		Line:      "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test",
+	}))
+	runPipelineBenchmark(b, []StageConfig{{CRIConfig: &defaultCRIConfig}}, batch)
 }

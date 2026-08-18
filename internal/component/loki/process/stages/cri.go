@@ -267,6 +267,8 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
+func (c *criStage) cleanup() {}
+
 func (c *criStage) ensureTruncateIfRequired(e *Entry) {
 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
 		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
