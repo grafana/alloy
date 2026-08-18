@@ -192,7 +192,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.GeoIPConfig != nil:
-		s, err = newGeoIPStage(opts.slogger, *cfg.GeoIPConfig)
+		s, err = newGeoIPStage(*cfg.GeoIPConfig, opts)
 		if err != nil {
 			return nil, err
 		}
