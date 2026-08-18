@@ -7,443 +7,205 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	dskit "github.com/grafana/dskit/server"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/util"
 )
 
-// Not all these are tested but are here to make sure the different types marshal without error
-var testDropAlloy = `
-stage.json {
-		expressions = { "app" = "", "msg" = "" }
-}
+func TestDropStage(t *testing.T) {
+	var (
+		oneHour     = 1 * time.Hour
+		tenBytes, _ = units.ParseBase2Bytes("10B")
+		now         = time.Now()
+	)
 
-stage.drop {
-		source      = "src"
-		expression  = ".*test.*"
-		older_than  = "24h"
-		longer_than = "8KB"
-}
+	type testCase struct {
+		name     string
+		cfg      DropConfig
+		entries  []Entry
+		expected []Entry
+	}
 
-stage.drop {
-		expression = ".*app1.*"
-}
-
-stage.drop {
-		source = "app"
-		value  = "loki"
-}
-
-stage.drop {
-		longer_than = "10000B"
-}
-`
-
-func Test_dropStage_Process(t *testing.T) {
-	cfg := &dskit.Config{}
-	require.Nil(t, cfg.LogLevel.Set("debug"))
-
-	tenBytes, _ := units.ParseBase2Bytes("10B")
-	oneHour := 1 * time.Hour
-
-	tests := []struct {
-		name       string
-		config     *DropConfig
-		labels     model.LabelSet
-		extracted  map[string]any
-		t          time.Time
-		entry      string
-		shouldDrop bool
-	}{
+	tests := []testCase{
 		{
-			name: "Longer Than Should Drop",
-			config: &DropConfig{
-				LongerThan: tenBytes,
+			name: "longer than",
+			cfg:  DropConfig{LongerThan: tenBytes},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "12345678901", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "1234567890", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "123456789", now),
 			},
-			labels:     model.LabelSet{},
-			extracted:  map[string]any{},
-			entry:      "12345678901",
-			shouldDrop: true,
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "1234567890", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "123456789", now),
+			},
 		},
 		{
-			name: "Longer Than Should Not Drop When Equal",
-			config: &DropConfig{
-				LongerThan: tenBytes,
+			name: "older than",
+			cfg:  DropConfig{OlderThan: oneHour},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now.Add(-2*time.Hour)),
+				newEntry(map[string]any{}, model.LabelSet{}, "", now.Add(-5*time.Minute)),
 			},
-			labels:     model.LabelSet{},
-			extracted:  map[string]any{},
-			entry:      "1234567890",
-			shouldDrop: false,
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now.Add(-5*time.Minute)),
+			},
 		},
 		{
-			name: "Longer Than Should Not Drop When Less",
-			config: &DropConfig{
-				LongerThan: tenBytes,
+			name: "source",
+			cfg:  DropConfig{Source: "key"},
+			entries: []Entry{
+				newEntry(map[string]any{"key": ""}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"other": "val1"}, model.LabelSet{}, "", now),
 			},
-			labels:     model.LabelSet{},
-			extracted:  map[string]any{},
-			entry:      "123456789",
-			shouldDrop: false,
+			expected: []Entry{
+				newEntry(map[string]any{"other": "val1"}, model.LabelSet{}, "", now),
+			},
 		},
 		{
-			name: "Older than Should Drop",
-			config: &DropConfig{
-				OlderThan: oneHour,
+			name: "source and value",
+			cfg:  DropConfig{Source: "key", Value: "val1"},
+			entries: []Entry{
+				newEntry(map[string]any{"key": "val1"}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"key": "VALRUE1"}, model.LabelSet{}, "", now),
 			},
-			labels:     model.LabelSet{},
-			extracted:  map[string]any{},
-			t:          time.Now().Add(-2 * time.Hour),
-			shouldDrop: true,
+			expected: []Entry{
+				newEntry(map[string]any{"key": "VALRUE1"}, model.LabelSet{}, "", now),
+			},
 		},
 		{
-			name: "Older than Should Not Drop",
-			config: &DropConfig{
-				OlderThan: oneHour,
+			name: "source and value with int and string extracted types",
+			cfg:  DropConfig{Source: "level", Value: "50"},
+			entries: []Entry{
+				newEntry(map[string]any{"level": 50}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"level": "50"}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"level": 100}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"level": "100"}, model.LabelSet{}, "", now),
 			},
-			labels:     model.LabelSet{},
-			extracted:  map[string]any{},
-			t:          time.Now().Add(-5 * time.Minute),
-			shouldDrop: false,
+			expected: []Entry{
+				newEntry(map[string]any{"level": 100}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"level": "100"}, model.LabelSet{}, "", now),
+			},
 		},
 		{
-			name: "Matched Source",
-			config: &DropConfig{
-				Source: "key",
+			name: "source and value with multiple sources",
+			cfg:  DropConfig{Source: "key1,key2", Value: `val1;val200.*`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "val1", "key2": "val200.*"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "",
-			},
-			shouldDrop: true,
+			expected: []Entry{},
 		},
 		{
-			name: "Did not match Source",
-			config: &DropConfig{
-				Source: "key1",
+			name: "source and value with multiple sources and custom separator",
+			cfg:  DropConfig{Source: "key1,key2", Separator: "|", Value: `val1|val200[a]`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "val1", "key2": "val200[a]"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "val1",
-			},
-			shouldDrop: false,
+			expected: []Entry{},
 		},
 		{
-			name: "Matched Source and Value",
-			config: &DropConfig{
-				Source: "key",
-				Value:  "val1",
+			name: "source and expression with int and string extracted types",
+			cfg:  DropConfig{Source: "key", Expression: "50"},
+			entries: []Entry{
+				newEntry(map[string]any{"key": 50}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"key": "50"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "val1",
-			},
-			shouldDrop: true,
+			expected: []Entry{},
 		},
 		{
-			name: "Did not match Source and Value",
-			config: &DropConfig{
-				Source: "key",
-				Value:  "val1",
+			name: "source and expression with multiple sources",
+			cfg:  DropConfig{Source: "key1,key2", Expression: `val\d{1};val\d{3}$`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "val1", "key2": "val200"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "VALRUE1",
-			},
-			shouldDrop: false,
+			expected: []Entry{},
 		},
 		{
-			name: "Matched Source(int) and Value(string)",
-			config: &DropConfig{
-				Source: "level",
-				Value:  "50",
+			name: "source and expression with multiple sources and custom separator",
+			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: `val\d{1}#val\d{3}$`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "val1", "key2": "val200"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"level": 50,
-			},
-			shouldDrop: true,
+			expected: []Entry{},
 		},
 		{
-			name: "Matched Source(string) and Value(string)",
-			config: &DropConfig{
-				Source: "level",
-				Value:  "50",
+			name: "source and expression not matching",
+			cfg:  DropConfig{Source: "key", Expression: ".*val.*"},
+			entries: []Entry{
+				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"pokey": "pal1"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"level": "50",
+			expected: []Entry{
+				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "", now),
+				newEntry(map[string]any{"pokey": "pal1"}, model.LabelSet{}, "", now),
 			},
-			shouldDrop: true,
 		},
 		{
-			name: "Did not match Source(int) and Value(string)",
-			config: &DropConfig{
-				Source: "level",
-				Value:  "50",
+			name: "source and expression not matching with multiple sources",
+			cfg:  DropConfig{Source: "key1,key2", Expression: `match\d+;match\d+`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "match1", "key2": "notmatch2"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"level": 100,
+			expected: []Entry{
+				newEntry(map[string]any{"key1": "match1", "key2": "notmatch2"}, model.LabelSet{}, "", now),
 			},
-			shouldDrop: false,
 		},
 		{
-			name: "Did not match Source(string) and Value(string)",
-			config: &DropConfig{
-				Source: "level",
-				Value:  "50",
+			name: "source and expression not matching with multiple sources and custom separator",
+			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: `match\d;match\d`},
+			entries: []Entry{
+				newEntry(map[string]any{"key1": "match1", "key2": "match2"}, model.LabelSet{}, "", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"level": "100",
+			expected: []Entry{
+				newEntry(map[string]any{"key1": "match1", "key2": "match2"}, model.LabelSet{}, "", now),
 			},
-			shouldDrop: false,
 		},
 		{
-			name: "Matched Source and Value with multiple sources",
-			config: &DropConfig{
-				Source: "key1,key2",
-				Value:  `val1;val200.*`,
+			name: "expression only",
+			cfg:  DropConfig{Expression: ".*val.*"},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "this is a line which does not match the regex", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "this is a line with the word value in it", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "val1",
-				"key2": "val200.*",
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "this is a line which does not match the regex", now),
 			},
-			shouldDrop: true,
 		},
 		{
-			name: "Matched Source and Value with multiple sources and custom separator",
-			config: &DropConfig{
-				Source:    "key1,key2",
-				Separator: "|",
-				Value:     `val1|val200[a]`,
+			name: "source and length",
+			cfg:  DropConfig{Source: "key", LongerThan: tenBytes},
+			entries: []Entry{
+				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "12345678901", now),
+				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "123456789", now),
+				newEntry(map[string]any{"WOOOOOOOOOOOOOO": "pal1"}, model.LabelSet{}, "123456789012", now),
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "val1",
-				"key2": "val200[a]",
+			expected: []Entry{
+				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "123456789", now),
+				newEntry(map[string]any{"WOOOOOOOOOOOOOO": "pal1"}, model.LabelSet{}, "123456789012", now),
 			},
-			shouldDrop: true,
 		},
 		{
-			name: "Regex Matched Source(int) and Expression",
-			config: &DropConfig{
-				Source:     "key",
-				Expression: "50",
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": 50,
-			},
-			shouldDrop: true,
-		},
-		{
-			name: "Regex Matched Source(string) and Expression",
-			config: &DropConfig{
-				Source:     "key",
-				Expression: "50",
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "50",
-			},
-			shouldDrop: true,
-		},
-		{
-			name: "Regex Matched Source and Expression with multiple sources",
-			config: &DropConfig{
-				Source:     "key1,key2",
-				Expression: `val\d{1};val\d{3}$`,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "val1",
-				"key2": "val200",
-			},
-			shouldDrop: true,
-		},
-		{
-			name: "Regex Matched Source and Expression with multiple sources and custom separator",
-			config: &DropConfig{
-				Source:     "key1,key2",
-				Separator:  "#",
-				Expression: `val\d{1}#val\d{3}$`,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "val1",
-				"key2": "val200",
-			},
-			shouldDrop: true,
-		},
-		{
-			name: "Regex Did not match Source and Expression",
-			config: &DropConfig{
-				Source:     "key",
-				Expression: ".*val.*",
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "pal1",
-			},
-			shouldDrop: false,
-		},
-		{
-			name: "Regex Did not match Source and Expression with multiple sources",
-			config: &DropConfig{
-				Source:     "key1,key2",
-				Expression: `match\d+;match\d+`,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "match1",
-				"key2": "notmatch2",
-			},
-			shouldDrop: false,
-		},
-		{
-			name: "Regex Did not match Source and Expression with multiple sources and custom separator",
-			config: &DropConfig{
-				Source:     "key1,key2",
-				Separator:  "#",
-				Expression: `match\d;match\d`,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key1": "match1",
-				"key2": "match2",
-			},
-			shouldDrop: false,
-		},
-		{
-			name: "Regex No Matching Source",
-			config: &DropConfig{
-				Source:     "key",
-				Expression: ".*val.*",
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"pokey": "pal1",
-			},
-			shouldDrop: false,
-		},
-		{
-			name: "Regex Did Not Match Line",
-			config: &DropConfig{
-				Expression: ".*val.*",
-			},
-			labels:     model.LabelSet{},
-			entry:      "this is a line which does not match the regex",
-			extracted:  map[string]any{},
-			shouldDrop: false,
-		},
-		{
-			name: "Regex Matched Line",
-			config: &DropConfig{
-				Expression: ".*val.*",
-			},
-			labels:     model.LabelSet{},
-			entry:      "this is a line with the word value in it",
-			extracted:  map[string]any{},
-			shouldDrop: true,
-		},
-		{
-			name: "Match Source and Length Both Match",
-			config: &DropConfig{
-				Source:     "key",
-				LongerThan: tenBytes,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "pal1",
-			},
-			entry:      "12345678901",
-			shouldDrop: true,
-		},
-		{
-			name: "Match Source and Length Only First Matches",
-			config: &DropConfig{
-				Source:     "key",
-				LongerThan: tenBytes,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "pal1",
-			},
-			entry:      "123456789",
-			shouldDrop: false,
-		},
-		{
-			name: "Match Source and Length Only Second Matches",
-			config: &DropConfig{
-				Source:     "key",
-				LongerThan: tenBytes,
-			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"WOOOOOOOOOOOOOO": "pal1",
-			},
-			entry:      "123456789012",
-			shouldDrop: false,
-		},
-		{
-			name: "Everything Must Match",
-			config: &DropConfig{
+			name: "everything must match",
+			cfg: DropConfig{
 				Source:     "key",
 				Expression: ".*val.*",
 				OlderThan:  oneHour,
 				LongerThan: tenBytes,
 			},
-			labels: model.LabelSet{},
-			extracted: map[string]any{
-				"key": "must contain value to match",
+			entries: []Entry{
+				newEntry(map[string]any{"key": "must contain value to match"}, model.LabelSet{}, "12345678901", now.Add(-2*time.Hour)),
 			},
-			t:          time.Now().Add(-2 * time.Hour),
-			entry:      "12345678901",
-			shouldDrop: true,
+			expected: []Entry{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateDropConfig(tt.config)
-			if err != nil {
-				t.Error(err)
-			}
-			logger := util.TestAlloyLogger(t)
-			m, err := newDropStage(logger.Slog(), *tt.config, prometheus.DefaultRegisterer)
-			require.NoError(t, err)
-			out := processEntries(m, newEntry(tt.extracted, tt.labels, tt.entry, tt.t))
-			if tt.shouldDrop {
-				assert.Len(t, out, 0)
-			} else {
-				assert.Len(t, out, 1)
-			}
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{DropConfig: &tt.cfg}}, tt.entries, tt.expected, "")
 		})
 	}
 }
 
-func TestDropPipeline(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
-	out := processEntries(pl,
-		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),
-		newEntry(nil, nil, testMatchLogLineApp2, time.Now()),
-	)
-
-	// Only the second line will go through.
-	assert.Len(t, out, 1)
-	assert.Equal(t, out[0].Line, testMatchLogLineApp2)
-}
-
-func Test_validateDropConfig(t *testing.T) {
+func TestValidateDropConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		config  *DropConfig
@@ -452,14 +214,14 @@ func Test_validateDropConfig(t *testing.T) {
 		{
 			name:    "ErrEmpty",
 			config:  &DropConfig{},
-			wantErr: errors.New(ErrDropStageEmptyConfig),
+			wantErr: errDropStageEmptyConfig,
 		},
 		{
 			name: "Invalid Regex",
 			config: &DropConfig{
 				Expression: "(?P<ts[0-9]+).*",
 			},
-			wantErr: fmt.Errorf(ErrDropStageInvalidRegex, "error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
+			wantErr: fmt.Errorf("%w: %w", errDropStageInvalidRegex, errors.New("error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`")),
 		},
 	}
 	for _, tt := range tests {
