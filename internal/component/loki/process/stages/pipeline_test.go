@@ -78,11 +78,24 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		}
 	}
 
+	cloneEntries := func(entries []Entry) []Entry {
+		out := make([]Entry, len(entries))
+		for i, e := range entries {
+			out[i] = Entry{
+				Extracted: maps.Clone(e.Extracted),
+				Entry:     e.Entry.Clone(),
+			}
+		}
+		return out
+	}
+
+	cloned := cloneEntries(entries)
+
 	t.Run("Stage", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
-		out := p.Run(withInboundEntries(cloneEntries(entries)...))
+		out := p.Run(withInboundEntries(cloned...))
 		var collected []Entry
 		for e := range out {
 			collected = append(collected, e)
@@ -118,18 +131,61 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 }
 
-// cloneEntries returns a deep copy of entries so a pipeline run mutating
-// them (Labels/Extracted are maps, mutated in place) doesn't affect a caller
-// still holding the original slice.
-func cloneEntries(entries []Entry) []Entry {
-	out := make([]Entry, len(entries))
-	for i, e := range entries {
-		out[i] = Entry{
-			Extracted: maps.Clone(e.Extracted),
-			Entry:     e.Entry.Clone(),
+// benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
+// results so the compiler can't optimize the calls being measured away.
+var (
+	benchResultEntries   []Entry
+	benchResultLokiEntry loki.Entry
+)
+
+// runPipelineBenchmark benchmarks a pipeline built for cfgs against batch.
+// It will run one benchmark for new stage implementation and one for old implementation.
+func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
+	b.Run("Stage", func(b *testing.B) {
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(b, err)
+
+		in := make(chan loki.Entry)
+		out := make(chan loki.Entry)
+		handler := p.Start(in, out)
+		defer handler.Stop()
+
+		clone := batch.Clone()
+		entries := make([]loki.Entry, 0, clone.EntryLen())
+		_ = clone.ConsumeStreams(func(stream loki.Stream, created int64) error {
+			for _, e := range stream.Entries {
+				entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e))
+			}
+			return nil
+		})
+
+		b.ResetTimer()
+		b.ReportAllocs()
+		for b.Loop() {
+			for _, e := range entries {
+				handler.Chan() <- e.Clone()
+				benchResultLokiEntry = <-out
+			}
 		}
-	}
-	return out
+	})
+
+	b.Run("New Stage", func(b *testing.B) {
+		next := func(_ context.Context, e []Entry) error {
+			benchResultEntries = e
+			return nil
+		}
+
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(b, err)
+		defer p.Cleanup()
+
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			_ = p.ProcessBatch(context.Background(), batch.Clone())
+		}
+	})
 }
 
 // assertEntriesUnordered asserts that actual contains exactly the entries in
