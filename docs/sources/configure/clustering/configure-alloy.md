@@ -58,12 +58,13 @@ If you run {{< param "PRODUCT_NAME" >}} outside of Kubernetes or without the Hel
 
 ### Required flags
 
-Pass the following flags to the [`alloy run`][run] command:
+Pass `--cluster.enabled` and one of the following peer-discovery flags to the [`alloy run`][run] command:
 
 | Flag                       | Description                                                 |
 | -------------------------- | ----------------------------------------------------------- |
 | `--cluster.enabled`        | Enables clustering mode.                                    |
 | `--cluster.join-addresses` | Comma-separated list of addresses of cluster nodes to join. |
+| `--cluster.discover-peers` | Key-value tuples used to discover peers dynamically.        |
 
 ### Example
 
@@ -94,6 +95,14 @@ Refer to [Out of order errors][remote-write-out-of-order] for additional trouble
 
 The following example configures a 3-node cluster where each node waits up to 5 minutes for all cluster members to join before it starts processing traffic:
 
+```bash
+alloy run config.alloy \
+   --cluster.enabled \
+   --cluster.join-addresses=alloy-1:7946,alloy-2:7946,alloy-3:7946 \
+   --cluster.wait-for-size=3 \
+   --cluster.wait-timeout=5m
+```
+
 
 Refer to the [`alloy run` reference][run] for complete details on all clustering flags.
 
@@ -111,5 +120,6 @@ After you enable clustering in {{< param "PRODUCT_NAME" >}}, [configure componen
 
 [distribute-workload]: ../distribute-workload/
 [install-helm]: ../../../set-up/install/kubernetes/
+[remote-write-out-of-order]: ../../../reference/components/prometheus/prometheus.remote_write/#out-of-order-errors
 [UI]: ../../../troubleshoot/debug/#clustering-page
 [run]: ../../../reference/cli/run/#clustering

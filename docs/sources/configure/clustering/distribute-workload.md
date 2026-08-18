@@ -22,24 +22,29 @@ Clustering with target auto-distribution allows a fleet of {{< param "PRODUCT_NA
 
 ## Enable clustering in components
 
-To enable workload distribution, add a `clustering` block with `enabled = true` to each component that should participate:
+To enable workload distribution, add a `clustering` block with `enabled = true` inside each component block that should participate:
 
 ```alloy
-clustering {
-  enabled = true
+component.type "example" {
+  # ...component settings...
+
+  clustering {
+    enabled = true
+  }
 }
 ```
 
 {{< admonition type="note" >}}
 Components don't automatically participate in clustering.
 You must explicitly enable clustering in each component that should distribute workload.
+If cluster mode is enabled but a component doesn't have `clustering { enabled = true }`, every node runs that component's full workload, which causes duplicate scraping, log collection, or profiling.
 {{< /admonition >}}
 
 ### Components that support clustering
 
 The following components support the `clustering` block:
 
-**Prometheus metrics collection:**
+Prometheus metrics collection components:
 
 - [`prometheus.scrape`][prometheus.scrape]
 - [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
@@ -47,14 +52,19 @@ The following components support the `clustering` block:
 - [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]
 - [`prometheus.operator.probes`][prometheus.operator.probes]
 
-**Pyroscope profiling:**
+Pyroscope profiling components:
 
 - [`pyroscope.scrape`][pyroscope.scrape]
 
-**Loki log collection:**
+Loki log collection components:
 
 - [`loki.source.kubernetes`][loki.source.kubernetes]
+- [`loki.source.kubernetes_events`][loki.source.kubernetes_events]
 - [`loki.source.podlogs`][loki.source.podlogs]
+
+Database observability components:
+
+- [`database_observability.mysql`][database_observability.mysql]
 
 ## Example: Distribute Prometheus metrics scrape load
 
@@ -132,4 +142,6 @@ For more information about clustering concepts, refer to [Clustering][clustering
 [prometheus.operator.probes]: ../../../reference/components/prometheus/prometheus.operator.probes/#clustering
 [pyroscope.scrape]: ../../../reference/components/pyroscope/pyroscope.scrape/#clustering
 [loki.source.kubernetes]: ../../../reference/components/loki/loki.source.kubernetes/#clustering
+[loki.source.kubernetes_events]: ../../../reference/components/loki/loki.source.kubernetes_events/#clustering
 [loki.source.podlogs]: ../../../reference/components/loki/loki.source.podlogs/#clustering
+[database_observability.mysql]: ../../../reference/components/database_observability/database_observability.mysql/#clustering
