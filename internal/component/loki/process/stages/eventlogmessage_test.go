@@ -284,11 +284,11 @@ func TestValidateEventLogMessageConfig(t *testing.T) {
 		},
 		"invalid source": {
 			`stage.eventlogmessage { source = "the message"}`,
-			fmt.Errorf(ErrInvalidLabelName, "the message"),
+			fmt.Errorf(errInvalidLabelName, "the message"),
 		},
 		"empty source": {
 			`stage.eventlogmessage { source = ""}`,
-			fmt.Errorf(ErrInvalidLabelName, ""),
+			fmt.Errorf(errInvalidLabelName, ""),
 		},
 	}
 	for tName, tt := range tests {

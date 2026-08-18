@@ -24,7 +24,7 @@ func (e *WindowsEventConfig) Validate() error {
 	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
 	if !model.LabelName(e.Source).IsValid() {
-		return fmt.Errorf(ErrInvalidLabelName, e.Source)
+		return fmt.Errorf(errInvalidLabelName, e.Source)
 	}
 	return nil
 }

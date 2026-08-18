@@ -47,7 +47,7 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return fmt.Errorf(ErrInvalidLabelName, labelName)
+			return fmt.Errorf(errInvalidLabelName, labelName)
 		}
 	}
 	return nil

@@ -206,7 +206,7 @@ func TestWindowsEventValidate(t *testing.T) {
 		},
 		"empty source": {
 			`stage.windowsevent { source = ""}`,
-			fmt.Errorf(ErrInvalidLabelName, ""),
+			fmt.Errorf(errInvalidLabelName, ""),
 		},
 	}
 	for tName, tt := range tests {
