@@ -78,6 +78,7 @@
 ##   GOARCH               Override target architecture to build binaries for
 ##   GOARM                Override ARM version (6 or 7) when GOARCH=arm
 ##   CGO_ENABLED          Set to 0 to disable Cgo for binaries.
+##   CGO_LDFLAGS          Extra flags passed to the external C linker for Cgo binaries.
 ##   RELEASE_BUILD        Set to 1 to build release binaries.
 ##   VERSION              Version to inject into built binaries.
 ##   GO_TAGS              Extra tags to use when building.
@@ -107,6 +108,7 @@ GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
 CGO_ENABLED          		?= 1
+CGO_LDFLAGS          		?=
 RELEASE_BUILD        		?= 0
 GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 
@@ -138,7 +140,7 @@ GOLANGCI_LINT_BINARY ?= $(or \
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
-    BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
+    BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED CGO_LDFLAGS RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
     SKIP_CODE_GENERATION \
@@ -154,7 +156,7 @@ ifeq ($(filter gore2regex,$(GO_TAGS)),)
 override GO_TAGS := $(strip gore2regex $(GO_TAGS))
 endif
 
-GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
+GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED) CGO_LDFLAGS="$(CGO_LDFLAGS)"
 
 # Clears cross-compile settings, to be set in any build-time generation steps that run "go run" under the hood
 GO_HOST_ENV := env -u GOOS -u GOARCH CGO_ENABLED=0
