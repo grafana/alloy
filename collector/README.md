@@ -12,6 +12,8 @@ The Alloy Collector Distro is built using Alloy's `cmd/alloy-builder` wrapper ar
 collector/
 ├── builder-config.yaml        # OCB configuration file (source)
 ├── generate.go                # Alloy-aware OCB and post-generation entry point (source)
+├── supervisor.go              # Embedded OTel supervisor command (source)
+├── VERSION                    # Collector version input (source)
 ├── version.go                 # Exposes the current version of the collector distro (source)
 ├── generator/                 # Custom templating and generation code (source)
 │   ├── generator.go           # Generator tool that post-processes OCB output
@@ -33,7 +35,15 @@ The build process consists of three main steps:
 
 ### 1. OCB Generation (`go run github.com/grafana/alloy/cmd/alloy-builder`)
 
-`BUILDER_VERSION` is defined in the root Makefile and should be kept in sync with our general OTel component versioning. `collector/generate.go` passes it to the wrapper as `--ocb-version=${BUILDER_VERSION}`. The wrapper preprocesses Alloy-specific manifest fields, then invokes `go run go.opentelemetry.io/collector/cmd/builder@${BUILDER_VERSION}` with the ordinary OCB arguments.
+`BUILDER_VERSION` is defined in the root Makefile and should be kept in sync
+with our general OTel component versioning. For checked-in source regeneration,
+`collector/generate.go` passes it to the wrapper as
+`--ocb-version=${BUILDER_VERSION}`. For a binary build, `make alloy` first calls
+the wrapper's `plan` command, which resolves the manifest, output workspace, and
+effective build tags before invoking the same pinned OCB version. The wrapper
+then invokes
+`go run go.opentelemetry.io/collector/cmd/builder@${BUILDER_VERSION}` with the
+ordinary OCB arguments.
 
 The wrapper and OCB read `builder-config.yaml` and generate:
 
@@ -62,7 +72,37 @@ Ensures the generated `go.mod` is properly formatted and all dependencies are re
 
 ## Building Locally
 
-`make alloy` runs the code generation steps described above automatically before building. Generation is skipped when `SKIP_CODE_GENERATION=1` is set.
+`make alloy` always starts from a builder manifest. If no manifest is named, it
+implicitly uses [`builder-config.yaml`](builder-config.yaml):
+
+```bash
+make alloy
+```
+
+The manifest controls both component allowlists. The ordinary OCB sections
+select OTel Collector factories, and the Alloy-specific `alloy_components`
+field selects native Alloy components. The build planner validates the complete
+manifest, creates a private workspace below `build/`, runs OCB and Alloy's
+post-generator there, and passes the same effective build tags to the final Go
+compilation. Generated files in `collector/` are therefore not overwritten by
+a normal build.
+
+Pass a different manifest through `ALLOY_BUILDER_CONFIG` to build a custom
+distribution:
+
+```bash
+make alloy ALLOY_BUILDER_CONFIG=path/to/builder-config.yaml
+```
+
+For an in-tree build, `dist.output_path` and `dist.module` are internal build
+details. The planner replaces them with its private output directory and
+`github.com/grafana/alloy/otel_engine`, respectively, and rewrites the Alloy and
+syntax module replacements to this checkout. `ALLOY_BINARY` continues to
+control the final executable path. It also fills in any missing `replaces` and
+`excludes` entries from the implicit default manifest because the in-tree CLI's
+support code must use the repository's shared dependency policy. Entries
+explicitly supplied by the custom manifest take precedence, except for the two
+checkout-local Alloy module paths.
 
 To regenerate only (without building):
 
@@ -70,11 +110,34 @@ To regenerate only (without building):
 make generate-otel-collector-distro
 ```
 
-To build without regenerating:
+To build the checked-in generated collector without regenerating:
 
 ```bash
 SKIP_CODE_GENERATION=1 make alloy
 ```
+
+Generation can only be skipped with the implicit default manifest. A custom
+manifest can change the OTel factory set, so combining it with
+`SKIP_CODE_GENERATION=1` fails instead of silently building stale generated
+sources. This preserves existing release pipelines that deliberately build the
+checked-in `collector/` tree.
+
+### Supported Build Entry Points
+
+- `make alloy` builds the standard binary from the implicit
+  `collector/builder-config.yaml` manifest.
+- `make alloy ALLOY_BUILDER_CONFIG=path/to/builder-config.yaml` builds an
+  in-tree Alloy CLI whose OTel and native component sets both come from that
+  manifest. This is the preferred lightweight-build interface.
+- `SKIP_CODE_GENERATION=1 make alloy` builds the checked-in generated collector
+  using the implicit default manifest. It exists for release pipelines that
+  prepare generated sources before the final build.
+- `make alloy ALLOY_COMPONENTS=...` is the compatibility form for selecting
+  native components when the chosen manifest omits `alloy_components`.
+- `go run ./cmd/alloy-builder --config=builder-config.yaml` builds an external
+  OCB distribution directly. Its manifest format uses the same
+  `alloy_components` extension, but it produces the OCB distribution described
+  by `dist` instead of Alloy's in-tree CLI layout.
 
 ## Lightweight Native Component Builds
 
@@ -86,35 +149,39 @@ Alloy has two independently selected component sets:
   effects. The canonical package-to-component mapping is
   [`../internal/component/all/catalog/catalog.json`](../internal/component/all/catalog/catalog.json).
 
-The normal build remains backwards compatible: when `ALLOY_COMPONENTS` is not
-set or is `all`, `make alloy` imports every native Alloy component in the catalog.
+Native selection is expressed in the same YAML manifest as the OTel selection:
 
-Set `ALLOY_COMPONENTS` to a comma- or whitespace-separated list of the component
-names used by your Alloy configuration to build a smaller binary:
+```yaml
+alloy_components:
+  - loki.source.file
+  - loki.process
+  - loki.write
+```
+
+Field presence is meaningful:
+
+- Omitting `alloy_components` preserves the complete native registry. This is
+  how the implicit default manifest keeps the standard Alloy binary unchanged.
+- `alloy_components: []` builds the core runtime without optional native
+  component registrations.
+- A non-empty list includes exactly the named native components.
+
+The planner validates every name against the embedded component catalog;
+unknown and duplicate names fail before OCB runs. An Alloy configuration that
+refers to an omitted native component fails during configuration evaluation
+because that component is not registered.
+
+For backwards compatibility, `ALLOY_COMPONENTS` remains available when the
+selected manifest omits `alloy_components`:
 
 ```bash
 make alloy ALLOY_COMPONENTS='loki.source.file,loki.process,loki.write'
+make alloy ALLOY_COMPONENTS=none
 ```
 
-This in-tree shortcut is intentionally separate from the manifest interface.
-The checked-in `builder-config.yaml` omits `alloy_components`, OCB runs with
-`--skip-compilation`, and Make performs the final build. Consequently the
-supported way to select native components for `make alloy` is
-`ALLOY_COMPONENTS`; adding `alloy_components` to the checked-in manifest would
-not pass those tags to Make's later compilation.
-
-The build validates every name against the embedded component catalog; an
-unknown or duplicate name fails the build. Use the special value `none` to build
-the core Alloy runtime without registering any native component packages:
-
-```bash
-make alloy ALLOY_COMPONENTS='none'
-```
-
-`none` is useful for measuring the core runtime and for distributions that only
-run OTel Collector pipelines. An Alloy configuration that refers to an omitted
-native component fails during configuration evaluation because that component
-is not registered.
+New build integrations should use `alloy_components` in a manifest. Supplying
+both forms is an error, which prevents a Make variable from silently overriding
+the reviewed YAML definition.
 
 ### Linkage Units and Both Alloy Engines
 
@@ -131,16 +198,14 @@ default Alloy engine (`alloy run`) and by the Alloy engine embedded as the
 `alloyengine` OTel extension. It is therefore not possible for those two entry
 points in the same binary to have different native component sets.
 
-### OTel Components Are a Separate Allowlist
+### OTel and Native Allowlist Boundaries
 
-`ALLOY_COMPONENTS` only trims native Alloy registration packages. To create a
-truly minimal distribution, also remove unused OTel receivers, processors,
-exporters, connectors, extensions, and providers from `builder-config.yaml` and
-regenerate the collector distro. Keep the `alloyengine` extension when the OTel
-Collector must be able to start the Alloy engine.
-
-For an external OCB distribution, both allowlists can live in one manifest as
-described below.
+The two allowlists share one manifest and build pipeline, but retain their
+native mechanisms. OCB sections select OTel receivers, processors, exporters,
+connectors, extensions, and providers; `alloy_components` selects native Alloy
+registration packages. Trim both sets for a minimal distribution. Keep the
+`alloyengine` extension when the OTel Collector must be able to start the Alloy
+engine.
 
 ### One-Manifest External Builds
 
@@ -203,8 +268,9 @@ Field presence is meaningful:
 
 Do not pass `--skip-compilation` when `alloy_components` is present. The tags
 select code during compilation; generation alone cannot carry them into an
-unrelated later `go build`. For generation-only in this repository, use
-`ALLOY_COMPONENTS` on the final `make alloy` invocation instead.
+unrelated later `go build`. `make alloy` avoids that split: its plan command
+sanitizes the manifest for generation and explicitly carries the effective tags
+to the final compilation.
 
 The wrapper's catalog comes from the Alloy source version that supplies the
 command. There is currently no implemented version handshake between that
@@ -216,8 +282,15 @@ functionality requires it.
 
 [`testdata/external/minimal-builder-config.yaml`](testdata/external/minimal-builder-config.yaml)
 is a minimal local-checkout fixture. It uses `v0.0.0` plus local replacements,
-so it does not require a released Alloy version. From the checkout root, compile
-it with:
+so it does not require a released Alloy version. From the checkout root, build
+the in-tree Alloy CLI from it with:
+
+```bash
+make alloy \
+  ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml
+```
+
+Or compile the external OCB distribution described by its `dist` block with:
 
 ```bash
 go run ./cmd/alloy-builder \
@@ -228,11 +301,12 @@ go run ./cmd/alloy-builder \
 `make test-alloy-builder` uses the same manifest for a real stock-OCB external
 compile, verifies the generated artifact's build metadata contains the expected
 user and selector tags, and removes the explicit ignored `_build` directory.
-The target separately uses the captured effective tags to build the in-tree
-Alloy CLI and validate one selected and one omitted component. It does not start
-the generated Collector artifact's long-running `alloyengine` extension during
-this build test; the external assertion covers OCB compilation and tag delivery,
-while the in-tree assertion covers the resulting native registry behavior.
+The target then passes that manifest to `make alloy`, builds the in-tree Alloy
+CLI through the complete manifest planner, and validates one selected and one
+omitted component. It does not start the generated Collector artifact's
+long-running `alloyengine` extension during this build test; the external
+assertion covers direct OCB compilation, while the in-tree assertion covers the
+Make orchestration and resulting native registry behavior.
 
 The generated `collector/go.mod` and root `go.mod` remain broad by design. Go's
 `mod tidy` considers files across build constraints, so component selection
@@ -243,21 +317,21 @@ binary. Use an artifact-aware inventory when that distinction matters.
 
 ### Custom-Build Command Surface
 
-Setting `ALLOY_COMPONENTS`, including to `none`, enables custom-component mode.
-This mode accepts Alloy configuration only and omits configuration conversion,
-component-specific `tools` commands, and legacy Grafana Agent static
-integrations. The `run`, `validate`, `fmt`, and GraphQL (`gql`) commands remain
-available. Do not use a custom build where Prometheus, Promtail, OTel Collector
-YAML, or static Agent configuration must be converted at startup; convert it to
-Alloy configuration before building the distribution.
+Setting `alloy_components` in the manifest, including to an empty list, enables
+custom-component mode. The `ALLOY_COMPONENTS` and raw-tag compatibility
+interfaces enable the same mode. It accepts Alloy configuration only and omits
+configuration conversion, component-specific `tools` commands, and legacy
+Grafana Agent static integrations. The `run`, `validate`, `fmt`, and GraphQL
+(`gql`) commands remain available. Do not use a custom build where Prometheus,
+Promtail, OTel Collector YAML, or static Agent configuration must be converted
+at startup; convert it to Alloy configuration before building the distribution.
 
 ### Advanced Build-Tag Interface
 
-The Make variable is the supported in-tree interface. Internally it translates
+The manifest is the supported interface. Internally the planner translates
 component names to Go tags by replacing dots with underscores and prefixing
 `alloy_component_`, then adds the marker tag `alloy_custom_components`. The
-previous example is equivalent to passing these selector tags through
-`GO_TAGS`:
+earlier YAML example is equivalent to these tags:
 
 ```text
 alloy_custom_components
@@ -276,14 +350,17 @@ dist:
   build_tags: "alloy_custom_components,alloy_component_loki_source_file,alloy_component_loki_process,alloy_component_loki_write"
 ```
 
-OCB's `dist.build_tags` affects a compilation performed by OCB. This repository
-runs OCB with generation-only behavior and compiles Alloy separately, so use
-`ALLOY_COMPONENTS` (or `GO_TAGS`) with `make alloy` rather than relying on
-`builder-config.yaml` to pass native selector tags to the final build.
+For `make alloy`, the planner merges `dist.build_tags`, ordinary `GO_TAGS`, and
+the generated native selector tags once, writes that value into the sanitized
+OCB manifest, and uses the same value for the final compilation. For a direct
+external `cmd/alloy-builder` invocation, OCB compiles with the sanitized
+`dist.build_tags` value itself.
 
-Prefer `alloy_components` with `cmd/alloy-builder` for external distributions;
-it validates stable Alloy names and merges the tags automatically. The raw tag
-interface remains useful for build systems that do not invoke the wrapper.
+The raw tag interface and `ALLOY_COMPONENTS` remain compatibility mechanisms for
+build systems that cannot yet supply `alloy_components`. They cannot be mixed
+with YAML selection. The `make alloy` planner rejects unknown or incomplete
+selector tag sets; direct Go invocations bypass that validation and must supply
+the marker and component tags correctly.
 
 When adding or moving a native component, update
 `internal/component/all/catalog/catalog.json` and regenerate the import

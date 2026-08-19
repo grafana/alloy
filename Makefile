@@ -75,7 +75,8 @@
 ##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
 ##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
 ##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
-##   ALLOY_COMPONENTS     Comma- or space-separated native component names to include; use `none` for no native components.
+##   ALLOY_BUILDER_CONFIG Builder manifest used by `make alloy` (default collector/builder-config.yaml).
+##   ALLOY_COMPONENTS     Compatibility override for manifests without alloy_components; use `none` for no native components.
 ##   SERVICE_BINARY       Output path of `make alloy-service` (default build/alloy-service)
 ##   GOOS                 Override OS to build binaries for
 ##   GOARCH               Override target architecture to build binaries for
@@ -91,11 +92,11 @@
 ##   BEYLA_VERSION        Version of Beyla to download and embed.
 
 include build-tools/make/*.mk
-include internal/component/all/catalog.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
+ALLOY_BUILDER_CONFIG		?= collector/builder-config.yaml
 SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
 BUILDER_USER         		?= $(shell whoami)
@@ -113,64 +114,6 @@ GOARM                		?= $(shell go env GOARM)
 CGO_ENABLED          		?= 1
 RELEASE_BUILD        		?= 0
 GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
-
-# Resolve native Alloy component selection before constructing GO_FLAGS. The
-# generated catalog provides both the supported user-facing names and their
-# stable build-tag mappings.
-comma := ,
-ALLOY_REQUESTED_COMPONENTS := $(strip $(subst $(comma), ,$(ALLOY_COMPONENTS)))
-ALLOY_USER_GO_TAGS := $(strip $(subst $(comma), ,$(GO_TAGS)))
-ALLOY_KNOWN_COMPONENT_TAGS := $(foreach component,$(ALLOY_COMPONENT_NAMES),$(ALLOY_COMPONENT_TAG_$(subst .,_,$(component))))
-ALLOY_USER_COMPONENT_TAGS := $(filter alloy_component_%,$(ALLOY_USER_GO_TAGS))
-ALLOY_UNKNOWN_USER_COMPONENT_TAGS := $(filter-out $(ALLOY_KNOWN_COMPONENT_TAGS),$(ALLOY_USER_COMPONENT_TAGS))
-ALLOY_USER_CUSTOM_SENTINEL := $(filter $(ALLOY_CUSTOM_COMPONENTS_TAG),$(ALLOY_USER_GO_TAGS))
-ALLOY_COMPONENT_MODE := full
-ALLOY_SELECTED_COMPONENTS :=
-
-ifneq ($(ALLOY_REQUESTED_COMPONENTS),)
-ifeq ($(ALLOY_REQUESTED_COMPONENTS),all)
-ifneq ($(strip $(ALLOY_USER_CUSTOM_SENTINEL) $(ALLOY_USER_COMPONENT_TAGS)),)
-$(error ALLOY_COMPONENTS=all cannot be combined with native component tags in GO_TAGS)
-endif
-else
-ifneq ($(strip $(ALLOY_USER_CUSTOM_SENTINEL) $(ALLOY_USER_COMPONENT_TAGS)),)
-$(error ALLOY_COMPONENTS cannot be combined with native component tags in GO_TAGS)
-endif
-ifneq ($(filter all,$(ALLOY_REQUESTED_COMPONENTS)),)
-$(error ALLOY_COMPONENTS selector "all" cannot be combined with other selectors)
-endif
-ifneq ($(filter none,$(ALLOY_REQUESTED_COMPONENTS)),)
-ifneq ($(ALLOY_REQUESTED_COMPONENTS),none)
-$(error ALLOY_COMPONENTS selector "none" cannot be combined with other selectors)
-endif
-else
-ALLOY_UNKNOWN_COMPONENTS := $(filter-out $(ALLOY_COMPONENT_NAMES),$(ALLOY_REQUESTED_COMPONENTS))
-ifneq ($(strip $(ALLOY_UNKNOWN_COMPONENTS)),)
-$(error unknown Alloy component(s): $(ALLOY_UNKNOWN_COMPONENTS))
-endif
-ifneq ($(words $(ALLOY_REQUESTED_COMPONENTS)),$(words $(sort $(ALLOY_REQUESTED_COMPONENTS))))
-$(error ALLOY_COMPONENTS contains duplicate component names)
-endif
-ALLOY_SELECTED_COMPONENTS := $(sort $(ALLOY_REQUESTED_COMPONENTS))
-endif
-ALLOY_COMPONENT_MODE := custom
-ALLOY_RESOLVED_COMPONENT_TAGS := $(foreach component,$(ALLOY_SELECTED_COMPONENTS),$(ALLOY_COMPONENT_TAG_$(subst .,_,$(component))))
-override GO_TAGS := $(strip $(ALLOY_CUSTOM_COMPONENTS_TAG) $(ALLOY_RESOLVED_COMPONENT_TAGS) $(GO_TAGS))
-endif
-else
-ifneq ($(strip $(ALLOY_USER_COMPONENT_TAGS)),)
-ifeq ($(strip $(ALLOY_USER_CUSTOM_SENTINEL)),)
-$(error native component tags in GO_TAGS require $(ALLOY_CUSTOM_COMPONENTS_TAG))
-endif
-endif
-ifneq ($(strip $(ALLOY_UNKNOWN_USER_COMPONENT_TAGS)),)
-$(error unknown native component tag(s) in GO_TAGS: $(ALLOY_UNKNOWN_USER_COMPONENT_TAGS))
-endif
-ifneq ($(strip $(ALLOY_USER_CUSTOM_SENTINEL)),)
-ALLOY_COMPONENT_MODE := custom
-ALLOY_SELECTED_COMPONENTS := $(strip $(foreach component,$(ALLOY_COMPONENT_NAMES),$(if $(filter $(ALLOY_COMPONENT_TAG_$(subst .,_,$(component))),$(ALLOY_USER_COMPONENT_TAGS)),$(component))))
-endif
-endif
 
 # Beyla embedding configuration
 BEYLA_BINARY_DIR     := internal/component/beyla/ebpf
@@ -201,7 +144,7 @@ GOLANGCI_LINT_BINARY ?= $(or \
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
-    ALLOY_BINARY \
+    ALLOY_BINARY ALLOY_BUILDER_CONFIG ALLOY_COMPONENTS \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
     SKIP_CODE_GENERATION \
 
@@ -214,14 +157,6 @@ PROPAGATE_VARS := \
 # a substantial performance improvement over stdlib's regex.
 ifeq ($(filter gore2regex,$(GO_TAGS)),)
 override GO_TAGS := $(strip gore2regex $(GO_TAGS))
-endif
-
-ALLOY_FINAL_GO_TAGS := $(strip $(subst $(comma), ,$(GO_TAGS)))
-ALLOY_BUILD_ASSET_DEPS := beyla
-ifeq ($(ALLOY_COMPONENT_MODE),custom)
-ifeq ($(filter alloy_component_beyla_ebpf,$(ALLOY_FINAL_GO_TAGS)),)
-ALLOY_BUILD_ASSET_DEPS :=
-endif
 endif
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
@@ -255,8 +190,10 @@ RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(GO_TAGS)"
 
 ifeq ($(RELEASE_BUILD),1)
 GO_FLAGS := $(DEFAULT_FLAGS) $(RELEASE_GO_FLAGS)
+ALLOY_MANIFEST_GO_FLAGS := $(DEFAULT_FLAGS) -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(ALLOY_BUILD_PLAN_TAGS)"
 else
 GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
+ALLOY_MANIFEST_GO_FLAGS := $(DEFAULT_FLAGS) -ldflags "$(GO_LDFLAGS)" -tags "$(ALLOY_BUILD_PLAN_TAGS)"
 endif
 
 .PHONY: lint
@@ -387,10 +324,13 @@ test-alloy-builder: test-alloy-builder-external
 			echo "alloy-builder delegated an ineffective generation-only selection"; \
 			exit 1; \
 		fi; \
-		cd ./collector; \
-		$(GO_ENV) go build -tags="$$build_tags" -o "$$tmp_dir/alloy" .; \
-		"$$tmp_dir/alloy" validate ../internal/component/all/testdata/logs-selected.alloy; \
-		if "$$tmp_dir/alloy" validate ../internal/component/all/testdata/logs-omitted.alloy >/dev/null 2>&1; then \
+		$(MAKE) --no-print-directory alloy \
+			USE_CONTAINER=0 SKIP_UI_BUILD=1 CGO_ENABLED=0 \
+			ALLOY_COMPONENTS= GO_TAGS= \
+			ALLOY_BINARY="$$tmp_dir/alloy" \
+			ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml; \
+		"$$tmp_dir/alloy" validate internal/component/all/testdata/logs-selected.alloy; \
+		if "$$tmp_dir/alloy" validate internal/component/all/testdata/logs-omitted.alloy >/dev/null 2>&1; then \
 			echo "custom build unexpectedly accepted an omitted component"; \
 			exit 1; \
 		fi
@@ -408,9 +348,10 @@ test-lightweight-components: test-alloy-builder
 	$(GO_ENV) go test -run TestCustomBuildRootCommands -tags="gore2regex,alloy_custom_components" ./internal/alloycli
 	$(GO_ENV) go test -run TestCustomBuildOmitsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components" ./internal/component/remote/http
 	$(GO_ENV) go test -run TestCustomBuildSelectsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components,alloy_component_remote_http" ./internal/component/remote/http
-	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'GO_TAGS=.*alloy_custom_components.*alloy_component_remote_http'
-	@if $(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'ALLOY_COMPONENTS='; then \
-		echo "resolved container build unexpectedly propagates ALLOY_COMPONENTS"; \
+	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'ALLOY_BUILDER_CONFIG=collector/builder-config.yaml'
+	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'ALLOY_COMPONENTS=remote.http'
+	@if $(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'GO_TAGS=.*alloy_custom_components'; then \
+		echo "container handoff resolved native tags before reading the builder manifest"; \
 		exit 1; \
 	fi
 
@@ -460,7 +401,7 @@ test-pyroscope:
 # Targets for building binaries
 #
 
-.PHONY: binaries alloy
+.PHONY: binaries alloy _alloy-from-builder-manifest
 binaries: alloy
 
 .PHONY: beyla
@@ -504,12 +445,52 @@ $(BEYLA_SCHEMA):
 	curl -fsSL -o $@ \
 	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
 
-alloy: generate-ui generate-source-code $(ALLOY_BUILD_ASSET_DEPS)
+alloy:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
+	$(GO_HOST_ENV) go run ./cmd/alloy-builder plan \
+		--config "$(ALLOY_BUILDER_CONFIG)" \
+		--default-config "$(CURDIR)/collector/builder-config.yaml" \
+		--repo-root "$(CURDIR)" \
+		--build-tags "$(GO_TAGS)" \
+		$(if $(strip $(ALLOY_COMPONENTS)),--alloy-components "$(ALLOY_COMPONENTS)",) $(if $(filter 1,$(SKIP_CODE_GENERATION)),--skip-generation,) \
+		-- $(MAKE) --no-print-directory _alloy-from-builder-manifest \
+			USE_CONTAINER=0 \
+			GOOS="$(GOOS)" GOARCH="$(GOARCH)" GOARM="$(GOARM)" \
+			CGO_ENABLED="$(CGO_ENABLED)" GOEXPERIMENT="$(GOEXPERIMENT)" \
+			RELEASE_BUILD="$(RELEASE_BUILD)" VERSION="$(VERSION)" \
+			BUILDER_USER="$(BUILDER_USER)" BUILDER_HOST="$(BUILDER_HOST)" \
+			BUILDER_VERSION="$(BUILDER_VERSION)" DEFAULT_FLAGS="$(DEFAULT_FLAGS)" \
+			ALLOY_BINARY="$(ALLOY_BINARY)" SKIP_UI_BUILD="$(SKIP_UI_BUILD)" \
+			SKIP_CODE_GENERATION="$(SKIP_CODE_GENERATION)"
 endif
+
+# Internal continuation invoked by cmd/alloy-builder after it has validated the
+# manifest and exported one coherent OTel/native build plan.
+_alloy-from-builder-manifest:
+	@test -n "$(ALLOY_BUILD_PLAN_CONFIG)" || { echo "missing Alloy builder plan"; exit 1; }
+	@$(MAKE) --no-print-directory generate-ui USE_CONTAINER=0
+	@set -eu; \
+	if [ "$(ALLOY_BUILD_PLAN_NEEDS_BEYLA)" = "true" ]; then \
+		$(MAKE) --no-print-directory beyla USE_CONTAINER=0; \
+	fi
+	@set -eu; \
+	if [ "$(ALLOY_BUILD_PLAN_SKIP_GENERATION)" != "true" ]; then \
+		$(MAKE) --no-print-directory generate-component-selectors USE_CONTAINER=0; \
+		$(GO_HOST_ENV) go run ./cmd/alloy-builder \
+			--ocb-version="$(BUILDER_VERSION)" \
+			--config "$(ALLOY_BUILD_PLAN_CONFIG)" \
+			--skip-compilation; \
+		cp ./collector/supervisor.go "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)/supervisor.go"; \
+		cp ./collector/version.go "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)/version.go"; \
+		cp ./collector/VERSION "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)/VERSION"; \
+		$(GO_HOST_ENV) go run ./collector/generator/generator.go --path "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)"; \
+		cd "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)" && $(GO_HOST_ENV) go mod tidy; \
+	fi
+	@mkdir -p "$(dir $(abspath $(ALLOY_BINARY)))"
+	@cd "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)" && \
+		$(GO_ENV) go build $(ALLOY_MANIFEST_GO_FLAGS) -o "$(abspath $(ALLOY_BINARY))" .
 
 # alloy-service is not included in binaries since it's Windows-only.
 alloy-service:
@@ -718,9 +699,8 @@ info:
 	@printf "ALLOY_IMAGE_WINDOWS = $(ALLOY_IMAGE_WINDOWS)\n"
 	@printf "BUILD_IMAGE         = $(BUILD_IMAGE)\n"
 	@printf "ALLOY_BINARY        = $(ALLOY_BINARY)\n"
+	@printf "ALLOY_BUILDER_CONFIG = $(ALLOY_BUILDER_CONFIG)\n"
 	@printf "ALLOY_COMPONENTS    = $(ALLOY_COMPONENTS)\n"
-	@printf "COMPONENT_MODE      = $(ALLOY_COMPONENT_MODE)\n"
-	@printf "SELECTED_COMPONENTS = $(ALLOY_SELECTED_COMPONENTS)\n"
 	@printf "GOOS                = $(GOOS)\n"
 	@printf "GOARCH              = $(GOARCH)\n"
 	@printf "GOARM               = $(GOARM)\n"
