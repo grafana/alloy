@@ -284,7 +284,7 @@ sync-beyla-docs-version:
 
 .PHONY: download-beyla
 download-beyla:
-	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
+	@env -u GOOS -u GOARCH -u GOARM CGO_ENABLED=0 go run ./$(BEYLA_SCHEMA_DIR)/download.go \
 	    $(BEYLA_BINARY_AMD64) \
 	    $(BEYLA_BINARY_ARM64) \
 	    $(BEYLA_BINARY_STAMP) \
