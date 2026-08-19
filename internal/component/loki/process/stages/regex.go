@@ -1,22 +1,20 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
 	"regexp"
-	"time"
 
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/prometheus/common/model"
 )
 
-// Config Errors.
 var (
-	ErrExpressionRequired    = errors.New("expression is required")
-	ErrCouldNotCompileRegex  = errors.New("could not compile regular expression")
-	ErrEmptyRegexStageSource = errors.New("empty source")
+	errExpressionRequired    = errors.New("expression is required")
+	errCouldNotCompileRegex  = errors.New("could not compile regular expression")
+	errEmptyRegexStageSource = errors.New("empty source")
 )
 
 // RegexConfig configures a processing stage uses regular expressions to
@@ -30,94 +28,102 @@ type RegexConfig struct {
 // validateRegexConfig validates the config and return a regex
 func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
 	if c.Expression == "" {
-		return nil, ErrExpressionRequired
+		return nil, errExpressionRequired
 	}
 
 	if c.Source != nil && *c.Source == "" {
-		return nil, ErrEmptyRegexStageSource
+		return nil, errEmptyRegexStageSource
 	}
 
 	expr, err := regexp.Compile(c.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+		return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
 	}
 
 	return expr, nil
 }
 
+var (
+	_ Stage          = (*regexStage)(nil)
+	_ entryProcessor = (*regexStage)(nil)
+)
+
+// newRegexStage creates a regexStage
+func newRegexStage(logger *slog.Logger, config RegexConfig, next NextFn) (*regexStage, error) {
+	expression, err := validateRegexConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return &regexStage{
+		next:       next,
+		config:     &config,
+		expression: expression,
+		logger:     logger.With("stage", "regex"),
+	}, nil
+}
+
 // regexStage sets extracted data using regular expressions
 type regexStage struct {
+	next       NextFn
 	config     *RegexConfig
 	expression *regexp.Regexp
 	logger     *slog.Logger
 }
 
-// newRegexStage creates a newRegexStage
-func newRegexStage(logger *slog.Logger, config RegexConfig) (Stage, error) {
-	expression, err := validateRegexConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return toStage(&regexStage{
-		config:     &config,
-		expression: expression,
-		logger:     logger.With("stage", "regex"),
-	}), nil
+// Run implements Stage.
+func (r *regexStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return r.processEntry(e)
+	})
 }
 
-// parseRegexConfig processes an incoming configuration into a RegexConfig
-func parseRegexConfig(config any) (*RegexConfig, error) {
-	cfg := &RegexConfig{}
-	err := mapstructure.Decode(config, cfg)
-	if err != nil {
-		return nil, err
+// process implements stage.
+func (r *regexStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = r.processEntry(entries[i])
 	}
-	return cfg, nil
+	return r.next(ctx, entries)
 }
 
-// Process implements Stage
-func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+// Cleanup implements Stage.
+func (r *regexStage) Cleanup() {}
+
+func (r *regexStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the regex stage should process it
-	// from the extracted map, otherwise should fall back to the entry
-	input := entry
+	// from the extracted map, otherwise should fall back to the line.
+	input := e.Line
 
 	if r.config.Source != nil {
-		if _, ok := extracted[*r.config.Source]; !ok {
+		source := *r.config.Source
+		if _, ok := e.Extracted[source]; !ok {
 			if debugEnabled(r.logger) {
-				r.logger.Debug("source does not exist in the set of extracted values", "source", *r.config.Source)
+				r.logger.Debug("source does not exist in the set of extracted values", "source", source)
 			}
-			return
+			return e
 		}
 
-		value, err := getString(extracted[*r.config.Source])
+		value, err := getString(e.Extracted[source])
 		if err != nil {
 			if debugEnabled(r.logger) {
-				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
+				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(e.Extracted[source]))
 			}
-			return
+			return e
 		}
 
-		input = &value
+		input = value
 	}
 
-	if input == nil {
-		if debugEnabled(r.logger) {
-			r.logger.Debug("cannot parse a nil entry")
-		}
-		return
-	}
-
-	match := r.expression.FindStringSubmatch(*input)
+	match := r.expression.FindStringSubmatch(input)
 	if match == nil {
 		if debugEnabled(r.logger) {
-			r.logger.Debug("regex did not match", "input", *input, "regex", r.expression)
+			r.logger.Debug("regex did not match", "input", input, "regex", r.expression)
 		}
-		return
+		return e
 	}
 
 	for i, name := range r.expression.SubexpNames() {
 		if i != 0 && name != "" {
-			extracted[name] = match[i]
+			e.Extracted[name] = match[i]
 			if r.config.LabelsFromGroups {
 				labelName := model.LabelName(name)
 				labelValue := model.LabelValue(match[i])
@@ -138,18 +144,21 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 					continue
 				}
 
-				oldLabelValue, ok := labels[labelName]
+				oldLabelValue, ok := e.Labels[labelName]
 
 				// Label from capture group will override existing label with same name
 				if debugEnabled(r.logger) && ok {
 					r.logger.Debug("label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
 				}
 
-				labels[labelName] = labelValue
+				e.Labels[labelName] = labelValue
 			}
 		}
 	}
+
 	if debugEnabled(r.logger) {
-		r.logger.Debug("extracted data debug in regex stage", "extracted_data", extracted)
+		r.logger.Debug("extracted data debug in regex stage", "extracted_data", e.Extracted)
 	}
+
+	return e
 }

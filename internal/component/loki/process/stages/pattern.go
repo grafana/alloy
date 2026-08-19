@@ -97,7 +97,7 @@ func (r *patternStage) Cleanup() {}
 
 func (r *patternStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the pattern stage should process it
-	// from the extracted map, otherwise should fall back to the entry
+	// from the extracted map, otherwise should fall back to the line.
 	input := e.Line
 
 	if r.config.Source != nil {
