@@ -5,53 +5,63 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 )
 
-func Test_StaticLabels(t *testing.T) {
-	staticVal := "val"
+func TestStaticLabelsTest(t *testing.T) {
+	now := time.Now()
 
-	tests := []struct {
-		name           string
-		config         StaticLabelsConfig
-		inputLabels    model.LabelSet
-		expectedLabels model.LabelSet
-	}{
+	type testCase struct {
+		name     string
+		cfg      StaticLabelsConfig
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
 		{
 			name: "add static label",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"staticLabel": &staticVal,
+			cfg: StaticLabelsConfig{Values: map[string]*string{
+				"staticLabel": ptr("val"),
 			}},
-			inputLabels: model.LabelSet{
-				"testLabel": "testValue",
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel":   "testValue",
-				"staticLabel": "val",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel": "testValue",
+				}, model.LabelSet{
+					"testLabel":   "testValue",
+					"staticLabel": "val",
+				}, "", now),
 			},
 		},
 		{
 			name: "add static label with empty value",
-			config: StaticLabelsConfig{Values: map[string]*string{
+			cfg: StaticLabelsConfig{Values: map[string]*string{
 				"staticLabel": nil,
 			}},
-			inputLabels: model.LabelSet{
-				"testLabel": "testValue",
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel": "testValue",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel": "testValue",
+				}, model.LabelSet{
+					"testLabel": "testValue",
+				}, "", now),
 			},
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			st, err := newStaticLabelsStage(test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out := processEntries(st, newEntry(nil, test.inputLabels, "", time.Now()))[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{StaticLabelsConfig: &tt.cfg}}, tt.entries, tt.expected, "")
 		})
 	}
 }
