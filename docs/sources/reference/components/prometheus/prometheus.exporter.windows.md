@@ -22,7 +22,7 @@ The available collectors depend on the [`windows_exporter`][windows_exporter] ve
 1. Refer to the {{< param "PRODUCT_NAME" >}} release notes for component upgrades.
 1. Upgrade {{< param "PRODUCT_NAME" >}} to a version that includes the collector.
 
-For more information on available collectors, refer to the [`collectors-list`](#collectors-list) section.
+For more information on available collectors, refer to the [Collectors list](#collectors-list).
 
 {{< admonition type="note" >}}
 The `blacklist` and `whitelist` configuration arguments are deprecated but remain available for backwards compatibility.
