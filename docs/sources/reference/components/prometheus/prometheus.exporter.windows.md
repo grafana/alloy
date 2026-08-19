@@ -24,6 +24,10 @@ The available collectors depend on the [`windows_exporter`][windows_exporter] ve
 
 For more information on available collectors, refer to the [Collectors list](#collectors-list).
 
+{{< admonition type="tip" >}}
+If a collector is available in the upstream [`windows_exporter`][windows_exporter] repository but isn't available in {{< param "PRODUCT_NAME" >}}, open a GitHub issue to request it.
+{{< /admonition >}}
+
 {{< admonition type="note" >}}
 The `blacklist` and `whitelist` configuration arguments are deprecated but remain available for backwards compatibility.
 Use the `include` and `exclude` arguments instead.
