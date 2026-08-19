@@ -234,7 +234,7 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks
 				return false
 			}
 		} else {
-			if expected.Timestamp.Unix() != actual.Timestamp.Unix() {
+			if expected.Timestamp.UnixNano() != actual.Timestamp.UnixNano() {
 				return false
 			}
 		}
