@@ -147,7 +147,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(opts.slogger, *cfg.TenantConfig)
+		s, err = newTenantStage(*cfg.TenantConfig, opts)
 		if err != nil {
 			return nil, err
 		}
