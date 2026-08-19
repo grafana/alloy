@@ -1,22 +1,27 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/prometheus/common/model"
 )
 
-// ErrEmptyStaticLabelStageConfig error returned if the config is empty.
-var ErrEmptyStaticLabelStageConfig = errors.New("static_labels stage config cannot be empty")
+// errEmptyStaticLabelStageConfig error returned if the config is empty.
+var errEmptyStaticLabelStageConfig = errors.New("static_labels stage config cannot be empty")
 
 // StaticLabelsConfig contains a map of static labels to be set.
 type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
-func newStaticLabelsStage(config StaticLabelsConfig) (Stage, error) {
+var (
+	_ Stage = (*staticLabelStage)(nil)
+	_ stage = (*staticLabelStage)(nil)
+)
+
+func newStaticLabelsStage(config StaticLabelsConfig, next NextFn) (Stage, error) {
 	err := validateLabelStaticConfig(config)
 	if err != nil {
 		return nil, err
@@ -36,12 +41,12 @@ func newStaticLabelsStage(config StaticLabelsConfig) (Stage, error) {
 		values = append(values, n, value)
 	}
 
-	return toStage(&staticLabelStage{values}), nil
+	return &staticLabelStage{next, values}, nil
 }
 
 func validateLabelStaticConfig(c StaticLabelsConfig) error {
 	if c.Values == nil {
-		return ErrEmptyStaticLabelStageConfig
+		return errEmptyStaticLabelStageConfig
 	}
 	for labelName := range c.Values {
 		// TODO: add support for different validation schemes.
@@ -55,13 +60,30 @@ func validateLabelStaticConfig(c StaticLabelsConfig) error {
 
 // staticLabelStage implements Stage.
 type staticLabelStage struct {
+	next NextFn
 	// values packs both label names and label values and need to be divisible by 2.
 	values []string
 }
 
-// Process implements Stage.
-func (l *staticLabelStage) Process(labels model.LabelSet, _ map[string]any, _ *time.Time, _ *string) {
-	for i := 0; i < len(l.values); i += 2 {
-		labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
-	}
+// Run implements Stage.
+func (l *staticLabelStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		for i := 0; i < len(l.values); i += 2 {
+			e.Labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
+		}
+		return e
+	})
 }
+
+// process implements stage.
+func (l *staticLabelStage) process(ctx context.Context, entries []Entry) error {
+	for _, e := range entries {
+		for i := 0; i < len(l.values); i += 2 {
+			e.Labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
+		}
+	}
+	return l.next(ctx, entries)
+}
+
+// Cleanup implements Stage.
+func (l *staticLabelStage) Cleanup() {}

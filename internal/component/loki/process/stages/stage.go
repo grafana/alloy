@@ -178,7 +178,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig)
+		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig, next)
 		if err != nil {
 			return nil, err
 		}
