@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"maps"
@@ -14,18 +15,25 @@ type SplitJSONConfig struct {
 	Source *Source `alloy:"source,attr,optional"`
 }
 
-// splitJSONStage splits a top-level JSON array into one entry per element.
-type splitJSONStage struct {
-	cfg    SplitJSONConfig
-	logger *slog.Logger
-}
+var (
+	_ Stage          = (*splitJSONStage)(nil)
+	_ entryProcessor = (*splitJSONStage)(nil)
+)
 
 // newSplitJSONStage creates a new split_json pipeline stage from a config.
-func newSplitJSONStage(logger *slog.Logger, cfg SplitJSONConfig) Stage {
+func newSplitJSONStage(logger *slog.Logger, cfg SplitJSONConfig, next NextFn) *splitJSONStage {
 	return &splitJSONStage{
+		next:   next,
 		cfg:    cfg,
 		logger: logger.With("stage", "split_json"),
 	}
+}
+
+// splitJSONStage splits a top-level JSON array into one entry per element.
+type splitJSONStage struct {
+	next   NextFn
+	cfg    SplitJSONConfig
+	logger *slog.Logger
 }
 
 // Run implements Stage. An entry that holds a JSON array of N elements
@@ -57,6 +65,35 @@ func (s *splitJSONStage) Run(in chan Entry) chan Entry {
 		}
 	}()
 	return out
+}
+
+// process implements stage.
+func (s *splitJSONStage) process(ctx context.Context, entries []Entry) error {
+	// NOTE: out is sized off len(entries) but one entry can split into many,
+	// so it may still grow via append. If this becomes an allocation hotspot
+	// we should look into optimizing this.
+	out := make([]Entry, 0, len(entries))
+	for _, e := range entries {
+		elems, ok := s.split(e)
+		if !ok {
+			out = append(out, e)
+			continue
+		}
+		for i, raw := range elems {
+			child := e
+			if i < len(elems)-1 {
+				child.Entry = e.Entry.Clone()
+				child.Extracted = maps.Clone(e.Extracted)
+			}
+			// Safety: json.RawMessage's UnmarshalJSON contract copies each
+			// value into its own backing slice, which is never exposed or
+			// mutated after this point, so the string's bytes stay immutable.
+			// nosemgrep: use-of-unsafe-block
+			child.Line = unsafe.String(unsafe.SliceData(raw), len(raw)) // #nosec G103
+			out = append(out, child)
+		}
+	}
+	return s.next(ctx, out)
 }
 
 // split returns the raw elements of the top-level JSON array carried by the
