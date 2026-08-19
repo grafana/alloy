@@ -142,7 +142,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s, err = newTemplateStage(opts.slogger, *cfg.TemplateConfig)
+		s, err = newTemplateStage(*cfg.TemplateConfig, opts)
 		if err != nil {
 			return nil, err
 		}
