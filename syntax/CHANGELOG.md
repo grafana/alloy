@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/grafana/alloy/compare/syntax/v0.1.1...syntax/v0.1.2) (2026-08-19)
+
+
+### Bug Fixes 🐛
+
+* Bump go version to v1.26.6 ([#6897](https://github.com/grafana/alloy/issues/6897)) ([27b94ac](https://github.com/grafana/alloy/commit/27b94acb3037aa0fb5e53103f45bf859a8e3722f))
+* **validation:** Typecheck attribute object ([#6802](https://github.com/grafana/alloy/issues/6802)) ([33d3313](https://github.com/grafana/alloy/commit/33d3313a804f7fc4dc126b6f1f6cdf107114763a))
+
 ## [0.1.1](https://github.com/grafana/alloy/compare/syntax/v0.1.0...syntax/v0.1.1) (2026-07-09)
 
 
