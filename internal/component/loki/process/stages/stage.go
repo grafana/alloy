@@ -193,7 +193,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s = newTruncateStage(opts.slogger, *cfg.TruncateConfig, opts.registerer)
+		s = newTruncateStage(*cfg.TruncateConfig, opts)
 	case cfg.SplitJSONConfig != nil:
 		s = newSplitJSONStage(*cfg.SplitJSONConfig, opts)
 	default:
