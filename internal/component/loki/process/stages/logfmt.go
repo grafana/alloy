@@ -104,7 +104,7 @@ func (j *logfmtStage) Cleanup() {}
 
 func (j *logfmtStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the logfmt stage should process it
-	// from the extracted map, otherwise should fall back to the entry
+	// from the extracted map, otherwise should fall back to the line.
 	input := e.Line
 
 	if j.cfg.Source != "" {

@@ -122,7 +122,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(opts.slogger, *cfg.RegexConfig)
+		s, err = newRegexStage(*cfg.RegexConfig, opts)
 		if err != nil {
 			return nil, err
 		}

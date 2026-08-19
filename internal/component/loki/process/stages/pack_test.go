@@ -58,7 +58,7 @@ func TestPackPipeline(t *testing.T) {
 	// same timestamp due to the Windows' lower-resolution timers.
 	out1 := processEntries(pl, newEntry(nil, l1Lbls, testMatchLogLineApp1, testTime))[0]
 	time.Sleep(1 * time.Millisecond)
-	out2 := processEntries(pl, newEntry(nil, l2Lbls, testRegexLogLine, testTime))[0]
+	out2 := processEntries(pl, newEntry(nil, l2Lbls, regexLogFixture, testTime))[0]
 
 	// Expected labels should remove the packed labels
 	expectedLbls := model.LabelSet{
@@ -92,7 +92,7 @@ func TestPackPipeline(t *testing.T) {
 		"container": "bar",
 	}
 	assert.Equal(t, expectedPackedLabels, w.Labels)
-	assert.Equal(t, testRegexLogLine, w.Entry)
+	assert.Equal(t, regexLogFixture, w.Entry)
 }
 
 func TestPackStage(t *testing.T) {
