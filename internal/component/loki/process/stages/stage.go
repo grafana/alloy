@@ -35,26 +35,6 @@ type Stopper interface {
 	Stop()
 }
 
-// stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
-type stageProcessor struct {
-	Processor
-}
-
-func (s stageProcessor) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-		return e
-	})
-}
-
-func toStage(p Processor) Stage {
-	return &stageProcessor{
-		Processor: p,
-	}
-}
-
-func (*stageProcessor) Cleanup() {}
-
 // newStage creates a new stage for the given type and configuration.
 func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	return newStageWithOpts(cfg, stageOpts{
@@ -127,7 +107,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TimestampConfig != nil:
-		s, err = newTimestampStage(opts.slogger, *cfg.TimestampConfig)
+		s, err = newTimestampStage(*cfg.TimestampConfig, opts)
 		if err != nil {
 			return nil, err
 		}

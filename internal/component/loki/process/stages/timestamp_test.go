@@ -1,30 +1,14 @@
 package stages
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
 )
-
-var testTimestampAlloy = `
-stage.json {
-    expressions = { ts = "time" }
-}
-stage.timestamp {
-    source = "ts"
-	format = "RFC3339"
-}`
 
 var testTimestampLogLine = `
 {
@@ -43,36 +27,403 @@ var testTimestampLogLineWithMissingKey = `
 }
 `
 
-func TestTimestampPipeline(t *testing.T) {
-	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
-
-	out := processEntries(pl, newEntry(nil, nil, testTimestampLogLine, time.Now()))[0]
-	assert.Equal(t, time.Date(2012, 11, 01, 22, 8, 41, 0, time.FixedZone("", -4*60*60)).Unix(), out.Timestamp.Unix())
-}
-
 var (
 	invalidLocationString = "America/Canada"
 	validLocationString   = "America/New_York"
 	validLocation, _      = time.LoadLocation(validLocationString)
 )
 
-func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
-	var buf bytes.Buffer
-	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
-	require.NoError(t, err)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
+func TestTimestampStage(t *testing.T) {
+	now := time.Now()
 
-	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))
-	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" stage=timestamp err=\"can't convert <nil> to string\" type=<nil>", ErrTimestampConversionFailed)
-	if !(strings.Contains(buf.String(), expectedLog)) {
-		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
+		{
+			name: "set success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "2006-01-02T15:04:05Z07:00"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "2106-01-02T23:04:05-04:00",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "2106-01-02T23:04:05-04:00",
+				}, model.LabelSet{}, "hello world", time.Date(2106, 01, 02, 23, 04, 05, 0, time.FixedZone("", -4*60*60))),
+			},
+		},
+		{
+			name: "unix success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "Unix"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 0, time.UTC)),
+			},
+		},
+		{
+			name: "unix fractions ms success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "Unix"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916.414123",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916.414123",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 414123*1000, time.UTC)),
+			},
+		},
+		{
+			name: "unix fractions ns success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "Unix"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916.000000123",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916.000000123",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 123, time.UTC)),
+			},
+		},
+		{
+			name: "unix millisecond success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "UnixMs"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916414",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916414",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 414*1000000, time.UTC)),
+			},
+		},
+		{
+			name: "unix microsecond success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "UnixUs"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916414123",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916414123",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 414123*1000, time.UTC)),
+			},
+		},
+		{
+			name: "unix nano success",
+			config: `
+			stage.timestamp {
+				source = "ts"
+				format = "UnixNs"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916000000123",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "1562708916000000123",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 9, 21, 48, 36, 123, time.UTC)),
+			},
+		},
+		{
+			name: "with location success",
+			config: `
+			stage.timestamp {
+				source   = "ts"
+				format   = "2006-01-02 15:04:05"
+				location = "America/New_York"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "2019-07-22 20:29:32",
+				}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"somethigelse": "notimportant",
+					"ts":           "2019-07-22 20:29:32",
+				}, model.LabelSet{}, "hello world", time.Date(2019, 7, 22, 20, 29, 32, 0, validLocation)),
+			},
+		},
+		{
+			name: "should keep the parsed timestamp on success",
+			config: `
+			stage.timestamp {
+				source            = "time"
+				format            = "2006-01-02T15:04:05.999999999Z07:00"
+				action_on_failure = "fudge"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.500000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.500000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.500000000Z")),
+			},
+		},
+		{
+			name: "should add nanoseconds to identical parsed timestamps to preserve message order",
+			config: `
+			stage.timestamp {
+				source                        = "time"
+				format                        = "2006-01-02T15:04:05.999999999Z07:00"
+				action_on_failure             = "fudge"
+				action_on_duplicate_timestamp = "fudge"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z")),
+			},
+		},
+		{
+			name: "action_on_duplicate_timestamp=keep leaves identical timestamps unchanged",
+			config: `
+			stage.timestamp {
+				source                        = "time"
+				format                        = "2006-01-02T15:04:05.999999999Z07:00"
+				action_on_failure             = "fudge"
+				action_on_duplicate_timestamp = "keep"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+			},
+		},
+		{
+			name: "should fudge the timestamp based on the last known value on timestamp parsing failure",
+			config: `
+			stage.timestamp {
+				source = "time"
+				format = "2006-01-02T15:04:05.999999999Z07:00"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z")),
+				newEntry(map[string]any{}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z")),
+			},
+		},
+		{
+			name: "should fudge the timestamp based on the last known value for the right file target",
+			config: `
+			stage.timestamp {
+				source = "time"
+				format = "2006-01-02T15:04:05.999999999Z07:00"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{"filename": "/1.log"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.800000000Z"}, model.LabelSet{"filename": "/2.log"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"filename": "/1.log"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"filename": "/2.log"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"filename": "/1.log"}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z", "filename": "/1.log"}, model.LabelSet{"filename": "/1.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.800000000Z", "filename": "/2.log"}, model.LabelSet{"filename": "/2.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000000Z")),
+				newEntry(map[string]any{"filename": "/1.log"}, model.LabelSet{"filename": "/1.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z")),
+				newEntry(map[string]any{"filename": "/2.log"}, model.LabelSet{"filename": "/2.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000001Z")),
+				newEntry(map[string]any{"filename": "/1.log"}, model.LabelSet{"filename": "/1.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z")),
+			},
+		},
+		{
+			name: "should keep the input timestamp if unable to fudge because there's no known valid timestamp yet",
+			config: `
+			stage.timestamp {
+				source = "time"
+				format = "2006-01-02T15:04:05.999999999Z07:00"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{"filename": "/1.log"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"filename": "/2.log"}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z", "filename": "/1.log"}, model.LabelSet{"filename": "/1.log"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"filename": "/2.log"}, model.LabelSet{"filename": "/2.log"}, "", time.Unix(1, 0)),
+			},
+		},
+		{
+			name: "should keep the input timestamp on action_on_failure=skip",
+			config: `
+			stage.timestamp {
+				source            = "time"
+				format            = "2006-01-02T15:04:05.999999999Z07:00"
+				action_on_failure = "skip"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{}, model.LabelSet{}, "", time.Unix(1, 0)),
+			},
+		},
+		{
+			name: "labels with colliding fingerprints should have independent timestamps when fudging",
+			config: `
+			stage.timestamp {
+				source            = "time"
+				format            = "2006-01-02T15:04:05.999999999Z07:00"
+				action_on_failure = "fudge"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.800000000Z"}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", time.Unix(1, 0)),
+				newEntry(map[string]any{}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", time.Unix(1, 0)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.400000000Z", "app": "m", "uniq0": "1", "uniq1": "1"}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z")),
+				newEntry(map[string]any{"time": "2019-10-01T01:02:03.800000000Z", "app": "l", "uniq0": "0", "uniq1": "1"}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000000Z")),
+				newEntry(map[string]any{"app": "m", "uniq0": "1", "uniq1": "1"}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z")),
+				newEntry(map[string]any{"app": "l", "uniq0": "0", "uniq1": "1"}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000001Z")),
+				newEntry(map[string]any{"app": "m", "uniq0": "1", "uniq1": "1"}, model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z")),
+				newEntry(map[string]any{"app": "l", "uniq0": "0", "uniq1": "1"}, model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, "", mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000002Z")),
+			},
+		},
+		{
+			name: "pipeline with json stage extracting the timestamp source",
+			config: `
+			stage.json {
+				expressions = { ts = "time" }
+			}
+			stage.timestamp {
+				source = "ts"
+				format = "RFC3339"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testTimestampLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"ts": "2012-11-01T22:08:41-04:00"}, model.LabelSet{}, testTimestampLogLine, time.Date(2012, 11, 01, 22, 8, 41, 0, time.FixedZone("", -4*60*60))),
+			},
+		},
+		{
+			name: "missing extracted source from json expression keeps the input timestamp unchanged",
+			config: `
+			stage.json {
+				expressions = { ts = "time" }
+			}
+			stage.timestamp {
+				source = "ts"
+				format = "RFC3339"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testTimestampLogLineWithMissingKey, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"ts": nil}, model.LabelSet{}, testTimestampLogLineWithMissingKey, now),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, "")
+		})
 	}
 }
 
-func TestTimestampValidation(t *testing.T) {
+func TestValidateTimestampConfig(t *testing.T) {
 	tests := map[string]struct {
 		config *TimestampConfig
 		// Note the error text validation is a little loose as it only validates with strings.HasPrefix
@@ -84,13 +435,13 @@ func TestTimestampValidation(t *testing.T) {
 	}{
 		"missing source": {
 			config: &TimestampConfig{},
-			err:    ErrTimestampSourceRequired,
+			err:    errTimestampSourceRequired,
 		},
 		"missing format": {
 			config: &TimestampConfig{
 				Source: "source1",
 			},
-			err: ErrTimestampFormatRequired,
+			err: errTimestampFormatRequired,
 		},
 		"invalid location": {
 			config: &TimestampConfig{
@@ -98,7 +449,7 @@ func TestTimestampValidation(t *testing.T) {
 				Format:   "2006-01-02",
 				Location: &invalidLocationString,
 			},
-			err: fmt.Errorf(ErrInvalidLocation.Error(), ""),
+			err: fmt.Errorf(errInvalidLocation.Error(), ""),
 		},
 		"standard format": {
 			config: &TimestampConfig{
@@ -165,7 +516,7 @@ func TestTimestampValidation(t *testing.T) {
 				Format:          time.RFC3339,
 				ActionOnFailure: "foo",
 			},
-			err: fmt.Errorf(ErrInvalidActionOnFailure.Error(), TimestampActionOnFailureOptions),
+			err: fmt.Errorf(errInvalidActionOnFailure.Error(), timestampActionOnFailureOptions),
 		},
 		"should fail on invalid action on duplicate timestamp": {
 			config: &TimestampConfig{
@@ -173,7 +524,7 @@ func TestTimestampValidation(t *testing.T) {
 				Format:                     time.RFC3339,
 				ActionOnDuplicateTimestamp: "invalid",
 			},
-			err: fmt.Errorf(ErrInvalidActionOnDuplicateTimestamp.Error(), TimestampActionOnDuplicateTimestampOptions),
+			err: fmt.Errorf(errInvalidActionOnDuplicateTimestamp.Error(), timestampActionOnDuplicateTimestampOptions),
 		},
 		"fallback formats contains the format": {
 			config: &TimestampConfig{
@@ -209,292 +560,6 @@ func TestTimestampValidation(t *testing.T) {
 			}
 			if test.expectedConfig != nil {
 				assert.Equal(t, test.expectedConfig, test.config)
-			}
-		})
-	}
-}
-
-func TestTimestampStage_Process(t *testing.T) {
-	tests := map[string]struct {
-		config    TimestampConfig
-		extracted map[string]any
-		expected  time.Time
-	}{
-		"set success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: time.RFC3339,
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "2106-01-02T23:04:05-04:00",
-			},
-			time.Date(2106, 01, 02, 23, 04, 05, 0, time.FixedZone("", -4*60*60)),
-		},
-		"unix success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "Unix",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 0, time.UTC),
-		},
-		"unix fractions ms success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "Unix",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916.414123",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 414123*1000, time.UTC),
-		},
-		"unix fractions ns success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "Unix",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916.000000123",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 123, time.UTC),
-		},
-		"unix millisecond success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "UnixMs",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916414",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 414*1000000, time.UTC),
-		},
-		"unix microsecond success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "UnixUs",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916414123",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 414123*1000, time.UTC),
-		},
-		"unix nano success": {
-			TimestampConfig{
-				Source: "ts",
-				Format: "UnixNs",
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "1562708916000000123",
-			},
-			time.Date(2019, 7, 9, 21, 48, 36, 123, time.UTC),
-		},
-		"with location success": {
-			TimestampConfig{
-				Source:   "ts",
-				Format:   "2006-01-02 15:04:05",
-				Location: &validLocationString,
-			},
-			map[string]any{
-				"somethigelse": "notimportant",
-				"ts":           "2019-07-22 20:29:32",
-			},
-			time.Date(2019, 7, 22, 20, 29, 32, 0, validLocation),
-		},
-	}
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			logger := util.TestAlloyLogger(t)
-			st, err := newTimestampStage(logger.Slog(), test.config)
-			require.NoError(t, err)
-
-			out := processEntries(st, newEntry(test.extracted, nil, "hello world", time.Now()))[0]
-			assert.Equal(t, test.expected.UnixNano(), out.Timestamp.UnixNano())
-		})
-	}
-}
-
-func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
-	t.Parallel()
-
-	type inputEntry struct {
-		timestamp time.Time
-		labels    model.LabelSet
-		extracted map[string]any
-	}
-
-	tests := map[string]struct {
-		config             TimestampConfig
-		inputEntries       []inputEntry
-		expectedTimestamps []time.Time
-	}{
-		"should keep the parsed timestamp on success": {
-			config: TimestampConfig{
-				Source:          "time",
-				Format:          time.RFC3339Nano,
-				ActionOnFailure: TimestampActionOnFailureFudge,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.500000000Z"}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.500000000Z"),
-			},
-		},
-		"should add nanoseconds to identical parsed timestamps to preserve message order": {
-			config: TimestampConfig{
-				Source:                     "time",
-				Format:                     time.RFC3339Nano,
-				ActionOnFailure:            TimestampActionOnFailureFudge,
-				ActionOnDuplicateTimestamp: TimestampActionOnDuplicateTimestampFudge,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
-			},
-		},
-		"action_on_duplicate_timestamp=keep leaves identical timestamps unchanged": {
-			config: TimestampConfig{
-				Source:                     "time",
-				Format:                     time.RFC3339Nano,
-				ActionOnFailure:            TimestampActionOnFailureFudge,
-				ActionOnDuplicateTimestamp: TimestampActionOnDuplicateTimestampKeep,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-			},
-		},
-		"should fudge the timestamp based on the last known value on timestamp parsing failure": {
-			config: TimestampConfig{
-				Source: "time",
-				Format: time.RFC3339Nano,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
-			},
-		},
-		"should fudge the timestamp based on the last known value for the right file target": {
-			config: TimestampConfig{
-				Source: "time",
-				Format: time.RFC3339Nano,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/1.log"}, extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/2.log"}, extracted: map[string]any{"time": "2019-10-01T01:02:03.800000000Z"}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/1.log"}, extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/2.log"}, extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/1.log"}, extracted: map[string]any{}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
-			},
-		},
-		"should keep the input timestamp if unable to fudge because there's no known valid timestamp yet": {
-			config: TimestampConfig{
-				Source: "time",
-				Format: time.RFC3339Nano,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/1.log"}, extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"filename": "/2.log"}, extracted: map[string]any{}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				time.Unix(1, 0),
-			},
-		},
-		"should keep the input timestamp on action_on_failure=skip": {
-			config: TimestampConfig{
-				Source:          "time",
-				Format:          time.RFC3339Nano,
-				ActionOnFailure: TimestampActionOnFailureSkip,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), extracted: map[string]any{}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				time.Unix(1, 0),
-			},
-		},
-		"labels with colliding fingerprints should have independent timestamps when fudging": {
-			config: TimestampConfig{
-				Source:          "time",
-				Format:          time.RFC3339Nano,
-				ActionOnFailure: TimestampActionOnFailureFudge,
-			},
-			inputEntries: []inputEntry{
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, extracted: map[string]any{"time": "2019-10-01T01:02:03.400000000Z"}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, extracted: map[string]any{"time": "2019-10-01T01:02:03.800000000Z"}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "m", "uniq0": "1", "uniq1": "1"}, extracted: map[string]any{}},
-				{timestamp: time.Unix(1, 0), labels: model.LabelSet{"app": "l", "uniq0": "0", "uniq1": "1"}, extracted: map[string]any{}},
-			},
-			expectedTimestamps: []time.Time{
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000000Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000001Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.400000002Z"),
-				mustParseTime(time.RFC3339Nano, "2019-10-01T01:02:03.800000002Z"),
-			},
-		},
-	}
-
-	for testName, testData := range tests {
-		testData := testData
-
-		t.Run(testName, func(t *testing.T) {
-			t.Parallel()
-
-			// Ensure the test has been correctly set
-			require.Equal(t, len(testData.inputEntries), len(testData.expectedTimestamps))
-
-			logger := util.TestAlloyLogger(t)
-			s, err := newTimestampStage(logger.Slog(), testData.config)
-			require.NoError(t, err)
-
-			for i, inputEntry := range testData.inputEntries {
-				out := processEntries(s, newEntry(inputEntry.extracted, inputEntry.labels, "", inputEntry.timestamp))[0]
-				assert.Equal(t, testData.expectedTimestamps[i], out.Timestamp, "entry: %d", i)
 			}
 		})
 	}
