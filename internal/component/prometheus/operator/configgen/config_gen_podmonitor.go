@@ -57,13 +57,13 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	}
 
 	if m.Spec.ScrapeClassicHistograms != nil {
-		// Requires a pointer so we want to copy and then point to new value.
-		cfg.AlwaysScrapeClassicHistograms = &(*m.Spec.ScrapeClassicHistograms)
+		vCopy := *m.Spec.ScrapeClassicHistograms
+		cfg.AlwaysScrapeClassicHistograms = &vCopy
 	}
 
 	if m.Spec.ScrapeNativeHistograms != nil {
-		// Requires a pointer so we want to copy and then point to new value.
-		cfg.ScrapeNativeHistograms = &(*m.Spec.ScrapeNativeHistograms)
+		vCopy := *m.Spec.ScrapeNativeHistograms
+		cfg.ScrapeNativeHistograms = &vCopy
 	}
 
 	if ep.Path != "" {

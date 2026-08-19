@@ -386,7 +386,8 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						promopv1.ScrapeProtocol(config.PrometheusProto),
 					},
 					NativeHistogramConfig: promopv1.NativeHistogramConfig{
-						ScrapeNativeHistograms: truePtr,
+						ScrapeNativeHistograms:  truePtr,
+						ScrapeClassicHistograms: truePtr,
 					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
 					SampleLimit:           ptr.To(uint64(101)),
@@ -545,7 +546,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
 				ScrapeNativeHistograms:         truePtr,
-				AlwaysScrapeClassicHistograms:  falsePtr,
+				AlwaysScrapeClassicHistograms:  truePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
