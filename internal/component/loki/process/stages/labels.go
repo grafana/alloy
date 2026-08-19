@@ -100,7 +100,6 @@ func (l *labelStage) Run(in chan Entry) chan Entry {
 				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
 			case SourceTypeStructuredMetadata:
 				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
-
 			}
 			out <- e
 		}
