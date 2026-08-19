@@ -92,7 +92,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LogfmtConfig != nil:
-		s, err = newLogfmtStage(opts.slogger, *cfg.LogfmtConfig)
+		s, err = newLogfmtStage(*cfg.LogfmtConfig, opts)
 		if err != nil {
 			return nil, err
 		}
