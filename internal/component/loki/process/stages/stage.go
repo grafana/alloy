@@ -215,7 +215,7 @@ func newStageWithOpts(
 	case cfg.TruncateConfig != nil:
 		s = newTruncateStage(opts.slogger, *cfg.TruncateConfig, opts.registerer)
 	case cfg.SplitJSONConfig != nil:
-		s = newSplitJSONStage(opts.slogger, *cfg.SplitJSONConfig)
+		s = newSplitJSONStage(*cfg.SplitJSONConfig, opts)
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}
