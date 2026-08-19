@@ -73,6 +73,136 @@ To build without regenerating:
 SKIP_CODE_GENERATION=1 make alloy
 ```
 
+## Lightweight Native Component Builds
+
+Alloy has two independently selected component sets:
+
+- OTel Collector factories are selected in `builder-config.yaml` and emitted into
+  `components.go` by OCB.
+- Native Alloy components are registered by importing their Go packages for side
+  effects. The canonical package-to-component mapping is
+  [`../internal/component/all/catalog.json`](../internal/component/all/catalog.json).
+
+The normal build remains backwards compatible: when `ALLOY_COMPONENTS` is not
+set or is `all`, `make alloy` imports every native Alloy component in the catalog.
+
+Set `ALLOY_COMPONENTS` to a comma- or whitespace-separated list of the component
+names used by your Alloy configuration to build a smaller binary:
+
+```bash
+make alloy ALLOY_COMPONENTS='loki.source.file,loki.process,loki.write'
+```
+
+The build validates every name against `catalog.json`; an unknown or duplicate
+name fails the build. Use the special value `none` to build the core Alloy
+runtime without registering any native component packages:
+
+```bash
+make alloy ALLOY_COMPONENTS='none'
+```
+
+`none` is useful for measuring the core runtime and for distributions that only
+run OTel Collector pipelines. An Alloy configuration that refers to an omitted
+native component fails during configuration evaluation because that component
+is not registered.
+
+### Linkage Units and Both Alloy Engines
+
+Users select exact Alloy component names. The Go linker still works at package
+granularity, so components that share an implementation package also share its
+compiled code. Their registrations are independently build-constrained. For
+example, `discovery.aws`, `discovery.ec2`, and `discovery.lightsail` share one Go
+package, but selecting `discovery.ec2` registers only `discovery.ec2`.
+`catalog.json` records the shared package mapping and the generated selector uses
+one OR-constrained import for it.
+
+The native selector is process-wide. It controls the registry used by the
+default Alloy engine (`alloy run`) and by the Alloy engine embedded as the
+`alloyengine` OTel extension. It is therefore not possible for those two entry
+points in the same binary to have different native component sets.
+
+### OTel Components Are a Separate Allowlist
+
+`ALLOY_COMPONENTS` only trims native Alloy registration packages. To create a
+truly minimal distribution, also remove unused OTel receivers, processors,
+exporters, connectors, extensions, and providers from `builder-config.yaml` and
+regenerate the collector distro. Keep the `alloyengine` extension when the OTel
+Collector must be able to start the Alloy engine.
+
+The generated `collector/go.mod` and root `go.mod` remain broad by design. Go's
+`mod tidy` considers files across build constraints, so component selection
+primarily reduces linked code and binary size; it does not currently produce a
+per-selection module graph. Module-file-based dependency inventories or SBOMs
+may consequently contain dependencies that are not linked into the resulting
+binary. Use an artifact-aware inventory when that distinction matters.
+
+### Custom-Build Command Surface
+
+Setting `ALLOY_COMPONENTS`, including to `none`, enables custom-component mode.
+This mode accepts Alloy configuration only and omits configuration conversion,
+component-specific `tools` commands, and legacy Grafana Agent static
+integrations. The `run`, `validate`, `fmt`, and GraphQL (`gql`) commands remain
+available. Do not use a custom build where Prometheus, Promtail, OTel Collector
+YAML, or static Agent configuration must be converted at startup; convert it to
+Alloy configuration before building the distribution.
+
+### Advanced Build-Tag Interface
+
+The Make variable is the supported in-tree interface. Internally it translates
+component names to Go tags by replacing dots with underscores and prefixing
+`alloy_component_`, then adds the marker tag `alloy_custom_components`. The
+previous example is equivalent to passing these selector tags through
+`GO_TAGS`:
+
+```text
+alloy_custom_components
+alloy_component_loki_source_file
+alloy_component_loki_process
+alloy_component_loki_write
+```
+
+Direct Go or packaging builds must include the marker and all desired component
+tags together. Preserve any unrelated platform or feature tags already required
+by that build. OCB users can pass the same comma-separated tags to the
+distribution configuration:
+
+```yaml
+dist:
+  build_tags: "alloy_custom_components,alloy_component_loki_source_file,alloy_component_loki_process,alloy_component_loki_write"
+```
+
+OCB's `dist.build_tags` affects a compilation performed by OCB. This repository
+runs OCB with generation-only behavior and compiles Alloy separately, so use
+`ALLOY_COMPONENTS` (or `GO_TAGS`) with `make alloy` rather than relying on
+`builder-config.yaml` to pass native selector tags to the final build.
+
+When adding or moving a native component, update `catalog.json` and regenerate
+the import selectors instead of editing generated `all.go` or `custom_*.go`
+files:
+
+```bash
+go generate ./internal/component/all
+```
+
+### Platform and Native-Code Caveats
+
+Selection only controls reachability; it does not remove a component's normal
+OS, architecture, asset, or Cgo requirements.
+
+- `beyla.ebpf` is functional only on Linux AMD64 and ARM64 and embeds a matching
+  downloaded Beyla executable. Ensure the asset download step has run when using
+  raw Go or OCB builds; unsupported targets compile the existing no-op
+  placeholder implementation.
+- `loki.source.journal` requires Linux, Cgo, the
+  `promtail_journal_enabled` tag, and the systemd development headers needed at
+  compile time. Without all of them, Alloy builds its existing journal stub.
+- Other platform-specific components retain their existing build constraints
+  and stubs. Verify the selected set on every target `GOOS`/`GOARCH`, especially
+  for cross-compilation.
+- `CGO_ENABLED=0` may make selected functionality unavailable even when its
+  component selector is present. Treat Cgo and feature tags as additional build
+  requirements, not as replacements for the selector tags.
+
 ## CI Considerations
 
 If your work involves anything that would modify the generated files, please commit them with your changes before pushing to github. We have a github workflow that will check that the output of the collector generation matches what has been checked in, and this will fail if you do not include changes to these files.

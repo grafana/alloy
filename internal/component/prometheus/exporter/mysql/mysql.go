@@ -3,24 +3,11 @@ package mysql
 import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/exporter"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "prometheus.exporter.mysql",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   exporter.Exports{},
-
-		Build: exporter.New(createExporter, "mysql"),
-	})
-}
 
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
