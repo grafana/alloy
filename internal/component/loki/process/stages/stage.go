@@ -133,7 +133,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s, err = newTemplateStage(slogger, *cfg.TemplateConfig)
+		s, err = newTemplateStage(slogger, *cfg.TemplateConfig, next)
 		if err != nil {
 			return nil, err
 		}
