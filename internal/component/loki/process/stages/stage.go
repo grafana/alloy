@@ -138,7 +138,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(slogger, *cfg.TenantConfig)
+		s, err = newTenantStage(slogger, *cfg.TenantConfig, next)
 		if err != nil {
 			return nil, err
 		}
