@@ -404,10 +404,9 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := args.MetricsBuilderConfig.Convert()
 
-	var result vcenterreceiver.Config
-	err := mapstructure.Decode(cfg, &result)
+	result := vcenterreceiver.NewFactory().CreateDefaultConfig().(*vcenterreceiver.Config)
 
-	if err != nil {
+	if err := mapstructure.Decode(cfg, result); err != nil {
 		return nil, err
 	}
 
@@ -418,7 +417,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
 	result.MaxQueryMetrics = args.MaxQueryMetrics
 
-	return &result, nil
+	return result, nil
 }
 
 // Validate checks to see if the supplied config will work for the receiver
