@@ -25,9 +25,6 @@ type registrationScan struct {
 }
 
 func auditCatalogSources(cat catalog, repoRoot string) error {
-	if err := validateCatalog(cat); err != nil {
-		return err
-	}
 	if _, err := os.Stat(filepath.Join(repoRoot, "go.mod")); err != nil {
 		return fmt.Errorf("locate repository root %q: %w", repoRoot, err)
 	}

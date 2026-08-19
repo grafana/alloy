@@ -37,7 +37,7 @@ jobs:
         run: |
           make generate-component-selectors generate-otel-collector-distro
 
-      - name: Test lightweight component selectors
+      - name: Test lightweight builders and component selectors
         run: make test-lightweight-components
 
       - name: Check for generated file changes

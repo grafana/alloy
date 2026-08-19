@@ -83,83 +83,6 @@ func init() {
 	}
 }
 
-func TestValidateCatalogRejectsInvalidCatalogs(t *testing.T) {
-	valid := func() catalog {
-		return catalog{
-			Version: catalogVersion,
-			Packages: []catalogPackage{
-				{ImportPath: componentImportPrefix + "alpha", Components: []string{"alpha.one"}},
-				{ImportPath: componentImportPrefix + "beta", Components: []string{"beta.two"}},
-			},
-		}
-	}
-
-	tests := []struct {
-		name     string
-		mutate   func(*catalog)
-		contains string
-	}{
-		{
-			name: "unsupported version",
-			mutate: func(cat *catalog) {
-				cat.Version++
-			},
-			contains: "unsupported version",
-		},
-		{
-			name: "unsorted packages",
-			mutate: func(cat *catalog) {
-				cat.Packages[0], cat.Packages[1] = cat.Packages[1], cat.Packages[0]
-			},
-			contains: "not strictly sorted",
-		},
-		{
-			name: "duplicate runtime name",
-			mutate: func(cat *catalog) {
-				cat.Packages[1].Components = []string{"alpha.one"}
-			},
-			contains: "registered by both",
-		},
-		{
-			name: "build tag collision",
-			mutate: func(cat *catalog) {
-				cat.Packages[0].Components = []string{"alpha.beta_gamma"}
-				cat.Packages[1].Components = []string{"alpha_beta.gamma"}
-			},
-			contains: "build tag",
-		},
-		{
-			name: "generated filename collision",
-			mutate: func(cat *catalog) {
-				cat.Packages[0].ImportPath = componentImportPrefix + "alpha/one"
-				cat.Packages[1].ImportPath = componentImportPrefix + "alpha_one"
-			},
-			contains: "generated filename",
-		},
-		{
-			name: "invalid component name",
-			mutate: func(cat *catalog) {
-				cat.Packages[0].Components = []string{"alpha-invalid"}
-			},
-			contains: "invalid component name",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			cat := valid()
-			tc.mutate(&cat)
-			err := validateCatalog(cat)
-			if err == nil {
-				t.Fatal("validateCatalog() succeeded; want an error")
-			}
-			if !strings.Contains(err.Error(), tc.contains) {
-				t.Fatalf("error %q does not contain %q", err, tc.contains)
-			}
-		})
-	}
-}
-
 func TestSelectionArgsAcceptCommaAndWhitespace(t *testing.T) {
 	got := selectionArgs(
 		"loki.source.file,prometheus.scrape discovery.aws",
@@ -179,8 +102,6 @@ func TestSelectionArgsAcceptCommaAndWhitespace(t *testing.T) {
 }
 
 func TestTagsForSelection(t *testing.T) {
-	cat := loadTestCatalog(t)
-
 	tests := []struct {
 		name      string
 		selection []string
@@ -209,7 +130,7 @@ func TestTagsForSelection(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := tagsForSelection(cat, tc.selection)
+			got, err := tagsForSelection(tc.selection)
 			if err != nil {
 				t.Fatalf("tagsForSelection() returned error: %v", err)
 			}
@@ -220,7 +141,7 @@ func TestTagsForSelection(t *testing.T) {
 	}
 
 	t.Run("all", func(t *testing.T) {
-		got, err := tagsForSelection(cat, []string{"all"})
+		got, err := tagsForSelection([]string{"all"})
 		if err != nil {
 			t.Fatalf("tagsForSelection(all) returned error: %v", err)
 		}
@@ -237,7 +158,6 @@ func TestTagsForSelection(t *testing.T) {
 }
 
 func TestTagsForSelectionErrors(t *testing.T) {
-	cat := loadTestCatalog(t)
 	tests := []struct {
 		name      string
 		selection []string
@@ -251,7 +171,7 @@ func TestTagsForSelectionErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := tagsForSelection(cat, tc.selection)
+			_, err := tagsForSelection(tc.selection)
 			if err == nil {
 				t.Fatal("tagsForSelection() succeeded; want an error")
 			}
@@ -266,7 +186,6 @@ func TestRunTagsWithCommaSeparatedSelection(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	err := run([]string{
 		"tags",
-		"-catalog", filepath.Join("..", "catalog.json"),
 		"-components", "prometheus.scrape, discovery.aws",
 	}, &stdout, &stderr)
 	if err != nil {
@@ -388,11 +307,7 @@ func TestCheckedInGeneratedFilesAreCurrent(t *testing.T) {
 
 func loadTestCatalog(t *testing.T) catalog {
 	t.Helper()
-	cat, err := loadCatalog(filepath.Join("..", "catalog.json"))
-	if err != nil {
-		t.Fatalf("load catalog: %v", err)
-	}
-	return cat
+	return loadCatalog()
 }
 
 func assertPackageComponents(t *testing.T, cat catalog, importPath string, want []string) {

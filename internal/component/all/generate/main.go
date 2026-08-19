@@ -3,41 +3,33 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"go/format"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode"
+
+	componentcatalog "github.com/grafana/alloy/internal/component/all/catalog"
 )
 
 const (
-	catalogVersion        = 1
 	componentImportPrefix = "github.com/grafana/alloy/internal/component/"
-	customBuildTag        = "alloy_custom_components"
+	customBuildTag        = componentcatalog.CustomBuildTag
 	customFilePrefix      = "custom_"
 	fullImportFile        = "all.go"
 	makeCatalogFile       = "catalog.mk"
 )
 
-var componentNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
-
 type catalog struct {
-	Version  int              `json:"version"`
-	Packages []catalogPackage `json:"packages"`
+	Packages []componentcatalog.Entry
 }
 
-type catalogPackage struct {
-	ImportPath string   `json:"package"`
-	Components []string `json:"components"`
-}
+type catalogPackage = componentcatalog.Entry
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
@@ -58,7 +50,6 @@ func run(args []string, stdout, stderr io.Writer) error {
 	case "audit":
 		fs := flag.NewFlagSet("audit", flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		catalogPath := fs.String("catalog", "catalog.json", "path to the component catalog")
 		repoRoot := fs.String("repo-root", "../../..", "path to the Alloy repository root")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -66,16 +57,11 @@ func run(args []string, stdout, stderr io.Writer) error {
 		if fs.NArg() != 0 {
 			return fmt.Errorf("audit does not accept positional arguments: %s", strings.Join(fs.Args(), " "))
 		}
-		cat, err := loadCatalog(*catalogPath)
-		if err != nil {
-			return err
-		}
-		return auditCatalogSources(cat, *repoRoot)
+		return auditCatalogSources(loadCatalog(), *repoRoot)
 
 	case "generate":
 		fs := flag.NewFlagSet("generate", flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		catalogPath := fs.String("catalog", "catalog.json", "path to the component catalog")
 		outDir := fs.String("out", ".", "directory containing package all")
 		check := fs.Bool("check", false, "verify generated files without changing them")
 		if err := fs.Parse(args[1:]); err != nil {
@@ -84,11 +70,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 		if fs.NArg() != 0 {
 			return fmt.Errorf("generate does not accept positional arguments: %s", strings.Join(fs.Args(), " "))
 		}
-		cat, err := loadCatalog(*catalogPath)
-		if err != nil {
-			return err
-		}
-		files, err := renderCatalog(cat)
+		files, err := renderCatalog(loadCatalog())
 		if err != nil {
 			return err
 		}
@@ -100,17 +82,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 	case "validate", "tags":
 		fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		catalogPath := fs.String("catalog", "catalog.json", "path to the component catalog")
 		components := fs.String("components", "", "comma- or space-separated Alloy component names; use all for every component or none for no components")
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
 		}
-		cat, err := loadCatalog(*catalogPath)
-		if err != nil {
-			return err
-		}
 		selection := selectionArgs(*components, fs.Args())
-		tags, err := tagsForSelection(cat, selection)
+		tags, err := tagsForSelection(selection)
 		if err != nil {
 			return err
 		}
@@ -130,107 +107,16 @@ func run(args []string, stdout, stderr io.Writer) error {
 
 func printUsage(w io.Writer) error {
 	_, err := fmt.Fprint(w, `usage:
-  generate audit [-catalog catalog.json] [-repo-root ../../..]
-  generate generate [-catalog catalog.json] [-out .] [-check]
-  generate validate [-catalog catalog.json] [-components "name,..."] [name ...]
-  generate tags [-catalog catalog.json] [-components "name,..."] [name ...]
+  generate audit [-repo-root ../../..]
+  generate generate [-out .] [-check]
+  generate validate [-components "name,..."] [name ...]
+  generate tags [-components "name,..."] [name ...]
 `)
 	return err
 }
 
-func loadCatalog(filename string) (catalog, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return catalog{}, fmt.Errorf("open catalog: %w", err)
-	}
-	defer f.Close()
-
-	dec := json.NewDecoder(f)
-	dec.DisallowUnknownFields()
-	var cat catalog
-	if err := dec.Decode(&cat); err != nil {
-		return catalog{}, fmt.Errorf("decode catalog: %w", err)
-	}
-	if err := ensureJSONEOF(dec); err != nil {
-		return catalog{}, err
-	}
-	if err := validateCatalog(cat); err != nil {
-		return catalog{}, fmt.Errorf("validate catalog: %w", err)
-	}
-	return cat, nil
-}
-
-func ensureJSONEOF(dec *json.Decoder) error {
-	var extra any
-	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("decode catalog: multiple JSON values")
-		}
-		return fmt.Errorf("decode catalog trailing data: %w", err)
-	}
-	return nil
-}
-
-func validateCatalog(cat catalog) error {
-	if cat.Version != catalogVersion {
-		return fmt.Errorf("unsupported version %d (want %d)", cat.Version, catalogVersion)
-	}
-	if len(cat.Packages) == 0 {
-		return errors.New("catalog has no packages")
-	}
-
-	seenPackages := make(map[string]struct{}, len(cat.Packages))
-	seenComponents := make(map[string]string)
-	seenTags := make(map[string]string)
-	seenFiles := make(map[string]string)
-	previousPackage := ""
-	for packageIndex, pkg := range cat.Packages {
-		if !strings.HasPrefix(pkg.ImportPath, componentImportPrefix) {
-			return fmt.Errorf("package %q is outside %q", pkg.ImportPath, componentImportPrefix)
-		}
-		if path.Clean(pkg.ImportPath) != pkg.ImportPath {
-			return fmt.Errorf("package %q is not a clean import path", pkg.ImportPath)
-		}
-		if packageIndex > 0 && pkg.ImportPath <= previousPackage {
-			return fmt.Errorf("packages are not strictly sorted: %q follows %q", pkg.ImportPath, previousPackage)
-		}
-		previousPackage = pkg.ImportPath
-		if _, exists := seenPackages[pkg.ImportPath]; exists {
-			return fmt.Errorf("duplicate package %q", pkg.ImportPath)
-		}
-		seenPackages[pkg.ImportPath] = struct{}{}
-		if len(pkg.Components) == 0 {
-			return fmt.Errorf("package %q has no components", pkg.ImportPath)
-		}
-
-		filename := customFilename(pkg.ImportPath)
-		if other, exists := seenFiles[filename]; exists {
-			return fmt.Errorf("generated filename %q collides for %q and %q", filename, other, pkg.ImportPath)
-		}
-		seenFiles[filename] = pkg.ImportPath
-
-		previousComponent := ""
-		for componentIndex, name := range pkg.Components {
-			if !componentNamePattern.MatchString(name) {
-				return fmt.Errorf("package %q has invalid component name %q", pkg.ImportPath, name)
-			}
-			if componentIndex > 0 && name <= previousComponent {
-				return fmt.Errorf("components for package %q are not strictly sorted: %q follows %q", pkg.ImportPath, name, previousComponent)
-			}
-			previousComponent = name
-			if other, exists := seenComponents[name]; exists {
-				return fmt.Errorf("component %q is registered by both %q and %q", name, other, pkg.ImportPath)
-			}
-			seenComponents[name] = pkg.ImportPath
-
-			tag := componentBuildTag(name)
-			if other, exists := seenTags[tag]; exists {
-				return fmt.Errorf("build tag %q collides for components %q and %q", tag, other, name)
-			}
-			seenTags[tag] = name
-		}
-	}
-	return nil
+func loadCatalog() catalog {
+	return catalog{Packages: componentcatalog.Entries()}
 }
 
 func selectionArgs(flagValue string, args []string) []string {
@@ -247,20 +133,10 @@ func splitSelection(value string) []string {
 	})
 }
 
-func tagsForSelection(cat catalog, selection []string) ([]string, error) {
-	known := make(map[string]struct{})
-	for _, pkg := range cat.Packages {
-		for _, name := range pkg.Components {
-			known[name] = struct{}{}
-		}
-	}
-
+func tagsForSelection(selection []string) ([]string, error) {
 	switch {
 	case len(selection) == 1 && selection[0] == "all":
-		selection = selection[:0]
-		for name := range known {
-			selection = append(selection, name)
-		}
+		selection = componentcatalog.Names()
 	case len(selection) == 1 && selection[0] == "none":
 		selection = selection[:0]
 	default:
@@ -274,28 +150,22 @@ func tagsForSelection(cat catalog, selection []string) ([]string, error) {
 		}
 	}
 
-	seen := make(map[string]struct{}, len(selection))
-	for _, name := range selection {
-		if _, exists := known[name]; !exists {
-			return nil, fmt.Errorf("unknown Alloy component %q", name)
-		}
-		if _, exists := seen[name]; exists {
-			return nil, fmt.Errorf("duplicate Alloy component %q", name)
-		}
-		seen[name] = struct{}{}
+	componentTags, err := componentcatalog.ResolveExact(selection)
+	if err != nil {
+		return nil, err
 	}
-	sort.Strings(selection)
-
-	tags := make([]string, 1, len(selection)+1)
+	tags := make([]string, 1, len(componentTags)+1)
 	tags[0] = customBuildTag
-	for _, name := range selection {
-		tags = append(tags, componentBuildTag(name))
-	}
+	tags = append(tags, componentTags...)
 	return tags, nil
 }
 
 func componentBuildTag(name string) string {
-	return "alloy_component_" + normalizeComponentName(name)
+	tag, ok := componentcatalog.TagForName(name)
+	if !ok {
+		panic(fmt.Sprintf("component %q is not in the catalog", name))
+	}
+	return tag
 }
 
 func normalizeComponentName(name string) string {
@@ -308,9 +178,6 @@ func customFilename(importPath string) string {
 }
 
 func renderCatalog(cat catalog) (map[string][]byte, error) {
-	if err := validateCatalog(cat); err != nil {
-		return nil, err
-	}
 	files := make(map[string][]byte, len(cat.Packages)+2)
 
 	full, err := renderFullImportFile(cat)

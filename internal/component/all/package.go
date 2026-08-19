@@ -5,5 +5,5 @@
 // can select components with alloy_component_* build tags.
 package all
 
-//go:generate go run ./generate audit -catalog catalog.json -repo-root ../../..
-//go:generate go run ./generate generate -catalog catalog.json -out .
+//go:generate go run ./generate audit -repo-root ../../..
+//go:generate go run ./generate generate -out .

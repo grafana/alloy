@@ -19,6 +19,7 @@ data-alloy/
 /packaging/windows/agent-windows-amd64.exe
 internal/web/ui/dist
 internal/web/ui/src/test/generated_fixtures/
+/collector/testdata/external/_build/
 
 .DS_Store
 buildx-v*
