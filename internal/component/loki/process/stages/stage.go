@@ -199,7 +199,7 @@ func newStageWithOpts(
 	case cfg.DecolorizeConfig != nil:
 		s = newDecolorizeStage(*cfg.DecolorizeConfig, opts)
 	case cfg.SamplingConfig != nil:
-		s, err = newSamplingStage(opts.slogger, *cfg.SamplingConfig, opts.registerer)
+		s, err = newSamplingStage(*cfg.SamplingConfig, opts)
 		if err != nil {
 			return nil, err
 		}
