@@ -132,7 +132,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(opts.slogger, *cfg.OutputConfig)
+		s, err = newOutputStage(*cfg.OutputConfig, opts)
 		if err != nil {
 			return nil, err
 		}
