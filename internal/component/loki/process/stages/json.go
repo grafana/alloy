@@ -130,7 +130,7 @@ func (j *jsonStage) process(ctx context.Context, entries []Entry) error {
 
 func (j *jsonStage) processEntry(e Entry) (Entry, bool) {
 	// If a source key is provided, the json stage should process it
-	// from the extracted map, otherwise should fall back to the entry
+	// from the extracted map, otherwise should fall back to the line.
 	input := e.Line
 
 	if j.cfg.Source != nil {

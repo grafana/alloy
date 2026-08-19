@@ -577,5 +577,5 @@ func TestValidateLuhnFilterConfig(t *testing.T) {
 
 func TestLuhnFilterStageRejectsInvalidSkipRegex(t *testing.T) {
 	_, err := newLuhnFilterStage(LuhnFilterConfig{SkipRegex: "("}, stageOpts{})
-	require.ErrorContains(t, err, ErrCouldNotCompileRegex.Error())
+	require.ErrorContains(t, err, errCouldNotCompileRegex.Error())
 }
