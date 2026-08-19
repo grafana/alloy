@@ -477,7 +477,7 @@ func BenchmarkLuhnFilterStage(b *testing.B) {
 					MinLength:   12,
 					SkipRegex:   sr.skipRegex,
 				}
-				runPipelineBenchmark(b, []StageConfig{{LuhnFilterConfig: &cfg}}, batch)
+				runPipelineBenchmark(b, []StageConfig{{LuhnFilterConfig: &cfg}}, []loki.Batch{batch})
 			})
 		}
 	}
