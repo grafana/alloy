@@ -172,7 +172,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.PackConfig != nil:
-		s, err = newPackStage(opts.slogger, *cfg.PackConfig, opts.registerer)
+		s, err = newPackStage(*cfg.PackConfig, opts)
 		if err != nil {
 			return nil, err
 		}

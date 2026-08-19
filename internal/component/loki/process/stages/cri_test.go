@@ -310,7 +310,7 @@ loki_process_cri_partial_lines_flushed_total 3
 			collected = append(collected, e)
 		}
 
-		assertEntriesUnordered(t, expected, collected)
+		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
 		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 	})
 
@@ -332,7 +332,7 @@ loki_process_cri_partial_lines_flushed_total 3
 		}
 		p.stop()
 
-		assertEntriesUnordered(t, expected, collected)
+		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
 		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 	})
 }
@@ -369,7 +369,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 			partialTime,
 		),
 	}
-	assertEntriesUnordered(t, expected, collected)
+	assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
 }
 
 func TestPartialLinesStriped(t *testing.T) {
