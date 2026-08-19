@@ -376,7 +376,8 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					JobLabel:        "abc",
 					PodTargetLabels: []string{"label_a", "label_b"},
 					NativeHistogramConfig: promopv1.NativeHistogramConfig{
-						ScrapeNativeHistograms: truePtr,
+						ScrapeNativeHistograms:  truePtr,
+						ScrapeClassicHistograms: truePtr,
 					},
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"foo": "bar"},
@@ -543,7 +544,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
 				ScrapeNativeHistograms:         truePtr,
-				AlwaysScrapeClassicHistograms:  falsePtr,
+				AlwaysScrapeClassicHistograms:  truePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
