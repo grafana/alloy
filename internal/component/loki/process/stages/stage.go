@@ -83,7 +83,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.LogfmtConfig != nil:
-		s, err = newLogfmtStage(slogger, *cfg.LogfmtConfig)
+		s, err = newLogfmtStage(slogger, *cfg.LogfmtConfig, next)
 		if err != nil {
 			return nil, err
 		}
