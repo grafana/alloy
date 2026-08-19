@@ -964,14 +964,14 @@
                "targets": [
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${groupby}) (rate(otelcol_processor_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor\nsum by(${groupby}) (rate(otelcol_processor_refused_spans_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "instant": false,
                      "legendFormat": "{{${groupby}}} spans",
                      "range": true
                   },
                   {
                      "datasource": "${datasource}",
-                     "expr": "sum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+                     "expr": "sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\nor\nsum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
                      "instant": false,
                      "legendFormat": "{{${groupby}}} metric points",
                      "range": true

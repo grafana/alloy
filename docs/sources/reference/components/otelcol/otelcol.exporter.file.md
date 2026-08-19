@@ -56,10 +56,12 @@ You can use the following blocks with `otelcol.exporter.file`:
 
 | Block                            | Description                                                          | Required |
 | -------------------------------- | -------------------------------------------------------------------- | -------- |
+| [`compression_params`][compression_params] | Configures the compression codec.                          | no       |
 | [`debug_metrics`][debug_metrics] | Configures internal metrics for this component.                      | no       |
 | [`group_by`][group_by]           | Writes to separate files based on a resource attribute value.        | no       |
 | [`rotation`][rotation]           | Configures file rotation. Ignored when `group_by.enabled` is `true`. | no       |
 
+[compression_params]: #compression_params
 [debug_metrics]: #debug_metrics
 [group_by]: #group_by
 [rotation]: #rotation
@@ -67,6 +69,18 @@ You can use the following blocks with `otelcol.exporter.file`:
 {{< /docs/alloy-config >}}
 
 You can't enable `append` and `rotation` together.
+
+### `compression_params`
+
+The `compression_params` block configures the compression codec selected by `compression`.
+
+The following arguments are supported:
+
+| Name    | Type     | Description            | Default | Required |
+|---------|----------|------------------------|---------|----------|
+| `level` | `number` | The compression level. |         | yes      |
+
+For `zstd`, the supported levels are `1` (fastest), `3` (default), `6` (better compression), and `11` (best compression).
 
 ### `debug_metrics`
 

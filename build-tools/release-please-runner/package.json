@@ -12,6 +12,6 @@
     "release-please": "node index.js"
   },
   "dependencies": {
-    "release-please": "^17.6.1"
+    "release-please": "^17.11.1"
   }
 }

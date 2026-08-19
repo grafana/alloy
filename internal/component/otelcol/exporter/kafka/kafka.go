@@ -175,6 +175,11 @@ type Producer struct {
 	// Maximum message bytes the producer will accept to produce.
 	MaxMessageBytes int `alloy:"max_message_bytes,attr,optional"`
 
+	// MaxBrokerWriteBytes is the maximum bytes the producer will write to a broker
+	// in a single request. Must be greater than or equal to max_message_bytes, and
+	// at least 100 MiB
+	MaxBrokerWriteBytes int `alloy:"max_broker_write_bytes,attr,optional"`
+
 	// RequiredAcks Number of acknowledgements required to assume that a message has been sent.
 	// https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
 	// The options are:
@@ -198,17 +203,23 @@ type Producer struct {
 
 	// Whether or not to allow automatic topic creation.
 	AllowAutoTopicCreation bool `alloy:"allow_auto_topic_creation,attr,optional"`
+
+	// Linger is how long individual topic partitions wait for more records before
+	// a request is built. Set to "0s" to send records as soon as they arrive.
+	Linger time.Duration `alloy:"linger,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
 func (args Producer) Convert() configkafka.ProducerConfig {
 	cfg := configkafka.NewDefaultProducerConfig()
 	cfg.MaxMessageBytes = args.MaxMessageBytes
+	cfg.MaxBrokerWriteBytes = args.MaxBrokerWriteBytes
 	cfg.RequiredAcks = configkafka.RequiredAcks(args.RequiredAcks)
 	cfg.Compression = args.Compression
 	cfg.CompressionParams = args.CompressionParams.Convert()
 	cfg.FlushMaxMessages = args.FlushMaxMessages
 	cfg.AllowAutoTopicCreation = args.AllowAutoTopicCreation
+	cfg.Linger = args.Linger
 	return cfg
 }
 
@@ -230,6 +241,8 @@ var (
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	producerDefaults := configkafka.NewDefaultProducerConfig()
+
 	*args = Arguments{
 		Brokers:         []string{"localhost:9092"},
 		ClientID:        "otel-collector",
@@ -244,14 +257,16 @@ func (args *Arguments) SetToDefault() {
 			},
 		},
 		Producer: Producer{
-			MaxMessageBytes: 1000000,
-			RequiredAcks:    1,
-			Compression:     "none",
+			MaxMessageBytes:     1000000,
+			MaxBrokerWriteBytes: producerDefaults.MaxBrokerWriteBytes,
+			RequiredAcks:        1,
+			Compression:         "none",
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},
 			FlushMaxMessages:       10000,
 			AllowAutoTopicCreation: true,
+			Linger:                 producerDefaults.Linger,
 		},
 		RecordPartitioner: &RecordPartitionerConfig{
 			StickyKey: &StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
