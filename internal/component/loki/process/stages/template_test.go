@@ -1,42 +1,17 @@
 package stages
 
 import (
-	"bytes"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/syntax"
 )
-
-var testTemplateYaml = `
-stage.json {
-		expressions = { "app" = "app", "level" = "level" }
-}
-stage.template {
-		source = "app"
-		template = "{{ .Value | ToUpper }} doki"
-}
-stage.template {
-		source = "level"
-		template = "{{ if eq .Value \"WARN\" }}{{ Replace .Value \"WARN\" \"OK\" -1 }}{{ else }}{{ .Value }}{{ end }}"
-}
-stage.template {
-		source = "nonexistent"
-		template = "TEST"
-}
-stage.labels {
-		values = { "app" = "", "level" = "", "type" = "nonexistent" }
-}
-`
 
 var testTemplateLogLine = `
 {
@@ -58,37 +33,6 @@ var testTemplateLogLineWithMissingKey = `
 	"message" : "this is a log line"
 }
 `
-
-func TestPipeline_Template(t *testing.T) {
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedLbls := model.LabelSet{
-		"app":   "LOKI doki",
-		"level": "OK",
-		"type":  "TEST",
-	}
-	out := processEntries(pl, newEntry(nil, nil, testTemplateLogLine, time.Now()))[0]
-	assert.Equal(t, expectedLbls, out.Labels)
-}
-
-func TestPipelineWithMissingKey_Template(t *testing.T) {
-	var buf bytes.Buffer
-	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
-	require.NoError(t, err)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_ = processEntries(pl, newEntry(nil, nil, testTemplateLogLineWithMissingKey, time.Now()))
-
-	expectedLog := "level=debug msg=\"extracted template could not be converted to a string\" stage=template err=\"can't convert <nil> to string\" type=<nil>"
-	if !(strings.Contains(buf.String(), expectedLog)) {
-		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
-	}
-}
 
 func TestUnmarshalTemplateConfig(t *testing.T) {
 	type testCase struct {
@@ -135,317 +79,437 @@ func TestUnmarshalTemplateConfig(t *testing.T) {
 	}
 }
 
-func TestTemplateStage_Process(t *testing.T) {
+func TestTemplateStage(t *testing.T) {
+	now := time.Now()
+
 	type testCase struct {
-		name              string
-		config            TemplateConfig
-		extracted         map[string]any
-		expectedExtracted map[string]any
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
 	tests := []testCase{
 		{
 			name: "simple template",
-			config: TemplateConfig{
-				Source:   "some",
-				Template: mustTemplate("{{ .Value }} appended"),
+			config: `
+			stage.template {
+				source   = "some"
+				template = "{{ .Value }} appended"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"some": "value"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"some": "value",
-			},
-			expectedExtracted: map[string]any{
-				"some": "value appended",
+			expected: []Entry{
+				newEntry(map[string]any{"some": "value appended"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "add missing",
-			config: TemplateConfig{
-				Source:   "missing",
-				Template: mustTemplate("newval"),
+			config: `
+			stage.template {
+				source   = "missing"
+				template = "newval"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"notmissing": "value"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"notmissing": "value",
-			},
-			expectedExtracted: map[string]any{
-				"notmissing": "value",
-				"missing":    "newval",
+			expected: []Entry{
+				newEntry(map[string]any{"notmissing": "value", "missing": "newval"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "template with multiple keys",
-			config: TemplateConfig{
-				Source:   "message",
-				Template: mustTemplate("{{.Value}} in module {{.module}}"),
+			config: `
+			stage.template {
+				source   = "message"
+				template = "{{.Value}} in module {{.module}}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"level":   "warn",
+					"app":     "loki",
+					"message": "warn for app loki",
+					"module":  "test",
+				}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"level":   "warn",
-				"app":     "loki",
-				"message": "warn for app loki",
-				"module":  "test",
-			},
-			expectedExtracted: map[string]any{
-				"level":   "warn",
-				"app":     "loki",
-				"module":  "test",
-				"message": "warn for app loki in module test",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"level":   "warn",
+					"app":     "loki",
+					"module":  "test",
+					"message": "warn for app loki in module test",
+				}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "template with multiple keys with missing source",
-			config: TemplateConfig{
-				Source:   "missing",
-				Template: mustTemplate("{{ .level }} for app {{ .app | ToUpper }}"),
+			config: `
+			stage.template {
+				source   = "missing"
+				template = "{{ .level }} for app {{ .app | ToUpper }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"level": "warn", "app": "loki"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"level": "warn",
-				"app":   "loki",
-			},
-			expectedExtracted: map[string]any{
-				"level":   "warn",
-				"app":     "loki",
-				"missing": "warn for app LOKI",
+			expected: []Entry{
+				newEntry(map[string]any{"level": "warn", "app": "loki", "missing": "warn for app LOKI"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "template with multiple keys with missing key",
-			config: TemplateConfig{
-				Source:   "message",
-				Template: mustTemplate("{{.Value}} in module {{.module}}"),
+			config: `
+			stage.template {
+				source   = "message"
+				template = "{{.Value}} in module {{.module}}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"level":   "warn",
+					"app":     "loki",
+					"message": "warn for app loki",
+				}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"level":   "warn",
-				"app":     "loki",
-				"message": "warn for app loki",
-			},
-			expectedExtracted: map[string]any{
-				"level":   "warn",
-				"app":     "loki",
-				"message": "warn for app loki in module <no value>",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"level":   "warn",
+					"app":     "loki",
+					"message": "warn for app loki in module <no value>",
+				}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "template with multiple keys with nil value in extracted key",
-			config: TemplateConfig{
-				Source:   "level",
-				Template: mustTemplate("{{ Replace .Value \"Warning\" \"warn\" 1 }}"),
+			config: `
+			stage.template {
+				source   = "level"
+				template = "{{ Replace .Value \"Warning\" \"warn\" 1 }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"level": "Warning", "testval": nil}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"level":   "Warning",
-				"testval": nil,
-			},
-			expectedExtracted: map[string]any{
-				"level":   "warn",
-				"testval": nil,
+			expected: []Entry{
+				newEntry(map[string]any{"level": "warn", "testval": nil}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "ToLower",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ .Value | ToLower }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ .Value | ToLower }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Value"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Value",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "value",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "value"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "sprig",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ add 7 3 }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ add 7 3 }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Value"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Value",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "10",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "10"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "ToLowerParams",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ ToLower .Value }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ ToLower .Value }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Value"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Value",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "value",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "value"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "ToLowerEmptyValue",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ .Value | ToLower }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ .Value | ToLower }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted:         map[string]any{},
-			expectedExtracted: map[string]any{},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "not important for this test", now),
+			},
 		},
 		{
 			name: "ReplaceAllToLower",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ Replace .Value \" \" \"_\" -1 | ToLower }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ Replace .Value \" \" \"_\" -1 | ToLower }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "some_silly_value_with_lots_of_spaces",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "some_silly_value_with_lots_of_spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "regexReplaceAll",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(`{{ regexReplaceAll "(Silly)" .Value "${1}foo"  }}`),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ regexReplaceAll \"(Silly)\" .Value \"${1}foo\"  }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "Some Sillyfoo Value With Lots Of Spaces",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "Some Sillyfoo Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "regexReplaceAllerr",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(`{{ regexReplaceAll "\\K" .Value "${1}foo"  }}`),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ regexReplaceAll \"\\\\K\" .Value \"${1}foo\"  }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "regexReplaceAllLiteral",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(`{{ regexReplaceAll "( |Of)" .Value "_"  }}`),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ regexReplaceAll \"( |Of)\" .Value \"_\"  }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "Some_Silly_Value_With_Lots___Spaces",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "Some_Silly_Value_With_Lots___Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "regexReplaceAllLiteralerr",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(`{{ regexReplaceAll "\\K" .Value "err"  }}`),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ regexReplaceAll \"\\\\K\" .Value \"err\"  }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "Some Silly Value With Lots Of Spaces",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "Some Silly Value With Lots Of Spaces"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "Trim",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ Trim .Value \"!\" }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ Trim .Value \"!\" }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "!!!!!WOOOOO!!!!!"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "!!!!!WOOOOO!!!!!",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "WOOOOO",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "WOOOOO"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "Remove label empty value",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(""),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = ""
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "WOOOOO"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "WOOOOO",
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "not important for this test", now),
 			},
-			expectedExtracted: map[string]any{},
 		},
 		{
 			name: "Don't add label with empty value",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate(""),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = ""
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted:         map[string]any{},
-			expectedExtracted: map[string]any{},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "not important for this test", now),
+			},
 		},
 		{
 			name: "Sha2Hash",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ Sha2Hash .Value \"salt\" }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ Sha2Hash .Value \"salt\" }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "this is PII data"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "this is PII data",
-			},
-			expectedExtracted: map[string]any{
-				"testval": "5526fd6f8ad457279cf8ff06453c6cb61bf479fa826e3b099caa6c846f9376f2",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "5526fd6f8ad457279cf8ff06453c6cb61bf479fa826e3b099caa6c846f9376f2"}, model.LabelSet{}, "not important for this test", now),
 			},
 		},
 		{
 			name: "Hash",
-			config: TemplateConfig{
-				Source:   "testval",
-				Template: mustTemplate("{{ Hash .Value \"salt\" }}"),
+			config: `
+			stage.template {
+				source   = "testval"
+				template = "{{ Hash .Value \"salt\" }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"testval": "this is PII data"}, model.LabelSet{}, "not important for this test", now),
 			},
-			extracted: map[string]any{
-				"testval": "this is PII data",
+			expected: []Entry{
+				newEntry(map[string]any{"testval": "0807ea24e992127128b38e4930f7155013786a4999c73a25910318a793847658"}, model.LabelSet{}, "not important for this test", now),
 			},
-			expectedExtracted: map[string]any{
-				"testval": "0807ea24e992127128b38e4930f7155013786a4999c73a25910318a793847658",
+		},
+		{
+			name: "pipeline with multiple template stages rendering into labels",
+			config: `
+			stage.json {
+				expressions = { "app" = "app", "level" = "level" }
+			}
+			stage.template {
+				source   = "app"
+				template = "{{ .Value | ToUpper }} doki"
+			}
+			stage.template {
+				source   = "level"
+				template = "{{ if eq .Value \"WARN\" }}{{ Replace .Value \"WARN\" \"OK\" -1 }}{{ else }}{{ .Value }}{{ end }}"
+			}
+			stage.template {
+				source   = "nonexistent"
+				template = "TEST"
+			}
+			stage.labels {
+				values = { "app" = "", "level" = "", "type" = "nonexistent" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testTemplateLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":         "LOKI doki",
+					"level":       "OK",
+					"nonexistent": "TEST",
+				}, model.LabelSet{
+					"app":   "LOKI doki",
+					"level": "OK",
+					"type":  "TEST",
+				}, testTemplateLogLine, now),
+			},
+		},
+		{
+			name: "missing extracted source from json expression leaves that key unchanged",
+			config: `
+			stage.json {
+				expressions = { "app" = "app", "level" = "level" }
+			}
+			stage.template {
+				source   = "app"
+				template = "{{ .Value | ToUpper }} doki"
+			}
+			stage.template {
+				source   = "level"
+				template = "{{ if eq .Value \"WARN\" }}{{ Replace .Value \"WARN\" \"OK\" -1 }}{{ else }}{{ .Value }}{{ end }}"
+			}
+			stage.template {
+				source   = "nonexistent"
+				template = "TEST"
+			}
+			stage.labels {
+				values = { "app" = "", "level" = "", "type" = "nonexistent" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testTemplateLogLineWithMissingKey, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":         nil,
+					"level":       "OK",
+					"nonexistent": "TEST",
+				}, model.LabelSet{
+					"level": "OK",
+					"type":  "TEST",
+				}, testTemplateLogLineWithMissingKey, now),
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newTemplateStage(logging.NewSlogNop(), tt.config)
-			require.NoError(t, err)
-			out := processEntries(st, newEntry(tt.extracted, nil, "not important for this test", time.Time{}))[0]
-			assert.Equal(t, tt.expectedExtracted, out.Extracted)
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, "")
 		})
 	}
 }
 
 func BenchmarkTemplateStage(b *testing.B) {
-	var entry Entry
-	gen := func(n int) map[string]any {
-		m := make(map[string]any, n)
-		for i := 0; i <= n; i++ {
-			v := strconv.FormatInt(int64(i), 10)
-			m[v] = v
-		}
-		return m
-	}
-
-	st, err := newTemplateStage(logging.NewSlogNop(), TemplateConfig{
+	cfg := TemplateConfig{
 		Source:   "1",
 		Template: mustTemplate("{{ .Value }}"),
-	})
-	require.NoError(b, err)
-	entry = newEntry(gen(10), nil, "", time.Now())
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for b.Loop() {
-		entry = processEntries(st, entry)[0]
 	}
+
+	labels := make(model.LabelSet, 11)
+	for i := 0; i <= 10; i++ {
+		v := strconv.FormatInt(int64(i), 10)
+		labels[model.LabelName(v)] = model.LabelValue(v)
+	}
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(labels, push.Entry{
+		Timestamp: time.Now(),
+	}))
+
+	runPipelineBenchmark(b, []StageConfig{{TemplateConfig: &cfg}}, batch)
 }
 
 func mustTemplate(text string) Template {
