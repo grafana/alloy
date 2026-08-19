@@ -79,14 +79,14 @@ stage.json {
 		{
 			name: "multiple stages with source",
 			config: `
-stage.json {
-    expressions = { "extra" = "" }
-}
+			stage.json {
+				expressions = { "extra" = "" }
+			}
 
-stage.json {
-    expressions = { "user" = "" }
-    source      = "extra"
-}`,
+			stage.json {
+				expressions = { "user" = "" }
+				source      = "extra"
+			}`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, testJSONLogLine, now),
 			},
@@ -100,10 +100,10 @@ stage.json {
 		{
 			name: "regex",
 			config: `
-stage.json {
-  regex = "pod_.*"
-}
-`,
+			stage.json {
+			  regex = "pod_.*"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, `{"time":"2012-11-01T22:08:41+00:00", "pod_name": "my-pod-123", "pod_label": "my-label"}`, now),
 			},
@@ -117,10 +117,10 @@ stage.json {
 		{
 			name: "regex matching everything",
 			config: `
-stage.json {
-  regex = ".*"
-}
-`,
+			stage.json {
+			  regex = ".*"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, testJSONLogLine, now),
 			},
@@ -140,11 +140,11 @@ stage.json {
 		{
 			name: "expressions and regex",
 			config: `
-stage.json {
-  expressions = {"out" = "message", "app" = ""}
-  regex = "(app|duration)"
-}
-`,
+			stage.json {
+			  expressions = {"out" = "message", "app" = ""}
+			  regex = "(app|duration)"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, testJSONLogLine, now),
 			},
@@ -159,11 +159,11 @@ stage.json {
 		{
 			name: "drop malformed",
 			config: `
-stage.json {
-	expressions    = { "page" = "page" }
-	drop_malformed = true
-}
-`,
+			stage.json {
+				expressions    = { "page" = "page" }
+				drop_malformed = true
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{"test_label": "unimportant value"}, model.LabelSet{"foo": "bar"}, `{"page": 1, "fruits": ["apple", "peach"]}`, now),
 				newEntry(map[string]any{"test_label": "unimportant value"}, model.LabelSet{"foo": "bar"}, `{"page": 1, fruits": ["apple", "peach"]}`, now),
@@ -179,10 +179,21 @@ stage.json {
 		{
 			name: "decode json on entry",
 			config: `
-stage.json {
-	expressions = {"time" = "", "app" = "", "component" = "", "level" = "", "float" = "numeric.float", "integer" = "numeric.integer", "string" = "numeric.string", "nested" = "", "message" = "", "complex" = "complex.log.array[1].test3"}
-}
-`,
+			stage.json {
+				expressions = {
+					"time" = "",
+					"app" = "",
+					"component" = "",
+					"level" = "",
+					"float" = "numeric.float",
+					"integer" = "numeric.integer",
+					"string" = "numeric.string",
+					"nested" = "",
+					"message" = "",
+					"complex" = "complex.log.array[1].test3",
+				}
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, logFixture, now),
 			},
@@ -204,11 +215,22 @@ stage.json {
 		{
 			name: "decode json on extracted source",
 			config: `
-stage.json {
-	expressions = {"time" = "", "app" = "", "component" = "", "level" = "", "float" = "numeric.float", "integer" = "numeric.integer", "string" = "numeric.string", "nested" = "", "message" = "", "complex" = "complex.log.array[1].test3"}
-	source      = "log"
-}
-`,
+			stage.json {
+				expressions = {
+					"time" = "",
+					"app" = "",
+					"component" = "",
+					"level" = "",
+					"float" = "numeric.float",
+					"integer" = "numeric.integer",
+					"string" = "numeric.string",
+					"nested" = "",
+					"message" = "",
+					"complex" = "complex.log.array[1].test3",
+				}
+				source      = "log"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{"log": logFixture}, model.LabelSet{}, "{}", now),
 			},
@@ -231,11 +253,11 @@ stage.json {
 		{
 			name: "missing extracted source",
 			config: `
-stage.json {
-	expressions = { "app" = "" }
-	source      = "log"
-}
-`,
+			stage.json {
+				expressions = { "app" = "" }
+				source      = "log"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, logFixture, now),
 			},
@@ -246,10 +268,10 @@ stage.json {
 		{
 			name: "invalid json on entry",
 			config: `
-stage.json {
-	expressions = { "expr1" = "" }
-}
-`,
+			stage.json {
+				expressions = { "expr1" = "" }
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "ts=now log=notjson", now),
 			},
@@ -260,11 +282,11 @@ stage.json {
 		{
 			name: "invalid json on extracted source",
 			config: `
-stage.json {
-	expressions = { "app" = "" }
-	source      = "log"
-}
-`,
+			stage.json {
+				expressions = { "app" = "" }
+				source      = "log"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{"log": "not a json"}, model.LabelSet{}, logFixture, now),
 			},
@@ -275,11 +297,11 @@ stage.json {
 		{
 			name: "nil source",
 			config: `
-stage.json {
-	expressions = { "app" = "" }
-	source      = "log"
-}
-`,
+			stage.json {
+				expressions = { "app" = "" }
+				source      = "log"
+			}
+			`,
 			entries: []Entry{
 				newEntry(map[string]any{"log": nil}, model.LabelSet{}, logFixture, now),
 			},
