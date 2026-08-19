@@ -1,15 +1,13 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/prometheus/common/model"
 )
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
@@ -35,8 +33,13 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 	return nil
 }
 
+var (
+	_ Stage = (*luhnFilterStage)(nil)
+	_ stage = (*luhnFilterStage)(nil)
+)
+
 // newLuhnFilterStage creates a new LuhnFilterStage.
-func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
+func newLuhnFilterStage(config LuhnFilterConfig, next NextFn) (Stage, error) {
 	if err := validateLuhnFilterConfig(&config); err != nil {
 		return nil, err
 	}
@@ -50,48 +53,65 @@ func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
 		}
 	}
 
-	return toStage(&luhnFilterStage{
+	return &luhnFilterStage{
+		next:      next,
 		config:    &config,
 		skipRegex: skipRegex,
-	}), nil
+	}, nil
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
+	next      NextFn
 	config    *LuhnFilterConfig
 	skipRegex *regexp.Regexp
 }
 
+// Run implements Stage.
+func (l *luhnFilterStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return l.processEntry(e)
+	})
+}
+
+// process implements stage.
+func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = l.processEntry(entries[i])
+	}
+	return l.next(ctx, entries)
+}
+
+// Cleanup implements Stage.
+func (l *luhnFilterStage) Cleanup() {}
+
 // Process implements Stage.
-func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
-	input := entry
-	if r.config.Source != nil {
-		value, ok := extracted[*r.config.Source]
+func (l *luhnFilterStage) processEntry(e Entry) Entry {
+	input := e.Line
+	if l.config.Source != nil {
+		value, ok := e.Extracted[*l.config.Source]
 		if !ok {
-			return
+			return e
 		}
 		strVal, ok := value.(string)
 		if !ok {
-			return
+			return e
 		}
-		input = &strVal
+		input = strVal
 	}
 
-	if input == nil {
-		return
-	}
-
+	var updated string
 	// Replace Luhn-valid numbers in the input.
-	if r.skipRegex != nil {
-		updatedEntry := replaceLuhnValidNumbersSkipRegex(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters, r.skipRegex)
-		*entry = updatedEntry
-	} else if r.config.Delimiters != "" {
-		updatedEntry := replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters)
-		*entry = updatedEntry
+	if l.skipRegex != nil {
+		updated = replaceLuhnValidNumbersSkipRegex(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters, l.skipRegex)
+	} else if l.config.Delimiters != "" {
+		updated = replaceLuhnValidNumbersWithDelimiters(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters)
 	} else {
-		updatedEntry := replaceLuhnValidNumbers(*input, r.config.Replacement, r.config.MinLength)
-		*entry = updatedEntry
+		updated = replaceLuhnValidNumbers(input, l.config.Replacement, l.config.MinLength)
 	}
+
+	e.Line = updated
+	return e
 }
 
 // replaceLuhnValidNumbersSkipRegex scans Luhn candidates in order and only evaluates skipRegex

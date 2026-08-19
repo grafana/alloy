@@ -88,7 +88,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.LuhnFilterConfig != nil:
-		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig)
+		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig, next)
 		if err != nil {
 			return nil, err
 		}
