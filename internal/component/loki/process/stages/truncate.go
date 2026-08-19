@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"maps"
@@ -64,9 +65,15 @@ func (r *RuleConfig) effectiveLimit() units.Base2Bytes {
 	return r.Limit - units.Base2Bytes(len(r.Suffix))
 }
 
+var (
+	_ Stage          = (*truncateStage)(nil)
+	_ entryProcessor = (*truncateStage)(nil)
+)
+
 // newTruncateStage creates a TruncateStage from config
-func newTruncateStage(logger *slog.Logger, cfg TruncateConfig, registerer prometheus.Registerer) Stage {
+func newTruncateStage(logger *slog.Logger, cfg TruncateConfig, registerer prometheus.Registerer, next NextFn) *truncateStage {
 	return &truncateStage{
+		next:           next,
 		logger:         logger.With("stage", "truncate"),
 		cfg:            cfg,
 		truncatedCount: getTruncateCountMetric(registerer),
@@ -75,85 +82,94 @@ func newTruncateStage(logger *slog.Logger, cfg TruncateConfig, registerer promet
 
 // truncateStage applies Label matchers to determine if the include stages should be run
 type truncateStage struct {
+	next           NextFn
 	logger         *slog.Logger
 	cfg            TruncateConfig
 	truncatedCount *prometheus.CounterVec
 }
 
 func (m *truncateStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			truncated := map[string]struct{}{}
-			for _, r := range m.cfg.Rules {
-				switch r.SourceType {
-				case SourceTypeLine:
-					limit := r.effectiveLimit()
-					if len(e.Line) > int(limit) {
-						e.Line = e.Line[:limit] + r.Suffix
-						markTruncated(m.truncatedCount, truncated, truncateLineField)
+	return RunWith(in, func(e Entry) Entry {
+		return m.processEntry(e)
+	})
+}
 
-						if debugEnabled(m.logger) {
-							m.logger.Debug("line has been truncated", "limit", limit, "truncated_line", e.Line)
-						}
-					}
-				case SourceTypeLabel:
-					if len(r.Sources) > 0 {
-						for _, source := range r.Sources {
-							name := model.LabelName(source)
-							if v, ok := e.Labels[name]; ok {
-								m.tryTruncateLabel(r, e.Labels, name, v, truncated)
-							}
-						}
-					} else {
-						for k, v := range e.Labels {
-							m.tryTruncateLabel(r, e.Labels, k, v, truncated)
-						}
-					}
-				case SourceTypeStructuredMetadata:
-					if len(r.Sources) > 0 {
-						for i, v := range e.StructuredMetadata {
-							if slices.Contains(r.Sources, v.Name) {
-								// Returns unmodified if no truncation was required
-								e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
-							}
-						}
-					} else {
-						for i, v := range e.StructuredMetadata {
-							// Returns unmodified if no truncation was required
-							e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
-						}
-					}
-				case SourceTypeExtractedMap:
-					if len(r.Sources) > 0 {
-						for _, source := range r.Sources {
-							if v, ok := e.Extracted[source]; ok {
-								m.tryTruncateExtracted(r, e.Extracted, source, v, truncated)
-							}
-						}
-					} else {
-						for k, v := range e.Extracted {
-							m.tryTruncateExtracted(r, e.Extracted, k, v, truncated)
-						}
-					}
-				}
-				if len(truncated) > 0 {
-					// Ensure that we properly support multiple stages truncating different fields
-					if existing, ok := e.Extracted["truncated"]; ok {
-						if strExisting, ok := existing.(string); ok {
-							for s := range strings.SplitSeq(strExisting, ",") {
-								truncated[s] = struct{}{}
-							}
-						}
-					}
-					e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
+// process implements stage.
+func (m *truncateStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = m.processEntry(entries[i])
+	}
+	return m.next(ctx, entries)
+}
+
+func (m *truncateStage) processEntry(e Entry) Entry {
+	truncated := map[string]struct{}{}
+	for _, r := range m.cfg.Rules {
+		switch r.SourceType {
+		case SourceTypeLine:
+			limit := r.effectiveLimit()
+			if len(e.Line) > int(limit) {
+				e.Line = e.Line[:limit] + r.Suffix
+				markTruncated(m.truncatedCount, truncated, truncateLineField)
+
+				if debugEnabled(m.logger) {
+					m.logger.Debug("line has been truncated", "limit", limit, "truncated_line", e.Line)
 				}
 			}
-			out <- e
+		case SourceTypeLabel:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					name := model.LabelName(source)
+					if v, ok := e.Labels[name]; ok {
+						m.tryTruncateLabel(r, e.Labels, name, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Labels {
+					m.tryTruncateLabel(r, e.Labels, k, v, truncated)
+				}
+			}
+		case SourceTypeStructuredMetadata:
+			if len(r.Sources) > 0 {
+				for i, v := range e.StructuredMetadata {
+					if slices.Contains(r.Sources, v.Name) {
+						// Returns unmodified if no truncation was required
+						e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+					}
+				}
+			} else {
+				for i, v := range e.StructuredMetadata {
+					// Returns unmodified if no truncation was required
+					e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+				}
+			}
+		case SourceTypeExtractedMap:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					if v, ok := e.Extracted[source]; ok {
+						m.tryTruncateExtracted(r, e.Extracted, source, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Extracted {
+					m.tryTruncateExtracted(r, e.Extracted, k, v, truncated)
+				}
+			}
 		}
-	}()
-	return out
+		if len(truncated) > 0 {
+			// Ensure that we properly support multiple stages truncating different fields
+			if existing, ok := e.Extracted["truncated"]; ok {
+				if strExisting, ok := existing.(string); ok {
+					for s := range strings.SplitSeq(strExisting, ",") {
+						truncated[s] = struct{}{}
+					}
+				}
+			}
+			e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
+		}
+	}
+
+	return e
 }
 
 func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, name model.LabelName, val model.LabelValue, truncated map[string]struct{}) {

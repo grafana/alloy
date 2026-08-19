@@ -184,7 +184,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
+		s = newTruncateStage(slogger, *cfg.TruncateConfig, registerer, next)
 	case cfg.SplitJSONConfig != nil:
 		s = newSplitJSONStage(slogger, *cfg.SplitJSONConfig, next)
 	default:
