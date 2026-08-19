@@ -123,7 +123,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(slogger, *cfg.OutputConfig)
+		s, err = newOutputStage(slogger, *cfg.OutputConfig, next)
 		if err != nil {
 			return nil, err
 		}
