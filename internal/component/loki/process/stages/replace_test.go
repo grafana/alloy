@@ -6,168 +6,174 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
+	"github.com/prometheus/common/model"
 )
 
-var testReplaceAlloySingleStageWithoutSource = `
-stage.replace {
-		expression = "11.11.11.11 - (\\S+) .*"
-		replace    = "dummy"
-}
-`
-var testReplaceAlloyMultiStageWithSource = `
-stage.json {
-		expressions = { "level" = "", "msg" = "" }
-}
+func TestReplaceStage(t *testing.T) {
+	var (
+		now                                     = time.Now()
+		testReplaceLogLine                      = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
+		testReplaceLogJSONLine                  = `{"time":"2019-01-01T01:00:00.000000001Z", "level": "info", "msg": "11.11.11.11 - \"POST /loki/api/push/ HTTP/1.1\" 200 932 \"-\" \"Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6\""}`
+		testReplaceLogLineAdjacentCaptureGroups = `abc`
+	)
 
-stage.replace {
-		expression = "\\S+ - \"POST (\\S+) .*"
-    	source     = "msg"
-    	replace    = "/loki/api/v1/push/"
-}
-`
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
+	}
 
-var testReplaceAlloyWithNamedCapturedGroupWithTemplate = `
-stage.replace {
-		expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
-		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
-}
-`
-
-var testReplaceAlloyWithNestedCapturedGroups = `
-stage.replace {
-		expression = "(?P<ip_user>^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+)) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action_path>(?P<action>\\S+)\\s?(?P<path>\\S+)?)\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
-		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
-}
-`
-
-var testReplaceAlloyWithTemplate = `
-stage.replace {
-		expression = "^(\\S+) (\\S+) (\\S+) \\[([\\w:/]+\\s[+\\-]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?$"
-		replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
-}
-`
-
-var testReplaceAlloyWithEmptyReplace = `
-stage.replace {
-		expression = "11.11.11.11 - (\\S+\\s)"
-		replace    = ""
-}
-`
-
-var testReplaceAdjacentCaptureGroups = `
-stage.replace {
-		expression = "(a|b|c)"
-		replace    = ""
-}
-`
-
-var testReplaceLogLine = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
-var testReplaceLogJSONLine = `{"time":"2019-01-01T01:00:00.000000001Z", "level": "info", "msg": "11.11.11.11 - \"POST /loki/api/push/ HTTP/1.1\" 200 932 \"-\" \"Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6\""}`
-var testReplaceLogLineAdjacentCaptureGroups = `abc`
-
-func TestReplace(t *testing.T) {
-	t.Parallel()
-	logger := util.TestAlloyLogger(t)
-
-	tests := map[string]struct {
-		config        string
-		entry         string
-		extracted     map[string]any
-		expectedEntry string
-	}{
-		"successfully run a pipeline with 1 regex stage without source": {
-			testReplaceAlloySingleStageWithoutSource,
-			testReplaceLogLine,
-			map[string]any{},
-			`11.11.11.11 - dummy [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
-		},
-		"successfully run a pipeline with multi stage with": {
-			testReplaceAlloyMultiStageWithSource,
-			testReplaceLogJSONLine,
-			map[string]any{
-				"level": "info",
-				"msg":   `11.11.11.11 - "POST /loki/api/v1/push/ HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
+	tests := []testCase{
+		{
+			name: "successfully run a pipeline with 1 regex stage without source",
+			config: `
+			stage.replace {
+				expression = "11.11.11.11 - (\\S+) .*"
+				replace    = "dummy"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLine, now),
 			},
-			`{"time":"2019-01-01T01:00:00.000000001Z", "level": "info", "msg": "11.11.11.11 - \"POST /loki/api/push/ HTTP/1.1\" 200 932 \"-\" \"Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6\""}`,
-		},
-		"successfully run a pipeline with 1 regex stage with named captured group and with template and without source": {
-			testReplaceAlloyWithNamedCapturedGroupWithTemplate,
-			testReplaceLogLine,
-			map[string]any{
-				"ip":        "11.11.11.11",
-				"identd":    "-",
-				"user":      "FRANK",
-				"timestamp": "25/JAN/2000:14:00:01 -0500",
-				"action":    "GET",
-				"path":      "/1986.JS",
-				"protocol":  "HTTP/1.1",
-				"status":    "HttpStatusOk",
-				"referer":   "-",
-				"useragent": "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6",
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `11.11.11.11 - dummy [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`, now),
 			},
-			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
 		},
-		"successfully run a pipeline with 1 regex stage with nested captured groups and with template and without source": {
-			testReplaceAlloyWithNestedCapturedGroups,
-			testReplaceLogLine,
-			map[string]any{
-				"ip_user":     "11.11.11.11 - FRANK",
-				"action_path": "GET /1986.JS",
-				"ip":          "11.11.11.11",
-				"identd":      "-",
-				"user":        "FRANK",
-				"timestamp":   "25/JAN/2000:14:00:01 -0500",
-				"action":      "GET",
-				"path":        "/1986.JS",
-				"protocol":    "HTTP/1.1",
-				"status":      "HttpStatusOk",
-				"referer":     "-",
-				"useragent":   "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6",
+		{
+			name: "successfully run a pipeline with multi stage with",
+			config: `
+			stage.json {
+				expressions = { "level" = "", "msg" = "" }
+			}
+
+			stage.replace {
+				expression = "\\S+ - \"POST (\\S+) .*"
+				source     = "msg"
+				replace    = "/loki/api/v1/push/"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogJSONLine, now),
 			},
-			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
+			expected: []Entry{
+				newEntry(map[string]any{
+					"level": "info",
+					"msg":   `11.11.11.11 - "POST /loki/api/v1/push/ HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
+				}, model.LabelSet{}, testReplaceLogJSONLine, now),
+			},
 		},
-		"successfully run a pipeline with 1 regex stage with template and without source": {
-			testReplaceAlloyWithTemplate,
-			testReplaceLogLine,
-			map[string]any{},
-			`11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`,
+		{
+			name: "successfully run a pipeline with 1 regex stage with named captured group and with template and without source",
+			config: `
+			stage.replace {
+				expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+				replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"ip":        "11.11.11.11",
+					"identd":    "-",
+					"user":      "FRANK",
+					"timestamp": "25/JAN/2000:14:00:01 -0500",
+					"action":    "GET",
+					"path":      "/1986.JS",
+					"protocol":  "HTTP/1.1",
+					"status":    "HttpStatusOk",
+					"referer":   "-",
+					"useragent": "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6",
+				}, model.LabelSet{}, `11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`, now),
+			},
 		},
-		"successfully run a pipeline with empty replace value": {
-			testReplaceAlloyWithEmptyReplace,
-			testReplaceLogLine,
-			map[string]any{},
-			`11.11.11.11 - [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`,
+		{
+			name: "successfully run a pipeline with 1 regex stage with nested captured groups and with template and without source",
+			config: `
+			stage.replace {
+				expression = "(?P<ip_user>^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+)) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action_path>(?P<action>\\S+)\\s?(?P<path>\\S+)?)\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+				replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"ip_user":     "11.11.11.11 - FRANK",
+					"action_path": "GET /1986.JS",
+					"ip":          "11.11.11.11",
+					"identd":      "-",
+					"user":        "FRANK",
+					"timestamp":   "25/JAN/2000:14:00:01 -0500",
+					"action":      "GET",
+					"path":        "/1986.JS",
+					"protocol":    "HTTP/1.1",
+					"status":      "HttpStatusOk",
+					"referer":     "-",
+					"useragent":   "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6",
+				}, model.LabelSet{}, `11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`, now),
+			},
 		},
-		"successfully run a pipeline with adjacent capture groups": {
-			testReplaceAdjacentCaptureGroups,
-			testReplaceLogLineAdjacentCaptureGroups,
-			map[string]any{},
-			``,
+		{
+			name: "successfully run a pipeline with 1 regex stage with template and without source",
+			config: `
+			stage.replace {
+				expression = "^(\\S+) (\\S+) (\\S+) \\[([\\w:/]+\\s[+\\-]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?$"
+				replace    = "{{ if eq .Value \"200\" }}{{ Replace .Value \"200\" \"HttpStatusOk\" -1 }}{{ else }}{{ .Value | ToUpper }}{{ end }}"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `11.11.11.11 - FRANK [25/JAN/2000:14:00:01 -0500] "GET /1986.JS HTTP/1.1" HttpStatusOk 932 "-" "MOZILLA/5.0 (WINDOWS; U; WINDOWS NT 5.1; DE; RV:1.9.1.7) GECKO/20091221 FIREFOX/3.5.7 GTB6"`, now),
+			},
+		},
+		{
+			name: "successfully run a pipeline with empty replace value",
+			config: `
+			stage.replace {
+				expression = "11.11.11.11 - (\\S+\\s)"
+				replace    = ""
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `11.11.11.11 - [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`, now),
+			},
+		},
+		{
+			name: "successfully run a pipeline with adjacent capture groups",
+			config: `
+			stage.replace {
+				expression = "(a|b|c)"
+				replace    = ""
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testReplaceLogLineAdjacentCaptureGroups, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, ``, now),
+			},
 		},
 	}
 
-	for testName, testData := range tests {
-		testData := testData
-
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(logger.Slog(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
-			assert.Equal(t, testData.expectedEntry, out.Line)
-			assert.Equal(t, testData.extracted, out.Extracted)
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, "")
 		})
 	}
 }
 
-func TestReplaceConfigValidation(t *testing.T) {
+func TestValidateReplaceConfig(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
 		config ReplaceConfig

@@ -143,7 +143,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(slogger, *cfg.ReplaceConfig)
+		s, err = newReplaceStage(slogger, *cfg.ReplaceConfig, next)
 		if err != nil {
 			return nil, err
 		}
