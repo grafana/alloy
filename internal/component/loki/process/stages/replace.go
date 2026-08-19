@@ -27,12 +27,12 @@ type ReplaceConfig struct {
 
 func validateReplaceConfig(c ReplaceConfig) (*regexp.Regexp, *template.Template, error) {
 	if c.Expression == "" {
-		return nil, nil, ErrExpressionRequired
+		return nil, nil, errExpressionRequired
 	}
 
 	expr, err := regexp.Compile(c.Expression)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+		return nil, nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
 	}
 
 	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(c.Replace)

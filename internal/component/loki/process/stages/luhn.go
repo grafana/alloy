@@ -28,7 +28,7 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 		c.MinLength = 13
 	}
 	if c.Source != nil && *c.Source == "" {
-		return ErrEmptyRegexStageSource
+		return errEmptyRegexStageSource
 	}
 	return nil
 }
@@ -49,7 +49,7 @@ func newLuhnFilterStage(config LuhnFilterConfig, next NextFn) (Stage, error) {
 		var err error
 		skipRegex, err = regexp.Compile(config.SkipRegex)
 		if err != nil {
-			return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+			return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
 		}
 	}
 

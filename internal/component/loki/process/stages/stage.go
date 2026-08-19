@@ -113,7 +113,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(slogger, *cfg.RegexConfig)
+		s, err = newRegexStage(slogger, *cfg.RegexConfig, next)
 		if err != nil {
 			return nil, err
 		}

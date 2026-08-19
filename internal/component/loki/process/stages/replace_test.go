@@ -175,14 +175,14 @@ func TestReplaceConfigValidation(t *testing.T) {
 	}{
 		"missing regex_expression": {
 			ReplaceConfig{},
-			ErrExpressionRequired,
+			errExpressionRequired,
 		},
 		"invalid regex_expression": {
 			ReplaceConfig{
 				Expression: "(?P<ts[0-9]+).*",
 				Replace:    "test",
 			},
-			fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, errors.New("error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`")),
+			fmt.Errorf("%v: %w", errCouldNotCompileRegex, errors.New("error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`")),
 		},
 		"valid without source": {
 			ReplaceConfig{
