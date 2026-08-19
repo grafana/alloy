@@ -159,7 +159,14 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		in := make(chan loki.Entry)
 		out := make(chan loki.Entry)
 		handler := p.Start(in, out)
-		defer handler.Stop()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for e := range out {
+				benchResultLokiEntry = e
+			}
+		}()
 
 		clone := batch.Clone()
 		entries := make([]loki.Entry, 0, clone.EntryLen())
@@ -175,9 +182,13 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		for b.Loop() {
 			for _, e := range entries {
 				handler.Chan() <- e.Clone()
-				benchResultLokiEntry = <-out
 			}
 		}
+		b.StopTimer()
+
+		handler.Stop()
+		close(out)
+		<-done
 	})
 
 	b.Run("New Stage", func(b *testing.B) {
