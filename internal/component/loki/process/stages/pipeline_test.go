@@ -62,12 +62,21 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 	return NewPipeline(logging.NewSlogNop(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 }
 
+type entryCheckFNs struct {
+	timestamp func(expected, actual time.Time) bool
+}
+
 // runPipelineTest builds a pipeline for cfgs using both the old and new
 // pipeline implementations, runs entries through each, and asserts the
 // result matches expected. expectedMetrics is optional: pass "" to skip
 // checking metrics, or a Prometheus exposition-format string (as consumed
 // by testutil.GatherAndCompare) to assert against each run's own registry.
-func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string) {
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string, checks ...entryCheckFNs) {
+	var check entryCheckFNs
+	if len(checks) > 0 {
+		check = checks[0]
+	}
+
 	// Pipeline.Run seeds the extracted map with each entry's initial labels
 	// before running any stage. process (called directly below, bypassing
 	// ProcessBatch/ProcessEntry) does not. Seed it here once so both
@@ -104,7 +113,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 			collected = append(collected, e)
 		}
 
-		assertEntriesUnordered(t, expected, collected)
+		assertEntriesUnordered(t, expected, collected, check)
 		if expectedMetrics != "" {
 			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 		}
@@ -125,7 +134,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p.process(context.Background(), entries)
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected)
+			assertEntriesUnordered(c, expected, collected, check)
 			if expectedMetrics != "" {
 				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 			}
@@ -192,16 +201,24 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 
 // assertEntriesUnordered asserts that actual contains exactly the entries in
 // expected, ignoring order.
-func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
+func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks entryCheckFNs) {
 	require.Len(t, actual, len(expected))
 
 	entriesEqual := func(expected, actual Entry) bool {
 		if expected.Line != actual.Line {
 			return false
 		}
-		if expected.Timestamp.Unix() != actual.Timestamp.Unix() {
-			return false
+
+		if checks.timestamp != nil {
+			if !checks.timestamp(expected.Timestamp, actual.Timestamp) {
+				return false
+			}
+		} else {
+			if expected.Timestamp.Unix() != actual.Timestamp.Unix() {
+				return false
+			}
 		}
+
 		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
 			return false
 		}

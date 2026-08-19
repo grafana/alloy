@@ -2,6 +2,7 @@ package stages
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"log/slog"
 	"reflect"
@@ -106,24 +107,25 @@ type PackConfig struct {
 	IngestTimestamp bool     `alloy:"ingest_timestamp,attr,optional"`
 }
 
-// DefaultPackConfig sets the defaults.
-var DefaultPackConfig = PackConfig{
-	IngestTimestamp: true,
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (p *PackConfig) SetToDefault() {
-	*p = DefaultPackConfig
+	*p = PackConfig{IngestTimestamp: true}
 }
 
+var (
+	_ Stage = (*packStage)(nil)
+	_ stage = (*packStage)(nil)
+)
+
 // newPackStage creates a PackStage from config
-func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.Registerer) (Stage, error) {
+func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.Registerer, next NextFn) (Stage, error) {
 	dropCount, err := getDropCountMetric(registerer)
 	if err != nil {
 		return nil, err
 	}
 
 	return &packStage{
+		next:      next,
 		logger:    logger.With("stage", "pack"),
 		cfg:       &config,
 		dropCount: dropCount,
@@ -132,20 +134,25 @@ func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.
 
 // packStage applies Label matchers to determine if the include stages should be run
 type packStage struct {
+	next      NextFn
 	logger    *slog.Logger
 	cfg       *PackConfig
 	dropCount *prometheus.CounterVec
 }
 
+// Run implements Stage.
 func (m *packStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			out <- m.pack(e)
-		}
-	}()
-	return out
+	return RunWith(in, func(e Entry) Entry {
+		return m.pack(e)
+	})
+}
+
+// process implements stage.
+func (m *packStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = m.pack(entries[i])
+	}
+	return m.next(ctx, entries)
 }
 
 func (m *packStage) pack(e Entry) Entry {
@@ -200,6 +207,4 @@ func (m *packStage) pack(e Entry) Entry {
 }
 
 // Cleanup implements Stage.
-func (*packStage) Cleanup() {
-	// no-op
-}
+func (*packStage) Cleanup() {}

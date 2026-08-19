@@ -163,7 +163,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.PackConfig != nil:
-		s, err = newPackStage(slogger, *cfg.PackConfig, registerer)
+		s, err = newPackStage(slogger, *cfg.PackConfig, registerer, next)
 		if err != nil {
 			return nil, err
 		}
