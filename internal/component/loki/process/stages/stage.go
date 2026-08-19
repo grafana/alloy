@@ -187,7 +187,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig)
+		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
 		if err != nil {
 			return nil, err
 		}
