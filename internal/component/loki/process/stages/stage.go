@@ -97,7 +97,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LuhnFilterConfig != nil:
-		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig)
+		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig, opts)
 		if err != nil {
 			return nil, err
 		}
