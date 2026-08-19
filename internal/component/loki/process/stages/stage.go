@@ -152,7 +152,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(opts.slogger, *cfg.ReplaceConfig)
+		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
 		if err != nil {
 			return nil, err
 		}
