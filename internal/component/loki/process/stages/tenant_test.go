@@ -1,222 +1,213 @@
 package stages
 
 import (
-	"bytes"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/component/common/loki/client"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-var testTenantAlloyExtractedData = `
-stage.json {
-		expressions = { "customer_id" = "" }
-}
-stage.tenant { 
-		source = "customer_id"
-} `
+func TestTenantStage(t *testing.T) {
+	now := time.Now()
 
-var testTenantLogLineWithMissingKey = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"],
-	"level" : "WARN"
-}
-`
-
-func TestPipelineWithMissingKey_Tenant(t *testing.T) {
-	var buf bytes.Buffer
-	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
-	require.NoError(t, err)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testTenantAlloyExtractedData), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = processEntries(pl, newEntry(nil, nil, testTenantLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug msg=\"failed to convert value to string\" stage=tenant err=\"can't convert <nil> to string\" type=<nil>"
-	if !(strings.Contains(buf.String(), expectedLog)) {
-		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
-	}
-}
-
-func TestTenantStage_Validation(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		config      TenantConfig
-		expectedErr error
-	}{
-		"should pass on source config option set": {
-			config: TenantConfig{
-				Source: "tenant",
-			},
-			expectedErr: nil,
-		},
-		"should pass on value config option set": {
-			config: TenantConfig{
-				Value: "team-a",
-			},
-			expectedErr: nil,
-		},
-		"should fail on missing source and value": {
-			config:      TenantConfig{},
-			expectedErr: ErrTenantStageEmptyLabelSourceOrValue,
-		},
-		"should fail on empty source": {
-			config: TenantConfig{
-				Source: "",
-			},
-			expectedErr: ErrTenantStageEmptyLabelSourceOrValue,
-		},
-		"should fail on empty value": {
-			config: TenantConfig{
-				Value: "",
-			},
-			expectedErr: ErrTenantStageEmptyLabelSourceOrValue,
-		},
-		"should fail on empty label": {
-			config: TenantConfig{
-				Label: "",
-			},
-			expectedErr: ErrTenantStageEmptyLabelSourceOrValue,
-		},
-		"should fail on both source and value set": {
-			config: TenantConfig{
-				Source: "tenant",
-				Value:  "team-a",
-			},
-			expectedErr: ErrTenantStageConflictingLabelSourceAndValue,
-		},
-		"should fail on both source and label set": {
-			config: TenantConfig{
-				Source: "tenant",
-				Label:  "team-a",
-			},
-			expectedErr: ErrTenantStageConflictingLabelSourceAndValue,
-		},
-		"should fail on both label and value set": {
-			config: TenantConfig{
-				Label: "tenant",
-				Value: "team-a",
-			},
-			expectedErr: ErrTenantStageConflictingLabelSourceAndValue,
-		},
-		"should fail on all set": {
-			config: TenantConfig{
-				Label:  "tenant",
-				Source: "tenant",
-				Value:  "team-a",
-			},
-			expectedErr: ErrTenantStageConflictingLabelSourceAndValue,
-		},
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
-	for testName, testData := range tests {
-		testData := testData
-
-		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(logging.NewSlogNop(), testData.config)
-
-			if testData.expectedErr != nil {
-				assert.EqualError(t, err, testData.expectedErr.Error())
-				assert.Nil(t, stage)
-			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, stage)
+	tests := []testCase{
+		{
+			name: "should not set the tenant if the source field is not defined in the extracted map",
+			config: `
+			stage.tenant {
+				source = "tenant_id"
 			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "hello world", now),
+			},
+		},
+		{
+			name: "should not override the tenant if the source field is not defined in the extracted map",
+			config: `
+			stage.tenant {
+				source = "tenant_id"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{ReservedLabelTenantID: "foo"}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{ReservedLabelTenantID: "foo"}, model.LabelSet{ReservedLabelTenantID: "foo"}, "hello world", now),
+			},
+		},
+		{
+			name: "should set the tenant if the source field is defined in the extracted map",
+			config: `
+			stage.tenant {
+				source = "tenant_id"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"tenant_id": "bar"}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"tenant_id": "bar"}, model.LabelSet{ReservedLabelTenantID: "bar"}, "hello world", now),
+			},
+		},
+		{
+			name: "should set the tenant if the label is defined in the label map",
+			config: `
+			stage.tenant {
+				label = "tenant_id"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"tenant_id": "bar"}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"tenant_id": "bar"}, model.LabelSet{"tenant_id": "bar", ReservedLabelTenantID: "bar"}, "hello world", now),
+			},
+		},
+		{
+			name: "should override the tenant if the source field is defined in the extracted map",
+			config: `
+			stage.tenant {
+				source = "tenant_id"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"tenant_id": "bar"}, model.LabelSet{ReservedLabelTenantID: "foo"}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"tenant_id": "bar", ReservedLabelTenantID: "foo"}, model.LabelSet{ReservedLabelTenantID: "bar"}, "hello world", now),
+			},
+		},
+		{
+			name: "should not set the tenant if the source field data type can't be converted to string",
+			config: `
+			stage.tenant {
+				source = "tenant_id"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"tenant_id": []string{"bar"}}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"tenant_id": []string{"bar"}}, model.LabelSet{}, "hello world", now),
+			},
+		},
+		{
+			name: "should set the tenant with the configured static value",
+			config: `
+			stage.tenant {
+				value = "bar"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{ReservedLabelTenantID: "bar"}, "hello world", now),
+			},
+		},
+		{
+			name: "should override the tenant with the configured static value",
+			config: `
+			stage.tenant {
+				value = "bar"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{ReservedLabelTenantID: "foo"}, "hello world", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{ReservedLabelTenantID: "foo"}, model.LabelSet{ReservedLabelTenantID: "bar"}, "hello world", now),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, "")
 		})
 	}
 }
 
-func TestTenantStage_Process(t *testing.T) {
+func TestValidateTenantConfig(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		config         TenantConfig
-		inputLabels    model.LabelSet
-		inputExtracted map[string]any
-		expectedTenant *string
-	}{
-		"should not set the tenant if the source field is not defined in the extracted map": {
-			config:         TenantConfig{Source: "tenant_id"},
-			inputLabels:    model.LabelSet{},
-			inputExtracted: map[string]any{},
-			expectedTenant: nil,
+	type testCase struct {
+		name string
+		cfg  TenantConfig
+		err  error
+	}
+
+	tests := []testCase{
+		{
+			name: "should pass on source config option set",
+			cfg:  TenantConfig{Source: "tenant"},
 		},
-		"should not override the tenant if the source field is not defined in the extracted map": {
-			config:         TenantConfig{Source: "tenant_id"},
-			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
-			inputExtracted: map[string]any{},
-			expectedTenant: ptr("foo"),
+		{
+			name: "should pass on value config option set",
+			cfg:  TenantConfig{Value: "team-a"},
 		},
-		"should set the tenant if the source field is defined in the extracted map": {
-			config:         TenantConfig{Source: "tenant_id"},
-			inputLabels:    model.LabelSet{},
-			inputExtracted: map[string]any{"tenant_id": "bar"},
-			expectedTenant: ptr("bar"),
+		{
+			name: "should fail on missing source and value",
+			cfg:  TenantConfig{},
+			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
-		"should set the tenant if the label is defined in the label map": {
-			config:         TenantConfig{Label: "tenant_id"},
-			inputLabels:    model.LabelSet{"tenant_id": "bar"},
-			inputExtracted: map[string]any{},
-			expectedTenant: ptr("bar"),
+		{
+			name: "should fail on empty source",
+			cfg:  TenantConfig{Source: ""},
+			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
-		"should override the tenant if the source field is defined in the extracted map": {
-			config:         TenantConfig{Source: "tenant_id"},
-			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
-			inputExtracted: map[string]any{"tenant_id": "bar"},
-			expectedTenant: ptr("bar"),
+		{
+			name: "should fail on empty value",
+			cfg:  TenantConfig{Value: ""},
+			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
-		"should not set the tenant if the source field data type can't be converted to string": {
-			config:         TenantConfig{Source: "tenant_id"},
-			inputLabels:    model.LabelSet{},
-			inputExtracted: map[string]any{"tenant_id": []string{"bar"}},
-			expectedTenant: nil,
+		{
+			name: "should fail on empty label",
+			cfg:  TenantConfig{Label: ""},
+			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
-		"should set the tenant with the configured static value": {
-			config:         TenantConfig{Value: "bar"},
-			inputLabels:    model.LabelSet{},
-			inputExtracted: map[string]any{},
-			expectedTenant: ptr("bar"),
+		{
+			name: "should fail on both source and value set",
+			cfg:  TenantConfig{Source: "tenant", Value: "team-a"},
+			err:  errTenantStageConflictingLabelSourceAndValue,
 		},
-		"should override the tenant with the configured static value": {
-			config:         TenantConfig{Value: "bar"},
-			inputLabels:    model.LabelSet{client.ReservedLabelTenantID: "foo"},
-			inputExtracted: map[string]any{},
-			expectedTenant: ptr("bar"),
+		{
+			name: "should fail on both source and label set",
+			cfg:  TenantConfig{Source: "tenant", Label: "team-a"},
+			err:  errTenantStageConflictingLabelSourceAndValue,
+		},
+		{
+			name: "should fail on both label and value set",
+			cfg:  TenantConfig{Label: "tenant", Value: "team-a"},
+			err:  errTenantStageConflictingLabelSourceAndValue,
+		},
+		{
+			name: "should fail on all set",
+			cfg:  TenantConfig{Label: "tenant", Source: "tenant", Value: "team-a"},
+			err:  errTenantStageConflictingLabelSourceAndValue,
 		},
 	}
 
-	for testName, testData := range tests {
-		testData := testData
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		t.Run(testName, func(t *testing.T) {
-			stage, err := newTenantStage(logging.NewSlogNop(), testData.config)
-			require.NoError(t, err)
-
-			// Process and dummy line and ensure nothing has changed except
-			// the tenant reserved label
-
-			out := processEntries(stage, newEntry(testData.inputExtracted, testData.inputLabels.Clone(), "hello world", time.Unix(1, 1)))[0]
-
-			assert.Equal(t, time.Unix(1, 1), out.Timestamp)
-			assert.Equal(t, "hello world", out.Line)
-
-			actualTenant, ok := out.Labels[ReservedLabelTenantID]
-			if testData.expectedTenant == nil {
-				assert.False(t, ok)
-			} else {
-				assert.Equal(t, *testData.expectedTenant, string(actualTenant))
-			}
+			err := validateTenantConfig(tt.cfg)
+			require.ErrorIs(t, err, tt.err)
 		})
 	}
 }
