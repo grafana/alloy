@@ -18,9 +18,9 @@ The `windows_exporter` itself comprises various _collectors_, which you can enab
 
 The available collectors depend on the [`windows_exporter`][windows_exporter] version embedded in your {{< param "PRODUCT_NAME" >}} release. If a documented collector isn't available:
 
-1. Verify you have the current {{< param "PRODUCT_NAME" >}} version
-1. Check the {{< param "PRODUCT_NAME" >}} release notes for component upgrades
-1. Upgrade {{< param "PRODUCT_NAME" >}} to the current version
+1. Make sure you're using the latest {{< param "PRODUCT_NAME" >}} version.
+1. Refer to the {{< param "PRODUCT_NAME" >}} release notes for component upgrades.
+1. Upgrade {{< param "PRODUCT_NAME" >}} to a version that includes the collector.
 
 For more information on available collectors, refer to the [`collectors-list`](#collectors-list) section.
 
@@ -555,7 +555,7 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`iis`][iis]                               | IIS sites and applications                                     |                    |
 | [`logical_disk`][logical_disk]             | Logical disks, disk I/O                                        | Yes                |
 | [`memory`][memory]                         | Memory usage metrics                                           |                    |
-| [`mscluster`][mscluster]                   | `MSCluster` metrics                                            |                    |
+| [`mscluster`][mscluster]                   | MSCluster metrics                                              |                    |
 | [`msmq`][msmq]                             | MSMQ queues                                                    |                    |
 | [`mssql`][mssql]                           | [SQL Server Performance Objects][sql_server] metrics           |                    |
 | [`netframework`][netframework]             | .NET Framework metrics                                         |                    |
