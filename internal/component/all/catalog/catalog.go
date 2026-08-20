@@ -60,12 +60,6 @@ func Entries() []Entry {
 	return entries
 }
 
-// Names returns every cataloged component name in lexical order. The returned
-// slice is a copy and may be modified by the caller.
-func Names() []string {
-	return append([]string(nil), inventory.names...)
-}
-
 // TagForName returns the component-specific build tag for an exact cataloged
 // component name.
 func TagForName(name string) (string, bool) {
@@ -110,7 +104,6 @@ func ResolveExact(names []string) ([]string, error) {
 
 type parsedInventory struct {
 	entries []Entry
-	names   []string
 	tags    map[string]string
 }
 
@@ -146,11 +139,9 @@ func parse(data []byte) (parsedInventory, error) {
 			Components: append([]string(nil), pkg.Components...),
 		}
 		for _, name := range pkg.Components {
-			result.names = append(result.names, name)
 			result.tags[name] = buildTag(name)
 		}
 	}
-	sort.Strings(result.names)
 	return result, nil
 }
 

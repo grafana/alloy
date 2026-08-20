@@ -81,8 +81,8 @@ make alloy
 
 The manifest controls both component allowlists. The ordinary OCB sections
 select OTel Collector factories, and the Alloy-specific `alloy_components`
-field selects native Alloy components. The build planner validates the complete
-manifest, creates a private workspace below `build/`, runs OCB and Alloy's
+field selects native Alloy components. The build planner validates the native
+selection, creates a private workspace below `build/`, runs OCB and Alloy's
 post-generator there, and passes the same effective build tags to the final Go
 compilation. Generated files in `collector/` are therefore not overwritten by
 a normal build.
@@ -102,7 +102,12 @@ control the final executable path. It also fills in any missing `replaces` and
 `excludes` entries from the implicit default manifest because the in-tree CLI's
 support code must use the repository's shared dependency policy. Entries
 explicitly supplied by the custom manifest take precedence, except for the two
-checkout-local Alloy module paths.
+checkout-local Alloy module paths. Relative local replacement targets are
+resolved against the manifest's original `dist.output_path` before relocation.
+The final in-tree compilation remains Make-owned: `CGO_ENABLED`, `GOOS`,
+`GOARCH`, release/linker flags, and `ALLOY_BINARY` come from the Make invocation.
+By contrast, an external stock-OCB build honors compilation settings such as
+`dist.cgo_enabled` directly from the manifest.
 
 To regenerate only (without building):
 
@@ -132,8 +137,6 @@ checked-in `collector/` tree.
 - `SKIP_CODE_GENERATION=1 make alloy` builds the checked-in generated collector
   using the implicit default manifest. It exists for release pipelines that
   prepare generated sources before the final build.
-- `make alloy ALLOY_COMPONENTS=...` is the compatibility form for selecting
-  native components when the chosen manifest omits `alloy_components`.
 - `go run ./cmd/alloy-builder --config=builder-config.yaml` builds an external
   OCB distribution directly. Its manifest format uses the same
   `alloy_components` extension, but it produces the OCB distribution described
@@ -170,18 +173,6 @@ The planner validates every name against the embedded component catalog;
 unknown and duplicate names fail before OCB runs. An Alloy configuration that
 refers to an omitted native component fails during configuration evaluation
 because that component is not registered.
-
-For backwards compatibility, `ALLOY_COMPONENTS` remains available when the
-selected manifest omits `alloy_components`:
-
-```bash
-make alloy ALLOY_COMPONENTS='loki.source.file,loki.process,loki.write'
-make alloy ALLOY_COMPONENTS=none
-```
-
-New build integrations should use `alloy_components` in a manifest. Supplying
-both forms is an error, which prevents a Make variable from silently overriding
-the reviewed YAML definition.
 
 ### Linkage Units and Both Alloy Engines
 
@@ -252,19 +243,10 @@ the file value; the wrapper uses whichever value is effective as the base,
 folds the selector tags into the sanitized manifest, and removes the override
 from the child environment so it cannot erase them.
 
-The wrapper currently reports the effective build-tag string only. It does not
-emit a dependency closure or a separate selected-component summary.
-
-When `alloy_components` is present, the wrapper rejects unknown top-level keys,
-duplicate mapping keys, and YAML aliases before invoking OCB. Anchors without an
-alias are allowed. When `alloy_components` is absent, the manifest is delegated
-unchanged and stock OCB retains responsibility for validating it.
-
-Field presence is meaningful:
-
-- Omitting `alloy_components` preserves the complete native registry.
-- `alloy_components: []` builds with no optional native components.
-- A non-empty list includes only the named native components.
+When `alloy_components` is present, the wrapper rejects duplicate mapping keys
+and YAML aliases before invoking OCB. Anchors without an alias are allowed.
+Stock OCB remains responsible for validating its standard manifest fields. When
+`alloy_components` is absent, the manifest is delegated unchanged.
 
 Do not pass `--skip-compilation` when `alloy_components` is present. The tags
 select code during compilation; generation alone cannot carry them into an
@@ -298,16 +280,6 @@ go run ./cmd/alloy-builder \
   --config=./collector/testdata/external/minimal-builder-config.yaml
 ```
 
-`make test-alloy-builder` uses the same manifest for a real stock-OCB external
-compile, verifies the generated artifact's build metadata contains the expected
-user and selector tags, and removes the explicit ignored `_build` directory.
-The target then passes that manifest to `make alloy`, builds the in-tree Alloy
-CLI through the complete manifest planner, and validates one selected and one
-omitted component. It does not start the generated Collector artifact's
-long-running `alloyengine` extension during this build test; the external
-assertion covers direct OCB compilation, while the in-tree assertion covers the
-Make orchestration and resulting native registry behavior.
-
 The generated `collector/go.mod` and root `go.mod` remain broad by design. Go's
 `mod tidy` considers files across build constraints, so component selection
 primarily reduces linked code and binary size; it does not currently produce a
@@ -318,49 +290,23 @@ binary. Use an artifact-aware inventory when that distinction matters.
 ### Custom-Build Command Surface
 
 Setting `alloy_components` in the manifest, including to an empty list, enables
-custom-component mode. The `ALLOY_COMPONENTS` and raw-tag compatibility
-interfaces enable the same mode. It accepts Alloy configuration only and omits
+custom-component mode. It accepts Alloy configuration only and omits
 configuration conversion, component-specific `tools` commands, and legacy
 Grafana Agent static integrations. The `run`, `validate`, `fmt`, and GraphQL
 (`gql`) commands remain available. Do not use a custom build where Prometheus,
 Promtail, OTel Collector YAML, or static Agent configuration must be converted
 at startup; convert it to Alloy configuration before building the distribution.
 
-### Advanced Build-Tag Interface
+### Generated Selector Sources
 
-The manifest is the supported interface. Internally the planner translates
-component names to Go tags by replacing dots with underscores and prefixing
-`alloy_component_`, then adds the marker tag `alloy_custom_components`. The
-earlier YAML example is equivalent to these tags:
-
-```text
-alloy_custom_components
-alloy_component_loki_source_file
-alloy_component_loki_process
-alloy_component_loki_write
-```
-
-Direct Go or packaging builds must include the marker and all desired component
-tags together. Preserve any unrelated platform or feature tags already required
-by that build. Stock OCB users can pass the same comma-separated tags to the
-distribution configuration:
-
-```yaml
-dist:
-  build_tags: "alloy_custom_components,alloy_component_loki_source_file,alloy_component_loki_process,alloy_component_loki_write"
-```
-
-For `make alloy`, the planner merges `dist.build_tags`, ordinary `GO_TAGS`, and
-the generated native selector tags once, writes that value into the sanitized
-OCB manifest, and uses the same value for the final compilation. For a direct
-external `cmd/alloy-builder` invocation, OCB compiles with the sanitized
-`dist.build_tags` value itself.
-
-The raw tag interface and `ALLOY_COMPONENTS` remain compatibility mechanisms for
-build systems that cannot yet supply `alloy_components`. They cannot be mixed
-with YAML selection. The `make alloy` planner rejects unknown or incomplete
-selector tag sets; direct Go invocations bypass that validation and must supply
-the marker and component tags correctly.
+The manifest is the supported selection interface. Internally, the builder
+translates component names into Go build constraints. The generated `all.go`
+file preserves the full default registry, while the generated `custom_*.go`
+files import only the selected component packages. These files are checked in
+because Go applies build constraints at file granularity and external builds
+compile against the released Alloy module. Reserved native selector tags are
+internal implementation details, not a supported selection interface;
+configure native components with `alloy_components` instead.
 
 When adding or moving a native component, update
 `internal/component/all/catalog/catalog.json` and regenerate the import

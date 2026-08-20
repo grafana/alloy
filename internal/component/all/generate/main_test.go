@@ -1,39 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 )
-
-func TestCatalogInventory(t *testing.T) {
-	cat := loadTestCatalog(t)
-
-	if got, want := len(cat.Packages), 182; got != want {
-		t.Fatalf("catalog contains %d packages; want %d", got, want)
-	}
-
-	componentCount := 0
-	for _, pkg := range cat.Packages {
-		componentCount += len(pkg.Components)
-	}
-	if got, want := componentCount, 184; got != want {
-		t.Fatalf("catalog contains %d component names; want %d", got, want)
-	}
-
-	assertPackageComponents(t, cat,
-		"github.com/grafana/alloy/internal/component/discovery/aws",
-		[]string{"discovery.aws", "discovery.ec2", "discovery.lightsail"},
-	)
-	assertPackageComponents(t, cat,
-		"github.com/grafana/alloy/internal/component/otelcol/exporter/awss3",
-		[]string{"otelcol.exporter.awss3"},
-	)
-}
 
 func TestCatalogMatchesSourceRegistrations(t *testing.T) {
 	cat := loadTestCatalog(t)
@@ -83,120 +56,6 @@ func init() {
 	}
 }
 
-func TestSelectionArgsAcceptCommaAndWhitespace(t *testing.T) {
-	got := selectionArgs(
-		"loki.source.file,prometheus.scrape discovery.aws",
-		[]string{"remote.http,remote.s3", "pyroscope.scrape"},
-	)
-	want := []string{
-		"loki.source.file",
-		"prometheus.scrape",
-		"discovery.aws",
-		"remote.http",
-		"remote.s3",
-		"pyroscope.scrape",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("selectionArgs() = %#v; want %#v", got, want)
-	}
-}
-
-func TestTagsForSelection(t *testing.T) {
-	tests := []struct {
-		name      string
-		selection []string
-		want      []string
-	}{
-		{
-			name: "empty selection",
-			want: []string{"alloy_custom_components"},
-		},
-		{
-			name:      "none",
-			selection: []string{"none"},
-			want:      []string{"alloy_custom_components"},
-		},
-		{
-			name:      "deterministic order",
-			selection: []string{"prometheus.scrape", "discovery.aws", "loki.source.file"},
-			want: []string{
-				"alloy_custom_components",
-				"alloy_component_discovery_aws",
-				"alloy_component_loki_source_file",
-				"alloy_component_prometheus_scrape",
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := tagsForSelection(tc.selection)
-			if err != nil {
-				t.Fatalf("tagsForSelection() returned error: %v", err)
-			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Fatalf("tagsForSelection() = %#v; want %#v", got, tc.want)
-			}
-		})
-	}
-
-	t.Run("all", func(t *testing.T) {
-		got, err := tagsForSelection([]string{"all"})
-		if err != nil {
-			t.Fatalf("tagsForSelection(all) returned error: %v", err)
-		}
-		if got[0] != customBuildTag {
-			t.Fatalf("first tag = %q; want %q", got[0], customBuildTag)
-		}
-		if gotCount, wantCount := len(got), 185; gotCount != wantCount {
-			t.Fatalf("all emitted %d tags; want %d", gotCount, wantCount)
-		}
-		if !sort.StringsAreSorted(got[1:]) {
-			t.Fatalf("component tags are not sorted: %#v", got[1:])
-		}
-	})
-}
-
-func TestTagsForSelectionErrors(t *testing.T) {
-	tests := []struct {
-		name      string
-		selection []string
-		contains  string
-	}{
-		{name: "unknown", selection: []string{"does.not_exist"}, contains: "unknown Alloy component"},
-		{name: "duplicate", selection: []string{"discovery.aws", "discovery.aws"}, contains: "duplicate Alloy component"},
-		{name: "all mixed", selection: []string{"all", "discovery.aws"}, contains: `selector "all" cannot be combined`},
-		{name: "none mixed", selection: []string{"none", "discovery.aws"}, contains: `selector "none" cannot be combined`},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := tagsForSelection(tc.selection)
-			if err == nil {
-				t.Fatal("tagsForSelection() succeeded; want an error")
-			}
-			if !strings.Contains(err.Error(), tc.contains) {
-				t.Fatalf("error %q does not contain %q", err, tc.contains)
-			}
-		})
-	}
-}
-
-func TestRunTagsWithCommaSeparatedSelection(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	err := run([]string{
-		"tags",
-		"-components", "prometheus.scrape, discovery.aws",
-	}, &stdout, &stderr)
-	if err != nil {
-		t.Fatalf("run(tags) returned error: %v; stderr: %s", err, stderr.String())
-	}
-	want := "alloy_custom_components,alloy_component_discovery_aws,alloy_component_prometheus_scrape\n"
-	if got := stdout.String(); got != want {
-		t.Fatalf("stdout = %q; want %q", got, want)
-	}
-}
-
 func TestRenderCatalogIsDeterministic(t *testing.T) {
 	cat := loadTestCatalog(t)
 	first, err := renderCatalog(cat)
@@ -210,7 +69,7 @@ func TestRenderCatalogIsDeterministic(t *testing.T) {
 	if !reflect.DeepEqual(first, second) {
 		t.Fatal("renderCatalog produced different output across calls")
 	}
-	if got, want := len(first), 184; got != want {
+	if got, want := len(first), len(cat.Packages)+1; got != want {
 		t.Fatalf("renderCatalog produced %d files; want %d", got, want)
 	}
 
@@ -240,17 +99,6 @@ func TestRenderCatalogIsDeterministic(t *testing.T) {
 	}
 	if strings.Contains(remoteHTTP, "Register(") {
 		t.Fatal("remote.http selector must only blank-import the package")
-	}
-
-	makeCatalog := string(first[makeCatalogFile])
-	if !strings.Contains(makeCatalog, "ALLOY_CUSTOM_COMPONENTS_TAG := alloy_custom_components\n") {
-		t.Fatal("Make catalog is missing the custom-mode tag variable")
-	}
-	if !strings.Contains(makeCatalog, "ALLOY_COMPONENT_TAG_discovery_ec2 := alloy_component_discovery_ec2\n") {
-		t.Fatal("Make catalog is missing the explicit discovery.ec2 tag mapping")
-	}
-	if got, want := strings.Count(makeCatalog, "ALLOY_COMPONENT_TAG_"), 184; got != want {
-		t.Fatalf("Make catalog contains %d component tag mappings; want %d", got, want)
 	}
 }
 
@@ -308,19 +156,6 @@ func TestCheckedInGeneratedFilesAreCurrent(t *testing.T) {
 func loadTestCatalog(t *testing.T) catalog {
 	t.Helper()
 	return loadCatalog()
-}
-
-func assertPackageComponents(t *testing.T, cat catalog, importPath string, want []string) {
-	t.Helper()
-	for _, pkg := range cat.Packages {
-		if pkg.ImportPath == importPath {
-			if !reflect.DeepEqual(pkg.Components, want) {
-				t.Fatalf("components for %s = %#v; want %#v", importPath, pkg.Components, want)
-			}
-			return
-		}
-	}
-	t.Fatalf("catalog does not contain package %s", importPath)
 }
 
 func firstLine(value string) string {

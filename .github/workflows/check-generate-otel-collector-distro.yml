@@ -1,4 +1,4 @@
-name: Check generated build sources
+name: Check generate-otel-collector-distro
 permissions:
   contents: read
 on:

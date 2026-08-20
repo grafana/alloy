@@ -21,8 +21,6 @@ const (
 	buildPlanConfigEnv         = "ALLOY_BUILD_PLAN_CONFIG"
 	buildPlanOutputPathEnv     = "ALLOY_BUILD_PLAN_OUTPUT_PATH"
 	buildPlanBuildTagsEnv      = "ALLOY_BUILD_PLAN_TAGS"
-	buildPlanComponentModeEnv  = "ALLOY_BUILD_PLAN_COMPONENT_MODE"
-	buildPlanComponentsEnv     = "ALLOY_BUILD_PLAN_COMPONENTS"
 	buildPlanNeedsBeylaEnv     = "ALLOY_BUILD_PLAN_NEEDS_BEYLA"
 	buildPlanSkipGenerationEnv = "ALLOY_BUILD_PLAN_SKIP_GENERATION"
 
@@ -31,13 +29,11 @@ const (
 )
 
 type buildPlanOptions struct {
-	configPath      string
-	defaultConfig   string
-	repoRoot        string
-	buildTags       string
-	alloyComponents string
-	componentsSet   bool
-	skipGeneration  bool
+	configPath     string
+	defaultConfig  string
+	repoRoot       string
+	buildTags      string
+	skipGeneration bool
 }
 
 type nativeSelection struct {
@@ -100,8 +96,6 @@ func runBuildPlan(
 		buildPlanConfigEnv:         plan.configPath,
 		buildPlanOutputPathEnv:     plan.outputPath,
 		buildPlanBuildTagsEnv:      strings.Join(plan.buildTags, " "),
-		buildPlanComponentModeEnv:  plan.selection.mode,
-		buildPlanComponentsEnv:     strings.Join(plan.selection.components, ","),
 		buildPlanNeedsBeylaEnv:     strconv.FormatBool(plan.needsBeyla),
 		buildPlanSkipGenerationEnv: strconv.FormatBool(plan.skipGeneration),
 	})
@@ -145,34 +139,13 @@ func parseBuildPlanArguments(args []string) (buildPlanOptions, []string, error) 
 	flags.StringVar(&options.buildTags, "build-tags", "", "additional Go build tags")
 	flags.BoolVar(&options.skipGeneration, "skip-generation", false, "build checked-in generated collector sources")
 
-	componentValue := optionalStringValue{target: &options.alloyComponents}
-	flags.Var(&componentValue, "alloy-components", "legacy native component selector")
 	if err := flags.Parse(args[:separator]); err != nil {
 		return buildPlanOptions{}, nil, err
 	}
 	if len(flags.Args()) != 0 {
 		return buildPlanOptions{}, nil, fmt.Errorf("unexpected plan argument %q", flags.Args()[0])
 	}
-	options.componentsSet = componentValue.set
 	return options, args[separator+1:], nil
-}
-
-type optionalStringValue struct {
-	target *string
-	set    bool
-}
-
-func (value *optionalStringValue) String() string {
-	if value == nil || value.target == nil {
-		return ""
-	}
-	return *value.target
-}
-
-func (value *optionalStringValue) Set(input string) error {
-	*value.target = input
-	value.set = true
-	return nil
 }
 
 func prepareInTreeBuildPlan(options buildPlanOptions, environ []string) (preparedBuildPlan, error) {
@@ -207,9 +180,6 @@ func prepareInTreeBuildPlan(options buildPlanOptions, environ []string) (prepare
 	if err := validateMappingKeys(document, make(map[*yaml.Node]struct{})); err != nil {
 		return preparedBuildPlan{}, fmt.Errorf("validate builder manifest %q: %w", configPath, err)
 	}
-	if err := validateTopLevelKeys(root); err != nil {
-		return preparedBuildPlan{}, fmt.Errorf("validate builder manifest %q: %w", configPath, err)
-	}
 	if !samePath(configPath, defaultConfig) {
 		defaultRoot, err := readBuildManifestRoot(defaultConfig)
 		if err != nil {
@@ -229,17 +199,21 @@ func prepareInTreeBuildPlan(options buildPlanOptions, environ []string) (prepare
 		fileBuildTags = environmentBuildTags
 	}
 	baseTags := append(splitBuildTags(fileBuildTags), splitBuildTags(options.buildTags)...)
-	selection, effectiveTags, err := resolveNativeSelection(root, options, baseTags)
+	selection, effectiveTags, err := resolveNativeSelection(root, baseTags)
 	if err != nil {
 		return preparedBuildPlan{}, err
 	}
 
 	setManifestBuildTags(root, strings.Join(effectiveTags, ","))
 	removeMappingKey(root, "alloy_components")
+	replacementBase, err := replacementBasePath(root, repoRoot)
+	if err != nil {
+		return preparedBuildPlan{}, err
+	}
 	if err := setInTreeDistribution(root); err != nil {
 		return preparedBuildPlan{}, err
 	}
-	if err := setInTreeReplacements(root, repoRoot); err != nil {
+	if err := setInTreeReplacements(root, repoRoot, replacementBase); err != nil {
 		return preparedBuildPlan{}, err
 	}
 
@@ -285,127 +259,33 @@ func prepareInTreeBuildPlan(options buildPlanOptions, environ []string) (prepare
 	return plan, nil
 }
 
-func resolveNativeSelection(root *yaml.Node, options buildPlanOptions, baseTags []string) (nativeSelection, []string, error) {
+func resolveNativeSelection(root *yaml.Node, baseTags []string) (nativeSelection, []string, error) {
 	componentsNode, manifestSelection := mappingValue(root, "alloy_components")
-	if manifestSelection && options.componentsSet {
-		return nativeSelection{}, nil, errors.New("alloy_components in the builder manifest cannot be combined with ALLOY_COMPONENTS")
-	}
-
-	unrelatedTags, markerPresent, rawComponentTags, err := partitionBuildTags(baseTags)
+	unrelatedTags, err := validateBuildTagList(baseTags, "effective build tags")
 	if err != nil {
 		return nativeSelection{}, nil, err
 	}
-	selection := nativeSelection{mode: nativeModeFull, source: "implicit default"}
+	selection := nativeSelection{mode: nativeModeFull, source: "alloy_components omitted"}
 
-	if manifestSelection || options.componentsSet {
-		if markerPresent || len(rawComponentTags) > 0 {
-			return nativeSelection{}, nil, errors.New("native component tags cannot be combined with alloy_components or ALLOY_COMPONENTS")
+	if manifestSelection {
+		components, err := parseAlloyComponents(componentsNode)
+		if err != nil {
+			return nativeSelection{}, nil, fmt.Errorf("validate alloy_components: %w", err)
 		}
-
-		var components []string
-		if manifestSelection {
-			components, err = parseAlloyComponents(componentsNode)
-			if err != nil {
-				return nativeSelection{}, nil, fmt.Errorf("validate alloy_components: %w", err)
-			}
-			selection.mode = nativeModeCustom
-			selection.source = "builder manifest"
-		} else {
-			components, selection.mode, err = parseLegacyComponentSelector(options.alloyComponents)
-			if err != nil {
-				return nativeSelection{}, nil, fmt.Errorf("validate ALLOY_COMPONENTS: %w", err)
-			}
-			selection.source = "ALLOY_COMPONENTS compatibility override"
-		}
-
-		if selection.mode == nativeModeCustom {
-			componentTags, err := catalog.ResolveExact(components)
-			if err != nil {
-				return nativeSelection{}, nil, fmt.Errorf("validate native component selection: %w", err)
-			}
-			selection.components = append([]string(nil), components...)
-			sort.Strings(selection.components)
-			selection.buildTags = append([]string{catalog.CustomBuildTag}, componentTags...)
-		}
-	} else if markerPresent || len(rawComponentTags) > 0 {
-		if !markerPresent {
-			return nativeSelection{}, nil, fmt.Errorf("native component build tags require %s", catalog.CustomBuildTag)
+		componentTags, err := catalog.ResolveExact(components)
+		if err != nil {
+			return nativeSelection{}, nil, fmt.Errorf("validate native component selection: %w", err)
 		}
 		selection.mode = nativeModeCustom
-		selection.source = "GO_TAGS compatibility override"
-		selection.components = componentNamesForTags(rawComponentTags)
-		selection.buildTags = append([]string{catalog.CustomBuildTag}, rawComponentTags...)
+		selection.source = "builder manifest"
+		selection.components = append([]string(nil), components...)
+		sort.Strings(selection.components)
+		selection.buildTags = append([]string{catalog.CustomBuildTag}, componentTags...)
 	}
 
 	effectiveTags := append([]string(nil), unrelatedTags...)
 	effectiveTags = append(effectiveTags, selection.buildTags...)
 	return selection, effectiveTags, nil
-}
-
-func parseLegacyComponentSelector(value string) ([]string, string, error) {
-	components := splitBuildTags(value)
-	if len(components) == 0 {
-		return nil, "", errors.New("must be all, none, or a comma- or whitespace-separated component list")
-	}
-	if containsString(components, "all") {
-		if len(components) != 1 {
-			return nil, "", errors.New("selector all cannot be combined with other selectors")
-		}
-		return nil, nativeModeFull, nil
-	}
-	if containsString(components, "none") {
-		if len(components) != 1 {
-			return nil, "", errors.New("selector none cannot be combined with other selectors")
-		}
-		return nil, nativeModeCustom, nil
-	}
-	return components, nativeModeCustom, nil
-}
-
-func partitionBuildTags(tags []string) ([]string, bool, []string, error) {
-	knownComponentTags := make(map[string]struct{})
-	for _, name := range catalog.Names() {
-		tag, ok := catalog.TagForName(name)
-		if ok {
-			knownComponentTags[tag] = struct{}{}
-		}
-	}
-
-	unrelated := make([]string, 0, len(tags))
-	componentTags := make([]string, 0)
-	seen := make(map[string]struct{}, len(tags))
-	markerPresent := false
-	for _, tag := range tags {
-		if _, exists := seen[tag]; exists {
-			continue
-		}
-		seen[tag] = struct{}{}
-		switch {
-		case tag == catalog.CustomBuildTag:
-			markerPresent = true
-		case strings.HasPrefix(tag, "alloy_component_"):
-			if _, known := knownComponentTags[tag]; !known {
-				return nil, false, nil, fmt.Errorf("unknown native component build tag %q", tag)
-			}
-			componentTags = append(componentTags, tag)
-		default:
-			unrelated = append(unrelated, tag)
-		}
-	}
-	sort.Strings(componentTags)
-	return unrelated, markerPresent, componentTags, nil
-}
-
-func componentNamesForTags(tags []string) []string {
-	names := make([]string, 0, len(tags))
-	for _, name := range catalog.Names() {
-		tag, ok := catalog.TagForName(name)
-		if ok && containsString(tags, tag) {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	return names
 }
 
 func setInTreeDistribution(root *yaml.Node) error {
@@ -446,7 +326,31 @@ func setMappingString(mapping *yaml.Node, name, value string) {
 	node.Value = value
 }
 
-func setInTreeReplacements(root *yaml.Node, repoRoot string) error {
+func replacementBasePath(root *yaml.Node, repoRoot string) (string, error) {
+	distribution, found := mappingValue(root, "dist")
+	if !found {
+		return repoRoot, nil
+	}
+	if distribution.Kind != yaml.MappingNode {
+		return "", errors.New("dist must be a mapping")
+	}
+	outputPath, found := mappingValue(distribution, "output_path")
+	if !found {
+		return repoRoot, nil
+	}
+	if outputPath.Kind != yaml.ScalarNode || outputPath.Tag != yamlStringTag {
+		return "", errors.New("dist.output_path must be a string")
+	}
+	if outputPath.Value == "" {
+		return repoRoot, nil
+	}
+	if filepath.IsAbs(outputPath.Value) {
+		return filepath.Clean(outputPath.Value), nil
+	}
+	return filepath.Clean(filepath.Join(repoRoot, outputPath.Value)), nil
+}
+
+func setInTreeReplacements(root *yaml.Node, repoRoot, replacementBase string) error {
 	replacements, found := mappingValue(root, "replaces")
 	if !found {
 		replacements = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
@@ -472,15 +376,17 @@ func setInTreeReplacements(root *yaml.Node, repoRoot string) error {
 		if _, managed := modules[module]; managed {
 			continue
 		}
+		rebased, err := rebaseLocalReplacement(replacement.Value, replacementBase)
+		if err != nil {
+			return err
+		}
+		replacement.Value = rebased
 		preserved = append(preserved, replacement)
 	}
 	replacements.Content = preserved
 
 	for _, module := range []string{"github.com/grafana/alloy", "github.com/grafana/alloy/syntax"} {
-		target := filepath.ToSlash(modules[module])
-		if strings.ContainsAny(target, " \t") {
-			target = strconv.Quote(target)
-		}
+		target := formatReplacementPath(modules[module])
 		replacements.Content = append(replacements.Content, &yaml.Node{
 			Kind:  yaml.ScalarNode,
 			Tag:   yamlStringTag,
@@ -488,6 +394,48 @@ func setInTreeReplacements(root *yaml.Node, repoRoot string) error {
 		})
 	}
 	return nil
+}
+
+func rebaseLocalReplacement(value, base string) (string, error) {
+	left, right, found := strings.Cut(value, "=>")
+	if !found {
+		return value, nil
+	}
+	right = strings.TrimSpace(right)
+	path := right
+	if strings.HasPrefix(right, `"`) {
+		unquoted, err := strconv.Unquote(right)
+		if err != nil {
+			return value, nil
+		}
+		path = unquoted
+	} else if len(strings.Fields(right)) != 1 {
+		// A module replacement has both a module path and a version.
+		return value, nil
+	}
+	if !isLocalReplacementPath(path) || filepath.IsAbs(path) {
+		return value, nil
+	}
+	absolute, err := filepath.Abs(filepath.Join(base, path))
+	if err != nil {
+		return "", fmt.Errorf("resolve local replacement %q: %w", path, err)
+	}
+	return strings.TrimSpace(left) + " => " + formatReplacementPath(absolute), nil
+}
+
+func isLocalReplacementPath(path string) bool {
+	return path == "." || path == ".." ||
+		strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") ||
+		strings.HasPrefix(path, `.\`) || strings.HasPrefix(path, `..\`) ||
+		filepath.IsAbs(path)
+}
+
+func formatReplacementPath(path string) string {
+	path = filepath.ToSlash(path)
+	if strings.ContainsAny(path, " \t") {
+		return strconv.Quote(path)
+	}
+	return path
 }
 
 func readBuildManifestRoot(filename string) (*yaml.Node, error) {
@@ -594,8 +542,6 @@ func setEnvironmentValues(environ []string, values map[string]string) []string {
 		buildPlanConfigEnv,
 		buildPlanOutputPathEnv,
 		buildPlanBuildTagsEnv,
-		buildPlanComponentModeEnv,
-		buildPlanComponentsEnv,
 		buildPlanNeedsBeylaEnv,
 		buildPlanSkipGenerationEnv,
 	} {

@@ -23,21 +23,6 @@ const (
 	yamlStringTag     = "!!str"
 )
 
-var allowedTopLevelKeys = map[string]struct{}{
-	"alloy_components": {},
-	"conf_resolver":    {},
-	"connectors":       {},
-	"converters":       {},
-	"dist":             {},
-	"excludes":         {},
-	"exporters":        {},
-	"extensions":       {},
-	"processors":       {},
-	"providers":        {},
-	"receivers":        {},
-	"replaces":         {},
-}
-
 type delegateInvocation struct {
 	Name   string
 	Args   []string
@@ -214,24 +199,6 @@ func parseArguments(args []string) (argumentPlan, error) {
 				inline: true,
 			}
 
-		case arg == "-c":
-			plan.delegateArgs = append(plan.delegateArgs, "--config")
-			if i+1 < len(args) {
-				i++
-				plan.delegateArgs = append(plan.delegateArgs, args[i])
-				plan.config = &configArgument{path: args[i], index: len(plan.delegateArgs) - 1}
-			}
-
-		case strings.HasPrefix(arg, "-c="):
-			path := strings.TrimPrefix(arg, "-c=")
-			plan.delegateArgs = append(plan.delegateArgs, "--config="+path)
-			plan.config = &configArgument{path: path, index: len(plan.delegateArgs) - 1, inline: true}
-
-		case strings.HasPrefix(arg, "-c") && len(arg) > len("-c"):
-			path := strings.TrimPrefix(arg, "-c")
-			plan.delegateArgs = append(plan.delegateArgs, "--config="+path)
-			plan.config = &configArgument{path: path, index: len(plan.delegateArgs) - 1, inline: true}
-
 		case arg == "--ldflags" || arg == "--gcflags" || arg == "--output-path":
 			plan.delegateArgs = append(plan.delegateArgs, arg)
 			if i+1 < len(args) {
@@ -307,17 +274,16 @@ func prepareManifest(filename string, environ []string) (manifestResult, error) 
 		return manifestResult{}, fmt.Errorf("parse OCB manifest %q: %w", filename, err)
 	}
 	root := documentMapping(document)
-	if root == nil || !mappingHasKey(root, "alloy_components") {
+	if root == nil {
+		return manifestResult{environ: environ}, nil
+	}
+	if !mappingHasKey(root, "alloy_components") {
 		return manifestResult{environ: environ}, nil
 	}
 
 	if err := validateMappingKeys(document, make(map[*yaml.Node]struct{})); err != nil {
 		return manifestResult{}, fmt.Errorf("validate OCB manifest %q: %w", filename, err)
 	}
-	if err := validateTopLevelKeys(root); err != nil {
-		return manifestResult{}, fmt.Errorf("validate OCB manifest %q: %w", filename, err)
-	}
-
 	componentsNode, _ := mappingValue(root, "alloy_components")
 	components, err := parseAlloyComponents(componentsNode)
 	if err != nil {
@@ -448,16 +414,6 @@ func validateMappingKeys(node *yaml.Node, visited map[*yaml.Node]struct{}) error
 	return nil
 }
 
-func validateTopLevelKeys(root *yaml.Node) error {
-	for i := 0; i < len(root.Content); i += 2 {
-		key := root.Content[i].Value
-		if _, allowed := allowedTopLevelKeys[key]; !allowed {
-			return fmt.Errorf("unknown top-level key %q", key)
-		}
-	}
-	return nil
-}
-
 func mappingHasKey(mapping *yaml.Node, name string) bool {
 	_, found := mappingValue(mapping, name)
 	return found
@@ -523,14 +479,14 @@ func manifestBuildTags(root *yaml.Node) (string, error) {
 		return "", nil
 	}
 	if distribution.Kind != yaml.MappingNode {
-		return "", errors.New("dist must be a mapping when alloy_components is set")
+		return "", errors.New("dist must be a mapping")
 	}
 	buildTags, found := mappingValue(distribution, "build_tags")
 	if !found {
 		return "", nil
 	}
 	if buildTags.Kind != yaml.ScalarNode || buildTags.Tag != yamlStringTag {
-		return "", errors.New("dist.build_tags must be a string when alloy_components is set")
+		return "", errors.New("dist.build_tags must be a string")
 	}
 	return buildTags.Value, nil
 }
@@ -559,12 +515,15 @@ func setManifestBuildTags(root *yaml.Node, value string) {
 }
 
 func validateUnrelatedBuildTags(value string) ([]string, error) {
-	tags := splitBuildTags(value)
+	return validateBuildTagList(splitBuildTags(value), "dist.build_tags")
+}
+
+func validateBuildTagList(tags []string, source string) ([]string, error) {
 	unique := make([]string, 0, len(tags))
 	seen := make(map[string]struct{}, len(tags))
 	for _, tag := range tags {
 		if tag == catalog.CustomBuildTag || strings.HasPrefix(tag, "alloy_component_") {
-			return nil, fmt.Errorf("dist.build_tags contains reserved Alloy build tag %q; configure native components with alloy_components instead", tag)
+			return nil, fmt.Errorf("%s contains reserved Alloy build tag %q; configure native components with alloy_components instead", source, tag)
 		}
 		if _, exists := seen[tag]; exists {
 			continue

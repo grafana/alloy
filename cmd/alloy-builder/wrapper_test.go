@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"slices"
 	"strings"
 	"testing"
 
@@ -17,7 +16,7 @@ import (
 )
 
 const alloyEngineExtensionYAML = `extensions:
-  - gomod: github.com/grafana/alloy v1.18.0
+  - gomod: github.com/grafana/alloy v0.0.0
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
 `
@@ -139,9 +138,6 @@ func TestConfigArgumentFormsRewritePrivateTemporaryManifest(t *testing.T) {
 	}{
 		{name: "long separate", args: func(path string) []string { return []string{"--config", path} }},
 		{name: "long inline", args: func(path string) []string { return []string{"--config=" + path} }},
-		{name: "short separate", args: func(path string) []string { return []string{"-c", path} }},
-		{name: "short equals", args: func(path string) []string { return []string{"-c=" + path} }},
-		{name: "short compact", args: func(path string) []string { return []string{"-c" + path} }},
 	}
 
 	for _, test := range tests {
@@ -183,9 +179,6 @@ dist:
 			}
 			if _, err := os.Stat(temporaryPath); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("temporary manifest was not removed: %v", err)
-			}
-			if slices.Contains(fake.invocation.Args, "-c") {
-				t.Fatalf("short config flag was not normalized for stock OCB: %#v", fake.invocation.Args)
 			}
 			assertRewrittenManifest(t, rewritten, "gore2regex,nodocker,alloy_custom_components,alloy_component_loki_write,alloy_component_prometheus_scrape")
 			if !bytes.Contains(rewritten, []byte("# keep this comment")) {
@@ -311,7 +304,6 @@ func TestManifestValidationErrorsDoNotDelegate(t *testing.T) {
 		{name: "reserved marker", manifest: "dist: {build_tags: alloy_custom_components}\n" + alloyEngineExtensionYAML + validSelection, wantMessage: "reserved Alloy build tag"},
 		{name: "reserved component tag", manifest: "dist: {build_tags: alloy_component_loki_write}\n" + alloyEngineExtensionYAML + validSelection, wantMessage: "reserved Alloy build tag"},
 		{name: "reserved environment tag", manifest: alloyEngineExtensionYAML + validSelection, environ: []string{"dist.build_tags=alloy_custom_components"}, wantMessage: "reserved Alloy build tag"},
-		{name: "unknown top-level key", manifest: "future_key: []\n" + alloyEngineExtensionYAML + validSelection, wantMessage: "unknown top-level key \"future_key\""},
 		{name: "duplicate top-level key", manifest: alloyEngineExtensionYAML + validSelection + "alloy_components: []\n", wantMessage: "duplicate mapping key \"alloy_components\""},
 		{name: "duplicate nested key", manifest: "dist:\n  build_tags: one\n  build_tags: two\n" + alloyEngineExtensionYAML + validSelection, wantMessage: "duplicate mapping key \"build_tags\""},
 		{name: "alias", manifest: "receivers: &shared []\nprocessors: *shared\n" + alloyEngineExtensionYAML + validSelection, wantMessage: "YAML aliases are not supported"},

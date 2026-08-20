@@ -76,7 +76,6 @@
 ##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
 ##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
 ##   ALLOY_BUILDER_CONFIG Builder manifest used by `make alloy` (default collector/builder-config.yaml).
-##   ALLOY_COMPONENTS     Compatibility override for manifests without alloy_components; use `none` for no native components.
 ##   SERVICE_BINARY       Output path of `make alloy-service` (default build/alloy-service)
 ##   GOOS                 Override OS to build binaries for
 ##   GOARCH               Override target architecture to build binaries for
@@ -146,7 +145,7 @@ GOLANGCI_LINT_BINARY ?= $(or \
 PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED CGO_LDFLAGS RELEASE_BUILD \
-    ALLOY_BINARY ALLOY_BUILDER_CONFIG ALLOY_COMPONENTS \
+    ALLOY_BINARY ALLOY_BUILDER_CONFIG \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
     SKIP_CODE_GENERATION \
 
@@ -233,7 +232,7 @@ test:
 .PHONY: test-alloy-builder-external
 test-alloy-builder-external:
 	@set -eu; \
-		external_build="$(CURDIR)/collector/testdata/external/_build"; \
+		external_build="$(CURDIR)/build/test-alloy-builder-external"; \
 		if [ -e "$$external_build" ] || [ -L "$$external_build" ]; then \
 			echo "external builder test output already exists: $$external_build"; \
 			exit 1; \
@@ -259,76 +258,9 @@ test-alloy-builder: test-alloy-builder-external
 	@set -eu; \
 		tmp_dir="$$(mktemp -d)"; \
 		trap 'rm -rf "$$tmp_dir"' EXIT; \
-		ALLOY_BUILDER_CAPTURE_ARGS="$$tmp_dir/canonical-args" \
-		ALLOY_BUILDER_CAPTURE_CONFIG="$$tmp_dir/canonical-builder-config.yaml" \
-		ALLOY_BUILDER_CAPTURE_BUILD_TAGS_ENV="$$tmp_dir/canonical-dist-build-tags-env" \
-		$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-			--ocb ./collector/testdata/external/fake-ocb.sh \
-			--ocb-version="$(BUILDER_VERSION)" \
-			--config ./collector/builder-config.yaml \
-			--skip-compilation; \
-		grep -Fqx -- './collector/builder-config.yaml' "$$tmp_dir/canonical-args"; \
-		grep -Fqx -- '--skip-compilation' "$$tmp_dir/canonical-args"; \
-		if grep -q -- '--ocb-version' "$$tmp_dir/canonical-args"; then \
-			echo "alloy-builder delegated its wrapper-only OCB version flag"; \
-			exit 1; \
-		fi; \
-		cmp -s ./collector/builder-config.yaml "$$tmp_dir/canonical-builder-config.yaml"; \
-		ALLOY_BUILDER_CAPTURE_ARGS="$$tmp_dir/args" \
-		ALLOY_BUILDER_CAPTURE_CONFIG="$$tmp_dir/builder-config.yaml" \
-		ALLOY_BUILDER_CAPTURE_BUILD_TAGS_ENV="$$tmp_dir/dist-build-tags-env" \
-		$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-			--ocb ./collector/testdata/external/fake-ocb.sh \
-			--config ./collector/testdata/external/minimal-builder-config.yaml \
-			--skip-get-modules; \
-		grep -Fqx -- '--skip-get-modules' "$$tmp_dir/args"; \
-		grep -Fqx -- '<unset>' "$$tmp_dir/dist-build-tags-env"; \
-		if grep -Fqx -- './collector/testdata/external/minimal-builder-config.yaml' "$$tmp_dir/args"; then \
-			echo "alloy-builder delegated the original manifest instead of its sanitized manifest"; \
-			exit 1; \
-		fi; \
-		if grep -q '^[[:space:]]*alloy_components:' "$$tmp_dir/builder-config.yaml"; then \
-			echo "sanitized OCB manifest still contains alloy_components"; \
-			exit 1; \
-		fi; \
-		build_tags="$$(awk '/^[[:space:]]*build_tags:/ { sub(/^[[:space:]]*build_tags:[[:space:]]*/, ""); gsub(/"/, ""); print; exit }' "$$tmp_dir/builder-config.yaml")"; \
-		for tag in fixture_user_tag alloy_custom_components alloy_component_loki_write alloy_component_remote_http; do \
-			case ",$$build_tags," in \
-				*,"$$tag",*) ;; \
-				*) echo "sanitized OCB manifest is missing build tag $$tag: $$build_tags"; exit 1 ;; \
-			esac; \
-		done; \
-		case "$$build_tags" in \
-			*.*) echo "sanitized OCB build tags contain an unsanitized component name: $$build_tags"; exit 1 ;; \
-		esac; \
-		ALLOY_BUILDER_CAPTURE_ARGS="$$tmp_dir/env-args" \
-		ALLOY_BUILDER_CAPTURE_CONFIG="$$tmp_dir/env-builder-config.yaml" \
-		ALLOY_BUILDER_CAPTURE_BUILD_TAGS_ENV="$$tmp_dir/env-dist-build-tags" \
-		env 'dist.build_tags=fixture_environment_tag' \
-			$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-				--ocb ./collector/testdata/external/fake-ocb.sh \
-				--config ./collector/testdata/external/minimal-builder-config.yaml \
-				--skip-get-modules; \
-		grep -Fqx -- '<unset>' "$$tmp_dir/env-dist-build-tags"; \
-		grep -q -- 'build_tags: fixture_environment_tag,alloy_custom_components' "$$tmp_dir/env-builder-config.yaml"; \
-		if ALLOY_BUILDER_CAPTURE_ARGS="$$tmp_dir/skip-args" \
-			ALLOY_BUILDER_CAPTURE_CONFIG="$$tmp_dir/skip-config.yaml" \
-			ALLOY_BUILDER_CAPTURE_BUILD_TAGS_ENV="$$tmp_dir/skip-dist-build-tags-env" \
-			$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-				--ocb ./collector/testdata/external/fake-ocb.sh \
-				--config ./collector/testdata/external/minimal-builder-config.yaml \
-				--skip-compilation >"$$tmp_dir/skip.out" 2>&1; then \
-			echo "alloy-builder accepted alloy_components with generation-only mode"; \
-			exit 1; \
-		fi; \
-		grep -q -- '--skip-compilation' "$$tmp_dir/skip.out"; \
-		if [ -e "$$tmp_dir/skip-args" ]; then \
-			echo "alloy-builder delegated an ineffective generation-only selection"; \
-			exit 1; \
-		fi; \
 		$(MAKE) --no-print-directory alloy \
 			USE_CONTAINER=0 SKIP_UI_BUILD=1 CGO_ENABLED=0 \
-			ALLOY_COMPONENTS= GO_TAGS= \
+			GO_TAGS= \
 			ALLOY_BINARY="$$tmp_dir/alloy" \
 			ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml; \
 		"$$tmp_dir/alloy" validate internal/component/all/testdata/logs-selected.alloy; \
@@ -345,17 +277,11 @@ test-lightweight-components: test-alloy-builder
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components,alloy_component_database_observability_mysql" ./internal/component/all
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components,alloy_component_loki_source_podlogs" ./internal/component/all
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components,alloy_component_pyroscope_scrape" ./internal/component/all
-	$(GO_ENV) go test -tags="gore2regex,alloy_component_local_file" ./internal/component/all
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components" ./internal/converter
 	$(GO_ENV) go test -run TestCustomBuildRootCommands -tags="gore2regex,alloy_custom_components" ./internal/alloycli
 	$(GO_ENV) go test -run TestCustomBuildOmitsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components" ./internal/component/remote/http
 	$(GO_ENV) go test -run TestCustomBuildSelectsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components,alloy_component_remote_http" ./internal/component/remote/http
-	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'ALLOY_BUILDER_CONFIG=collector/builder-config.yaml'
-	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'ALLOY_COMPONENTS=remote.http'
-	@if $(MAKE) -n alloy USE_CONTAINER=1 ALLOY_COMPONENTS=remote.http SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 | grep -q 'GO_TAGS=.*alloy_custom_components'; then \
-		echo "container handoff resolved native tags before reading the builder manifest"; \
-		exit 1; \
-	fi
+	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml SKIP_UI_BUILD=1 | grep -q 'ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml'
 
 .PHONY: govulncheck
 # Thin Go wrapper around govulncheck: streams the tool's native text output
@@ -456,7 +382,7 @@ else
 		--default-config "$(CURDIR)/collector/builder-config.yaml" \
 		--repo-root "$(CURDIR)" \
 		--build-tags "$(GO_TAGS)" \
-		$(if $(strip $(ALLOY_COMPONENTS)),--alloy-components "$(ALLOY_COMPONENTS)",) $(if $(filter 1,$(SKIP_CODE_GENERATION)),--skip-generation,) \
+		$(if $(filter 1,$(SKIP_CODE_GENERATION)),--skip-generation,) \
 		-- $(MAKE) --no-print-directory _alloy-from-builder-manifest \
 			USE_CONTAINER=0 \
 			GOOS="$(GOOS)" GOARCH="$(GOARCH)" GOARM="$(GOARM)" \
@@ -702,7 +628,6 @@ info:
 	@printf "BUILD_IMAGE         = $(BUILD_IMAGE)\n"
 	@printf "ALLOY_BINARY        = $(ALLOY_BINARY)\n"
 	@printf "ALLOY_BUILDER_CONFIG = $(ALLOY_BUILDER_CONFIG)\n"
-	@printf "ALLOY_COMPONENTS    = $(ALLOY_COMPONENTS)\n"
 	@printf "GOOS                = $(GOOS)\n"
 	@printf "GOARCH              = $(GOARCH)\n"
 	@printf "GOARM               = $(GOARM)\n"

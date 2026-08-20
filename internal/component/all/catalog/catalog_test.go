@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -12,13 +11,6 @@ func TestInventory(t *testing.T) {
 	if got, want := len(entries), 182; got != want {
 		t.Fatalf("Entries() returned %d packages; want %d", got, want)
 	}
-	if got, want := len(Names()), 184; got != want {
-		t.Fatalf("Names() returned %d component names; want %d", got, want)
-	}
-	if !sort.StringsAreSorted(Names()) {
-		t.Fatal("Names() is not sorted")
-	}
-
 	var aws []string
 	for _, entry := range entries {
 		if entry.ImportPath == "github.com/grafana/alloy/internal/component/discovery/aws" {
@@ -40,13 +32,6 @@ func TestAccessorsReturnCopies(t *testing.T) {
 	entries[0].Components[0] = "changed"
 	if got := Entries()[0]; got.ImportPath != originalPath || got.Components[0] != originalName {
 		t.Fatalf("mutating Entries() result changed the catalog: %#v", got)
-	}
-
-	names := Names()
-	originalName = names[0]
-	names[0] = "changed"
-	if got := Names()[0]; got != originalName {
-		t.Fatalf("mutating Names() result changed the catalog: got %q, want %q", got, originalName)
 	}
 }
 

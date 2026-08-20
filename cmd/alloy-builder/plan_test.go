@@ -20,7 +20,6 @@ func TestParseBuildPlanArguments(t *testing.T) {
 		"--default-config=default.yaml",
 		"--repo-root", "/repo",
 		"--build-tags", "one two",
-		"--alloy-components=none",
 		"--skip-generation",
 		"--", "make", "target", "FLAG=value",
 	})
@@ -30,7 +29,7 @@ func TestParseBuildPlanArguments(t *testing.T) {
 	if options.configPath != "custom.yaml" || options.defaultConfig != "default.yaml" || options.repoRoot != "/repo" {
 		t.Fatalf("unexpected paths: %#v", options)
 	}
-	if options.buildTags != "one two" || options.alloyComponents != "none" || !options.componentsSet || !options.skipGeneration {
+	if options.buildTags != "one two" || !options.skipGeneration {
 		t.Fatalf("unexpected build options: %#v", options)
 	}
 	if !reflect.DeepEqual(command, []string{"make", "target", "FLAG=value"}) {
@@ -70,7 +69,7 @@ replaces:
 		}
 	})
 
-	if plan.selection.mode != "full" || plan.selection.source != "implicit default" || !plan.needsBeyla {
+	if plan.selection.mode != "full" || plan.selection.source != "alloy_components omitted" || !plan.needsBeyla {
 		t.Fatalf("unexpected selection: %#v, needsBeyla=%t", plan.selection, plan.needsBeyla)
 	}
 	if want := []string{"environment_tag", "caller_tag", "second_tag"}; !reflect.DeepEqual(plan.buildTags, want) {
@@ -190,6 +189,37 @@ excludes:
 	}
 }
 
+func TestPrepareInTreeBuildPlanRebasesRelativeLocalReplacements(t *testing.T) {
+	repoRoot := t.TempDir()
+	manifest := writeBuildPlanManifest(t, repoRoot, `dist:
+  output_path: ./original-output
+replaces:
+  - example.com/local => ../local-module
+  - example.com/remote => example.com/fork v1.2.3
+`)
+	plan, err := prepareInTreeBuildPlan(buildPlanOptions{
+		configPath:    manifest,
+		defaultConfig: manifest,
+		repoRoot:      repoRoot,
+	}, nil)
+	if err != nil {
+		t.Fatalf("prepareInTreeBuildPlan() error: %v", err)
+	}
+	defer func() { _ = plan.cleanup() }()
+
+	data, err := os.ReadFile(plan.configPath)
+	if err != nil {
+		t.Fatalf("read rewritten manifest: %v", err)
+	}
+	document, err := decodeYAMLDocument(data)
+	if err != nil {
+		t.Fatalf("decode rewritten manifest: %v", err)
+	}
+	root := documentMapping(document)
+	assertReplacement(t, root, "example.com/local", filepath.ToSlash(filepath.Join(repoRoot, "local-module")))
+	assertReplacement(t, root, "example.com/remote", "example.com/fork v1.2.3")
+}
+
 func TestPrepareInTreeBuildPlanSkipGenerationUsesCheckedInCollector(t *testing.T) {
 	repoRoot := t.TempDir()
 	manifest := writeBuildPlanManifest(t, repoRoot, "alloy_components: []\n")
@@ -214,82 +244,7 @@ func TestPrepareInTreeBuildPlanSkipGenerationUsesCheckedInCollector(t *testing.T
 	}
 }
 
-func TestPrepareInTreeBuildPlanSupportsCompatibilitySelectors(t *testing.T) {
-	tests := []struct {
-		name           string
-		selector       string
-		selectorSet    bool
-		buildTags      string
-		wantMode       string
-		wantComponents []string
-		wantTags       []string
-		wantBeyla      bool
-	}{
-		{
-			name:        "all",
-			selector:    "all",
-			selectorSet: true,
-			wantMode:    "full",
-			wantBeyla:   true,
-		},
-		{
-			name:        "none",
-			selector:    "none",
-			selectorSet: true,
-			wantMode:    "custom",
-			wantTags:    []string{catalog.CustomBuildTag},
-		},
-		{
-			name:           "component list",
-			selector:       "remote.http, loki.write",
-			selectorSet:    true,
-			wantMode:       "custom",
-			wantComponents: []string{"loki.write", "remote.http"},
-			wantTags: []string{
-				catalog.CustomBuildTag,
-				"alloy_component_loki_write",
-				"alloy_component_remote_http",
-			},
-		},
-		{
-			name:           "raw build tags",
-			buildTags:      "gore2regex alloy_custom_components alloy_component_remote_http",
-			wantMode:       "custom",
-			wantComponents: []string{"remote.http"},
-			wantTags:       []string{"gore2regex", catalog.CustomBuildTag, "alloy_component_remote_http"},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			repoRoot := t.TempDir()
-			manifest := writeBuildPlanManifest(t, repoRoot, "dist: {}\n")
-			plan, err := prepareInTreeBuildPlan(buildPlanOptions{
-				configPath:      manifest,
-				defaultConfig:   manifest,
-				repoRoot:        repoRoot,
-				buildTags:       test.buildTags,
-				alloyComponents: test.selector,
-				componentsSet:   test.selectorSet,
-			}, nil)
-			if err != nil {
-				t.Fatalf("prepareInTreeBuildPlan() error: %v", err)
-			}
-			defer func() { _ = plan.cleanup() }()
-			if plan.selection.mode != test.wantMode || !reflect.DeepEqual(plan.selection.components, test.wantComponents) {
-				t.Fatalf("selection = %#v", plan.selection)
-			}
-			if !reflect.DeepEqual(plan.buildTags, test.wantTags) {
-				t.Fatalf("build tags = %#v, want %#v", plan.buildTags, test.wantTags)
-			}
-			if plan.needsBeyla != test.wantBeyla {
-				t.Fatalf("needsBeyla = %t, want %t", plan.needsBeyla, test.wantBeyla)
-			}
-		})
-	}
-}
-
-func TestPrepareInTreeBuildPlanRejectsConflicts(t *testing.T) {
+func TestPrepareInTreeBuildPlanRejectsInvalidInputs(t *testing.T) {
 	tests := []struct {
 		name        string
 		manifest    string
@@ -297,34 +252,21 @@ func TestPrepareInTreeBuildPlanRejectsConflicts(t *testing.T) {
 		wantMessage string
 	}{
 		{
-			name:        "manifest and compatibility selector",
+			name:        "reserved marker tag",
 			manifest:    "alloy_components: [remote.http]\n",
-			options:     buildPlanOptions{alloyComponents: "remote.http", componentsSet: true},
-			wantMessage: "cannot be combined",
+			options:     buildPlanOptions{buildTags: "alloy_custom_components"},
+			wantMessage: "reserved Alloy build tag",
 		},
 		{
-			name:        "manifest and raw selector tags",
-			manifest:    "alloy_components: [remote.http]\n",
-			options:     buildPlanOptions{buildTags: "alloy_custom_components alloy_component_remote_http"},
-			wantMessage: "native component tags cannot be combined",
-		},
-		{
-			name:        "component tag without marker",
+			name:        "reserved component tag",
 			manifest:    "dist: {}\n",
 			options:     buildPlanOptions{buildTags: "alloy_component_remote_http"},
-			wantMessage: "require alloy_custom_components",
+			wantMessage: "configure native components with alloy_components",
 		},
 		{
-			name:        "unknown raw component tag",
-			manifest:    "dist: {}\n",
-			options:     buildPlanOptions{buildTags: "alloy_custom_components alloy_component_not_real"},
-			wantMessage: "unknown native component build tag",
-		},
-		{
-			name:        "mixed all selector",
-			manifest:    "dist: {}\n",
-			options:     buildPlanOptions{alloyComponents: "all remote.http", componentsSet: true},
-			wantMessage: "all cannot be combined",
+			name:        "invalid output path",
+			manifest:    "dist: {output_path: []}\n",
+			wantMessage: "dist.output_path must be a string",
 		},
 	}
 
@@ -372,9 +314,6 @@ func TestRunBuildPlanDelegatesWithPlanEnvironmentAndCleansUp(t *testing.T) {
 		}
 		if got := environmentValue(t, invocation.Env, buildPlanBuildTagsEnv); got != "gore2regex alloy_custom_components alloy_component_remote_http" {
 			t.Fatalf("plan tags = %q", got)
-		}
-		if got := environmentValue(t, invocation.Env, buildPlanComponentsEnv); got != "remote.http" {
-			t.Fatalf("plan components = %q", got)
 		}
 		if _, err := os.Stat(delegatedConfig); err != nil {
 			t.Fatalf("temporary manifest unavailable during delegation: %v", err)
