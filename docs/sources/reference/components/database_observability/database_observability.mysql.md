@@ -6,6 +6,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-07-30
 ---
 
 # `database_observability.mysql`
@@ -35,7 +36,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
+| `allow_update_performance_schema_settings` | `bool`               | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
 
@@ -216,7 +217,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | Name               | Type       | Description                                                 | Default | Required |
 |--------------------|------------|-------------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database.        | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
+| `cache_enabled`    | `bool`     | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
 | `cache_size`       | `integer`  | Deprecated. Cache size.                                     | `256`   | no       |
 | `cache_ttl`        | `duration` | Deprecated. Cache TTL.                                      | `"10m"` | no       |
 
@@ -243,17 +244,17 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
 | `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
 | `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text (including query parameters) and query error messages. | `false` | no       |
-| `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
+| `auto_enable_setup_consumers`    | `bool`     | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
-| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events` | `bool`    | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
 ### `setup_actors`
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `auto_update_setup_actors` | `boolean`  | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
+| `auto_update_setup_actors` | `bool`     | Enables updates to `performance_schema.setup_actors` settings. You must also enable `allow_update_performance_schema_settings`.| `false` | no       |
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 
@@ -270,75 +271,26 @@ The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components.
+
+| Name      | Type                | Description                                                                         |
+|-----------|---------------------|-------------------------------------------------------------------------------------|
+| `targets` | `list(map(string))` | The targets that can be used to collect metrics of instrumented services with Prometheus scraping. |
+
 ## Example
 
 ```alloy
-database_observability.mysql "orders_db" {
-  data_source_name = "user:pass@tcp(mysql:3306)/"
-  forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
+database_observability.mysql "<LABEL>" {
+  data_source_name = "<DATA_SOURCE_NAME>"
+  forward_to       = [loki.relabel.<LABEL>.receiver]
 
   enable_collectors = ["query_samples", "explain_plans"]
 
   cloud_provider {
     aws {
-      arn = "your-rds-db-arn"
-    }
-  }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
-}
-
-loki.relabel "orders_db" {
-  forward_to = [loki.write.logs_service.receiver]
-  rule {
-    target_label = "job"
-    replacement  = "integrations/db-o11y"
-  }
-  rule {
-    target_label = "instance"
-    replacement  = "orders_db"
-  }
-}
-
-discovery.relabel "orders_db" {
-  targets = database_observability.mysql.orders_db.targets
-
-  rule {
-    target_label = "job"
-    replacement  = "integrations/db-o11y"
-  }
-  rule {
-    target_label = "instance"
-    replacement  = "orders_db"
-  }
-}
-
-prometheus.scrape "orders_db" {
-  targets    = discovery.relabel.orders_db.targets
-  job_name   = "integrations/db-o11y"
-  forward_to = [prometheus.remote_write.metrics_service.receiver]
-}
-
-prometheus.remote_write "metrics_service" {
-  endpoint {
-    url = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_URL>")
-    basic_auth {
-      username = sys.env("<GRAFANA_CLOUD_HOSTED_METRICS_ID>")
-      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
-    }
-  }
-}
-
-loki.write "logs_service" {
-  endpoint {
-    url = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_URL>")
-    basic_auth {
-      username = sys.env("<GRAFANA_CLOUD_HOSTED_LOGS_ID>")
-      password = sys.env("<GRAFANA_CLOUD_RW_API_KEY>")
+      arn = "<AWS_RDS_ARN>"
     }
   }
 }
@@ -346,11 +298,11 @@ loki.write "logs_service" {
 
 Replace the following:
 
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_URL>`_: The URL for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_HOSTED_METRICS_ID>`_: The user ID for your Grafana Cloud hosted metrics.
-* _`<GRAFANA_CLOUD_RW_API_KEY>`_: Your Grafana Cloud API key.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_URL>`_: The URL for your Grafana Cloud hosted logs.
-* _`<GRAFANA_CLOUD_HOSTED_LOGS_ID>`_: The user ID for your Grafana Cloud hosted logs.
+* _`<LABEL>`_: The Alloy component label (for example, `prod_mysql`).
+* _`<DATA_SOURCE_NAME>`_: The MySQL connection [Data Source Name] (for example, `user:pass@tcp(mysql:3306)/`).
+* _`<AWS_RDS_ARN>`_: The ARN of your AWS RDS database (for example, `arn:aws:rds:us-east-1:123456789:db/prod-mysql`).
+
+For a complete end-to-end example that demonstrates sending database observability metrics to Grafana Cloud, refer to [Collect MySQL database metrics and logs](../../../../collect/mysql-database-metrics/).
 
 [Data Source Name]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
 
