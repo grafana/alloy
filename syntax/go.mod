@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/syntax
 
-go 1.26.6
+go 1.26.7
 
 require (
 	github.com/blang/semver/v4 v4.0.0
