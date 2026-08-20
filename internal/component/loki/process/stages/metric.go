@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"math"
@@ -36,8 +37,14 @@ type cfgCollector struct {
 	collector prometheus.Collector
 }
 
+var (
+	_ Stage          = (*metricStage)(nil)
+	_ entryProcessor = (*metricStage)(nil)
+	_ stopper        = (*metricStage)(nil)
+)
+
 // newMetricStage creates a new set of metrics to process for each log entry
-func newMetricStage(logger *slog.Logger, config MetricsConfig, registry prometheus.Registerer) (Stage, error) {
+func newMetricStage(logger *slog.Logger, config MetricsConfig, registry prometheus.Registerer, next NextFn) (*metricStage, error) {
 	metrics := map[string]cfgCollector{}
 	for _, cfg := range config.Metrics {
 		var collector prometheus.Collector
@@ -91,6 +98,7 @@ func newMetricStage(logger *slog.Logger, config MetricsConfig, registry promethe
 		}
 	}
 	return &metricStage{
+		next:    next,
 		logger:  logger.With("stage", "metrics"),
 		metrics: metrics,
 	}, nil
@@ -98,55 +106,56 @@ func newMetricStage(logger *slog.Logger, config MetricsConfig, registry promethe
 
 // metricStage creates and updates prometheus metrics based on extracted pipeline data
 type metricStage struct {
+	next    NextFn
 	logger  *slog.Logger
 	metrics map[string]cfgCollector
 }
 
+// Run implements Stage
 func (m *metricStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-
-		for e := range in {
-			m.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-			out <- e
-		}
-	}()
-	return out
+	return RunWith(in, func(e Entry) Entry {
+		m.processEntry(e)
+		return e
+	})
 }
 
-// Process implements Stage
-func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _ *time.Time, entry *string) {
+// process implements stage.
+func (m *metricStage) process(ctx context.Context, entries []Entry) error {
+	for _, e := range entries {
+		m.processEntry(e)
+	}
+	return m.next(ctx, entries)
+}
+
+func (m *metricStage) processEntry(e Entry) {
 	for name, cc := range m.metrics {
 		// There is a special case for counters where we count even if there is no match in the extracted map.
 		if c, ok := cc.collector.(*metric.Counters); ok {
 			if c != nil && c.Cfg.MatchAll {
 				if c.Cfg.CountEntryBytes {
-					if entry != nil {
-						m.recordCounter(name, c, labels, len(*entry))
-					}
+					m.recordCounter(name, c, e.Labels, len(e.Line))
 				} else {
-					m.recordCounter(name, c, labels, nil)
+					m.recordCounter(name, c, e.Labels, nil)
 				}
 				continue
 			}
 		}
 		switch {
 		case cc.cfg.Counter != nil:
-			if v, ok := extracted[cc.cfg.Counter.Source]; ok {
-				m.recordCounter(name, cc.collector.(*metric.Counters), labels, v)
+			if v, ok := e.Extracted[cc.cfg.Counter.Source]; ok {
+				m.recordCounter(name, cc.collector.(*metric.Counters), e.Labels, v)
 			} else {
 				m.logger.Debug("source does not exist", "source", cc.cfg.Counter.Source)
 			}
 		case cc.cfg.Gauge != nil:
-			if v, ok := extracted[cc.cfg.Gauge.Source]; ok {
-				m.recordGauge(name, cc.collector.(*metric.Gauges), labels, v)
+			if v, ok := e.Extracted[cc.cfg.Gauge.Source]; ok {
+				m.recordGauge(name, cc.collector.(*metric.Gauges), e.Labels, v)
 			} else {
 				m.logger.Debug("source does not exist", "source", cc.cfg.Gauge.Source)
 			}
 		case cc.cfg.Histogram != nil:
-			if v, ok := extracted[cc.cfg.Histogram.Source]; ok {
-				m.recordHistogram(name, cc.collector.(*metric.Histograms), labels, v)
+			if v, ok := e.Extracted[cc.cfg.Histogram.Source]; ok {
+				m.recordHistogram(name, cc.collector.(*metric.Histograms), e.Labels, v)
 			} else {
 				m.logger.Debug("source does not exist", "source", cc.cfg.Histogram.Source)
 			}
@@ -154,8 +163,8 @@ func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _
 	}
 }
 
-// Cleanup implements Stage.
-func (m *metricStage) Cleanup() {
+// stop implements stopper.
+func (m *metricStage) stop() {
 	for _, cfgCollector := range m.metrics {
 		switch vec := cfgCollector.collector.(type) {
 		case *metric.Counters:
@@ -166,6 +175,11 @@ func (m *metricStage) Cleanup() {
 			vec.DeleteAll()
 		}
 	}
+}
+
+// Cleanup implements Stage.
+func (m *metricStage) Cleanup() {
+	m.stop()
 }
 
 // recordCounter will update a counter metric
