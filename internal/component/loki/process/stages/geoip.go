@@ -106,7 +106,7 @@ var (
 	_ stopper        = (*geoIPStage)(nil)
 )
 
-func newGeoIPStage(logger *slog.Logger, config GeoIPConfig, next NextFn) (Stage, error) {
+func newGeoIPStage(logger *slog.Logger, config GeoIPConfig, next NextFn) (*geoIPStage, error) {
 	valuesExpressions, err := validateGeoIPConfig(config)
 	if err != nil {
 		return nil, err

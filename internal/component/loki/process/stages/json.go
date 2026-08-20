@@ -70,7 +70,7 @@ var (
 )
 
 // newJSONStage creates a new json pipeline stage from a config.
-func newJSONStage(logger *slog.Logger, cfg JSONConfig, next NextFn) (Stage, error) {
+func newJSONStage(logger *slog.Logger, cfg JSONConfig, next NextFn) (*jsonStage, error) {
 	expressions, regex, err := validateJSONConfig(&cfg)
 
 	if err != nil {

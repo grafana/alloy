@@ -87,7 +87,7 @@ var (
 )
 
 // newDropStage creates a DropStage from config
-func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.Registerer, next NextFn) (Stage, error) {
+func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.Registerer, next NextFn) (*dropStage, error) {
 	regex, err := validateDropConfig(&config)
 	if err != nil {
 		return nil, err

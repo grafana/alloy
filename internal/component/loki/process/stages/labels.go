@@ -68,7 +68,7 @@ var (
 )
 
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(logger *slog.Logger, configs LabelsConfig, next NextFn) (Stage, error) {
+func newLabelStage(logger *slog.Logger, configs LabelsConfig, next NextFn) (*labelStage, error) {
 	labelsConfig, err := validateLabelsConfig(&configs)
 	if err != nil {
 		return nil, err
