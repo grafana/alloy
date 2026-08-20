@@ -63,7 +63,9 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 }
 
 type entryCheckFNs struct {
-	timestamp func(expected, actual time.Time) bool
+	timestamp          func(expected, actual time.Time) bool
+	extracted          func(expected, actual map[string]any) bool
+	structuredMetadata func(expected, actual push.LabelsAdapter) bool
 }
 
 // runPipelineTest builds a pipeline for cfgs using both the old and new
@@ -233,8 +235,15 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks
 		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
 			return false
 		}
-		if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
-			return false
+
+		if checks.extracted != nil {
+			if !checks.extracted(expected.Extracted, actual.Extracted) {
+				return false
+			}
+		} else {
+			if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
+				return false
+			}
 		}
 
 		var (
@@ -253,6 +262,9 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks
 		sortLabelAdapters(expectedStructured)
 		sortLabelAdapters(actualStructured)
 
+		if checks.structuredMetadata != nil {
+			return checks.structuredMetadata(expectedStructured, actualStructured)
+		}
 		return reflect.DeepEqual(expectedStructured, actualStructured)
 	}
 
