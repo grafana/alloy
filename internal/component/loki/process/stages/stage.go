@@ -177,7 +177,7 @@ func newStageWithNextFn(
 	case cfg.EventLogMessageConfig != nil:
 		s = newEventLogMessageStage(slogger, cfg.EventLogMessageConfig, next)
 	case cfg.WindowsEventConfig != nil:
-		s = newWindowsEventStage(slogger, cfg.WindowsEventConfig)
+		s = newWindowsEventStage(slogger, cfg.WindowsEventConfig, next)
 	case cfg.PatternConfig != nil:
 		s, err = newPatternStage(slogger, *cfg.PatternConfig, next)
 		if err != nil {

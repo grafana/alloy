@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -33,17 +34,15 @@ func (e *WindowsEventConfig) SetToDefault() {
 	e.Source = defaultWindowsEventSource
 }
 
-type WindowsEventStage struct {
-	cfg    *WindowsEventConfig
-	logger *slog.Logger
+var (
+	_ Stage          = (*windowsEventStage)(nil)
+	_ entryProcessor = (*windowsEventStage)(nil)
+)
 
-	keyReplacer   *strings.Replacer
-	valueReplacer *strings.Replacer
-}
-
-// Create a windowsevent stage, including validating any supplied configuration
-func newWindowsEventStage(logger *slog.Logger, cfg *WindowsEventConfig) Stage {
-	return &WindowsEventStage{
+// Create a windowsevent stage.
+func newWindowsEventStage(logger *slog.Logger, cfg *WindowsEventConfig, next NextFn) *windowsEventStage {
+	return &windowsEventStage{
+		next:          next,
 		cfg:           cfg,
 		logger:        logger.With("stage", "windowsevent"),
 		keyReplacer:   strings.NewReplacer("\t", "", "\r", "", "\n", "", " ", ""),
@@ -51,13 +50,21 @@ func newWindowsEventStage(logger *slog.Logger, cfg *WindowsEventConfig) Stage {
 	}
 }
 
-func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
+type windowsEventStage struct {
+	next   NextFn
+	cfg    *WindowsEventConfig
+	logger *slog.Logger
+
+	keyReplacer   *strings.Replacer
+	valueReplacer *strings.Replacer
+}
+
+func (w *windowsEventStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
-	key := w.cfg.Source
 	go func() {
 		defer close(out)
 		for e := range in {
-			err := w.processEntry(e.Extracted, key)
+			e, err := w.processEntry(e)
 			if err != nil {
 				continue
 			}
@@ -67,20 +74,40 @@ func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
+// process implements stage.
+func (w *windowsEventStage) process(ctx context.Context, entries []Entry) error {
+	var dst int
+
+	for _, e := range entries {
+		e, err := w.processEntry(e)
+		if err != nil {
+			continue
+		}
+		entries[dst] = e
+		dst++
+	}
+
+	if dst == 0 {
+		return nil
+	}
+
+	return w.next(ctx, entries[:dst])
+}
+
 // Process a windows event message from extracted with the specified key, adding additional
 // entries into the extracted map.
-func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) error {
-	value, ok := extracted[key]
+func (w *windowsEventStage) processEntry(e Entry) (Entry, error) {
+	value, ok := e.Extracted[w.cfg.Source]
 	if !ok {
 		if debugEnabled(w.logger) {
-			w.logger.Debug("source not in the extracted values", "source", key)
+			w.logger.Debug("source not in the extracted values", "source", w.cfg.Source)
 		}
-		return nil
+		return e, nil
 	}
 	s, err := getString(value)
 	if err != nil {
 		w.logger.Warn("invalid label value parsed", "value", value)
-		return err
+		return e, err
 	}
 
 	// Messages are expected to have sections that are split by empty lines.
@@ -88,7 +115,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) e
 	for i, section := range sections {
 		// The first section is extracted as the description of the message.
 		if i == 0 {
-			ek, err := w.sanitizeKey(descriptionLabel, extracted)
+			ek, err := w.sanitizeKey(descriptionLabel, e.Extracted)
 			if err != nil {
 				w.logParseErr(err)
 				continue
@@ -98,7 +125,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) e
 				w.logParseErr(err)
 				continue
 			}
-			extracted[ek] = ev
+			e.Extracted[ek] = ev
 			continue
 		}
 
@@ -143,7 +170,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) e
 				ek = keyPrefix + "_" + ek
 			}
 
-			sanitizedKey, err := w.sanitizeKey(ek, extracted)
+			sanitizedKey, err := w.sanitizeKey(ek, e.Extracted)
 			if err != nil {
 				w.logParseErr(err)
 				continue
@@ -154,16 +181,16 @@ func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) e
 				w.logParseErr(err)
 				continue
 			}
-			extracted[sanitizedKey] = sanitizedValue
+			e.Extracted[sanitizedKey] = sanitizedValue
 		}
 	}
 	if debugEnabled(w.logger) {
-		w.logger.Debug("extracted data debug in windowsevent stage", "extracted_data", extracted)
+		w.logger.Debug("extracted data debug in windowsevent stage", "extracted_data", e.Extracted)
 	}
-	return nil
+	return e, nil
 }
 
-func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]any) (string, error) {
+func (w *windowsEventStage) sanitizeKey(ekey string, extracted map[string]any) (string, error) {
 	k := w.keyReplacer.Replace(ekey)
 	// TODO: add support for different validation schemes.
 	//nolint:staticcheck
@@ -180,7 +207,7 @@ func (w *WindowsEventStage) sanitizeKey(ekey string, extracted map[string]any) (
 	return k, nil
 }
 
-func (w *WindowsEventStage) sanitizeValue(evalue string) (string, error) {
+func (w *windowsEventStage) sanitizeValue(evalue string) (string, error) {
 	v := strings.TrimSpace(w.valueReplacer.Replace(evalue))
 	if !model.LabelValue(v).IsValid() {
 		return "", fmt.Errorf("invalid value parsed from message, value: %s", v)
@@ -188,13 +215,13 @@ func (w *WindowsEventStage) sanitizeValue(evalue string) (string, error) {
 	return v, nil
 }
 
-func (w *WindowsEventStage) logParseErr(err error) {
+func (w *windowsEventStage) logParseErr(err error) {
 	if debugEnabled(w.logger) {
 		w.logger.Debug(err.Error())
 	}
 }
 
 // Cleanup implements Stage.
-func (*WindowsEventStage) Cleanup() {
+func (*windowsEventStage) Cleanup() {
 	// no-op
 }
