@@ -127,7 +127,7 @@ func TestConvertConfig(t *testing.T) {
 	}
 
 	res := args.Convert()
-	require.Equal(t, "modules.yml", res.SnmpConfigFile)
+	require.Equal(t, []string{"modules.yml"}, res.SnmpConfigFiles)
 	require.Equal(t, 1, len(res.SnmpTargets))
 	require.Equal(t, "network_switch_1", res.SnmpTargets[0].Name)
 }
@@ -141,7 +141,7 @@ func TestConfigLabels(t *testing.T) {
 	}
 
 	res := args.Convert()
-	require.Equal(t, "modules.yml", res.SnmpConfigFile)
+	require.Equal(t, []string{"modules.yml"}, res.SnmpConfigFiles)
 	require.Equal(t, 1, len(res.SnmpTargets))
 	require.Equal(t, "network_switch_1", res.SnmpTargets[0].Name)
 	require.Equal(t, res.SnmpTargets[0].Labels["env"], "dev")
@@ -457,7 +457,15 @@ func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 				auth = "public_v2"
 			}
 			`,
-			`config and config_file are mutually exclusive`,
+			`config and config_files are mutually exclusive`,
+		},
+		{
+			"Define config_file and config_files",
+			`
+				config_file = "config.yaml"
+				config_files = ["config1.yaml", "config2.yaml"]
+				`,
+			`config_files and config_file are mutually exclusive`,
 		},
 	}
 	for _, tt := range tests {
