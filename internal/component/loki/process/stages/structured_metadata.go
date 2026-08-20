@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -40,9 +41,16 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	return ret, nil
 }
 
-func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataConfig) (Stage, error) {
-	var validatedLabelsConfig map[string]string
-	var err error
+var (
+	_ Stage          = (*structuredMetadataStage)(nil)
+	_ entryProcessor = (*structuredMetadataStage)(nil)
+)
+
+func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (Stage, error) {
+	var (
+		err                   error
+		validatedLabelsConfig map[string]string
+	)
 
 	if len(configs.Values) > 0 {
 		validatedLabelsConfig, err = validateStructuredMetadataConfig(configs.Values)
@@ -56,54 +64,67 @@ func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataC
 		return nil, err
 	}
 	return &structuredMetadataStage{
+		next:         opts.next,
 		labelsConfig: validatedLabelsConfig,
 		regex:        *re,
-		logger:       logger.With("stage", "structured_metadata"),
+		logger:       opts.slogger.With("stage", "structured_metadata"),
 	}, nil
 }
 
 type structuredMetadataStage struct {
+	next         nextFn
 	labelsConfig map[string]string
 	regex        regexp.Regexp
 	logger       *slog.Logger
 }
 
-// Cleanup implements Stage.
-func (*structuredMetadataStage) Cleanup() {
-	// no-op
-}
-
+// Run implements Stage.
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
-		appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
-			metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
-
-			i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
-				return label.Name == metadata.Name
-			})
-			if i != -1 {
-				e.StructuredMetadata[i] = metadata
-				return
-			}
-
-			e.StructuredMetadata = append(e.StructuredMetadata, metadata)
-		}
-
-		// Try to add structured metadata from extracted map using labelsConfig.
-		processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
-
-		// Try to add structured metadata from extracted map using regex.
-		processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
-
-		// Try to add structured metadata from labels using labelsConfig.
-		processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
-
-		// Try to add structured metadata from labels using regex.
-		processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
-
-		return e
+		return s.processEntry(e)
 	})
 }
+
+// process implements stage.
+func (s *structuredMetadataStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = s.processEntry(entries[i])
+	}
+	return s.next(ctx, entries)
+}
+
+func (s *structuredMetadataStage) processEntry(e Entry) Entry {
+	appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
+		metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
+
+		i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
+			return label.Name == metadata.Name
+		})
+		if i != -1 {
+			e.StructuredMetadata[i] = metadata
+			return
+		}
+
+		e.StructuredMetadata = append(e.StructuredMetadata, metadata)
+	}
+
+	// Try to add structured metadata from extracted map using labelsConfig.
+	processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
+
+	// Try to add structured metadata from extracted map using regex.
+	processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
+
+	// Try to add structured metadata from labels using labelsConfig.
+	processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
+
+	// Try to add structured metadata from labels using regex.
+	processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+
+	return e
+}
+
+// Cleanup implements Stage.
+func (*structuredMetadataStage) Cleanup() {}
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 

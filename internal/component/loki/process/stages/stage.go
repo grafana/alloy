@@ -92,7 +92,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.StructuredMetadata != nil:
-		s, err = newStructuredMetadataStage(opts.slogger, *cfg.StructuredMetadata)
+		s, err = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
 		if err != nil {
 			return nil, err
 		}
