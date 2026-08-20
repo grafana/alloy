@@ -88,6 +88,14 @@ case "$TARGET_CONTAINER" in
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
       docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
+
+      # Surface the pushed digest so the signing workflow can sign it by digest
+      # (see sign-and-attest.yml). Only this repo is pushed, so the local
+      # image's RepoDigests has a single entry.
+      if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        DIGEST_REF=$(docker inspect --format '{{index .RepoDigests 0}}' "$RELEASE_ALLOY_IMAGE:$VERSION_TAG")
+        echo "image=$DIGEST_REF" >> "$GITHUB_OUTPUT"
+      fi
     fi
     ;;
 
