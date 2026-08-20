@@ -39,7 +39,7 @@ var (
 )
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
-func newLuhnFilterStage(config LuhnFilterConfig, next NextFn) (Stage, error) {
+func newLuhnFilterStage(config LuhnFilterConfig, next NextFn) (*luhnFilterStage, error) {
 	if err := validateLuhnFilterConfig(&config); err != nil {
 		return nil, err
 	}

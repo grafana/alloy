@@ -118,7 +118,7 @@ var (
 )
 
 // newPackStage creates a PackStage from config
-func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.Registerer, next NextFn) (Stage, error) {
+func newPackStage(logger *slog.Logger, config PackConfig, registerer prometheus.Registerer, next NextFn) (*packStage, error) {
 	dropCount, err := getDropCountMetric(registerer)
 	if err != nil {
 		return nil, err
