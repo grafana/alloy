@@ -79,7 +79,7 @@ func TestLabelKeepStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, []StageConfig{{LabelKeepConfig: &tt.cfg}}, tt.entries, tt.expected, "")
+			runPipelineTest(t, []StageConfig{{LabelKeepConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }

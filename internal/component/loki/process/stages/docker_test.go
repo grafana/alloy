@@ -80,7 +80,7 @@ func TestDockerStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, []StageConfig{{DockerConfig: &DockerConfig{}}}, tt.entries, tt.expected, "")
+			runPipelineTest(t, []StageConfig{{DockerConfig: &DockerConfig{}}}, tt.entries, tt.expected)
 		})
 	}
 }

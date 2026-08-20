@@ -197,7 +197,7 @@ func TestWindowsEventStage(t *testing.T) {
 				tt.expected.Extracted[defaultWindowsEventSource] = tt.entry.Extracted[defaultWindowsEventSource]
 			}
 
-			runPipelineTest(t, loadConfig(tt.config), []Entry{tt.entry}, []Entry{tt.expected}, "")
+			runPipelineTest(t, loadConfig(tt.config), []Entry{tt.entry}, []Entry{tt.expected})
 		})
 	}
 }
