@@ -38,7 +38,7 @@ var (
 	_ entryProcessor = (*eventLogMessageStage)(nil)
 )
 
-func newEventLogMessageStage(cfg *EventLogMessageConfig, opts stageOpts) Stage {
+func newEventLogMessageStage(cfg *EventLogMessageConfig, opts stageOpts) *eventLogMessageStage {
 	return &eventLogMessageStage{
 		next:   opts.next,
 		cfg:    cfg,
