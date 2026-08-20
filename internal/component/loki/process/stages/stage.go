@@ -137,7 +137,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LimitConfig != nil:
-		s, err = newLimitStage(opts.slogger, *cfg.LimitConfig, opts.registerer)
+		s, err = newLimitStage(*cfg.LimitConfig, opts)
 		if err != nil {
 			return nil, err
 		}
