@@ -79,7 +79,7 @@ var (
 	_ Stage = (*criStage)(nil)
 
 	_ stage   = (*criStage)(nil)
-	_ cleaner = (*criStage)(nil)
+	_ stopper = (*criStage)(nil)
 )
 
 type criStage struct {
@@ -183,7 +183,7 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// cleanup implements stage and is only used by our new pipeline.
+// process implements stage and is only used by our new pipeline.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	c.mut.Lock()
 
@@ -285,8 +285,8 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
-// cleanup implements cleaner and is only used by our new pipeline.
-func (c *criStage) cleanup() {
+// stop implements stopper and is only used by our new pipeline.
+func (c *criStage) stop() {
 	c.mut.Lock()
 	out := make([]Entry, 0, len(c.partialLines))
 	for _, e := range c.partialLines {
@@ -303,7 +303,7 @@ func (c *criStage) cleanup() {
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 	if err := c.next(ctx, out); err != nil {
-		c.logger.Error("failed to flush held partial lines on cleanup", "err", err)
+		c.logger.Error("failed to flush held partial lines on stop", "err", err)
 	}
 }
 

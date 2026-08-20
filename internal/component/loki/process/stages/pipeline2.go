@@ -22,8 +22,8 @@ type stage interface {
 	process(ctx context.Context, entries []Entry) error
 }
 
-type cleaner interface {
-	cleanup()
+type stopper interface {
+	stop()
 }
 
 var _ stage = (*Pipeline2)(nil)
@@ -115,13 +115,13 @@ func (p *Pipeline2) process(ctx context.Context, entries []Entry) error {
 	return p.next(ctx, entries)
 }
 
-func (p *Pipeline2) Cleanup() {
+func (p *Pipeline2) Stop() {
 	// stages is stored in the reverse of its config order, so iterate
-	// backwards to clean up in the original, upstream-first order.
+	// backwards to stop in the original, upstream-first order.
 	for _, s := range slices.Backward(p.stages) {
-		c, ok := s.(cleaner)
+		c, ok := s.(stopper)
 		if ok {
-			c.cleanup()
+			c.stop()
 		}
 	}
 }

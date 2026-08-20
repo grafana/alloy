@@ -119,7 +119,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		require.NoError(t, err)
 
 		p.process(context.Background(), entries)
-		p.Cleanup()
+		p.Stop()
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			assertEntriesUnordered(c, expected, collected)
@@ -176,7 +176,7 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 
 		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(b, err)
-		defer p.Cleanup()
+		defer p.Stop()
 
 		b.ResetTimer()
 		b.ReportAllocs()
