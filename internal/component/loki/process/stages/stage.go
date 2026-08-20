@@ -186,7 +186,7 @@ func newStageWithOpts(
 	case cfg.EventLogMessageConfig != nil:
 		s = newEventLogMessageStage(cfg.EventLogMessageConfig, opts)
 	case cfg.WindowsEventConfig != nil:
-		s = newWindowsEventStage(opts.slogger, cfg.WindowsEventConfig)
+		s = newWindowsEventStage(cfg.WindowsEventConfig, opts)
 	case cfg.PatternConfig != nil:
 		s, err = newPatternStage(*cfg.PatternConfig, opts)
 		if err != nil {
