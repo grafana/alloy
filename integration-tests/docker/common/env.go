@@ -6,5 +6,4 @@ var (
 
 	// Environment variables which adjust the test behavior are prefixed with TEST_
 	TestStatefulEnv = "TEST_STATEFUL"
-	TestTimeout     = "TEST_TIMEOUT"
 )
