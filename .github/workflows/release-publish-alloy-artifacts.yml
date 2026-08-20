@@ -41,6 +41,7 @@ jobs:
           echo "  - Publish Linux container images"
           echo "  - Publish Windows container image"
           echo "  - Build and sign Windows executables and installer"
+          echo "  - Generate SPDX SBOM for dist artifacts"
           echo "  - Upload release artifacts to GitHub"
           echo "  - Submit WinGet manifest"
           echo "::error::Set dry_run to false to publish."
@@ -278,6 +279,13 @@ jobs:
       run: make dist-alloy-mixin-zip
       env:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
+
+    # SPDX SBOM for release assets (https://github.com/grafana/alloy/issues/4307)
+    - name: Install syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+          | sh -s -- -b /usr/local/bin v1.27.1
+        syft version
 
     - name: Publish release artifacts
       run: ./scripts/publish-release-artifacts.sh
