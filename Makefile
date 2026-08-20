@@ -257,7 +257,7 @@ integration-test-k8s-local-dev:
 .PHONY: integration-test-windows-service
 integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
-		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
+		$(GO_HOST_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
