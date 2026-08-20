@@ -278,7 +278,7 @@ func TestPackStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, []StageConfig{{PackConfig: &tt.cfg}}, tt.entries, tt.expected, "", tt.check)
+			runPipelineTest(t, []StageConfig{{PackConfig: &tt.cfg}}, tt.entries, tt.expected, tt.check)
 		})
 	}
 }

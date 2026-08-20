@@ -235,7 +235,7 @@ func TestLogfmtStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, "")
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }

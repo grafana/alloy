@@ -82,7 +82,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(opts.slogger, *cfg.MetricsConfig, opts.registerer)
+		s, err = newMetricStage(*cfg.MetricsConfig, opts)
 		if err != nil {
 			return nil, err
 		}

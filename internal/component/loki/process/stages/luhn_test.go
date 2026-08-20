@@ -418,7 +418,7 @@ func TestLuhnFilterStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, []StageConfig{{LuhnFilterConfig: &tt.cfg}}, tt.entries, tt.expected, "")
+			runPipelineTest(t, []StageConfig{{LuhnFilterConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }

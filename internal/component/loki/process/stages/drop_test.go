@@ -200,7 +200,7 @@ func TestDropStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, []StageConfig{{DropConfig: &tt.cfg}}, tt.entries, tt.expected, "")
+			runPipelineTest(t, []StageConfig{{DropConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }
