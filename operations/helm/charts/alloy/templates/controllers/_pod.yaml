@@ -10,7 +10,7 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
   labels:
-    {{- include "alloy.selectorLabels" . | nindent 4 }}
+    {{- include "alloy.labels" . | nindent 4 }}
     {{- with .Values.controller.podLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
