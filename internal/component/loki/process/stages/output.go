@@ -29,7 +29,7 @@ var (
 )
 
 // newOutputStage creates a new outputStage
-func newOutputStage(logger *slog.Logger, config OutputConfig, next NextFn) (Stage, error) {
+func newOutputStage(logger *slog.Logger, config OutputConfig, next NextFn) (*outputStage, error) {
 	if err := validateOutputConfig(config); err != nil {
 		return nil, err
 	}

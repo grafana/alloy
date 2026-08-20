@@ -46,7 +46,7 @@ var (
 	_ stage = (*structuredMetadataStage)(nil)
 )
 
-func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataConfig, next NextFn) (Stage, error) {
+func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataConfig, next NextFn) (*structuredMetadataStage, error) {
 	var (
 		err                   error
 		validatedLabelsConfig map[string]string

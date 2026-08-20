@@ -56,7 +56,7 @@ var (
 )
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(logger *slog.Logger, config PatternConfig, next NextFn) (Stage, error) {
+func newPatternStage(logger *slog.Logger, config PatternConfig, next NextFn) (*patternStage, error) {
 	matcher, err := validatePatternConfig(config)
 	if err != nil {
 		return nil, err

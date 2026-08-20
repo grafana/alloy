@@ -58,7 +58,7 @@ var (
 )
 
 // newLogfmtStage creates a new logfmt pipeline stage from a config.
-func newLogfmtStage(logger *slog.Logger, config LogfmtConfig, next NextFn) (Stage, error) {
+func newLogfmtStage(logger *slog.Logger, config LogfmtConfig, next NextFn) (*logfmtStage, error) {
 	// inverseMapping would hold the mapping in inverse which would make lookup easier.
 	// To explain it simply, the key would be the key from parsed logfmt and value would be the key with which the data in extracted map would be set.
 	inverseMapping, regex, err := validateLogfmtConfig(&config)
