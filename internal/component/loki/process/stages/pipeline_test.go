@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,17 +62,21 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 }
 
 type entryCheckFNs struct {
-	timestamp          func(expected, actual time.Time) bool
-	extracted          func(expected, actual map[string]any) bool
-	structuredMetadata func(expected, actual push.LabelsAdapter) bool
+	metrics             func(reg *prometheus.Registry) error
+	metricsAfterCleanup func(reg *prometheus.Registry) error
+	timestamp           func(expected, actual time.Time) bool
+	extracted           func(expected, actual map[string]any) bool
+	structuredMetadata  func(expected, actual push.LabelsAdapter) bool
 }
 
 // runPipelineTest builds a pipeline for cfgs using both the old and new
 // pipeline implementations, runs entries through each, and asserts the
-// result matches expected. expectedMetrics is optional: pass "" to skip
-// checking metrics, or a Prometheus exposition-format string (as consumed
-// by testutil.GatherAndCompare) to assert against each run's own registry.
-func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string, checks ...entryCheckFNs) {
+// result matches expected. checks is optional and lets a caller override how
+// individual fields are compared.
+// metrics checks the registry once entries have been processed, and
+// metricsAfterCleanup checks it again after the pipeline's Cleanup() has run.
+// Both are skipped when nil.
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, checks ...entryCheckFNs) {
 	var check entryCheckFNs
 	if len(checks) > 0 {
 		check = checks[0]
@@ -106,8 +109,6 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		registry := prometheus.NewRegistry()
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
-		defer p.Cleanup()
-		defer p.Stop()
 
 		out := p.Run(withInboundEntries(cloned...))
 		var collected []Entry
@@ -116,8 +117,14 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		}
 
 		assertEntriesUnordered(t, expected, collected, check)
-		if expectedMetrics != "" {
-			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+		if check.metrics != nil {
+			require.NoError(t, check.metrics(registry))
+		}
+
+		p.Stop()
+		p.Cleanup()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
 		}
 	})
 
@@ -131,16 +138,20 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 		p, err := NewPipeline2(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
-		defer p.Stop()
 
 		p.process(context.Background(), entries)
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			assertEntriesUnordered(c, expected, collected, check)
-			if expectedMetrics != "" {
-				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+			if check.metrics != nil {
+				require.NoError(c, check.metrics(registry))
 			}
 		}, 2*time.Second, 100*time.Millisecond)
+
+		p.Stop()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
+		}
 	})
 }
 

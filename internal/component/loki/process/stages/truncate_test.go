@@ -1,9 +1,12 @@
 package stages
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -272,7 +275,9 @@ loki_process_truncated_fields_total{field="structured_metadata"} 2
 				expectedMetrics = truncateMetricsHeader + expectedMetrics
 			}
 
-			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, expectedMetrics)
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, entryCheckFNs{metrics: func(reg *prometheus.Registry) error {
+				return testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics))
+			}})
 		})
 	}
 }

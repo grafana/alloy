@@ -73,7 +73,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(slogger, *cfg.MetricsConfig, registerer)
+		s, err = newMetricStage(slogger, *cfg.MetricsConfig, registerer, next)
 		if err != nil {
 			return nil, err
 		}
