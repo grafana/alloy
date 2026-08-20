@@ -21,7 +21,7 @@ var (
 	_ entryProcessor = (*staticLabelStage)(nil)
 )
 
-func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) (Stage, error) {
+func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) (*staticLabelStage, error) {
 	err := validateLabelStaticConfig(config)
 	if err != nil {
 		return nil, err

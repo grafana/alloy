@@ -46,7 +46,7 @@ var (
 	_ entryProcessor = (*structuredMetadataStage)(nil)
 )
 
-func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (Stage, error) {
+func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (*structuredMetadataStage, error) {
 	var (
 		err                   error
 		validatedLabelsConfig map[string]string

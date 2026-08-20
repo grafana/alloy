@@ -56,7 +56,7 @@ var (
 )
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(config PatternConfig, opts stageOpts) (Stage, error) {
+func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error) {
 	matcher, err := validatePatternConfig(config)
 	if err != nil {
 		return nil, err
