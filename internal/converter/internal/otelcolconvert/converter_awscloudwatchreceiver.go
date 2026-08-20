@@ -43,6 +43,7 @@ func (awsCloudWatchReceiverConverter) ConvertAndAppend(state *State, id componen
 }
 
 func toAwsCloudWatchReceiver(state *State, id componentstatus.InstanceID, cfg *awscloudwatchreceiver.Config) *awscloudwatch.Arguments {
+	nextMetrics := state.Next(id, pipeline.SignalMetrics)
 	nextLogs := state.Next(id, pipeline.SignalLogs)
 
 	return &awscloudwatch.Arguments{
@@ -50,9 +51,11 @@ func toAwsCloudWatchReceiver(state *State, id componentstatus.InstanceID, cfg *a
 		Profile:      cfg.Profile,
 		IMDSEndpoint: cfg.IMDSEndpoint,
 		Logs:         toLogsConfig(cfg.Logs),
+		Metrics:      toMetricsConfig(cfg.Metrics),
 		DebugMetrics: common.DefaultValue[awscloudwatch.Arguments]().DebugMetrics,
 		Output: &otelcol.ConsumerArguments{
-			Logs: ToTokenizedConsumers(nextLogs),
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
 		},
 	}
 }
@@ -63,7 +66,59 @@ func toLogsConfig(cfg awscloudwatchreceiver.LogsConfig) awscloudwatch.LogsConfig
 		InitialLookback:     cfg.InitialLookback,
 		MaxEventsPerRequest: cfg.MaxEventsPerRequest,
 		Groups:              toGroupConfig(cfg.Groups),
+		StartFrom:           cfg.StartFrom,
 	}
+}
+
+// toMetricsConfig returns nil when metrics collection is not configured, so that
+// the generated Alloy configuration omits the metrics block entirely.
+func toMetricsConfig(cfg awscloudwatchreceiver.MetricsConfig) *awscloudwatch.MetricsConfig {
+	if len(cfg.Queries) == 0 && cfg.Discovery == nil {
+		return nil
+	}
+
+	out := &awscloudwatch.MetricsConfig{
+		Controller: otelcol.ScraperControllerArguments{
+			CollectionInterval: cfg.CollectionInterval,
+			InitialDelay:       cfg.InitialDelay,
+			Timeout:            cfg.Timeout,
+		},
+		Period:    cfg.Period,
+		Delay:     cfg.Delay,
+		Discovery: toMetricsDiscoveryConfig(cfg.Discovery),
+	}
+
+	for _, q := range cfg.Queries {
+		out.Queries = append(out.Queries, awscloudwatch.MetricQuery{
+			Namespace:  q.Namespace,
+			MetricName: q.MetricName,
+			Dimensions: q.Dimensions,
+			Stats:      q.Stats,
+		})
+	}
+
+	return out
+}
+
+func toMetricsDiscoveryConfig(cfg *awscloudwatchreceiver.MetricsDiscoveryConfig) *awscloudwatch.MetricsDiscoveryConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	out := &awscloudwatch.MetricsDiscoveryConfig{
+		Limit: cfg.Limit,
+		Stats: cfg.Stats,
+	}
+
+	if cfg.Filters.HasValue() {
+		filters := cfg.Filters.Get()
+		out.Filters = &awscloudwatch.MetricsDiscoveryFilters{
+			Namespace:  filters.Namespace,
+			MetricName: filters.MetricName,
+		}
+	}
+
+	return out
 }
 
 func toGroupConfig(cfg awscloudwatchreceiver.GroupConfig) awscloudwatch.GroupConfig {
@@ -82,9 +137,12 @@ func toAutodiscoverConfig(cfg *awscloudwatchreceiver.AutodiscoverConfig) *awsclo
 	*limit = cfg.Limit
 
 	return &awscloudwatch.AutodiscoverConfig{
-		Prefix:  cfg.Prefix,
-		Limit:   limit,
-		Streams: toStreamConfig(cfg.Streams),
+		Prefix:                cfg.Prefix,
+		Pattern:               cfg.Pattern,
+		Limit:                 limit,
+		Streams:               toStreamConfig(cfg.Streams),
+		AccountIdentifiers:    cfg.AccountIdentifiers,
+		IncludeLinkedAccounts: cfg.IncludeLinkedAccounts,
 	}
 }
 
