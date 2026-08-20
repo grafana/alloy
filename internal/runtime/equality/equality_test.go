@@ -3,6 +3,8 @@ package equality
 import (
 	"testing"
 
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/regexp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -139,22 +141,22 @@ func TestDeepEqual(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "mixed fields structs are not supported",
+			name: "mixed exported fields structs are equal",
 			args: args{
-				x: mixedFieldsStruct{
-					i:  123,
-					e1: equalsTester{"1234"},
-					e2: equalsTester{"ab"},
-					s:  justAStruct{567, 3.14},
+				x: mixedExportedFieldsStruct{
+					I:  123,
+					E1: equalsTester{"1234"},
+					E2: equalsTester{"ab"},
+					S:  basicStruct{567, 3.14},
 				},
-				y: mixedFieldsStruct{
-					i:  123,
-					e1: equalsTester{"abcd"},
-					e2: equalsTester{"12"},
-					s:  justAStruct{567, 3.14},
+				y: mixedExportedFieldsStruct{
+					I:  123,
+					E1: equalsTester{"abcd"},
+					E2: equalsTester{"12"},
+					S:  basicStruct{567, 3.14},
 				},
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "all custom unexported fields struct not supported",
@@ -247,16 +249,38 @@ func TestDeepEqual(t *testing.T) {
 	}
 }
 
+func TestDeepEqualRelabelConfig(t *testing.T) {
+	config := func() alloy_relabel.Config {
+		return alloy_relabel.Config{
+			SourceLabels: []string{"__meta_kubernetes_namespace"},
+			Regex:        alloy_relabel.Regexp{Regexp: regexp.MustCompile("^(?s:default)$")},
+			TargetLabel:  "namespace",
+			Replacement:  "$1",
+			Action:       alloy_relabel.Replace,
+		}
+	}
+
+	assert.True(t, DeepEqual(config(), config()))
+	changed := config()
+	changed.TargetLabel = "different_namespace"
+	assert.False(t, DeepEqual(config(), changed))
+}
+
 type justAStruct struct {
 	i int
 	f float64
 }
 
-type mixedFieldsStruct struct {
-	i  int
-	e1 equalsTester
-	e2 equalsTester
-	s  justAStruct
+type basicStruct struct {
+	I int
+	F float64
+}
+
+type mixedExportedFieldsStruct struct {
+	I  int
+	E1 equalsTester
+	E2 equalsTester
+	S  basicStruct
 }
 
 type allCustomFieldsStructUnexported struct {

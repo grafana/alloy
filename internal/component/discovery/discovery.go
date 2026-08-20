@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -177,9 +178,12 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 		runExited <- struct{}{}
 	}()
 
+	// Reuses the conversion of any target group that has not changed between sends.
+	packer := newGroupPacker()
+
 	// function to convert and send targets in format scraper expects
 	send := func() {
-		allTargets := toAlloyTargets(cache)
+		allTargets := packer.toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
 		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 			componentID,
@@ -221,19 +225,91 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	}
 }
 
-func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+// groupPacker converts Prometheus service discovery target groups into Targets,
+// reusing the result for any source whose target group has not changed.
+//
+// This matters because runDiscovery only replaces the cache entries for sources
+// present in an update, so a component watching many sources keeps the same
+// *targetgroup.Group for all the sources that did not change, yet every send
+// re-converts all of them. Converting a target means sorting and encoding its
+// labels, so for a component with many stable sources that was almost entirely
+// wasted work.
+//
+// Reuse is keyed on the *targetgroup.Group pointer. Discoverers construct a new
+// group whenever its contents change and never mutate a group after sending it,
+// so pointer identity is sufficient to know a previous conversion is still valid.
+type groupPacker struct {
+	packed map[string]packedGroup
+}
+
+type packedGroup struct {
+	// src is the target group this conversion was built from, used to detect
+	// whether the conversion is still valid.
+	src     *targetgroup.Group
+	targets []Target
+}
+
+func newGroupPacker() *groupPacker {
+	return &groupPacker{packed: map[string]packedGroup{}}
+}
+
+// toAlloyTargets converts every group in cache, reusing previous conversions
+// where possible. The returned slice is freshly allocated and owned by the
+// caller; the Target values in it are immutable and may be shared with the
+// result of an earlier call.
+func (p *groupPacker) toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
 	targetsCount := 0
 	for _, group := range cache {
 		targetsCount += len(group.Targets)
 	}
 	allTargets := make([]Target, 0, targetsCount)
 
-	for _, group := range cache {
-		for _, target := range group.Targets {
-			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
+	sources := make([]string, 0, len(cache))
+	for source := range cache {
+		sources = append(sources, source)
+	}
+	sort.Strings(sources)
+
+	for _, source := range sources {
+		group := cache[source]
+		entry, ok := p.packed[source]
+		if !ok || entry.src != group {
+			entry = packedGroup{src: group, targets: packGroup(group)}
+			p.packed[source] = entry
+		}
+		allTargets = append(allTargets, entry.targets...)
+	}
+
+	// Drop conversions for sources that have gone away, so that a component
+	// churning through sources does not grow this map without bound.
+	if len(p.packed) > len(cache) {
+		for source := range p.packed {
+			if _, ok := cache[source]; !ok {
+				delete(p.packed, source)
+			}
 		}
 	}
+
 	return allTargets
+}
+
+// packGroup converts a single target group into Targets.
+func packGroup(group *targetgroup.Group) []Target {
+	// Pack the group's shared labels once and let every target in the group
+	// reference them, so they are stored once per group rather than once per
+	// target.
+	groupLabels := newGroupLabels(group.Labels)
+	targets := make([]Target, 0, len(group.Targets))
+	for _, target := range group.Targets {
+		targets = append(targets, newTargetFromGroup(groupLabels, target))
+	}
+	return targets
+}
+
+// toAlloyTargets converts cache without reusing any previous conversion. Prefer
+// groupPacker in long-running code.
+func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+	return newGroupPacker().toAlloyTargets(cache)
 }
 
 func (c *Component) LiveDebugging() {}
