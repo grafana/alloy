@@ -1,13 +1,15 @@
 package stages
 
 import (
+	"context"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -15,171 +17,209 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-// Not all these are tested but are here to make sure the different types marshal without error
-var testLimitWaitAlloy = `
-stage.json {
-		expressions = { "app" = "", "msg" = "" }
-}
-stage.limit {
-		rate  = 1
-		burst = 1
-		drop  = false
-}`
-
-// Not all these are tested but are here to make sure the different types marshal without error
-var testLimitDropAlloy = `
-stage.json {
-		expressions = { "app" = "", "msg" = "" }
-}
-stage.limit {
-		rate  = 1
-		burst = 1
-		drop  = true
-}`
-
-var testLimitByLabelAlloy = `
-stage.json {
-		expressions = { "app" = "", "msg" = "" }
-}
-stage.limit {
-		rate  = 1
-		burst = 1
-		drop  = true
-
-		by_label_name = "app"
-}`
-
-var testLimitWaitShutdownAlloy = `
-stage.limit {
-		rate  = 0.1
-		burst = 1
-		drop  = false
-}`
-
-var testNonAppLogLine = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"msg" : "Non app log line"
-}
-`
-
-// TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
-func TestLimitWaitPipeline(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLimitWaitAlloy), registry, featuregate.StabilityGenerallyAvailable)
-	logs := make([]Entry, 0)
-	logCount := 5
-	for i := 0; i < logCount; i++ {
-		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
-	}
-	require.NoError(t, err)
-	out := processEntries(pl,
-		logs...,
-	)
-	// Only the second line will go through.
-	assert.Len(t, out, logCount)
-	assert.Equal(t, out[0].Line, testMatchLogLineApp1)
-}
-
-// TestLimitPipeline is used to verify we properly parse the yaml config and create a working pipeline
-func TestLimitDropPipeline(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLimitDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
-	logs := make([]Entry, 0)
-	logCount := 10
-	for i := 0; i < logCount; i++ {
-		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
-	}
-	require.NoError(t, err)
-	out := processEntries(pl,
-		logs...,
-	)
-	// Only the second line will go through.
-	assert.Len(t, out, 1)
-	assert.Equal(t, out[0].Line, testMatchLogLineApp1)
-}
-
-func assertPipelineStopsPromptly(t *testing.T, config string) {
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(config), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
-
-	in := make(chan loki.Entry)
-	out := make(chan loki.Entry, 1)
-	handler := pl.Start(in, out)
-
-	entry := loki.Entry{
-		Labels: model.LabelSet{"app": "loki"},
-		Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+func TestLimitStage(t *testing.T) {
+	type testCase struct {
+		name            string
+		config          string
+		entries         []Entry
+		expected        []Entry
+		expectedMetrics string
 	}
 
-	in <- entry
-	<-out       // burst consumed; next Wait() will block
-	in <- entry // blocks the limit stage in rateLimiter.Wait
+	now := time.Now()
 
-	done := make(chan struct{})
-	go func() { defer close(done); handler.Stop() }()
+	tests := []testCase{
+		{
+			name: "never drops entries",
+			config: `
+			stage.limit {
+				rate  = 1
+				burst = 1
+				drop  = false
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "2", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "3", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "4", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "5", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "2", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "3", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "4", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "5", now),
+			},
+		},
+		{
+			name: "drop throttled entries",
+			config: `
+			stage.limit {
+				rate  = 1
+				burst = 1
+				drop  = true
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "2", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "3", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "4", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "5", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "6", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "7", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "8", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "9", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "10", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "1", now),
+			},
+			expectedMetrics: `
+# HELP loki_process_dropped_lines_total A count of all log lines dropped as a result of a pipeline stage
+# TYPE loki_process_dropped_lines_total counter
+loki_process_dropped_lines_total{reason="ratelimit_drop_stage"} 9
+`,
+		},
+		{
+			name: "by label drops all but the first per distinct label value",
+			config: `
+			stage.limit {
+				rate  = 1
+				burst = 1
+				drop  = true
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("EntryHandler.Stop() did not return within 2s")
+				by_label_name = "app"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "loki-1", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "loki-2", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "loki-3", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "loki-4", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "loki-5", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "poki"}, "poki-1", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "poki"}, "poki-2", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "poki"}, "poki-3", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "poki"}, "poki-4", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "poki"}, "poki-5", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-2", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-3", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-4", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-5", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"app": "loki"}, model.LabelSet{"app": "loki"}, "loki-1", now),
+				newEntry(map[string]any{"app": "poki"}, model.LabelSet{"app": "poki"}, "poki-1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-1", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-2", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-3", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-4", now),
+				newEntry(map[string]any{}, model.LabelSet{}, "noapp-5", now),
+			},
+			expectedMetrics: `
+# HELP loki_process_dropped_lines_total A count of all log lines dropped as a result of a pipeline stage
+# TYPE loki_process_dropped_lines_total counter
+loki_process_dropped_lines_total{reason="ratelimit_drop_stage"} 8
+# HELP loki_process_dropped_lines_by_label_total A count of all log lines dropped as a result of a pipeline stage
+# TYPE loki_process_dropped_lines_by_label_total counter
+loki_process_dropped_lines_by_label_total{label_name="app",label_value="loki"} 4
+loki_process_dropped_lines_by_label_total{label_name="app",label_value="poki"} 4
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, entryCheckFNs{
+				metrics: func(reg *prometheus.Registry) error {
+					return testutil.GatherAndCompare(reg, strings.NewReader(tt.expectedMetrics))
+				},
+			})
+		})
 	}
 }
 
-func TestLimitWaitPipelineShutdown(t *testing.T) {
-	assertPipelineStopsPromptly(t, testLimitWaitShutdownAlloy)
-}
-
-// TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline
-func TestLimitByLabelPipeline(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLimitByLabelAlloy), registry, featuregate.StabilityGenerallyAvailable)
-	logs := make([]Entry, 0)
-	logCount := 5
-	for i := 0; i < logCount; i++ {
-		logs = append(logs, newEntry(nil, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now()))
-	}
-	for i := 0; i < logCount; i++ {
-		logs = append(logs, newEntry(nil, model.LabelSet{"app": "poki"}, testMatchLogLineApp2, time.Now()))
-	}
-	for i := 0; i < logCount; i++ {
-		logs = append(logs, newEntry(nil, model.LabelSet{}, testNonAppLogLine, time.Now()))
-	}
-	require.NoError(t, err)
-	out := processEntries(pl,
-		logs...,
-	)
-	// Only one entry of each app will go through + all log lines without expected label
-	assert.Len(t, out, 2+logCount)
-	assert.Equal(t, out[0].Line, testMatchLogLineApp1)
-	assert.Equal(t, out[1].Line, testMatchLogLineApp2)
-	assert.Equal(t, out[3].Line, testNonAppLogLine)
-
-	var hasTotal, hasByLabel bool
-	mfs, _ := registry.Gather()
-	for _, mf := range mfs {
-		switch *mf.Name {
-		case "loki_process_dropped_lines_total":
-			hasTotal = true
-			assert.Len(t, mf.Metric, 1)
-			assert.Equal(t, 8, int(mf.Metric[0].Counter.GetValue()))
-		case "loki_process_dropped_lines_by_label_total":
-			hasByLabel = true
-			assert.Len(t, mf.Metric, 2)
-			assert.Equal(t, 4, int(mf.Metric[0].Counter.GetValue()))
-			assert.Equal(t, 4, int(mf.Metric[1].Counter.GetValue()))
-
-			assert.Equal(t, mf.Metric[0].Label[0].GetName(), "label_name")
-			assert.Equal(t, mf.Metric[0].Label[0].GetValue(), "app")
-			assert.Equal(t, mf.Metric[0].Label[1].GetName(), "label_value")
-			assert.Equal(t, mf.Metric[0].Label[1].GetValue(), "loki")
-
-			assert.Equal(t, mf.Metric[1].Label[0].GetName(), "label_name")
-			assert.Equal(t, mf.Metric[1].Label[0].GetValue(), "app")
-			assert.Equal(t, mf.Metric[1].Label[1].GetName(), "label_value")
-			assert.Equal(t, mf.Metric[1].Label[1].GetValue(), "poki")
+// TestLimitStageShutdown verifies that an entry blocked in rateLimiter.Wait
+// is released promptly when the pipeline shuts down.
+func TestLimitStageShutdown(t *testing.T) {
+	cfgs := loadConfig(`
+		stage.limit {
+				rate  = 0.1
+				burst = 1
+				drop  = false
 		}
-	}
-	assert.True(t, hasTotal)
-	assert.True(t, hasByLabel)
+	`)
+
+	t.Run("Stage", func(t *testing.T) {
+		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		in := make(chan loki.Entry)
+		out := make(chan loki.Entry, 1)
+		handler := pl.Start(in, out)
+
+		entry := loki.Entry{
+			Labels: model.LabelSet{"app": "loki"},
+			Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+		}
+
+		in <- entry
+		<-out       // burst consumed; next Wait() will block
+		in <- entry // blocks the limit stage in rateLimiter.Wait
+
+		done := make(chan struct{})
+		go func() { defer close(done); handler.Stop() }()
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait")
+		}
+
+		select {
+		case e := <-out:
+			t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
+		default:
+		}
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+
+		entry := func() Entry {
+			return newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now())
+		}
+
+		require.NoError(t, p.process(context.Background(), []Entry{entry()})) // burst consumed
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			_ = p.process(context.Background(), []Entry{entry()}) // blocks in rateLimiter.Wait
+		}()
+
+		// Give the goroutine above time to actually enter Wait() before cancelling.
+		time.Sleep(50 * time.Millisecond)
+		p.Stop()
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("Cleanup() did not release the entry blocked in rateLimiter.Wait")
+		}
+
+		require.Len(t, collected, 1, "expected the entry blocked in rateLimiter.Wait to be dropped on shutdown")
+	})
 }

@@ -128,7 +128,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.LimitConfig != nil:
-		s, err = newLimitStage(slogger, *cfg.LimitConfig, registerer)
+		s, err = newLimitStage(slogger, *cfg.LimitConfig, registerer, next)
 		if err != nil {
 			return nil, err
 		}
