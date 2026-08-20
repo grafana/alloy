@@ -816,6 +816,7 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, systemID 
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(systemID),
+		"engine":    model.LabelValue(collector.EngineName),
 	}).Wrap(entryHandler)
 
 	return entryHandler
