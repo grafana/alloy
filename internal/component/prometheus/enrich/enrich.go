@@ -206,6 +206,16 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 			return next.AppendHistogram(0, newLabels, t, h, fh)
 		}),
+		prometheus.WithAppendV2Hook(func(_ storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, aopts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", opts.ID)
+			}
+
+			newLabels := c.enrich(ls)
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.Append(0, newLabels, st, t, v, h, fh, aopts)
+		}),
 	)
 
 	if err = c.Update(args); err != nil {

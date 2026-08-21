@@ -81,5 +81,10 @@ func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher li
 			}
 			return newRef, nextErr
 		}),
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			newRef, nextErr := next.Append(ref, l, st, t, v, h, fh, opts)
+			prometheus.PublishV2DebugData(debugDataPublisher, componentID, l, t, v, h, fh, opts)
+			return newRef, nextErr
+		}),
 	)
 }

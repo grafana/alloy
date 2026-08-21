@@ -183,10 +183,50 @@ func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
 }
 
 func (c ConstantAppendable) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("ConstantAppendable: AppenderV2 not implemented")
+	return &collectingAppenderV2{inner: c.Inner.(CollectingAppender)}
 }
 
 var (
 	_ storage.Appendable   = &ConstantAppendable{}
 	_ storage.AppendableV2 = &ConstantAppendable{}
 )
+
+// collectingAppenderV2 implements storage.AppenderV2 natively, recording
+// samples directly into the underlying CollectingAppender's maps.
+type collectingAppenderV2 struct {
+	inner CollectingAppender
+}
+
+var _ storage.AppenderV2 = (*collectingAppenderV2)(nil)
+
+func (a *collectingAppenderV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+
+	switch {
+	case fh != nil:
+		ref, _ = a.inner.AppendHistogram(ref, ls, t, nil, fh)
+	case h != nil:
+		ref, _ = a.inner.AppendHistogram(ref, ls, t, h, nil)
+	default:
+		ref, _ = a.inner.Append(ref, ls, t, v)
+	}
+
+	if (opts.Metadata != metadata.Metadata{}) {
+		_, _ = a.inner.UpdateMetadata(ref, ls, opts.Metadata)
+	}
+	for _, e := range opts.Exemplars {
+		_, _ = a.inner.AppendExemplar(ref, ls, e)
+	}
+	if st != 0 {
+		switch {
+		case fh != nil || h != nil:
+			_, _ = a.inner.AppendHistogramSTZeroSample(ref, ls, t, st, h, fh)
+		default:
+			_, _ = a.inner.AppendSTZeroSample(ref, ls, t, st)
+		}
+	}
+
+	return ref, nil
+}
+
+func (a *collectingAppenderV2) Commit() error   { return a.inner.Commit() }
+func (a *collectingAppenderV2) Rollback() error { return a.inner.Rollback() }

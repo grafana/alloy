@@ -243,6 +243,20 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendHistogram(0, newLbl, t, h, fh)
 		}),
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(v, ls)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+			c.metricsOutgoing.Inc()
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.Append(0, newLbl, st, t, v, h, fh, opts)
+		}),
 	)
 
 	// Immediately export the receiver which remains the same for the component

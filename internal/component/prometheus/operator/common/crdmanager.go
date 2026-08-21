@@ -202,7 +202,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
 		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
 	}
-	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
