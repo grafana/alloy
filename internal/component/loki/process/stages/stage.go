@@ -53,8 +53,21 @@ func toStage(p Processor) Stage {
 	}
 }
 
-// New creates a new stage for the given type and configuration.
-func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func (*stageProcessor) Cleanup() {}
+
+// newStage creates a new stage for the given type and configuration.
+func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+	return newStageWithNextFn(slogger, cfg, registerer, minStability, nil)
+}
+
+func newStageWithNextFn(
+	slogger *slog.Logger,
+	cfg StageConfig,
+	registerer prometheus.Registerer,
+	minStability featuregate.Stability,
+	next NextFn,
+) (Stage, error) {
+
 	var (
 		s   Stage
 		err error
@@ -66,10 +79,7 @@ func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer
 			return nil, err
 		}
 	case cfg.CRIConfig != nil:
-		s, err = NewCRI(slogger, *cfg.CRIConfig, registerer, minStability)
-		if err != nil {
-			return nil, err
-		}
+		s = newCRIStage(slogger, *cfg.CRIConfig, registerer, minStability, next)
 	case cfg.JSONConfig != nil:
 		s, err = newJSONStage(slogger, *cfg.JSONConfig)
 		if err != nil {
@@ -208,9 +218,4 @@ func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer
 	}
 
 	return s, nil
-}
-
-// Cleanup implements Stage.
-func (*stageProcessor) Cleanup() {
-	// no-op
 }
