@@ -28,6 +28,13 @@ type stopper interface {
 	stop()
 }
 
+// FIXME(kalleep): temporary function to start multiline stage when new pipeline is used
+// so that we don't start the background goroutine when this pipeline is unused.
+// This should be removed when we transition to the new pipeline.
+type starter interface {
+	start()
+}
+
 var _ entryProcessor = (*Pipeline2)(nil)
 
 // Pipeline2 runs a batch of entries through a configured chain of stages,
@@ -58,6 +65,10 @@ func NewPipeline2(
 		newStage, ok := s.(entryProcessor)
 		if !ok {
 			return nil, errors.New("stage has not been migrated to new interface")
+		}
+
+		if ss, ok := newStage.(starter); ok {
+			ss.start()
 		}
 
 		stages = append(stages, newStage)
