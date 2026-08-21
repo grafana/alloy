@@ -171,6 +171,20 @@ BoringCrypto images are published with every release starting with version 1.1:
 * The current BoringCrypto image is published as `docker.io/grafana/alloy:boringcrypto`.
 * A specific version of the BoringCrypto image is published as `docker.io/grafana/alloy:<VERSION>-boringcrypto`, such as `docker.io/grafana/alloy:v1.1.0-boringcrypto`.
 
+## Distroless images
+
+{{< admonition type="note" >}}
+Distroless images are experimental.
+BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
+{{< /admonition >}}
+
+Distroless images are published with every release:
+
+* The current distroless image is published as `docker.io/grafana/alloy:latest-distroless`.
+* A specific version of the distroless image is published as `docker.io/grafana/alloy:<VERSION>-distroless`.
+* The current BoringCrypto distroless image is published as `docker.io/grafana/alloy:boringcrypto-distroless`.
+* A specific version of the BoringCrypto distroless image is published as `docker.io/grafana/alloy:<VERSION>-boringcrypto-distroless`.
+
 ## Verify
 
 To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to <http://localhost:12345> and make sure the {{< param "PRODUCT_NAME" >}} [UI][] loads without error.
