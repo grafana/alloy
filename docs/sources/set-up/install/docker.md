@@ -72,6 +72,23 @@ BoringCrypto images are published with every release starting with version 1.1:
   `grafana/alloy:<VERSION>-boringcrypto`, such as
   `grafana/alloy:v1.1.0-boringcrypto`.
 
+### Distroless images
+
+{{< admonition type="note" >}}
+Distroless images are experimental.
+BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
+{{< /admonition >}}
+
+Distroless images are published with every release:
+
+* The current distroless image is published as `grafana/alloy:latest-distroless`.
+* A specific version of the distroless image is published as
+  `grafana/alloy:<VERSION>-distroless`.
+* The current BoringCrypto distroless image is published as
+  `grafana/alloy:boringcrypto-distroless`.
+* A specific version of the BoringCrypto distroless image is published as
+  `grafana/alloy:<VERSION>-boringcrypto-distroless`.
+
 ## Run a Windows Docker container
 
 To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a terminal window:
