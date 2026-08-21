@@ -39,6 +39,9 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 	if listenerConfig.SyslogFormat == "" {
 		listenerConfig.SyslogFormat = syslog.DefaultListenerConfig.SyslogFormat
 	}
+	if listenerConfig.ListenProtocol == "" {
+		listenerConfig.ListenProtocol = syslog.DefaultListenerConfig.ListenProtocol
+	}
 
 	if fmtOpts := s.cfg.SyslogConfig.RawFormatOptions; fmtOpts != nil {
 		listenerConfig.RawFormatOptions = &syslog.RawFormatOptions{
