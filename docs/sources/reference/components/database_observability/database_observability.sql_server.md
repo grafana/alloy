@@ -45,6 +45,7 @@ The following collectors are configurable:
 | `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 | `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
 | `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
+| `explain_plans`   | Collect and parse query execution plans already captured by Query Store.      | yes                |
 
 ## Blocks
 
@@ -61,6 +62,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
+| [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
@@ -69,6 +71,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [schema_details]: #schema_details
 [query_metrics]: #query_metrics
 [query_details]: #query_details
+[explain_plans]: #explain_plans
 
 {{< /docs/alloy-config >}}
 
@@ -143,6 +146,16 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 | `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
 
 The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
+
+### `explain_plans`
+
+| Name               | Type       | Description                                    | Default | Required |
+|--------------------|------------|-------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to check for a changed execution plan. | `"1m"`  | no       |
+
+The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector; it doesn't compile or run a fresh plan. Only queries `query_metrics` is currently tracking are eligible, so `explain_plans` produces no output when `query_metrics` is disabled.
+
+The collector checks for a changed plan every `collect_interval`, but only forwards a log entry when the plan's shape has changed since the last entry, or when 30 minutes have passed since the last entry, whichever comes first. This keeps log volume low without ever going more than 30 minutes without a fresh entry.
 
 ## Example
 
