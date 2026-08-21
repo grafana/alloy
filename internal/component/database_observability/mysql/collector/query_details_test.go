@@ -655,3 +655,70 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 	c.tablesFromEventsStatements(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestQueryDetails_ResolvesTableNameCasingViaTableRegistry(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTables([]*tableInfo{
+		// e.g. information_schema.tables reports this lowercased because the cluster is
+		// configured with lower_case_table_names=1, but the query below references it with
+		// its literal, mixed-case spelling.
+		{schema: "some_schema", tableName: "emailageconsumer"},
+	})
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 250,
+		EntryHandler:    lokiClient,
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"digest",
+				"digest_text",
+				"schema_name",
+				"query_sample_text",
+			}).AddRow(
+				"abc123",
+				"SELECT * FROM `EmailAgeConsumer` WHERE `id` = ?",
+				"some_schema",
+				"select * from EmailAgeConsumer where id = 1",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	lokiEntries := lokiClient.Received()
+	require.Len(t, lokiEntries, 2)
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+	// Resolved to the registry's canonical (lowercased) casing rather than the query's
+	// literal mixed-case spelling.
+	require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="emailageconsumer"`, lokiEntries[1].Line)
+}

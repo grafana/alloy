@@ -113,6 +113,8 @@ type SchemaDetails struct {
 	// now allows overriding time.Now() in tests
 	now func() time.Time
 
+	tableRegistry *TableRegistry
+
 	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -168,6 +170,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[string]time.Time{},
 		now:             time.Now,
+		tableRegistry:   NewTableRegistry(),
 		logger:          args.Logger.With("collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -177,6 +180,13 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+// GetTableRegistry returns the source-of-truth table registry populated by this
+// collector from information_schema.tables. QueryDetails uses it to resolve a
+// query-parsed table name to its canonical casing.
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -260,6 +270,8 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	if err := rs.Err(); err != nil {
 		return fmt.Errorf("failed to iterate over tables result set: %w", err)
 	}
+
+	c.tableRegistry.SetTables(tables)
 
 	// Cleanup: drop throttle entries for tables that no longer exist (e.g.
 	// tables dropped or renamed). Done before the empty-tables early return so
@@ -544,4 +556,68 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 
 func fullyQualifiedName(schema, table string) string {
 	return fmt.Sprintf("`%s`.`%s`", schema, table)
+}
+
+// TableRegistry is a source-of-truth cache of schemas and their tables, as reported by
+// information_schema.tables.
+type TableRegistry struct {
+	mu sync.RWMutex
+	// exact holds schema -> canonical table name -> presence.
+	exact map[string]map[string]struct{}
+	// byLower holds schema -> lowercased table name -> canonical table name. Used as a
+	// case-insensitive fallback: unlike PostgreSQL, MySQL's identifier folding isn't a fixed
+	// rule. A cluster configured with lower_case_table_names=1 or 2 folds/compares names
+	// case-insensitively regardless of the case used at CREATE TABLE time, so a query can
+	// reference an existing table with a casing that doesn't exact-match what
+	// information_schema reports.
+	byLower map[string]map[string]string
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		exact:   make(map[string]map[string]struct{}),
+		byLower: make(map[string]map[string]string),
+	}
+}
+
+// SetTables replaces the registry contents with the given tables, grouped by schema.
+func (tr *TableRegistry) SetTables(tables []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	tr.exact = make(map[string]map[string]struct{}, len(tables))
+	tr.byLower = make(map[string]map[string]string, len(tables))
+	for _, t := range tables {
+		if tr.exact[t.schema] == nil {
+			tr.exact[t.schema] = make(map[string]struct{})
+			tr.byLower[t.schema] = make(map[string]string)
+		}
+		tr.exact[t.schema][t.tableName] = struct{}{}
+		tr.byLower[t.schema][strings.ToLower(t.tableName)] = t.tableName
+	}
+}
+
+// IsValid returns whether a given schema and parsed table name exist in the source-of-truth
+// table registry. It also returns the resolved table name, which may differ from the input
+// (e.g. lowercased or otherwise-cased, per MySQL's identifier folding for the schema). Exact
+// matches take priority over the case-insensitive fallback so that a MySQL cluster with the
+// default lower_case_table_names=0 (where table names are genuinely case-sensitive and two
+// tables can differ only by case) isn't resolved to the wrong table.
+func (tr *TableRegistry) IsValid(schema, parsedTableName string) (string, bool) {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	if tables, ok := tr.exact[schema]; ok {
+		if _, ok := tables[parsedTableName]; ok {
+			return parsedTableName, true
+		}
+	}
+
+	if byLower, ok := tr.byLower[schema]; ok {
+		if canonical, ok := byLower[strings.ToLower(parsedTableName)]; ok {
+			return canonical, true
+		}
+	}
+
+	return parsedTableName, false
 }
