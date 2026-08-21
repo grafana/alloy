@@ -16,10 +16,9 @@ The criteria below apply when a new component is proposed to be bundled into the
 
 Alloy ships a curated subset of upstream OpenTelemetry components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
 Keeping that set small is what lets the Alloy team maintain the bundled components and keep the dependency and security surface manageable.
-These principles are about what the Alloy maintainers commit to maintain.
-Maintained components stay interoperable across both engines, so users can move between the Default Engine and the OTel Engine without losing functionality.
-Components the Alloy maintainers don't intend to maintain become community components in the Default Engine and are excluded from the OTel Engine.
-It follows then that these criteria apply to any non-community `otelcol.*` component the Alloy maintainers would maintain, whether it targets the Default Engine or the OTel Engine.
+These principles are about what the Alloy maintainers commit to maintain: a maintained component exists in both the Default Engine and the OTel Engine, so users can move between them without losing functionality.
+Components the Alloy maintainers don't intend to maintain become [community components](https://grafana.com/docs/alloy/latest/get-started/community_components/) that live only in the Default Engine.
+It means then that the following signals apply to any non-community `otelcol.*` component in either engine.
 
 Before proposing a component, open a feature request and weigh it against the signals below.
 Referencing these criteria in the feature request helps maintainers evaluate the proposal.
