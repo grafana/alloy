@@ -102,6 +102,46 @@ If you copy additional replace directives from Alloy's `collector/builder-config
 
 Set `dist.cgo_enabled: true` in the OCB builder config. OCB disables CGO by default, while Alloy builds assume CGO is enabled unless you intentionally opt out. On Linux, make sure the build environment has the required system development libraries, such as `libsystemd-dev`.
 
+### Web UI
+
+The embedded Default Engine serves a web UI, by default available on port `12345`. The UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to include them. Without this step, the UI returns `404 Not Found`. Other endpoints, such as the REST and GraphQL APIs, still work.
+
+To get a working UI, build the assets from an Alloy checkout and include them in your binary:
+
+1. Clone the Alloy repository and check out the version you want:
+
+   ```shell
+   git clone https://github.com/grafana/alloy.git
+   cd alloy
+   git checkout <ALLOY_VERSION_OR_TAG>
+   ```
+
+1. Build the UI assets. This step needs Node.js and npm:
+
+   ```shell
+   cd internal/web/ui
+   npm ci --no-audit --no-fund
+   npm run build
+   cd ../../..
+   ```
+
+1. Point your OCB builder config's `replaces` at this checkout, as described in [Replace directives](#replace-directives):
+
+   ```yaml
+   replaces:
+     - github.com/grafana/alloy => /path/to/alloy
+     - github.com/grafana/alloy/syntax => /path/to/alloy/syntax
+   ```
+
+1. Set the `embedalloyui` build tag, which embeds the assets you built into the binary:
+
+   ```yaml
+   dist:
+     build_tags: embedalloyui
+   ```
+
+These steps need a local Alloy checkout. They don't work for a build pinned to a released Alloy version through the module proxy, because the module cache doesn't contain the built assets and is read-only.
+
 ## Lifecycle
 
 The extension manages the lifecycle of the embedded default engine:
@@ -119,6 +159,8 @@ Please note that if extensions fail to start, the collector will also fail to st
 If `config.inline.module_path` isn't defined, `config.inline` resolves the `module_path` Alloy config keyword to the current working directory of the OpenTelemetry Collector process.
 
 The `remotecfg` Alloy configuration block can't be used with the alloyengine extension. Use OpenTelemetry OpAMP for Collector configuration management instead.
+
+The UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to serve the web UI. See [Web UI](#web-ui) for details.
 
 ## Stability
 
