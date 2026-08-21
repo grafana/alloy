@@ -172,8 +172,8 @@ func (s interceptorTestStorage) Appender(context.Context) storage.Appender {
 	return s.appender
 }
 
-func (interceptorTestStorage) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not implemented")
+func (s interceptorTestStorage) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: s.Appender(ctx)}
 }
 
 func (interceptorTestStorage) StartTime() (int64, error) {

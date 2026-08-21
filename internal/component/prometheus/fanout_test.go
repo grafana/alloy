@@ -17,13 +17,14 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/component/prometheus/appenders"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 func TestRollback(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Rollback()
 	require.NoError(t, err)
@@ -31,7 +32,7 @@ func TestRollback(t *testing.T) {
 
 func TestCommit(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Commit()
 	require.NoError(t, err)
@@ -39,14 +40,14 @@ func TestCommit(t *testing.T) {
 
 func TestNewFanoutIgnoresNilChildren(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{nil, nil}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{nil, nil}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Commit()
 	require.NoError(t, err)
 }
 
 func TestNewFanoutWithNilLabelStore(t *testing.T) {
-	fanout := prometheus.NewFanout([]storage.Appendable{noopStore{}}, "", promclient.DefaultRegisterer, nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{noopStore{}}, "", promclient.DefaultRegisterer, nil)
 	app := fanout.Appender(t.Context())
 	_, err := app.Append(0, labels.FromStrings("foo", "bar"), time.Now().UnixMilli(), 1.0)
 	require.NoError(t, err)
@@ -100,7 +101,7 @@ func BenchmarkAppenderFlows(b *testing.B) {
 		now := time.Now().UnixMilli()
 		ls := labelstore.New(nil, promclient.DefaultRegisterer, c.useLabelStore)
 
-		children := make([]storage.Appendable, c.targetsCount)
+		children := make([]storage.AppendableV2, c.targetsCount)
 		for i := range c.targetsCount {
 			children[i] = remotewrite.NewInterceptor(strconv.Itoa(i), &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
 		}
@@ -188,8 +189,8 @@ func (n noopStore) Close() error {
 	return nil
 }
 
-func (n noopStore) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not implemented")
+func (n noopStore) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: n.Appender(ctx)}
 }
 
 // recordingAppender records the ref passed to each Append call.
@@ -238,6 +239,9 @@ func newRecordingStore() *recordingStore {
 	return &recordingStore{appender: &recordingAppender{nextRef: 5000}}
 }
 func (s *recordingStore) Appender(context.Context) storage.Appender { return s.appender }
+func (s *recordingStore) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: s.Appender(ctx)}
+}
 
 // TestFanout_SeriesRefMappingToPassthroughTransition verifies that when the fanout
 // transitions from seriesRefMapping (2 children) to passthrough (1 child) via
@@ -246,7 +250,7 @@ func (s *recordingStore) Appender(context.Context) storage.Appender { return s.a
 func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 	child1 := newRecordingStore()
 	child2 := newRecordingStore()
-	fanout := prometheus.NewFanout([]storage.Appendable{child1, child2}, "test", promclient.NewRegistry(), nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{child1, child2}, "test", promclient.NewRegistry(), nil)
 
 	// Phase 1 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
 	app1 := fanout.Appender(t.Context())
@@ -258,7 +262,7 @@ func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 
 	// Transition to 1 child.
 	walChild := newRecordingStore()
-	fanout.UpdateChildren([]storage.Appendable{walChild})
+	fanout.UpdateChildren([]storage.AppendableV2{walChild})
 
 	// Phase 2 (1 child → passthrough): caller re-sends the store-issued unique ref.
 	// The passthrough must zero it so the child allocates a fresh ref.
@@ -279,7 +283,7 @@ func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 // than risk colliding with one of its own series.
 func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	walChild := newRecordingStore()
-	fanout := prometheus.NewFanout([]storage.Appendable{walChild}, "test", promclient.NewRegistry(), nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{walChild}, "test", promclient.NewRegistry(), nil)
 
 	// Phase 1 (1 child → passthrough): child returns raw ref 5001 for lblsB.
 	app1 := fanout.Appender(t.Context())
@@ -293,7 +297,7 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	// Transition to 2 children.
 	child1 := newRecordingStore()
 	child2 := newRecordingStore()
-	fanout.UpdateChildren([]storage.Appendable{child1, child2})
+	fanout.UpdateChildren([]storage.AppendableV2{child1, child2})
 
 	// Phase 2 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
 	app2 := fanout.Appender(t.Context())
@@ -317,4 +321,133 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 		"child1 must be called with 0, not the stale passthrough ref")
 	require.Equal(t, storage.SeriesRef(0), child2.appender.appendRefs[1],
 		"child2 must be called with 0, not the stale passthrough ref")
+}
+
+// v2RecordedAppend captures a single v2 Append call.
+type v2RecordedAppend struct {
+	t    int64
+	v    float64
+	h    *histogram.Histogram
+	opts storage.AppendV2Options
+}
+
+type v2RecordingAppender struct {
+	appends []v2RecordedAppend
+}
+
+func (r *v2RecordingAppender) Append(ref storage.SeriesRef, _ labels.Labels, _, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	r.appends = append(r.appends, v2RecordedAppend{t: t, v: v, h: h, opts: opts})
+	if ref == 0 {
+		return storage.SeriesRef(len(r.appends)), nil
+	}
+	return ref, nil
+}
+
+func (r *v2RecordingAppender) Commit() error   { return nil }
+func (r *v2RecordingAppender) Rollback() error { return nil }
+
+type v2RecordingSink struct{ appender v2RecordingAppender }
+
+func (s *v2RecordingSink) AppenderV2(_ context.Context) storage.AppenderV2 { return &s.appender }
+
+func TestFanoutAppenderV2(t *testing.T) {
+	h := &histogram.Histogram{Count: 10, Sum: 100}
+	md := metadata.Metadata{Type: "counter", Help: "A test counter"}
+	ex := []exemplar.Exemplar{{Labels: labels.FromStrings("trace_id", "abc"), Ts: 1000, Value: 42.5}}
+
+	tests := []struct {
+		name          string
+		useLabelStore bool
+		h             *histogram.Histogram
+		opts          storage.AppendV2Options
+		numChildren   int
+
+		expectAppends int
+	}{
+		{
+			name:          "float without labelstore",
+			numChildren:   1,
+			expectAppends: 1,
+		},
+		{
+			name:          "float with labelstore",
+			useLabelStore: true,
+			numChildren:   1,
+			expectAppends: 1,
+		},
+		{
+			name:          "histogram",
+			h:             h,
+			numChildren:   1,
+			expectAppends: 1,
+		},
+		{
+			name:          "with metadata and exemplars",
+			opts:          storage.AppendV2Options{Metadata: md, Exemplars: ex},
+			numChildren:   1,
+			expectAppends: 1,
+		},
+		{
+			name:          "multiple children",
+			numChildren:   2,
+			expectAppends: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var ls labelstore.LabelStore
+			if tt.useLabelStore {
+				ls = labelstore.New(nil, promclient.NewRegistry())
+			}
+
+			sinks := make([]*v2RecordingSink, tt.numChildren)
+			children := make([]storage.AppendableV2, tt.numChildren)
+			for i := range sinks {
+				sinks[i] = &v2RecordingSink{}
+				children[i] = sinks[i]
+			}
+
+			fanout := prometheus.NewFanout(children, "test", promclient.NewRegistry(), ls)
+			app := fanout.AppenderV2(context.Background())
+
+			lset := labels.FromStrings("__name__", "test_metric")
+			ref, err := app.Append(0, lset, 0, 1000, 42.5, tt.h, nil, tt.opts)
+			require.NoError(t, err)
+			require.NotZero(t, ref)
+			require.NoError(t, app.Commit())
+
+			for _, sink := range sinks {
+				require.Len(t, sink.appender.appends, tt.expectAppends)
+			}
+		})
+	}
+}
+
+func TestInterceptorAppenderV2(t *testing.T) {
+	sink := &v2RecordingSink{}
+	fanout := prometheus.NewFanout([]storage.AppendableV2{sink}, "test", promclient.NewRegistry(), nil)
+
+	var hookCalled bool
+	interceptor := prometheus.NewInterceptor(fanout,
+		prometheus.WithAppendV2Hook(func(
+			ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64,
+			h *histogram.Histogram, fh *histogram.FloatHistogram,
+			opts storage.AppendV2Options, next storage.AppenderV2,
+		) (storage.SeriesRef, error) {
+
+			hookCalled = true
+			return next.Append(ref, ls, st, t, v, h, fh, opts)
+		}),
+	)
+
+	app := interceptor.AppenderV2(context.Background())
+	lset := labels.FromStrings("__name__", "intercepted_metric")
+	_, err := app.Append(0, lset, 0, 3000, 99.9, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	require.True(t, hookCalled)
+	require.Len(t, sink.appender.appends, 1)
+	require.Equal(t, 99.9, sink.appender.appends[0].v)
 }

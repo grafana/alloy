@@ -34,8 +34,8 @@ func init() {
 }
 
 type Arguments struct {
-	Server    *fnet.ServerConfig   `alloy:",squash"`
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	Server    *fnet.ServerConfig     `alloy:",squash"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 
 	// Whether the metric metadata should be passed to the downstream components.
 	AppendMetadata bool `alloy:"append_metadata,attr,optional"`

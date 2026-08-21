@@ -369,7 +369,7 @@ func newRemoteWritePipeline(t testing.TB, logger *slog.Logger, numberOfRemoteWri
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 
-	rwAppendables := make([]storage.Appendable, 0, numberOfRemoteWriteComponents)
+	rwAppendables := make([]storage.AppendableV2, 0, numberOfRemoteWriteComponents)
 	for range numberOfRemoteWriteComponents {
 		rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
 		rwAppendables = append(rwAppendables, rwAppendable)
@@ -388,8 +388,8 @@ func newRelabelPipeline(t testing.TB, logger *slog.Logger, destination storage.A
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 	rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
-	relabelAppendable := newRelabelComponent(t, logger, []storage.Appendable{rwAppendable}, ls)
-	pipelineAppendable := prometheus.NewFanout([]storage.Appendable{relabelAppendable}, "", promclient.DefaultRegisterer, ls)
+	relabelAppendable := newRelabelComponent(t, logger, []storage.AppendableV2{rwAppendable}, ls)
+	pipelineAppendable := prometheus.NewFanout([]storage.AppendableV2{relabelAppendable}, "", promclient.DefaultRegisterer, ls)
 	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() {
@@ -398,7 +398,7 @@ func newRelabelPipeline(t testing.TB, logger *slog.Logger, destination storage.A
 	}
 }
 
-func newRemoteWriteComponent(t testing.TB, logger *slog.Logger, ls labelstore.LabelStore, destination storage.Appendable) storage.Appendable {
+func newRemoteWriteComponent(t testing.TB, logger *slog.Logger, ls labelstore.LabelStore, destination storage.Appendable) storage.AppendableV2 {
 	walDir := t.TempDir()
 
 	walStorage, err := wal.NewStorage(logger, promclient.NewRegistry(), walDir)
@@ -434,11 +434,11 @@ func (t testStorage) Close() error {
 	return nil
 }
 
-func (t testStorage) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not implemented")
+func (t testStorage) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: t.Appender(ctx)}
 }
 
-func newRelabelComponent(t testing.TB, logger *slog.Logger, forwardTo []storage.Appendable, ls labelstore.LabelStore) storage.Appendable {
+func newRelabelComponent(t testing.TB, logger *slog.Logger, forwardTo []storage.AppendableV2, ls labelstore.LabelStore) storage.AppendableV2 {
 	cfg := `forward_to = []
 			rule {
 				action       = "replace"

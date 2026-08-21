@@ -144,6 +144,152 @@ func (s *seriesRefMapping) AppendSTZeroSample(ref storage.SeriesRef, l labels.La
 
 type appenderFunc func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error)
 
+var _ storage.AppenderV2 = (*seriesRefMappingV2)(nil)
+
+type seriesRefMappingV2 struct {
+	start    time.Time
+	children []storage.AppenderV2
+	store    MappingStore
+
+	uniqueRefCell *Cell
+
+	childRefs        []storage.SeriesRef
+	writeLatency     prometheus.Histogram
+	samplesForwarded prometheus.Counter
+}
+
+func NewSeriesRefMappingV2(children []storage.AppenderV2, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.AppenderV2 {
+	uniqueRefCell := store.GetCellForAppendedSeries()
+
+	return &seriesRefMappingV2{
+		children:         children,
+		store:            store,
+		writeLatency:     writeLatency,
+		samplesForwarded: samplesForwarded,
+		uniqueRefCell:    uniqueRefCell,
+		childRefs:        make([]storage.SeriesRef, 0, len(children)),
+	}
+}
+
+func (s *seriesRefMappingV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	defer func() { s.childRefs = s.childRefs[:0] }()
+
+	if s.start.IsZero() {
+		s.start = time.Now()
+	}
+
+	// Check if the incoming ref has ref mappings
+	existingChildRefs := s.store.GetMapping(ref, ls)
+
+	var appendErr error
+
+	// Sanity check: if we have existing child refs, they must match the number of children
+	if existingChildRefs != nil && len(existingChildRefs) == len(s.children) {
+		s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, ref)
+
+		refUpdateRequired := false
+		for childIndex, childRef := range existingChildRefs {
+			newChildRef, err := s.children[childIndex].Append(childRef, ls, st, t, v, h, fh, opts)
+			if err != nil {
+				appendErr = multierror.Append(appendErr, err)
+			}
+
+			if newChildRef != childRef {
+				refUpdateRequired = true
+			}
+
+			// Track refs in the local reuse buffer instead of mutating the shared mapping slice.
+			s.childRefs = append(s.childRefs, newChildRef)
+		}
+
+		if appendErr != nil {
+			return 0, appendErr
+		}
+
+		if refUpdateRequired {
+			s.store.UpdateMapping(ref, s.childRefs, ls)
+		}
+
+		// Only count the sample once regardless of how many children.
+		s.samplesForwarded.Inc()
+		return ref, nil
+	}
+
+	// No existing mapping, proceed with normal append to all children.
+	var nonZeroCount int
+	var nonZeroRef storage.SeriesRef
+	for _, child := range s.children {
+		childRef, err := child.Append(ref, ls, st, t, v, h, fh, opts)
+		if err != nil {
+			appendErr = multierror.Append(appendErr, err)
+		}
+
+		s.childRefs = append(s.childRefs, childRef)
+		if childRef != 0 {
+			nonZeroCount++
+			nonZeroRef = childRef
+		}
+	}
+
+	if appendErr != nil {
+		return 0, appendErr
+	}
+
+	s.samplesForwarded.Inc()
+
+	if nonZeroCount == 0 {
+		// All children returned ref 0, so return the input ref
+		return ref, nil
+	}
+
+	if nonZeroCount == 1 {
+		// Only one child allocated a ref; return it directly — no mapping needed.
+		return nonZeroRef, nil
+	}
+
+	uniqueRef := s.store.CreateMapping(s.childRefs, ls)
+	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
+	return uniqueRef, nil
+}
+
+func (s *seriesRefMappingV2) Commit() error {
+	defer s.recordLatency()
+
+	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
+
+	var multiErr error
+	for _, c := range s.children {
+		err := c.Commit()
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (s *seriesRefMappingV2) Rollback() error {
+	defer s.recordLatency()
+
+	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
+
+	var multiErr error
+	for _, c := range s.children {
+		err := c.Rollback()
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (s *seriesRefMappingV2) recordLatency() {
+	if s.start.IsZero() {
+		return
+	}
+	duration := time.Since(s.start)
+	s.writeLatency.Observe(duration.Seconds())
+}
+
 func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.Labels, af appenderFunc) (storage.SeriesRef, error) {
 	defer s.resetFields()
 

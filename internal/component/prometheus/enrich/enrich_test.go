@@ -179,13 +179,13 @@ func TestEnricher(t *testing.T) {
 				}))
 
 			var entry storage.Appendable
-			tt.args.ForwardTo = []storage.Appendable{fanout}
+			tt.args.ForwardTo = []storage.AppendableV2{fanout}
 			_, err := New(component.Options{
 				ID:     "1",
 				Logger: util.TestAlloyLogger(t).Slog(),
 				OnStateChange: func(e component.Exports) {
 					newE := e.(Exports)
-					entry = newE.Receiver
+					entry = newE.Receiver.(storage.Appendable)
 				},
 				Registerer:     prom.NewRegistry(),
 				GetServiceData: getServiceData,
@@ -276,7 +276,7 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 		},
 		TargetMatchLabel: "service",
 		LabelsToCopy:     []string{"env"},
-		ForwardTo:        []storage.Appendable{fanout},
+		ForwardTo:        []storage.AppendableV2{fanout},
 	}
 
 	c, err := New(component.Options{

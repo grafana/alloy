@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/prometheus/util/zeropool"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -586,9 +587,9 @@ func (w *Storage) Appender(_ context.Context) storage.Appender {
 	return w.appenderPool.Get().(storage.Appender)
 }
 
-// AppenderV2 implements storage.Storage. The WAL does not support AppenderV2.
-func (w *Storage) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not implemented for WAL storage")
+// AppenderV2 implements storage.Storage by wrapping the v1 appender.
+func (w *Storage) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &appenders.AppenderV1AsV2{Inner: w.Appender(ctx)}
 }
 
 // StartTime always returns 0, nil. It is implemented for compatibility with

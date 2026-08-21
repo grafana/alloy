@@ -708,7 +708,7 @@ func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
 	}
-	args.ForwardTo = []storage.Appendable{mockAppendable}
+	args.ForwardTo = []storage.AppendableV2{mockAppendable}
 	args.ScrapeInterval = 50 * time.Millisecond // Frequent scraping for test
 	args.ScrapeTimeout = 25 * time.Millisecond
 	args.JobName = "test_job"
@@ -856,7 +856,7 @@ func TestScrapingStartTimestampZeroIngestion(t *testing.T) {
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
 	}
-	args.ForwardTo = []storage.Appendable{mockAppendable}
+	args.ForwardTo = []storage.AppendableV2{mockAppendable}
 	args.ScrapeInterval = 50 * time.Millisecond
 	args.ScrapeTimeout = 25 * time.Millisecond
 	args.JobName = "test_job"
@@ -900,13 +900,13 @@ func TestScrapingStartTimestampZeroIngestion(t *testing.T) {
 // defaultFastScrapeArgs returns Arguments with defaults pointing at addr, a 50 ms
 // scrape interval and a shared appendable. Validate() is NOT called so callers can
 // modify fields before validating.
-func defaultFastScrapeArgs(addr string, app storage.Appendable) Arguments {
+func defaultFastScrapeArgs(addr string, app storage.AppendableV2) Arguments {
 	var args Arguments
 	args.SetToDefault()
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(addr)}),
 	}
-	args.ForwardTo = []storage.Appendable{app}
+	args.ForwardTo = []storage.AppendableV2{app}
 	args.ScrapeInterval = 50 * time.Millisecond
 	args.ScrapeTimeout = 40 * time.Millisecond
 	args.JobName = "test_job"
@@ -942,9 +942,9 @@ func TestRuntimeUpdate(t *testing.T) {
 		// Metric registry scraped after the config update.
 		setupRegistryB func(t *testing.T) *prometheus_client.Registry
 		// Arguments used to configure the component prior to the config update.
-		initialArgs func(t *testing.T, addrA, addrB string, app storage.Appendable) Arguments
+		initialArgs func(t *testing.T, addrA, addrB string, app storage.AppendableV2) Arguments
 		// Arguments used to configure the component after the config update.
-		updatedArgs func(t *testing.T, addrA, addrB string, app storage.Appendable) Arguments
+		updatedArgs func(t *testing.T, addrA, addrB string, app storage.AppendableV2) Arguments
 		// preUpdateCheck is polled until it passes, then Update is called.
 		preUpdateCheck func(ct *assert.CollectT, c testappender.CollectingAppender)
 		// postUpdateCheck is polled after Update returns.
@@ -978,12 +978,12 @@ func TestRuntimeUpdate(t *testing.T) {
 			name:           "targets are updated",
 			setupRegistryA: singleGaugeRegistry("server_a_up"),
 			setupRegistryB: singleGaugeRegistry("server_b_up"),
-			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
+			updatedArgs: func(t *testing.T, _, addrB string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrB, app)
 				require.NoError(t, args.Validate())
 				return args
@@ -1002,14 +1002,14 @@ func TestRuntimeUpdate(t *testing.T) {
 			name:           "scrape_native_histograms change starts collecting native histograms",
 			setupRegistryA: histogramRegistry(),
 			setupRegistryB: histogramRegistry(),
-			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.ScrapeNativeHistograms = false
 				args.ScrapeClassicHistograms = true
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			updatedArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.ScrapeNativeHistograms = true
 				args.ScrapeClassicHistograms = true
@@ -1032,13 +1032,13 @@ func TestRuntimeUpdate(t *testing.T) {
 			name:           "honor_metadata change is ignored but component continues with updated targets",
 			setupRegistryA: singleGaugeRegistry("server_a_up"),
 			setupRegistryB: singleGaugeRegistry("server_b_up"),
-			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.HonorMetadata = false
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
+			updatedArgs: func(t *testing.T, _, addrB string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrB, app)
 				args.HonorMetadata = true
 				require.NoError(t, args.Validate())
@@ -1058,14 +1058,14 @@ func TestRuntimeUpdate(t *testing.T) {
 			name:           "enable_type_and_unit_labels change is ignored but component continues with updated targets",
 			setupRegistryA: singleGaugeRegistry("server_a_up"),
 			setupRegistryB: singleGaugeRegistry("server_b_up"),
-			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.EnableTypeAndUnitLabels = false
 				args.Clustering = cluster.ComponentBlock{}
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
+			updatedArgs: func(t *testing.T, _, addrB string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrB, app)
 				args.EnableTypeAndUnitLabels = true
 				args.Clustering = cluster.ComponentBlock{}
@@ -1089,12 +1089,12 @@ func TestRuntimeUpdate(t *testing.T) {
 			name:           "targets are updated even when ApplyConfig fails",
 			setupRegistryA: singleGaugeRegistry("server_a_up"),
 			setupRegistryB: singleGaugeRegistry("server_b_up"),
-			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
+			updatedArgs: func(t *testing.T, _, addrB string, app storage.AppendableV2) Arguments {
 				args := defaultFastScrapeArgs(addrB, app)
 				// A non-existent CA file passes Arguments.Validate() (file existence is not
 				// checked there) but causes ApplyConfig to fail when building the TLS client.
