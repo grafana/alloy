@@ -420,6 +420,7 @@ func Test_addLokiLabels(t *testing.T) {
 			"job":       database_observability.JobName,
 			"instance":  model.LabelValue("some-instance-key"),
 			"server_id": model.LabelValue("some-server-id-hash"),
+			"engine":    model.LabelValue(collector.EngineName),
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "some-message", lokiClient.Received()[0].Line)
 	})

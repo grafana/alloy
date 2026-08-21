@@ -332,8 +332,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -398,8 +396,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_join_with_aggregate_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -464,8 +460,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_query_with_multiple_conditions_and_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -573,8 +567,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "complex_subquery_in_select_clause",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -598,8 +590,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "conditional_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -631,8 +621,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "correlated_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -724,8 +712,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "date_manipulation_with_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -748,8 +734,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "derived_table_with_aggregates",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -887,8 +871,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "distinct_with_multiple_joins",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -958,8 +940,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "group_by_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1006,8 +986,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "join_and_order",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1072,8 +1050,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "multiple_aggregate_functions_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1120,8 +1096,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "multiple_joins_with_date_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1184,8 +1158,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "nested_subqueries_with_exists",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1245,8 +1217,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "self_join_with_date_comparison",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1324,8 +1294,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "string_functions_with_grouping",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1357,8 +1325,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "subquery_with_aggregate",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1415,8 +1381,6 @@ func TestExplainPlansOutput(t *testing.T) {
 			fname:     "union_with_different_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "MySQL",
-					DatabaseVersion:  "8.0.32",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1519,7 +1483,6 @@ func TestExplainPlans(t *testing.T) {
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
-			DBVersion:       "8.0.32",
 			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
@@ -1593,7 +1556,6 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1651,7 +1613,6 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1744,7 +1705,6 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1798,7 +1758,6 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1859,7 +1818,6 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1908,7 +1866,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			Logger:       util.TestAlloyLogger(t).Slog(),
 			EntryHandler: lokiClient,
-			DBVersion:    "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -1948,7 +1905,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 			Logger:         util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio: 1,
 			EntryHandler:   lokiClient,
-			DBVersion:      "8.0.32",
 		})
 		require.NoError(t, err)
 
@@ -2041,7 +1997,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 			PerScrapeRatio:  1,
 			InitialLookback: base.Add(-time.Hour),
 			EntryHandler:    lokiClient,
-			DBVersion:       "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -2184,7 +2139,6 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
 		EntryHandler:   lokiClient,
-		DBVersion:      "8.0.32",
 	})
 	require.NoError(t, err)
 

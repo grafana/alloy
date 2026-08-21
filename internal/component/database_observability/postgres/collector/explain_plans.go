@@ -323,8 +323,6 @@ func (c *ExplainPlans) pruneThrottle(seen map[string]struct{}) {
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:         "PostgreSQL",
-			DatabaseVersion:        c.dbVersion.String(),
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
