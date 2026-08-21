@@ -38,7 +38,7 @@ jobs:
         fi
         if [[ "$DRY_RUN" == "true" ]]; then
           echo "Dry run enabled for $REF_NAME. The following would run:"
-          echo "  - Publish regular, BoringCrypto, distroless, and BoringCrypto-distroless Linux container images"
+          echo "  - Publish Linux container images"
           echo "  - Publish Windows container image"
           echo "  - Build and sign Windows executables and installer"
           echo "  - Upload release artifacts to GitHub"
