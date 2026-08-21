@@ -2,9 +2,12 @@ package stages
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -263,7 +266,9 @@ loki_process_cri_lines_truncated_total %d
 loki_process_cri_partial_lines_flushed_total %d
 `, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
 
-			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, expectedMetrics)
+			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, entryCheckFNs{metrics: func(reg *prometheus.Registry) error {
+				return testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics))
+			}})
 		})
 	}
 }

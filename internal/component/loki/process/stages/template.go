@@ -2,6 +2,7 @@ package stages
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding"
 	"encoding/hex"
@@ -12,19 +13,14 @@ import (
 	"strings"
 	"sync"
 	"text/template"
-	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/prometheus/common/model"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/grafana/alloy/syntax"
 )
 
-// Config Errors.
-var (
-	ErrTemplateSourceRequired = errors.New("template source value is required")
-)
+var errTemplateSourceRequired = errors.New("template source value is required")
 
 var extraFunctionMap = template.FuncMap{
 	"ToLower":    strings.ToLower,
@@ -72,7 +68,7 @@ type TemplateConfig struct {
 
 func (t *TemplateConfig) Validate() error {
 	if t.Source == "" {
-		return ErrTemplateSourceRequired
+		return errTemplateSourceRequired
 	}
 	return nil
 }
@@ -102,26 +98,51 @@ func (t Template) parse() (*template.Template, error) {
 	return template.New("pipeline_template").Funcs(functionMap).Parse(string(t))
 }
 
+var (
+	_ Stage = (*templateStage)(nil)
+	_ stage = (*templateStage)(nil)
+)
+
 // newTemplateStage creates a new templateStage
-func newTemplateStage(logger *slog.Logger, config TemplateConfig) (Stage, error) {
+func newTemplateStage(logger *slog.Logger, config TemplateConfig, next NextFn) (*templateStage, error) {
 	templ, err := config.Template.parse()
 	// We should not get an error here when built from alloy syntax.
 	if err != nil {
 		return nil, err
 	}
-	return toStage(&templateStage{
+	return &templateStage{
+		next:     next,
 		cfg:      config,
 		template: templ,
 		logger:   logger.With("stage", "template"),
-	}), nil
+	}, nil
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
 type templateStage struct {
+	next     NextFn
 	cfg      TemplateConfig
 	template *template.Template
 	logger   *slog.Logger
 }
+
+// Run implements Stage.
+func (o *templateStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return o.processEntry(e)
+	})
+}
+
+// process implements stage.
+func (o *templateStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = o.processEntry(entries[i])
+	}
+	return o.next(ctx, entries)
+}
+
+// Cleanup implements Stage.
+func (o *templateStage) Cleanup() {}
 
 var bufPool = sync.Pool{
 	New: func() any {
@@ -129,11 +150,10 @@ var bufPool = sync.Pool{
 	},
 }
 
-// Process implements Stage
-func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+func (o *templateStage) processEntry(e Entry) Entry {
 	// We allocate space for all extracted values + Value and Entry
-	td := make(map[string]any, len(extracted)+2)
-	for k, v := range extracted {
+	td := make(map[string]any, len(e.Extracted)+2)
+	for k, v := range e.Extracted {
 		s, err := getString(v)
 		if err != nil {
 			if debugEnabled(o.logger) {
@@ -146,7 +166,7 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 			td["Value"] = s
 		}
 	}
-	td["Entry"] = *entry
+	td["Entry"] = e.Line
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
@@ -159,13 +179,15 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 		if debugEnabled(o.logger) {
 			o.logger.Debug("failed to execute template on extracted value", "err", err)
 		}
-		return
+		return e
 	}
 	st := buf.String()
 	// If the template evaluates to an empty string, remove the key from the map
 	if st == "" {
-		delete(extracted, o.cfg.Source)
+		delete(e.Extracted, o.cfg.Source)
 	} else {
-		extracted[o.cfg.Source] = st
+		e.Extracted[o.cfg.Source] = st
 	}
+
+	return e
 }

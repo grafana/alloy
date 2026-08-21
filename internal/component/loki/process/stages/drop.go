@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,18 +14,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	ErrDropStageEmptyConfig       = "drop stage config must contain at least one of `source`, `expression`, `older_than` or `longer_than`"
-	ErrDropStageInvalidConfig     = "drop stage config error, `value` and `expression` cannot both be defined at the same time"
-	ErrDropStageInvalidRegex      = "drop stage regex compilation error: %v"
-	ErrDropStageNoSourceWithValue = "drop stage config must contain `source` if `value` is specified"
+var (
+	errDropStageEmptyConfig       = errors.New("drop stage config must contain at least one of `source`, `expression`, `older_than` or `longer_than`")
+	errDropStageInvalidConfig     = errors.New("drop stage config error, `value` and `expression` cannot both be defined at the same time")
+	errDropStageInvalidRegex      = errors.New("drop stage regex compilation error")
+	errDropStageNoSourceWithValue = errors.New("drop stage config must contain `source` if `value` is specified")
 )
 
 var (
-	defaultDropReason = "drop_stage"
+	emptySize     units.Base2Bytes
+	emptyDuration time.Duration
+)
+
+const (
 	defaultSeparator  = ";"
-	emptyDuration     time.Duration
-	emptySize         units.Base2Bytes
+	defaultDropReason = "drop_stage"
 )
 
 // DropConfig contains the configuration for a dropStage
@@ -43,19 +47,19 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	if cfg == nil ||
 		(cfg.Source == "" && cfg.Expression == "" && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
 
-		return nil, errors.New(ErrDropStageEmptyConfig)
+		return nil, errDropStageEmptyConfig
 	}
 	if cfg.DropReason == "" {
 		cfg.DropReason = defaultDropReason
 	}
 	if cfg.Value != "" && cfg.Expression != "" {
-		return nil, errors.New(ErrDropStageInvalidConfig)
+		return nil, errDropStageInvalidConfig
 	}
 	if cfg.Separator == "" {
 		cfg.Separator = defaultSeparator
 	}
 	if cfg.Value != "" && cfg.Source == "" {
-		return nil, errors.New(ErrDropStageNoSourceWithValue)
+		return nil, errDropStageNoSourceWithValue
 	}
 	var (
 		expr *regexp.Regexp
@@ -63,7 +67,7 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	)
 	if cfg.Expression != "" {
 		if expr, err = regexp.Compile(cfg.Expression); err != nil {
-			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
+			return nil, fmt.Errorf("%w: %w", errDropStageInvalidRegex, err)
 		}
 	}
 	// The first step to exclude `value` and fully replace it with the `expression`.
@@ -71,14 +75,19 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	if cfg.Value != "" {
 		expr, err = regexp.Compile(fmt.Sprintf("^%s$", regexp.QuoteMeta(cfg.Value)))
 		if err != nil {
-			return nil, fmt.Errorf(ErrDropStageInvalidRegex, err)
+			return nil, fmt.Errorf("%w: %w", errDropStageInvalidRegex, err)
 		}
 	}
 	return expr, nil
 }
 
+var (
+	_ Stage = (*dropStage)(nil)
+	_ stage = (*dropStage)(nil)
+)
+
 // newDropStage creates a DropStage from config
-func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.Registerer) (Stage, error) {
+func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.Registerer, next NextFn) (*dropStage, error) {
 	regex, err := validateDropConfig(&config)
 	if err != nil {
 		return nil, err
@@ -90,6 +99,7 @@ func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.
 	}
 
 	return &dropStage{
+		next:      next,
 		logger:    logger.With("stage", "drop"),
 		cfg:       &config,
 		regex:     regex,
@@ -99,121 +109,142 @@ func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.
 
 // dropStage applies Label matchers to determine if the include stages should be run
 type dropStage struct {
+	next      NextFn
 	logger    *slog.Logger
 	cfg       *DropConfig
 	regex     *regexp.Regexp
 	dropCount *prometheus.CounterVec
 }
 
-func (m *dropStage) Run(in chan Entry) chan Entry {
+func (d *dropStage) Run(in chan Entry) chan Entry {
 	out := make(chan Entry)
 	go func() {
 		defer close(out)
 		for e := range in {
-			if !m.shouldDrop(e) {
+			if !d.shouldDrop(e) {
 				out <- e
 				continue
 			}
-			m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+			d.dropCount.WithLabelValues(d.cfg.DropReason).Inc()
 		}
 	}()
 	return out
 }
 
-func (m *dropStage) shouldDrop(e Entry) bool {
+// process implements stage and is only used by our new pipeline.
+func (d *dropStage) process(ctx context.Context, entries []Entry) error {
+	var dst int
+
+	for _, e := range entries {
+		if d.shouldDrop(e) {
+			d.dropCount.WithLabelValues(d.cfg.DropReason).Inc()
+			continue
+		}
+		entries[dst] = e
+		dst++
+	}
+
+	if dst == 0 {
+		return nil
+	}
+
+	return d.next(ctx, entries[:dst])
+}
+
+func (d *dropStage) shouldDrop(e Entry) bool {
 	// There are many options for dropping a log and if multiple are defined it's treated like an AND condition
 	// where all drop conditions must be met to drop the log.
 	// Therefore if at any point there is a condition which does not match we can return.
 	// The order is what I roughly think would be fastest check to slowest check to try to quit early whenever possible
 
-	if m.cfg.LongerThan != 0 {
-		if len(e.Line) > int(m.cfg.LongerThan) {
+	if d.cfg.LongerThan != 0 {
+		if len(e.Line) > int(d.cfg.LongerThan) {
 			// Too long, drop
-			m.logger.Debug("line met drop criteria for length", "max", m.cfg.LongerThan, "length", len(e.Line))
+			d.logger.Debug("line met drop criteria for length", "max", d.cfg.LongerThan, "length", len(e.Line))
 		} else {
-			m.logger.Debug("line drop criteria for length not met", "max", m.cfg.LongerThan, "length", len(e.Line))
+			d.logger.Debug("line drop criteria for length not met", "max", d.cfg.LongerThan, "length", len(e.Line))
 			return false
 		}
 	}
 
-	if m.cfg.OlderThan != emptyDuration {
+	if d.cfg.OlderThan != emptyDuration {
 		ct := time.Now()
-		cutoff := ct.Add(-m.cfg.OlderThan)
+		cutoff := ct.Add(-d.cfg.OlderThan)
 		if e.Timestamp.Before(cutoff) {
 			// Too old, drop
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line met drop criteria for age", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line met drop criteria for age", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
 			}
 		} else {
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line drop criteria for age not met", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line drop criteria for age not met", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
 			}
 			return false
 		}
 	}
-	if m.cfg.Source != "" && m.regex == nil {
+	if d.cfg.Source != "" && d.regex == nil {
 		var match bool
 		match = true
-		for _, src := range splitSource(m.cfg.Source) {
+		for _, src := range splitSource(d.cfg.Source) {
 			if _, ok := e.Extracted[src]; !ok {
 				match = false
 			}
 		}
 		if match {
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line met drop criteria for finding source key in extracted map")
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line met drop criteria for finding source key in extracted map")
 			}
 		} else {
 			// Not found in extact map, don't drop
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line will not be dropped, the provided source was not found in the extracted map")
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line will not be dropped, the provided source was not found in the extracted map")
 			}
 			return false
 		}
 	}
 
-	if m.cfg.Source == "" && m.regex != nil {
-		if !m.regex.MatchString(e.Line) {
+	if d.cfg.Source == "" && d.regex != nil {
+		if !d.regex.MatchString(e.Line) {
 			// Not a match to the regex, don't drop
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
 			}
 			return false
 		}
-		if debugEnabled(m.logger) {
-			m.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
+		if debugEnabled(d.logger) {
+			d.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
 		}
 	}
 
-	if m.cfg.Source != "" && m.regex != nil {
+	if d.cfg.Source != "" && d.regex != nil {
 		var extractedData []string
-		for _, src := range splitSource(m.cfg.Source) {
+		for _, src := range splitSource(d.cfg.Source) {
 			if e, ok := e.Extracted[src]; ok {
 				s, err := getString(e)
 				if err != nil {
-					if debugEnabled(m.logger) {
-						m.logger.Debug("Failed to convert extracted map value to string, cannot test regex line will not be dropped.", "err", err, "type", reflect.TypeOf(e))
+					if debugEnabled(d.logger) {
+						d.logger.Debug("Failed to convert extracted map value to string, cannot test regex line will not be dropped.", "err", err, "type", reflect.TypeOf(e))
 					}
 					return false
 				}
 				extractedData = append(extractedData, s)
 			}
 		}
-		if !m.regex.MatchString(strings.Join(extractedData, m.cfg.Separator)) {
+		if !d.regex.MatchString(strings.Join(extractedData, d.cfg.Separator)) {
 			// Not a match to the regex, don't drop
-			if debugEnabled(m.logger) {
-				m.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
+			if debugEnabled(d.logger) {
+				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
 			}
 			return false
 		}
-		if debugEnabled(m.logger) {
-			m.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
+		if debugEnabled(d.logger) {
+			d.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
 		}
 	}
 
 	// Everything matched, drop the line
-	if debugEnabled(m.logger) {
-		m.logger.Debug("all criteria met, line will be dropped")
+	if debugEnabled(d.logger) {
+		d.logger.Debug("all criteria met, line will be dropped")
 	}
 	return true
 }
@@ -225,7 +256,4 @@ func splitSource(s string) []string {
 	return strings.Split(s, ",")
 }
 
-// Cleanup implements Stage.
-func (*dropStage) Cleanup() {
-	// no-op
-}
+func (d *dropStage) Cleanup() {}

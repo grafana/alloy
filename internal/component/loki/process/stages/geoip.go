@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,14 +11,13 @@ import (
 	"github.com/jmespath-community/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/prometheus/common/model"
 )
 
 var (
-	ErrEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
-	ErrEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
-	ErrEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
-	ErrEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
+	errEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
+	errEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
+	errEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
+	errEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
 )
 
 type GeoIPFields int
@@ -62,20 +62,20 @@ type GeoIPConfig struct {
 
 func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 	if c.DB == "" {
-		return nil, ErrEmptyDBPathGeoIPStageConfig
+		return nil, errEmptyDBPathGeoIPStageConfig
 	}
 	if c.Source != nil && *c.Source == "" {
-		return nil, ErrEmptySourceGeoIPStageConfig
+		return nil, errEmptySourceGeoIPStageConfig
 	}
 
 	if c.DBType == "" && c.CustomLookups == nil {
-		return nil, ErrEmptyDBTypeAndValuesGeoIPStageConfig
+		return nil, errEmptyDBTypeAndValuesGeoIPStageConfig
 	}
 
 	switch c.DBType {
 	case "", "asn", "city", "country":
 	default:
-		return nil, ErrEmptyDBTypeGeoIPStageConfig
+		return nil, errEmptyDBTypeGeoIPStageConfig
 	}
 
 	if c.CustomLookups == nil {
@@ -94,13 +94,19 @@ func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 
 		expressions[key], err = jmespath.Compile(jmes)
 		if err != nil {
-			return nil, errors.New(ErrCouldNotCompileJMES)
+			return nil, errCouldNotCompileJMES
 		}
 	}
 	return expressions, nil
 }
 
-func newGeoIPStage(logger *slog.Logger, config GeoIPConfig) (Stage, error) {
+var (
+	_ Stage   = (*geoIPStage)(nil)
+	_ stage   = (*geoIPStage)(nil)
+	_ stopper = (*geoIPStage)(nil)
+)
+
+func newGeoIPStage(logger *slog.Logger, config GeoIPConfig, next NextFn) (*geoIPStage, error) {
 	valuesExpressions, err := validateGeoIPConfig(config)
 	if err != nil {
 		return nil, err
@@ -112,6 +118,7 @@ func newGeoIPStage(logger *slog.Logger, config GeoIPConfig) (Stage, error) {
 	}
 
 	return &geoIPStage{
+		next:              next,
 		mmdb:              mmdb,
 		logger:            logger.With("stage", "geoip"),
 		cfgs:              config,
@@ -120,6 +127,7 @@ func newGeoIPStage(logger *slog.Logger, config GeoIPConfig) (Stage, error) {
 }
 
 type geoIPStage struct {
+	next              NextFn
 	logger            *slog.Logger
 	mmdb              *maxminddb.Reader
 	cfgs              GeoIPConfig
@@ -128,44 +136,41 @@ type geoIPStage struct {
 
 // Run implements Stage
 func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		defer g.close()
-		for e := range in {
-			g.process(e.Labels, e.Extracted)
-			out <- e
-		}
-	}()
-	return out
+	return RunWith(in, func(e Entry) Entry {
+		return g.processEntry(e)
+	})
 }
 
-// Cleanup implements Stage.
-func (*geoIPStage) Cleanup() {
-	// no-op
+// process implements stage.
+func (g *geoIPStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = g.processEntry(entries[i])
+	}
+	return g.next(ctx, entries)
 }
 
-func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
+func (g *geoIPStage) processEntry(e Entry) Entry {
 	var ip net.IP
 	if g.cfgs.Source != nil {
-		if _, ok := extracted[*g.cfgs.Source]; !ok {
+		source := *g.cfgs.Source
+		if _, ok := e.Extracted[source]; !ok {
 			if debugEnabled(g.logger) {
 				g.logger.Debug("source does not exist in the set of extracted values", "source", *g.cfgs.Source)
 			}
-			return
+			return e
 		}
 
-		value, err := getString(extracted[*g.cfgs.Source])
+		value, err := getString(e.Extracted[source])
 		if err != nil {
 			if debugEnabled(g.logger) {
-				g.logger.Debug("failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(extracted[*g.cfgs.Source]))
+				g.logger.Debug("failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(e.Extracted[source]))
 			}
-			return
+			return e
 		}
 		ip = net.ParseIP(value)
 		if ip == nil {
 			g.logger.Error("source is not an ip", "source", value)
-			return
+			return e
 		}
 	}
 	if g.cfgs.DBType != "" {
@@ -175,35 +180,43 @@ func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
 			err := g.mmdb.Lookup(ip, &record)
 			if err != nil {
 				g.logger.Error("unable to get City record for the ip", "err", err, "ip", ip)
-				return
+				return e
 			}
-			g.populateExtractedWithCityData(extracted, &record)
+			g.populateExtractedWithCityData(e.Extracted, &record)
 		case "asn":
 			var record geoip2.ASN
 			err := g.mmdb.Lookup(ip, &record)
 			if err != nil {
 				g.logger.Error("unable to get ASN record for the ip", "err", err, "ip", ip)
-				return
+				return e
 			}
-			g.populateExtractedWithASNData(extracted, &record)
+			g.populateExtractedWithASNData(e.Extracted, &record)
 		case "country":
 			var record geoip2.Country
 			err := g.mmdb.Lookup(ip, &record)
 			if err != nil {
 				g.logger.Error("unable to get Country record for the ip", "err", err, "ip", ip)
-				return
+				return e
 			}
-			g.populateExtractedWithCountryData(extracted, &record)
+			g.populateExtractedWithCountryData(e.Extracted, &record)
 		default:
 			g.logger.Error("unknown database type")
 		}
 	}
 	if g.valuesExpressions != nil {
-		g.populateExtractedWithCustomFields(ip, extracted)
+		g.populateExtractedWithCustomFields(ip, e.Extracted)
 	}
+
+	return e
 }
 
-func (g *geoIPStage) close() {
+// Cleanup implements Stage.
+func (g *geoIPStage) Cleanup() {
+	g.stop()
+}
+
+// stop implements stopper.
+func (g *geoIPStage) stop() {
 	if err := g.mmdb.Close(); err != nil {
 		g.logger.Error("error while closing mmdb", "err", err)
 	}

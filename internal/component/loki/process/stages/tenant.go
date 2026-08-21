@@ -1,27 +1,21 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"reflect"
-	"time"
 
 	"github.com/prometheus/common/model"
 )
 
-// Configuration errors.
 var (
-	ErrTenantStageEmptyLabelSourceOrValue        = errors.New("label, source or value config are required")
-	ErrTenantStageConflictingLabelSourceAndValue = errors.New("label, source and value are mutually exclusive: you should set source, value or label but not all")
+	errTenantStageEmptyLabelSourceOrValue        = errors.New("label, source or value config are required")
+	errTenantStageConflictingLabelSourceAndValue = errors.New("label, source and value are mutually exclusive: you should set source, value or label but not all")
 )
 
 // ReservedLabelTenantID is a shared value used to refer to the tenant ID.
 const ReservedLabelTenantID = "__tenant_id__"
-
-type tenantStage struct {
-	cfg    TenantConfig
-	logger *slog.Logger
-}
 
 // TenantConfig configures a tenant stage.
 type TenantConfig struct {
@@ -33,48 +27,78 @@ type TenantConfig struct {
 // validateTenantConfig validates the tenant stage configuration
 func validateTenantConfig(c TenantConfig) error {
 	if c.Source == "" && c.Value == "" && c.Label == "" {
-		return ErrTenantStageEmptyLabelSourceOrValue
+		return errTenantStageEmptyLabelSourceOrValue
 	}
 
 	if c.Source != "" && c.Value != "" || c.Label != "" && c.Value != "" || c.Source != "" && c.Label != "" {
-		return ErrTenantStageConflictingLabelSourceAndValue
+		return errTenantStageConflictingLabelSourceAndValue
 	}
 
 	return nil
 }
 
+var (
+	_ Stage = (*tenantStage)(nil)
+	_ stage = (*tenantStage)(nil)
+)
+
 // newTenantStage creates a new tenant stage to override the tenant ID from extracted data
-func newTenantStage(logger *slog.Logger, cfg TenantConfig) (Stage, error) {
+func newTenantStage(logger *slog.Logger, cfg TenantConfig, next NextFn) (*tenantStage, error) {
 	err := validateTenantConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return toStage(&tenantStage{
+	return &tenantStage{
+		next:   next,
 		cfg:    cfg,
 		logger: logger.With("stage", "tenant"),
-	}), nil
+	}, nil
 }
 
-// Process implements Stage
-func (s *tenantStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+type tenantStage struct {
+	next   NextFn
+	cfg    TenantConfig
+	logger *slog.Logger
+}
+
+// process implements stage.
+func (s *tenantStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = s.processEntry(entries[i])
+	}
+	return s.next(ctx, entries)
+}
+
+// Run implements Stage.
+func (s *tenantStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return s.processEntry(e)
+	})
+}
+
+// Cleanup implements Stage.
+func (s *tenantStage) Cleanup() {}
+
+func (s *tenantStage) processEntry(e Entry) Entry {
 	var tenantID string
 
 	// Get tenant ID from source or configured value
 	if s.cfg.Source != "" {
-		tenantID = s.getTenantFromSourceField(extracted)
+		tenantID = s.getTenantFromSourceField(e.Extracted)
 	} else if s.cfg.Label != "" {
-		tenantID = s.getTenantFromLabel(labels)
+		tenantID = s.getTenantFromLabel(e.Labels)
 	} else {
 		tenantID = s.cfg.Value
 	}
 
 	// Skip an empty tenant ID (i.e. failed to get the tenant from the source)
 	if tenantID == "" {
-		return
+		return e
 	}
 
-	labels[ReservedLabelTenantID] = model.LabelValue(tenantID)
+	e.Labels[ReservedLabelTenantID] = model.LabelValue(tenantID)
+	return e
 }
 
 func (s *tenantStage) getTenantFromSourceField(extracted map[string]any) string {
