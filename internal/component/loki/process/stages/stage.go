@@ -147,7 +147,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(opts.slogger, *cfg.MultilineConfig)
+		s, err = newMultilineStage(*cfg.MultilineConfig, opts)
 		if err != nil {
 			return nil, err
 		}
