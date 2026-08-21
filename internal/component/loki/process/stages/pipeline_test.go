@@ -92,17 +92,6 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		}
 	}
 
-	cloneEntries := func(entries []Entry) []Entry {
-		out := make([]Entry, len(entries))
-		for i, e := range entries {
-			out[i] = Entry{
-				Extracted: maps.Clone(e.Extracted),
-				Entry:     e.Entry.Clone(),
-			}
-		}
-		return out
-	}
-
 	cloned := cloneEntries(entries)
 
 	t.Run("Stage", func(t *testing.T) {
@@ -110,19 +99,20 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
 
-		out := p.Run(withInboundEntries(cloned...))
 		var collected []Entry
-		for e := range out {
+		for e := range p.Run(withInboundEntries(cloned...)) {
 			collected = append(collected, e)
 		}
 
-		assertEntriesUnordered(t, expected, collected, check)
 		if check.metrics != nil {
 			require.NoError(t, check.metrics(registry))
 		}
 
 		p.Stop()
 		p.Cleanup()
+
+		assertEntriesUnordered(t, expected, collected, check)
+
 		if check.metricsAfterCleanup != nil {
 			require.NoError(t, check.metricsAfterCleanup(registry))
 		}
@@ -141,18 +131,33 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 		p.process(context.Background(), entries)
 
-		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected, check)
-			if check.metrics != nil {
+		if check.metrics != nil {
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
 				require.NoError(c, check.metrics(registry))
-			}
-		}, 2*time.Second, 100*time.Millisecond)
+			}, 2*time.Second, 100*time.Millisecond)
+		}
 
 		p.Stop()
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			assertEntriesUnordered(c, expected, collected, check)
+		}, 2*time.Second, 100*time.Millisecond)
+
 		if check.metricsAfterCleanup != nil {
 			require.NoError(t, check.metricsAfterCleanup(registry))
 		}
 	})
+}
+
+func cloneEntries(entries []Entry) []Entry {
+	out := make([]Entry, len(entries))
+	for i, e := range entries {
+		out[i] = Entry{
+			Extracted: maps.Clone(e.Extracted),
+			Entry:     e.Entry.Clone(),
+		}
+	}
+	return out
 }
 
 // benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
