@@ -30,6 +30,13 @@ type stopper interface {
 
 var _ loki.Consumer = (*PipelineConsumer)(nil)
 
+// FIXME(kalleep): temporary function to start multiline stage when new pipeline is used
+// so that we don't start the background goroutine when this pipeline is unused.
+// This should be removed when we transition to the new pipeline.
+type starter interface {
+	start()
+}
+
 func NewPipelineConsumer(
 	slogger *slog.Logger,
 	registerer prometheus.Registerer,
@@ -133,6 +140,10 @@ func newPipeline(
 		ep, ok := s.(entryProcessor)
 		if !ok {
 			return nil, errors.New("stage has not been migrated to new interface")
+		}
+
+		if ss, ok := ep.(starter); ok {
+			ss.start()
 		}
 
 		stages = append(stages, ep)
