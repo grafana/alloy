@@ -65,19 +65,19 @@ func runBuildPlan(
 
 	options, command, err := parseBuildPlanArguments(args)
 	if err != nil {
-		reportf(stderr, "alloy-builder plan: %v\n", err)
+		reportf(stderr, "alloy-build-plan: %v\n", err)
 		return 1
 	}
 
 	plan, err := prepareInTreeBuildPlan(options, environ)
 	if err != nil {
-		reportf(stderr, "alloy-builder plan: %v\n", err)
+		reportf(stderr, "alloy-build-plan: %v\n", err)
 		return 1
 	}
 	if plan.cleanup != nil {
 		defer func() {
 			if err := plan.cleanup(); err != nil {
-				reportf(stderr, "alloy-builder plan: remove temporary build workspace: %v\n", err)
+				reportf(stderr, "alloy-build-plan: remove temporary build workspace: %v\n", err)
 			}
 		}()
 	}
@@ -89,8 +89,8 @@ func runBuildPlan(
 			componentSummary = strings.Join(plan.selection.components, ",")
 		}
 	}
-	reportf(stderr, "alloy-builder plan: native Alloy components: %s (%s)\n", componentSummary, plan.selection.source)
-	reportf(stderr, "alloy-builder plan: effective build tags: %s\n", strings.Join(plan.buildTags, ","))
+	reportf(stderr, "alloy-build-plan: native Alloy components: %s (%s)\n", componentSummary, plan.selection.source)
+	reportf(stderr, "alloy-build-plan: effective build tags: %s\n", strings.Join(plan.buildTags, ","))
 
 	childEnv := setEnvironmentValues(plan.environ, map[string]string{
 		buildPlanConfigEnv:         plan.configPath,
@@ -109,7 +109,7 @@ func runBuildPlan(
 		Stderr: stderr,
 	})
 	if err != nil {
-		reportf(stderr, "alloy-builder plan: start build command: %v\n", err)
+		reportf(stderr, "alloy-build-plan: start build command: %v\n", err)
 		return 1
 	}
 	return exitCode
@@ -131,7 +131,7 @@ func parseBuildPlanArguments(args []string) (buildPlanOptions, []string, error) 
 	}
 
 	options := buildPlanOptions{}
-	flags := flag.NewFlagSet("alloy-builder plan", flag.ContinueOnError)
+	flags := flag.NewFlagSet("alloy-build-plan", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&options.configPath, "config", "collector/builder-config.yaml", "builder manifest")
 	flags.StringVar(&options.defaultConfig, "default-config", "collector/builder-config.yaml", "implicit default builder manifest")
@@ -234,7 +234,7 @@ func prepareInTreeBuildPlan(options buildPlanOptions, environ []string) (prepare
 	if err := os.MkdirAll(buildRoot, 0o755); err != nil {
 		return preparedBuildPlan{}, fmt.Errorf("create build directory %q: %w", buildRoot, err)
 	}
-	workspace, err := os.MkdirTemp(buildRoot, ".alloy-builder-")
+	workspace, err := os.MkdirTemp(buildRoot, ".alloy-build-plan-")
 	if err != nil {
 		return preparedBuildPlan{}, fmt.Errorf("create temporary build workspace in %q: %w", buildRoot, err)
 	}

@@ -14,6 +14,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// fakeDelegate records the child build command without starting it.
+type fakeDelegate struct {
+	calls      int
+	invocation delegateInvocation
+	exitCode   int
+	err        error
+	inspect    func(delegateInvocation)
+}
+
+func (f *fakeDelegate) Run(invocation delegateInvocation) (int, error) {
+	f.calls++
+	f.invocation = invocation
+	f.invocation.Args = append([]string(nil), invocation.Args...)
+	f.invocation.Env = append([]string(nil), invocation.Env...)
+	if f.inspect != nil {
+		f.inspect(invocation)
+	}
+	return f.exitCode, f.err
+}
+
 func TestParseBuildPlanArguments(t *testing.T) {
 	options, command, err := parseBuildPlanArguments([]string{
 		"--config", "custom.yaml",
@@ -267,6 +287,71 @@ func TestPrepareInTreeBuildPlanRejectsInvalidInputs(t *testing.T) {
 			name:        "invalid output path",
 			manifest:    "dist: {output_path: []}\n",
 			wantMessage: "dist.output_path must be a string",
+		},
+		{
+			name:        "null component selection",
+			manifest:    "alloy_components:\n",
+			wantMessage: "must be a YAML list",
+		},
+		{
+			name:        "scalar component selection",
+			manifest:    "alloy_components: remote.http\n",
+			wantMessage: "must be a YAML list",
+		},
+		{
+			name:        "non-string component",
+			manifest:    "alloy_components: [42]\n",
+			wantMessage: "item 0 must be a non-empty string",
+		},
+		{
+			name:        "empty component",
+			manifest:    "alloy_components: [\"\"]\n",
+			wantMessage: "item 0 must be a non-empty string",
+		},
+		{
+			name:        "unknown component",
+			manifest:    "alloy_components: [not.a.component]\n",
+			wantMessage: "unknown Alloy component",
+		},
+		{
+			name:        "duplicate component",
+			manifest:    "alloy_components: [remote.http, remote.http]\n",
+			wantMessage: "duplicate Alloy component",
+		},
+		{
+			name:        "null dist",
+			manifest:    "dist:\n",
+			wantMessage: "dist must be a mapping",
+		},
+		{
+			name:        "non-string build tags",
+			manifest:    "dist: {build_tags: []}\n",
+			wantMessage: "dist.build_tags must be a string",
+		},
+		{
+			name:        "duplicate top-level key",
+			manifest:    "dist: {}\ndist: {}\n",
+			wantMessage: "duplicate mapping key \"dist\"",
+		},
+		{
+			name:        "duplicate nested key",
+			manifest:    "dist:\n  name: one\n  name: two\n",
+			wantMessage: "duplicate mapping key \"name\"",
+		},
+		{
+			name:        "YAML alias",
+			manifest:    "dist: &dist {}\nother: *dist\n",
+			wantMessage: "YAML aliases are not supported",
+		},
+		{
+			name:        "multiple YAML documents",
+			manifest:    "dist: {}\n---\ndist: {}\n",
+			wantMessage: "multiple YAML documents are not supported",
+		},
+		{
+			name:        "malformed YAML",
+			manifest:    "dist: [\n",
+			wantMessage: "parse builder manifest",
 		},
 	}
 

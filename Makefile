@@ -16,7 +16,7 @@
 ## Targets for running tests:
 ##
 ##   test                  Run tests
-##   test-alloy-builder    Test the Alloy-aware OCB wrapper with an external manifest
+##   test-alloy-build-plan Test the manifest-driven Alloy build planner
 ##   test-lightweight-components  Test native component selector build modes
 ##   lint                  Lint code
 ##   govulncheck           Run govulncheck across all Go modules
@@ -101,6 +101,17 @@ SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
 BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
+
+# Commands containing $(MAKE) run even under make -n. Indirect the child Make
+# command for dry runs, while retaining the recursive-recipe prefix normally so
+# parallel builds inherit the jobserver.
+ALLOY_MAKE_SHORT_FLAGS := $(filter -%,$(filter-out --%,$(MAKEFLAGS))) $(if $(findstring =,$(firstword $(MAKEFLAGS))),,$(filter-out --%,$(firstword $(MAKEFLAGS))))
+ALLOY_BUILD_PLAN_MAKE := $(MAKE)
+ALLOY_BUILD_PLAN_RECIPE_PREFIX := +
+ifneq ($(findstring n,$(ALLOY_MAKE_SHORT_FLAGS)),)
+ALLOY_BUILD_PLAN_MAKE := $(MAKE_COMMAND)
+ALLOY_BUILD_PLAN_RECIPE_PREFIX :=
+endif
 BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
@@ -229,32 +240,9 @@ test:
 		fi;\
 	done
 
-.PHONY: test-alloy-builder-external
-test-alloy-builder-external:
-	@set -eu; \
-		external_build="$(CURDIR)/build/test-alloy-builder-external"; \
-		if [ -e "$$external_build" ] || [ -L "$$external_build" ]; then \
-			echo "external builder test output already exists: $$external_build"; \
-			exit 1; \
-		fi; \
-		trap 'rm -rf "$$external_build"' EXIT; \
-		$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-			--ocb-version="$(BUILDER_VERSION)" \
-			--config ./collector/testdata/external/minimal-builder-config.yaml; \
-		artifact="$$external_build/minimal-alloy-collector"; \
-		[ -x "$$artifact" ]; \
-		go version -m "$$artifact" >"$$external_build/build-info.txt"; \
-		artifact_tags="$$(awk '$$1 == "build" && $$2 ~ /^-tags=/ { sub(/^-tags=/, "", $$2); print $$2; exit }' "$$external_build/build-info.txt")"; \
-		for tag in fixture_user_tag alloy_custom_components alloy_component_loki_write alloy_component_remote_http; do \
-			case ",$$artifact_tags," in \
-				*,"$$tag",*) ;; \
-				*) echo "external OCB artifact is missing build tag $$tag: $$artifact_tags"; exit 1 ;; \
-			esac; \
-		done
-
-.PHONY: test-alloy-builder
-test-alloy-builder: test-alloy-builder-external
-	$(GO_HOST_ENV) go test ./cmd/alloy-builder
+.PHONY: test-alloy-build-plan
+test-alloy-build-plan:
+	$(GO_HOST_ENV) go test ./internal/cmd/alloy-build-plan
 	@set -eu; \
 		tmp_dir="$$(mktemp -d)"; \
 		trap 'rm -rf "$$tmp_dir"' EXIT; \
@@ -262,7 +250,7 @@ test-alloy-builder: test-alloy-builder-external
 			USE_CONTAINER=0 SKIP_UI_BUILD=1 CGO_ENABLED=0 \
 			GO_TAGS= \
 			ALLOY_BINARY="$$tmp_dir/alloy" \
-			ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml; \
+			ALLOY_BUILDER_CONFIG=collector/testdata/lightweight-builder-config.yaml; \
 		"$$tmp_dir/alloy" validate internal/component/all/testdata/logs-selected.alloy; \
 		if "$$tmp_dir/alloy" validate internal/component/all/testdata/logs-omitted.alloy >/dev/null 2>&1; then \
 			echo "custom build unexpectedly accepted an omitted component"; \
@@ -270,7 +258,7 @@ test-alloy-builder: test-alloy-builder-external
 		fi
 
 .PHONY: test-lightweight-components
-test-lightweight-components: test-alloy-builder
+test-lightweight-components: test-alloy-build-plan
 	$(GO_ENV) go test ./internal/component/all/generate
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components,alloy_test_custom_none" ./internal/component/all
 	$(GO_ENV) go test -tags="gore2regex,alloy_custom_components,alloy_component_discovery_aws" ./internal/component/all
@@ -281,7 +269,9 @@ test-lightweight-components: test-alloy-builder
 	$(GO_ENV) go test -run TestCustomBuildRootCommands -tags="gore2regex,alloy_custom_components" ./internal/alloycli
 	$(GO_ENV) go test -run TestCustomBuildOmitsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components" ./internal/component/remote/http
 	$(GO_ENV) go test -run TestCustomBuildSelectsRemoteHTTPRegistration -tags="gore2regex,alloy_custom_components,alloy_component_remote_http" ./internal/component/remote/http
-	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml SKIP_UI_BUILD=1 | grep -q 'ALLOY_BUILDER_CONFIG=collector/testdata/external/minimal-builder-config.yaml'
+	@$(MAKE) -n alloy USE_CONTAINER=1 ALLOY_BUILDER_CONFIG=collector/testdata/lightweight-builder-config.yaml SKIP_UI_BUILD=1 | grep -q 'ALLOY_BUILDER_CONFIG=collector/testdata/lightweight-builder-config.yaml'
+	@# The missing manifest proves that make -n does not start the planner.
+	@$(MAKE) -n alloy USE_CONTAINER=0 ALLOY_BUILDER_CONFIG=collector/testdata/does-not-exist.yaml SKIP_UI_BUILD=1 >/dev/null
 
 .PHONY: govulncheck
 # Thin Go wrapper around govulncheck: streams the tool's native text output
@@ -377,13 +367,13 @@ alloy:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_HOST_ENV) go run ./cmd/alloy-builder plan \
+	$(ALLOY_BUILD_PLAN_RECIPE_PREFIX)$(GO_HOST_ENV) go run ./internal/cmd/alloy-build-plan \
 		--config "$(ALLOY_BUILDER_CONFIG)" \
 		--default-config "$(CURDIR)/collector/builder-config.yaml" \
 		--repo-root "$(CURDIR)" \
 		--build-tags "$(GO_TAGS)" \
 		$(if $(filter 1,$(SKIP_CODE_GENERATION)),--skip-generation,) \
-		-- $(MAKE) --no-print-directory _alloy-from-builder-manifest \
+		-- $(ALLOY_BUILD_PLAN_MAKE) --no-print-directory _alloy-from-builder-manifest \
 			USE_CONTAINER=0 \
 			GOOS="$(GOOS)" GOARCH="$(GOARCH)" GOARM="$(GOARM)" \
 			CGO_ENABLED="$(CGO_ENABLED)" GOEXPERIMENT="$(GOEXPERIMENT)" \
@@ -394,7 +384,7 @@ else
 			SKIP_CODE_GENERATION="$(SKIP_CODE_GENERATION)"
 endif
 
-# Internal continuation invoked by cmd/alloy-builder after it has validated the
+# Internal continuation invoked by alloy-build-plan after it has validated the
 # manifest and exported one coherent OTel/native build plan.
 _alloy-from-builder-manifest:
 	@test -n "$(ALLOY_BUILD_PLAN_CONFIG)" || { echo "missing Alloy builder plan"; exit 1; }
@@ -406,8 +396,7 @@ _alloy-from-builder-manifest:
 	@set -eu; \
 	if [ "$(ALLOY_BUILD_PLAN_SKIP_GENERATION)" != "true" ]; then \
 		$(MAKE) --no-print-directory generate-component-selectors USE_CONTAINER=0; \
-		$(GO_HOST_ENV) go run ./cmd/alloy-builder \
-			--ocb-version="$(BUILDER_VERSION)" \
+		$(GO_HOST_ENV) go run go.opentelemetry.io/collector/cmd/builder@$(BUILDER_VERSION) \
 			--config "$(ALLOY_BUILD_PLAN_CONFIG)" \
 			--skip-compilation; \
 		cp ./collector/supervisor.go "$(ALLOY_BUILD_PLAN_OUTPUT_PATH)/supervisor.go"; \
