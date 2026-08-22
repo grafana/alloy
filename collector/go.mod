@@ -13,6 +13,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azureblobexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.158.0
@@ -136,7 +137,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.4.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/internal v1.2.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 // indirect
 	github.com/Azure/go-amqp v1.7.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.30 // indirect

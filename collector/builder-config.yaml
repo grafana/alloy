@@ -24,6 +24,7 @@ extensions:
 
 exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.158.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azureblobexporter v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.158.0
