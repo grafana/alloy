@@ -11,24 +11,10 @@ import (
 	"github.com/prometheus/common/model"
 	promaws "github.com/prometheus/prometheus/discovery/aws"
 
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "discovery.ec2",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      EC2Arguments{},
-		Exports:   discovery.Exports{},
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return discovery.NewFromConvertibleConfig(opts, args.(EC2Arguments))
-		},
-	})
-}
 
 // EC2Filter is the configuration for filtering EC2 instances.
 type EC2Filter struct {

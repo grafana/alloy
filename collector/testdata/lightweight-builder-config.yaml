@@ -1,0 +1,19 @@
+dist:
+  module: github.com/grafana/alloy/otel_engine
+  name: alloy
+  description: In-tree lightweight Alloy build fixture.
+  version: v0.0.0
+  build_tags: fixture_user_tag
+
+extensions:
+  - gomod: github.com/grafana/alloy v0.0.0
+    import: github.com/grafana/alloy/extension/alloyengine
+    name: alloyengine
+
+providers:
+  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.64.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.64.0
+
+alloy_components:
+  - loki.write
+  - remote.http

@@ -35,16 +35,6 @@ import (
 
 func init() {
 	scrape.UserAgent = useragent.Get()
-
-	component.Register(component.Registration{
-		Name:      "prometheus.scrape",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
-		},
-	})
 }
 
 var (

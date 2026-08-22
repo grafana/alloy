@@ -1,3 +1,5 @@
+//go:build !alloy_custom_components
+
 // Package converter exposes utilities to convert config files from other
 // programs to Grafana Alloy configurations.
 package converter

@@ -4,24 +4,11 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus/exporter"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	config_util "github.com/prometheus/common/config"
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "prometheus.exporter.postgres",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   exporter.Exports{},
-
-		Build: exporter.New(createExporter, "postgres"),
-	})
-}
 
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
