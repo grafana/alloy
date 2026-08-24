@@ -1,16 +1,21 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -319,6 +324,67 @@ func TestSplitJSONConfigAlloyUnmarshall(t *testing.T) {
 		}
 	`), &config)
 	require.ErrorContains(t, err, "source cannot be empty")
+}
+
+// TestSplitJSONStage_ChildStateIsolation verifies that mutating one of the
+// children from a split doesn't affect the final unshared/reused child.
+func TestSplitJSONStage_ChildStateIsolation(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	cfgs := loadConfig(`stage.split_json {}`)
+
+	newParent := func() Entry {
+		return newTestEntry(map[string]any{"other": "keep"}, model.LabelSet{"app": "test"}, push.Entry{
+			Timestamp:          now,
+			Line:               `[{"a":1},{"b":2},{"c":3}]`,
+			StructuredMetadata: push.LabelsAdapter{{Name: "trace_id", Value: "123"}},
+		})
+	}
+
+	assertChildrenIsolated := func(t *testing.T, out []Entry) {
+		require.Len(t, out, 3)
+
+		// Mutating both non-final children catches aliasing between cloned
+		// children as well as against the reused final child.
+		for _, i := range []int{0, 1} {
+			out[i].Labels["app"] = "mutated"
+			out[i].Extracted["other"] = "mutated"
+			out[i].StructuredMetadata[0].Value = "mutated"
+		}
+
+		last := out[2]
+		assert.Equal(t, model.LabelValue("test"), last.Labels["app"])
+		assert.Equal(t, "keep", last.Extracted["other"])
+		assert.Equal(t, "123", last.StructuredMetadata[0].Value)
+	}
+
+	t.Run("Stage", func(t *testing.T) {
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		out := p.Run(withInboundEntries(newParent()))
+		var collected []Entry
+		for e := range out {
+			collected = append(collected, e)
+		}
+
+		assertChildrenIsolated(t, collected)
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		var collected []Entry
+		next := func(_ context.Context, es []Entry) error {
+			collected = append(collected, es...)
+			return nil
+		}
+
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		require.NoError(t, p.process(context.Background(), []Entry{newParent()}))
+
+		assertChildrenIsolated(t, collected)
+	})
 }
 
 // benchSplitJSONLine builds a top-level JSON array of n objects, each padded
