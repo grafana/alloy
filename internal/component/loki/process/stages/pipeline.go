@@ -116,7 +116,6 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 		once.Do(func() {
 			cancel()
 			p.Stop()
-			p.Cleanup()
 		})
 		wg.Wait()
 		p.Cleanup()
