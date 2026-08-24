@@ -22,8 +22,8 @@ You can enable clustering when {{< param "PRODUCT_NAME" >}} is installed on Kube
 ### Before you begin
 
 For multi-replica clustering on Kubernetes, set `controller.type` to `statefulset`.
-A StatefulSet gives each pod a stable network identity for peer discovery.
-It also lets you choose how many {{< param "PRODUCT_NAME" >}} pods to run instead of running one pod on every node.
+A StatefulSet gives each Pod a stable network identity for peer discovery.
+It also lets you choose how many {{< param "PRODUCT_NAME" >}} Pods to run instead of running one Pod on every node.
 Use a DaemonSet only when your configuration must collect node-local data.
 
 ### Steps

@@ -130,6 +130,11 @@ When you enable clustering in a component:
 1. When a node joins or leaves the cluster, targets are automatically redistributed.
 1. Approximately 1/N of targets are redistributed when cluster membership changes. This minimizes disruption.
 
+{{< admonition type="note" >}}
+Target labels must be consistent across all cluster nodes.
+If target discovery adds node-specific labels, such as `constants.hostname`, the hashing algorithm can't consistently determine target ownership.
+{{< /admonition >}}
+
 For more information about clustering concepts, refer to [Clustering][clustering].
 
 [configure-alloy]: ../configure-alloy/

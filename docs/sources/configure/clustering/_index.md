@@ -20,7 +20,7 @@ To configure clustering, complete these two steps:
 {{< admonition type="note" >}}
 Cluster mode at the {{< param "PRODUCT_NAME" >}} level doesn't automatically distribute workload.
 You must also enable clustering in each component that should participate in the cluster.
-Only components with a configured `clustering` block will distribute workload.
+Only components with a configured `clustering` block distribute workload.
 {{< /admonition >}}
 
 ## Enable clustering in components
