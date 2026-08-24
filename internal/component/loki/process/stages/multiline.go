@@ -314,6 +314,7 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 		return nil
 	}
 
+	// FIXME(kallep): If we fail future down in the pipeline we should restore the state.
 	return m.next(ctx, entries[:dst])
 }
 
@@ -345,6 +346,7 @@ func (m *multilineStage) start() {
 
 				if len(expired) > 0 {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					// FIXME(kallep): If we fail future down in the pipeline we should restore the state.
 					if err := m.next(ctx, expired); err != nil {
 						m.logger.Error("failed to flush", "err", err)
 					}
