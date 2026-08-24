@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	lokiMapMatchModeExact   = "exact"
-	lokiMapMatchModePartial = "partial"
+	mapMatchModeExact   = "exact"
+	mapMatchModePartial = "partial"
 )
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
@@ -79,7 +79,8 @@ type LokiEntrySchema struct {
 
 // AssertionSchema groups declarative assertions by signal type.
 type AssertionSchema struct {
-	Loki []LokiAssertionSchema `yaml:"loki"`
+	Loki       []LokiAssertionSchema       `yaml:"loki"`
+	Prometheus []PrometheusAssertionSchema `yaml:"prometheus"`
 }
 
 // LokiAssertionSchema describes one declarative Loki assertion. Count
@@ -93,15 +94,16 @@ type LokiAssertionSchema struct {
 
 // LokiMatchSchema describes Loki entry fields used by declarative assertions.
 type LokiMatchSchema struct {
-	Line               string             `yaml:"line,omitempty"`
-	Timestamp          string             `yaml:"timestamp,omitempty"`
-	Labels             LokiMapMatchSchema `yaml:"labels,omitempty"`
-	StructuredMetadata LokiMapMatchSchema `yaml:"structured_metadata,omitempty"`
+	Line               string         `yaml:"line,omitempty"`
+	Timestamp          string         `yaml:"timestamp,omitempty"`
+	Labels             MapMatchSchema `yaml:"labels,omitempty"`
+	StructuredMetadata MapMatchSchema `yaml:"structured_metadata,omitempty"`
 }
 
-// LokiMapMatchSchema describes map-like Loki entry fields. Mode controls
-// whether Values must match exactly or be contained in the actual field.
-type LokiMapMatchSchema struct {
+// MapMatchSchema describes map-like fields such as labels or structured
+// metadata. Mode controls whether Values must match exactly or be contained in
+// the actual field.
+type MapMatchSchema struct {
 	Mode   string            `yaml:"mode,omitempty"`
 	Values map[string]string `yaml:"values,omitempty"`
 }
@@ -169,7 +171,17 @@ func buildLokiEntry(entry LokiEntrySchema) (loki.Entry, error) {
 }
 
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
-	return buildLokiAssertions(assertions.Loki)
+	lokiAssertions, err := buildLokiAssertions(assertions.Loki)
+	if err != nil {
+		return nil, err
+	}
+
+	promAssertions, err := buildPrometheusAssertions(assertions.Prometheus)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(lokiAssertions, promAssertions...), nil
 }
 
 func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion, error) {
@@ -225,7 +237,7 @@ func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 	matchers := make([]harness.EntryMatcher, 0, 4)
 
 	if len(match.Labels.Values) > 0 {
-		partial, err := isPartialLokiMapMatch("labels", match.Labels)
+		partial, err := isPartialMapMatch("labels", match.Labels)
 		if err != nil {
 			return nil, err
 		}
@@ -246,7 +258,7 @@ func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 	}
 
 	if len(match.StructuredMetadata.Values) > 0 {
-		partial, err := isPartialLokiMapMatch("structured_metadata", match.StructuredMetadata)
+		partial, err := isPartialMapMatch("structured_metadata", match.StructuredMetadata)
 		if err != nil {
 			return nil, err
 		}
@@ -256,14 +268,14 @@ func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 	return matchers, nil
 }
 
-func isPartialLokiMapMatch(name string, match LokiMapMatchSchema) (bool, error) {
+func isPartialMapMatch(name string, match MapMatchSchema) (bool, error) {
 	switch match.Mode {
-	case "", lokiMapMatchModeExact:
+	case "", mapMatchModeExact:
 		return false, nil
-	case lokiMapMatchModePartial:
+	case mapMatchModePartial:
 		return true, nil
 	default:
-		return false, fmt.Errorf("%s mode must be %q or %q, got %q", name, lokiMapMatchModeExact, lokiMapMatchModePartial, match.Mode)
+		return false, fmt.Errorf("%s mode must be %q or %q, got %q", name, mapMatchModeExact, mapMatchModePartial, match.Mode)
 	}
 }
 

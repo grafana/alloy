@@ -188,13 +188,17 @@ func LokiEntryTimestamp(ts time.Time) EntryMatcher {
 }
 
 func renderSnapshot(s snapshot) string {
-	if len(s.loki) == 0 {
-		return "loki entries (0)"
+	sections := []string{
+		renderLokiEntries(s.loki),
+		renderPrometheusSamples(s.prometheus),
 	}
+	return strings.Join(sections, "\n\n")
+}
 
+func renderLokiEntries(entries []loki.Entry) string {
 	var builder strings.Builder
-	_, _ = fmt.Fprintf(&builder, "loki entries (%d):\n", len(s.loki))
-	for _, entry := range s.loki {
+	_, _ = fmt.Fprintf(&builder, "loki entries (%d):\n", len(entries))
+	for _, entry := range entries {
 		builder.WriteString("- ")
 		builder.WriteString(renderLokiEntry(entry))
 		builder.WriteByte('\n')
