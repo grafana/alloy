@@ -79,14 +79,21 @@ alloy run config.alloy \
 
 You can customize clustering behavior with additional flags:
 
-| Flag                             | Description                                     | Default    |
-| -------------------------------- | ----------------------------------------------- | ---------- |
-| `--cluster.name`                 | Name to prevent mixing clusters.                | `""`       |
-| `--cluster.advertise-address`    | Address to advertise to other cluster nodes.    | `""`       |
-| `--cluster.advertise-interfaces` | Network interfaces to use for advertisement.    | `eth0,en0` |
-| `--cluster.rejoin-interval`      | Interval to rejoin the cluster.                 | `60s`      |
-| `--cluster.wait-for-size`        | Minimum cluster size before traffic processing. | `0`        |
-| `--cluster.wait-timeout`         | Timeout for cluster size wait.                  | `0`        |
+| Flag                             | Description                                      | Default    |
+| -------------------------------- | ------------------------------------------------ | ---------- |
+| `--cluster.advertise-address`    | Address to advertise to other cluster nodes.     | `""`       |
+| `--cluster.advertise-interfaces` | Network interfaces to use for advertisement.     | `eth0,en0` |
+| `--cluster.enable-tls`           | Enables TLS for cluster communication.           | `false`    |
+| `--cluster.max-join-peers`       | Number of peers to join from the discovered set. | `5`        |
+| `--cluster.name`                 | Name to prevent mixing clusters.                 | `""`       |
+| `--cluster.node-name`            | The name to use for this node.                   | `""`       |
+| `--cluster.rejoin-interval`      | Interval to rejoin the cluster.                  | `60s`      |
+| `--cluster.tls-ca-path`          | Path to the CA certificate file.                 | `""`       |
+| `--cluster.tls-cert-path`        | Path to the certificate file.                    | `""`       |
+| `--cluster.tls-key-path`         | Path to the key file.                            | `""`       |
+| `--cluster.tls-server-name`      | Server name to use for TLS communication.        | `""`       |
+| `--cluster.wait-for-size`        | Minimum cluster size before traffic processing.  | `0`        |
+| `--cluster.wait-timeout`         | Timeout for cluster size wait.                   | `0`        |
 
 For production deployments, set `--cluster.wait-for-size` to your expected cluster size and `--cluster.wait-timeout` to a reasonable duration.
 This ensures all nodes join before processing begins, which reduces duplicate scrapes and out-of-order samples at remote write during startup.

@@ -46,11 +46,11 @@ The following components support the `clustering` block:
 
 Prometheus metrics collection components:
 
-- [`prometheus.scrape`][prometheus.scrape]
 - [`prometheus.operator.podmonitors`][prometheus.operator.podmonitors]
-- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
-- [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]
 - [`prometheus.operator.probes`][prometheus.operator.probes]
+- [`prometheus.operator.scrapeconfigs`][prometheus.operator.scrapeconfigs]
+- [`prometheus.operator.servicemonitors`][prometheus.operator.servicemonitors]
+- [`prometheus.scrape`][prometheus.scrape]
 
 Pyroscope profiling components:
 
