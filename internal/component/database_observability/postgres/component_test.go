@@ -52,16 +52,18 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		args:         args,
 		fanout:       loki.NewFanout(args.ForwardTo),
 		handler:      loki.NewLogsReceiver(),
-		registry:     prometheus.NewRegistry(),
-		healthErr:    atomic.NewString(""),
 		openSQL:      openSQL,
 		logsReceiver: loki.NewLogsReceiver(),
+		instance: &dbInstance{
+			instanceKey: "test-instance",
+			baseTarget: discovery.NewTargetFromMap(map[string]string{
+				"instance": "test-instance",
+				"job":      "database_observability",
+			}),
+			registry:  prometheus.NewRegistry(),
+			healthErr: atomic.NewString(""),
+		},
 	}
-	c.instanceKey = "test-instance"
-	c.baseTarget = discovery.NewTargetFromMap(map[string]string{
-		"instance": c.instanceKey,
-		"job":      "database_observability",
-	})
 	return c
 }
 
@@ -917,7 +919,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		require.NoError(t, err)
 
 		// The component should handle nil dbConnection gracefully
-		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
+		assert.Nil(t, c.instance.dbConnection, "dbConnection should be nil initially after failed connection")
 
 		// Calling connectAndStartCollectors again should not panic
 		err = c.connectAndStartCollectors(context.Background())
@@ -949,14 +951,16 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		require.NoError(t, registry.Register(collector))
 
 		c := &Component{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
+			instance: &dbInstance{
+				registry:           registry,
+				exporterCollectors: []prometheus.Collector{collector},
+			},
 		}
 
 		c.cleanupExporterCollectors()
 
 		assert.Equal(t, 1, collector.closeCalls)
-		assert.Nil(t, c.exporterCollectors)
+		assert.Nil(t, c.instance.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 
@@ -970,13 +974,15 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		require.NoError(t, registry.Register(collector))
 
 		c := &Component{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
+			instance: &dbInstance{
+				registry:           registry,
+				exporterCollectors: []prometheus.Collector{collector},
+			},
 		}
 
 		c.cleanupExporterCollectors()
 
-		assert.Nil(t, c.exporterCollectors)
+		assert.Nil(t, c.instance.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 }
@@ -1001,11 +1007,11 @@ func TestPostgres_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.healthErr.Store("initial error")
+		c.instance.healthErr.Store("initial error")
 
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.instance.healthErr.Load())
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -1021,7 +1027,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.instance.healthErr.Load())
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1036,14 +1042,14 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// Second attempt: connection succeeds and clears error
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.healthErr.Load())
+		assert.Empty(t, c.instance.healthErr.Load())
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
 		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
-		require.NoError(t, c.registry.Register(oldCollector))
-		c.exporterCollectors = []prometheus.Collector{oldCollector}
+		require.NoError(t, c.instance.registry.Register(oldCollector))
+		c.instance.exporterCollectors = []prometheus.Collector{oldCollector}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -1052,8 +1058,8 @@ func TestPostgres_Reconnection(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, oldCollector.closeCalls)
-		assert.Nil(t, c.exporterCollectors)
-		assert.False(t, c.registry.Unregister(oldCollector))
+		assert.Nil(t, c.instance.exporterCollectors)
+		assert.False(t, c.instance.registry.Unregister(oldCollector))
 	})
 }
 
