@@ -217,7 +217,7 @@ func TestValidateWindowsEvent(t *testing.T) {
 			cfg:  `stage.windowsevent { source = "msg"}`,
 		},
 		{
-			name:    "emptu source",
+			name:    "empty source",
 			cfg:     `stage.windowsevent { source = ""}`,
 			wantErr: true,
 		},
