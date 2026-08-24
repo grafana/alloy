@@ -74,6 +74,25 @@ extensions:
 
 Replace `v<ALLOY_VERSION>` with the Alloy version you want to embed.
 
+### OCB version
+
+OCB uses its own version in the generated distribution's `go.mod` for the OpenTelemetry Collector core dependencies. The build config currently has no field to change this. The deprecated `dist.otelcol_version` was removed from OCB in [opentelemetry-collector#11405](https://github.com/open-telemetry/opentelemetry-collector/issues/11405) and is now silently ignored.
+
+To avoid compatibility issues between components and extensions, use an OCB version that matches the OpenTelemetry Collector version Alloy depends on.
+
+First, read the version of the `go.opentelemetry.io/collector/otelcol` dependency from the root `go.mod` of the Alloy version you're embedding the extension from. For example, in a local checkout of Alloy:
+
+```shell
+grep 'go.opentelemetry.io/collector/otelcol ' go.mod
+# go.opentelemetry.io/collector/otelcol v0.158.0
+```
+
+And then use this same version as your `<OCB_VERSION>` to run a compatible version of OCB:
+
+```shell
+go run go.opentelemetry.io/collector/cmd/builder@<OCB_VERSION> --help
+```
+
 ### Replace directives
 
 If you copy from Alloy repository's `collector/builder-config.yaml` file, don't copy the local module replaces unchanged. These paths are relative and only work from Alloy's `collector/` directory:
