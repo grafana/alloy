@@ -21,8 +21,10 @@ You can enable clustering when {{< param "PRODUCT_NAME" >}} is installed on Kube
 
 ### Before you begin
 
-For multi-replica clustering on Kubernetes, Grafana Alloy recommends setting `controller.type` to `statefulset`.
-Other controller types can still pass clustering flags when `alloy.clustering.enabled=true`, but `statefulset` is the recommended topology for stable clustered operation.
+For multi-replica clustering on Kubernetes, set `controller.type` to `statefulset`.
+A StatefulSet gives each pod a stable network identity for peer discovery.
+It also lets you choose how many {{< param "PRODUCT_NAME" >}} pods to run instead of running one pod on every node.
+Use a DaemonSet only when your configuration must collect node-local data.
 
 ### Steps
 
@@ -88,21 +90,21 @@ On Windows, set `--cluster.advertise-interfaces` to a valid network interface or
 
 You can customize clustering behavior with additional flags:
 
-| Flag                             | Description                                      | Default    |
-| -------------------------------- | ------------------------------------------------ | ---------- |
-| `--cluster.advertise-address`    | Address to advertise to other cluster nodes.     | `""`       |
-| `--cluster.advertise-interfaces` | Network interfaces to use for advertisement.     | `eth0,en0` |
-| `--cluster.enable-tls`           | Enables TLS for cluster communication.           | `false`    |
-| `--cluster.max-join-peers`       | Number of peers to join from the discovered set. | `5`        |
-| `--cluster.name`                 | Name to prevent mixing clusters.                 | `""`       |
-| `--cluster.node-name`            | The name to use for this node.                   | `""`       |
-| `--cluster.rejoin-interval`      | Interval to rejoin the cluster.                  | `60s`      |
-| `--cluster.tls-ca-path`          | Path to the CA certificate file.                 | `""`       |
-| `--cluster.tls-cert-path`        | Path to the certificate file.                    | `""`       |
-| `--cluster.tls-key-path`         | Path to the key file.                            | `""`       |
-| `--cluster.tls-server-name`      | Server name to use for TLS communication.        | `""`       |
-| `--cluster.wait-for-size`        | Minimum cluster size before traffic processing.  | `0`        |
-| `--cluster.wait-timeout`         | Timeout for cluster size wait.                   | `0`        |
+| Flag                             | Description                                                  | Default    |
+| -------------------------------- | ------------------------------------------------------------ | ---------- |
+| `--cluster.advertise-address`    | Address to advertise to other cluster nodes.                 | `""`       |
+| `--cluster.advertise-interfaces` | Network interfaces to use for advertisement.                 | `eth0,en0` |
+| `--cluster.enable-tls`           | Enables TLS for cluster communication.                       | `false`    |
+| `--cluster.max-join-peers`       | Number of peers to join from the discovered set.             | `5`        |
+| `--cluster.name`                 | Cluster name that nodes must share to join the same cluster. | `""`       |
+| `--cluster.node-name`            | The name to use for this node.                               | `""`       |
+| `--cluster.rejoin-interval`      | Interval to rejoin the cluster.                              | `60s`      |
+| `--cluster.tls-ca-path`          | Path to the CA certificate file.                             | `""`       |
+| `--cluster.tls-cert-path`        | Path to the certificate file.                                | `""`       |
+| `--cluster.tls-key-path`         | Path to the key file.                                        | `""`       |
+| `--cluster.tls-server-name`      | Server name to use for TLS communication.                    | `""`       |
+| `--cluster.wait-for-size`        | Minimum cluster size before traffic processing.              | `0`        |
+| `--cluster.wait-timeout`         | Timeout for cluster size wait.                               | `0`        |
 
 To enable TLS for peer-to-peer communication, set `--cluster.enable-tls` and configure the related `--cluster.tls-*` flags for the CA certificate, certificate file, key file, and server name.
 
