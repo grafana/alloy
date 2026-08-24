@@ -89,13 +89,18 @@ func TestCRIStage(t *testing.T) {
 			},
 		},
 		{
-			name: "with invalid line",
+			name: "without flag",
 			cfg:  defaultCRIConfig,
 			entries: []Entry{
-				newEntry(map[string]any{}, model.LabelSet{}, "i'm invalid!!!", criTestTime2),
+				newEntry(map[string]any{}, model.LabelSet{}, "something stderr looks like it could be cri", criTestTime2),
 			},
 			expected: []Entry{
-				newEntry(map[string]any{}, model.LabelSet{}, "i'm invalid!!!", criTestTime2),
+				newEntry(
+					map[string]any{"flags": "F", "stream": "stderr", "content": "looks like it could be cri", "time": "something"},
+					model.LabelSet{"stream": "stderr"},
+					"looks like it could be cri",
+					criTestTime2,
+				),
 			},
 		},
 		{

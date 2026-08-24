@@ -292,7 +292,7 @@ func (c *criStage) stop() {
 	for _, e := range c.partialLines {
 		out = append(out, e)
 	}
-	c.partialLines = nil
+	c.partialLines = make(map[model.Fingerprint]Entry)
 	c.mut.Unlock()
 
 	if len(out) == 0 {
