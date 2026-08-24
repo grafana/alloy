@@ -158,15 +158,16 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		)
 
 		for _, table := range tables {
+			validated := false
 			resolvedTable := table
 			if c.tableRegistry != nil {
-				resolvedTable, _ = c.tableRegistry.IsValid(schema, table)
+				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
 			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, resolvedTable),
+				fmt.Sprintf(`schema="%s" digest="%s" table="%s" validated="%t"`, schema, digest, resolvedTable, validated),
 			)
 		}
 	}
