@@ -183,7 +183,7 @@ When `--cluster.name` is provided, nodes only join peers who share the same clus
 By default, the cluster name is empty, and any node that doesn't set the flag can join.
 Attempting to join a cluster with a wrong `--cluster.name` results in a "failed to join memberlist" error.
 
-### Join Address Format
+### Join address format
 
 The `--cluster.join-addresses` flag supports DNS names with discovery mode prefix.
 You select a discovery mode by adding one of the following supported prefixes to the address:
