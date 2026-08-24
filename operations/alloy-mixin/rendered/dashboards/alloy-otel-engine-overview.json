@@ -1384,7 +1384,7 @@
             "multi": true,
             "name": "cluster",
             "query": {
-               "query": "label_values(otelcol_process_uptime_seconds_total, cluster)",
+               "query": "label_values(otelcol_process_uptime_seconds_total{}, cluster)",
                "refId": "cluster"
             },
             "refresh": 2,
