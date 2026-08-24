@@ -1,4 +1,4 @@
-ARG BASE_IMAGE_GO=golang:1.26.7-windowsservercore-ltsc2022@sha256:2a3365ef5cb38e4ebaafe073a68a97989322fda2a582ee067ef9fd59a0551692
+ARG BASE_IMAGE_GO=golang:1.27.0-windowsservercore-ltsc2022@sha256:40174a06b91f246531c9c84b983323c242700247361894a50fe6fdfe7e7374b8
 ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:3680dad0bb773da8efcd9d928eaf4e33817875ab71a43792640ab1bcc0b3c074
 
 FROM ${BASE_IMAGE_GO} AS builder

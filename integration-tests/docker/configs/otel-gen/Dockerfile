@@ -1,10 +1,10 @@
-FROM golang:1.26.7@sha256:45a5f7a810238aabcbad211d70b9ae082022d96f7c7259e94041ad1b933575ac as build
+FROM golang:1.27.0@sha256:65b6f280bf050ec5af12716857e8ea8439d694dbba8f31ceeb7630670071f2bb as build
 WORKDIR /app/
 COPY go.mod go.sum ./
 COPY syntax/go.mod syntax/go.sum ./syntax/
 RUN go mod download
 COPY ./integration-tests/docker/configs/otel-gen/ ./
 RUN CGO_ENABLED=0 go build -o main main.go
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 COPY --from=build /app/main /app/main
 CMD ["/app/main"]
