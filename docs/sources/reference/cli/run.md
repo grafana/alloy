@@ -131,7 +131,7 @@ The `--cluster.enabled` flag starts {{< param "PRODUCT_NAME" >}} in [clustering]
 Use the other `--cluster.*` flags to configure how nodes discover and connect to one another.
 
 Each cluster member's name must be unique within the cluster.
-Nodes which try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
+Nodes that try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
 
 Peers communicate over HTTP/2 on the built-in HTTP server.
 Each node must be configured to accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
