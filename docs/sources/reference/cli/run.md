@@ -128,7 +128,7 @@ Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-
 ## Clustering
 
 The `--cluster.enabled` flag starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
-For task-oriented setup guidance, refer to [Configure {{< param "PRODUCT_NAME" >}} for clustering][configure-clustering].
+To configure clustering, refer to [Configure {{< param "PRODUCT_NAME" >}} for clustering][configure-clustering].
 
 Use the other `--cluster.*` flags to control these parts of cluster behavior:
 
