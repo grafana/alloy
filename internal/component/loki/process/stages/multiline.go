@@ -241,21 +241,27 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 		if m.streams == nil {
 			m.streams = make(map[model.Fingerprint]*multilineState)
 		}
-		state, hasState := m.streams[key]
 
+		state, hasState := m.streams[key]
 		isFirstLine := m.regex.MatchString(e.Line)
+
 		if !hasState {
+			// Stream does not have any existing state and it's not identified
+			// as the first line of a multiline block so we forward as is.
 			if !isFirstLine {
 				entries[dst] = e
 				dst++
 				continue
 			}
+
+			// First time we see start of a multiline block so we initiate empty state.
 			state = &multilineState{buffer: new(bytes.Buffer)}
 			m.streams[key] = state
 		}
 
-		// New start line and we already have an active state we need to flush.
-		if isFirstLine {
+		switch {
+		// Start of new multiline block, flush previous state and set new state
+		case isFirstLine:
 			if state.currentLines > 0 {
 				entries[dst] = m.flushState(state)
 				dst++
@@ -270,7 +276,21 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 			state.buffer.WriteString(line)
 			state.currentLines++
 			state.lastSeen = time.Now()
-		} else {
+		// Not a new block but we have a stale block that we need to flush.
+		case state.currentLines > 0 && time.Since(state.lastSeen) >= m.cfg.MaxWaitTime:
+			entries[dst] = m.flushState(state)
+			dst++
+
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+
+			state.buffer.WriteString(line)
+			state.currentLines++
+			state.lastSeen = time.Now()
+		// Append to existing multiline block.
+		default:
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
