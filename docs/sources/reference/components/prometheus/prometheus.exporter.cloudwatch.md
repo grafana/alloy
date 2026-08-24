@@ -328,19 +328,6 @@ Represents an AWS Metric to scrape.
 The `metric` block may be specified multiple times to define multiple target metrics.
 Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
 
-| Name                       | Type           | Description                                                                | Default                                                                                                            | Required |
-| -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
-| `name`                     | `string`       | Metric name.                                                               |                                                                                                                    | yes      |
-| `period`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `period` in the parent job.                                                                           | no       |
-| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
-| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | The value of `add_cloudwatch_timestamp` in the parent `discovery` or `custom_namespace` job. `false` if not set. | no       |
-| `export_all_data_points`   | `bool`         | When `true`, export every CloudWatch data point in the configured time range. You must enable `add_cloudwatch_timestamp`. | `false` | no |
-| `length`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `length` in the parent job.                                                                           | no       |
-| `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [`static`][static] or [`discovery`][discovery] block. `true` if not set in the parent block. | no       |
-
-To export historical data points, set `export_all_data_points` to `true` and enable `add_cloudwatch_timestamp`.
-For `discovery` and `custom_namespace` jobs, you can set `add_cloudwatch_timestamp` on the job or metric.
-For `static` jobs, set `add_cloudwatch_timestamp` on each metric.
 | Name                       | Type           | Description                                                    | Default                                                                                  | Required |
 | -------------------------- | -------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
 | `name`                     | `string`       | Metric name.                                                   |                                                                                          | yes      |
