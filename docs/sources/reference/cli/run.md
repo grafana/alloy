@@ -127,8 +127,8 @@ Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-
 
 ## Clustering
 
-The `--cluster.enabled` command-line argument starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
-The rest of the `--cluster.*` command-line flags can be used to configure how nodes discover and connect to one another.
+The `--cluster.enabled` flag starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
+Use the other `--cluster.*` flags to configure how nodes discover and connect to one another.
 
 Each cluster member's name must be unique within the cluster.
 Nodes which try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
