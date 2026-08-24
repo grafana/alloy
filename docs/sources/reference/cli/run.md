@@ -142,7 +142,8 @@ If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAM
 Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
 
 The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to look up (supports SRV and A/AAAA records).
-In both cases, the port number can be specified with a `:<port>` suffix. If ports aren't provided, default of the port used for the HTTP listener is used.
+In both cases, you can specify the port number with a `:<port>` suffix.
+If you don't provide a port, {{< param "PRODUCT_NAME" >}} uses the port from the HTTP listener.
 If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
 Optionally, you may specify a DNS query type as a prefix for each address. Refer to [join address format](#join-address-format) for more information.
 
