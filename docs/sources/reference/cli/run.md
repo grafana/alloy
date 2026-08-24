@@ -88,6 +88,7 @@ The `--windows.priority` flag is in [Public preview][] and is not covered by {{<
 
 ### Deprecated flags
 
+* `--cluster.use-discovery-v1`: This flag is deprecated and has no effect.
 * `--feature.prometheus.metric-validation-scheme`: This flag is deprecated and has no effect. You can configure the metric validation scheme individually for each `prometheus.scrape` component in your {{< param "PRODUCT_NAME" >}} configuration file.
 
 ## Update the configuration file
