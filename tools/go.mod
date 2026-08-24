@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/tools
 
-go 1.26.7
+go 1.27.0
 
 require (
 	github.com/google/go-github/v57 v57.0.0
