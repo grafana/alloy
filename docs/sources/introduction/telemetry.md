@@ -110,7 +110,7 @@ Downstream components keep using its last exported data indefinitely, until it r
 
 This means an unhealthy component doesn't necessarily stop a pipeline.
 
-Staleness isn't limited to failed config updates, either: some components can stop receiving fresh data without reporting unhealthy at all. For example, if `discovery.kubernetes` can't reach the API server, it doesn't fail or report an error; it just stops emitting new target groups. `prometheus.scrape` keeps scraping the last known target list, now stale, with no indication in either component's health.
+Staleness isn't limited to failed config updates, either: some components can stop receiving fresh data without reporting unhealthy at all. For example, if `discovery.kubernetes` can't reach the API server, it logs the error but doesn't report itself as unhealthy; it just stops emitting new target groups. `prometheus.scrape` keeps scraping the last known target list, now stale, with no change in either component's health status.
 
 A component's health status and whether it's still processing data are different things:
 
@@ -134,9 +134,9 @@ The call still doesn't return upstream until every endpoint finishes, so the slo
 ## Shutdown
 
 When {{< param "PRODUCT_NAME" >}} shuts down, it cancels each component's context and stops components in dependency order, rather than killing all of them at once.
-Each component has time to exit cleanly: output components use that time to flush what they can, for example `loki.write` drains its send queue up to its configured `drain_timeout`, and `prometheus.remote_write` flushes its queue manager before closing.
+Each component has time to exit cleanly: output components use that time to flush what they can, for example `loki.write` drains its send queue up to its `queue_config.drain_timeout` (a separate `wal.drain_timeout` applies only if the WAL is enabled), and `prometheus.remote_write` flushes its queue manager before closing.
 
-By default, a component has up to 10 minutes to exit before {{< param "PRODUCT_NAME" >}} gives up and logs an error.
+By default, a component has up to 10 minutes to exit before {{< param "PRODUCT_NAME" >}} stops waiting for it and logs an error; a component stuck past the deadline keeps running in the background rather than being forcibly stopped.
 Configure this with [`--feature.component-shutdown-deadline`](../reference/cli/run/).
 
 ## Next steps
