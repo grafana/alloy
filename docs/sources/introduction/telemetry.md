@@ -91,9 +91,9 @@ Most retry with backoff for a bounded number of attempts or amount of time befor
 What happens during and after those retries depends on the component:
 
 - **`loki.write`**: Buffers log entries in an internal send queue and blocks by default. When the queue fills, it stops accepting new entries until space frees up, which applies backpressure to earlier stages in the log pipeline. Batches that fail to send are retried separately with backoff, and only dropped once that retry limit is reached, or if you explicitly configure the queue not to block.
-- **`prometheus.remote_write`**: Writes samples to a local WAL before sending them, so scraping continues uninterrupted during an outage. The remote-write queue retries from the WAL until the backend recovers or the WAL truncates old data. Refer to [Data durability](../requirements/#data-durability) for how long the WAL retains unsent samples.
+- **`prometheus.remote_write`**: Writes samples to a local WAL before sending them, so scraping continues uninterrupted during an outage. The remote-write queue retries from the WAL until the backend recovers or the WAL truncates old data. Refer to [`wal`](../reference/components/prometheus/prometheus.remote_write/#wal) for how long the WAL retains unsent samples.
 - **`otelcol.exporter.*`**: Components such as `otelcol.exporter.otlp` buffer in a send queue and drop data by default once that queue fills, so earlier pipeline stages keep running uninterrupted. You can configure them to block instead, or to persist the queue to disk so it survives a restart.
-- **`pyroscope.write`**: Doesn't queue at all. Each push is a synchronous call that retries with backoff inline, blocking the calling component (such as `pyroscope.scrape`) for the duration of the retries. Once retries are exhausted, that batch of profile data is dropped and the call returns.
+- **`pyroscope.write`**: Doesn't queue at all. Each push is a synchronous call that retries with backoff inline, blocking the calling component (such as `pyroscope.scrape`) for the duration of the retries. Once retries are exhausted, that batch of profile data is dropped and the call returns, unless you set `max_backoff_retries` to `0`, in which case retries continue indefinitely and the call blocks until the push succeeds or a non-retryable error occurs.
 
 Retry limits, buffering, and the choice between blocking and dropping vary by component.
 Refer to each component's reference page for its specific behavior and configuration: [`loki.write`](../reference/components/loki/loki.write/), [`prometheus.remote_write`](../reference/components/prometheus/prometheus.remote_write/), [`otelcol.exporter.otlp`](../reference/components/otelcol/otelcol.exporter.otlp/), and [`pyroscope.write`](../reference/components/pyroscope/pyroscope.write/).
@@ -125,7 +125,9 @@ A slow or blocked destination delays delivery to the other destinations in the s
 
 Keep this in mind when destinations have different reliability or latency: a struggling one can affect the others sharing the same source component.
 
-`pyroscope.write` is the exception: with multiple `endpoint` blocks, each sends and retries independently, so a slow endpoint doesn't delay the others.
+`prometheus.remote_write` still fans out synchronously, but only waits on the local WAL write: it buffers to a WAL before sending, so the call doesn't wait on delivery to the backend. A remote-write endpoint that's down doesn't delay sibling destinations in the same fan-out; refer to [Delivery failures](#delivery-failures) for how the WAL decouples scraping from backend availability.
+
+`pyroscope.write` doesn't fan out synchronously at all: with multiple `endpoint` blocks, each sends and retries independently, so a slow endpoint doesn't delay the others.
 The call still doesn't return upstream until every endpoint finishes, so the slowest one still determines how long the caller blocks.
 
 ## Shutdown
