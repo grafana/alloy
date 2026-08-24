@@ -304,7 +304,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 
 	expected := []Entry{
 		newEntry(
-			map[string]any{"foo": "bar", "flags": "P", "stream": "stdout", "content": "partial line ", "time": partialTimeStr},
+			map[string]any{"flags": "P", "stream": "stdout", "content": "partial line ", "time": partialTimeStr},
 			model.LabelSet{"foo": "bar", "stream": "stdout"},
 			"partial line ",
 			partialTime,
