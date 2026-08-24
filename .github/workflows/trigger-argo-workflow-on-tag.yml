@@ -63,7 +63,7 @@ jobs:
 
       - name: Wait for release image to mirror to DockerHub
         if: steps.validate.outputs.is_alloy == 'true'
-        uses: grafana/shared-workflows/actions/wait-for-docker-publish@cd185787ec303639a71383384e1b0d424b7422fb # wait-for-docker-publish/v0.2.0
+        uses: grafana/shared-workflows/actions/wait-for-docker-publish@a2718cb69dbc55c16d5db1ee9fc0fd1d052079fa # wait-for-docker-publish/v0.3.0
         with:
           image: grafana/alloy:${{ steps.tag.outputs.tag }}
           timeout: 10m
