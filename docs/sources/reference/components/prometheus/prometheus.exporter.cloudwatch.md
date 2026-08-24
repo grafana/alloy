@@ -341,7 +341,23 @@ Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWat
 To export historical data points, set `export_all_data_points` to `true` and enable `add_cloudwatch_timestamp`.
 For `discovery` and `custom_namespace` jobs, you can set `add_cloudwatch_timestamp` on the job or metric.
 For `static` jobs, set `add_cloudwatch_timestamp` on each metric.
-To export multiple historical data points, configure `length` to be longer than `period`.
+| Name                       | Type           | Description                                                    | Default                                                                                  | Required |
+| -------------------------- | -------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| `name`                     | `string`       | Metric name.                                                   |                                                                                          | yes      |
+| `statistics`               | `list(string)` | Statistics to scrape, for example `"Minimum"` and `"Maximum"`. |                                                                                          | yes      |
+| `add_cloudwatch_timestamp` | `bool`         | Use CloudWatch timestamp instead of scrape time.               | Inherited from parent `discovery` or `custom_namespace`. `false` if not set.             | no       |
+| `export_all_data_points`   | `bool`         | Export all CloudWatch data points in the selected time range.  | `false`                                                                                  | no       |
+| `length`                   | `duration`     | Query range length. Refer to [period][].                       | Inherited from parent job `length`.                                                      | no       |
+| `nil_to_zero`              | `bool`         | Convert `NaN` metric values to 0.                              | Inherited from parent [`static`][static] or [`discovery`][discovery]. `true` if not set. | no       |
+| `period`                   | `duration`     | CloudWatch period. Refer to [period][].                        | Inherited from parent job `period`.                                                      | no       |
+
+For `discovery` and `custom_namespace` jobs, you can set `add_cloudwatch_timestamp` on the job or metric.
+
+For `static` jobs, set `add_cloudwatch_timestamp` on each metric.
+
+To export all historical data points, set `export_all_data_points` and `add_cloudwatch_timestamp` to `true`.
+
+To export multiple historical data points, configure `length` greater than `period`.
 
 [period]: #period-and-length
 
