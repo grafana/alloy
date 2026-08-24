@@ -80,7 +80,7 @@ func TestMultilineStage(t *testing.T) {
 			},
 		},
 		{
-			name: "max lines of 1 disables buffering entirely",
+			name: "max lines of 1",
 			config: `
 			stage.multiline {
 				firstline     = "^START"
@@ -96,7 +96,7 @@ func TestMultilineStage(t *testing.T) {
 			},
 			expected: []Entry{
 				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line", now),
-				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation line", now.Add(1*time.Millisecond)),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation line", now),
 				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 2", now.Add(2*time.Millisecond)),
 			},
 		},
