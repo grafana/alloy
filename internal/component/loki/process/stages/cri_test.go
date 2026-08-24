@@ -1,13 +1,18 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -271,6 +276,41 @@ loki_process_cri_partial_lines_flushed_total %d
 			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, expectedMetrics)
 		})
 	}
+}
+
+// TestCRIStageFlushOnShutdown verifies that buffered entries are flushed when stop is called.
+// This is only implemented for the new pipeline.
+func TestCRIStageFlushOnShutdown(t *testing.T) {
+	var (
+		partialTimeStr = "2019-05-07T18:57:50.904275087+00:00"
+		partialTime, _ = time.Parse(time.RFC3339Nano, partialTimeStr)
+	)
+
+	var collected []Entry
+	next := func(_ context.Context, entries []Entry) error {
+		collected = append(collected, entries...)
+		return nil
+	}
+
+	p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, []StageConfig{{CRIConfig: &defaultCRIConfig}}, next)
+	require.NoError(t, err)
+
+	require.NoError(t, p.process(context.Background(), []Entry{
+		newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, partialTimeStr+" stdout P partial line ", time.Now()),
+	}))
+	require.Empty(t, collected)
+
+	p.Stop()
+
+	expected := []Entry{
+		newEntry(
+			map[string]any{"foo": "bar", "flags": "P", "stream": "stdout", "content": "partial line ", "time": partialTimeStr},
+			model.LabelSet{"foo": "bar", "stream": "stdout"},
+			"partial line ",
+			partialTime,
+		),
+	}
+	assertEntriesUnordered(t, expected, collected)
 }
 
 func BenchmarkCRIStage(b *testing.B) {
