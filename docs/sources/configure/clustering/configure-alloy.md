@@ -75,6 +75,15 @@ alloy run config.alloy \
   --cluster.join-addresses=alloy-1:7946,alloy-2:7946
 ```
 
+The first node that bootstraps a new cluster can omit peer discovery flags or connect to itself.
+
+Cluster peers communicate over HTTP/2 on the built-in HTTP server.
+Each node must accept connections on `--server.http.listen-addr` and on the address defined or inferred by `--cluster.advertise-address`.
+If `--cluster.advertise-address` isn't set, {{< param "PRODUCT_NAME" >}} tries to infer an address from `--cluster.advertise-interfaces`.
+The default interfaces are `eth0` and `en0`.
+On Windows, set `--cluster.advertise-interfaces` to a valid network interface or set `--cluster.advertise-address` explicitly.
+{{< param "PRODUCT_NAME" >}} fails to start if it can't determine the advertised address.
+
 ### Optional flags
 
 You can customize clustering behavior with additional flags:
@@ -94,6 +103,24 @@ You can customize clustering behavior with additional flags:
 | `--cluster.tls-server-name`      | Server name to use for TLS communication.        | `""`       |
 | `--cluster.wait-for-size`        | Minimum cluster size before traffic processing.  | `0`        |
 | `--cluster.wait-timeout`         | Timeout for cluster size wait.                   | `0`        |
+
+To enable TLS for peer-to-peer communication, set `--cluster.enable-tls` and configure the related `--cluster.tls-*` flags for the CA certificate, certificate file, key file, and server name.
+
+The `--cluster.rejoin-interval` flag controls how often each node rediscovers peers from `--cluster.join-addresses` and `--cluster.discover-peers` and tries to rejoin them.
+This can help recover from split-brain conditions and support dynamic environments.
+To discover peers only at startup, set `--cluster.rejoin-interval="0s"`.
+After startup, nodes use gossip messages to converge on the cluster state.
+
+The `--cluster.max-join-peers` flag limits how many discovered peers a node tries to connect to when joining or rejoining a cluster.
+This is useful for large clusters where connecting to many peers can be expensive.
+To disable the limit, set `--cluster.max-join-peers=0`.
+If `--cluster.max-join-peers` is higher than the number of discovered peers, {{< param "PRODUCT_NAME" >}} connects to all discovered peers.
+
+The `--cluster.name` flag prevents clusters from accidentally merging.
+Nodes only join peers that use the same cluster name.
+If a node tries to join a cluster with the wrong `--cluster.name`, it returns a `failed to join memberlist` error.
+
+For `--cluster.join-addresses` DNS prefix syntax and `--cluster.discover-peers` tuple quoting rules, refer to the [`alloy run` reference][run].
 
 For production deployments, set `--cluster.wait-for-size` to your expected cluster size and `--cluster.wait-timeout` to a reasonable duration.
 This ensures all nodes join before processing begins, which reduces duplicate scrapes and out-of-order samples at remote write during startup.
