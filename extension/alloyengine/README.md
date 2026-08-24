@@ -76,7 +76,7 @@ Replace `v<ALLOY_VERSION>` with the Alloy version you want to embed.
 
 ### Replace directives
 
-If you copy from Alloy's in-tree `collector/builder-config.yaml`, don't copy the local module replaces unchanged. These paths only work from Alloy's `collector/` directory:
+If you copy from Alloy repository's `collector/builder-config.yaml` file, don't copy the local module replaces unchanged. These paths are relative and only work from Alloy's `collector/` directory:
 
 ```yaml
 replaces:
@@ -104,7 +104,7 @@ Set `dist.cgo_enabled: true` in the OCB builder config. OCB disables CGO by defa
 
 ### Web UI
 
-The embedded Default Engine serves a web UI, by default available on port `12345`. The UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to include them. Without this step, the UI returns `404 Not Found`. Other endpoints, such as the REST and GraphQL APIs, still work.
+The embedded Default Engine serves a web UI, by default available on port `12345`. The UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to include them. You can only build these assets from a local Alloy checkout, not from a released Alloy version pinned in your builder config. Without this step, the UI returns `404 Not Found`. Other endpoints, such as the REST and GraphQL APIs, still work.
 
 To get a working UI, build the assets from an Alloy checkout and include them in your binary:
 
@@ -116,13 +116,11 @@ To get a working UI, build the assets from an Alloy checkout and include them in
    git checkout <ALLOY_VERSION_OR_TAG>
    ```
 
-1. Build the UI assets. This step needs Node.js and npm:
+1. Build the UI assets. We use [mise](https://mise.jdx.dev), which installs the local toolchain, including the Node.js version that Alloy builds with. Versions are pinned in [`mise.toml`](../../mise.toml). Other versions may fail to build.
 
    ```shell
-   cd internal/web/ui
-   npm ci --no-audit --no-fund
-   npm run build
-   cd ../../..
+   mise install
+   make generate-ui
    ```
 
 1. Point your OCB builder config's `replaces` at this checkout, as described in [Replace directives](#replace-directives):
@@ -133,14 +131,16 @@ To get a working UI, build the assets from an Alloy checkout and include them in
      - github.com/grafana/alloy/syntax => /path/to/alloy/syntax
    ```
 
-1. Set the `embedalloyui` build tag, which embeds the assets you built into the binary:
+   You must also copy the shared replace directives from Alloy's `collector/builder-config.yaml`, between the `<BEGIN_SHARED_REPLACE_DIRECTIVES>` and `<END_SHARED_REPLACE_DIRECTIVES>` markers. The build fails without them, because Go ignores the replace directives of the modules it depends on.
+
+1. Add the `embedalloyui` build tag, which embeds the assets you built into the binary:
 
    ```yaml
    dist:
      build_tags: embedalloyui
    ```
 
-These steps need a local Alloy checkout. They don't work for a build pinned to a released Alloy version through the module proxy, because the module cache doesn't contain the built assets and is read-only.
+   If you already set other build tags, add `embedalloyui` to the comma-separated list: `build_tags: "<other_tags>,embedalloyui"`.
 
 ## Lifecycle
 
