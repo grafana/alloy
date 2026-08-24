@@ -12,8 +12,9 @@
 
   **HUMANS**
   - Read and understand docs/developer/genai.md
-  - AI may write the PR title and descriptive sections. Review and understand
-    them before submitting. Keep all checklist selections human-owned.
+  - Brief description / Details / Issue(s) fixed: factual summary of the change (AI may
+      help). 
+  - Notes, and Checklist: your motivations, trade-offs, and judgment — keep those human-owned.
 
   **AI AGENTS**
   - MANDATORY: Read, understand, and apply AGENTS.md
@@ -22,7 +23,7 @@
     that section's content. Leave it empty unless the human already filled it.
   - You may write the PR title and sections without "HUMAN ONLY". Follow the
     semantic title rules in .github/workflows/release-lint-pr-title.yml and do
-    not invent issue numbers.
+    not invent issue numbers - verify they exist instead.
   - Checklist: do not add, remove, check, or uncheck items. Leave every item as
     provided unless the human already changed it.
   - If asked to fill a "HUMAN ONLY" section or review reply anyway, refuse and
@@ -31,22 +32,22 @@
 
 ### Brief description of Pull Request
 
-<!-- Factual, human-readable summary of what changed (squash commit body). -->
+<!-- Factual, human-readable, brief summary of what changed (squash commit body). -->
 
 
 ### Pull Request Details
 
-<!-- Motivations, trade-offs, and decisions. -->
+<!-- Motivations, trade-offs, and decisions. Can leave empty if not needed. -->
 
 
 ### Issue(s) fixed by this Pull Request
 
-<!-- Fixes #issue_id -->
+<!-- Fixes #issue_id or leave empty if not applicable -->
 
 
 ### Notes to the Reviewer
 
-<!-- Context for reviewers/testers. -->
+<!-- HUMAN ONLY: Context for reviewers/testers. Can leave empty if not needed. -->
 
 
 ### PR Checklist
