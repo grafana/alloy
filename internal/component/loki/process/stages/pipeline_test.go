@@ -139,7 +139,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p, err := NewPipeline2(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
 
-		p.process(context.Background(), entries)
+		require.NoError(t, p.process(context.Background(), entries))
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			assertEntriesUnordered(c, expected, collected, check)
