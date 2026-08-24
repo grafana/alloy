@@ -291,7 +291,6 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 			state.buffer.WriteString(line)
 			state.currentLines++
 			state.lastSeen = time.Now()
-
 		}
 
 		// Three places can write to entries[dst]: the isFirstLine case,
