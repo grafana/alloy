@@ -15,20 +15,21 @@ review it, and defend it in discussion, regardless of which tools helped you wri
 Contribution work has two sides.
 
 - **Factual and mechanical** work (what changed, implementing code or docs from clear intent, and
-  writing a PR title and sections not marked `HUMAN ONLY`) is where AI is often well suited.
+  writing a PR title and description sections not marked `HUMAN ONLY`) is where AI is often well
+  suited.
 - **Subjective and human** work (setting intent, PR sections marked `HUMAN ONLY`, and discussion)
   stays with you. Use AI where it helps; keep human oversight and interaction where judgment and
   accountability matter.
 
 ## Ownership model
 
-| You own (write yourself)                   | AI may help with                              |
-| ------------------------------------------ | --------------------------------------------- |
-| Intent and design of the change            | Exploring the codebase                        |
-| PR sections marked `HUMAN ONLY`            | Writing or refactoring code and tests         |
-| Issue and proposal text you submit         | Editing documentation files in the repo       |
-| Review replies and ongoing discussion      | PR title and non-`HUMAN ONLY` sections        |
-| Code review conclusions                    | Issue(s) fixed (after verifying it exists)    |
+| You own (write yourself)                         | AI may help with                           |
+| ------------------------------------------------ | ------------------------------------------ |
+| Intent and design of the change                  | Exploring the codebase                     |
+| PR description sections marked `HUMAN ONLY`      | Writing or refactoring code and tests      |
+| Issue and proposal text you submit               | Editing documentation files in the repo    |
+| Review replies and ongoing discussion            | PR title and PR details summaries          |
+| Code review conclusions                          | Issue(s) fixed (after verifying it exists) |
 
 AI-assisted **implementation** is welcome when you review and understand the result. AI-mediated
 **conversation** is not. Reviewers need confidence that you understand the design choices and
@@ -37,8 +38,7 @@ trade-offs of what you're proposing.
 ## Acceptable
 
 - Use AI to implement or refactor code and docs that you then review and refine.
-- Use AI to write the PR title and sections not marked `HUMAN ONLY` from the actual change and your
-  intent.
+- Use AI to write the PR title and sections not marked `HUMAN ONLY` in the PR description.
 - Use AI to learn the codebase before contributing or reviewing.
 - Use AI privately to clarify your own thinking, then post discussion **in your own words**.
 
@@ -58,9 +58,6 @@ Approved bots (for example dependency bots) are fine when clearly marked as bot-
 When AI generates the **bulk of the implementation**, check **"This pull request was substantially
 generated with AI assistance"** in the PR template. Minor autocomplete or small edits do not need
 disclosure.
-
-An AI-written PR title and sections not marked `HUMAN ONLY` are fine. Sections marked `HUMAN ONLY`,
-including the AI-assistance disclosure, and discussion must still be yours.
 
 ## Licensing and provenance
 

@@ -26,9 +26,8 @@ Meta-content: how you behave around GitHub, commits, PRs, and GenAI ownership â€
 code.
 
 **Ownership model:** Humans propose changes and remain accountable. AI may assist with
-implementation. Humans own PR sections marked `HUMAN ONLY` and all discussion. AI can write the PR
-title and sections not marked `HUMAN ONLY`. Full policy:
-[docs/developer/genai.md](docs/developer/genai.md).
+implementation. Humans own PR description sections marked `HUMAN ONLY` and all discussion with
+maintainers. Full policy: [docs/developer/genai.md](docs/developer/genai.md).
 
 ### MUST NOT
 

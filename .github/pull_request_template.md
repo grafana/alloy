@@ -13,8 +13,9 @@
   **HUMANS**
   - Read and understand docs/developer/genai.md
   - Brief description / Details / Issue(s) fixed: factual summary of the change (AI may
-      help). 
-  - Notes, and Checklist: your motivations, trade-offs, and judgment — keep those human-owned.
+    help).
+  - Notes, and Checklist: part of review and communication with the maintainers - keep those
+    human-owned.
 
   **AI AGENTS**
   - MANDATORY: Read, understand, and apply AGENTS.md
