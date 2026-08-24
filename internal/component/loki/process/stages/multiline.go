@@ -336,14 +336,29 @@ func (m *multilineStage) start() {
 			case <-m.done:
 				return
 			case <-ticker.C:
-				entries := m.expired()
-				if len(entries) > 0 {
+				m.mut.Lock()
+				var (
+					expired []Entry
+					now     = time.Now()
+				)
+
+				for key, state := range m.streams {
+					if !state.lastSeen.Add(m.cfg.MaxWaitTime).After(now) {
+						if state.currentLines > 0 {
+							expired = append(expired, m.flushState(state))
+						}
+						delete(m.streams, key)
+					}
+				}
+
+				if len(expired) > 0 {
 					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					if err := m.next(ctx, entries); err != nil {
+					if err := m.next(ctx, expired); err != nil {
 						m.logger.Error("failed to flush", "err", err)
 					}
 					cancel()
 				}
+				m.mut.Unlock()
 			}
 		}
 	})
@@ -371,22 +386,6 @@ func (m *multilineStage) stop() {
 			m.logger.Error("failed to flush", "err", err)
 		}
 	}
-}
-
-func (m *multilineStage) expired() []Entry {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-	now := time.Now()
-	var out []Entry
-	for key, state := range m.streams {
-		if !state.lastSeen.Add(m.cfg.MaxWaitTime).After(now) {
-			if state.currentLines > 0 {
-				out = append(out, m.flushState(state))
-			}
-			delete(m.streams, key)
-		}
-	}
-	return out
 }
 
 // processEntry processes a single entry synchronously, returning any entries
