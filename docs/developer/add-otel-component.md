@@ -310,4 +310,4 @@ You can find us most easily in the `#alloy` channel in the Grafana [community sl
 We also have monthly community calls that you can participate in.
 You can find more details in Slack or in the [community calendar](https://calendar.google.com/calendar/u/0/embed?src=grafana.com_n57lluqpn4h4edroeje6199o00@group.calendar.google.com).
 
-[ocb]: ../sources/introduction/otel_alloy.md#custom-builds-with-the-opentelemetry-collector-builder-ocb
+[ocb]: ../sources/set-up/otel_engine.md#custom-builds-with-the-opentelemetry-collector-builder-ocb

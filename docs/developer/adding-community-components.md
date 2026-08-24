@@ -78,7 +78,7 @@ The list of maintainers is kept as a comment in the component's Go file:
 [license]: ../../LICENSE
 [platforms]: ../sources/introduction/supported-platforms.md
 [otel]: https://github.com/open-telemetry/opentelemetry-collector-contrib
-[ocb]: ../sources/introduction/otel_alloy.md#custom-builds-with-the-opentelemetry-collector-builder-ocb
+[ocb]: ../sources/set-up/otel_engine.md#custom-builds-with-the-opentelemetry-collector-builder-ocb
 [issue]: https://github.com/grafana/alloy/issues/new/choose
 [contributing]: contributing.md
 [review process]: ../design/README.md
