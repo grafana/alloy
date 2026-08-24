@@ -205,7 +205,7 @@ If no prefix is provided, Alloy will attempt to resolve the name using both A/AA
 
 ### Clustering states
 
-Clustered {{< param "PRODUCT_NAME" >}}s are in one of three states:
+Clustered {{< param "PRODUCT_NAME" >}} instances are in one of three states:
 
 * **Viewer**: {{< param "PRODUCT_NAME" >}} has a read-only view of the cluster and isn't participating in workload distribution.
 * **Participant**: {{< param "PRODUCT_NAME" >}} is participating in workload distribution for components that have clustering enabled.
