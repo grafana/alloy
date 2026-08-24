@@ -150,7 +150,7 @@ For example: `dnssrv+_alloy._tcp.alloy.namespace.svc.cluster.local`.
 The domain name after the prefix is looked up as a SRV query, with no A/AAAA lookup made after that.\
 For example: `dnssrvnoa+_alloy-memberlist._tcp.service.consul`
 
-If no prefix is provided, Alloy will attempt to resolve the name using both A/AAAA and DNSSRV queries.
+If no prefix is provided, {{< param "PRODUCT_NAME" >}} attempts to resolve the name using both A/AAAA and DNSSRV queries.
 
 The `--cluster.discover-peers` flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
 If a key or value contains a space, a backslash, or double quotes, quote it with double quotes.
