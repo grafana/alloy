@@ -121,6 +121,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/azureblobexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.158.0
@@ -339,7 +340,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph v0.9.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.0 // indirect
 	github.com/Azure/go-amqp v1.7.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
