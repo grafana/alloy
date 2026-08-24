@@ -185,8 +185,11 @@ func (t *tailer) stop() {
 	}
 }
 
-func (t *tailer) Key() string {
-	return t.containerID
+func (t *tailer) Key() positions.Entry {
+	return positions.Entry{
+		Path:   t.containerID,
+		Labels: t.labelsStr,
+	}
 }
 
 func (t *tailer) DebugInfo() sourceInfo {

@@ -72,6 +72,7 @@ type Arguments struct {
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
+	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
 }
 
 type CloudProvider struct {
@@ -98,11 +99,14 @@ type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-// QueryMetricsArguments configures the Query Store metrics collector.
 type QueryMetricsArguments struct {
 	CollectInterval    time.Duration `alloy:"collect_interval,attr,optional"`
 	StatementsLimit    int           `alloy:"statements_limit,attr,optional"`
 	StatementsLookback time.Duration `alloy:"statements_lookback,attr,optional"`
+}
+
+type QueryDetailsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 func defaultArguments() Arguments {
@@ -118,6 +122,10 @@ func defaultArguments() Arguments {
 			CollectInterval:    1 * time.Minute,
 			StatementsLimit:    50,
 			StatementsLookback: 1 * time.Hour,
+		},
+
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
 		},
 	}
 }
@@ -142,6 +150,12 @@ func (a *Arguments) Validate() error {
 		lookback := a.QueryMetricsArguments.StatementsLookback
 		if lookback < time.Second || lookback > math.MaxInt32*time.Second {
 			return fmt.Errorf("query_metrics.statements_lookback must be between 1s and %ds", math.MaxInt32)
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.QueryDetailsCollector] {
+		if a.QueryDetailsArguments.CollectInterval <= 0 {
+			return fmt.Errorf("query_details.collect_interval must be greater than zero")
 		}
 	}
 
@@ -411,6 +425,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.SchemaDetailsCollector: true,
 		collector.QueryMetricsCollector:  true,
+		collector.QueryDetailsCollector:  true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -459,6 +474,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		}
 	}
 
+	var queryMetricsCollector *collector.QueryMetrics
 	if collectors[collector.QueryMetricsCollector] {
 		qmCollector, err := collector.NewQueryMetrics(collector.QueryMetricsArguments{
 			DB:              c.dbConnection,
@@ -471,10 +487,36 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		if err != nil {
 			logStartError(collector.QueryMetricsCollector, "create", err)
 		} else {
+			queryMetricsCollector = qmCollector
 			if err := qmCollector.Start(context.Background()); err != nil {
 				logStartError(collector.QueryMetricsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, qmCollector)
+		}
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qdArgs := collector.QueryDetailsArguments{
+			DB:              c.dbConnection,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		}
+
+		// NOTE: this might change in the future, but for now query_details has
+		// an hard dependency on query_metrics to determine which query_hashes to log.
+		if queryMetricsCollector != nil {
+			qdArgs.Tracker = queryMetricsCollector.Tracker()
+		}
+
+		qdCollector, err := collector.NewQueryDetails(qdArgs)
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qdCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qdCollector)
 		}
 	}
 

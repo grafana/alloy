@@ -1,4 +1,4 @@
-ARG BASE_IMAGE_GO=golang:1.26.5-windowsservercore-ltsc2022@sha256:4e7754f6cc0f11bea333132cfcd406422ceaf5bd219336dd74dde71c90ef1fc7
+ARG BASE_IMAGE_GO=golang:1.26.7-windowsservercore-ltsc2022@sha256:2a3365ef5cb38e4ebaafe073a68a97989322fda2a582ee067ef9fd59a0551692
 ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:3680dad0bb773da8efcd9d928eaf4e33817875ab71a43792640ab1bcc0b3c074
 
 FROM ${BASE_IMAGE_GO} AS builder
@@ -82,6 +82,9 @@ COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/Grafan
 # Provide otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
 # OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
 COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor.
+COPY ["packaging/docker/otel-supervisor.cmd", "C:/Program Files/GrafanaLabs/Alloy/otel-supervisor.cmd"]
 
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker
