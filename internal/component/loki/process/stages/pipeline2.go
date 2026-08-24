@@ -74,7 +74,7 @@ func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) error {
 	_ = batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
 		extracted := make(map[string]any, len(stream.Labels))
 		for k, v := range stream.Labels {
-			extracted[string(k)] = v
+			extracted[string(k)] = string(v)
 		}
 
 		for i, e := range stream.Entries {
@@ -100,7 +100,7 @@ func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) error {
 func (p *Pipeline2) ProcessEntry(ctx context.Context, entry loki.Entry) error {
 	extracted := make(map[string]any, len(entry.Labels))
 	for k, v := range entry.Labels {
-		extracted[string(k)] = v
+		extracted[string(k)] = string(v)
 	}
 
 	return p.process(ctx, []Entry{
