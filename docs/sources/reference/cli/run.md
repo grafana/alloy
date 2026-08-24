@@ -128,68 +128,27 @@ Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-
 ## Clustering
 
 The `--cluster.enabled` flag starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
-Use the other `--cluster.*` flags to configure how nodes discover and connect to one another.
+For task-oriented setup guidance, refer to [Configure {{< param "PRODUCT_NAME" >}} for clustering][configure-clustering].
 
-Each cluster member's name must be unique within the cluster.
-Nodes that try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
+Use the other `--cluster.*` flags to control these parts of cluster behavior:
 
-Peers communicate over HTTP/2 on the built-in HTTP server.
-Each node must be configured to accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
-
-If the `--cluster.advertise-address` flag isn't explicitly set, {{< param "PRODUCT_NAME" >}} tries to infer a suitable one from `--cluster.advertise-interfaces`.
-If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAME" >}} infers one from the `eth0` and `en0` local network interfaces.
-{{< param "PRODUCT_NAME" >}} will fail to start if it can't determine the advertised address.
-Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
-
-The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to look up (supports SRV and A/AAAA records).
-In both cases, you can specify the port number with a `:<port>` suffix.
-If you don't provide a port, {{< param "PRODUCT_NAME" >}} uses the port from the HTTP listener.
-If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
-Optionally, you may specify a DNS query type as a prefix for each address. Refer to [join address format](#join-address-format) for more information.
-
-The `--cluster.enable-tls` flag can be set to enable TLS for peer-to-peer communications.
-Additional arguments are required to configure the TLS client, including the CA certificate, the TLS certificate, the key, and the server name.
-
-The `--cluster.discover-peers` command-line flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
-Clustering uses the [go-discover] package to discover peers and fetch their IP addresses, based on the chosen provider and the filtering key-values it supports.
-Clustering supports the default set of providers available in go-discover and registers the `k8s` provider on top.
-
-If either the key or the value in a tuple pair contains a space, a backslash, or double quotes, then it must be quoted with double quotes.
-Within this quoted string, the backslash can be used to escape double quotes or the backslash itself.
-
-The `--cluster.rejoin-interval` flag defines how often each node should rediscover peers based on the contents of the `--cluster.join-addresses` and `--cluster.discover-peers` flags and try to rejoin them.
-This operation is useful for addressing split-brain issues if the initial bootstrap is unsuccessful and for making clustering easier to manage in dynamic environments.
-To disable this behavior, set the `--cluster.rejoin-interval` flag to `"0s"`.
-
-If `--cluster.rejoin-interval` is set to `0s`, then discovering peers using the `--cluster.join-addresses` and `--cluster.discover-peers` flags only happens at startup. After that, cluster nodes depend on gossiping messages with each other to converge on the cluster's state.
-
-The first node that's used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
-
-To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a random set of peers limited by the `--cluster.max-join-peers` flag.
-This flag can be useful for large clusters because connecting to many peers can be expensive.
-To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
-If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
-
-The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering begin processing traffic.
-When this flag is set to a value greater than zero, a node joins the cluster, but components that use clustering don't take on work until enough nodes are available.
-This helps ensure adequate cluster capacity.
-Refer to [estimate resource usage][] for guidelines.
-The default value is `0`, which disables this feature.
-
-The `--cluster.wait-timeout` flag sets how long a node waits for the cluster to reach the size specified by `--cluster.wait-for-size`.
-If the timeout expires, the node proceeds with the available nodes.
-The default value is `0`, which means wait indefinitely.
-For production environments, consider setting a timeout of several minutes as a fallback.
-
-The `--cluster.name` flag can be used to prevent clusters from accidentally merging.
-When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
-By default, the cluster name is empty, and any node that doesn't set the flag can join.
-Attempting to join a cluster with a wrong `--cluster.name` results in a "failed to join memberlist" error.
+* **Node identity**: Each cluster member's name must be unique. Nodes that try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
+* **Peer communication**: Peers communicate over HTTP/2 on the built-in HTTP server. Each node must accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
+* **Advertised address**: If `--cluster.advertise-address` isn't set, {{< param "PRODUCT_NAME" >}} tries to infer a suitable address from `--cluster.advertise-interfaces`. On Windows, set `--cluster.advertise-interfaces` to a valid network interface or set `--cluster.advertise-address` explicitly.
+* **Peer discovery**: Use `--cluster.join-addresses` to provide peer addresses directly, or `--cluster.discover-peers` to discover peers dynamically. The first node that's used to bootstrap a new cluster can omit peer discovery flags or connect to itself.
+* **TLS**: Use `--cluster.enable-tls` with the related `--cluster.tls-*` flags to configure TLS for peer-to-peer communication.
+* **Rejoining**: Use `--cluster.rejoin-interval` to control how often each node rediscovers peers and tries to rejoin them. Set it to `"0s"` to discover peers only at startup.
+* **Join limit**: Use `--cluster.max-join-peers` to limit the number of discovered peers a node tries to connect to when joining or rejoining a cluster. Set it to `0` to disable the limit.
+* **Cluster readiness**: Use `--cluster.wait-for-size` and `--cluster.wait-timeout` to delay processing until enough cluster members are available.
+* **Cluster name**: Use `--cluster.name` to prevent clusters from accidentally merging. Nodes only join peers with the same cluster name value.
 
 ### Join address format
 
-The `--cluster.join-addresses` flag supports DNS names with discovery mode prefix.
-You select a discovery mode by adding one of the following supported prefixes to the address:
+The comma-separated list of addresses provided in `--cluster.join-addresses` can include IP addresses or DNS names.
+In both cases, you can specify the port number with a `:<port>` suffix.
+If you don't provide a port, {{< param "PRODUCT_NAME" >}} uses the port from the HTTP listener.
+If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
+To select a DNS query type, add one of the following prefixes to the address:
 
 * **`dns+`**\
 The domain name after the prefix is looked up as an A/AAAA query.\
@@ -202,6 +161,10 @@ The domain name after the prefix is looked up as a SRV query, with no A/AAAA loo
 For example: `dnssrvnoa+_alloy-memberlist._tcp.service.consul`
 
 If no prefix is provided, Alloy will attempt to resolve the name using both A/AAAA and DNSSRV queries.
+
+The `--cluster.discover-peers` flag expects a list of tuples in the form of `provider=XXX key=val key=val ...`.
+If a key or value contains a space, a backslash, or double quotes, quote it with double quotes.
+Within quoted strings, use a backslash to escape double quotes or the backslash itself.
 
 ### Clustering states
 
@@ -231,13 +194,12 @@ Refer to [alloy convert][] for more details on how `extra-args` work.
 
 [alloy convert]: ../convert/
 [clustering]:  ../../../get-started/clustering/
-[go-discover]: https://github.com/hashicorp/go-discover
+[configure-clustering]: ../../../configure/clustering/configure-alloy/
 [in-memory HTTP traffic]: ../../../get-started/component_controller/#in-memory-traffic
 [data collection]: ../../../data-collection/
 [support bundle]: ../../../troubleshoot/support_bundle/
 [component controller]: ../../../get-started/component_controller/
 [UI]: ../../../troubleshoot/debug/#clustering-page
-[estimate resource usage]: ../../../introduction/estimate-resource-usage/
 [`/debug/pprof`]: http://pkg.go.dev/net/http/pprof
 [GraphQL API]: ../../http/graphql/
 [GraphQL playground]: ../../http/graphql/#graphql-playground
