@@ -72,7 +72,7 @@ func NewPipeline2(
 		next = newStage.process
 	}
 
-	// We start stages after we have sucessfully built them all.
+	// We start stages after we have successfully built them all.
 	for _, s := range slices.Backward(stages) {
 		if ss, ok := s.(starter); ok {
 			ss.start()
