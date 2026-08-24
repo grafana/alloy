@@ -130,17 +130,7 @@ Refer to [Release life cycle for Grafana Labs](https://grafana.com/docs/release-
 The `--cluster.enabled` flag starts {{< param "PRODUCT_NAME" >}} in [clustering][] mode.
 To configure clustering, refer to [Configure {{< param "PRODUCT_NAME" >}} for clustering][configure-clustering].
 
-Use the other `--cluster.*` flags to control these parts of cluster behavior:
-
-* **Node identity**: Each cluster member's name must be unique. Nodes that try to join with a conflicting name are rejected and fall back to bootstrapping a new cluster of their own.
-* **Peer communication**: Peers communicate over HTTP/2 on the built-in HTTP server. Each node must accept connections on `--server.http.listen-addr` and the address defined or inferred in `--cluster.advertise-address`.
-* **Advertised address**: If `--cluster.advertise-address` isn't set, {{< param "PRODUCT_NAME" >}} tries to infer a suitable address from `--cluster.advertise-interfaces`. On Windows, set `--cluster.advertise-interfaces` to a valid network interface or set `--cluster.advertise-address` explicitly.
-* **Peer discovery**: Use `--cluster.join-addresses` to provide peer addresses directly, or `--cluster.discover-peers` to discover peers dynamically. The first node that's used to bootstrap a new cluster can omit peer discovery flags or connect to itself.
-* **TLS**: Use `--cluster.enable-tls` with the related `--cluster.tls-*` flags to configure TLS for peer-to-peer communication.
-* **Rejoining**: Use `--cluster.rejoin-interval` to control how often each node rediscovers peers and tries to rejoin them. Set it to `"0s"` to discover peers only at startup.
-* **Join limit**: Use `--cluster.max-join-peers` to limit the number of discovered peers a node tries to connect to when joining or rejoining a cluster. Set it to `0` to disable the limit.
-* **Cluster readiness**: Use `--cluster.wait-for-size` and `--cluster.wait-timeout` to delay processing until enough cluster members are available.
-* **Cluster name**: Use `--cluster.name` to prevent clusters from accidentally merging. Nodes only join peers with the same cluster name value.
+Use the other `--cluster.*` flags to control peer discovery, advertised addresses, TLS, rejoining, cluster readiness, and cluster naming.
 
 ### Join address format
 
