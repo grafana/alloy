@@ -1,7 +1,7 @@
 # Adding community components to the Default Engine
 
 [Community components][cc] are components that are implemented and maintained by the community.
-They're available in Alloy's Default Engine only, there's no OTel Engine equivalent.
+They're available in Alloy's Default Engine only; there's no OTel Engine equivalent.
 
 ## Community vs core components
 

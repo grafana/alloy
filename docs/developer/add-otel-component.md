@@ -12,13 +12,13 @@ You can apply this information to add any part of an OpenTelemetry pipeline to A
 
 ## Inclusion criteria
 
-The criteria below apply when a new component is proposed to be bundled into the official Alloy distribution.
+The criteria below apply when you propose bundling a new component into the official Alloy distribution.
 
 Alloy ships a curated subset of upstream OpenTelemetry components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
 Keeping that set small is what lets the Alloy team maintain the bundled components and keep the dependency and security surface manageable.
 These principles are about what the Alloy maintainers commit to maintain: a maintained component exists in both the Default Engine and the OTel Engine, so users can move between them without losing functionality.
 Components the Alloy maintainers don't intend to maintain become [community components](https://grafana.com/docs/alloy/latest/get-started/community_components/) that live only in the Default Engine.
-It means then that the following signals apply to any non-community `otelcol.*` component in either engine.
+This means the following signals apply to any non-community `otelcol.*` component in either engine.
 
 Before proposing a component, open a feature request and weigh it against the signals below.
 Referencing these criteria in the feature request helps maintainers evaluate the proposal.
@@ -52,7 +52,7 @@ Maintainers weigh the signals together and make the final call, so meeting indiv
 A proposal results in one of three outcomes:
 
 * **Bundled and maintained.** The component is added to both engines and maintained by the Alloy team.
-* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OCB build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
+* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OpenTelemetry Collector Builder (OCB) build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
 * **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
 
 ## Component lifecycle and removal
