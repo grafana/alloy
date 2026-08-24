@@ -170,10 +170,11 @@ This flag can be useful for large clusters because connecting to many peers can 
 To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
 If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
 
-The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering
-begin processing traffic. When set to a value greater than zero, a node will join the cluster but the components that
-use clustering will not take on any work until enough nodes are available. This ensures adequate cluster capacity - refer to
-[estimate resource usage][] for guidelines. The default value is `0`, which disables this feature.
+The `--cluster.wait-for-size` flag specifies the minimum cluster size required before components that use clustering begin processing traffic.
+When this flag is set to a value greater than zero, a node joins the cluster, but components that use clustering don't take on work until enough nodes are available.
+This helps ensure adequate cluster capacity.
+Refer to [estimate resource usage][] for guidelines.
+The default value is `0`, which disables this feature.
 
 The `--cluster.wait-timeout` flag sets how long a node will wait for the cluster to reach the size specified by
 `--cluster.wait-for-size`. If the timeout expires, the node will proceed with available nodes. Setting this to `0` (the
