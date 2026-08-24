@@ -275,7 +275,9 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 
 	out := entries[:dst]
 	if len(extra) > 0 {
-		out = append(out, extra...)
+		// NOTE: We append to extra to make sure buffered entries are
+		// ordered before passed in entries.
+		out = append(extra, out...)
 	}
 
 	if len(out) == 0 {
