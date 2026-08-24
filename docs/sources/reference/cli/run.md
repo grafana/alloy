@@ -165,8 +165,8 @@ If `--cluster.rejoin-interval` is set to `0s`, then discovering peers using the 
 
 The first node that's used to bootstrap a new cluster (also known as the "seed node") can either omit the flags that specify peers to join or can try to connect to itself.
 
-To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a number of random peers limited by the `--cluster.max-join-peers` flag.
-This flag can be useful for clusters of significant sizes because connecting to a high number of peers can be an expensive operation.
+To join or rejoin a cluster, {{< param "PRODUCT_NAME" >}} tries to connect to a random set of peers limited by the `--cluster.max-join-peers` flag.
+This flag can be useful for large clusters because connecting to many peers can be expensive.
 To disable this behavior, set the `--cluster.max-join-peers` flag to 0.
 If the value of `--cluster.max-join-peers` is higher than the number of peers discovered, {{< param "PRODUCT_NAME" >}} connects to all of them.
 
