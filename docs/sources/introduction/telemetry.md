@@ -90,7 +90,7 @@ Output components don't always discard telemetry the moment a backend becomes un
 Most retry with backoff for a bounded number of attempts or amount of time before giving up on a piece of data.
 What happens during and after those retries depends on the component:
 
-- **`loki.write`**: Buffers log entries in an internal send queue and blocks by default. When the queue fills, it stops accepting new entries until space frees up, which applies backpressure to earlier stages in the log pipeline. Batches that fail to send are retried separately with backoff, and only dropped once that retry limit is reached, or if you explicitly configure the queue not to block.
+- **`loki.write`**: Buffers log entries in an internal send queue and blocks by default. When the queue fills, it stops accepting new entries until space frees up, which applies backpressure to earlier stages in the log pipeline; that behavior requires `--stability.level=experimental` to change. Separately, a batch already pulled off the queue is retried with backoff, and dropped once its retry limit is reached or it hits a non-retryable response.
 - **`prometheus.remote_write`**: Writes samples to a local WAL before sending them, so scraping continues uninterrupted during an outage. The remote-write queue retries from the WAL until the backend recovers or the WAL truncates old data. Refer to [`wal`](../reference/components/prometheus/prometheus.remote_write/#wal) for how long the WAL retains unsent samples.
 - **`otelcol.exporter.*`**: Components such as `otelcol.exporter.otlp` buffer in a send queue and drop data by default once that queue fills, so earlier pipeline stages keep running uninterrupted. You can configure them to block instead, or to persist the queue to disk so it survives a restart.
 - **`pyroscope.write`**: Doesn't queue at all. Each push is a synchronous call that retries with backoff inline, blocking the calling component (such as `pyroscope.scrape`) for the duration of the retries. Once retries are exhausted, that batch of profile data is dropped and the call returns, unless you set `max_backoff_retries` to `0`, in which case retries continue indefinitely and the call blocks until the push succeeds or a non-retryable error occurs.
@@ -109,7 +109,8 @@ A component that fails to apply a configuration change doesn't clear its exports
 Downstream components keep using its last exported data indefinitely, until it recovers and exports something new, there's no timeout.
 
 This means an unhealthy component doesn't necessarily stop a pipeline.
-For example, if `discovery.kubernetes` can't reach the API server, `prometheus.scrape` keeps scraping its last known target list, now stale.
+
+Staleness isn't limited to failed config updates, either: some components can stop receiving fresh data without reporting unhealthy at all. For example, if `discovery.kubernetes` can't reach the API server, it doesn't fail or report an error; it just stops emitting new target groups. `prometheus.scrape` keeps scraping the last known target list, now stale, with no indication in either component's health.
 
 A component's health status and whether it's still processing data are different things:
 
@@ -127,7 +128,7 @@ Keep this in mind when destinations have different reliability or latency: a str
 
 `prometheus.remote_write` still fans out synchronously, but only waits on the local WAL write: it buffers to a WAL before sending, so the call doesn't wait on delivery to the backend. A remote-write endpoint that's down doesn't delay sibling destinations in the same fan-out; refer to [Delivery failures](#delivery-failures) for how the WAL decouples scraping from backend availability.
 
-`pyroscope.write` doesn't fan out synchronously at all: with multiple `endpoint` blocks, each sends and retries independently, so a slow endpoint doesn't delay the others.
+`pyroscope.write` doesn't fan out sequentially: with multiple `endpoint` blocks, each sends and retries independently and concurrently, so a slow endpoint doesn't delay the others.
 The call still doesn't return upstream until every endpoint finishes, so the slowest one still determines how long the caller blocks.
 
 ## Shutdown
