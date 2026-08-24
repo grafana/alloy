@@ -115,13 +115,6 @@ type multilineState struct {
 }
 
 func (m *multilineStage) Run(in chan Entry) chan Entry {
-	// NOTE: If we can only buffer one line there is no point to doing it at all.
-	if m.cfg.MaxLines == 1 {
-		return RunWith(in, func(e Entry) Entry {
-			return e
-		})
-	}
-
 	out := make(chan Entry)
 	go func() {
 		defer close(out)
@@ -227,11 +220,6 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 
 // process implements stage.
 func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
-	// NOTE: If we can only buffer one line there is no point to doing it at all.
-	if m.cfg.MaxLines == 1 {
-		return m.next(ctx, entries)
-	}
-
 	m.mut.Lock()
 	var dst int
 
@@ -304,10 +292,19 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 			state.currentLines++
 			state.lastSeen = time.Now()
 
-			if state.currentLines == m.cfg.MaxLines {
-				entries[dst] = m.flushState(state)
-				dst++
-			}
+		}
+
+		// Three places can write to entries[dst]: the isFirstLine case,
+		// stale-block case, and this check. The two cases are
+		// mutually exclusive switch branches and whichever does resets
+		// currentLines to 0 before this entry is appended.
+		// So if any of these cases wrote state.currentLines will be 1
+		// and can only match if MaxLines == 1. But if MaxLines == 1 we
+		// always flush the entry and none of the cases above will ever
+		// perform their write.
+		if state.currentLines == m.cfg.MaxLines {
+			entries[dst] = m.flushState(state)
+			dst++
 		}
 	}
 
@@ -322,11 +319,6 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 
 // start implements starter.
 func (m *multilineStage) start() {
-	// NOTE: If we can only buffer one line this stage is skipped so there will never
-	// exist any buffered lines to flush.
-	if m.cfg.MaxLines == 1 {
-		return
-	}
 	m.wg.Go(func() {
 		ticker := time.NewTicker(m.cfg.MaxWaitTime)
 		defer ticker.Stop()
