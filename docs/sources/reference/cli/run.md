@@ -176,10 +176,10 @@ This helps ensure adequate cluster capacity.
 Refer to [estimate resource usage][] for guidelines.
 The default value is `0`, which disables this feature.
 
-The `--cluster.wait-timeout` flag sets how long a node will wait for the cluster to reach the size specified by
-`--cluster.wait-for-size`. If the timeout expires, the node will proceed with available nodes. Setting this to `0` (the
-default) means wait indefinitely. For production environments, consider setting a timeout of several minutes as a
-fallback.
+The `--cluster.wait-timeout` flag sets how long a node waits for the cluster to reach the size specified by `--cluster.wait-for-size`.
+If the timeout expires, the node proceeds with the available nodes.
+The default value is `0`, which means wait indefinitely.
+For production environments, consider setting a timeout of several minutes as a fallback.
 
 The `--cluster.name` flag can be used to prevent clusters from accidentally merging.
 When `--cluster.name` is provided, nodes only join peers who share the same cluster name value.
