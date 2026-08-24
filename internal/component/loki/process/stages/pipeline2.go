@@ -24,18 +24,19 @@ type entryProcessor interface {
 	process(ctx context.Context, entries []Entry) error
 }
 
+// starter is implemented by stages that need to start background work (e.g.
+// a goroutine) once the pipeline is fully built and guaranteed to run.
+type starter interface {
+	start()
+}
+
+// stopper is implemented by stages that need to flush buffered entries or
+// release resources when the pipeline shuts down.
 type stopper interface {
 	stop()
 }
 
 var _ loki.Consumer = (*PipelineConsumer)(nil)
-
-// FIXME(kalleep): temporary function to start multiline stage when new pipeline is used
-// so that we don't start the background goroutine when this pipeline is unused.
-// This should be removed when we transition to the new pipeline.
-type starter interface {
-	start()
-}
 
 func NewPipelineConsumer(
 	slogger *slog.Logger,
@@ -142,12 +143,15 @@ func newPipeline(
 			return nil, errors.New("stage has not been migrated to new interface")
 		}
 
-		if ss, ok := ep.(starter); ok {
-			ss.start()
-		}
-
 		stages = append(stages, ep)
 		next = ep.process
+	}
+
+	// We start stages after we have sucessfully built them all.
+	for _, s := range slices.Backward(stages) {
+		if ss, ok := s.(starter); ok {
+			ss.start()
+		}
 	}
 
 	return &pipeline{next: next, stages: stages}, nil
