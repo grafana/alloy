@@ -18,7 +18,7 @@ type NextFn func(ctx context.Context, entries []Entry) error
 
 // stage is a single step in a pipeline.
 type stage interface {
-	// process runs the stage's work on entries and forwards the result.
+	// process performs work on entries. The result is not returned. Typically the implementations call a `NextFn` configured at construction time. Errors are propagated.
 	process(ctx context.Context, entries []Entry) error
 }
 
