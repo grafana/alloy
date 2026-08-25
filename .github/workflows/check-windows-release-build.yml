@@ -68,4 +68,8 @@ jobs:
         path: .
 
     - name: Run alloy.exe --version
-      run: .\alloy-windows-amd64.exe --version
+      # Scrub PATH down to the stock Windows locations so this
+      # check reflects a plain Windows install, not this runner's tooling.
+      run: |
+        $env:Path = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0\"
+        .\alloy-windows-amd64.exe --version
