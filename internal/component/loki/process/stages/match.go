@@ -248,14 +248,13 @@ func (m *matchKeepStage) Cleanup() {
 
 type pendingKey struct{}
 
-// withPending scopes buffer to this call chain via ctx, so the nested
-// pipeline's output can be routed back to the caller of process() instead
-// of going straight to next.
+// withPending is used to store a pointer to a entry slice so that we can later
+// merge it back to the original silce after inner pipeline have finished.
 func withPending(ctx context.Context, ptr *[]Entry) context.Context {
 	return context.WithValue(ctx, pendingKey{}, ptr)
 }
 
-// fromPending retrieves the buffer set by withPending for this call chain.
+// fromPending retrieves pointer to a entry slice set by withPending.
 func fromPending(ctx context.Context) (*[]Entry, bool) {
 	v := ctx.Value(pendingKey{})
 	ptr, ok := v.(*[]Entry)
@@ -279,6 +278,8 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	if len(matched) > 0 {
+		// We store a pointer to buf in context so that we can later merged it back after
+		// inner pipeline have finished.
 		var buf []Entry
 		if err := m.pipeline2.process(withPending(ctx, &buf), matched); err != nil {
 			return err
