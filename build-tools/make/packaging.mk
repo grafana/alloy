@@ -23,14 +23,23 @@ PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOAR
 # It uses an older mingw-w64 toolchain through viceroy. That toolchain needs
 # -lssp to resolve the __stack_chk_fail symbol.
 #
+# The viceroy sysroot (Debian Bullseye mingw-w64) ships both libssp.a and
+# libssp.dll.a. Without -Bstatic, the linker prefers the shared import
+# library, producing a binary with a runtime dependency on libssp-0.dll —
+# a DLL absent from standard Windows installations. Force static linking
+# so the symbols are embedded directly in the binary.
+#
 # Native Windows runners use a different, newer mingw64 toolchain. For
 # example, the Windows service integration test job builds natively on a
 # windows-latest runner. That toolchain resolves __stack_chk_fail on its
 # own. It has no standalone libssp.a to link against. Passing -lssp there
 # fails the link with "cannot find -lssp".
 #
-# Add -lssp only when the build does not run natively on Windows.
-WINDOWS_CGO_LDFLAGS := $(if $(filter windows,$(shell go env GOHOSTOS)),,-lssp)
+# Add -lssp (statically) only when the build does not run natively on Windows.
+WINDOWS_CGO_LDFLAGS :=
+ifneq ($(shell go env GOHOSTOS),windows)
+WINDOWS_CGO_LDFLAGS := -Wl,-Bstatic -lssp -Wl,-Bdynamic
+endif
 
 .PHONY: dist-alloy-mixin-zip
 dist-alloy-mixin-zip:
