@@ -176,4 +176,4 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [Faro]: https://grafana.com/oss/faro/
-[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability/
