@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.2](https://github.com/grafana/alloy/compare/v1.18.1...v1.18.2) (2026-08-25)
+
+
+### Bug Fixes 🐛
+
+* Binary Alloy Homebrew Formula [backport] ([#6898](https://github.com/grafana/alloy/issues/6898)) ([fbcce59](https://github.com/grafana/alloy/commit/fbcce59cbc43db7cc433150f9c9bcb2c0740765d))
+
 ## [1.18.1](https://github.com/grafana/alloy/compare/v1.18.0...v1.18.1) (2026-08-06)
 
 
