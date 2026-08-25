@@ -2,11 +2,11 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.18.0 # x-release-please-version
+  version: v1.19.0 # x-release-please-version
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy v1.18.0 # x-release-please-version
+  - gomod: github.com/grafana/alloy v1.19.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0
@@ -115,7 +115,7 @@ replaces:
   # The OTel supervisor that's embedded in Alloy imports cmd/opampsupervisor, but OCB does not list it as a component.
   # This would cause `go mod tidy` to resolve it to @latest
   # Pin it to current contrib train version to prevent this.
-  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.153.0
+  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Replace directives from Loki — Azure SDK
