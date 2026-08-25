@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.1](https://github.com/grafana/alloy/compare/v1.19.0...v1.19.1) (2026-08-25)
+
+
+### Bug Fixes 🐛
+
+* Add backticks to component name  in generated do output [backport] ([#6966](https://github.com/grafana/alloy/issues/6966)) ([3c5972c](https://github.com/grafana/alloy/commit/3c5972c6cd64d6ec22f7823a450654819404bd19))
+
 ## [1.19.0](https://github.com/grafana/alloy/compare/v1.18.0...v1.19.0) (2026-08-21)
 
 
