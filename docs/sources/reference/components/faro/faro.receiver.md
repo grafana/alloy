@@ -21,7 +21,7 @@ This component does not work with [Grafana Cloud Frontend Observability][fronten
 For more information, refer to the [Choose a component][frontend-telemetry] guide.
 
 [frontend-telemetry]: ../../../../collect/choose-component/#frontend-telemetry
-[frontend-observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[frontend-observability]: https://grafana.com/products/cloud/frontend-observability/
 {{< /admonition >}}
 
 ## Usage
