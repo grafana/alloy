@@ -254,6 +254,10 @@ The following arguments are supported:
 
 `otelcol.receiver.jaeger` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.jaeger` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example creates a pipeline which accepts Jaeger-formatted traces and writes them to an OTLP server:

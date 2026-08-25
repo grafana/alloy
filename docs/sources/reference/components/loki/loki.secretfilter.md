@@ -121,6 +121,10 @@ The following fields are exported and can be referenced by other components:
 
 `loki.secretfilter` is only reported as unhealthy if given an invalid configuration.
 
+## Debug information
+
+`loki.secretfilter` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 `loki.secretfilter` exposes the following Prometheus metrics:

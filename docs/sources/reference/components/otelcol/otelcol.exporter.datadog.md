@@ -308,6 +308,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.datadog` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.datadog` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ### Forward Prometheus Metrics

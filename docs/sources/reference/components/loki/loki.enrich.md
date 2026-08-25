@@ -64,6 +64,14 @@ The following values are exported:
 | ---------- | ------------------- | ----------------------------------------------------------- |
 | `receiver` | `loki.LogsReceiver` | A receiver that can be used to send logs to this component. |
 
+## Debug information
+
+`loki.enrich` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`loki.enrich` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ```alloy

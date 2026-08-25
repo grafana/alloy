@@ -150,6 +150,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.syslog` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.syslog` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### TCP endpoint without TLS

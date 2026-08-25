@@ -74,6 +74,14 @@ The following fields are exported and can be referenced by other components:
 `input` accepts `otelcol.Consumer` traces telemetry data.
 It doesn't accept metrics and logs.
 
+## Debug information
+
+`otelcol.connector.host_info` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`otelcol.connector.host_info` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example accepts traces, adds the `host.id` resource attribute via the `otelcol.processor.resourcedetection` component, creates usage metrics from these traces, and writes the metrics to Mimir.

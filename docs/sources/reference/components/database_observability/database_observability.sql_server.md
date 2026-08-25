@@ -144,6 +144,14 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 
 The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
 
+## Debug information
+
+`database_observability.sql_server` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`database_observability.sql_server` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ```alloy

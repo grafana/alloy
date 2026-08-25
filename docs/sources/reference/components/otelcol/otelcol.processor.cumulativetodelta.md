@@ -145,6 +145,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.processor.cumulativetodelta` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.cumulativetodelta` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] for further processing.

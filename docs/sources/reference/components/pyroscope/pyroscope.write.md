@@ -141,7 +141,7 @@ In those cases, exported fields are kept at their last healthy values.
 
 `pyroscope.write` doesn't expose any component-specific debug information.
 
-## Metrics
+## Debug metrics
 
 `pyroscope.write` exposes the following metrics:
 

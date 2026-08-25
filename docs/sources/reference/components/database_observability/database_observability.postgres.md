@@ -191,6 +191,14 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
 {{< /admonition >}}
 
+## Debug information
+
+`database_observability.postgres` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`database_observability.postgres` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ```alloy

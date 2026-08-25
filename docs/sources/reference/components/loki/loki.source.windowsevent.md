@@ -64,6 +64,14 @@ The `loki.source.windowsevent` component doesn't support any blocks. You can con
 
 `loki.source.windowsevent` is only reported as unhealthy if given an invalid configuration.
 
+## Debug information
+
+`loki.source.windowsevent` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`loki.source.windowsevent` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example collects log entries from the Event Log specified in `eventlog_name` and forwards them to a `loki.write` component.

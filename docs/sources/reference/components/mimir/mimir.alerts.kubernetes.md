@@ -193,7 +193,7 @@ The `strategy` argument should be one of the following strings:
 
 ## Debug information
 
-`mimir.alerts.kubernetes` doesn't expose debug information.
+`mimir.alerts.kubernetes` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 

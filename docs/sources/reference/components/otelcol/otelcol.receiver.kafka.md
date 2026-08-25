@@ -381,6 +381,10 @@ configuration.
 
 `otelcol.receiver.kafka` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.kafka` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards read telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:

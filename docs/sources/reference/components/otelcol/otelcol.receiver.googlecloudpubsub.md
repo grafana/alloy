@@ -110,6 +110,10 @@ The following arguments are supported:
 
 `otelcol.receiver.googlecloudpubsub` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.googlecloudpubsub` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example collects signals from Google Cloud Pub/Sub subscription and forwards logs through a batch processor:

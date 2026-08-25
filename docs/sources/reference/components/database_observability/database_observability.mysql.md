@@ -270,6 +270,14 @@ The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
+## Debug information
+
+`database_observability.mysql` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`database_observability.mysql` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ```alloy

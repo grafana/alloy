@@ -272,6 +272,10 @@ The following arguments are supported:
 
 `otelcol.extension.jaeger_remote_sampling` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.extension.jaeger_remote_sampling` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Serve from a file
