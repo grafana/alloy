@@ -88,8 +88,8 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`process`][process]                       | Configures the `process` collector.                                       | no       |
 | [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.                                | no       |
 | [`service`][service]                       | Configures the `service` collector.                                       | no       |
-| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.                                    | no       |
-| [`smb`][smb]                               | Configures the `smb` collector.                                           | no       |
+| [`smb`][smb]                               | Deprecated. Add `"smb"` to [`enabled_collectors`][] instead.              | no       |
+| [`smb_client`][smb_client]                 | Deprecated. Add `"smb_client"` to [`enabled_collectors`][] instead.       | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
 | [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
@@ -122,6 +122,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 [tcp]: #tcp
 [time]: #time
 [update]: #update
+[`enabled_collectors`](#arguments)
 
 {{< /docs/alloy-config >}}
 
@@ -380,27 +381,19 @@ You can still include these attributes in your configuration files, but they hav
 
 ### `smb`
 
-| Name           | Type           | Description                           | Default | Required |
-| -------------- | -------------- | ------------------------------------- | ------- | -------- |
-| `enabled_list` | `list(string)` | Deprecated. This field has no effect. | `[]`    | no       |
+This block and its `enabled_list` argument are deprecated.
 
-The collectors specified by `enabled_list` can include the following:
+You can still include this block and its argument in your configuration files, but they have no effect.
 
-- `ServerShares`
-
-For example, you can set `enabled_list` to `["ServerShares"]`.
+To collect SMB Server metrics, include `"smb"` in [`enabled_collectors`](#arguments).
 
 ### `smb_client`
 
-| Name           | Type           | Description                           | Default | Required |
-| -------------- | -------------- | ------------------------------------- | ------- | -------- |
-| `enabled_list` | `list(string)` | Deprecated. This field has no effect. | `[]`    | no       |
+This block and its `enabled_list` argument are deprecated.
 
-The collectors specified by `enabled_list` can include the following:
+You can still include this block and its argument in your configuration files, but they have no effect.
 
-- `ClientShares`
-
-For example, you can set `enabled_list` to `["ClientShares"]`.
+To collect SMB Client metrics, include `"smb_client"` in [`enabled_collectors`](#arguments).
 
 ### `smtp`
 
