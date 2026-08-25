@@ -90,25 +90,7 @@ func newMatchStage(slogger *slog.Logger, config MatchConfig, registerer promethe
 
 		return newMatchDropStage(filter, matchers, dropCount.WithLabelValues(dropReason), next), nil
 	default:
-		var (
-			p1  *Pipeline
-			p2  *Pipeline2
-			err error
-		)
-
-		// NOTE: Next will only be set when stages are created from the new pipeline.
-		// So if it's nil we create old pipeline and if it's set we create new pipeline.
-		if next == nil {
-			p1, err = NewPipeline(slogger, config.Stages, registerer, minStability)
-		} else {
-			p2, err = NewPipeline2(slogger, registerer, minStability, config.Stages, next)
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", config, err)
-		}
-
-		return newMatchKeepStage(filter, matchers, p1, p2, next), nil
+		return newMatchKeepStage(slogger, registerer, minStability, config.Stages, filter, matchers, next)
 	}
 }
 
@@ -180,14 +162,44 @@ var (
 	_ stopper        = (*matchKeepStage)(nil)
 )
 
-func newMatchKeepStage(filter logql.Filter, matchers []*labels.Matcher, pipeline *Pipeline, pipeline2 *Pipeline2, next NextFn) *matchKeepStage {
-	return &matchKeepStage{
-		next:      next,
-		pipeline:  pipeline,
-		pipeline2: pipeline2,
-		filter:    filter,
-		matchers:  matchers,
+func newMatchKeepStage(
+	logger *slog.Logger,
+	reg prometheus.Registerer,
+	minStability featuregate.Stability,
+	stages []StageConfig,
+	filter logql.Filter,
+	matchers []*labels.Matcher,
+	next NextFn,
+) (*matchKeepStage, error) {
+
+	s := &matchKeepStage{
+		next:     next,
+		filter:   filter,
+		matchers: matchers,
 	}
+
+	var (
+		err error
+		p1  *Pipeline
+		p2  *Pipeline2
+	)
+	// NOTE: Next will only be set when stages are created from the new pipeline.
+	// So if it's nil we create old pipeline and if it's set we create new pipeline.
+	if next == nil {
+		p1, err = NewPipeline(logger, stages, reg, minStability)
+	} else {
+		p2, err = NewPipeline2(logger, reg, minStability, stages, s.collect)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", stages, err)
+	}
+
+	s.pipeline = p1
+	s.pipeline2 = p2
+
+	return s, nil
+
 }
 
 type matchKeepStage struct {
@@ -234,6 +246,22 @@ func (m *matchKeepStage) Cleanup() {
 	m.pipeline.Cleanup()
 }
 
+type pendingKey struct{}
+
+// withPending scopes buffer to this call chain via ctx, so the nested
+// pipeline's output can be routed back to the caller of process() instead
+// of going straight to next.
+func withPending(ctx context.Context, ptr *[]Entry) context.Context {
+	return context.WithValue(ctx, pendingKey{}, ptr)
+}
+
+// fromPending retrieves the buffer set by withPending for this call chain.
+func fromPending(ctx context.Context) (*[]Entry, bool) {
+	v := ctx.Value(pendingKey{})
+	ptr, ok := v.(*[]Entry)
+	return ptr, ok
+}
+
 // process implements stage.
 func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	var (
@@ -251,10 +279,12 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	if len(matched) > 0 {
-		// Pass all matched entries to inner pipeline.
-		if err := m.pipeline2.process(ctx, matched); err != nil {
+		var buf []Entry
+		if err := m.pipeline2.process(withPending(ctx, &buf), matched); err != nil {
 			return err
 		}
+		dst += len(buf)
+		entries = append(entries[:dst], buf...)
 	}
 
 	if dst == 0 {
@@ -262,6 +292,19 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	return m.next(ctx, entries[:dst])
+}
+
+// collected is passed as the next function to the inner pipeline.
+func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
+	// If context contains a pointer to a entry slice that means we called it directly.
+	// In this case we should just set it to resulting entries from inner pipeline
+	// so that process can merged it back.
+	if buf, ok := fromPending(ctx); ok {
+		*buf = entries
+		return nil
+	}
+
+	return m.next(ctx, entries)
 }
 
 // stop implements stopper.
