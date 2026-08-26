@@ -2,82 +2,33 @@ package loki
 
 import (
 	"context"
-	"errors"
 )
 
 var _ Consumer = (*InterceptorConsumer)(nil)
 
-// InterceptorOption configures an InterceptorConsumer.
-type InterceptorOption func(*InterceptorConsumer)
-
-// WithConsumeHook hooks calls to Consume. Returning an empty batch drops it.
-func WithConsumeHook(f func(ctx context.Context, batch Batch) (Batch, error)) InterceptorOption {
-	return func(i *InterceptorConsumer) {
-		i.onConsume = f
-	}
-}
-
-// WithConsumeEntryHook hooks calls to ConsumeEntry. Returning false drops the entry.
-func WithConsumeEntryHook(f func(ctx context.Context, entry Entry) (Entry, bool, error)) InterceptorOption {
-	return func(i *InterceptorConsumer) {
-		i.onConsumeEntry = f
-	}
-}
-
-// InterceptorConsumer is a Consumer that runs hooks before forwarding to next.
+// InterceptorConsumer is a Consumer that runs callback before forwarding to next.
 type InterceptorConsumer struct {
 	componentID string
 	next        Consumer
 
-	onConsume      func(ctx context.Context, batch Batch) (Batch, error)
-	onConsumeEntry func(ctx context.Context, entry Entry) (Entry, bool, error)
+	onConsume func(ctx context.Context, batch Batch) (Batch, error)
 }
 
 // NewInterceptorConsumer creates an InterceptorConsumer. The next consumer must be non-nil.
-func NewInterceptorConsumer(componentID string, next Consumer, opts ...InterceptorOption) *InterceptorConsumer {
-	i := &InterceptorConsumer{
+func NewInterceptorConsumer(componentID string, next Consumer, fn func(ctx context.Context, batch Batch) (Batch, error)) *InterceptorConsumer {
+	return &InterceptorConsumer{
 		componentID: componentID,
 		next:        next,
+		onConsume:   fn,
 	}
-
-	for _, o := range opts {
-		o(i)
-	}
-
-	return i
 }
 
 func (i *InterceptorConsumer) Consume(ctx context.Context, batch Batch) error {
-	if i.onConsume != nil {
-		batch, err := i.onConsume(ctx, batch)
-		if err != nil || batch.EntryLen() == 0 {
-			return err
-		}
-		return i.next.Consume(ctx, batch)
+	batch, err := i.onConsume(ctx, batch)
+	if err != nil || batch.EntryLen() == 0 {
+		return err
 	}
-
-	// Fallback to ConsumeEntry.
-	return batch.ConsumeStreams(func(stream Stream, created int64) error {
-		for _, e := range stream.Entries {
-			if err := i.ConsumeEntry(ctx, NewEntryWithCreatedUnixMicro(stream.Labels, created, e)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-// TODO: Remove this when we have moved over to batching.
-func (i *InterceptorConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
-	if i.onConsumeEntry != nil {
-		entry, keep, err := i.onConsumeEntry(ctx, entry)
-		if err != nil || !keep {
-			return err
-		}
-		return i.next.ConsumeEntry(ctx, entry)
-	}
-
-	return errors.New("loki interceptor: unimplemented consume entry")
+	return i.next.Consume(ctx, batch)
 }
 
 func (i *InterceptorConsumer) String() string {

@@ -79,7 +79,12 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
-			_ = c.ConsumeEntry(ctx, entry)
+			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+			if err != nil {
+				c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+				structured_metadata = []byte("{}")
+			}
+			c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
 		}
 	}
 }
@@ -108,17 +113,6 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 		}
 		return nil
 	})
-}
-
-// TODO: Remove this when we have moved over to batching.
-func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
-	structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-	if err != nil {
-		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
-		structured_metadata = []byte("{}")
-	}
-	c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
-	return nil
 }
 
 func (c *Component) String() string {
