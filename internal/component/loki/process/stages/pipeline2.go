@@ -16,9 +16,11 @@ import (
 // NextFn forwards a batch of entries to whatever comes next in a pipeline.
 type NextFn func(ctx context.Context, entries []Entry) error
 
-// stage is a single step in a pipeline.
-type stage interface {
-	// process performs work on entries. The result is not returned. Typically the implementations call a `NextFn` configured at construction time. Errors are propagated.
+// entryProcessor is a single step in a pipeline.
+type entryProcessor interface {
+	// process performs work on entries. The result is not returned.
+	// Typically the implementations call a `NextFn` configured at construction time.
+	// Errors are propagated.
 	process(ctx context.Context, entries []Entry) error
 }
 
@@ -26,13 +28,13 @@ type stopper interface {
 	stop()
 }
 
-var _ stage = (*Pipeline2)(nil)
+var _ entryProcessor = (*Pipeline2)(nil)
 
 // Pipeline2 runs a batch of entries through a configured chain of stages,
 // passing each batch from one stage to the next via direct function calls.
 type Pipeline2 struct {
 	next   NextFn
-	stages []stage
+	stages []entryProcessor
 }
 
 func NewPipeline2(
@@ -43,7 +45,7 @@ func NewPipeline2(
 	next NextFn,
 ) (*Pipeline2, error) {
 
-	var stages []stage
+	var stages []entryProcessor
 
 	// We build stages from the back so we can pass the correct next function
 	// to the constructor.
@@ -53,7 +55,7 @@ func NewPipeline2(
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
-		newStage, ok := s.(stage)
+		newStage, ok := s.(entryProcessor)
 		if !ok {
 			return nil, errors.New("stage has not been migrated to new interface")
 		}
