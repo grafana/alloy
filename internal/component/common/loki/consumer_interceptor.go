@@ -14,7 +14,7 @@ type InterceptorConsumer struct {
 	onConsume func(ctx context.Context, batch Batch) (Batch, error)
 }
 
-// NewInterceptorConsumer creates an InterceptorConsumer. The next consumer must be non-nil.
+// NewInterceptorConsumer creates an InterceptorConsumer. The next consumer and fn must be non-nil.
 func NewInterceptorConsumer(componentID string, next Consumer, fn func(ctx context.Context, batch Batch) (Batch, error)) *InterceptorConsumer {
 	return &InterceptorConsumer{
 		componentID: componentID,
