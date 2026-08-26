@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.2](https://github.com/grafana/alloy/compare/v1.19.1...v1.19.2) (2026-08-26)
+
+
+### Bug Fixes 🐛
+
+* Remove withdrawn lib/pq cves ([#6992](https://github.com/grafana/alloy/issues/6992)) ([1a36057](https://github.com/grafana/alloy/commit/1a3605798be3f3a782314d810b15e35c1e3713f5))
+
 ## [1.19.1](https://github.com/grafana/alloy/compare/v1.19.0...v1.19.1) (2026-08-25)
 
 
