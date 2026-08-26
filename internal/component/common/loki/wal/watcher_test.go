@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
@@ -783,14 +784,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 	})
 }
 
-// TestLiveReaderRecordSpanningPage is a regression test for a crash in the
-// watcher's segment reading: wlog.LiveReader.readRecord dereferences its
-// metrics unconditionally when a record spans a page boundary, so building
-// the reader with nil metrics panics on that input instead of tolerating it.
-//
-// The page bytes encode a small valid record first, so the reader is
-// mid-page when it hits a second record header whose declared length runs
-// past the WAL page size, which is the condition seen in the wild.
+// Regression test: reading a record that spans a page boundary must not panic.
 func TestLiveReaderRecordSpanningPage(t *testing.T) {
 	const recFull = byte(1)
 
@@ -807,7 +801,7 @@ func TestLiveReaderRecordSpanningPage(t *testing.T) {
 	binary.Write(&page, binary.BigEndian, uint32(0))
 
 	logger := autil.TestAlloyLogger(t).Slog()
-	reader := newLiveReader(logger, bytes.NewReader(page.Bytes()))
+	reader := wlog.NewLiveReader(logger, wlog.NewLiveReaderMetrics(nil), bytes.NewReader(page.Bytes()))
 
 	require.NotPanics(t, func() {
 		for reader.Next() {

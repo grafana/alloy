@@ -185,15 +185,6 @@ func (w *Watcher) run() error {
 	return nil
 }
 
-// newLiveReader builds a wlog.LiveReader for the given segment. It always
-// passes a non-nil *wlog.LiveReaderMetrics (with a nil registerer, since
-// there is nowhere to register it): wlog.LiveReader.readRecord dereferences
-// the metrics unconditionally when a record spans a page boundary, so
-// passing literal nil there panics instead of just skipping the metric.
-func newLiveReader(logger *slog.Logger, r io.Reader) *wlog.LiveReader {
-	return wlog.NewLiveReader(logger, wlog.NewLiveReaderMetrics(nil), r)
-}
-
 // watch will start reading from the segment identified by segmentNum.
 // If an EOF is reached and tail is true, it will keep reading for more WAL records with a wlog.LiveReader. Periodically,
 // it will check if there's a new segment, and if positive read the remaining from the current one and return.
@@ -208,7 +199,8 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := newLiveReader(w.logger, segment)
+	// Metrics must be non-nil (built with a nil registerer), the LiveReader panics otherwise.
+	reader := wlog.NewLiveReader(w.logger, wlog.NewLiveReaderMetrics(nil), segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 
