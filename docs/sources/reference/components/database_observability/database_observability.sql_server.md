@@ -153,9 +153,15 @@ The `query_details` collector reads [Query Store][query_store] query text for th
 |--------------------|------------|-------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to check for a changed execution plan. | `"1m"`  | no       |
 
-The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector; it doesn't compile or run a fresh plan. Only queries `query_metrics` is currently tracking are eligible, so `explain_plans` produces no output when `query_metrics` is disabled.
+The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector.
+It doesn't compile or run a fresh plan.
+Only queries that `query_metrics` is currently tracking are eligible.
+When `query_metrics` is disabled, `explain_plans` produces no output.
 
-The collector checks for a changed plan every `collect_interval`, but only forwards a log entry when the plan's shape has changed since the last entry, or when 30 minutes have passed since the last entry, whichever comes first. This keeps log volume low without ever going more than 30 minutes without a fresh entry.
+The collector checks for a changed plan every `collect_interval`.
+It forwards a log entry only when the plan's shape has changed since the last entry.
+It also forwards a log entry when 30 minutes have passed since the last entry.
+This keeps log volume low and ensures a fresh entry at least every 30 minutes.
 
 ## Example
 
