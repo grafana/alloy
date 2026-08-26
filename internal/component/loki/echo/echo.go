@@ -79,12 +79,12 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
-			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+			sm, err := entry.StructuredMetadata.MarshalJSON()
 			if err != nil {
 				c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
-				structured_metadata = []byte("{}")
+				sm = []byte("{}")
 			}
-			c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+			c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(sm))
 		}
 	}
 }
