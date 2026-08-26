@@ -133,14 +133,12 @@ type ExplainPlanOutput struct {
 	Plan     ExplainPlanNode         `json:"plan"`
 }
 
+// ExplainPlanMetadataInfo no longer carries a database engine/version -
+// mysql, postgres, and sql_server all identify themselves via the "engine"
+// Loki label instead (grafana-dbo11y-app#3471 found no consumer ever read
+// these fields, and a label is queryable in a way an embedded JSON field
+// isn't).
 type ExplainPlanMetadataInfo struct {
-	// DatabaseEngine/DatabaseVersion are omitempty because sql_server no
-	// longer populates them (grafana-dbo11y-app#3471 found no consumer ever
-	// read them, and the engine is now carried as a Loki label instead,
-	// which is queryable, unlike this field). mysql/postgres still set both
-	// unconditionally, so omitempty has no effect on their existing output.
-	DatabaseEngine  string `json:"databaseEngine,omitempty"`
-	DatabaseVersion string `json:"databaseVersion,omitempty"`
 	QueryIdentifier string `json:"queryIdentifier"`
 	GeneratedAt     string `json:"generatedAt"`
 

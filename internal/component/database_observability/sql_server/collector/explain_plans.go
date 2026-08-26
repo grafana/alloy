@@ -316,12 +316,6 @@ func (c *ExplainPlans) emit(
 
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			// DatabaseEngine/DatabaseVersion are intentionally left unset: the
-			// engine is now carried as a Loki label (see addLokiLabels) instead,
-			// which is queryable and consistent with connection_info's "engine"
-			// metric label, unlike these fields which no UI consumer ever read
-			// (grafana-dbo11y-app#3471). mysql/postgres still populate them
-			// pending a follow-up change there.
 			QueryIdentifier:        queryHash,
 			GeneratedAt:            now.Format(time.RFC3339),
 			ProcessingResult:       result,
