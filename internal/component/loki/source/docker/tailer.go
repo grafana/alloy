@@ -116,7 +116,7 @@ func (t *tailer) Run(ctx context.Context) {
 				finished = time.Unix(0, 0)
 			}
 
-			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
+			if res.Container.State.Running || finished.UnixNano() >= t.last.Load() {
 				t.startIfNotRunning()
 			}
 		case <-ctx.Done():
@@ -343,9 +343,9 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		// problematic if we have the same container with a different set of
 		// labels (e.g. duplicated and relabeled), but this shouldn't be the
 		// case anyway.
-		t.positions.Put(positions.CursorKey(t.containerID), t.labelsStr, ts.Unix())
-		t.since.Store(ts.Unix())
-		t.last.Store(time.Now().Unix())
+		t.positions.Put(positions.CursorKey(t.containerID), t.labelsStr, ts.UnixNano())
+		t.since.Store(ts.UnixNano())
+		t.last.Store(time.Now().UnixNano())
 	}
 }
 
