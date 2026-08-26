@@ -113,7 +113,6 @@ func (c *Component) printEntry(lbls string, e push.Entry) {
 		sm = []byte("{}")
 	}
 	c.opts.Logger.Info("received log entry", "labels", lbls, "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
-
 }
 
 func (c *Component) String() string {
