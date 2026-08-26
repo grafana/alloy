@@ -173,6 +173,8 @@ Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
 For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
 {{< /admonition >}}
 
+To surface per-thread data in profiles, use the [`thread`](#thread) block instead.
+
 #### `thread`
 
 The `thread` block surfaces the thread each sample ran on.
@@ -185,11 +187,17 @@ The following arguments are supported:
 | `label_name` | `string` | Add a sample label under this name holding the thread name, for filtering and grouping. Empty disables it.            | `""`    | no       |
 | `regex`      | `string` | Collapse the thread name to this regular expression's first capture group, for example a pool name. Applies to both `frame` and `label_name`. | `""`    | no       |
 
-The `regex` regular expression must contain at least one capture group. It applies to both `frame` and `label_name`, so without it the raw thread name is used. Because it depends on the output medium, the following combinations produce different views:
+Set `frame`, `label_name`, or both to enable the block.
+If `frame` is `false` and `label_name` is empty, the block has no effect, and `regex` on its own doesn't enable anything.
+
+The `regex` regular expression must contain at least one capture group. It applies to both `frame` and `label_name`, so without it the raw thread name is used. If the regular expression doesn't match a thread name, that thread keeps its original name. Because it depends on the output medium, the following combinations produce different views:
 
 * `frame` on, no `regex`: the graph splits by each individual thread.
 * `frame` on with `regex`: the graph splits by pool.
 * `label_name` set: the graph is unchanged, but you can filter or group by thread or pool in {{< param "PRODUCT_NAME" >}}.
+
+The following example splits the flame graph by thread pool, and also adds a `thread_pool` label you can filter and group by.
+For example, async-profiler reports Tomcat worker threads as `http-nio-auto-1-exec-9`, and the regular expression collapses them to `http-nio-auto`.
 
 ```alloy
 pyroscope.java "java" {
@@ -198,7 +206,7 @@ pyroscope.java "java" {
 
   profiling_config {
     thread {
-      frame      = false
+      frame      = true
       label_name = "thread_pool"
       regex      = "^(.*?)-\\d"
     }
