@@ -78,8 +78,8 @@ func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counte
 var (
 	_ Stage = (*criStage)(nil)
 
-	_ stage   = (*criStage)(nil)
-	_ stopper = (*criStage)(nil)
+	_ entryProcessor = (*criStage)(nil)
+	_ stopper        = (*criStage)(nil)
 )
 
 type criStage struct {
