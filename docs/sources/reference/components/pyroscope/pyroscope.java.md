@@ -127,10 +127,10 @@ You can use the following blocks with `pyroscope.java`:
 
 {{< docs/alloy-config >}}
 
-| Block                                        | Description                             | Required |
-| -------------------------------------------- | --------------------------------------- | -------- |
-| [`profiling_config`][profiling_config]       | Describes java profiling configuration. | no       |
-| `profiling_config` > [`thread`][thread]      | Surface the sampled thread in the profile. | no    |
+| Block                                   | Description                                | Required |
+| --------------------------------------- | ------------------------------------------ | -------- |
+| [`profiling_config`][profiling_config]  | Describes java profiling configuration.    | no       |
+| `profiling_config` > [`thread`][thread] | Surface the sampled thread in the profile. | no       |
 
 [profiling_config]: #profiling_config
 [thread]: #thread
