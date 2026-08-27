@@ -10,14 +10,7 @@ case "${ALLOY_OTEL_MODE:-}" in
 esac
 
 if [ -n "$otel_mode" ]; then
-  if [ -d "$CONFIG_FILE" ]; then
-    config_dir="$CONFIG_FILE"
-  else
-    config_dir="$(dirname "$CONFIG_FILE")"
-  fi
-  config="${ALLOY_CONFIG:-$config_dir/config.yaml}"
-  exec "$ALLOY_BIN" otel --config="$config"
+  exec "$ALLOY_BIN" otel --config=/etc/alloy/config.yaml
 else
-  config="${ALLOY_CONFIG:-$CONFIG_FILE}"
-  exec "$ALLOY_BIN" run ${CUSTOM_ARGS:-} --storage.path=/var/lib/alloy/data "$config"
+  exec "$ALLOY_BIN" run ${CUSTOM_ARGS:-} --storage.path=/var/lib/alloy/data "$CONFIG_FILE"
 fi

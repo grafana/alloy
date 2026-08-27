@@ -130,8 +130,8 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 	res = env.ExecScript(`[ -f /etc/alloy/config.yaml ]`)
 	require.Equal(t, 0, res.ExitCode, "expected the default OTel engine config to be installed")
 
-	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'ALLOY_OTEL_MODE=""' "$f" && grep -qF 'ALLOY_CONFIG=""' "$f"`)
-	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare ALLOY_OTEL_MODE and ALLOY_CONFIG as empty by default")
+	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'ALLOY_OTEL_MODE=""' "$f"`)
+	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare ALLOY_OTEL_MODE as empty by default")
 
 	tt := []struct {
 		name     string
@@ -144,14 +144,19 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
 		{
-			name:     "otel engine, default sibling config",
+			name:     "default engine, custom CONFIG_FILE",
+			env:      `CONFIG_FILE=/custom/config.alloy`,
+			expected: "run --storage.path=/var/lib/alloy/data /custom/config.alloy\n",
+		},
+		{
+			name:     "otel engine, default config",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1`,
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 		{
-			name:     "otel engine, ALLOY_CONFIG override",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 ALLOY_CONFIG=/custom/config.yaml`,
-			expected: "otel --config=/custom/config.yaml\n",
+			name:     "otel engine ignores a custom CONFIG_FILE, always uses the installed config.yaml",
+			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 	}
 

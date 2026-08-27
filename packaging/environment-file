@@ -19,9 +19,5 @@ CUSTOM_ARGS=""
 # the default engine.
 ALLOY_OTEL_MODE=""
 
-# Override the configuration file path. If unset, the default engine uses
-# CONFIG_FILE above, and the OTel engine uses config.yaml alongside it.
-ALLOY_CONFIG=""
-
 # Restart on system upgrade. Defaults to true.
 RESTART_ON_UPGRADE=true
