@@ -1,9 +1,11 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,8 +17,6 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-// CRIConfig is an empty struct that is used to enable a pre-defined pipeline
-// for decoding entries that are using the CRI logging format.
 type CRIConfig struct {
 	MaxPartialLines            int    `alloy:"max_partial_lines,attr,optional"`
 	MaxPartialLineSize         uint64 `alloy:"max_partial_line_size,attr,optional"`
@@ -28,8 +28,7 @@ var (
 	_ syntax.Validator = (*CRIConfig)(nil)
 )
 
-// DefaultCRIConfig contains the default CRIConfig values.
-var DefaultCRIConfig = CRIConfig{
+var defaultCRIConfig = CRIConfig{
 	MaxPartialLines:            100,
 	MaxPartialLineSize:         0,
 	MaxPartialLineSizeTruncate: false,
@@ -37,7 +36,7 @@ var DefaultCRIConfig = CRIConfig{
 
 // SetToDefault implements syntax.Defaulter.
 func (args *CRIConfig) SetToDefault() {
-	*args = DefaultCRIConfig
+	*args = defaultCRIConfig
 }
 
 // Validate implements syntax.Validator.
@@ -49,16 +48,15 @@ func (args *CRIConfig) Validate() error {
 	return nil
 }
 
-func NewCRI(logger *slog.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
-	partialLinesFlushedMetric := getPartialLinesFlushedMetric(registerer)
-	linesTruncatedMetric := getLinesTruncatedMetric(registerer)
-	return &cri{
+func newCRIStage(logger *slog.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability, next NextFn) *criStage {
+	return &criStage{
+		next:                      next,
 		logger:                    logger.With("stage", "cri"),
 		cfg:                       cfg,
 		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
-		partialLinesFlushedMetric: partialLinesFlushedMetric,
-		linesTruncatedMetric:      linesTruncatedMetric,
-	}, nil
+		partialLinesFlushedMetric: getPartialLinesFlushedMetric(registerer),
+		linesTruncatedMetric:      getLinesTruncatedMetric(registerer),
+	}
 }
 
 func getPartialLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
@@ -77,12 +75,21 @@ func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counte
 	return util.MustRegisterOrGet(registerer, metric).(prometheus.Counter)
 }
 
-var _ Stage = (*cri)(nil)
+var (
+	_ Stage = (*criStage)(nil)
 
-type cri struct {
-	logger                    *slog.Logger
-	cfg                       CRIConfig
-	partialLines              map[model.Fingerprint]Entry
+	_ entryProcessor = (*criStage)(nil)
+	_ stopper        = (*criStage)(nil)
+)
+
+type criStage struct {
+	next   NextFn
+	logger *slog.Logger
+	cfg    CRIConfig
+
+	mut          sync.Mutex
+	partialLines map[model.Fingerprint]Entry
+
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter
 }
@@ -94,8 +101,11 @@ const (
 	criTime    = "time"
 )
 
-func (c *cri) Run(in chan Entry) chan Entry {
+func (c *criStage) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
 			return []Entry{e}, false
@@ -173,7 +183,133 @@ func (c *cri) Run(in chan Entry) chan Entry {
 	})
 }
 
-func (c *cri) ensureTruncateIfRequired(e *Entry) {
+// process implements stage and is only used by our new pipeline.
+func (c *criStage) process(ctx context.Context, entries []Entry) error {
+	c.mut.Lock()
+
+	// dst compacts entries in place, extra only grows when the
+	// MaxPartialLines branch below flushes held partial lines. So in
+	// the common case this call never allocates a new slice.
+	var (
+		dst   int
+		extra []Entry
+	)
+	for _, e := range entries {
+		parsed, ok := crip.ParseCRI(e.Line)
+		if !ok {
+			entries[dst] = e
+			dst++
+			continue
+		}
+
+		// NOTE: Previous implementation used a "sub-pipeline"
+		// to parse CRI logs where the regex stage added these fields
+		// as "extracted" values so the other stages could operate on them.
+		// We don't need this anymore but it would be a breaking change to
+		// no longer set these.
+		e.Extracted[criFlags] = parsed.Flag.String()
+		e.Extracted[criStream] = parsed.Stream.String()
+		e.Extracted[criContent] = parsed.Content
+		e.Extracted[criTime] = parsed.Timestamp
+
+		e.Line = parsed.Content
+
+		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
+		if err == nil {
+			e.Timestamp = ts
+		}
+
+		e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
+
+		fingerprint := e.Labels.Fingerprint()
+		// We received partial-line (tag: "P")
+		if parsed.Flag == crip.FlagPartial {
+			if len(c.partialLines) >= c.cfg.MaxPartialLines {
+				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
+				if c.partialLinesFlushedMetric != nil {
+					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+				}
+
+				// Add existing partialLines
+				for _, v := range c.partialLines {
+					extra = append(extra, v)
+				}
+
+				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
+				c.ensureTruncateIfRequired(&e)
+				c.partialLines[fingerprint] = e
+				continue
+			}
+
+			prev, ok := c.partialLines[fingerprint]
+			if ok {
+				var builder strings.Builder
+				builder.WriteString(prev.Line)
+				builder.WriteString(e.Line)
+				e.Line = builder.String()
+			}
+			c.ensureTruncateIfRequired(&e)
+			c.partialLines[fingerprint] = e
+			// it's a partial-line so skip it.
+			continue
+		}
+
+		// We got full-line 'F'.
+		// If any old partial lines matches with this full-line stream, merge it,
+		// else just return the full line.
+		prev, ok := c.partialLines[fingerprint]
+		if ok {
+			var builder strings.Builder
+			builder.WriteString(prev.Line)
+			builder.WriteString(e.Line)
+			e.Line = builder.String()
+			c.ensureTruncateIfRequired(&e)
+			delete(c.partialLines, fingerprint)
+		}
+
+		entries[dst] = e
+		dst++
+	}
+
+	c.mut.Unlock()
+
+	out := entries[:dst]
+	if len(extra) > 0 {
+		// NOTE: We append to extra to make sure buffered entries are
+		// ordered before passed in entries.
+		out = append(extra, out...)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return c.next(ctx, out)
+}
+
+// stop implements stopper and is only used by our new pipeline.
+func (c *criStage) stop() {
+	c.mut.Lock()
+	out := make([]Entry, 0, len(c.partialLines))
+	for _, e := range c.partialLines {
+		out = append(out, e)
+	}
+	c.partialLines = make(map[model.Fingerprint]Entry)
+	c.mut.Unlock()
+
+	if len(out) == 0 {
+		return
+	}
+
+	const flushTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
+	defer cancel()
+	if err := c.next(ctx, out); err != nil {
+		c.logger.Error("failed to flush held partial lines on stop", "err", err)
+	}
+}
+
+func (c *criStage) ensureTruncateIfRequired(e *Entry) {
 	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
 		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
 		if c.linesTruncatedMetric != nil {
@@ -182,4 +318,4 @@ func (c *cri) ensureTruncateIfRequired(e *Entry) {
 	}
 }
 
-func (c *cri) Cleanup() {}
+func (c *criStage) Cleanup() {}
