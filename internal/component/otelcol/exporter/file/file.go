@@ -58,6 +58,9 @@ type Arguments struct {
 	// Supported compression algorithms:`zstd`
 	Compression string `alloy:"compression,attr,optional"`
 
+	// CompressionParams configures the compression codec.
+	CompressionParams *otelcol.CompressionParams `alloy:"compression_params,block,optional"`
+
 	// FlushInterval is the duration between flushes.
 	// See time.ParseDuration for valid values.
 	FlushInterval time.Duration `alloy:"flush_interval,attr,optional"`
@@ -142,6 +145,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		FormatType:    args.Format,
 		Compression:   args.Compression,
 		FlushInterval: args.FlushInterval,
+	}
+
+	if params := args.CompressionParams.Convert(); params != nil {
+		cfg.CompressionParams = *params
 	}
 
 	if args.Encoding != "" {

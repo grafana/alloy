@@ -31,11 +31,28 @@ local lacksK8sVars(dashboard) =
   local varNames = [v.name for v in dashboard.templating.list];
   !std.member(varNames, 'cluster') && !std.member(varNames, 'namespace');
 
+local templateVariable(dashboard, name) =
+  [v for v in dashboard.templating.list if v.name == name][0];
+
+local templateQuery(dashboard, name) =
+  local query = templateVariable(dashboard, name).query;
+  if std.type(query) == 'object' then query.query else query;
+
+local rectanglesIntersect(a, b) =
+  a.x < b.x + b.w &&
+  b.x < a.x + a.w &&
+  a.y < b.y + b.h &&
+  b.y < a.y + a.h;
+
+local nonRowPanels(dashboard) =
+  [p for p in dashboard.panels if p.type != 'row' && std.objectHas(p, 'gridPos')];
+
 local noClusterMixin = mixin { _config+:: { enableAlloyCluster: false } };
 local clusterMixin = mixin { _config+:: { enableAlloyCluster: true } };
 local noK8sMixin = mixin { _config+:: { enableK8sCluster: false } };
 local k8sMixin = mixin { _config+:: { enableK8sCluster: true } };
 local filterMixin = mixin { _config+:: { logsFilterSelector: 'service_name="alloy"' } };
+local metricFilterMixin = mixin { _config+:: { filterSelector: 'job=~"integrations/alloy"' } };
 
 local tests =
   // Test: enableLokiLogs feature flag
@@ -93,6 +110,32 @@ local tests =
       std.length(std.findSubstr('service_name="alloy"', filterMixin.grafanaDashboards['alloy-logs.json'].panels[0].targets[0].expr)) > 0,
       'logsFilterSelector should be included in alloy-logs query'
     ),
+  ] +
+  // Test: logsFilterSelector is added throughout the logs template-variable chain
+  [
+    check(
+      std.length(std.findSubstr('service_name="alloy"', templateQuery(filterMixin.grafanaDashboards['alloy-logs.json'], name))) > 0,
+      'logsFilterSelector should be included in alloy-logs %s variable query' % name
+    )
+    for name in ['cluster', 'namespace', 'job', 'instance', 'level']
+  ] +
+  // Test: filterSelector is added throughout the OTel Engine template-variable chain
+  [
+    check(
+      std.length(std.findSubstr('job=~"integrations/alloy"', templateQuery(metricFilterMixin.grafanaDashboards['alloy-otel-engine-overview.json'], name))) > 0,
+      'filterSelector should be included in OTel Engine %s variable query' % name
+    )
+    for name in ['cluster', 'namespace', 'job']
+  ] +
+  // Test: rendered non-row panels do not overlap
+  local lokiPanels = nonRowPanels(mixin.grafanaDashboards['alloy-loki.json']);
+  [
+    check(
+      !rectanglesIntersect(lokiPanels[i].gridPos, lokiPanels[j].gridPos),
+      'alloy-loki panels %s and %s should not overlap' % [lokiPanels[i].title, lokiPanels[j].title]
+    )
+    for i in std.range(0, std.length(lokiPanels) - 1)
+    for j in std.range(i + 1, std.length(lokiPanels) - 1)
   ];
 
 // Materialize the tests which will evaluate them and we get the results in a list.
@@ -101,4 +144,3 @@ local tests =
   total: std.length(tests),
   tests: ['Test %d: %s' % [i, tests[i]] for i in std.range(0, std.length(tests) - 1)],
 }
-

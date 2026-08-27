@@ -71,6 +71,8 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 		Exclude:                toExclude(cfg.Exclude),
 		WaitForMetadata:        cfg.WaitForMetadata,
 		WaitForMetadataTimeout: cfg.WaitForMetadataTimeout,
+		WatchSyncPeriod:        cfg.WatchSyncPeriod,
+		PodDeleteGracePeriod:   cfg.PodDeleteGracePeriod,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

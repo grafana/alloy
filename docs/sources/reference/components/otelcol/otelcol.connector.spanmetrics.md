@@ -196,10 +196,13 @@ If you don't specify additional dimensions, {{< param "PRODUCT_NAME" >}} adds on
 
 The following attributes are supported:
 
-| Name      | Type     | Description                                      | Default | Required |
-|-----------|----------|--------------------------------------------------|---------|----------|
-| `name`    | `string` | Span attribute or resource attribute to look up. |         | yes      |
-| `default` | `string` | Value to use if the attribute is missing.        |         | no       |
+| Name      | Type     | Description                                            | Default | Required |
+| --------- | -------- | ------------------------------------------------------ | ------- | -------- |
+| `name`    | `string` | Span attribute or resource attribute to look up.       |         | no       |
+| `default` | `string` | Value to use if the attribute is missing.              |         | no       |
+| `glob`    | `string` | Match attribute keys by pattern instead of exact name. |         | no       |
+
+Exactly one of `name` or `glob` must be set. `default` is only valid alongside `name`; it isn't supported on a `glob` dimension.
 
 `otelcol.connector.spanmetrics` looks for the `name` attribute in the span's collection of attributes.
 If it's not found, the resource attributes will be checked.
