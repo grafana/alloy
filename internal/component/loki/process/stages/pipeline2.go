@@ -13,8 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// NextFn forwards a batch of entries to whatever comes next in a pipeline.
-type NextFn func(ctx context.Context, entries []Entry) error
+// nextFn forwards a batch of entries to whatever comes next in a pipeline.
+type nextFn func(ctx context.Context, entries []Entry) error
 
 // entryProcessor is a single step in a pipeline.
 type entryProcessor interface {
@@ -28,29 +28,104 @@ type stopper interface {
 	stop()
 }
 
-var _ entryProcessor = (*Pipeline2)(nil)
+var _ loki.Consumer = (*PipelineConsumer)(nil)
 
-// Pipeline2 runs a batch of entries through a configured chain of stages,
-// passing each batch from one stage to the next via direct function calls.
-type Pipeline2 struct {
-	next   NextFn
-	stages []entryProcessor
-}
-
-func NewPipeline2(
+func NewPipelineConsumer(
 	slogger *slog.Logger,
 	registerer prometheus.Registerer,
 	minStability featuregate.Stability,
 	cfgs []StageConfig,
-	next NextFn,
-) (*Pipeline2, error) {
+	consumer loki.Consumer,
+) (*PipelineConsumer, error) {
+
+	var (
+		err error
+		pc  = &PipelineConsumer{consumer: consumer}
+	)
+
+	pc.inner, err = newPipeline(slogger, registerer, minStability, cfgs, pc.collect)
+	if err != nil {
+		return nil, err
+	}
+
+	return pc, nil
+}
+
+type PipelineConsumer struct {
+	inner    *pipeline
+	consumer loki.Consumer
+}
+
+// Consume implements loki.Consumer.
+func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+	// FIXME(kalleep): pool of entry slices?
+	entries := make([]Entry, 0, batch.EntryLen())
+	return batch.ConsumeStreams(func(stream loki.Stream) error {
+		entries = slices.Grow(entries[:0], len(stream.Entries))
+
+		extracted := make(map[string]any, len(stream.Labels))
+		for k, v := range stream.Labels {
+			extracted[string(k)] = string(v)
+		}
+
+		for i, e := range stream.Entries {
+			if i == len(stream.Entries)-1 {
+				entries = append(entries, Entry{
+					Extracted: extracted,
+					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
+				})
+			} else {
+				entries = append(entries, Entry{
+					Extracted: maps.Clone(extracted),
+					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
+				})
+			}
+		}
+
+		return p.inner.process(ctx, entries)
+	})
+}
+
+func (p *PipelineConsumer) Stop() {
+	p.inner.stop()
+}
+
+func (p *PipelineConsumer) collect(ctx context.Context, entries []Entry) error {
+	batch := loki.NewBatch()
+	for _, e := range entries {
+		batch.AddEntry(e.Labels, e.Created(), e.Entry.Entry)
+	}
+	return p.consumer.Consume(ctx, batch)
+}
+
+var _ entryProcessor = (*pipeline)(nil)
+
+// pipeline runs a batch of entries through a configured chain of stages,
+// passing each batch from one stage to the next via direct function calls.
+type pipeline struct {
+	next   nextFn
+	stages []entryProcessor
+}
+
+func newPipeline(
+	slogger *slog.Logger,
+	registerer prometheus.Registerer,
+	minStability featuregate.Stability,
+	cfgs []StageConfig,
+	next nextFn,
+) (*pipeline, error) {
 
 	var stages []entryProcessor
 
 	// We build stages from the back so we can pass the correct next function
 	// to the constructor.
 	for _, cfg := range slices.Backward(cfgs) {
-		s, err := newStageWithNextFn(slogger, cfg, registerer, minStability, next)
+		s, err := newStageWithOpts(cfg, stageOpts{
+			slogger:      slogger,
+			registerer:   registerer,
+			minStability: minStability,
+			next:         next,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
@@ -64,60 +139,14 @@ func NewPipeline2(
 		next = newStage.process
 	}
 
-	return &Pipeline2{
-		next:   next,
-		stages: stages,
-	}, nil
+	return &pipeline{next: next, stages: stages}, nil
 }
 
-// ProcessBatch runs every entry in batch through the pipeline.
-func (p *Pipeline2) ProcessBatch(ctx context.Context, batch loki.Batch) error {
-	entries := make([]Entry, 0, batch.EntryLen())
-	_ = batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
-		extracted := make(map[string]any, len(stream.Labels))
-		for k, v := range stream.Labels {
-			extracted[string(k)] = string(v)
-		}
-
-		for i, e := range stream.Entries {
-			if i == len(stream.Entries)-1 {
-				entries = append(entries, Entry{
-					Extracted: extracted,
-					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, created, e),
-				})
-			} else {
-				entries = append(entries, Entry{
-					Extracted: maps.Clone(extracted),
-					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
-				})
-			}
-		}
-		return nil
-	})
-
-	return p.process(ctx, entries)
-}
-
-// ProcessEntry runs a single entry through the pipeline.
-func (p *Pipeline2) ProcessEntry(ctx context.Context, entry loki.Entry) error {
-	extracted := make(map[string]any, len(entry.Labels))
-	for k, v := range entry.Labels {
-		extracted[string(k)] = string(v)
-	}
-
-	return p.process(ctx, []Entry{
-		{
-			Extracted: extracted,
-			Entry:     entry,
-		},
-	})
-}
-
-func (p *Pipeline2) process(ctx context.Context, entries []Entry) error {
+func (p *pipeline) process(ctx context.Context, entries []Entry) error {
 	return p.next(ctx, entries)
 }
 
-func (p *Pipeline2) Stop() {
+func (p *pipeline) stop() {
 	// stages is stored in the reverse of its config order, so iterate
 	// backwards to stop in the original, upstream-first order.
 	for _, s := range slices.Backward(p.stages) {

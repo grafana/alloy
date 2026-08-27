@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func TestCRIStage(t *testing.T) {
@@ -292,7 +292,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 		return nil
 	}
 
-	p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, []StageConfig{{CRIConfig: &defaultCRIConfig}}, next)
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, []StageConfig{{CRIConfig: &defaultCRIConfig}}, next)
 	require.NoError(t, err)
 
 	require.NoError(t, p.process(context.Background(), []Entry{
@@ -300,7 +300,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 	}))
 	require.Empty(t, collected)
 
-	p.Stop()
+	p.stop()
 
 	expected := []Entry{
 		newEntry(

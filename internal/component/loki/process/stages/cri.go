@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/common/model"
 
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -48,14 +47,14 @@ func (args *CRIConfig) Validate() error {
 	return nil
 }
 
-func newCRIStage(logger *slog.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability, next NextFn) *criStage {
+func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 	return &criStage{
-		next:                      next,
-		logger:                    logger.With("stage", "cri"),
+		next:                      opts.next,
+		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
 		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
-		partialLinesFlushedMetric: getPartialLinesFlushedMetric(registerer),
-		linesTruncatedMetric:      getLinesTruncatedMetric(registerer),
+		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
+		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
 }
 
@@ -83,9 +82,9 @@ var (
 )
 
 type criStage struct {
-	next   NextFn
-	logger *slog.Logger
+	next   nextFn
 	cfg    CRIConfig
+	logger *slog.Logger
 
 	mut          sync.Mutex
 	partialLines map[model.Fingerprint]Entry
@@ -103,9 +102,6 @@ const (
 
 func (c *criStage) Run(in chan Entry) chan Entry {
 	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
-		c.mut.Lock()
-		defer c.mut.Unlock()
-
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
 			return []Entry{e}, false
@@ -183,7 +179,7 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage and is only used by our new pipeline.
+// process implements entryProcessor and is only used by our new pipeline.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	c.mut.Lock()
 
@@ -289,21 +285,23 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 
 // stop implements stopper and is only used by our new pipeline.
 func (c *criStage) stop() {
+	const flushTimeout = 5 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
+	defer cancel()
+
 	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if len(c.partialLines) == 0 {
+		return
+	}
+
 	out := make([]Entry, 0, len(c.partialLines))
 	for _, e := range c.partialLines {
 		out = append(out, e)
 	}
 	c.partialLines = make(map[model.Fingerprint]Entry)
-	c.mut.Unlock()
 
-	if len(out) == 0 {
-		return
-	}
-
-	const flushTimeout = 5 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
-	defer cancel()
 	if err := c.next(ctx, out); err != nil {
 		c.logger.Error("failed to flush held partial lines on stop", "err", err)
 	}
