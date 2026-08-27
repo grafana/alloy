@@ -50,9 +50,9 @@ func TestTableStats(t *testing.T) {
 		)
 
 	expected := `
-	# HELP mysql_perf_schema_index_io_waits_total The total number of index I/O wait events for each index and operation.
-	# TYPE mysql_perf_schema_index_io_waits_total counter
-	mysql_perf_schema_index_io_waits_total{index="NONE",name="books",operation="fetch",schema="books_store"} 39
+	# HELP mysql_table_stats_seq_scan_total Number of row fetches against this table that did not use an index
+	# TYPE mysql_table_stats_seq_scan_total counter
+	mysql_table_stats_seq_scan_total{schema="books_store",table="books"} 39
 `
 
 	require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))

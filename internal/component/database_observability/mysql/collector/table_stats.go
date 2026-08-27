@@ -10,14 +10,10 @@ import (
 	"go.uber.org/atomic"
 )
 
-// TableStatsCollector emits the minimal set of table-level metrics needed for
-// the missing-index KG insight: the fetch-operation count of the index="NONE"
-// ("no index used") row per table, from
+// TableStatsCollector emits the minimal table-level metric needed for the
+// missing-index KG insight: the fetch count of the index="NONE" ("no index
+// used") row per table, from
 // performance_schema.table_io_waits_summary_by_index_usage.
-//
-// Named and labeled to match the metric mysqld_exporter's perf_schema.indexiowaits
-// scraper already emits (mysql_perf_schema_index_io_waits_total{schema,name,index,operation}),
-// but restricted to the fetch operation on the table-level (no-index) row.
 const TableStatsCollector = "table_stats"
 
 const selectTableIOWaitsNoIndex = `
@@ -25,10 +21,12 @@ const selectTableIOWaitsNoIndex = `
 	FROM performance_schema.table_io_waits_summary_by_index_usage
 	WHERE INDEX_NAME IS NULL AND OBJECT_SCHEMA NOT IN (%s)`
 
-var indexIOWaitsFetchDesc = prometheus.NewDesc(
-	"mysql_perf_schema_index_io_waits_total",
-	"The total number of index I/O wait events for each index and operation.",
-	[]string{"schema", "name", "index", "operation"}, nil,
+const labelSchema = "schema"
+
+var tableStatsSeqScanDesc = prometheus.NewDesc(
+	prometheus.BuildFQName("mysql", "table_stats", "seq_scan_total"),
+	"Number of row fetches against this table that did not use an index",
+	[]string{labelSchema, "table"}, nil,
 )
 
 type TableStatsArguments struct {
@@ -81,7 +79,7 @@ func (c *TableStats) Stop() {
 
 // Describe implements prometheus.Collector.
 func (c *TableStats) Describe(ch chan<- *prometheus.Desc) {
-	ch <- indexIOWaitsFetchDesc
+	ch <- tableStatsSeqScanDesc
 }
 
 // Collect implements prometheus.Collector. It runs synchronously at scrape time.
@@ -106,7 +104,7 @@ func (c *TableStats) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		ch <- prometheus.MustNewConstMetric(indexIOWaitsFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, "NONE", "fetch")
+		ch <- prometheus.MustNewConstMetric(tableStatsSeqScanDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName)
 	}
 
 	if err := rows.Err(); err != nil {

@@ -10,19 +10,21 @@ import (
 	"go.uber.org/atomic"
 )
 
-// IndexStatsCollector emits the minimal set of per-index metrics needed for
-// the unused-index KG insight: the fetch-operation count of each named-index
-// row per index, from performance_schema.table_io_waits_summary_by_index_usage.
-//
-// Named and labeled to match the metric mysqld_exporter's perf_schema.indexiowaits
-// scraper already emits (mysql_perf_schema_index_io_waits_total{schema,name,index,operation}),
-// but restricted to the fetch operation on named-index rows.
+// IndexStatsCollector emits the minimal per-index metric needed for the
+// unused-index KG insight: the fetch count of each named-index row per
+// index, from performance_schema.table_io_waits_summary_by_index_usage.
 const IndexStatsCollector = "index_stats"
 
 const selectIndexIOWaits = `
 	SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, COUNT_FETCH
 	FROM performance_schema.table_io_waits_summary_by_index_usage
 	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN (%s)`
+
+var indexStatsIdxScanDesc = prometheus.NewDesc(
+	prometheus.BuildFQName("mysql", "index_stats", "idx_scan_total"),
+	"Number of row fetches against this index",
+	[]string{labelSchema, "table", "index"}, nil,
+)
 
 type IndexStatsArguments struct {
 	DB             *sql.DB
@@ -74,7 +76,7 @@ func (c *IndexStats) Stop() {
 
 // Describe implements prometheus.Collector.
 func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
-	ch <- indexIOWaitsFetchDesc
+	ch <- indexStatsIdxScanDesc
 }
 
 // Collect implements prometheus.Collector. It runs synchronously at scrape time.
@@ -99,7 +101,7 @@ func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		ch <- prometheus.MustNewConstMetric(indexIOWaitsFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, indexName, "fetch")
+		ch <- prometheus.MustNewConstMetric(indexStatsIdxScanDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, indexName)
 	}
 
 	if err := rows.Err(); err != nil {
