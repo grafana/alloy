@@ -21,12 +21,15 @@ const selectTableIOWaitsNoIndex = `
 	FROM performance_schema.table_io_waits_summary_by_index_usage
 	WHERE INDEX_NAME IS NULL AND OBJECT_SCHEMA NOT IN (%s)`
 
-const labelSchema = "schema"
+const (
+	labelSchema = "schema"
+	labelTable  = "table"
+)
 
 var tableStatsSeqScanDesc = prometheus.NewDesc(
 	prometheus.BuildFQName("mysql", "table_stats", "seq_scan_total"),
 	"Number of row fetches against this table that did not use an index",
-	[]string{labelSchema, "table"}, nil,
+	[]string{labelSchema, labelTable}, nil,
 )
 
 type TableStatsArguments struct {
