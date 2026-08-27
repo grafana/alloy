@@ -306,10 +306,6 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	s.log.Info("now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
-	if s.opts.NotifyFunc != nil {
-		s.opts.NotifyFunc()
-	}
-
 	listeners := []net.Listener{s.publicLis, s.memLis}
 	for _, lis := range listeners {
 		wg.Add(1)
@@ -324,6 +320,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 
 	defer func() { _ = srv.Shutdown(ctx) }()
+
+	if s.opts.NotifyFunc != nil {
+		s.opts.NotifyFunc()
+	}
 
 	<-ctx.Done()
 	return nil
