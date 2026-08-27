@@ -22,7 +22,7 @@ const IndexStatsCollector = "index_stats"
 const selectIndexIOWaits = `
 	SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, COUNT_FETCH
 	FROM performance_schema.table_io_waits_summary_by_index_usage
-	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN %s`
+	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN (%s)`
 
 type IndexStatsArguments struct {
 	DB             *sql.DB
@@ -81,8 +81,9 @@ func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
 func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	query := fmt.Sprintf(selectIndexIOWaits, buildExcludedSchemasClause(c.excludeSchemas))
-	rows, err := c.dbConnection.QueryContext(ctx, query)
+	args := excludedSchemasArgs(c.excludeSchemas)
+	query := fmt.Sprintf(selectIndexIOWaits, sqlPlaceholders(len(args)))
+	rows, err := c.dbConnection.QueryContext(ctx, query, args...)
 	if err != nil {
 		c.logger.Error("failed to query table_io_waits_summary_by_index_usage", "err", err)
 		return

@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,6 +13,16 @@ import (
 
 	"github.com/grafana/alloy/internal/util"
 )
+
+// toDriverValues converts args built for QueryContext (a mysql query's
+// natural argument type is any) into the []driver.Value sqlmock expects.
+func toDriverValues(args []any) []driver.Value {
+	values := make([]driver.Value, len(args))
+	for i, a := range args {
+		values[i] = a
+	}
+	return values
+}
 
 func TestTableStats(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -30,7 +41,9 @@ func TestTableStats(t *testing.T) {
 	require.NoError(t, c.Start(t.Context()))
 	defer c.Stop()
 
-	mock.ExpectQuery(fmt.Sprintf(selectTableIOWaitsNoIndex, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+	args := excludedSchemasArgs(nil)
+	mock.ExpectQuery(fmt.Sprintf(selectTableIOWaitsNoIndex, sqlPlaceholders(len(args)))).
+		WithArgs(toDriverValues(args)...).RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "COUNT_FETCH"}).
 				AddRow("books_store", "books", 39),
