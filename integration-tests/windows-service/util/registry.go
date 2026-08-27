@@ -15,3 +15,14 @@ func RegistryKeyExists(registryPath string) bool {
 	_ = k.Close()
 	return true
 }
+
+// RegistryStringValue reads a REG_SZ value under HKLM at registryPath.
+func RegistryStringValue(registryPath, name string) (string, error) {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, registryPath, registry.READ)
+	if err != nil {
+		return "", err
+	}
+	defer k.Close()
+	v, _, err := k.GetStringValue(name)
+	return v, err
+}
