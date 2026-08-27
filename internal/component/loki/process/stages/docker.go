@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"time"
@@ -13,18 +14,23 @@ import (
 
 type DockerConfig struct{}
 
-// NewDocker creates a predefined pipeline for parsing entries in the Docker json log format.
-func NewDocker(logger *slog.Logger, _ prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
-	return toStage(&DockerStage{logger: logger.With("stage", "docker")}), nil
+var (
+	_ Stage          = (*dockerStage)(nil)
+	_ entryProcessor = (*dockerStage)(nil)
+)
+
+func newDockerStage(logger *slog.Logger, _ prometheus.Registerer, _ featuregate.Stability, next NextFn) *dockerStage {
+	return &dockerStage{next: next, logger: logger.With("stage", "docker")}
 }
 
-type DockerStage struct {
+type dockerStage struct {
+	next   NextFn
 	logger *slog.Logger
 }
 
-// DockerLog represents the expected json format written by docker:
+// dockerLog represents the expected json format written by docker:
 // https://docs.docker.com/engine/logging/drivers/json-file/
-type DockerLog struct {
+type dockerLog struct {
 	Log    string `json:"log"`
 	Time   string `json:"time"`
 	Stream string `json:"stream"`
@@ -36,13 +42,28 @@ const (
 	dockerTimestamp = "timestamp"
 )
 
-func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
-	var parsed DockerLog
-	if err := json.Unmarshal([]byte(*entry), &parsed); err != nil {
+func (d *dockerStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		return d.processEntry(e)
+	})
+}
+
+// process implements stage and is only used by our new pipeline.
+func (d *dockerStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = d.processEntry(entries[i])
+	}
+
+	return d.next(ctx, entries)
+}
+
+func (d *dockerStage) processEntry(e Entry) Entry {
+	var parsed dockerLog
+	if err := json.Unmarshal([]byte(e.Line), &parsed); err != nil {
 		if debugEnabled(d.logger) {
 			d.logger.Debug("failed to parse docker log", "err", err)
 		}
-		return
+		return e
 	}
 
 	// NOTE: json.Unmarshal will happily parse any JSON and produce a zero-value struct.
@@ -51,7 +72,7 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 		if debugEnabled(d.logger) {
 			d.logger.Debug("not valid docker format")
 		}
-		return
+		return e
 	}
 
 	// NOTE: Previous implementation used a "sub-pipeline"
@@ -59,15 +80,18 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	// as "extracted" values so the other stages could operate on them.
 	// We don't need this anymore but it would be a breaking change to
 	// no longer set these.
-	extracted[dockerOutput] = parsed.Log
-	extracted[dockerStream] = parsed.Stream
-	extracted[dockerTimestamp] = parsed.Time
+	e.Extracted[dockerOutput] = parsed.Log
+	e.Extracted[dockerStream] = parsed.Stream
+	e.Extracted[dockerTimestamp] = parsed.Time
 
-	*entry = parsed.Log
-	labels["stream"] = model.LabelValue(parsed.Stream)
+	e.Line = parsed.Log
+	e.Labels[dockerStream] = model.LabelValue(parsed.Stream)
 
 	ts, err := time.Parse(time.RFC3339Nano, parsed.Time)
 	if err == nil {
-		*t = ts
+		e.Timestamp = ts
 	}
+	return e
 }
+
+func (d *dockerStage) Cleanup() {}

@@ -3,10 +3,12 @@ package stages
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -273,7 +275,9 @@ loki_process_cri_lines_truncated_total %d
 loki_process_cri_partial_lines_flushed_total %d
 `, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
 
-			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, expectedMetrics)
+			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, entryCheckFNs{metrics: func(reg *prometheus.Registry) error {
+				return testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics))
+			}})
 		})
 	}
 }
@@ -310,7 +314,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 			partialTime,
 		),
 	}
-	assertEntriesUnordered(t, expected, collected)
+	assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
 }
 
 func BenchmarkCRIStage(b *testing.B) {

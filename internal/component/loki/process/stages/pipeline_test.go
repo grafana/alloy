@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,12 +61,27 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 	return NewPipeline(logging.NewSlogNop(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 }
 
+type entryCheckFNs struct {
+	metrics             func(reg *prometheus.Registry) error
+	metricsAfterCleanup func(reg *prometheus.Registry) error
+	timestamp           func(expected, actual time.Time) bool
+	extracted           func(expected, actual map[string]any) bool
+	structuredMetadata  func(expected, actual push.LabelsAdapter) bool
+}
+
 // runPipelineTest builds a pipeline for cfgs using both the old and new
 // pipeline implementations, runs entries through each, and asserts the
-// result matches expected. expectedMetrics is optional: pass "" to skip
-// checking metrics, or a Prometheus exposition-format string (as consumed
-// by testutil.GatherAndCompare) to assert against each run's own registry.
-func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string) {
+// result matches expected. checks is optional and lets a caller override how
+// individual fields are compared.
+// metrics checks the registry once entries have been processed, and
+// metricsAfterCleanup checks it again after the pipeline's Cleanup() has run.
+// Both are skipped when nil.
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, checks ...entryCheckFNs) {
+	var check entryCheckFNs
+	if len(checks) > 0 {
+		check = checks[0]
+	}
+
 	// Pipeline.Run seeds the extracted map with each entry's initial labels
 	// before running any stage. process (called directly below, bypassing
 	// ProcessBatch/ProcessEntry) does not. Seed it here once so both
@@ -95,15 +109,22 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		registry := prometheus.NewRegistry()
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
+
 		out := p.Run(withInboundEntries(cloned...))
 		var collected []Entry
 		for e := range out {
 			collected = append(collected, e)
 		}
 
-		assertEntriesUnordered(t, expected, collected)
-		if expectedMetrics != "" {
-			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+		assertEntriesUnordered(t, expected, collected, check)
+		if check.metrics != nil {
+			require.NoError(t, check.metrics(registry))
+		}
+
+		p.Stop()
+		p.Cleanup()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
 		}
 	})
 
@@ -118,15 +139,19 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p, err := NewPipeline2(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
 
-		p.process(context.Background(), entries)
-		p.Stop()
+		require.NoError(t, p.process(context.Background(), entries))
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected)
-			if expectedMetrics != "" {
-				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+			assertEntriesUnordered(c, expected, collected, check)
+			if check.metrics != nil {
+				require.NoError(c, check.metrics(registry))
 			}
 		}, 2*time.Second, 100*time.Millisecond)
+
+		p.Stop()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
+		}
 	})
 }
 
@@ -147,7 +172,14 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		in := make(chan loki.Entry)
 		out := make(chan loki.Entry)
 		handler := p.Start(in, out)
-		defer handler.Stop()
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for e := range out {
+				benchResultLokiEntry = e
+			}
+		}()
 
 		clone := batch.Clone()
 		entries := make([]loki.Entry, 0, clone.EntryLen())
@@ -163,9 +195,13 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		for b.Loop() {
 			for _, e := range entries {
 				handler.Chan() <- e.Clone()
-				benchResultLokiEntry = <-out
 			}
 		}
+		b.StopTimer()
+
+		handler.Stop()
+		close(out)
+		<-done
 	})
 
 	b.Run("New Stage", func(b *testing.B) {
@@ -189,21 +225,36 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 
 // assertEntriesUnordered asserts that actual contains exactly the entries in
 // expected, ignoring order.
-func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
+func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks entryCheckFNs) {
 	require.Len(t, actual, len(expected))
 
 	entriesEqual := func(expected, actual Entry) bool {
 		if expected.Line != actual.Line {
 			return false
 		}
-		if expected.Timestamp.Unix() != actual.Timestamp.Unix() {
-			return false
+
+		if checks.timestamp != nil {
+			if !checks.timestamp(expected.Timestamp, actual.Timestamp) {
+				return false
+			}
+		} else {
+			if expected.Timestamp.UnixNano() != actual.Timestamp.UnixNano() {
+				return false
+			}
 		}
+
 		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
 			return false
 		}
-		if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
-			return false
+
+		if checks.extracted != nil {
+			if !checks.extracted(expected.Extracted, actual.Extracted) {
+				return false
+			}
+		} else {
+			if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
+				return false
+			}
 		}
 
 		var (
@@ -222,6 +273,9 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
 		sortLabelAdapters(expectedStructured)
 		sortLabelAdapters(actualStructured)
 
+		if checks.structuredMetadata != nil {
+			return checks.structuredMetadata(expectedStructured, actualStructured)
+		}
 		return reflect.DeepEqual(expectedStructured, actualStructured)
 	}
 
@@ -235,7 +289,7 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
 			}
 		}
 
-		require.NotEqual(t, -1, found)
+		require.NotEqual(t, -1, found, "no matching entry found for expected entry: %+v", exp)
 		remaining = append(remaining[:found], remaining[found+1:]...)
 	}
 }
