@@ -15,7 +15,7 @@ Unreleased
 
 ### Enhancements
 
-- Update to Grafana Alloy v1.19.1 (@dehaansa)
+- Update to Grafana Alloy v1.19.2 (@dehaansa)
 
 1.12.0 (2026-08-24)
 ----------
