@@ -10,7 +10,7 @@ import (
 	"go.uber.org/atomic"
 )
 
-// IndexIOWaitsCollector emits the minimal set of metrics needed for the
+// IndexStatsCollector emits the minimal set of metrics needed for the
 // missing-index and unused-index KG insights: the fetch-operation count per
 // (schema, table, index) row of performance_schema.table_io_waits_summary_by_index_usage.
 // An index="NONE" row's fetch count is the "no index used" signal (missing-index);
@@ -19,7 +19,7 @@ import (
 // Named and labeled to match the metric mysqld_exporter's perf_schema.indexiowaits
 // scraper already emits (mysql_perf_schema_index_io_waits_total{schema,name,index,operation}),
 // but restricted to the fetch operation, which is all either insight reads.
-const IndexIOWaitsCollector = "index_io_waits"
+const IndexStatsCollector = "index_stats"
 
 const selectIndexIOWaits = `
 	SELECT OBJECT_SCHEMA, OBJECT_NAME, ifnull(INDEX_NAME, 'NONE') as INDEX_NAME, COUNT_FETCH
@@ -32,7 +32,7 @@ var indexIOWaitsFetchDesc = prometheus.NewDesc(
 	[]string{"schema", "name", "index", "operation"}, nil,
 )
 
-type IndexIOWaitsArguments struct {
+type IndexStatsArguments struct {
 	DB             *sql.DB
 	ExcludeSchemas []string
 	Registry       *prometheus.Registry
@@ -40,7 +40,7 @@ type IndexIOWaitsArguments struct {
 	Logger *slog.Logger
 }
 
-type IndexIOWaits struct {
+type IndexStats struct {
 	dbConnection   *sql.DB
 	excludeSchemas []string
 	registry       *prometheus.Registry
@@ -49,21 +49,21 @@ type IndexIOWaits struct {
 	running *atomic.Bool
 }
 
-func NewIndexIOWaits(args IndexIOWaitsArguments) (*IndexIOWaits, error) {
-	return &IndexIOWaits{
+func NewIndexStats(args IndexStatsArguments) (*IndexStats, error) {
+	return &IndexStats{
 		dbConnection:   args.DB,
 		excludeSchemas: args.ExcludeSchemas,
 		registry:       args.Registry,
-		logger:         args.Logger.With("collector", IndexIOWaitsCollector),
+		logger:         args.Logger.With("collector", IndexStatsCollector),
 		running:        &atomic.Bool{},
 	}, nil
 }
 
-func (c *IndexIOWaits) Name() string {
-	return IndexIOWaitsCollector
+func (c *IndexStats) Name() string {
+	return IndexStatsCollector
 }
 
-func (c *IndexIOWaits) Start(_ context.Context) error {
+func (c *IndexStats) Start(_ context.Context) error {
 	if err := c.registry.Register(c); err != nil {
 		return err
 	}
@@ -71,22 +71,22 @@ func (c *IndexIOWaits) Start(_ context.Context) error {
 	return nil
 }
 
-func (c *IndexIOWaits) Stopped() bool {
+func (c *IndexStats) Stopped() bool {
 	return !c.running.Load()
 }
 
-func (c *IndexIOWaits) Stop() {
+func (c *IndexStats) Stop() {
 	c.registry.Unregister(c)
 	c.running.Store(false)
 }
 
 // Describe implements prometheus.Collector.
-func (c *IndexIOWaits) Describe(ch chan<- *prometheus.Desc) {
+func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indexIOWaitsFetchDesc
 }
 
 // Collect implements prometheus.Collector. It runs synchronously at scrape time.
-func (c *IndexIOWaits) Collect(ch chan<- prometheus.Metric) {
+func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
 	query := fmt.Sprintf(selectIndexIOWaits, buildExcludedSchemasClause(c.excludeSchemas))

@@ -13,14 +13,14 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-func TestIndexIOWaits(t *testing.T) {
+func TestIndexStats(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
 
 	registry := prometheus.NewRegistry()
 
-	c, err := NewIndexIOWaits(IndexIOWaitsArguments{
+	c, err := NewIndexStats(IndexStatsArguments{
 		DB:       db,
 		Registry: registry,
 		Logger:   util.TestAlloyLogger(t).Slog(),
