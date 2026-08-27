@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -24,6 +25,17 @@ type config struct {
 	// WorkingDirectory points to the working directory to run the Alloy binary
 	// from.
 	WorkingDirectory string
+
+	// OtelMode is the raw ALLOY_OTEL_MODE registry value
+	OtelMode string
+}
+
+func getOptionalStringValue(k registry.Key, name string) (string, error) {
+	v, _, err := k.GetStringValue(name)
+	if errors.Is(err, registry.ErrNotExist) {
+		return "", nil
+	}
+	return v, err
 }
 
 // loadConfig loads the config from the Windows registry.
@@ -52,10 +64,16 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("failed to retrieve key Environment: %w", err)
 	}
 
+	otelMode, err := getOptionalStringValue(alloyKey, "ALLOY_OTEL_MODE")
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve key ALLOY_OTEL_MODE: %w", err)
+	}
+
 	return &config{
 		ServicePath:      servicePath,
 		Args:             args,
 		Environment:      env,
 		WorkingDirectory: filepath.Dir(servicePath),
+		OtelMode:         otelMode,
 	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"golang.org/x/sys/windows"
@@ -49,9 +50,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	otelConfigDefault := filepath.Join(filepath.Dir(managerConfig.ServicePath), "config.yaml")
+	args := resolveEngineArgs(managerConfig.OtelMode, otelConfigDefault, managerConfig.Args)
+
 	cfg := serviceManagerConfig{
 		path:        managerConfig.ServicePath,
-		args:        managerConfig.Args,
+		args:        args,
 		environment: managerConfig.Environment,
 		dir:         managerConfig.WorkingDirectory,
 
