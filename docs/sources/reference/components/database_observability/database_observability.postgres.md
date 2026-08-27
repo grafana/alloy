@@ -42,15 +42,6 @@ You can use the following arguments with `database_observability.postgres`:
 
 Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_name`.
 
-## Exports
-
-The following fields are exported and can be referenced by other components:
-
-| Name            | Type                | Description                                                            |
-| --------------- | ------------------- | ---------------------------------------------------------------------- |
-| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
-| `targets`       | `list(map(string))` | Targets that can be used to collect metrics from the component.        |
-
 The following collectors are configurable:
 
 | Name             | Description                                                           | Enabled by default |
