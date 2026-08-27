@@ -9,10 +9,14 @@
 # The configuration file holding the Alloy config.
 CONFIG_FILE="/etc/alloy/config.alloy"
 
-# User-defined arguments to pass to the run command. Only applies to the
-# default engine (`alloy run`); it has no effect when ALLOY_OTEL_MODE below
-# is enabled.
+# User-defined arguments to pass to the default engine (`alloy run`). Has
+# no effect when ALLOY_OTEL_MODE below is enabled; use CUSTOM_OTEL_ARGS
+# instead.
 CUSTOM_ARGS=""
+
+# User-defined arguments to pass to the OTel engine (`alloy otel`). Only
+# applies when ALLOY_OTEL_MODE below is enabled.
+CUSTOM_OTEL_ARGS=""
 
 # Set to (lowercase) 1, true, yes, or on to run the OTel engine (`alloy otel`)
 # instead of the default engine (`alloy run`). Unset or any other value keeps

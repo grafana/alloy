@@ -158,6 +158,21 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
+		{
+			name:     "otel engine, CUSTOM_OTEL_ARGS applies",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
+			expected: "otel --set=processors.batch.timeout=2s --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine ignores CUSTOM_ARGS, the default engine's flags",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_ARGS="--storage.path=/should/not/appear"`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "default engine ignores CUSTOM_OTEL_ARGS, the OTel engine's flags",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
+			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+		},
 	}
 
 	for _, tc := range tt {
