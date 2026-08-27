@@ -263,6 +263,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
@@ -289,6 +290,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
@@ -315,6 +317,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
@@ -342,6 +345,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
@@ -369,6 +373,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
@@ -396,6 +401,7 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
 			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})

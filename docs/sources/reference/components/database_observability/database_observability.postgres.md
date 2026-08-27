@@ -56,7 +56,8 @@ The following collectors are configurable:
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
-| `index_stats`    | Collect table scan and index usage statistics, across every database the connection can reach, for missing-index and unused-index detection. | no |
+| `table_stats`    | Collect table scan statistics from `pg_stat_user_tables`, across every database the connection can reach, for missing-index detection. | no |
+| `index_stats`    | Collect per-index usage statistics from `pg_stat_user_indexes`, across every database the connection can reach, for unused-index detection. | no |
 | `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |

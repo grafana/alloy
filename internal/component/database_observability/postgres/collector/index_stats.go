@@ -9,58 +9,25 @@ import (
 	"go.uber.org/atomic"
 )
 
-// IndexStatsCollector emits the minimal set of metrics needed for the
-// missing-index and unused-index KG insights: table-level scan counts (from
-// pg_stat_user_tables) and per-index scan counts (from pg_stat_user_indexes),
-// scoped to every database the connection can reach rather than only the one
-// named in the DSN.
+// IndexStatsCollector emits the minimal set of per-index metrics needed for
+// the unused-index KG insight, from pg_stat_user_indexes, scoped to every
+// database the connection can reach rather than only the one named in the DSN.
 const IndexStatsCollector = "index_stats"
 
-const (
-	selectTableScanStats = `
-		SELECT
-			schemaname,
-			relname,
-			seq_scan,
-			idx_scan,
-			n_live_tup
-		FROM pg_stat_user_tables`
-
-	selectIndexUsageStats = `
-		SELECT
-			s.schemaname,
-			s.relname,
-			s.indexrelname,
-			s.idx_scan,
-			i.indisprimary,
-			pg_relation_size(s.indexrelid) AS index_size_bytes
-		FROM pg_stat_user_indexes s
-		JOIN pg_index i ON i.indexrelid = s.indexrelid`
-)
-
-const labelDatname = "datname"
-
-var tableLabels = []string{labelDatname, "schemaname", "relname"}
+const selectIndexUsageStats = `
+	SELECT
+		s.schemaname,
+		s.relname,
+		s.indexrelname,
+		s.idx_scan,
+		i.indisprimary,
+		pg_relation_size(s.indexrelid) AS index_size_bytes
+	FROM pg_stat_user_indexes s
+	JOIN pg_index i ON i.indexrelid = s.indexrelid`
 
 var indexLabels = []string{labelDatname, "schemaname", "relname", "indexrelname"}
 
 var (
-	tableScanStatsSeqScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("pg", "stat_user_tables", "seq_scan"),
-		"Number of sequential scans initiated on this table",
-		tableLabels, nil,
-	)
-	tableScanStatsIdxScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("pg", "stat_user_tables", "idx_scan"),
-		"Number of index scans initiated on this table",
-		tableLabels, nil,
-	)
-	tableScanStatsNLiveTupDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("pg", "stat_user_tables", "n_live_tup"),
-		"Estimated number of live rows",
-		tableLabels, nil,
-	)
-
 	// Named to match the metrics proposed by the (currently unmerged) upstream
 	// prometheus-community/postgres_exporter#1071, so that adopting the real
 	// upstream collector later, if/when it lands, needs no rule changes.
@@ -143,9 +110,6 @@ func (c *IndexStats) Stop() {
 
 // Describe implements prometheus.Collector.
 func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
-	ch <- tableScanStatsSeqScanDesc
-	ch <- tableScanStatsIdxScanDesc
-	ch <- tableScanStatsNLiveTupDesc
 	ch <- indexUsageIdxScanTotalDesc
 	ch <- indexPropertiesDesc
 	ch <- indexSizeBytesDesc
@@ -169,37 +133,9 @@ func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
-		c.collectTableScanStats(ctx, dbName, conn, ch)
 		c.collectIndexUsageStats(ctx, dbName, conn, ch)
 
 		closeConn()
-	}
-}
-
-func (c *IndexStats) collectTableScanStats(ctx context.Context, dbName string, conn *sql.DB, ch chan<- prometheus.Metric) {
-	rows, err := conn.QueryContext(ctx, selectTableScanStats)
-	if err != nil {
-		c.logger.Error("failed to query pg_stat_user_tables", "datname", dbName, "err", err)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var schemaname, relname string
-		var seqScan, idxScan, nLiveTup sql.NullInt64
-
-		if err := rows.Scan(&schemaname, &relname, &seqScan, &idxScan, &nLiveTup); err != nil {
-			c.logger.Error("failed to scan pg_stat_user_tables row", "datname", dbName, "err", err)
-			return
-		}
-
-		ch <- prometheus.MustNewConstMetric(tableScanStatsSeqScanDesc, prometheus.CounterValue, float64(seqScan.Int64), dbName, schemaname, relname)
-		ch <- prometheus.MustNewConstMetric(tableScanStatsIdxScanDesc, prometheus.CounterValue, float64(idxScan.Int64), dbName, schemaname, relname)
-		ch <- prometheus.MustNewConstMetric(tableScanStatsNLiveTupDesc, prometheus.GaugeValue, float64(nLiveTup.Int64), dbName, schemaname, relname)
-	}
-
-	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating pg_stat_user_tables rows", "datname", dbName, "err", err)
 	}
 }
 

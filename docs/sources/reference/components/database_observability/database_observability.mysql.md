@@ -48,7 +48,8 @@ The following collectors are configurable:
 | `setup_actors`    | Check and update `performance_schema.setup_actors` settings. | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries.     | no                 |
 | `explain_plans`   | Collect explain plans information.                           | yes                |
-| `index_stats`     | Collect per-index fetch counts from `performance_schema.table_io_waits_summary_by_index_usage`, for missing-index and unused-index detection. | no |
+| `table_stats`     | Collect the no-index (`INDEX_NAME` is `NULL`) fetch count per table from `performance_schema.table_io_waits_summary_by_index_usage`, for missing-index detection. | no |
+| `index_stats`     | Collect the per-index fetch count from `performance_schema.table_io_waits_summary_by_index_usage`, for unused-index detection. | no |
 
 ## Blocks
 
