@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.faro/
 description: Learn about otelcol.receiver.faro
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otelcol.receiver.faro
@@ -10,7 +10,7 @@ title: otelcol.receiver.faro
 
 # `otelcol.receiver.faro`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.faro` accepts telemetry data from the [Grafana Faro Web SDK][faro-sdk] and forwards it to other `otelcol.*` components.
 
