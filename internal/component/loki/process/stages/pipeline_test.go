@@ -115,11 +115,11 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 			return nil
 		}
 
-		p, err := NewPipeline2(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
+		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
 
 		p.process(context.Background(), entries)
-		p.Stop()
+		p.stop()
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			assertEntriesUnordered(c, expected, collected)
@@ -169,20 +169,16 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 	})
 
 	b.Run("New Stage", func(b *testing.B) {
-		next := func(_ context.Context, e []Entry) error {
-			benchResultEntries = e
-			return nil
-		}
-
-		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		collcetor := loki.NewCollectingConsumer()
+		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, collcetor)
 		require.NoError(b, err)
-		defer p.Stop()
+		defer pc.Stop()
 
 		b.ResetTimer()
 		b.ReportAllocs()
 
 		for b.Loop() {
-			_ = p.ProcessBatch(context.Background(), batch.Clone())
+			_ = pc.Consume(context.Background(), batch.Clone())
 		}
 	})
 }
