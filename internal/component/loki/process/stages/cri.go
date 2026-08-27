@@ -92,8 +92,8 @@ type criStage struct {
 	partialLines map[model.Fingerprint]Entry
 
 	// flushMu is a phase lock for pendingLines, used by process2 and its
-	// helpers: RLock excludes an in-progress flushPendingLines, Lock
-	// excludes every other pendingLines access while one runs.
+	// helpers: RLock excludes an in-progress flushPendingLinesIfExceeded,
+	// Lock excludes every other pendingLines access while one runs.
 	flushMu      sync.RWMutex
 	pendingLines *xsync.Map[model.Fingerprint, Entry]
 
@@ -209,16 +209,30 @@ func (c *criStage) process2(ctx context.Context, entries []Entry) error {
 
 		// Partial line. Store it until we get a full line.
 		if parsed.Flag == crip.FlagPartial {
-			linesToFlush := c.addPartialLine(&e)
-			if len(linesToFlush) > 0 {
-				output = append(output, linesToFlush...)
-			}
+			c.addPartialLine(&e)
 			continue
 		}
 
 		// Full line. Flush any existing partial lines for this stream.
 		c.assembleEntryFromPartialLines(&e)
 		output = append(output, e)
+	}
+
+	// Safety mechanism: if too many partial lines are buffered, flush all
+	// of them regardless of which stream(s) they belong to. Checked once
+	// per batch rather than per entry, to keep locking and code simple.
+	// This means the limit is approximate, not exact: a single batch can
+	// push pendingLines past MaxPartialLines before this ever runs. That's
+	// fine memory-wise, since a batch's entries are already resident in
+	// memory before we get here; the limit's job is bounding buildup from
+	// streams that never send a completing full line, accumulating across
+	// many batches over time. Flushed lines are prepended, since they were
+	// buffered before this batch started and are typically older than
+	// what it produced. But out-of-order lines are still possible.
+	// We consider this acceptable, since this is a safety valve and
+	// no lines are ever lost, only fragmented and re-ordered.
+	if flushed := c.flushPendingLinesIfExceeded(); len(flushed) > 0 {
+		output = append(flushed, output...)
 	}
 
 	// Send the output to the next stage.
@@ -231,7 +245,7 @@ func (c *criStage) process2(ctx context.Context, entries []Entry) error {
 func (c *criStage) assembleEntryFromPartialLines(entry *Entry) {
 	fp := entry.Labels.Fingerprint()
 
-	c.flushMu.RLock()
+	c.flushMu.RLock() // Makes sure no flushing of lines is happening at the same time
 	prev, ok := c.pendingLines.LoadAndDelete(fp)
 	c.flushMu.RUnlock()
 
@@ -247,21 +261,10 @@ func (c *criStage) assembleEntryFromPartialLines(entry *Entry) {
 	c.ensureTruncateIfRequired(entry)
 }
 
-func (c *criStage) addPartialLine(entry *Entry) []Entry {
+func (c *criStage) addPartialLine(entry *Entry) {
 	fp := entry.Labels.Fingerprint()
 
-	// Safety mechanism check: flush all lines if the limit is reached. Size
-	// is a snapshot, so under concurrent inserts for other streams the
-	// limit is approximate, not exact.
-	c.flushMu.RLock()
-	size := c.pendingLines.Size()
-	c.flushMu.RUnlock()
-
-	if size >= c.cfg.MaxPartialLines {
-		return c.flushPendingLines(entry)
-	}
-
-	c.flushMu.RLock()
+	c.flushMu.RLock() // Makes sure no flushing of lines is happening at the same time
 	defer c.flushMu.RUnlock()
 
 	c.pendingLines.Compute(fp, func(oldValue Entry, loaded bool) (Entry, xsync.ComputeOp) {
@@ -274,24 +277,30 @@ func (c *criStage) addPartialLine(entry *Entry) []Entry {
 		c.ensureTruncateIfRequired(entry)
 		return *entry, xsync.UpdateOp
 	})
-
-	return nil
 }
 
-// flushPendingLines drains every entry currently buffered in pendingLines,
-// belonging to whichever streams happen to hold one, not just entry's own
-// stream. It can race with other goroutines adding partial lines or
-// assembling full lines for those other streams, which can result in lines
-// being out of order or fragmented. We consider this acceptable, since this
-// is a safety mechanism and no lines are lost.
-func (c *criStage) flushPendingLines(entry *Entry) []Entry {
-	fp := entry.Labels.Fingerprint()
+// flushPendingLinesIfExceeded drains every entry currently buffered in
+// pendingLines, belonging to whichever streams happen to hold one, if the
+// configured limit has been reached. Returns nil if it hasn't.
+func (c *criStage) flushPendingLinesIfExceeded() []Entry {
+	c.flushMu.RLock()
+	size := c.pendingLines.Size()
+	c.flushMu.RUnlock()
 
-	c.flushMu.Lock()
+	if size < c.cfg.MaxPartialLines {
+		return nil
+	}
+
+	c.flushMu.Lock() // Only one flush can happen at a time and excludes any other pendingLines access while it runs.
 	defer c.flushMu.Unlock()
 
+	// Check size again in case another goroutine already flushed.
+	size = c.pendingLines.Size()
+	if size < c.cfg.MaxPartialLines {
+		return nil
+	}
+
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-	size := c.pendingLines.Size()
 	if c.partialLinesFlushedMetric != nil {
 		c.partialLinesFlushedMetric.Add(float64(size))
 	}
@@ -302,9 +311,6 @@ func (c *criStage) flushPendingLines(entry *Entry) []Entry {
 		return true
 	})
 	c.pendingLines.Clear()
-
-	c.ensureTruncateIfRequired(entry)
-	c.pendingLines.Store(fp, *entry)
 
 	return flushed
 }
