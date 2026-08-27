@@ -108,7 +108,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(slogger, *cfg.MatchConfig, registerer, minStability)
+		s, err = newMatchStage(slogger, *cfg.MatchConfig, registerer, minStability, next)
 		if err != nil {
 			return nil, err
 		}

@@ -148,78 +148,110 @@ loki_process_dropped_lines_by_label_total{label_name="app",label_value="poki"} 4
 // TestLimitStageShutdown verifies that an entry blocked in rateLimiter.Wait
 // is released promptly when the pipeline shuts down.
 func TestLimitStageShutdown(t *testing.T) {
-	cfgs := loadConfig(`
-		stage.limit {
+	type testCase struct {
+		name string
+		cfg  string
+	}
+
+	tests := []testCase{
+		{
+			name: "stage.limit",
+			cfg: `
+			stage.limit {
 				rate  = 0.1
 				burst = 1
 				drop  = false
-		}
-	`)
+			}
+			`,
+		},
+		{
+			name: "stage.limit inside stage.match",
+			cfg: `
+			stage.match {
+				selector = "{app=\"loki\"}"
+				action = "keep"
+				stage.limit {
+					rate  = 0.1
+					burst = 1
+					drop  = false
+				}
+			}
+			`,
+		},
+	}
 
 	t.Run("Stage", func(t *testing.T) {
-		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(tt.cfg), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+				require.NoError(t, err)
 
-		in := make(chan loki.Entry)
-		out := make(chan loki.Entry, 1)
-		handler := pl.Start(in, out)
+				in := make(chan loki.Entry)
+				out := make(chan loki.Entry, 1)
+				handler := pl.Start(in, out)
 
-		entry := loki.Entry{
-			Labels: model.LabelSet{"app": "loki"},
-			Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
-		}
+				entry := loki.Entry{
+					Labels: model.LabelSet{"app": "loki"},
+					Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+				}
 
-		in <- entry
-		<-out       // burst consumed; next Wait() will block
-		in <- entry // blocks the limit stage in rateLimiter.Wait
+				in <- entry
+				<-out       // burst consumed; next Wait() will block
+				in <- entry // blocks the limit stage in rateLimiter.Wait
 
-		done := make(chan struct{})
-		go func() { defer close(done); handler.Stop() }()
+				done := make(chan struct{})
+				go func() { defer close(done); handler.Stop() }()
 
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait")
-		}
+				select {
+				case <-done:
+				case <-time.After(2 * time.Second):
+					t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait")
+				}
 
-		select {
-		case e := <-out:
-			t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
-		default:
+				select {
+				case e := <-out:
+					t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
+				default:
+				}
+			})
 		}
 	})
 
 	t.Run("New Stage", func(t *testing.T) {
-		var collected []Entry
-		next := func(_ context.Context, entries []Entry) error {
-			collected = append(collected, entries...)
-			return nil
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				var collected []Entry
+				next := func(_ context.Context, entries []Entry) error {
+					collected = append(collected, entries...)
+					return nil
+				}
+				p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, loadConfig(tt.cfg), next)
+				require.NoError(t, err)
+
+				entry := func() Entry {
+					return newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now())
+				}
+
+				require.NoError(t, p.process(context.Background(), []Entry{entry()})) // burst consumed
+
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					_ = p.process(context.Background(), []Entry{entry()}) // blocks in rateLimiter.Wait
+				}()
+
+				// Give the goroutine above time to actually enter Wait() before cancelling.
+				time.Sleep(50 * time.Millisecond)
+				p.Stop()
+
+				select {
+				case <-done:
+				case <-time.After(2 * time.Second):
+					t.Fatal("Cleanup() did not release the entry blocked in rateLimiter.Wait")
+				}
+
+				require.Len(t, collected, 1, "expected the entry blocked in rateLimiter.Wait to be dropped on shutdown")
+			})
 		}
-		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-
-		entry := func() Entry {
-			return newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, testMatchLogLineApp1, time.Now())
-		}
-
-		require.NoError(t, p.process(context.Background(), []Entry{entry()})) // burst consumed
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			_ = p.process(context.Background(), []Entry{entry()}) // blocks in rateLimiter.Wait
-		}()
-
-		// Give the goroutine above time to actually enter Wait() before cancelling.
-		time.Sleep(50 * time.Millisecond)
-		p.Stop()
-
-		select {
-		case <-done:
-		case <-time.After(2 * time.Second):
-			t.Fatal("Cleanup() did not release the entry blocked in rateLimiter.Wait")
-		}
-
-		require.Len(t, collected, 1, "expected the entry blocked in rateLimiter.Wait to be dropped on shutdown")
 	})
 }

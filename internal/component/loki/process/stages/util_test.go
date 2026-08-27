@@ -56,14 +56,6 @@ func mustParseTime(layout, value string) time.Time {
 	return t
 }
 
-func toLabelSet(lbs map[string]string) model.LabelSet {
-	res := model.LabelSet{}
-	for k, v := range lbs {
-		res[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return res
-}
-
 // Verify the formatting of float conversion to make sure there are not any trailing zeros,
 // and also make sure unix timestamps are converted properly
 func TestGetString(t *testing.T) {
