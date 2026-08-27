@@ -58,15 +58,16 @@ type Arguments struct {
 	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
 	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
-	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
-	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
-	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
-	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
-	GroupRebalanceStrategy string        `alloy:"group_rebalance_strategy,attr,optional"`
-	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
-	RackID                 string        `alloy:"rack_id,attr,optional"`
-	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
-	ConnIdleTimeout        time.Duration `alloy:"conn_idle_timeout,attr,optional"`
+	MinFetchSize             int32         `alloy:"min_fetch_size,attr,optional"`
+	MaxFetchSize             int32         `alloy:"max_fetch_size,attr,optional"`
+	MaxPartitionFetchSize    int32         `alloy:"max_partition_fetch_size,attr,optional"`
+	MaxFetchWait             time.Duration `alloy:"max_fetch_wait,attr,optional"`
+	GroupRebalanceStrategy   string        `alloy:"group_rebalance_strategy,attr,optional"`
+	GroupRebalanceStrategies []string      `alloy:"group_rebalance_strategies,attr,optional"`
+	GroupInstanceID          string        `alloy:"group_instance_id,attr,optional"`
+	RackID                   string        `alloy:"rack_id,attr,optional"`
+	UseLeaderEpoch           bool          `alloy:"use_leader_epoch,attr,optional"`
+	ConnIdleTimeout          time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -85,20 +86,19 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-		Brokers:                []string{"localhost:9092"},
-		ClientID:               "otel-collector",
-		GroupID:                "otel-collector",
-		InitialOffset:          "latest",
-		SessionTimeout:         10 * time.Second,
-		HeartbeatInterval:      3 * time.Second,
-		MinFetchSize:           1,
-		MaxFetchSize:           1048576,
-		MaxPartitionFetchSize:  1048576,
-		MaxFetchWait:           250 * time.Millisecond,
-		GroupRebalanceStrategy: "range",
-		RackID:                 "",
-		UseLeaderEpoch:         true,
-		ConnIdleTimeout:        9 * time.Minute,
+		Brokers:               []string{"localhost:9092"},
+		ClientID:              "otel-collector",
+		GroupID:               "otel-collector",
+		InitialOffset:         "latest",
+		SessionTimeout:        10 * time.Second,
+		HeartbeatInterval:     3 * time.Second,
+		MinFetchSize:          1,
+		MaxFetchSize:          1048576,
+		MaxPartitionFetchSize: 1048576,
+		MaxFetchWait:          250 * time.Millisecond,
+		RackID:                "",
+		UseLeaderEpoch:        true,
+		ConnIdleTimeout:       9 * time.Minute,
 		Logs: KafkaReceiverTopicEncodingConfig{
 			Topics:   []string{"otlp_logs"},
 			Encoding: "otlp_proto",
@@ -131,13 +131,36 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	switch args.GroupRebalanceStrategy {
-	case "range", "roundrobin", "sticky", "cooperative-sticky":
-	default:
-		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	// Upstream rejects setting both forms, whatever their values.
+	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != "" {
+		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
+	}
+
+	for _, strategy := range args.GroupRebalanceStrategies {
+		if err := validateGroupRebalanceStrategy(strategy); err != nil {
+			return err
+		}
+	}
+
+	// An empty singular means unset; Convert applies the default.
+	if args.GroupRebalanceStrategy != "" {
+		if err := validateGroupRebalanceStrategy(args.GroupRebalanceStrategy); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+const defaultGroupRebalanceStrategy = "range"
+
+func validateGroupRebalanceStrategy(strategy string) error {
+	switch strategy {
+	case "range", "roundrobin", "sticky", "cooperative-sticky":
+		return nil
+	default:
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	}
 }
 
 type KafkaReceiverTopicEncodingConfig struct {
@@ -232,7 +255,19 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
 	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
-	result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
+	// Upstream rejects both forms being set, so send only the one in use.
+	if len(args.GroupRebalanceStrategies) > 0 {
+		strategies := make([]configkafka.GroupRebalanceStrategy, 0, len(args.GroupRebalanceStrategies))
+		for _, strategy := range args.GroupRebalanceStrategies {
+			strategies = append(strategies, configkafka.GroupRebalanceStrategy(strategy))
+		}
+		result.ConsumerConfig.GroupRebalanceStrategies = strategies
+		result.ConsumerConfig.GroupRebalanceStrategy = ""
+	} else if args.GroupRebalanceStrategy != "" {
+		result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
+	} else {
+		result.ConsumerConfig.GroupRebalanceStrategy = defaultGroupRebalanceStrategy
+	}
 	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
 	result.ClientConfig.RackID = args.RackID
 	result.ClientConfig.UseLeaderEpoch = args.UseLeaderEpoch

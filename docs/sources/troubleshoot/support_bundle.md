@@ -36,8 +36,7 @@ curl -o support.zip "http://localhost:12345/-/support?duration=30s"
 ```
 
 {{< admonition type="note" >}}
-{{< param "PRODUCT_NAME" >}} enables this endpoint by default.
-To disable it, use the `--disable-support-bundle` runtime flag.
+This endpoint is enabled by default, but may be disabled using the `--server.http.disable-support-bundle` runtime flag.
 {{< /admonition >}}
 
 ## Inspect the bundle

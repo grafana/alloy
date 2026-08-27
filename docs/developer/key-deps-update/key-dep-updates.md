@@ -169,6 +169,14 @@ The bullets here are judgment calls the "Steps to update key dependencies" secti
   - Fix: bump it in the builder-config.
   - Example: the lone `httpsprovider` straggler was raised in builder-config, not go.mod, to keep the stable stack uniform without drift.
 
+- **The opamp supervisor pin lives outside the component list regeneration syncs — bump it separately.**
+  - Problem: `collector/builder-config.yaml` pins `github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor` via a `replace`, because OCB doesn't treat it as a component and `go mod tidy` would otherwise resolve it to `@latest`. Every other OTel dependency's target version lives in the `components:` list, so setting it there once and running `make generate-otel-collector-distro` propagates it everywhere. This pin isn't in that list, so regeneration never touches it, and it can silently lag behind.
+  - Fix: whenever the OTel version bumps, also bump this replace line to the same target version, then regenerate.
+
+- **The OCB version in `BUILDER_VERSION` in the root `Makefile` needs to be updated whenever the OTel Collector dependency version changes.**
+  - Problem: this is the OCB version we use to build the Alloy collector. Nothing derives it from `collector/builder-config.yaml`, so it can lag silently and generate stale code.
+  - Fix: set it to the new OTel Collector dependency version, then regenerate using `make generate-otel-collector-distro`.
+  
 - **Verify the commit, not just the working tree.**
   - Problem: `go build`, `test`, and `lint` run against the working tree, so they stay green even when a merge or amend captured pre-regeneration files.
   - Fix: regenerate the files first, then stage the updated files, and check `git status` before you push.
@@ -265,6 +273,8 @@ Only continue to the next step if all the key dependenies have a fork ready, don
 ### Step 4: Update Go modules to desired versions
 
 The shared replace block in `collector/builder-config.yaml` is canonical. Do not edit shared remote replaces in `go.mod` directly. Update `collector/builder-config.yaml`, then run `make generate-otel-collector-distro` to sync the root go.mod and generated OTel distro files.
+
+Also set `BUILDER_VERSION` in the root `Makefile` to the new OTel Collector dependency version. See the "Common traps and hard-won lessons" section above.
 
 Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 

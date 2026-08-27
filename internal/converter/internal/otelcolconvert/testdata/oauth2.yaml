@@ -14,6 +14,8 @@ extensions:
     tls:
       insecure: true
       ca_file: /var/lib/mycert.pem
+      cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
+      include_insecure_cipher_suites: true
       cert_file: certfile
       key_file: keyfile
     # timeout for the token client

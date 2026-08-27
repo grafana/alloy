@@ -126,6 +126,7 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent
 type CORSArguments struct {
 	AllowedOrigins []string `alloy:"allowed_origins,attr,optional"`
 	AllowedHeaders []string `alloy:"allowed_headers,attr,optional"`
+	ExposedHeaders []string `alloy:"exposed_headers,attr,optional"`
 
 	MaxAge int `alloy:"max_age,attr,optional"`
 }
@@ -139,6 +140,7 @@ func (args *CORSArguments) Convert() configoptional.Optional[otelconfighttp.CORS
 	return configoptional.Some(otelconfighttp.CORSConfig{
 		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
 		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
+		ExposedHeaders: copyStringSlice(args.ExposedHeaders),
 		MaxAge:         args.MaxAge,
 	})
 }
