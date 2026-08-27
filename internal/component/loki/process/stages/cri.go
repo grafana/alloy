@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/puzpuzpuz/xsync/v4"
 
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 	"github.com/grafana/alloy/internal/util"
@@ -53,6 +54,7 @@ func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
 		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+		pendingLines:              xsync.NewMap[model.Fingerprint, Entry](),
 		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
 		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
@@ -89,7 +91,11 @@ type criStage struct {
 	mut          sync.Mutex
 	partialLines map[model.Fingerprint]Entry
 
-	flushMu sync.RWMutex
+	// flushMu is a phase lock for pendingLines, used by process2 and its
+	// helpers: RLock excludes an in-progress flushPendingLines, Lock
+	// excludes every other pendingLines access while one runs.
+	flushMu      sync.RWMutex
+	pendingLines *xsync.Map[model.Fingerprint, Entry]
 
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter
@@ -225,13 +231,9 @@ func (c *criStage) process2(ctx context.Context, entries []Entry) error {
 func (c *criStage) assembleEntryFromPartialLines(entry *Entry) {
 	fp := entry.Labels.Fingerprint()
 
-	// Multiple goroutines can access the partialLines map, so we need to lock it.
-	c.mut.Lock()
-	prev, ok := c.partialLines[fp]
-	if ok { // remove the partial lines as we will flush them now.
-		delete(c.partialLines, fp)
-	}
-	c.mut.Unlock()
+	c.flushMu.RLock()
+	prev, ok := c.pendingLines.LoadAndDelete(fp)
+	c.flushMu.RUnlock()
 
 	if !ok { // there were no partial lines waiting, nothing to do
 		return
@@ -248,46 +250,63 @@ func (c *criStage) assembleEntryFromPartialLines(entry *Entry) {
 func (c *criStage) addPartialLine(entry *Entry) []Entry {
 	fp := entry.Labels.Fingerprint()
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
+	// Safety mechanism check: flush all lines if the limit is reached. Size
+	// is a snapshot, so under concurrent inserts for other streams the
+	// limit is approximate, not exact.
+	c.flushMu.RLock()
+	size := c.pendingLines.Size()
+	c.flushMu.RUnlock()
 
-	// Safety mechanism check: flush all lines if the limit is reached.
-	// NOTE: this select for flushing lines that belong to different streams, which
-	// could race with other goroutines trying to add more partial lines or
-	// to assemble full line for this same stream. It can result in lines being
-	// out of order. We consider this to be acceptable as this is a safety
-	// mechanism and while lines can be out of order or fragmented, they won't be lost.
-	if len(c.partialLines) >= c.cfg.MaxPartialLines {
-		c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-		if c.partialLinesFlushedMetric != nil {
-			c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+	if size >= c.cfg.MaxPartialLines {
+		return c.flushPendingLines(entry)
+	}
+
+	c.flushMu.RLock()
+	defer c.flushMu.RUnlock()
+
+	c.pendingLines.Compute(fp, func(oldValue Entry, loaded bool) (Entry, xsync.ComputeOp) {
+		if loaded {
+			var builder strings.Builder
+			builder.WriteString(oldValue.Line)
+			builder.WriteString(entry.Line)
+			entry.Line = builder.String()
 		}
-
-		// Allocation here. Should be fine as this is a safety mechanism.
-		flushed := make([]Entry, 0, len(c.partialLines))
-		for _, v := range c.partialLines {
-			flushed = append(flushed, v)
-		}
-
-		c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
 		c.ensureTruncateIfRequired(entry)
-		c.partialLines[fp] = *entry
-
-		return flushed
-	}
-
-	// No need to flush, store the line in partialLines.
-	prev, ok := c.partialLines[fp]
-	if ok {
-		var builder strings.Builder
-		builder.WriteString(prev.Line)
-		builder.WriteString(entry.Line)
-		entry.Line = builder.String()
-	}
-	c.ensureTruncateIfRequired(entry)
-	c.partialLines[fp] = *entry
+		return *entry, xsync.UpdateOp
+	})
 
 	return nil
+}
+
+// flushPendingLines drains every entry currently buffered in pendingLines,
+// belonging to whichever streams happen to hold one, not just entry's own
+// stream. It can race with other goroutines adding partial lines or
+// assembling full lines for those other streams, which can result in lines
+// being out of order or fragmented. We consider this acceptable, since this
+// is a safety mechanism and no lines are lost.
+func (c *criStage) flushPendingLines(entry *Entry) []Entry {
+	fp := entry.Labels.Fingerprint()
+
+	c.flushMu.Lock()
+	defer c.flushMu.Unlock()
+
+	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
+	size := c.pendingLines.Size()
+	if c.partialLinesFlushedMetric != nil {
+		c.partialLinesFlushedMetric.Add(float64(size))
+	}
+
+	flushed := make([]Entry, 0, size)
+	c.pendingLines.Range(func(_ model.Fingerprint, v Entry) bool {
+		flushed = append(flushed, v)
+		return true
+	})
+	c.pendingLines.Clear()
+
+	c.ensureTruncateIfRequired(entry)
+	c.pendingLines.Store(fp, *entry)
+
+	return flushed
 }
 
 func setCriProperties(e *Entry, parsed crip.Parsed) {
