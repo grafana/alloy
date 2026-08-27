@@ -4,18 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -38,7 +37,7 @@ type HealthCheckArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type HealthCheck struct {
@@ -46,7 +45,7 @@ type HealthCheck struct {
 	collectInterval time.Duration
 	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
-	logger          log.Logger
+	logger          *slog.Logger
 
 	running *atomic.Bool
 	ctx     context.Context
@@ -60,7 +59,7 @@ func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 		collectInterval: args.CollectInterval,
 		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", HealthCheckCollector),
+		logger:          args.Logger.With("collector", HealthCheckCollector),
 		running:         &atomic.Bool{},
 	}
 	return h, nil
@@ -71,7 +70,7 @@ func (c *HealthCheck) Name() string {
 }
 
 func (c *HealthCheck) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -126,7 +125,7 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 	for _, checkFn := range checks {
 		result := checkFn(ctx, c.dbConnection)
 		if result.err != nil {
-			level.Error(c.logger).Log("msg", "health check failed", "check", result.name, "err", result.err)
+			c.logger.Error("health check failed", "check", result.name, "err", result.err)
 			continue
 		}
 		msg := fmt.Sprintf(`check="%s" result="%v" value="%s"`, result.name, result.result, result.value)

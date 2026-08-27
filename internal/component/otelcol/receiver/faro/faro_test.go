@@ -25,6 +25,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				HTTPServer: otelcol.HTTPServerArguments{
 					Endpoint:              "localhost:8080",
 					CompressionAlgorithms: otelcol.DefaultCompressionAlgorithms,
+					IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+					ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+					WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 				},
 				Output: &otelcol.ConsumerArguments{},
 			},
@@ -39,6 +42,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				HTTPServer: otelcol.HTTPServerArguments{
 					Endpoint:              "localhost:9999",
 					CompressionAlgorithms: otelcol.DefaultCompressionAlgorithms,
+					IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+					ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+					WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 				},
 				Output: &otelcol.ConsumerArguments{},
 			},

@@ -51,13 +51,17 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_logs_by_resource_attributes`    | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in log messages sent to Kafka.    | `false`              | no       |
 | `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `false`              | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
@@ -68,6 +72,10 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 
 ## Blocks
 
@@ -90,7 +98,9 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                    | no       |
 | [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
 | [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
-| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.                  | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the Kafka producer.                  | no       |
+| [`record_partitioner`][record_partitioner]             | Selects the Kafka record partitioning strategy.                                | no       |
+| `record_partitioner` > [`sticky_key`][sticky_key]      | Configures the sticky-key partitioner.                                         | no       |
 | [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
@@ -115,6 +125,8 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 [batch]: #batch
 [producer]: #producer
 [compression_params]: #compression_params
+[record_partitioner]: #record_partitioner
+[sticky_key]: #sticky_key
 [debug_metrics]: #debug_metrics
 
 {{< /docs/alloy-config >}}
@@ -126,6 +138,7 @@ The `logs` block configures how to send logs to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                                                                       | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which logs will be exported.                                                                                        | `"otlp_logs"`  | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
@@ -136,6 +149,7 @@ The `metrics` block configures how to send metrics to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default          | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding`                | `string` | The encoding for metrics. Refer to [Supported encodings](#supported-encodings).                                                                   | `"otlp_proto"`   | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_metrics_by_resource_attributes`. | `""`             | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which metrics will be exported.                                                                                     | `"otlp_metrics"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
@@ -146,6 +160,7 @@ The `traces` block configures how to send traces to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for traces. Refer to [Supported encodings](#supported-encodings).                                                                     | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_traces_by_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which traces will be exported.                                                                                      | `"otlp_spans"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
@@ -200,20 +215,27 @@ The `producer` block configures how to retry retrieving metadata when retrieval 
 
 The following arguments are supported:
 
-| Name                 | Type     | Description                                         | Default   | Required |
-| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `compression`        | `string` | The level of compression to use on messages.        | `"none"`  | no       |
-| `flush_max_messages` | `number` | The maximum number of messages in one request.      | `10000`   | no       |
-| `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
-| `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
+| Name                     | Type       | Description                                                                | Default     | Required |
+| ------------------------ | ---------- | -------------------------------------------------------------------------- | ----------- | -------- |
+| `compression`            | `string`   | The compression algorithm to use on messages.                              | `"none"`    | no       |
+| `flush_max_messages`     | `number`   | The maximum number of messages in one request.                             | `10000`     | no       |
+| `linger`                 | `duration` | How long a topic partition waits for more records before building a request. | `"10ms"`    | no       |
+| `max_broker_write_bytes` | `number`   | The maximum permitted size of a single write to a broker in bytes.         | `104857600` | no       |
+| `max_message_bytes`      | `number`   | The maximum permitted size of a message in bytes.                          | `1000000`   | no       |
+| `required_acks`          | `number`   | Controls when a message is regarded as transmitted.                        | `1`         | no       |
 
-Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
+Refer to the [Kafka producer configuration documentation][RequiredAcks] for more information on `required_acks`.
+
+`max_broker_write_bytes` must be at least `104857600` (100 MiB), and `max_message_bytes` must be less than or equal to `max_broker_write_bytes`.
+Raise `max_broker_write_bytes` if you need a `max_message_bytes` larger than the default.
+
+Set `linger` to `"0s"` to send records as soon as they arrive, at the cost of less effective batching.
 
 `compression` could be set to either `none`, `gzip`, `snappy`, `lz4`, or `zstd`.
-Refer to the [Go sarama documentation][CompressionCodec] for more information.
+Refer to the [franz-go documentation][CompressionCodec] for more information.
 
-[RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
-[CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec
+[RequiredAcks]: https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
+[CompressionCodec]: https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#CompressionCodec
 
 ### `compression_params`
 
@@ -238,6 +260,28 @@ The following levels are valid combinations of `compression` and `level`:
 | `zstd`      | `11`  | SpeedBestCompression   |
 
 `lz4` and `snappy` do not currently support compression levels in this component.
+
+### `record_partitioner`
+
+The `record_partitioner` block selects how the exporter assigns records to Kafka partitions.
+When this block is omitted, the exporter uses the `sticky_key` partitioner with the `sarama_compat` hasher.
+
+The following arguments are supported:
+
+| Name           | Type      | Description                                             | Default | Required |
+| -------------- | --------- | ------------------------------------------------------- | ------- | -------- |
+| `round_robin`  | `boolean` | Distribute records across partitions in round-robin.    | `false` | no       |
+| `least_backup` | `boolean` | Route records to the partition with the least backlog.  | `false` | no       |
+
+### `sticky_key`
+
+The `sticky_key` block configures the sticky-key partitioner, which hashes a record's key to pick a partition.
+
+The following argument is supported:
+
+| Name     | Type     | Description                                     | Default           | Required |
+| -------- | -------- | ----------------------------------------------- | ----------------- | -------- |
+| `hasher` | `string` | Hash algorithm used to map record keys to partitions. | `"sarama_compat"` | no       |
 
 ### `retry_on_failure`
 

@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
 //
 // This package allows alloy to execute GraphQL queries against the Alloy GraphQL API.
 //
+
+const maxResponseBodySize = 5 * 1024 * 1024
 
 // GraphQLClient represents a simple GraphQL client
 type GraphQLClient struct {
@@ -28,7 +32,6 @@ type GraphQLRequest struct {
 type GraphQLResponse struct {
 	Data   any   `json:"data,omitempty"`
 	Errors []any `json:"errors,omitempty"`
-	Raw    []byte
 }
 
 // NewGraphQLClient creates a new GraphQL client
@@ -45,12 +48,7 @@ func NewGraphQLClient(endpoint string) *GraphQLClient {
 	}
 }
 
-// SetHeader sets a custom header (useful for future auth support)
-func (c *GraphQLClient) SetHeader(key, value string) {
-	c.headers.Set(key, value)
-}
-
-// Execute sends a GraphQL query and returns the raw response bytes
+// Execute sends a GraphQL query and returns the parsed response.
 func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 	reqBody := GraphQLRequest{Query: query}
 	jsonBody, err := json.Marshal(reqBody)
@@ -72,17 +70,22 @@ func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
-	}
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
+	if len(data) > maxResponseBodySize {
+		return nil, fmt.Errorf("response body exceeds %d bytes", maxResponseBodySize)
+	}
 
-	return c.parseResponse(buf.Bytes())
+	if resp.StatusCode != http.StatusOK {
+		if body := strings.TrimSpace(string(data)); body != "" {
+			return nil, fmt.Errorf("failed to execute request: %s: %s", resp.Status, body)
+		}
+		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
+	}
+
+	return c.parseResponse(data)
 }
 
 // parseResponse converts raw GraphQL response bytes into a basic GraphQLResponse struct
@@ -91,6 +94,5 @@ func (c *GraphQLClient) parseResponse(data []byte) (*GraphQLResponse, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse GraphQL response: %w", err)
 	}
-	resp.Raw = data
 	return &resp, nil
 }

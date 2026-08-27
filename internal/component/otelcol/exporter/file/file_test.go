@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 	"github.com/stretchr/testify/require"
@@ -35,9 +36,9 @@ func TestArguments_Validate(t *testing.T) {
 			wantErr: "path must be non-empty",
 		},
 		{
-			name:    "append and compression",
-			args:    Arguments{Path: "/tmp/test.json", Format: "json", FlushInterval: time.Second, Append: true, Compression: "zstd"},
-			wantErr: "append and compression enabled at the same time is not supported",
+			// Upstream allows append + compression together as of otel-contrib v0.152.
+			name: "append and compression",
+			args: Arguments{Path: "/tmp/test.json", Format: "json", FlushInterval: time.Second, Append: true, Compression: "zstd"},
 		},
 		{
 			name:    "append and rotation",
@@ -102,10 +103,13 @@ func TestArguments_Convert_EncodingUnsupported(t *testing.T) {
 
 func TestArguments_Convert(t *testing.T) {
 	args := Arguments{
-		Path:          "/tmp/*/test.json",
-		Format:        "json",
-		Append:        false,
-		Compression:   "zstd",
+		Path:        "/tmp/*/test.json",
+		Format:      "json",
+		Append:      false,
+		Compression: "zstd",
+		CompressionParams: &otelcol.CompressionParams{
+			Level: 6,
+		},
 		FlushInterval: 5 * time.Second,
 		Rotation: &Rotation{
 			MaxMegabytes: 50,
@@ -131,6 +135,7 @@ func TestArguments_Convert(t *testing.T) {
 	require.Equal(t, "json", fileCfg.FormatType)
 	require.False(t, fileCfg.Append)
 	require.Equal(t, "zstd", fileCfg.Compression)
+	require.Equal(t, 6, int(fileCfg.CompressionParams.Level))
 	require.Equal(t, 5*time.Second, fileCfg.FlushInterval)
 
 	require.NotNil(t, fileCfg.Rotation)
@@ -151,6 +156,9 @@ path = "/tmp/*/test.json"
 format = "json"
 append = false
 compression = "zstd"
+compression_params {
+  level = 6
+}
 flush_interval = "5s"
 
 rotation {
@@ -177,6 +185,8 @@ group_by {
 	require.Equal(t, "json", args.Format)
 	require.False(t, args.Append)
 	require.Equal(t, "zstd", args.Compression)
+	require.NotNil(t, args.CompressionParams)
+	require.Equal(t, 6, args.CompressionParams.Level)
 	require.Equal(t, 5*time.Second, args.FlushInterval)
 
 	require.NotNil(t, args.Rotation)

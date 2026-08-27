@@ -3,6 +3,10 @@
 - name: alloy
   image: {{ .Values.global.image.registry | default .Values.image.registry }}/{{ .Values.image.repository }}{{ include "alloy.imageId" . }}
   imagePullPolicy: {{ .Values.global.image.pullPolicy | default .Values.image.pullPolicy }}
+  {{- with $values.command }}
+  command:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   args:
     - run
     - /etc/alloy/{{ include "alloy.config-map.key" . }}

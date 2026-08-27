@@ -4,10 +4,9 @@ package windows_exporter
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -17,8 +16,8 @@ type Integration struct {
 }
 
 // New creates a fake windows_exporter integration.
-func New(logger log.Logger, _ *Config) (*Integration, error) {
-	level.Warn(logger).Log("msg", "the windows_exporter only works on Windows; enabling it otherwise will do nothing")
+func New(logger *slog.Logger, _ *Config) (*Integration, error) {
+	logger.Warn("the windows_exporter only works on Windows; enabling it otherwise will do nothing")
 	return &Integration{}, nil
 }
 

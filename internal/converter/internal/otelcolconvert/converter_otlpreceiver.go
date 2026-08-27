@@ -54,8 +54,8 @@ func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otl
 	)
 
 	return &otlp.Arguments{
-		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPC.Get())),
-		HTTP: toHTTPConfigArguments(cfg.HTTP),
+		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.Protocols.GRPC.Get())),
+		HTTP: toHTTPConfigArguments(cfg.Protocols.HTTP),
 
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
 
@@ -103,16 +103,17 @@ func toTLSServerArguments(cfg *configtls.ServerConfig) *otelcol.TLSServerArgumen
 
 func toTLSSetting(cfg configtls.Config) otelcol.TLSSetting {
 	return otelcol.TLSSetting{
-		CA:                       string(cfg.CAPem),
-		CAFile:                   cfg.CAFile,
-		Cert:                     string(cfg.CertPem),
-		CertFile:                 cfg.CertFile,
-		Key:                      alloytypes.Secret(cfg.KeyPem),
-		KeyFile:                  cfg.KeyFile,
-		MinVersion:               cfg.MinVersion,
-		MaxVersion:               cfg.MaxVersion,
-		ReloadInterval:           cfg.ReloadInterval,
-		IncludeSystemCACertsPool: cfg.IncludeSystemCACertsPool,
+		CA:                          string(cfg.CAPem),
+		CAFile:                      cfg.CAFile,
+		Cert:                        string(cfg.CertPem),
+		CertFile:                    cfg.CertFile,
+		Key:                         alloytypes.Secret(cfg.KeyPem),
+		KeyFile:                     cfg.KeyFile,
+		MinVersion:                  cfg.MinVersion,
+		MaxVersion:                  cfg.MaxVersion,
+		ReloadInterval:              cfg.ReloadInterval,
+		IncludeSystemCACertsPool:    cfg.IncludeSystemCACertsPool,
+		IncludeInsecureCipherSuites: cfg.IncludeInsecureCipherSuites,
 		//TODO(ptodev): Do we need to copy this slice?
 		CipherSuites: cfg.CipherSuites,
 	}
@@ -192,6 +193,11 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		IncludeMetadata:    cfg.IncludeMetadata,
 
 		CompressionAlgorithms: compressionAlgorithms,
+
+		IdleTimeout:       cfg.IdleTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
 	}
 }
 
@@ -203,6 +209,7 @@ func toCORSArguments(cfg *confighttp.CORSConfig) *otelcol.CORSArguments {
 	return &otelcol.CORSArguments{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedHeaders: cfg.AllowedHeaders,
+		ExposedHeaders: cfg.ExposedHeaders,
 
 		MaxAge: cfg.MaxAge,
 	}

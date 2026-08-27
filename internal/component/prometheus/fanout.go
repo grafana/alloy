@@ -60,9 +60,12 @@ func normalizeChildren(children []storage.Appendable) []storage.Appendable {
 // NewFanout creates a fanout appendable.
 func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "prometheus_fanout_latency",
-		Help:    "Write latency for sending to direct and indirect components",
-		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+		Name:                            "prometheus_fanout_latency",
+		Help:                            "Write latency for sending to direct and indirect components",
+		Buckets:                         []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 30, 60},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
 	})
 	_ = register.Register(wl)
 

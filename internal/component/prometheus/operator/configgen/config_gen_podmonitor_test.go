@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -29,8 +30,9 @@ import (
 
 func TestGeneratePodMonitorConfig(t *testing.T) {
 	var (
-		falsePtr = ptr.To(false)
-		proxyURL = "https://proxy:8080"
+		falsePtr    = ptr.To(false)
+		proxyURL    = "https://proxy:8080"
+		httpsScheme = promopv1.Scheme("https")
 	)
 	suite := []struct {
 		name                   string
@@ -403,13 +405,14 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
+					BodySizeLimit:         ptr.To(promopv1.ByteSize("15MiB")),
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
 				Port:            stringPtr("metrics"),
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				Scheme:          "https",
+				Scheme:          &httpsScheme,
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
@@ -421,15 +424,19 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 						TargetLabel:  "bar",
 					},
 				},
-				HTTPConfig: promopv1.HTTPConfig{
-					EnableHTTP2:     falsePtr,
-					FollowRedirects: falsePtr,
+				HTTPConfigWithProxy: promopv1.HTTPConfigWithProxy{
+					HTTPConfig: promopv1.HTTPConfig{
+						HTTPConfigWithoutTLS: promopv1.HTTPConfigWithoutTLS{
+							EnableHTTP2:     falsePtr,
+							FollowRedirects: falsePtr,
+						},
+						TLSConfig: &promopv1.SafeTLSConfig{
+							ServerName:         stringPtr("foo.com"),
+							InsecureSkipVerify: boolPtr(true),
+						},
+					},
 					ProxyConfig: promopv1.ProxyConfig{
 						ProxyURL: &proxyURL,
-					},
-					TLSConfig: &promopv1.SafeTLSConfig{
-						ServerName:         stringPtr("foo.com"),
-						InsecureSkipVerify: boolPtr(true),
 					},
 				},
 			},
@@ -529,6 +536,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
+				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
 				ScrapeNativeHistograms:         falsePtr,
 				AlwaysScrapeClassicHistograms:  falsePtr,

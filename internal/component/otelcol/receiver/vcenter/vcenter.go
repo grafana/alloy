@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
@@ -378,6 +378,9 @@ type Arguments struct {
 	ScraperControllerArguments otelcol.ScraperControllerArguments `alloy:",squash"`
 	TLS                        otelcol.TLSClientArguments         `alloy:"tls,block,optional"`
 
+	// MaxQueryMetrics caps the number of metrics requested per vSphere QueryPerf call.
+	MaxQueryMetrics int `alloy:"max_query_metrics,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -391,6 +394,7 @@ var _ receiver.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
 		ScraperControllerArguments: otelcol.DefaultScraperControllerArguments,
+		MaxQueryMetrics:            256,
 	}
 	args.MetricsBuilderConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
@@ -400,10 +404,9 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := args.MetricsBuilderConfig.Convert()
 
-	var result vcenterreceiver.Config
-	err := mapstructure.Decode(cfg, &result)
+	result := vcenterreceiver.NewFactory().CreateDefaultConfig().(*vcenterreceiver.Config)
 
-	if err != nil {
+	if err := mapstructure.Decode(cfg, result); err != nil {
 		return nil, err
 	}
 
@@ -412,8 +415,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Password = configopaque.String(args.Password)
 	result.ClientConfig = *args.TLS.Convert()
 	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
+	result.MaxQueryMetrics = args.MaxQueryMetrics
 
-	return &result, nil
+	return result, nil
 }
 
 // Validate checks to see if the supplied config will work for the receiver

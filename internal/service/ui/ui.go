@@ -4,14 +4,13 @@ package ui
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	graphql_service "github.com/grafana/alloy/internal/service/graphql"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -34,7 +33,7 @@ type Options struct {
 	CallbackManager livedebugging.CallbackManager
 
 	// Logger is used for structured logging across the service.
-	Logger log.Logger
+	Logger *slog.Logger
 
 	// EnableGraphQL specifies whether the GraphQL API is enabled.
 	EnableGraphQL bool
@@ -106,7 +105,7 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 			EnablePlayground: s.opts.EnableGraphQLPlayground,
 		})
 	} else {
-		level.Debug(s.opts.Logger).Log("msg", "GraphQL API is not enabled")
+		s.opts.Logger.Debug("GraphQL API is not enabled")
 	}
 
 	ui.RegisterRoutes(s.opts.UIPrefix, router)

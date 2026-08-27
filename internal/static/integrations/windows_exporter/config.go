@@ -1,9 +1,8 @@
 package windows_exporter
 
 import (
+	"log/slog"
 	"time"
-
-	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
@@ -43,6 +42,7 @@ type Config struct {
 	PerformanceCounter PerformanceCounterConfig `yaml:"performancecounter,omitempty"`
 	DNS                DNSConfig                `yaml:"dns,omitempty"`
 	Net                NetConfig                `yaml:"net,omitempty"`
+	Time               TimeConfig               `yaml:"time,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -55,7 +55,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration creates an integration based on the given configuration
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -203,4 +203,9 @@ type NetConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 	Exclude     string `yaml:"exclude,omitempty"`
 	Include     string `yaml:"include,omitempty"`
+}
+
+// TimeConfig handles settings for the windows_exporter time collector
+type TimeConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
 }

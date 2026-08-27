@@ -4,18 +4,16 @@ package cadvisor
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // NewIntegration creates a new cadvisor integration
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	level.Warn(logger).Log("msg", "the cadvisor integration only works on linux; enabling it on other platforms will do nothing")
+func (c *Config) NewIntegration(logger *slog.Logger) (integrations.Integration, error) {
+	logger.Warn("the cadvisor integration only works on linux; enabling it on other platforms will do nothing")
 	return &stubIntegration{}, nil
 }
 

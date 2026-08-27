@@ -4,14 +4,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/databricks-prometheus-exporter/collector"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/databricks-prometheus-exporter/collector"
 )
 
 func init() {
@@ -104,7 +103,7 @@ func (c *databricksConfig) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new databricks integration.
-func (c *databricksConfig) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *databricksConfig) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	exporterCfg := &collector.Config{
 		ServerHostname:      c.serverHostname,
 		WarehouseHTTPPath:   c.warehouseHTTPPath,
@@ -123,8 +122,7 @@ func (c *databricksConfig) NewIntegration(l log.Logger) (integrations.Integratio
 		return nil, err
 	}
 
-	logger := slog.New(logging.NewSlogGoKitHandler(l))
-	col := collector.NewCollector(logger, exporterCfg)
+	col := collector.NewCollector(l, exporterCfg)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
 		integrations.WithCollectors(col),

@@ -3,10 +3,11 @@ package github_exporter
 import (
 	"testing"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/config"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/static/config"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConfig_SecretGithub(t *testing.T) {
@@ -68,8 +69,7 @@ github_app_key_path: /etc/github-app-key.pem
 	require.NoError(t, err)
 
 	// The New function should return an error when both auth methods are configured
-	logger := log.NewNopLogger()
-	_, err = New(logger, &cfg)
+	_, err = New(util.TestAlloyLogger(t).Slog(), &cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot use both token authentication and GitHub App authentication")
 }

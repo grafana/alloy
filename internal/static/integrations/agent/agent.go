@@ -5,9 +5,9 @@ package agent
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -27,7 +27,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(_ log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
 	return New(c), nil
 }
 

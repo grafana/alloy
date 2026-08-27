@@ -1,0 +1,12 @@
+# Test rendering with controller.type=statefulset and externalHPA: true.
+# Verifies the chart installs without spec.replicas on the StatefulSet and
+# without a chart-managed HPA.
+controller:
+  type: statefulset
+  autoscaling:
+    horizontal:
+      externalHPA: true
+alloy:
+  resources:
+    requests:
+      memory: 100Mi

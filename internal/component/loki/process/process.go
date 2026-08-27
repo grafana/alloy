@@ -111,7 +111,7 @@ func (c *Component) Run(ctx context.Context) error {
 				func() string {
 					structured_metadata, err := e.StructuredMetadata.MarshalJSON()
 					if err != nil {
-						c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
+						c.opts.Logger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
 						structured_metadata = []byte("{}")
 					}
 					return fmt.Sprintf(
@@ -148,7 +148,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// We want to create a new pipeline if the config changed or if this is the
 	// first load. This will allow a component with no stages to function properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
-		pipeline, err := stages.NewPipeline(c.opts.SLogger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
@@ -178,7 +178,7 @@ func (c *Component) handleIn(ctx context.Context) {
 				func() string {
 					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
 					if err != nil {
-						c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
+						c.opts.Logger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
 						structured_metadata = []byte("{}")
 					}
 					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))

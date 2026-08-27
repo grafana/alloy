@@ -71,6 +71,7 @@ You can use the following blocks with `loki.process`:
 | [`stage.regex`][stage.regex]                                       | Configures a `regex` processing stage.                         | no       |
 | [`stage.replace`][stage.replace]                                   | Configures a `replace` processing stage.                       | no       |
 | [`stage.sampling`][stage.sampling]                                 | Configures a `sampling` processing stage.                      | no       |
+| [`stage.split_json`][stage.split_json]                             | Configures a `split_json` processing stage.                    | no       |
 | [`stage.static_labels`][stage.static_labels]                       | Configures a `static_labels` processing stage.                 | no       |
 | [`stage.structured_metadata`][stage.structured_metadata]           | Configures a structured metadata processing stage.             | no       |
 | [`stage.structured_metadata_drop`][stage.structured_metadata_drop] | Configures a `structured_metadata_drop` processing stage.      | no       |
@@ -102,6 +103,7 @@ You can use the following blocks with `loki.process`:
 [stage.regex]: #stageregex
 [stage.replace]: #stagereplace
 [stage.sampling]: #stagesampling
+[stage.split_json]: #stagesplit_json
 [stage.static_labels]: #stagestatic_labels
 [stage.structured_metadata]: #stagestructured_metadata
 [stage.structured_metadata_drop]: #stagestructured_metadata_drop
@@ -188,6 +190,31 @@ Docker log entries are formatted as JSON with the following keys:
 * `log`: The content of log line.
 * `stream`: Either `stdout` or `stderr`.
 * `time`: The timestamp string of the log line.
+* `attrs` (optional): Extra attributes from the logging driver, for example when the json-file `tag` option is set.
+
+`stage.docker` only unpacks `log`, `stream`, and `time`.
+It rewrites the log line to the value of `log` and sets the stream label and timestamp.
+Any other top-level JSON fields, including `attrs`, are dropped unless you copy them out first.
+
+If you need values from `attrs` or another sidecar field **and** the docker stage, for example to reassemble split lines, extract those fields with `stage.json` **before** `stage.docker`:
+
+```alloy
+// docker compose json-file tag example: tag = "{{.ImageName}}|{{.Name}}|..."
+stage.json {
+  expressions = {
+    attrs = "",
+  }
+}
+
+stage.docker {}
+
+stage.json {
+  expressions = {
+    tag = "",
+  }
+  source = "attrs"
+}
+```
 
 Given the following log line, the subsequent key-value pairs are created in the shared map of extracted data:
 
@@ -261,7 +288,7 @@ stage.drop {
 
 ### `stage.eventlogmessage`
 
-Deprecated in favor of the [`stage.windowsevent`][stage.windowsevent] block.
+Deprecated in favor of the [`stage.windowsevent`](#stagewindowsevent) block.
 
 The `eventlogmessage` stage extracts data from the Message string that appears in the Windows Event Log.
 
@@ -591,7 +618,7 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
-For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+For labels that are static, refer to [`stage.static_labels`](#stagestatic_labels)
 
 The following arguments are supported:
 
@@ -720,24 +747,28 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                    | Default          | Required |
-| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
-| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
-| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
+| Name          | Type     | Description                                                                  | Default          | Required |
+| ------------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.                | `""`             | no       |
+| `min_length`  | `int`    | Minimum length of digits to consider                                         | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                              | `"**REDACTED**"` | no       |
+| `skip_regex`  | `string` | A regular expression identifying substrings to exclude from Luhn evaluation. | `""`             | no       |
+| `source`      | `string` | Source of the data to parse.                                                 | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
 
-If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4242-4242-4242-4242`, you can configure the `delimiters` field with the expected delimiters.
+
+When `skip_regex` is set to a non-empty regular expression, any substring matching it is excluded from Luhn evaluation.
+This is useful when log lines contain values, such as UUIDs, whose digit groups happen to pass the Luhn check, which would otherwise cause them to be incorrectly redacted.
 
 #### Example
 
 The following example log line contains an approved credit card number.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032032513548443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -755,7 +786,7 @@ time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit 
 The following example log line contains an approved credit card number, represented with dash characters between each group of four digits.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032-0325-1354-8443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242-4242-4242-4242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -767,6 +798,27 @@ The stage parses the log line, redacts the credit card number, and produces the 
 
 ```text
 time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=example_name"
+```
+
+#### Example with `skip_regex`
+
+The following example log line contains both a credit card number and a session UUID whose last segment (`424242424242`) is itself a 12-digit Luhn-valid number.
+Without `skip_regex`, the stage would incorrectly redact part of the UUID.
+
+```alloy
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
+
+stage.luhn {
+    replacement = "**DELETED**"
+    min_length  = 12
+    skip_regex  = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+}
+```
+
+The stage redacts the credit card number but leaves the UUID intact:
+
+```text
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
 ```
 
 ### `stage.match`
@@ -950,7 +1002,45 @@ The supported values are the following:
   * `true` is converted to `1`.
   * `false` is converted to `0`.
 
-The following pipeline creates a counter which increments every time any log line is received by using the `match_all` parameter.
+#### Metric labels
+
+`metric.counter`, `metric.gauge`, and `metric.histogram` blocks don't have a `labels` argument.
+Metric labels are inherited from the log entry label set at the point where `stage.metrics` runs.
+To control metric labels, set labels in earlier stages such as [`stage.labels`](#stagelabels), [`stage.static_labels`](#stagestatic_labels), or [`stage.tenant`](#stagetenant).
+
+If an inherited label name isn't valid for Prometheus, that label is silently dropped and the metric is still exported.
+If no labels are present on the entry, the metric is exported without labels.
+
+The following example adds a static `app` label before `stage.metrics`.
+The generated metric includes the inherited label:
+
+```alloy
+stage.static_labels {
+    values = {
+        app = "payments",
+    }
+}
+
+stage.metrics {
+    metric.counter {
+        name        = "log_lines_total"
+        description = "total number of log lines"
+        match_all   = true
+        action      = "inc"
+    }
+}
+```
+
+If one log line passes through this pipeline, the exposed metric looks like this:
+
+```text
+# HELP loki_process_custom_log_lines_total total number of log lines
+# TYPE loki_process_custom_log_lines_total counter
+loki_process_custom_log_lines_total{app="payments"} 1
+```
+
+This example shows where metric labels come from.
+The following pipeline builds on that behavior to track stream volume by counting total lines with `match_all`.
 The pipeline creates a second counter which adds the byte size of these log lines by using the `count_entry_bytes` parameter.
 
 These two metrics disappear after 24 hours if no new entries are received, to avoid building up metrics which no longer serve any use.
@@ -1509,11 +1599,90 @@ stage.sampling {
 }
 ```
 
+### `stage.split_json`
+
+The `stage.split_json` inner block configures a processing stage that splits a top-level JSON array into one log entry for each array element.
+
+The following arguments are supported:
+
+| Name     | Type     | Description                  | Default | Required |
+| -------- | -------- | ---------------------------- | ------- | -------- |
+| `source` | `string` | Source of the data to split. |         | no       |
+
+The `source` field defines the source of data to split.
+By default, this is the log line itself, but it can also be a previously extracted value.
+{{< param "PRODUCT_NAME" >}} rejects an empty `source` string when it loads the configuration.
+
+When the input is a top-level JSON array, the stage replaces the log entry with one entry for each array element, in array order.
+Each new log line is the raw text of its array element, exactly as it appears in the input.
+The stage doesn't re-encode the element.
+The stage also doesn't split nested arrays: an element that's itself an array becomes the log line of a single entry.
+Each new entry keeps the timestamp of the original entry, and the emitted entries have independent labels, top-level extracted maps, and structured metadata, so later stages can modify one entry without affecting the others.
+
+An empty array produces no entries.
+The stage drops the original entry and emits nothing.
+
+In all other cases, the log entry passes through the stage unchanged.
+This happens when the input isn't valid JSON, or is valid JSON that's not an array, such as an object, a string, or a number.
+When you set `source`, the log entry also passes through unchanged when the extracted value is missing or can't be converted to a string.
+When you set `source`, the stage never falls back to the log line and only reads the extracted value named by `source`.
+
+The following stage omits `source`, so it splits log lines that are top-level JSON arrays:
+
+```alloy
+stage.split_json {}
+```
+
+Given the following log line:
+
+```text
+[{"level":"info","msg":"one"},{"level":"error","msg":"two"}]
+```
+
+The stage replaces it with the following two entries:
+
+```text
+{"level":"info","msg":"one"}
+{"level":"error","msg":"two"}
+```
+
+Both entries keep the timestamp, labels, extracted values, and structured metadata of the original entry.
+
+In the following example, each log line holds a batch of events in a `records` array.
+The first stage extracts the array into the shared map of extracted values, and the second stage splits it:
+
+```alloy
+stage.json {
+    expressions = {records = ""}
+}
+
+stage.split_json {
+    source = "records"
+}
+```
+
+Given the following log line:
+
+```text
+{"stream":"batch","records":[{"ts":"2024-01-01T01:00:00Z","msg":"start"},{"ts":"2024-01-01T01:00:01Z","msg":"stop"}]}
+```
+
+The first stage stores the `records` array in the extracted data as JSON text.
+The second stage splits that value into two entries:
+
+```text
+{"ts":"2024-01-01T01:00:00Z","msg":"start"}
+{"ts":"2024-01-01T01:00:01Z","msg":"stop"}
+```
+
+Later stages can process each entry separately.
+For example, `stage.json` followed by `stage.timestamp` can set each entry's timestamp from its `ts` field.
+
 ### `stage.static_labels`
 
 The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
-For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+For labels that are dynamic, refer to [`stage.labels`](#stagelabels)
 
 The following arguments are supported:
 
@@ -1798,12 +1967,15 @@ stage.tenant {
 ### `stage.timestamp`
 
 The `stage.timestamp` inner block configures a processing stage that sets the timestamp of log entries before they're forwarded to the next component.
-When no timestamp stage is set, the log entry timestamp defaults to the time when the log entry was scraped.
+When no timestamp stage is set, `loki.process` keeps the timestamp that the upstream component already attached to the entry, for example a `loki.source.*` component.
+Many sources set that timestamp to the time they receive the entry by default.
+Other sources can use a timestamp embedded in the log when you enable incoming-timestamp options.
+If you leave out `stage.timestamp`, `loki.process` does not rewrite or sanitize timestamps by itself, and Loki may still reject entries that fall outside its configured acceptance window, for example far-future or out-of-order timestamps.
 
 The following arguments are supported:
 
 | Name                            | Type           | Description                                                 | Default   | Required |
-| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| ------------------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
 | `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
 | `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
 | `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
@@ -2088,10 +2260,10 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit](#stagelimit).
 * `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
-* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
-* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri](#stagecri).
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri](#stagecri).
 
 ## Example
 

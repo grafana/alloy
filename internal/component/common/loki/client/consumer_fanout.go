@@ -2,16 +2,16 @@ package client
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 )
 
-func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
+func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
 	if len(cfgs) == 0 {
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}

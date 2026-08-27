@@ -139,6 +139,8 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.Net.NicInclude, err = regexp.Compile(c.Net.Include)
 	errs = append(errs, err)
 
+	cfg.Time.CollectorsEnabled = strings.Split(c.Time.EnabledList, ",")
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -251,6 +253,9 @@ var DefaultConfig = Config{
 		EnabledList: strings.Join(collector.ConfigDefaults.Net.CollectorsEnabled, ","),
 		Exclude:     collector.ConfigDefaults.Net.NicExclude.String(),
 		Include:     collector.ConfigDefaults.Net.NicInclude.String(),
+	},
+	Time: TimeConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.Time.CollectorsEnabled, ","),
 	},
 }
 

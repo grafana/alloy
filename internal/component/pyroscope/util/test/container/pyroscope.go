@@ -3,16 +3,15 @@ package container
 import (
 	"context"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func StartPyroscopeContainer(t *testing.T, ctx context.Context, l log.Logger) (testcontainers.Container, string) {
+func StartPyroscopeContainer(t *testing.T, ctx context.Context, l *slog.Logger) (testcontainers.Container, string) {
 	req := testcontainers.ContainerRequest{
 		Image:        "grafana/pyroscope:latest",
 		Cmd:          []string{"--ingester.min-ready-duration=0s"},
@@ -26,7 +25,7 @@ func StartPyroscopeContainer(t *testing.T, ctx context.Context, l log.Logger) (t
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
-		Logger:           stdlog.New(log.NewStdlibAdapter(l), "", 0),
+		Logger:           slog.NewLogLogger(l.Handler(), slog.LevelDebug),
 	})
 	require.NoError(t, err)
 

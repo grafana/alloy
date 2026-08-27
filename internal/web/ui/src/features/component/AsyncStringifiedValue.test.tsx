@@ -35,7 +35,7 @@ describe('AsyncStringifiedValue', () => {
     });
   });
 
-  describe('complex values render asynchronously with size check', () => {
+  describe('complex values render synchronously unless they exceed maxLength', () => {
     beforeEach(() => {
       vi.useFakeTimers();
     });
@@ -44,33 +44,17 @@ describe('AsyncStringifiedValue', () => {
       vi.useRealTimers();
     });
 
-    it('shows nothing initially for strings (delayed loading indicator)', () => {
+    it('renders small strings immediately', () => {
       const stringValue: Value = { type: ValueType.STRING, value: 'hello world' };
 
       const { container } = render(<AsyncStringifiedValue value={stringValue} />);
 
-      // During the delay threshold, nothing is shown (avoids flickering for fast ops)
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      expect(container.textContent).toBe('');
-    });
-
-    it('skips loading state entirely when processing completes before delay threshold', async () => {
-      const stringValue: Value = { type: ValueType.STRING, value: 'hello world' };
-
-      render(<AsyncStringifiedValue value={stringValue} />);
-
-      // Run all timers - for fast operations, loading state is never shown
-      await act(async () => {
-        vi.runAllTimers();
-      });
-
-      // The result should appear without ever showing "Loading..."
       expect(screen.getByText('"hello world"')).toBeInTheDocument();
-      // Verify loading was never shown (it was skipped because processing was fast)
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(container.textContent).toBe('"hello world"');
     });
 
-    it('renders small strings after processing', async () => {
+    it('does not use the loading state for small strings', async () => {
       const stringValue: Value = { type: ValueType.STRING, value: 'hello world' };
 
       render(<AsyncStringifiedValue value={stringValue} />);
@@ -78,6 +62,15 @@ describe('AsyncStringifiedValue', () => {
       await act(async () => {
         vi.runAllTimers();
       });
+
+      expect(screen.getByText('"hello world"')).toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    it('renders small strings without waiting for timers', () => {
+      const stringValue: Value = { type: ValueType.STRING, value: 'hello world' };
+
+      render(<AsyncStringifiedValue value={stringValue} />);
 
       expect(screen.getByText('"hello world"')).toBeInTheDocument();
     });
@@ -96,7 +89,7 @@ describe('AsyncStringifiedValue', () => {
       expect(downloadButton).toBeInTheDocument();
     });
 
-    it('shows nothing initially for arrays (delayed loading indicator)', () => {
+    it('renders small arrays immediately', () => {
       const arrayValue: Value = {
         type: ValueType.ARRAY,
         value: [{ type: ValueType.NUMBER, value: 1 }],
@@ -104,12 +97,12 @@ describe('AsyncStringifiedValue', () => {
 
       const { container } = render(<AsyncStringifiedValue value={arrayValue} />);
 
-      // During the delay threshold, nothing is shown (avoids flickering for fast ops)
+      expect(screen.getByText('[1]')).toBeInTheDocument();
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      expect(container.textContent).toBe('');
+      expect(container.textContent).toBe('[1]');
     });
 
-    it('renders small arrays after processing', async () => {
+    it('renders small arrays without waiting for timers', () => {
       const arrayValue: Value = {
         type: ValueType.ARRAY,
         value: [
@@ -120,12 +113,6 @@ describe('AsyncStringifiedValue', () => {
 
       render(<AsyncStringifiedValue value={arrayValue} />);
 
-      // Run all timers and frames
-      await act(async () => {
-        vi.runAllTimers();
-      });
-
-      // Small array should render successfully
       expect(screen.getByText('[1, 2]')).toBeInTheDocument();
     });
 

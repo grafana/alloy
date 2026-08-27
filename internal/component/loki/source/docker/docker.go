@@ -1,7 +1,5 @@
 package docker
 
-// NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
-
 import (
 	"context"
 	"fmt"
@@ -109,7 +107,7 @@ type Component struct {
 
 	mut       sync.RWMutex
 	args      Arguments
-	scheduler *source.Scheduler[string]
+	scheduler *source.Scheduler[positions.Entry]
 	client    client.APIClient
 	handler   loki.LogsReceiver
 	posFile   positions.Positions
@@ -124,7 +122,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
 		IgnoreInvalidYaml: false,
@@ -139,7 +137,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:   newMetrics(o.Registerer),
 		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
-		scheduler: source.NewScheduler[string](),
+		scheduler: source.NewScheduler[positions.Entry](),
 		fanout:    loki.NewFanout(args.ForwardTo),
 		posFile:   positionsFile,
 	}
@@ -170,7 +168,9 @@ func (c *Component) Run(ctx context.Context) error {
 	return nil
 }
 
-type promTarget struct {
+type containerTarget struct {
+	containerID string
+	// labels is the target's own labels merged with the component's default labels.
 	labels      model.LabelSet
 	fingerPrint model.Fingerprint
 }
@@ -184,13 +184,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	client, err := c.getClient(newArgs)
-	if err != nil {
-		return err
-	}
+	if requiresReset(newArgs, c.args) {
+		client, err := newClient(newArgs)
+		if err != nil {
+			return fmt.Errorf("failed to create docker client: %w", err)
+		}
 
-	if client != c.client {
 		c.client = client
+		c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 		// Stop all tailers because we need to restart them.
 		c.scheduler.Reset()
 	}
@@ -200,40 +201,47 @@ func (c *Component) Update(args component.Arguments) error {
 		defaultLabels[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	c.rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
-
-	promTargets := make([]promTarget, len(newArgs.Targets))
+	targets := make([]containerTarget, len(newArgs.Targets))
 	for i, target := range newArgs.Targets {
-		labelsCopy := target.LabelSet()
-		promTargets[i] = promTarget{labels: labelsCopy, fingerPrint: labelsCopy.Fingerprint()}
+		lbls := target.LabelSet().Merge(defaultLabels)
+		targets[i] = containerTarget{
+			containerID: string(lbls[dockerLabelContainerID]),
+			labels:      lbls,
+			fingerPrint: lbls.Fingerprint(),
+		}
 	}
 
 	// Sorting the targets before filtering ensures consistent filtering of targets
 	// when multiple targets share the same containerID.
-	sort.Slice(promTargets, func(i, j int) bool {
-		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
+	sort.Slice(targets, func(i, j int) bool {
+		return targets[i].fingerPrint < targets[j].fingerPrint
 	})
 
-	source.Reconcile(
-		c.opts.SLogger,
+	source.ReconcileWithDedup(
+		c.opts.Logger,
 		c.scheduler,
-		slices.Values(promTargets),
-		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
-		func(containerID string, target promTarget) (source.Source[string], error) {
-			if containerID == "" {
-				c.opts.SLogger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
+		slices.Values(targets),
+		func(target containerTarget) positions.Entry {
+			return positions.Entry{Path: target.containerID, Labels: target.labels.String()}
+		},
+		func(target containerTarget) string {
+			return target.containerID
+		},
+		func(entry positions.Entry, target containerTarget) (source.Source[positions.Entry], error) {
+			if entry.Path == "" {
+				c.opts.Logger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
 				return nil, source.ErrSkip
 			}
 
 			return newTailer(
 				c.metrics,
-				c.opts.SLogger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", entry.Path)),
 				c.handler,
 				c.posFile,
-				containerID,
-				target.labels.Merge(defaultLabels),
+				entry.Path,
+				target.labels,
 				c.rcs,
-				client,
+				c.client,
 				5*time.Second,
 				func() bool { return c.exited.Load() },
 			)
@@ -242,52 +250,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = newArgs
 	return nil
-}
-
-// getClient creates a client from args. If args hasn't changed
-// from the last call to getClient, c.client is returned.
-// getClient must only be called when c.mut is held.
-func (c *Component) getClient(args Arguments) (client.APIClient, error) {
-	if reflect.DeepEqual(c.args.Host, args.Host) && c.client != nil {
-		return c.client, nil
-	}
-
-	hostURL, err := url.Parse(args.Host)
-	if err != nil {
-		return c.client, err
-	}
-
-	opts := []client.Opt{
-		client.WithHost(args.Host),
-	}
-
-	// There are other protocols than HTTP supported by the Docker daemon, like
-	// unix, which are not supported by the HTTP client. Passing HTTP client
-	// options to the Docker client makes those non-HTTP requests fail.
-	if hostURL.Scheme == "http" || hostURL.Scheme == "https" {
-		rt, err := config.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "docker_sd")
-		if err != nil {
-			return c.client, err
-		}
-		opts = append(opts,
-			client.WithHTTPClient(&http.Client{
-				Transport: rt,
-				Timeout:   args.RefreshInterval,
-			}),
-			client.WithScheme(hostURL.Scheme),
-			client.WithHTTPHeaders(map[string]string{
-				"User-Agent": userAgent,
-			}),
-		)
-	}
-
-	client, err := client.New(opts...)
-	if err != nil {
-		c.opts.SLogger.Error("could not create new Docker client", "err", err)
-		return c.client, fmt.Errorf("failed to build docker client: %w", err)
-	}
-
-	return client, nil
 }
 
 // DebugInfo returns information about the status of tailed targets.
@@ -313,4 +275,49 @@ type sourceInfo struct {
 	Labels     string `alloy:"labels,attr"`
 	IsRunning  bool   `alloy:"is_running,attr"`
 	ReadOffset string `alloy:"read_offset,attr"`
+}
+
+func newClient(args Arguments) (client.APIClient, error) {
+	hostURL, err := url.Parse(args.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []client.Opt{
+		client.WithHost(args.Host),
+	}
+
+	// There are other protocols than HTTP supported by the Docker daemon, like
+	// unix, which are not supported by the HTTP client. Passing HTTP client
+	// options to the Docker client makes those non-HTTP requests fail.
+	if hostURL.Scheme == "http" || hostURL.Scheme == "https" {
+		rt, err := config.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "docker_sd")
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts,
+			client.WithHTTPClient(&http.Client{
+				Transport: rt,
+				Timeout:   args.RefreshInterval,
+			}),
+			client.WithScheme(hostURL.Scheme),
+			client.WithHTTPHeaders(map[string]string{
+				"User-Agent": userAgent,
+			}),
+		)
+	}
+
+	client, err := client.New(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func requiresReset(newArgs, oldArgs Arguments) bool {
+	return newArgs.Host != oldArgs.Host ||
+		newArgs.RefreshInterval != oldArgs.RefreshInterval ||
+		!reflect.DeepEqual(newArgs.HTTPClientConfig, oldArgs.HTTPClientConfig) ||
+		!reflect.DeepEqual(newArgs.RelabelRules, oldArgs.RelabelRules)
 }

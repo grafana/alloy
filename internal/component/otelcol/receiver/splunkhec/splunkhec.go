@@ -117,6 +117,9 @@ func (a *Arguments) SetToDefault() {
 			// Default value https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/4b29766cfde3a0eea46439707167084bfc48bad1/receiver/splunkhecreceiver/README.md#L28
 			Endpoint:              "localhost:8088",
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
+			IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
 		// Default value https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/9db5375e6a1092e3e93cd4743f257d30735be22c/internal/splunk/common.go#L32
 		RawPath: "/services/collector/raw",

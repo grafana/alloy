@@ -4,18 +4,17 @@ import (
 	"fmt"
 	stdlog "log"
 	"net"
-	"os"
 	"testing"
 
 	godiscover "github.com/hashicorp/go-discover"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestPeerDiscovery(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := util.TestAlloyLogger(t).Slog()
 	tracer := noop.NewTracerProvider()
 	tests := []struct {
 		name                     string
@@ -546,7 +545,6 @@ func TestPeerDiscovery(t *testing.T) {
 
 			actual, err := fn()
 			if tt.expectedErrContain != "" {
-				logger.Log("actual_err", err)
 				require.ErrorContains(t, err, tt.expectedErrContain)
 				return
 			} else {

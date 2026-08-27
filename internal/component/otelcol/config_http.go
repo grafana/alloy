@@ -33,9 +33,22 @@ type HTTPServerArguments struct {
 	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
 
 	KeepAlivesEnabled *bool `alloy:"keep_alives_enabled,attr,optional"`
+
+	IdleTimeout       time.Duration `alloy:"idle_timeout,attr,optional"`
+	ReadTimeout       time.Duration `alloy:"read_timeout,attr,optional"`
+	WriteTimeout      time.Duration `alloy:"write_timeout,attr,optional"`
+	ReadHeaderTimeout time.Duration `alloy:"read_header_timeout,attr,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
+
+// Default HTTP server timeouts, matching otelconfighttp.NewDefaultServerConfig().
+// ReadTimeout has no default upstream (0 = unbounded).
+const (
+	DefaultHTTPServerIdleTimeout       = 1 * time.Minute
+	DefaultHTTPServerReadHeaderTimeout = 1 * time.Minute
+	DefaultHTTPServerWriteTimeout      = 30 * time.Second
+)
 
 func copyStringSlice(s []string) []string {
 	if s == nil {
@@ -81,6 +94,10 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
+		IdleTimeout:           args.IdleTimeout,
+		ReadHeaderTimeout:     args.ReadHeaderTimeout,
+		WriteTimeout:          args.WriteTimeout,
+		ReadTimeout:           args.ReadTimeout,
 	}), nil
 }
 
@@ -109,6 +126,7 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent
 type CORSArguments struct {
 	AllowedOrigins []string `alloy:"allowed_origins,attr,optional"`
 	AllowedHeaders []string `alloy:"allowed_headers,attr,optional"`
+	ExposedHeaders []string `alloy:"exposed_headers,attr,optional"`
 
 	MaxAge int `alloy:"max_age,attr,optional"`
 }
@@ -122,6 +140,7 @@ func (args *CORSArguments) Convert() configoptional.Optional[otelconfighttp.CORS
 	return configoptional.Some(otelconfighttp.CORSConfig{
 		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
 		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
+		ExposedHeaders: copyStringSlice(args.ExposedHeaders),
 		MaxAge:         args.MaxAge,
 	})
 }

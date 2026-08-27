@@ -83,8 +83,12 @@ func (f *Fanout) Upload(j debuginfo.UploadJob) {
 // NewFanout creates a fanout appendable.
 func NewFanout(children []Appendable, componentID string, register prometheus.Registerer) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name: "pyroscope_fanout_latency",
-		Help: "Write latency for sending to pyroscope profiles",
+		Name:                            "pyroscope_fanout_latency",
+		Help:                            "Write latency for sending to pyroscope profiles",
+		Buckets:                         prometheus.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
 	})
 	_ = register.Register(wl)
 

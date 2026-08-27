@@ -1,3 +1,3 @@
 basic_auth:
-  username_file: testdata/basic-auth-username
-  password_file: testdata/basic-auth-password
+  username_file: basic-auth-username
+  password_file: basic-auth-password

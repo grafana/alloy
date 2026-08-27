@@ -6,10 +6,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
@@ -21,21 +21,21 @@ import (
 )
 
 var (
-	l   = log.With(log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)), "ts", log.DefaultTimestampUTC)
+	l   = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	reg = prometheus.NewRegistry()
 )
 
 type config struct {
 	ebpfEnabled bool
 	javaPids    pids
-	uprobeLinks stringSlice
+	probeLinks  stringSlice
 }
 
 func parseConfig() *config {
 	c := &config{}
 	flag.BoolVar(&c.ebpfEnabled, "ebpf", true, "enable ebpf")
 	flag.Var(&c.javaPids, "java", "java process id")
-	flag.Var(&c.uprobeLinks, "uprobe", "uprobe link (can be specified multiple times)")
+	flag.Var(&c.probeLinks, "probe", "probe link (can be specified multiple times)")
 	flag.Parse()
 	return c
 }
@@ -43,13 +43,13 @@ func parseConfig() *config {
 func newWrite() (pyroscope.Appendable, *write.Component) {
 	receiver, c, err := testutil.CreateWriteComponent(l, reg, "http://localhost:4040")
 	if err != nil {
-		_ = l.Log("msg", "error creating write component", "err", err)
+		l.Error("error creating write component", "err", err)
 		os.Exit(1)
 	}
 	return receiver, c
 }
 
-func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component {
+func newEbpf(forward pyroscope.Appendable, probeLinks []string) *ebpf.Component {
 	args := ebpf.NewDefaultArguments()
 	args.PyroscopeDynamicProfilingPolicy = false
 	args.ForwardTo = []pyroscope.Appendable{forward}
@@ -58,16 +58,16 @@ func newEbpf(forward pyroscope.Appendable, uprobeLinks []string) *ebpf.Component
 	args.PIDLabel = true
 	args.Comm = "both"
 	args.KernelFrames = true
-	args.UProbeLinks = uprobeLinks
+	args.ProbeLinks = probeLinks
 	// args.DebugInfoOptions.UploadEnabled = true
 	e, err := ebpf.New(
-		log.With(l, "component", "ebpf"),
+		l.With("component", "ebpf"),
 		reg,
 		"playground",
 		args,
 	)
 	if err != nil {
-		_ = l.Log("msg", "error creating ebpf component", "err", err)
+		l.Error("error creating ebpf component", "err", err)
 		os.Exit(1)
 	}
 	return e
@@ -88,7 +88,7 @@ func main() {
 	}, cancel2)
 
 	if cfg.ebpfEnabled {
-		e := newEbpf(w, cfg.uprobeLinks)
+		e := newEbpf(w, cfg.probeLinks)
 		g.Add(func() error {
 			return e.Run(ctx)
 		}, cancel2)
@@ -101,7 +101,7 @@ func main() {
 	}
 
 	if err := g.Run(); err != nil {
-		_ = l.Log("msg", "error running component", "err", err)
+		l.Error("error running component", "err", err)
 		os.Exit(1)
 	}
 }
@@ -122,7 +122,7 @@ func newJava(ps pids, w pyroscope.Appendable) *java.Component {
 
 	j, err := java.New(l, reg, "java", args)
 	if err != nil {
-		_ = l.Log("msg", "error creating java component", "err", err)
+		l.Error("error creating java component", "err", err)
 		os.Exit(1)
 	}
 	return j

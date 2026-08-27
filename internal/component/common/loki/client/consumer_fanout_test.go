@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
@@ -18,12 +17,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestFanoutConsumer(t *testing.T) {
 	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testEndpointConfig)
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), testEndpointConfig)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -74,7 +74,7 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	testEndpointConfig2.Name = "test-client-2"
 
 	// start writer and consumer
-	consumer, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), testEndpointConfig, testEndpointConfig2)
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), testEndpointConfig, testEndpointConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -132,14 +132,14 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 
 func TestFanoutConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no endpoints", func(t *testing.T) {
-		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry())
+		_, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry())
 		require.Error(t, err)
 	})
 
 	t.Run("repeated endpoint", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewFanoutConsumer(log.NewNopLogger(), prometheus.NewRegistry(), config, config)
+		_, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), config, config)
 		require.Error(t, err)
 	})
 }
@@ -152,7 +152,7 @@ func TestFanoutConsumer_NoDuplicateMetricsPanic(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		for range 2 {
-			_, err := NewFanoutConsumer(log.NewNopLogger(), reg, Config{URL: flagext.URLValue{URL: host}})
+			_, err := NewFanoutConsumer(logging.NewSlogNop(), reg, Config{URL: flagext.URLValue{URL: host}})
 			require.NoError(t, err)
 		}
 	})

@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/oauth2"
@@ -45,24 +44,14 @@ type CreateBranchParams struct {
 
 // CreateTagParams holds parameters for CreateTag.
 type CreateTagParams struct {
-	Tag     string
-	SHA     string
-	Message string
+	Tag string
+	SHA string
 }
 
-// CreatePRParams holds parameters for CreatePR.
-type CreatePRParams struct {
-	Title string
-	Head  string
-	Base  string
-	Body  string
-	Draft bool
-}
-
-// FindCommitParams holds parameters for FindCommitWithPattern and CommitExistsWithPattern.
-type FindCommitParams struct {
-	Branch  string
-	Pattern string
+// FindCherryPickedCommitParams holds parameters for FindCherryPickedCommit.
+type FindCherryPickedCommitParams struct {
+	Branch      string
+	OriginalSHA string
 }
 
 // BackportLabelColor is the hex color for backport labels (without '#' prefix).
@@ -74,9 +63,6 @@ type CreateLabelParams struct {
 	Color       string // Hex color without '#' prefix (e.g., "ff0000")
 	Description string // Optional description
 }
-
-// ErrCommitNotFound is returned when a commit matching the search criteria is not found.
-var ErrCommitNotFound = errors.New("commit not found")
 
 // NewClientFromEnv creates a new Client from environment variables.
 // Reads GITHUB_TOKEN and GITHUB_REPOSITORY (format: owner/repo).
@@ -186,84 +172,28 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 
 // CreateBranch creates a new branch from the given SHA.
 func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
+	return c.createRef(ctx, "refs/heads/"+p.Branch, p.SHA)
+}
+
+// CreateTag creates a lightweight tag ref pointing at the given commit SHA,
+// matching release-please force-tag-creation.
+func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
+	return c.createRef(ctx, "refs/tags/"+p.Tag, p.SHA)
+}
+
+func (c *Client) createRef(ctx context.Context, refName, sha string) error {
 	ref := &github.Reference{
-		Ref: github.String("refs/heads/" + p.Branch),
+		Ref: github.String(refName),
 		Object: &github.GitObject{
-			SHA: github.String(p.SHA),
+			SHA: github.String(sha),
 		},
 	}
 
 	_, _, err := c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
 	if err != nil {
-		return fmt.Errorf("creating branch ref: %w", err)
+		return fmt.Errorf("creating ref %s: %w", refName, err)
 	}
-
 	return nil
-}
-
-// CreateTag creates an annotated tag ref for the given SHA.
-func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
-	identity, err := c.GetAppIdentity(ctx)
-	if err != nil {
-		return fmt.Errorf("getting app identity for tagger: %w", err)
-	}
-
-	tagObj := &github.Tag{
-		Tag:     github.String(p.Tag),
-		Message: github.String(p.Message),
-		Tagger: &github.CommitAuthor{
-			Name:  github.String(identity.Name),
-			Email: github.String(identity.Email),
-			Date:  &github.Timestamp{Time: time.Now().UTC()},
-		},
-		Object: &github.GitObject{
-			SHA:  github.String(p.SHA),
-			Type: github.String("commit"),
-		},
-	}
-
-	created, _, err := c.api.Git.CreateTag(ctx, c.owner, c.repo, tagObj)
-	if err != nil {
-		return fmt.Errorf("creating tag object: %w", err)
-	}
-
-	ref := &github.Reference{
-		Ref: github.String("refs/tags/" + p.Tag),
-		Object: &github.GitObject{
-			SHA: github.String(created.GetSHA()),
-		},
-	}
-
-	_, _, err = c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("creating tag ref: %w", err)
-	}
-
-	return nil
-}
-
-// ReadManifest reads the release-please manifest from the repository.
-func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]string, error) {
-	fileContent, _, _, err := c.api.Repositories.GetContents(
-		ctx, c.owner, c.repo,
-		".release-please-manifest.json",
-		&github.RepositoryContentGetOptions{Ref: ref},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("getting manifest file: %w", err)
-	}
-
-	content, err := fileContent.GetContent()
-	if err != nil {
-		return nil, fmt.Errorf("decoding manifest content: %w", err)
-	}
-
-	var manifest map[string]string
-	if err := json.Unmarshal([]byte(content), &manifest); err != nil {
-		return nil, fmt.Errorf("parsing manifest JSON: %w", err)
-	}
-
-	return manifest, nil
 }
 
 // GetAppIdentity returns the GitHub App's identity for use in git commits.
@@ -315,27 +245,10 @@ func (c *Client) GetPR(ctx context.Context, number int) (*github.PullRequest, er
 	return pr, nil
 }
 
-// CreatePR creates a new pull request.
-func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRequest, error) {
-	newPR := &github.NewPullRequest{
-		Title: github.String(p.Title),
-		Head:  github.String(p.Head),
-		Base:  github.String(p.Base),
-		Body:  github.String(p.Body),
-		Draft: github.Bool(p.Draft),
-	}
-
-	pr, _, err := c.api.PullRequests.Create(ctx, c.owner, c.repo, newPR)
-	if err != nil {
-		return nil, fmt.Errorf("creating pull request: %w", err)
-	}
-
-	return pr, nil
-}
-
-// FindCommitWithPattern searches the commit history of a branch for a commit whose title contains the pattern.
-// Returns the commit SHA if found, or an error if not found.
-func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) (string, error) {
+// FindCherryPickedCommit searches the commit history of a branch for a commit
+// message containing the original commit SHA. It returns nil when no matching
+// commit is found.
+func (c *Client) FindCherryPickedCommit(ctx context.Context, p FindCherryPickedCommitParams) (*github.RepositoryCommit, error) {
 	opts := &github.CommitsListOptions{
 		SHA: p.Branch,
 		ListOptions: github.ListOptions{
@@ -347,14 +260,15 @@ func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) 
 	for range 5 {
 		commits, resp, err := c.api.Repositories.ListCommits(ctx, c.owner, c.repo, opts)
 		if err != nil {
-			return "", fmt.Errorf("listing commits: %w", err)
+			return nil, fmt.Errorf("listing commits: %w", err)
 		}
 
 		for _, commit := range commits {
 			message := commit.GetCommit().GetMessage()
-			title := strings.Split(message, "\n")[0]
-			if strings.Contains(title, p.Pattern) {
-				return commit.GetSHA(), nil
+			trailer := fmt.Sprintf("(cherry picked from commit %s)", p.OriginalSHA)
+
+			if strings.Contains(strings.ToLower(message), strings.ToLower(trailer)) {
+				return commit, nil
 			}
 		}
 
@@ -364,32 +278,7 @@ func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) 
 		opts.Page = resp.NextPage
 	}
 
-	return "", fmt.Errorf("%w with pattern %q in branch %s", ErrCommitNotFound, p.Pattern, p.Branch)
-}
-
-// CommitExistsWithPattern checks if any commit in the branch history contains the pattern in its title.
-func (c *Client) CommitExistsWithPattern(ctx context.Context, p FindCommitParams) (bool, error) {
-	_, err := c.FindCommitWithPattern(ctx, p)
-	if err != nil {
-		if errors.Is(err, ErrCommitNotFound) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// IsBranchMergedInto checks if the source branch is fully merged into the target branch.
-// Returns true if target contains all commits from source (i.e., source is behind or equal to target).
-func (c *Client) IsBranchMergedInto(ctx context.Context, source, target string) (bool, error) {
-	comparison, _, err := c.api.Repositories.CompareCommits(ctx, c.owner, c.repo, target, source, nil)
-	if err != nil {
-		return false, fmt.Errorf("comparing branches: %w", err)
-	}
-
-	// If source is "behind" or "identical" to target, it means target already has all of source's commits
-	status := comparison.GetStatus()
-	return status == "behind" || status == "identical", nil
+	return nil, nil
 }
 
 // EnsureLabel creates a label if it doesn't already exist.
@@ -434,16 +323,6 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	})
 	if err != nil {
 		return fmt.Errorf("updating release %d body: %w", releaseID, err)
-	}
-	return nil
-}
-
-// DeleteBranch deletes the branch ref on the remote.
-func (c *Client) DeleteBranch(ctx context.Context, branch string) error {
-	ref := "refs/heads/" + branch
-	_, err := c.api.Git.DeleteRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("deleting branch %s: %w", branch, err)
 	}
 	return nil
 }
@@ -496,12 +375,31 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading graphql response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+	var payload struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+	if len(payload.Errors) > 0 {
+		messages := make([]string, 0, len(payload.Errors))
+		for _, graphQLError := range payload.Errors {
+			messages = append(messages, graphQLError.Message)
+		}
+		return fmt.Errorf("graphql errors: %s", strings.Join(messages, "; "))
+	}
+	if err := json.Unmarshal(respBody, result); err != nil {
 		return fmt.Errorf("decoding graphql response: %w", err)
 	}
 

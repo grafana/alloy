@@ -2,23 +2,22 @@ package alloycli
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
 )
 
 type ClusterOptions struct {
-	Log     log.Logger
+	Log     *slog.Logger
 	Metrics prometheus.Registerer
 	Tracer  trace.TracerProvider
 
@@ -115,8 +114,11 @@ func getAdvertiseAddress(opts ClusterOptions, listenPort int) (string, error) {
 		}
 		addr, err := advertise.FirstAddress(advertiseInterfaces)
 		if err != nil {
-			level.Warn(opts.Log).Log("msg", "could not find advertise address using network interfaces", opts.AdvertiseInterfaces,
-				"falling back to localhost", "err", err)
+			opts.Log.Warn(
+				"could not find advertise address using network interfaces falling back to localhost",
+				"interfaces", opts.AdvertiseInterfaces,
+				"err", err,
+			)
 		} else if !addr.Is4() && !addr.Is6() {
 			return "", fmt.Errorf("type unknown for address: %s", addr.String())
 		} else {

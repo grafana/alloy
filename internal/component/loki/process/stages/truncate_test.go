@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -36,8 +35,9 @@ func Test_TruncateStage_Process(t *testing.T) {
 			name: "passthrough when under limits",
 			config: []*RuleConfig{
 				{
-					Limit:  1000,
-					Suffix: "...",
+					Limit:      1000,
+					Suffix:     "...",
+					SourceType: SourceTypeLine,
 				},
 			},
 			labels:              map[string]string{},
@@ -49,7 +49,8 @@ func Test_TruncateStage_Process(t *testing.T) {
 			name: "Longer line should truncate",
 			config: []*RuleConfig{
 				{
-					Limit: 10,
+					Limit:      10,
+					SourceType: SourceTypeLine,
 				},
 			},
 			labels:              map[string]string{},
@@ -62,8 +63,9 @@ func Test_TruncateStage_Process(t *testing.T) {
 			name: "Longer line should truncate with suffix",
 			config: []*RuleConfig{
 				{
-					Limit:  10,
-					Suffix: "...",
+					Limit:      10,
+					Suffix:     "...",
+					SourceType: SourceTypeLine,
 				},
 			},
 			labels:              map[string]string{},
@@ -149,7 +151,8 @@ func Test_TruncateStage_Process(t *testing.T) {
 			name: "Multiple rules applied together",
 			config: []*RuleConfig{
 				{
-					Limit: 10,
+					Limit:      10,
+					SourceType: SourceTypeLine,
 				},
 				{
 					Limit:      15,
@@ -187,14 +190,10 @@ func Test_TruncateStage_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &TruncateConfig{Rules: tt.config}
-			err := validateTruncateConfig(cfg)
-			if err != nil {
-				t.Error(err)
-			}
+
 			logger := util.TestAlloyLogger(t)
 			registry := prometheus.NewRegistry()
-			m, err := newTruncateStage(logger.Slog(), *cfg, registry)
-			require.NoError(t, err)
+			m := newTruncateStage(logger.Slog(), *cfg, registry)
 			entry := newEntry(map[string]any{}, toLabelSet(tt.labels), tt.entry, tt.t)
 			if tt.extracted != nil {
 				entry.Extracted = tt.extracted
@@ -249,109 +248,6 @@ func Test_TruncateStage_Process(t *testing.T) {
 	}
 }
 
-func Test_ValidateTruncateConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *TruncateConfig
-		wantErr error
-	}{
-		{
-			name: "Error no rules",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{},
-			},
-			wantErr: errors.New(errAtLeastOneRule),
-		},
-		{
-			name: "Error limit must be positive",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{{
-					Limit: 0,
-				}},
-			},
-			wantErr: errors.New(errLimitMustBeGreaterThanZero),
-		},
-		{
-			name: "Error sources cannot be set for line",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{{
-					Limit:   10,
-					Sources: []string{"app"},
-				}},
-			},
-			wantErr: errors.New(errSourcesForLine),
-		},
-		{
-			name: "No error for intrinsic line limit",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{{
-					Limit:  10,
-					Suffix: "...",
-				}},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "No error for label limit",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{{
-					Limit:      10,
-					SourceType: SourceTypeLabel,
-					Suffix:     "...",
-				}},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "No error for structured_metadata limit",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{{
-					Limit:      10,
-					SourceType: SourceTypeStructuredMetadata,
-					Suffix:     "...",
-				}},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "No error for specific label limit",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{
-					{
-						Limit:      10,
-						SourceType: SourceTypeLabel,
-						Sources:    []string{"app"},
-						Suffix:     "...",
-					},
-				},
-			},
-			wantErr: nil,
-		},
-		{
-			name: "Suffix too long",
-			config: &TruncateConfig{
-				Rules: []*RuleConfig{
-					{
-						Limit:  10,
-						Suffix: "12345678901",
-					},
-				},
-			},
-			wantErr: errors.New(`suffix length cannot be greater than or equal to limit`),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateTruncateConfig(tt.config)
-			if tt.wantErr != nil {
-				require.EqualError(t, err, tt.wantErr.Error())
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
 func TestTruncateStage_UnmarshalAlloy(t *testing.T) {
 	type testCase struct {
 		name    string
@@ -386,8 +282,8 @@ func TestTruncateStage_UnmarshalAlloy(t *testing.T) {
 			name: "all attributes",
 			config: `
 				rule {
-					limit = "1B"
-					source_type = "line"
+					limit = "1MiB"
+					source_type = "extracted"
 					sources = ["app", "app2"]
 					suffix = "..."
 				}
@@ -398,30 +294,102 @@ func TestTruncateStage_UnmarshalAlloy(t *testing.T) {
 			name: "multiple rules",
 			config: `
 				rule {
-					limit = "1B"
+					limit = "1MiB"
 					source_type = "line"
+					suffix = "..."
+				}
+
+				rule {
+					limit = "1MiB"
+					source_type = "label"
 					sources = ["app", "app2"]
 					suffix = "..."
 				}
 
 				rule {
-					limit = "1B"
-					source_type = "label"
-					sources = ["app", "app2"]
-					suffix = "..."
-				}
-				
-				rule {
-					limit = "1B"
+					limit = "1MiB"
 					source_type = "extracted"
 					sources = ["app", "app2"]
 					suffix = "..."
 				}
 
 				rule {
-					limit = "1B"
+					limit = "1MiB"
 					source_type = "structured_metadata"
 					sources = ["app", "app2"]
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+		{
+			name: "limit must be greater than zero",
+			config: `
+				rule {
+					limit = "0B"
+				}
+			`,
+			wantErr: true,
+		},
+		{
+			name: "sources cannot be set when source_type is line",
+			config: `
+				rule {
+					limit = "10B"
+					sources = ["app"]
+				}
+			`,
+			wantErr: true,
+		},
+		{
+			name: "suffix length greater than or equal to limit",
+			config: `
+				rule {
+					limit = "10B"
+					suffix = "12345678901"
+				}
+			`,
+			wantErr: true,
+		},
+		{
+			name: "intrinsic line limit",
+			config: `
+				rule {
+					limit = "10B"
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+		{
+			name: "label limit",
+			config: `
+				rule {
+					limit = "10B"
+					source_type = "label"
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+		{
+			name: "structured_metadata limit",
+			config: `
+				rule {
+					limit = "10B"
+					source_type = "structured_metadata"
+					suffix = "..."
+				}
+			`,
+			wantErr: false,
+		},
+		{
+			name: "specific label limit",
+			config: `
+				rule {
+					limit = "10B"
+					source_type = "label"
+					sources = ["app"]
 					suffix = "..."
 				}
 			`,

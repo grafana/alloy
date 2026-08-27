@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"errors"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -69,8 +70,12 @@ func registerMetrics(reg prometheus.Registerer) *metrics {
 		),
 		getConfigTime: prometheus.NewHistogram(
 			prometheus.HistogramOpts{
-				Name: "remotecfg_request_duration_seconds",
-				Help: "Duration of remote configuration requests.",
+				Name:                            "remotecfg_request_duration_seconds",
+				Help:                            "Duration of remote configuration requests.",
+				Buckets:                         prometheus.DefBuckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
 			},
 		),
 	}

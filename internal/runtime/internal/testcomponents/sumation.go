@@ -3,11 +3,10 @@ package testcomponents
 import (
 	"context"
 
-	"github.com/go-kit/log"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.uber.org/atomic"
 )
 
 func init() {
@@ -34,13 +33,12 @@ type SummationExports struct {
 
 type Summation struct {
 	opts component.Options
-	log  log.Logger
 	sum  atomic.Int32
 }
 
 // NewSummation creates a new summation component.
 func NewSummation(o component.Options, cfg SummationConfig) (*Summation, error) {
-	t := &Summation{opts: o, log: o.Logger}
+	t := &Summation{opts: o}
 	if err := t.Update(cfg); err != nil {
 		return nil, err
 	}
@@ -62,7 +60,7 @@ func (t *Summation) Update(args component.Arguments) error {
 	c := args.(SummationConfig)
 	newSum := int(t.sum.Add(int32(c.Input)))
 
-	level.Info(t.log).Log("msg", "updated sum", "value", newSum, "input", c.Input)
+	t.opts.Logger.Info("updated sum", "value", newSum, "input", c.Input)
 	t.opts.OnStateChange(SummationExports{Sum: newSum, LastAdded: c.Input})
 	return nil
 }

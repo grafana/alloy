@@ -1,0 +1,1 @@
+(Critical) failed to parse Promtail config: unknown authentication_type "blablabla". Supported types are "OAuth", "ManagedIdentity", "SDK" or "WorkloadIdentity"

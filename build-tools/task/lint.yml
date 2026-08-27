@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  default:
+    desc: Run linters.
+    cmds:
+      - task: go
+      - task: alloylint
+      - task: shellcheck
+      - task: govulncheck
+
+  go:
+    desc: Run golangci-lint.
+    dir: "tools"
+    cmds:
+      - mise exec -- go run ./cmd lint go 
+
+  shellcheck:
+    desc: Run shellcheck linter.
+    dir: "tools"
+    cmds:
+      - mise exec -- go run ./cmd lint shell
+
+  govulncheck:
+    desc: Run govulncheck.
+    dir: "tools"
+    vars:
+      # govulncheck's --tags expects a comma-delimited list, so convert the
+      # space-delimited GO_TAGS the same way the Makefile does (tr ' ' ',').
+      GOVULNCHECK_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{ regexReplaceAll "\\s+" (trim .GO_TAGS) "," }}
+        {{- else -}}
+        {{ regexReplaceAll "\\s+" (trim (printf "gore2regex %s" .GO_TAGS)) "," }}
+        {{- end -}}
+    cmds:
+      - mise exec -- go run ./cmd govulncheck --tags='{{.GOVULNCHECK_TAGS}}'
+
+  alloylint:
+    desc: Run the alloylint linter.
+    vars:
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
+    cmds:
+      - GOFLAGS="-tags={{.LOCAL_TAGS}}" go run -tags='{{.LOCAL_TAGS}}' ./internal/cmd/alloylint ./...

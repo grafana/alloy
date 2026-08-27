@@ -180,7 +180,13 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 			lbs.Set("computer", event.Computer)
 		}
 		// apply relabelings.
-		processed, _ := relabel.Process(lbs.Labels(), t.relabelConfig...)
+		lb := labels.NewBuilder(lbs.Labels())
+		var processed labels.Labels
+		if relabel.ProcessBuilder(lb, t.relabelConfig...) {
+			processed = lb.Labels()
+		} else {
+			processed = labels.EmptyLabels()
+		}
 
 		processed.Range(func(l labels.Label) {
 			if strings.HasPrefix(l.Name, "__") {

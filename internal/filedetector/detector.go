@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/filedetector/internal/inotifyinfo"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Detector is used to specify how changes to the file should be detected.
@@ -77,7 +76,7 @@ type FSNotify struct {
 }
 
 type FSNotifyOptions struct {
-	Logger        log.Logger
+	Logger        *slog.Logger
 	Filename      string
 	ReloadFile    func()        // Callback to request file reload.
 	PollFrequency time.Duration // How often to do fallback polling
@@ -88,20 +87,20 @@ type FSNotifyOptions struct {
 func NewFSNotify(opts FSNotifyOptions) (*FSNotify, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		kvs := []any{"msg", "failed to create fsnotify watcher", "err", err}
+		kvs := []any{"err", err}
 
 		if diags := inotifyinfo.DiagnosticsJson(opts.Logger); diags != "" {
 			kvs = append(kvs, "diagnostics", diags)
 		}
 
-		level.Error(opts.Logger).Log(kvs...)
+		opts.Logger.Error("failed to create fsnotify watcher", kvs...)
 		return nil, err
 	}
 	if err := w.Add(opts.Filename); err != nil {
 		// It's possible that the file already got deleted by the time our fsnotify
 		// was created. We'll log the error and wait for our polling fallback for
 		// the file to be recreated.
-		level.Warn(opts.Logger).Log("msg", "failed to watch file", "err", err)
+		opts.Logger.Warn("failed to watch file", "err", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -135,7 +134,7 @@ func (fsn *FSNotify) wait(ctx context.Context) {
 			fsn.watcherMut.Unlock()
 
 			if err != nil {
-				level.Warn(fsn.opts.Logger).Log("msg", "failed re-watch file", "err", err)
+				fsn.opts.Logger.Warn("failed re-watch file", "err", err)
 			}
 
 			fsn.opts.ReloadFile()
@@ -148,11 +147,11 @@ func (fsn *FSNotify) wait(ctx context.Context) {
 			// This will force the component to reload the file and report the error
 			// directly to the user via the component health.
 			if err != nil {
-				level.Warn(fsn.opts.Logger).Log("msg", "got error from fsnotify watcher; treating as file updated event", "err", err)
+				fsn.opts.Logger.Warn("got error from fsnotify watcher; treating as file updated event", "err", err)
 				fsn.opts.ReloadFile()
 			}
 		case ev := <-fsn.watcher.Events:
-			level.Debug(fsn.opts.Logger).Log("msg", "got fsnotify event", "op", ev.Op.String())
+			fsn.opts.Logger.Debug("got fsnotify event", "op", ev.Op.String())
 			fsn.opts.ReloadFile()
 		}
 	}

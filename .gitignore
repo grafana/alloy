@@ -34,6 +34,7 @@ node_modules
 .tag-only
 .image-tag
 /alloy
+/alloy-service.exe
 collector/otel_engine
 collector/otel_engine.exe
 
@@ -44,3 +45,8 @@ collector/otel_engine.exe
 # AI
 CLAUDE.local.md
 .codex/
+
+# Beyla embedded binaries (downloaded at build time)
+internal/component/beyla/ebpf/binaries/amd64/beyla
+internal/component/beyla/ebpf/binaries/arm64/beyla
+internal/component/beyla/ebpf/.beyla-binary-version

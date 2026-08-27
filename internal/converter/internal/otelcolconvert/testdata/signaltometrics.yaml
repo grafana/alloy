@@ -1,0 +1,45 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+
+connectors:
+  signaltometrics:
+    error_mode: ignore
+    spans:
+      - name: span.duration
+        description: Span duration histogram
+        unit: ms
+        histogram:
+          value: Milliseconds(end_time - start_time)
+    logs:
+      - name: log.body.length
+        description: Distribution of log body lengths
+        conditions:
+          - severity_number >= SEVERITY_NUMBER_WARN
+        attributes:
+          - key: severity_text
+            default_value: INFO
+        exponential_histogram:
+          value: Len(body)
+
+exporters:
+  otlp:
+    endpoint: "localhost:4317"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [signaltometrics]
+    logs:
+      receivers: [otlp]
+      exporters: [signaltometrics]
+    metrics:
+      receivers: [signaltometrics]
+      exporters: [otlp]

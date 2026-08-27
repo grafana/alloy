@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -171,8 +170,7 @@ func TestEnricher(t *testing.T) {
 			tt.args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
 
 			opts := component.Options{
-				Logger:        log.NewNopLogger(),
-				SLogger:       logging.NewSlogNop(),
+				Logger:        logging.NewSlogNop(),
 				OnStateChange: func(e component.Exports) {},
 			}
 			opts.OnStateChange = func(e component.Exports) {
@@ -206,8 +204,7 @@ func TestEnricher(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	comp, err := New(component.Options{
-		Logger:        log.NewNopLogger(),
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{})
 	require.NoError(t, err)

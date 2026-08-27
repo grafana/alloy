@@ -5,16 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/stretchr/testify/require"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelextension "go.opentelemetry.io/collector/extension"
-	"go.opentelemetry.io/collector/pipeline"
 )
 
 func TestExtension(t *testing.T) {

@@ -157,11 +157,6 @@ func TestConfigConversion(t *testing.T) {
 			MaxInterval:         30 * time.Second,
 			MaxElapsedTime:      5 * time.Minute,
 		},
-		DeprecatedBatcher: splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
-			Enabled:      false,
-			FlushTimeout: 0,
-			MinSize:      0,
-		},
 		LogDataEnabled:       true,
 		ProfilingDataEnabled: true,
 		Token:                "token", Source: "",

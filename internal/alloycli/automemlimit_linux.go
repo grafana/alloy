@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
+
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 

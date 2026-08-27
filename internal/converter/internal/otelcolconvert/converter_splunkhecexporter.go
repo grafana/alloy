@@ -73,17 +73,17 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
 	return splunkhec_config.SplunkHecClientArguments{
-		Endpoint:            cfg.Endpoint,
-		Timeout:             cfg.Timeout,
-		ReadBufferSize:      cfg.ReadBufferSize,
-		WriteBufferSize:     cfg.WriteBufferSize,
-		MaxIdleConns:        cfg.MaxIdleConns,
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
-		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.IdleConnTimeout,
-		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLS.Insecure,
-		ForceAttemptHTTP2:   cfg.ForceAttemptHTTP2,
+		Endpoint:            cfg.ClientConfig.Endpoint,
+		Timeout:             cfg.ClientConfig.Timeout,
+		ReadBufferSize:      cfg.ClientConfig.ReadBufferSize,
+		WriteBufferSize:     cfg.ClientConfig.WriteBufferSize,
+		MaxIdleConns:        cfg.ClientConfig.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.ClientConfig.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
+		IdleConnTimeout:     cfg.ClientConfig.IdleConnTimeout,
+		DisableKeepAlives:   cfg.ClientConfig.DisableKeepAlives,
+		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 
@@ -108,7 +108,6 @@ func toSplunkConfig(cfg *splunkhecexporter.Config) splunkhec_config.SplunkConf {
 		UseMultiMetricFormat:    cfg.UseMultiMetricFormat,
 		Heartbeat:               toSplunkHecHeartbeat(cfg.Heartbeat),
 		Telemetry:               toSplunkHecTelemetry(cfg.Telemetry),
-		DeprecatedBatcher:       toSplunkHecBatcherConfig(cfg.DeprecatedBatcher),
 		HecFields:               toSplunkHecFields(cfg.HecFields),
 	}
 }
@@ -125,21 +124,6 @@ func toSplunkHecTelemetry(cfg splunkhecexporter.HecTelemetry) splunkhec_config.S
 		Enabled:              cfg.Enabled,
 		OverrideMetricsNames: cfg.OverrideMetricsNames,
 		ExtraAttributes:      cfg.ExtraAttributes,
-	}
-}
-
-func toSplunkHecBatcherConfig(cfg splunkhecexporter.DeprecatedBatchConfig) *splunkhec_config.DeprecatedBatchConfig {
-	if !cfg.Enabled {
-		return nil
-	}
-	//nolint:staticcheck
-	sizer, _ := cfg.Sizer.MarshalText()
-	return &splunkhec_config.DeprecatedBatchConfig{
-		Enabled:      cfg.Enabled,
-		FlushTimeout: cfg.FlushTimeout,
-		MinSize:      cfg.MinSize,
-		MaxSize:      cfg.MaxSize,
-		Sizer:        string(sizer),
 	}
 }
 

@@ -16,5 +16,5 @@ make generate-graphql
 From here, you can start Alloy like normal and the GraphQL API will be reachable at
 http://localhost:12345/graphql
 
-To enable the GraphQL Playground, run Alloy with `--feature.graphql-playground.enabled` and connect
+To enable the GraphQL Playground, run Alloy with `--server.http.enable-graphql-playground` and connect
 to the UI at http://localhost:12345/graphql/playground

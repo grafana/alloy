@@ -80,14 +80,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("loki.source.syslog component shutting down, stopping listeners")
+		c.opts.Logger.Info("loki.source.syslog component shutting down, stopping listeners")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			for _, l := range c.targets {
 				if err := l.Stop(); err != nil {
-					c.opts.SLogger.Error("error while stopping syslog listener", "err", err)
+					c.opts.Logger.Error("error while stopping syslog listener", "err", err)
 				}
 			}
 		})
@@ -173,7 +173,7 @@ func (c *Component) reloadTargets() {
 	// Stop existing targets
 	for _, l := range targetsToStop {
 		if err := l.Stop(); err != nil {
-			c.opts.SLogger.Error("error while stopping syslog listener", "err", err)
+			c.opts.Logger.Error("error while stopping syslog listener", "err", err)
 		}
 	}
 
@@ -186,20 +186,20 @@ func (c *Component) reloadTargets() {
 	for _, cfg := range c.args.SyslogListeners {
 		promtailCfg, cfgErr := cfg.Convert()
 		if cfgErr != nil {
-			c.opts.SLogger.Error("failed to convert syslog listener config", "err", cfgErr)
+			c.opts.Logger.Error("failed to convert syslog listener config", "err", cfgErr)
 			continue
 		}
 
 		t, err := st.NewSyslogTarget(st.TargetParams{
 			Metrics:       c.metrics,
-			Logger:        c.opts.SLogger,
+			Logger:        c.opts.Logger,
 			Handler:       entryHandler,
 			Relabel:       rcs,
 			Config:        promtailCfg,
 			DebugListener: c.liveDbgListener,
 		})
 		if err != nil {
-			c.opts.SLogger.Error("failed to create syslog listener with provided config", "err", err)
+			c.opts.Logger.Error("failed to create syslog listener with provided config", "err", err)
 			continue
 		}
 		c.targets = append(c.targets, t)

@@ -84,18 +84,21 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		otelPolicyCfgs = append(otelPolicyCfgs, policyCfg.Convert())
 	}
 
-	return &tsp.Config{
-		DecisionWait:                  args.DecisionWait,
-		DecisionWaitAfterRootReceived: args.DecisionWaitAfterRootReceived,
-		NumTraces:                     args.NumTraces,
-		BlockOnOverflow:               args.BlockOnOverflow,
-		ExpectedNewTracesPerSec:       args.ExpectedNewTracesPerSec,
-		SampleOnFirstMatch:            args.SampleOnFirstMatch,
-		DropPendingTracesOnShutdown:   args.DropPendingTracesOnShutdown,
-		MaximumTraceSizeBytes:         args.MaximumTraceSizeBytes,
-		PolicyCfgs:                    otelPolicyCfgs,
-		DecisionCache:                 args.DecisionCache.Convert(),
-	}, nil
+	// Build on the factory's default config rather than a zero-value struct: the
+	// processor requires a sampling strategy, but upstream keeps that field
+	// unexported, so CreateDefaultConfig is the only way to set it.
+	cfg := tsp.NewFactory().CreateDefaultConfig().(*tsp.Config)
+	cfg.DecisionWait = args.DecisionWait
+	cfg.DecisionWaitAfterRootReceived = args.DecisionWaitAfterRootReceived
+	cfg.NumTraces = args.NumTraces
+	cfg.BlockOnOverflow = args.BlockOnOverflow
+	cfg.ExpectedNewTracesPerSec = args.ExpectedNewTracesPerSec
+	cfg.SampleOnFirstMatch = args.SampleOnFirstMatch
+	cfg.DropPendingTracesOnShutdown = args.DropPendingTracesOnShutdown
+	cfg.MaximumTraceSizeBytes = args.MaximumTraceSizeBytes
+	cfg.PolicyCfgs = otelPolicyCfgs
+	cfg.DecisionCache = args.DecisionCache.Convert()
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

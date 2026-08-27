@@ -1,23 +1,19 @@
 package scheduler
 
 import (
-	"github.com/go-kit/log"
-
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
 // Host implements otelcomponent.Host for Grafana Alloy.
 type Host struct {
-	log log.Logger
-
 	extensions map[otelcomponent.ID]otelcomponent.Component
 	exporters  map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component
 }
 
 // NewHost creates a new Host.
-func NewHost(l log.Logger, opts ...HostOption) *Host {
-	h := &Host{log: l}
+func NewHost(opts ...HostOption) *Host {
+	h := &Host{}
 	for _, opt := range opts {
 		opt(h)
 	}

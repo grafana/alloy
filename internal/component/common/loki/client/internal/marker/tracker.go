@@ -1,14 +1,12 @@
 package marker
 
 import (
-	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type Tracker interface {
@@ -31,7 +29,7 @@ type Tracker interface {
 type SegmentTracker struct {
 	dataIOUpdate      chan dataUpdate
 	lastMarkedSegment int
-	logger            log.Logger
+	logger            *slog.Logger
 	file              *File
 	maxSegmentAge     time.Duration
 	metrics           *Metrics
@@ -49,7 +47,7 @@ type dataUpdate struct {
 var _ Tracker = (*SegmentTracker)(nil)
 
 // NewSegmentTracker creates a new SegmentTracker.
-func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *Metrics) *SegmentTracker {
+func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger *slog.Logger, metrics *Metrics) *SegmentTracker {
 	t := &SegmentTracker{
 		lastMarkedSegment: -1, // Segment ID last marked on disk.
 		file:              file,
@@ -147,7 +145,7 @@ func (t *SegmentTracker) runUpdatePendingData() {
 		}
 
 		markableSegment := findMarkableSegment(segmentDataCount, t.maxSegmentAge)
-		level.Debug(t.logger).Log("msg", fmt.Sprintf("found as markable segment %d", markableSegment))
+		t.logger.Debug("found markable segment", "segment", markableSegment)
 		if markableSegment > t.lastMarkedSegment {
 			t.file.MarkSegment(markableSegment)
 			t.lastMarkedSegment = markableSegment

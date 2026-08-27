@@ -40,16 +40,22 @@ otelcol.receiver.datadog "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.datadog`:
 
-| Name                     | Type                       | Description                                                                  | Default                                                    | Required |
-|--------------------------|----------------------------|------------------------------------------------------------------------------|------------------------------------------------------------|----------|
-| `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
-| `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
-| `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8126"`                                         | no       |
-| `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
-| `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
-| `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
-| `read_timeout`           | `duration`                 | Read timeout for requests of the HTTP server.                                | `"60s"`                                                    | no       |
-| `trace_id_cache_size`    | `int`                      | Cache size for mapping 64-bit to 128-bit trace IDs.                          | `0`                                                        | no       |
+| Name                           | Type                       | Description                                                                                       | Default                                                    | Required |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------- |
+| `auth`                         | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests.                      |                                                            | no       |
+| `compression_algorithms`       | `list(string)`             | A list of compression algorithms the server can accept.                                           | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
+| `decode_json_message`          | `bool`                     | Parse a log record whose message is itself a JSON object and lift its fields into the log record. | `true`                                                     | no       |
+| `endpoint`                     | `string`                   | `host:port` to listen for traffic on.                                                             | `"localhost:8126"`                                         | no       |
+| `idle_series_cleanup_interval` | `duration`                 | How frequently to check for stale series.                                                         | `"5m"`                                                     | no       |
+| `idle_series_timeout`          | `duration`                 | Duration after which a series is considered stale and evicted. `0` disables eviction.             | `"0s"`                                                     | no       |
+| `idle_timeout`                 | `duration`                 | Maximum idle time before closing a keep-alive connection.                                         | `"1m"`                                                     | no       |
+| `include_metadata`             | `bool`                     | Propagate incoming connection metadata to downstream consumers.                                   | `false`                                                    | no       |
+| `keep_alives_enabled`          | `boolean`                  | Whether or not HTTP keep-alives are enabled                                                       | `true`                                                     | no       |
+| `max_request_body_size`        | `string`                   | Maximum request body size the server will allow.                                                  | `"20MiB"`                                                  | no       |
+| `read_header_timeout`          | `duration`                 | Maximum time allowed to read request headers.                                                     | `"1m"`                                                     | no       |
+| `read_timeout`                 | `duration`                 | Maximum time allowed to read an HTTP request, including the body.                                 | `"1m"`                                                     | no       |
+| `trace_id_cache_size`          | `int`                      | Cache size for mapping 64-bit to 128-bit trace IDs.                                               | `0`                                                        | no       |
+| `write_timeout`                | `duration`                 | Maximum time allowed to write an HTTP response.                                                   | `"30s"`                                                    | no       |
 
 
 
@@ -96,11 +102,12 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-| Name              | Type           | Description                                              | Default                | Required |
-|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no       |
-| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
-| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no       |
+| Name              | Type           | Description                                                     | Default                | Required |
+|-------------------|----------------|-----------------------------------------------------------------|------------------------|----------|
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                         | `[]`                   | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                            | `["X-Requested-With"]` | no       |
+| `exposed_headers` | `list(string)` | Configures the `Access-Control-Expose-Headers` response header. | `[]`                   | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header.        | `0`                    | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:
@@ -133,7 +140,7 @@ The `proxy` block configures how the `/intake` proxy operates.
 It's only used when `behavior` is set to `"proxy"`.
 If `behavior` isn't `"proxy"`, this block is ignored.
 
-This block has no arguments and is configured with the nested [`api`][api] block.
+This block has no arguments and is configured with the nested [`api`](#api) block.
 
 ### `api`
 

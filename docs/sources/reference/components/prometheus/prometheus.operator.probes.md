@@ -99,11 +99,11 @@ The following arguments are supported:
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][client] argument
-* [`bearer_token`][client] argument
-* [`oauth2`][oauth2] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#client) argument
+* [`bearer_token`](#client) argument
+* [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -253,6 +253,27 @@ prometheus.operator.probes "probes" {
     }
 }
 ```
+
+### Probe with {{< param "PRODUCT_NAME" >}} as the blackbox prober
+
+`prometheus.operator.probes` scrapes Probe targets by calling a prober (typically blackbox exporter).
+{{< param "PRODUCT_NAME" >}} can act as that prober when you also configure [`prometheus.exporter.blackbox`][blackbox].
+Configure {{< param "PRODUCT_NAME" >}} as your prober to eliminate the need for a separate blackbox-exporter deployment.
+
+Set `spec.prober.url` to the {{< param "PRODUCT_NAME" >}} HTTP listen address.
+Set `spec.prober.path` to the prober endpoint path.
+For blackbox-style probers, the `/probe` endpoint returns probe metrics.
+The `/metrics` exposes exporter operational metrics.
+
+For `prometheus.exporter.blackbox`, use the component HTTP API path:
+
+```text
+/api/v0/component/prometheus.exporter.blackbox.<LABEL>/probe
+```
+
+The `module` field on the Probe must match a module name defined in the `prometheus.exporter.blackbox` `config` or `config_file`.
+
+[blackbox]: ../prometheus.exporter.blackbox/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

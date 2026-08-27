@@ -1,0 +1,29 @@
+.slider {
+  width: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin-right: 10px;
+}
+
+.sliderLabel {
+  display: inline-block;
+  margin-left: 10px;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.rangeInput {
+  flex: 1;
+}
+
+.valueInput {
+  box-sizing: border-box;
+  width: 64px;
+  line-height: 24px;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid #d8d9da;
+  border-radius: 3px;
+}

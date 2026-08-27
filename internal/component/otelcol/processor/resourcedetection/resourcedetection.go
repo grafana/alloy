@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -36,7 +37,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -65,6 +65,11 @@ type Arguments struct {
 	// Override indicates whether any existing resource attributes
 	// should be overridden or preserved. Defaults to true.
 	Override bool `alloy:"override,attr,optional"`
+
+	// FailOnMissingMetadata controls whether network-based detectors treat an
+	// unreachable metadata service as a hard failure instead of silently
+	// returning an empty resource. Defaults to false.
+	FailOnMissingMetadata bool `alloy:"fail_on_missing_metadata,attr,optional"`
 
 	// DetectorConfig is a list of settings specific to all detectors
 	DetectorConfig DetectorConfig `alloy:",squash"`
@@ -284,6 +289,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["detectors"] = args.ConvertDetectors()
 	input["override"] = args.Override
 	input["timeout"] = args.Timeout
+	input["fail_on_missing_metadata"] = args.FailOnMissingMetadata
 
 	input["ec2"] = args.DetectorConfig.EC2Config.Convert()
 	input["ecs"] = args.DetectorConfig.ECSConfig.Convert()

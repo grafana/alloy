@@ -1,13 +1,12 @@
 package alloycli
 
 import (
-	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/tracing"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestBuildClusterService(t *testing.T) {
@@ -17,7 +16,7 @@ func TestBuildClusterService(t *testing.T) {
 	opts := ClusterOptions{
 		JoinPeers:     []string{"foo", "bar"},
 		DiscoverPeers: "provider=aws key1=val1 key2=val2",
-		Log:           log.NewLogfmtLogger(os.Stderr),
+		Log:           util.TestAlloyLogger(t).Slog(),
 		Tracer:        tracer,
 	}
 
@@ -52,7 +51,7 @@ func TestGetAdvertiseAddress(t *testing.T) {
 	// This tests the loopback fallback.
 	t.Run("loopback Fallback", func(t *testing.T) {
 		opts := ClusterOptions{
-			Log:                 log.NewNopLogger(),
+			Log:                 util.TestAlloyLogger(t).Slog(),
 			EnableClustering:    true,
 			AdvertiseInterfaces: []string{"lo"},
 		}

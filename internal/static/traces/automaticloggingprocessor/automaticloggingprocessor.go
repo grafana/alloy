@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-kit/log"
-	util_log "github.com/grafana/alloy/internal/util/log"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -34,13 +32,9 @@ type automaticLoggingProcessor struct {
 	done        atomic.Bool
 
 	labels map[string]struct{}
-
-	logger log.Logger
 }
 
 func newTraceProcessor(nextConsumer consumer.Traces, cfg *AutomaticLoggingConfig) (processor.Traces, error) {
-	logger := log.With(util_log.Logger, "component", "traces automatic logging")
-
 	if nextConsumer == nil {
 		return nil, errors.New("nil next Consumer")
 	}
@@ -82,7 +76,6 @@ func newTraceProcessor(nextConsumer consumer.Traces, cfg *AutomaticLoggingConfig
 		nextConsumer: nextConsumer,
 		cfg:          cfg,
 		logToStdout:  logToStdout,
-		logger:       logger,
 		done:         atomic.Bool{},
 		labels:       labels,
 	}, nil

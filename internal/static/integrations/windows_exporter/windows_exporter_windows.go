@@ -8,15 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 )
 
 // New creates a new windows_exporter integration.
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	// Filter down to the enabled collectors
 	enabledCollectorNames := enabledCollectors(c.EnabledCollectors)
 	winExporterConfig, err := c.ToWindowsExporterConfig()
@@ -27,18 +24,16 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	winCol := collector.NewWithConfig(winExporterConfig)
 	winCol.Enable(enabledCollectorNames)
 	sort.Strings(enabledCollectorNames)
-	level.Info(logger).Log("msg", "enabled windows_exporter collectors", "collectors", strings.Join(enabledCollectorNames, ","))
+	logger.Info("enabled windows_exporter collectors", "collectors", strings.Join(enabledCollectorNames, ","))
 
-	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
-
-	err = winCol.Build(context.Background(), slogLogger)
+	err = winCol.Build(context.Background(), logger)
 	if err != nil {
 		return nil, err
 	}
 
 	// Hard-coded 4m timeout to represent the time a series goes stale.
 	// TODO: Make configurable if useful.
-	handler, err := winCol.NewHandler(4*time.Minute, slogLogger, enabledCollectorNames)
+	handler, err := winCol.NewHandler(4*time.Minute, logger, enabledCollectorNames)
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"
 	"github.com/grafana/alloy/syntax"
@@ -20,11 +21,12 @@ func TestAlloyUnmarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := Arguments{
-		URI:             "mongodb://127.0.0.1:27017",
-		DirectConnect:   true,
-		DiscoveringMode: true,
-		CompatibleMode:  true,
-		CollectAll:      true,
+		URI:               "mongodb://127.0.0.1:27017",
+		CurrentopSlowTime: 1 * time.Minute,
+		DirectConnect:     true,
+		DiscoveringMode:   true,
+		CompatibleMode:    true,
+		CollectAll:        true,
 	}
 
 	require.Equal(t, expected, args)
@@ -43,11 +45,12 @@ func TestConvert(t *testing.T) {
 	res := args.Convert()
 
 	expected := mongodb_exporter.Config{
-		URI:             "mongodb://127.0.0.1:27017",
-		DirectConnect:   true,
-		DiscoveringMode: true,
-		CompatibleMode:  true,
-		CollectAll:      true,
+		URI:               "mongodb://127.0.0.1:27017",
+		CurrentopSlowTime: 1 * time.Minute,
+		DirectConnect:     true,
+		DiscoveringMode:   true,
+		CompatibleMode:    true,
+		CollectAll:        true,
 	}
 	require.Equal(t, expected, *res)
 }

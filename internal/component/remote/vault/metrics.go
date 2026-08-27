@@ -1,8 +1,9 @@
 package vault
 
 import (
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 type metrics struct {

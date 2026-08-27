@@ -99,7 +99,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
 		IgnoreInvalidYaml: false,
@@ -128,7 +128,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("loki.source.cloudflare component shutting down")
+		c.opts.Logger.Info("loki.source.cloudflare component shutting down")
 
 		// NOTE: We need to stop posFile first so we don't record entries we are draining.
 		c.posFile.Stop()
@@ -156,9 +156,9 @@ func (c *Component) Update(args component.Arguments) error {
 		c.tailer.stop()
 	}
 
-	t, err := newTailer(c.metrics, c.opts.SLogger, c.handler, c.posFile, newArgs.tailerConfig())
+	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
 	if err != nil {
-		c.opts.SLogger.Error("failed to create cloudflare target with provided config", "err", err)
+		c.opts.Logger.Error("failed to create cloudflare target with provided config", "err", err)
 		return err
 	}
 	c.tailer = t

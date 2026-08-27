@@ -6,13 +6,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/vmware_exporter/vsphere"
+	config_util "github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/grafana/vmware_exporter/vsphere"
-	config_util "github.com/prometheus/common/config"
 )
 
 func init() {
@@ -74,7 +73,7 @@ func (c *Config) Identifier(g integrations.Globals) (string, error) {
 }
 
 // NewIntegration constructs a new instance of this integration.
-func (c *Config) NewIntegration(log log.Logger, g integrations.Globals) (integrations.Integration, error) {
+func (c *Config) NewIntegration(log *slog.Logger, g integrations.Globals) (integrations.Integration, error) {
 	vsphereURL, err := url.Parse(c.VSphereURL)
 	if err != nil {
 		return nil, err
@@ -88,12 +87,12 @@ func (c *Config) NewIntegration(log log.Logger, g integrations.Globals) (integra
 		ObjectDiscoveryInterval: c.ObjectDiscoveryInterval,
 		EnableExporterMetrics:   c.EnableExporterMetrics,
 	}
-	exporter, err := vsphere.NewExporter(slog.New(logging.NewSlogGoKitHandler(log)), &exporterConfig)
+	exporter, err := vsphere.NewExporter(log, &exporterConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	return metricsutils.NewMetricsHandlerIntegration(
-		log, c, c.Common, g, exporter,
+		c, c.Common, g, exporter,
 	)
 }

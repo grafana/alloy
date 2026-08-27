@@ -2,23 +2,22 @@ package labelstore
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	alloy_service "github.com/grafana/alloy/internal/service"
 )
 
 const ServiceName = "labelstore"
 
 type Service struct {
-	log                 log.Logger
+	log                 *slog.Logger
 	mut                 sync.Mutex
 	globalRefID         uint64
 	mappings            map[string]*remoteWriteMapping
@@ -46,9 +45,9 @@ type LabelStoreService interface {
 	LabelStore
 }
 
-func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreService {
+func New(l *slog.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreService {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = slog.New(slog.DiscardHandler)
 	}
 
 	e := true
@@ -57,14 +56,14 @@ func New(l log.Logger, r prometheus.Registerer, enabled ...bool) LabelStoreServi
 	}
 
 	if !e {
-		level.Info(l).Log("msg", "labelstore service is disabled")
+		l.Info("labelstore service is disabled")
 		return disabledStore{}
 	}
 
 	return newLabelStore(l, r)
 }
 
-func newLabelStore(l log.Logger, r prometheus.Registerer) *Service {
+func newLabelStore(l *slog.Logger, r prometheus.Registerer) *Service {
 	s := &Service{
 		log:                 l,
 		globalRefID:         0,
@@ -262,7 +261,7 @@ func (s *Service) CheckAndRemoveStaleMarkers() {
 	defer s.mut.Unlock()
 
 	s.lastStaleCheck.Set(float64(time.Now().Unix()))
-	level.Debug(s.log).Log("msg", "labelstore removing stale markers")
+	s.log.Debug("labelstore removing stale markers")
 	curr := time.Now()
 	idsToBeGCed := make([]*staleMarker, 0)
 	for _, stale := range s.staleGlobals {
@@ -273,7 +272,7 @@ func (s *Service) CheckAndRemoveStaleMarkers() {
 		idsToBeGCed = append(idsToBeGCed, stale)
 	}
 
-	level.Debug(s.log).Log("msg", "number of ids to remove", "count", len(idsToBeGCed))
+	s.log.Debug("number of ids to remove", "count", len(idsToBeGCed))
 
 	for _, marker := range idsToBeGCed {
 		delete(s.staleGlobals, marker.globalID)

@@ -120,7 +120,7 @@ The Pod's controller, network configuration, enabled capabilities, and available
 - Long-lived applications
 - Scenarios where the {{< param "PRODUCT_NAME" >}} deployment size grows so large it can become a noisy neighbor
 
-[clustering]: ../../configure/clustering/
+[clustering]: ../../get-started/clustering/
 
 ## Process different types of telemetry in different {{% param "PRODUCT_NAME" %}} instances
 

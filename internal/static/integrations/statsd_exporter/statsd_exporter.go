@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/statsd_exporter/pkg/address"
@@ -26,7 +25,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
@@ -95,7 +93,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -115,11 +113,8 @@ type Exporter struct {
 
 // New creates a new statsd_exporter integration. The integration scrapes
 // metrics from a statsd process.
-func New(l log.Logger, c *Config) (integrations.Integration, error) {
-	var (
-		reg = prometheus.NewRegistry()
-		log = slog.New(logging.NewSlogGoKitHandler(l))
-	)
+func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
+	reg := prometheus.NewRegistry()
 
 	m, err := NewMetrics(reg)
 	if err != nil {
@@ -133,7 +128,7 @@ func New(l log.Logger, c *Config) (integrations.Integration, error) {
 	statsdMapper := &mapper.MetricMapper{
 		Registerer:    reg,
 		MappingsCount: m.MappingsCount,
-		Logger:        log,
+		Logger:        l,
 	}
 
 	if c.MappingConfig != nil {
@@ -166,7 +161,7 @@ func New(l log.Logger, c *Config) (integrations.Integration, error) {
 		statsdMapper.UseCache(cache)
 	}
 
-	e := exporter.NewExporter(reg, statsdMapper, log, m.EventsActions, m.EventsUnmapped, m.ErrorEventStats, m.EventStats, m.ConflictingEventStats, m.MetricsCount)
+	e := exporter.NewExporter(reg, statsdMapper, l, m.EventsActions, m.EventsUnmapped, m.ErrorEventStats, m.EventStats, m.ConflictingEventStats, m.MetricsCount)
 
 	if err := reg.Register(build.NewCollector("statsd_exporter")); err != nil {
 		return nil, fmt.Errorf("couldn't register version metrics: %w", err)
@@ -177,7 +172,7 @@ func New(l log.Logger, c *Config) (integrations.Integration, error) {
 		metrics:  m,
 		exporter: e,
 		reg:      reg,
-		log:      log,
+		log:      l,
 	}, nil
 }
 

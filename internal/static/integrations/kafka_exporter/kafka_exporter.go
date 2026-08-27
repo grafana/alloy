@@ -2,14 +2,13 @@ package kafka_exporter
 
 import (
 	"fmt"
-
-	config_util "github.com/prometheus/common/config"
+	"log/slog"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	kafka_exporter "github.com/grafana/kafka_exporter/exporter"
+	config_util "github.com/prometheus/common/config"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -165,8 +164,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new elasticsearch_exporter
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	return New(logger, c)
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
 }
 
 func init() {
@@ -175,7 +174,7 @@ func init() {
 }
 
 // New creates a new kafka_exporter integration.
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	if len(c.KafkaURIs) == 0 || c.KafkaURIs[0] == "" {
 		return nil, fmt.Errorf("empty kafka_uris provided")
 	}
@@ -188,7 +187,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 
 	// 30 is the default value
 	if c.PruneIntervalSeconds != 30 {
-		level.Warn(logger).Log("msg", "prune_interval_seconds is not used anymore, use metadata_refresh_interval instead")
+		logger.Warn("prune_interval_seconds is not used anymore, use metadata_refresh_interval instead")
 	}
 
 	options := kafka_exporter.Options{
@@ -222,7 +221,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		MaxOffsets:               c.MaxOffsets,
 	}
 
-	newExporter, err := kafka_exporter.New(logger, options, c.TopicsFilter, c.TopicsExclude, c.GroupFilter, c.GroupExclude)
+	newExporter, err := kafka_exporter.New(slogadapter.GoKit(logger.Handler()), options, c.TopicsFilter, c.TopicsExclude, c.GroupFilter, c.GroupExclude)
 	if err != nil {
 		return nil, fmt.Errorf("could not instantiate kafka lag exporter: %w", err)
 	}

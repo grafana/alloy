@@ -3,11 +3,10 @@ package marker
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/natefinch/atomic"
 )
 
@@ -22,13 +21,13 @@ const (
 )
 
 type File struct {
-	logger                    log.Logger
+	logger                    *slog.Logger
 	lastMarkedSegmentDir      string
 	lastMarkedSegmentFilePath string
 }
 
 // NewFile creates a new marker File.
-func NewFile(logger log.Logger, dir string) (*File, error) {
+func NewFile(logger *slog.Logger, dir string) (*File, error) {
 	markerDir := filepath.Join(dir, markerFolderName)
 	// attempt to create dir if doesn't exist
 	if err := os.MkdirAll(markerDir, markerFolderMode); err != nil {
@@ -46,16 +45,16 @@ func NewFile(logger log.Logger, dir string) (*File, error) {
 func (f *File) LastMarkedSegment() int {
 	bs, err := os.ReadFile(f.lastMarkedSegmentFilePath)
 	if os.IsNotExist(err) {
-		level.Warn(f.logger).Log("msg", "marker segment file does not exist", "file", f.lastMarkedSegmentFilePath)
+		f.logger.Warn("marker segment file does not exist", "file", f.lastMarkedSegmentFilePath)
 		return -1
 	} else if err != nil {
-		level.Error(f.logger).Log("msg", "could not access segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
+		f.logger.Error("could not access segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return -1
 	}
 
 	savedSegment, err := decodeV1(bs)
 	if err != nil {
-		level.Error(f.logger).Log("msg", "could not decode segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
+		f.logger.Error("could not decode segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return -1
 	}
 
@@ -65,11 +64,11 @@ func (f *File) LastMarkedSegment() int {
 // MarkSegment stores segment as the last marked WAL segment.
 func (f *File) MarkSegment(segment int) {
 	if err := f.atomicallyWriteMarker(encodeV1(uint64(segment))); err != nil {
-		level.Error(f.logger).Log("msg", "could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
+		f.logger.Error("could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return
 	}
 
-	level.Debug(f.logger).Log("msg", "updated segment marker file", "file", f.lastMarkedSegmentFilePath, "segment", segment)
+	f.logger.Debug("updated segment marker file", "file", f.lastMarkedSegmentFilePath, "segment", segment)
 }
 
 // atomicallyWriteMarker attempts to perform an atomic write of the marker contents. This is delegated to

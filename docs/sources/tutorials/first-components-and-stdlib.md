@@ -119,7 +119,7 @@ The `local.file` component's label is set to `"example"`, so the fully qualified
 The `prometheus.remote_write` component's label is set to `"local_prom"`, so the fully qualified name of the component is `prometheus.remote_write.local_prom`.
 {{< /admonition >}}
 
-This example pipeline still doesn't do anything, so its time to add some more components to it.
+This example pipeline still doesn't do anything, so it's time to add some more components to it.
 
 ## Send your first metrics
 

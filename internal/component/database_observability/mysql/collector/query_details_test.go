@@ -3,17 +3,16 @@ package collector
 import (
 	"database/sql/driver"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestQueryTables(t *testing.T) {
@@ -390,7 +389,7 @@ func TestQueryTables(t *testing.T) {
 				CollectInterval: time.Second,
 				StatementsLimit: 250,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				Logger:          util.TestAlloyLogger(t).Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -451,7 +450,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -517,7 +516,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -580,7 +579,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 250,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -643,7 +642,7 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 		StatementsLimit: 250,
 		ExcludeSchemas:  []string{"excluded_schema"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 

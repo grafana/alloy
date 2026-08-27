@@ -1,0 +1,30 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  alloyengine:
+    config:
+      path: /etc/alloy/config.alloy
+    flags:
+      stability.level: experimental
+      storage.path: /tmp/alloy # writable WAL dir for the inner remote_write
+
+# A native collector pipeline (NOT via the alloyengine extension) so the test can
+# also capture a native otelcol exporter's User-Agent ("Alloy OTel Collector distribution.").
+receivers:
+  hostmetrics:
+    collection_interval: 5s
+    scrapers:
+      load: {}
+
+exporters:
+  otlphttp:
+    metrics_endpoint: http://nginx-proxy:8080/otlp/v1/metrics
+    tls:
+      insecure: true
+
+service:
+  extensions: [health_check, alloyengine]
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      exporters: [otlphttp]

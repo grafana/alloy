@@ -342,18 +342,18 @@ func testOptions(t *testing.T) runtime.Options {
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{
-		Log:              s,
+		Log:              s.Slog(),
 		EnableClustering: false,
 		NodeName:         "test-node",
 		AdvertiseAddress: "127.0.0.1:80",
 	})
 	require.NoError(t, err)
 
-	otelService := otel_service.New(s)
+	otelService := otel_service.New(s.Slog())
 	require.NotNil(t, otelService)
 
 	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
-		Logger:      s,
+		Logger:      s.Slog(),
 		StoragePath: t.TempDir(),
 		Metrics:     prometheus.DefaultRegisterer,
 	})

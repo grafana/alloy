@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/slogadapter"
+	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -22,17 +22,20 @@ type EnabledAware interface {
 // Logger is the logging subsystem of Alloy. It supports being dynamically
 // updated at runtime.
 type Logger struct {
-	inner io.Writer // Writer passed to New.
-
 	bufferMut    sync.RWMutex
 	buffer       []*bufferedItem // Store logs before correctly determine the log format
 	hasLogFormat bool            // Confirmation whether log format has been determined
 
-	level        *slog.LevelVar       // Current configured level.
-	format       *formatVar           // Current configured format.
-	writer       *writerVar           // Current configured multiwriter (inner + write_to).
-	handler      *handler             // Handler which handles logs.
-	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
+	level  *slog.LevelVar // Current configured level.
+	format *formatVar     // Current configured format.
+	writer *writerVar     // Current configured multiwriter (inner + write_to + event log).
+
+	// handler is the single slog.Handler dispatched to by both the
+	// gokit and slog paths. It is set once in NewDeferred and never
+	// reassigned. Its writer (a *writerVar) owns every sink, including
+	// the optional Windows Event Log.
+	handler      *handler
+	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -63,7 +66,7 @@ func NewNop() *Logger {
 
 // NewSlogNop returns a slog logger backed by a handler that never logs.
 func NewSlogNop() *slog.Logger {
-	return slog.New(nopSlogHandler{})
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewDeferred creates a new logger with the default log level and format.
@@ -72,23 +75,24 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 	var (
 		leveler slog.LevelVar
 		format  formatVar
-		writer  writerVar
 	)
-	l := &Logger{
-		inner: w,
+	// innerWriter is stable for the life of the Logger; destinations that
+	// want to suppress it (windows_event_log) lazily open an event log via
+	// the writer's own opener instead of swapping the writer.
+	writer := &writerVar{
+		innerWriter:    w,
+		eventLogOpener: eventlog.GetEventLogOpener(),
+	}
+	bh := newHandler(writer, &leveler, &format, replace, nil)
 
+	l := &Logger{
 		buffer:       []*bufferedItem{},
 		hasLogFormat: false,
 
-		level:  &leveler,
-		format: &format,
-		writer: &writer,
-		handler: &handler{
-			w:         &writer,
-			leveler:   &leveler,
-			formatter: &format,
-			replacer:  replace,
-		},
+		level:   &leveler,
+		format:  &format,
+		writer:  writer,
+		handler: bh,
 	}
 	l.deferredSlog = newDeferredHandler(l)
 
@@ -103,16 +107,6 @@ func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
 // updated.
 func (l *Logger) Slog() *slog.Logger { return slog.New(l.deferredSlog) }
 
-type nopSlogHandler struct{}
-
-func (nopSlogHandler) Enabled(context.Context, slog.Level) bool { return false }
-
-func (nopSlogHandler) Handle(context.Context, slog.Record) error { return nil }
-
-func (nopSlogHandler) WithAttrs([]slog.Attr) slog.Handler { return nopSlogHandler{} }
-
-func (nopSlogHandler) WithGroup(string) slog.Handler { return nopSlogHandler{} }
-
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
 	switch o.Format {
@@ -124,43 +118,43 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
-
-	l.writer.SetInnerWriter(l.inner)
+	if err := l.writer.SetDestination(o.Destination); err != nil {
+		l.bufferMut.Unlock()
+		return err
+	}
 	l.writer.SetLokiWriter(o.WriteTo)
 	l.bufferMut.Unlock()
 
-	// Build deferred handlers outside bufferMut to avoid a deadlock: concurrent
-	// Handle() calls hold a child handler's RLock while waiting for bufferMut
-	// (via addRecord), while Update holding bufferMut and waiting for the child's
-	// write lock in buildHandlers creates a cycle.
+	// Rebuild deferred slog handlers outside bufferMut to avoid a deadlock
+	// with concurrent Handle() calls (they hold a child handler's RLock
+	// while waiting for bufferMut via addRecord).
 	if l.deferredSlog != nil {
 		l.deferredSlog.buildHandlers(nil)
 	}
+	l.flushBuffer()
+	return nil
+}
 
-	// Flip hasLogFormat and drain/replay while holding bufferMut so new Log()
-	// calls block on RLock until replay finishes — preserving the original
-	// guarantee that buffered logs are emitted before newly-arriving ones.
+// flushBuffer drains and replays any logs that were buffered before
+// Update finished resolving the log format. It must be called AFTER the
+// new destination has been applied (so replayed records go through the
+// right handler) and AFTER l.deferredSlog.buildHandlers has run (so
+// child handlers point at the new l.handler).
+//
+// Holds bufferMut for the entire replay so concurrent log calls block
+// buffered logs appear before newly-arriving ones.
+func (l *Logger) flushBuffer() {
 	l.bufferMut.Lock()
 	defer l.bufferMut.Unlock()
 	l.hasLogFormat = true
 	buffer := l.buffer
 	l.buffer = nil
 
-	for _, bufferedLogChunk := range buffer {
-		if len(bufferedLogChunk.kvps) > 0 {
-			// the buffered logs are currently only sent to the standard output
-			// because the components with the receivers are not running yet
-			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
-		} else {
-			// We can now check whether our buffered log is at the right level.
-			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
-				// These will always be valid due to the build handlers call above.
-				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
-			}
+	for _, item := range buffer {
+		if item.handler.Enabled(context.Background(), item.record.Level) {
+			_ = item.handler.Handle(context.Background(), item.record)
 		}
 	}
-
-	return nil
 }
 
 func (l *Logger) SetTemporaryWriter(w io.Writer) {
@@ -169,29 +163,6 @@ func (l *Logger) SetTemporaryWriter(w io.Writer) {
 
 func (l *Logger) RemoveTemporaryWriter() {
 	l.writer.RemoveTemporaryWriter()
-}
-
-// Log implements log.Logger.
-func (l *Logger) Log(kvps ...any) error {
-	// Buffer logs before confirming log format is configured in `logging` block
-	l.bufferMut.RLock()
-	if !l.hasLogFormat {
-		l.bufferMut.RUnlock()
-		l.bufferMut.Lock()
-		// Check hasLogFormat again; could have changed since the unlock.
-		if !l.hasLogFormat {
-			l.buffer = append(l.buffer, &bufferedItem{kvps: kvps})
-			l.bufferMut.Unlock()
-			return nil
-		}
-		l.bufferMut.Unlock()
-	} else {
-		l.bufferMut.RUnlock()
-	}
-
-	// NOTE(rfratto): this method is a temporary shim while log/slog is still
-	// being adopted throughout the codebase.
-	return slogadapter.GoKit(l.handler).Log(kvps...)
 }
 
 func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
@@ -254,9 +225,23 @@ func (f *formatVar) Set(format Format) {
 type writerVar struct {
 	mut sync.RWMutex
 
-	lokiWriter  *lokiWriter
+	// Inner writer is stderr on the production path.
+	// Tests may set it to something else.
 	innerWriter io.Writer
-	tmpWriter   io.Writer
+
+	lokiWriter *lokiWriter
+	tmpWriter  io.Writer
+
+	// eventLogOpener lazily creates the Windows Event Log handle the first
+	// time SetDestination enters event-log mode. Set in NewDeferred,
+	// overridable in tests.
+	eventLogOpener eventlog.EventLogOpener
+
+	// eventLog is the single switch between the two primary-sink modes:
+	// when nil, Dispatch writes to innerWriter (stderr); when non-nil,
+	// innerWriter is suppressed and Dispatch routes to the event log
+	// instead. lokiWriter and tmpWriter are always written to regardless.
+	eventLog eventlog.EventLog
 }
 
 func (w *writerVar) SetTemporaryWriter(writer io.Writer) {
@@ -271,12 +256,6 @@ func (w *writerVar) RemoveTemporaryWriter() {
 	w.tmpWriter = nil
 }
 
-func (w *writerVar) SetInnerWriter(writer io.Writer) {
-	w.mut.Lock()
-	defer w.mut.Unlock()
-	w.innerWriter = writer
-}
-
 func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
@@ -287,37 +266,115 @@ func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	}
 }
 
-func (w *writerVar) Write(p []byte) (int, error) {
+func (w *writerVar) SetDestination(d LogDestination) error {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+
+	if d == LogDestinationWindowsEventLog {
+		if w.eventLog != nil {
+			return nil // already open; reuse the handle
+		}
+		el, err := w.eventLogOpener("Alloy")
+		if err != nil {
+			return fmt.Errorf("failed to open Windows Event Log: %w", err)
+		}
+		w.eventLog = el
+		return nil
+	}
+
+	if w.eventLog == nil {
+		return nil
+	}
+	err := w.eventLog.Close()
+	w.eventLog = nil
+	return err
+}
+
+// Dispatch is the canonical write entry point. It fans p out to every
+// active sink: innerWriter (unless suppressed), lokiWriter, tmpWriter,
+// and, when attached, the event log.
+//
+// SetDestination holds the write lock across the swap it makes, so any
+// Dispatch RLock observes one of two states:
+// 1. eventLog=nil — stderr mode.
+// 2. eventLog!=nil — event_log mode.
+func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	if w.innerWriter == nil {
-		return 0, fmt.Errorf("no writer available")
+	if w.eventLog == nil && w.innerWriter != nil {
+		if _, err := w.innerWriter.Write(p); err != nil {
+			return err
+		}
 	}
-
-	// The following is effectively an io.Multiwriter, but without updating
-	// the Multiwriter each time tmpWriter is added or removed.
-	if _, err := w.innerWriter.Write(p); err != nil {
-		return 0, err
-	}
-
 	if w.lokiWriter != nil {
 		if _, err := w.lokiWriter.Write(p); err != nil {
-			return 0, err
+			return err
 		}
 	}
-
 	if w.tmpWriter != nil {
 		if _, err := w.tmpWriter.Write(p); err != nil {
-			return 0, err
+			return err
 		}
 	}
+	if w.eventLog == nil {
+		return nil
+	}
 
+	// The trailing newline added by slog's TextHandler/JSONHandler is trimmed
+	// before handing the message to the event log API, which renders cleaner
+	// in Event Viewer.
+	msg := p
+	if n := len(msg); n > 0 && msg[n-1] == '\n' {
+		msg = msg[:n-1]
+	}
+
+	// Loss-prevention property: in event_log mode, a fast-path Write call
+	// (eventLogLevel=nil) can still occur if a destination switch happened
+	// between handler.Handle's FastPathFlags read and the slog handler's
+	// Write. Rather than dropping the record or misrouting it to stderr,
+	// Dispatch defaults to Info and delivers it to the event log — the
+	// operator's configured destination. The level may be slightly off
+	// (the original record's level is embedded in the formatted text), but
+	// the message reaches Event Viewer.
+	if eventLogLevel != nil {
+		switch *eventLogLevel {
+		case slog.LevelWarn:
+			return w.eventLog.Warning(1, string(msg))
+		case slog.LevelError:
+			return w.eventLog.Error(1, string(msg))
+		}
+	}
+	return w.eventLog.Info(1, string(msg))
+}
+
+// Write is the io.Writer adapter used by the fast-path slog handler.
+// Equivalent to Dispatch(p, nil); see Dispatch for how a fast-path
+// write is handled when the event log is attached.
+func (w *writerVar) Write(p []byte) (int, error) {
+	if err := w.Dispatch(p, nil); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+// leveledWriter is an io.Writer that remembers the slog level of the record
+// currently being formatted, so writerVar.Dispatch can route it to the event
+// log's Info/Warning/Error API. It is the event-log counterpart of
+// writerVar.Write, which carries no level (fast/stderr path).
+type leveledWriter struct {
+	w     *writerVar
+	level slog.Level
+}
+
+func (lw *leveledWriter) Write(p []byte) (int, error) {
+	if err := lw.w.Dispatch(p, &lw.level); err != nil {
+		return 0, err
+	}
 	return len(p), nil
 }
 
 type bufferedItem struct {
-	kvps    []any
 	handler *deferredSlogHandler
 	record  slog.Record
 }

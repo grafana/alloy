@@ -105,7 +105,7 @@ It doesn't support any arguments and is configured fully through inner blocks.
 
 The `sasl_external` block configures how to authenticate to the Solace broker with SASL External.
 It doesn't support any arguments or blocks.
-It must be used with the [`tls`][tls] block.
+It must be used with the [`tls`](#tls) block.
 
 ### `sasl_plain`
 

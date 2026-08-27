@@ -286,9 +286,11 @@ func TestGenerateTLSConfig(t *testing.T) {
 			name: "all_fields",
 			tlsConfig: promopv1.TLSConfig{
 				SafeTLSConfig: promopv1.SafeTLSConfig{},
-				CAFile:        "ca_file",
-				KeyFile:       "key_file",
-				CertFile:      "cert_file",
+				TLSFilesConfig: promopv1.TLSFilesConfig{
+					CAFile:   "ca_file",
+					KeyFile:  "key_file",
+					CertFile: "cert_file",
+				},
 			},
 			hasErr:   false,
 			keyFile:  "key_file",
@@ -448,12 +450,49 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 		{
 			name: "defaults set",
 			scrapeOptions: operator.ScrapeOptions{
-				DefaultScrapeInterval: 30 * time.Second,
-				DefaultScrapeTimeout:  5 * time.Second,
-				DefaultSampleLimit:    100,
+				DefaultScrapeInterval:  30 * time.Second,
+				DefaultScrapeTimeout:   5 * time.Second,
+				DefaultSampleLimit:     100,
+				ScrapeNativeHistograms: true,
 			},
 			expectedInterval:         30 * time.Second,
 			expectedTimeout:          5 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "scrape classic histograms",
+			scrapeOptions: operator.ScrapeOptions{
+				ScrapeClassicHistograms: true,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "convert classic histograms to nhcb",
+			scrapeOptions: operator.ScrapeOptions{
+				ConvertClassicHistogramsToNHCB: true,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "native histogram bucket limit",
+			scrapeOptions: operator.ScrapeOptions{
+				NativeHistogramBucketLimit: 100,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "native histogram min bucket factor",
+			scrapeOptions: operator.ScrapeOptions{
+				NativeHistogramMinBucketFactor: 1.1,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
 			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
 		},
 	}
@@ -468,6 +507,11 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			assert.Equal(t, model.Duration(tt.expectedTimeout), got.ScrapeTimeout)
 			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
 			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
+			assert.Equal(t, &tt.scrapeOptions.ScrapeNativeHistograms, got.ScrapeNativeHistograms)
+			assert.Equal(t, &tt.scrapeOptions.ScrapeClassicHistograms, got.AlwaysScrapeClassicHistograms)
+			assert.Equal(t, &tt.scrapeOptions.ConvertClassicHistogramsToNHCB, got.ConvertClassicHistogramsToNHCB)
+			assert.Equal(t, tt.scrapeOptions.NativeHistogramBucketLimit, got.NativeHistogramBucketLimit)
+			assert.Equal(t, tt.scrapeOptions.NativeHistogramMinBucketFactor, got.NativeHistogramMinBucketFactor)
 		})
 	}
 }

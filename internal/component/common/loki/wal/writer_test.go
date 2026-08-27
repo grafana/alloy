@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -16,18 +15,18 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	autil "github.com/grafana/alloy/internal/util"
 )
 
 func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
 	dir := t.TempDir()
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, logger, prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
 	require.NoError(t, err)
 	defer func() {
 		writer.Stop()
@@ -73,7 +72,6 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 }
 
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
-	logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
 	dir := t.TempDir()
 
 	maxSegmentAge := time.Second * 2
@@ -85,7 +83,7 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, logger, prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
 	require.NoError(t, err)
 	writer.Start(maxSegmentAge)
 	defer func() {
@@ -168,7 +166,6 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 }
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
-	logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
 	dir := t.TempDir()
 
 	maxSegmentAge := time.Second * 2
@@ -179,7 +176,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, logger, prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
 	require.NoError(t, err)
 	writer.Start(maxSegmentAge)
 	defer func() {
@@ -345,14 +342,13 @@ func BenchmarkWriter_WriteEntries(b *testing.B) {
 }
 
 func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
-	logger := log.NewLogfmtLogger(os.Stdout)
 	dir := b.TempDir()
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, logger, prometheus.NewRegistry())
+	}, logging.NewSlogNop(), prometheus.NewRegistry())
 	require.NoError(b, err)
 	writer.Start(time.Minute)
 	defer func() {

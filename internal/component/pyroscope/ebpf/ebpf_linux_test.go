@@ -49,6 +49,10 @@ targets = [{"service_name" = "foo", "container_id"= "cid"}]
 forward_to = []
 collect_interval = "3s"
 sample_rate = 239
+bpf_fs_root = "/sys/fs/bpf/custom"
+obi_process_context_enabled = true
+
+probe_links = ["uprobe:/bin/bash:main"]
 `,
 			expected: func() Arguments {
 				x := NewDefaultArguments()
@@ -61,6 +65,29 @@ sample_rate = 239
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.CollectInterval = time.Second * 3
 				x.SampleRate = 239
+				x.BPFFSRoot = "/sys/fs/bpf/custom"
+				x.OBIProcessContextEnabled = true
+				x.ProbeLinks = []string{"uprobe:/bin/bash:main"}
+				return x
+			},
+		},
+		{
+			name: "deprecated-u-probe-links-alias",
+			in: `
+targets = [{"service_name" = "foo", "container_id"= "cid"}]
+forward_to = []
+u_probe_links = ["/bin/sh:entry"]
+`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					}),
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.DeprecatedArguments.UProbeLinks = []string{"/bin/sh:entry"}
 				return x
 			},
 		},
@@ -81,6 +108,26 @@ sample_rate = 239
 				}
 				x.ForwardTo = []pyroscope.Appendable{}
 				x.OffCPUThreshold = 1
+				return x
+			},
+		},
+		{
+			name: "with-no-kernel-version-check",
+			in: `
+	targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	forward_to = []
+	no_kernel_version_check = true
+	`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					}),
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.NoKernelVersionCheck = true
 				return x
 			},
 		},
@@ -108,6 +155,33 @@ collect_interval = 3s"
 	}
 }
 
+func TestConvertNoKernelVersionCheck(t *testing.T) {
+	args := NewDefaultArguments()
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.False(t, cfg.NoKernelVersionCheck)
+
+	args.NoKernelVersionCheck = true
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.True(t, cfg.NoKernelVersionCheck)
+}
+
+func TestProbeLinks(t *testing.T) {
+	t.Run("new probe links", func(t *testing.T) {
+		args := NewDefaultArguments()
+		args.ProbeLinks = []string{"kprobe:do_sys_open"}
+		args.DeprecatedArguments.UProbeLinks = []string{"/bin/sh:entry"}
+		require.Equal(t, []string{"kprobe:do_sys_open"}, args.probeLinks())
+	})
+
+	t.Run("deprecated uprobe links", func(t *testing.T) {
+		args := NewDefaultArguments()
+		args.DeprecatedArguments.UProbeLinks = []string{"/bin/sh:entry"}
+		require.Equal(t, []string{"uprobe:/bin/sh:entry"}, args.probeLinks())
+	})
+}
+
 func TestReconstructionAfterError(t *testing.T) {
 	// The goal here is to produce an error when trying to create the symbol cache directory.
 	// To keep things simple, we create a file and attempt to use it as a directory.
@@ -116,7 +190,7 @@ func TestReconstructionAfterError(t *testing.T) {
 	require.NoError(t, err)
 	invalidCachePath := filepath.Join(f.Name(), "symb.cache")
 
-	logger := util.TestLogger(t)
+	logger := util.TestAlloyLogger(t).Slog()
 	reg := prometheus.NewRegistry()
 
 	args := NewDefaultArguments()

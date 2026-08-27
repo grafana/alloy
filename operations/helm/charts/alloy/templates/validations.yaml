@@ -1,0 +1,7 @@
+{{- /*
+This file exists ONLY to ensure validations run at render time. It produces no
+output (the include is chomped on both sides). Helm renders every non-underscore
+file in templates/, so placing the include here guarantees validations execute
+even when no HPA / StatefulSet / Deployment is rendered.
+*/ -}}
+{{- include "alloy.validations.all" . -}}

@@ -43,16 +43,17 @@ otelcol.receiver.googlecloudpubsub "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.googlecloudpubsub`:
 
-| Name                    | Type       | Description                                                                                                                                                                                                                | Default | Required |
-| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `subscription`          | `string`   | The subscription name to receive OTLP data from. The subscription name should be a fully qualified resource name, for example: `projects/otel-project/subscriptions/otlp`.                                                 | `""`    | yes      |
-| `compression`           | `string`   | The compression used on data received from the subscription. Only `gzip` is supported. This is only used when no content-encoding attribute is present.                                                                    | `""`    | no       |
-| `encoding`              | `string`   | The encoding used to receive data from the subscription. This can either be `otlp_proto_trace`, `otlp_proto_metric`, `otlp_proto_log` or an encoding extension. This is only used when no media type attribute is present. | `""`    | no       |
-| `endpoint`              | `string`   | Override the default Pub/Sub endpoint. This is useful when connecting to the Pub/Sub emulator instance or switching between [global and regional service endpoints][].                                                     | `""`    | no       |
-| `ignore_encoding_error` | `bool`     | Ignore errors when the configured encoder fails to decode Pub/Sub messages. Ignoring the error causes the receiver to drop the message.                                                                                    | false   | no       |
-| `insecure`              | `bool`     | Allows performing insecure SSL connections and transfers. This is useful when connecting to a local emulator instance. Only has effect if you set `endpoint`.                                                              | false   | no       |
-| `project`               | `string`   | The Google Cloud Project project identifier.                                                                                                                                                                               | `""`    | no       |
-| `timeout`               | `Duration` | Timeout for calls to the Pub/Sub API.                                                                                                                                                                                      | `"12s"` | no       |
+| Name                    | Type       | Description                                                                                                                                                                                                                | Default            | Required |
+| ----------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
+| `subscription`          | `string`   | The subscription name to receive OTLP data from. The subscription name should be a fully qualified resource name, for example: `projects/otel-project/subscriptions/otlp`.                                                 | `""`               | yes      |
+| `compression`           | `string`   | The compression used on data received from the subscription. Only `gzip` is supported. This is only used when no content-encoding attribute is present.                                                                    | `""`               | no       |
+| `encoding`              | `string`   | The encoding used to receive data from the subscription. This can either be `otlp_proto_trace`, `otlp_proto_metric`, `otlp_proto_log` or an encoding extension. This is only used when no media type attribute is present. | `""`               | no       |
+| `endpoint`              | `string`   | Override the default Pub/Sub endpoint. This is useful when connecting to the Pub/Sub emulator instance or switching between [global and regional service endpoints][].                                                     | `""`               | no       |
+| `ignore_encoding_error` | `bool`     | Ignore errors when the configured encoder fails to decode Pub/Sub messages. Ignoring the error causes the receiver to drop the message.                                                                                    | false              | no       |
+| `insecure`              | `bool`     | Allows performing insecure SSL connections and transfers. This is useful when connecting to a local emulator instance. Only has effect if you set `endpoint`.                                                              | false              | no       |
+| `project`               | `string`   | The Google Cloud Project project identifier.                                                                                                                                                                               | `""`               | no       |
+| `timeout`               | `Duration` | Timeout for calls to the Pub/Sub API.                                                                                                                                                                                      | `"12s"`            | no       |
+| `universe_domain`       | `string`   | Universe domain for the Pub/Sub service. Set to support Sovereign Cloud regions.                                                                                                                                           | `"googleapis.com"` | no       |
 
 [global and regional service endpoints]: https://cloud.google.com/pubsub/docs/reference/service_apis_overview#service_endpoints
 
@@ -66,9 +67,11 @@ You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`flow_control`][flow_control]   | Tunes Pub/Sub acknowledgement batching and outstanding-message limits.     | no       |
 
 [debug_metrics]: #debug_metrics
 [output]: #output
+[flow_control]: #flow_control
 
 {{< /docs/alloy-config >}}
 
@@ -81,6 +84,19 @@ You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `flow_control`
+
+The `flow_control` block tunes how the receiver acknowledges Pub/Sub messages and bounds outstanding work.
+
+The following arguments are supported:
+
+| Name                         | Type       | Description                                                          | Default | Required |
+| ---------------------------- | ---------- | -------------------------------------------------------------------- | ------- | -------- |
+| `trigger_ack_batch_duration` | `duration` | Maximum time to wait before sending acknowledgements.                | `"10s"` | no       |
+| `stream_ack_deadline`        | `duration` | Acknowledgement deadline to use for the Pub/Sub stream.              | `"60s"` | no       |
+| `max_outstanding_messages`   | `int`      | Maximum number of outstanding messages. `0` uses the client default. | `0`     | no       |
+| `max_outstanding_bytes`      | `int`      | Maximum number of outstanding bytes. `0` uses the client default.    | `0`     | no       |
 
 ## Exported fields
 

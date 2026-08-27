@@ -48,6 +48,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `encoding`                      | `string`                   | The encoding of the log file.                                                              | `"utf-8"` | no       |
 | `exclude_older_than`            | `duration`                 | Exclude files with a modification time older than the specified duration.                  | `"0s"`    | no       |
 | `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`      | no       |
+| `file_cache_advise`             | `bool`                     | Whether to advise the OS to expect sequential reads while tailing the file (Linux only).   | `false`   | no       |
 | `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`    | no       |
 | `force_flush_period`            | `duration`                 | The period after which logs are flushed even if the buffer isn't full.                     | `"500ms"` | no       |
 | `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false`   | no       |
@@ -56,6 +57,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `include_file_owner_name`       | `bool`                     | Whether to include the file owner's name in the log entry.                                 | `false`   | no       |
 | `include_file_path_resolved`    | `bool`                     | Whether to include the resolved file path in the log entry.                                | `false`   | no       |
 | `include_file_path`             | `bool`                     | Whether to include the file path in the log entry.                                         | `false`   | no       |
+| `include_file_permissions`      | `bool`                     | Whether to include the file permissions in the log entry.                                  | `false`   | no       |
 | `include_file_record_number`    | `bool`                     | Whether to include the file record number in the log entry.                                | `false`   | no       |
 | `max_batches`                   | `int`                      | The maximum number of batches to process concurrently.                                     | `10`      | no       |
 | `max_concurrent_files`          | `int`                      | The maximum number of files to read concurrently.                                          | `10`      | no       |

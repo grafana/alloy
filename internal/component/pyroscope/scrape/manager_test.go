@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 )
 
 func TestManager(t *testing.T) {
@@ -21,7 +22,7 @@ func TestManager(t *testing.T) {
 
 	m, _ := NewManager(Options{}, NewDefaultArguments(), pyroscope.AppendableFunc(func(ctx context.Context, labels labels.Labels, samples []*pyroscope.RawSample) error {
 		return nil
-	}), util.TestLogger(t))
+	}), testlog.TestLogger(t))
 
 	defer m.Stop()
 	targetSetsChan := make(chan []*targetgroup.Group)

@@ -218,7 +218,7 @@ Each policy results in a decision, and the processor evaluates them to make a fi
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
 There is an exception to this if the policy is within an and or composite policy, the resulting decision will be either sampled or not sampled.
-The "inverted" decisions have been deprecated, please make use of `drop` policy to explicitly not sample select traces.
+The "inverted" decisions are deprecated. Use a `drop` policy to explicitly not sample selected traces.
 
 ### `boolean_attribute`
 
@@ -312,6 +312,7 @@ The following arguments are supported:
 | Name               | Type     | Description                                                         | Default | Required |
 | ------------------ | -------- | ------------------------------------------------------------------- | ------- | -------- |
 | `spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. |         | yes      |
+| `burst_capacity`   | `number` | Sets the maximum burst size in spans. If omitted, it defaults to `2 * spans_per_second` in the upstream policy. | `0`     | no       |
 
 ### `bytes_limiting`
 
@@ -478,7 +479,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp][] for further processing.
+This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp](../otelcol.exporter.otlphttp/) for further processing.
 This example shows an impractical number of policies for the purpose of demonstrating how to set up each type.
 
 ```alloy

@@ -1,10 +1,10 @@
 package cfg
 
 import (
+	"errors"
 	"flag"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/pkg/errors" //nolint:depguard
 )
 
 // Defaults registers flags to the flagSet using dst as the flagext.Registerer

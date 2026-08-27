@@ -2,13 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
 	otelcomponent "go.opentelemetry.io/collector/component"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // AuthExtensionScheduler is a specialized scheduler for auth extensions.
@@ -16,7 +15,7 @@ import (
 // Auth handlers are exported in Update and can be consumed immediately.
 // This scheduler starts components in Schedule so exported handlers always point to started extensions.
 type AuthExtensionScheduler struct {
-	log log.Logger
+	log *slog.Logger
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -26,7 +25,7 @@ type AuthExtensionScheduler struct {
 }
 
 // NewAuthExtensionScheduler creates a scheduler for auth extensions.
-func NewAuthExtensionScheduler(l log.Logger) *AuthExtensionScheduler {
+func NewAuthExtensionScheduler(l *slog.Logger) *AuthExtensionScheduler {
 	return &AuthExtensionScheduler{
 		log: l,
 	}
@@ -39,11 +38,11 @@ func (s *AuthExtensionScheduler) Schedule(ctx context.Context, h otelcomponent.H
 
 	stopComponents(ctx, s.log, s.schedComponents...)
 
-	level.Debug(s.log).Log("msg", "scheduling otelcol components", "count", len(cc))
+	s.log.Debug("scheduling otelcol components", "count", len(cc))
 	var err error
 	s.schedComponents, err = startComponents(ctx, s.log, s, h, cc...)
 	if err != nil {
-		level.Error(s.log).Log("msg", "failed to start some scheduled components", "err", err)
+		s.log.Error("failed to start some scheduled components", "err", err)
 	}
 }
 

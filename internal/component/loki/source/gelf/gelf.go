@@ -75,7 +75,7 @@ type Component struct {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("component shutting down")
+		c.opts.Logger.Info("component shutting down")
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
@@ -108,7 +108,7 @@ func (c *Component) Update(args component.Arguments) error {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
-	t, err := target.NewTarget(c.metrics, c.opts.SLogger, c.handler, rcs, &scrapeconfig.GelfTargetConfig{
+	t, err := target.NewTarget(c.metrics, c.opts.Logger, c.handler, rcs, &scrapeconfig.GelfTargetConfig{
 		ListenAddress:        newArgs.ListenAddress,
 		UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
 	})

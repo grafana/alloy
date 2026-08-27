@@ -148,7 +148,12 @@ func (r *firehoseRoute) WriteResponse(w http.ResponseWriter, req *http.Request, 
 
 func postProcessLabels(lbs labels.Labels, cfg *source.LogsConfig) model.LabelSet {
 	if len(cfg.RelabelRules) > 0 {
-		lbs, _ = relabel.Process(lbs, cfg.RelabelRules...)
+		lb := labels.NewBuilder(lbs)
+		if !relabel.ProcessBuilder(lb, cfg.RelabelRules...) {
+			lbs = labels.EmptyLabels()
+		} else {
+			lbs = lb.Labels()
+		}
 	}
 
 	entryLabels := make(model.LabelSet)

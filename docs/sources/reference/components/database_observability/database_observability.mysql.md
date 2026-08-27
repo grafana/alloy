@@ -29,7 +29,7 @@ You can use the following arguments with `database_observability.mysql`:
 
 | Name                                       | Type                 | Description                                                                 | Default | Required |
 |--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
-| `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
+| `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to. Required when no `database_instance` blocks are defined. |         | no       |
 | `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
@@ -61,6 +61,9 @@ You can use the following blocks with `database_observability.mysql`:
 | `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
+| [`database_instance`][database_instance]                           | Define one database to monitor. Repeat the block to monitor several databases. | no       |
+| `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
@@ -75,6 +78,8 @@ You can use the following blocks with `database_observability.mysql`:
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
+[database_instance]: #database_instance
+[clustering]: #clustering
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
 [schema_details]: #schema_details
@@ -90,10 +95,14 @@ You can use the following blocks with `database_observability.mysql`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+It contains zero or one of the [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
+
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 
 ### `aws`
 
@@ -111,7 +120,7 @@ The `azure` block supplies the identifying information for the database being mo
 |-------------------|----------|------------------------------------------------------|---------|----------|
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
-| `server_name`     | `string` | The database server name.                            |         | no       |
+| `server_name`     | `string` | The database server name, for example `orders-db` for the host `orders-db.mysql.database.azure.com`. |         | no       |
 
 ### `gcp`
 
@@ -120,6 +129,74 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name              | Type     | Description                                                                                                                 | Default | Required |
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
+
+### `database_instance`
+
+The `database_instance` block defines one database server to monitor.
+Repeat the block to monitor several databases with a single component.
+The block label must be unique across `database_instance` blocks and identifies the database in the component's metrics endpoint path.
+Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port, and database name are rejected.
+
+| Name               | Type                | Description                                               | Default | Required |
+|--------------------|---------------------|-----------------------------------------------------------|---------|----------|
+| `data_source_name` | `secret`            | [Data Source Name][] for the MySQL server to connect to. |         | yes      |
+
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+
+The component always embeds a `mysqld_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
+Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
+External exporter targets are only supported in the top-level single-DSN form.
+
+When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
+They're mutually exclusive with `database_instance` blocks.
+All other arguments and blocks, such as collector settings and `prometheus_exporter`, apply to every configured database.
+
+The metrics for each database are served on a separate `/db/<LABEL>/metrics` path under the component's HTTP endpoint, and the exported targets point to the corresponding path.
+When you don't define `database_instance` blocks, the component serves metrics on its historical `/metrics` path.
+The metrics endpoints are served exactly at those paths: requests to any other path under the component's HTTP endpoint return HTTP 404.
+
+For example:
+
+```alloy
+database_observability.mysql "pool" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  database_instance "orders" {
+    data_source_name = sys.env("ORDERS_DSN")
+
+    cloud_provider {
+      aws {
+        arn = "orders-rds-db-arn"
+      }
+    }
+  }
+
+  database_instance "billing" {
+    data_source_name = sys.env("BILLING_DSN")
+  }
+}
+```
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enables distributing databases with other cluster nodes. | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `database_observability.mysql` component instance opts-in to distributing its configured databases between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All component instances opting in to clustering use the instance key of each configured database, `<network>(<host>:<port>)/<dbname>`, and a consistent hashing algorithm to determine ownership of each database between the cluster peers.
+Each peer then only collects from the subset of databases it's responsible for, and only exports the targets of those databases, so `prometheus.scrape` components on the same node scrape exactly the databases the node owns.
+When a node joins or leaves the cluster, every peer recalculates ownership: expect a short gap or a brief duplicate collection for a database while its ownership moves.
+This includes the collectors that update `performance_schema` settings, such as `setup_actors` and `setup_consumers`, which can briefly run from two nodes during the move: their updates are idempotent.
+While the cluster isn't yet ready to admit traffic, for example while it's still forming and waiting for the minimum cluster size, the component doesn't collect from any database.
+
+Clustering is also useful with a single database: when several cluster nodes run an identical configuration, exactly one node collects from the database at a time, which gives you a highly available setup without duplicate collection.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `database_observability.mysql` collects from every configured database.
+
+[using clustering]: ../../../../get-started/clustering/
 
 ### `setup_consumers`
 
@@ -165,7 +242,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | Name                             | Type       | Description                                                                    | Default | Required |
 |----------------------------------|------------|--------------------------------------------------------------------------------|---------|----------|
 | `collect_interval`               | `duration` | How frequently to collect information from database.                           | `"10s"` | no       |
-| `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text including parameters.                        | `false` | no       |
+| `disable_query_redaction`        | `bool`     | Collect unredacted SQL query text (including query parameters) and query error messages. | `false` | no       |
 | `auto_enable_setup_consumers`    | `boolean`  | Enables specific `performance_schema.setup_consumers` options. You must also enable `allow_update_performance_schema_settings`. | `false` | no       |
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |

@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -21,7 +20,7 @@ func TestLokiClient_X(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client, err := New(log.NewNopLogger(), Config{
+	client, err := New(Config{
 		Address: ts.URL,
 	}, prometheus.NewHistogramVec(prometheus.HistogramOpts{}, instrument.HistogramCollectorBuckets))
 	require.NoError(t, err)

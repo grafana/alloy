@@ -44,12 +44,12 @@ jobs:
             echo "::error::Tag name is required"
             exit 1
           fi
-          if echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'; then
+          if echo "${TAG_NAME}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
             echo "is_alloy=true" >> "$GITHUB_OUTPUT"
             echo "Valid alloy tag detected: ${TAG_NAME}, proceeding with ArgoCD deployment"
           else
             echo "is_alloy=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Tag '${TAG_NAME}' does not match vX.Y.Z or vX.Y.Z-rcN format. Skipping ArgoCD deployment"
+            echo "::notice::Tag '${TAG_NAME}' does not match vX.Y.Z or vX.Y.Z-rc.N format. Skipping ArgoCD deployment"
           fi
 
       - name: Verify tag exists
@@ -60,6 +60,13 @@ jobs:
             exit 1
           fi
           echo "Tag ${TAG_NAME} exists in repository"
+
+      - name: Wait for release image to mirror to DockerHub
+        if: steps.validate.outputs.is_alloy == 'true'
+        uses: grafana/shared-workflows/actions/wait-for-docker-publish@cd185787ec303639a71383384e1b0d424b7422fb # wait-for-docker-publish/v0.2.0
+        with:
+          image: grafana/alloy:${{ steps.tag.outputs.tag }}
+          timeout: 10m
 
       - name: Trigger ArgoCD Workflow
         if: steps.validate.outputs.is_alloy == 'true'

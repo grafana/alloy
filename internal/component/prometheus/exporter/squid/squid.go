@@ -3,13 +3,14 @@ package squid
 import (
 	"net"
 
+	"github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/config"
 )
 
 func init() {

@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/regexp"
@@ -648,8 +647,7 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 func defaultOptions() component.Options {
 	return component.Options{
 		ID:         "loki.source.api.test",
-		Logger:     log.NewNopLogger(),
-		SLogger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: prometheus.NewRegistry(),
 	}
 }

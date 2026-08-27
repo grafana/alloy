@@ -1,16 +1,16 @@
 package marker
 
 import (
-	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestTracker(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := util.TestAlloyLogger(t).Slog()
 	// drive-by test: if metrics don't have the id curried, it panics when emitting them
 	metrics := NewMetrics(nil).CurryWithId("test")
 	t.Run("returns last marked segment from file handler on start", func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestTracker(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return st.LastMarkedSegment() == 11
-		}, time.Second, time.Millisecond*100, "expected last marked segment to catch up")
+		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
 	})
 

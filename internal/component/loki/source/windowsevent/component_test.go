@@ -32,7 +32,7 @@ func TestEventLogger(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		SLogger:  logging.NewSlogNop(),
+		Logger:   logging.NewSlogNop(),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 
@@ -90,7 +90,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		SLogger:  logging.NewSlogNop(),
+		Logger:   logging.NewSlogNop(),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 

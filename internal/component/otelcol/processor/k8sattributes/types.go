@@ -1,5 +1,7 @@
 package k8sattributes
 
+import "github.com/grafana/alloy/syntax"
+
 type FieldExtractConfig struct {
 	TagName  string `alloy:"tag_name,attr,optional"`
 	Key      string `alloy:"key,attr,optional"`
@@ -22,6 +24,14 @@ type ExtractConfig struct {
 	Labels                       []FieldExtractConfig `alloy:"label,block,optional"`
 	OtelAnnotations              bool                 `alloy:"otel_annotations,attr,optional"`
 	DeploymentNameFromReplicaSet bool                 `alloy:"deployment_name_from_replicaset,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*ExtractConfig)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *ExtractConfig) SetToDefault() {
+	// Matches the upstream default since v0.153.
+	args.DeploymentNameFromReplicaSet = true
 }
 
 func (args ExtractConfig) convert() map[string]any {

@@ -103,14 +103,14 @@ type Component struct {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("loki.source.azure_event_hubs component shutting down, stopping the targets")
+		c.opts.Logger.Info("loki.source.azure_event_hubs component shutting down, stopping the targets")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
 			if err := c.target.Stop(); err != nil {
-				c.opts.SLogger.Error("error while stopping azure_event_hubs target", "err", err)
+				c.opts.Logger.Error("error while stopping azure_event_hubs target", "err", err)
 			}
 		})
 	}()
@@ -138,7 +138,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	t, err := kt.NewSyncer(c.opts.SLogger, cfg, entryHandler, &parser.AzureEventHubsTargetMessageParser{
+	t, err := kt.NewSyncer(c.opts.Logger, cfg, entryHandler, &parser.AzureEventHubsTargetMessageParser{
 		DisallowCustomMessages: newArgs.DisallowCustomMessages,
 	})
 	if err != nil {

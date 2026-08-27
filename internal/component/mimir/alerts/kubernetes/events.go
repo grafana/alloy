@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus-operator/prometheus-operator/pkg/alertmanager"
@@ -26,8 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/mimir/util"
 	"github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type eventProcessor struct {
@@ -50,7 +47,7 @@ type eventProcessor struct {
 	templateFiles map[string]string
 
 	metrics *metrics
-	logger  log.Logger
+	logger  *slog.Logger
 }
 
 type metrics struct {
@@ -87,10 +84,13 @@ func newMetrics() *metrics {
 			Help:      "Total number of retries across all events, partitioned by event type.",
 		}, []string{"type"}),
 		mimirClientTiming: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Subsystem: "mimir_alerts",
-			Name:      "mimir_client_request_duration_seconds",
-			Help:      "Duration of requests to the Mimir API.",
-			Buckets:   instrument.DefBuckets,
+			Subsystem:                       "mimir_alerts",
+			Name:                            "mimir_client_request_duration_seconds",
+			Help:                            "Duration of requests to the Mimir API.",
+			Buckets:                         instrument.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, instrument.HistogramCollectorBuckets),
 	}
 }
@@ -116,7 +116,7 @@ func (e *eventProcessor) run(ctx context.Context) {
 	for {
 		evt, shutdown := e.queue.Get()
 		if shutdown {
-			level.Info(e.logger).Log("msg", "shutting down event loop")
+			e.logger.Info("shutting down event loop")
 			return
 		}
 
@@ -128,16 +128,16 @@ func (e *eventProcessor) run(ctx context.Context) {
 			if retries < 5 && client.IsRecoverable(err) {
 				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				e.queue.AddRateLimited(evt)
-				level.Error(e.logger).Log(
-					"msg", "failed to process event, will retry",
+				e.logger.Error(
+					"failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
 				continue
 			} else {
 				e.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				level.Error(e.logger).Log(
-					"msg", "failed to process event, unrecoverable error or max retries exceeded",
+				e.logger.Error(
+					"failed to process event, unrecoverable error or max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
@@ -190,7 +190,7 @@ func (c *eventProcessor) provisionAlertmanagerConfiguration(ctx context.Context,
 				Namespace: c.alertmanagerNamespace,
 			},
 		}
-		cfgBuilder = alertmanager.NewConfigBuilder(slog.New(logging.NewSlogGoKitHandler(c.logger)), *version, store, &am)
+		cfgBuilder = alertmanager.NewConfigBuilder(c.logger, *version, store, &am)
 	)
 
 	convertedCfg, err := c.baseCfg.String()
@@ -253,8 +253,8 @@ func (e *eventProcessor) desiredStateFromKubernetes(ctx context.Context) (*alert
 			// Validate the AlertmanagerConfig CRDs
 			err := validation_v1alpha1.ValidateAlertmanagerConfig(config)
 			if err != nil {
-				level.Error(e.logger).Log(
-					"msg", "got an invalid AlertmanagerConfig CRD from Kubernetes",
+				e.logger.Error(
+					"got an invalid AlertmanagerConfig CRD from Kubernetes",
 					"namespace", namespace,
 					"name", config.Name,
 					"err", err,

@@ -12,13 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java"
 	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
 	"github.com/grafana/alloy/internal/component/pyroscope/util/test"
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util/test/container"
+	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -34,11 +34,8 @@ func TestPyroscopeJavaIntegration(t *testing.T) {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
-	l = log.WithPrefix(l,
-		"test", t.Name(),
-		"ts", log.DefaultTimestampUTC,
-	)
+
+	l := testlog.TestLogger(t)
 
 	_, pyroscopeEndpoint := pyroutil.StartPyroscopeContainer(t, ctx, l)
 
@@ -64,7 +61,7 @@ func TestPyroscopeJavaIntegration(t *testing.T) {
 		}),
 	}
 	javaComponent, err := java.New(
-		log.With(l, "component", "pyroscope.java"),
+		l.With("component", "pyroscope.java"),
 		reg,
 		"test-java",
 		args,

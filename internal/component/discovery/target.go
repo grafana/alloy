@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 type Target struct {
@@ -26,21 +27,23 @@ type Target struct {
 var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
-	labelSetEqualsFn  = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool  = sync.Pool{New: func() any { return make([]string, 0, 20) }}
-	borrowLabelsSlice = func() []string {
-		return stringSlicesPool.Get().([]string)
-	}
-	releaseLabelsSlice = func(labels []string) {
-		// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
-		stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
-	}
+	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool = sync.Pool{New: func() any { return make([]string, 0, 20) }}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
 	_ syntax.ConvertibleFromCapsule = &Target{}
 	_ equality.CustomEquality       = Target{}
 )
+
+func borrowLabelsSlice() []string {
+	return stringSlicesPool.Get().([]string)
+}
+
+func releaseLabelsSlice(labels []string) {
+	// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
+	stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
+}
 
 var EmptyTarget = Target{
 	group: commonlabels.LabelSet{},
@@ -213,11 +216,32 @@ func (t *Target) ConvertFrom(src any) error {
 		labelSet := make(commonlabels.LabelSet, len(src))
 		for k, v := range src {
 			var strValue string
+			rv := v.Reflect()
 			switch {
 			case v.IsString():
 				strValue = v.Text()
-			case v.Reflect().CanInterface():
-				strValue = fmt.Sprintf("%v", v.Reflect().Interface())
+			case !rv.IsValid():
+				// A nil capsule value has no underlying Go value to read, so
+				// there is nothing usable to put in a label.
+				return fmt.Errorf("target::ConvertFrom: cannot convert a nil value to a target value")
+			case rv.CanInterface():
+				// Some capsule values wrap a string and are commonly used as
+				// target values, such as the content exported by local.file.
+				// Use the wrapped string rather than the Go struct's default
+				// formatting, which would otherwise render something like
+				// "{false value}". A genuine secret is never usable as a target
+				// value, so reject it rather than leak its contents into a label.
+				switch raw := rv.Interface().(type) {
+				case alloytypes.Secret:
+					return fmt.Errorf("target::ConvertFrom: cannot use a secret as a target value")
+				case alloytypes.OptionalSecret:
+					if raw.IsSecret {
+						return fmt.Errorf("target::ConvertFrom: cannot use a secret as a target value")
+					}
+					strValue = raw.Value
+				default:
+					strValue = fmt.Sprintf("%v", raw)
+				}
 			default:
 				return fmt.Errorf("target::ConvertFrom: cannot convert value that can't be interfaced to (e.g. unexported struct field)")
 			}
@@ -292,7 +316,7 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := borrowLabelsSlice()
-	defer releaseLabelsSlice(labelsInOrder)
+	defer func() { releaseLabelsSlice(labelsInOrder) }()
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -306,7 +330,7 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := borrowLabelsSlice()
-	defer releaseLabelsSlice(labelsInOrder)
+	defer func() { releaseLabelsSlice(labelsInOrder) }()
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/mitchellh/mapstructure"
 )
 
 // This file contains shared helpers for converters to use.

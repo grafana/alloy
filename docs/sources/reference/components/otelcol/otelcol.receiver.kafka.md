@@ -51,7 +51,8 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
 | `group_id`                                 | `string`       | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
 | `group_instance_id`                        | `string`       | A unique identifier for the consumer instance within a consumer group.                                                | `""`               | no       |
-| `group_rebalance_strategy`                 | `string`       | The strategy used to assign partitions to consumers within a consumer group.                                          | `"range"`          | no       |
+| `group_rebalance_strategy`                 | `string`       | (Deprecated: use `group_rebalance_strategies` instead) The strategy used to assign partitions to consumers within a consumer group. Mutually exclusive with `group_rebalance_strategies`. | `"range"`          | no       |
+| `group_rebalance_strategies`               | `list(string)` | The ordered list of strategies to advertise to the group coordinator. Mutually exclusive with `group_rebalance_strategy`. | `[]`               | no       |
 | `heartbeat_interval`                       | `duration`     | The expected time between heartbeats to the consumer coordinator when using Kafka group management.                   | `"3s"`             | no       |
 | `initial_offset`                           | `string`       | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
@@ -59,7 +60,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `max_partition_fetch_size`                 | `int`          | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`          | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
 | `rack_id`                                  | `string`       | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.             | `""`               | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`            | no       |
 | `session_timeout`                          | `duration`     | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
 | `use_leader_epoch`                         | `bool`         | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
 
@@ -92,7 +93,20 @@ Supported strategies are:
   It minimizes the number of partition movements, which can be beneficial for stateful consumers.
   For more information, refer to the Kafka StickyAssignor documentation, see [StickyAssignor][].
 - `cooperative-sticky`: This strategy uses incremental cooperative rebalancing to reduce partition movement during rebalances.
-  For more information, refer to the Kafka CooperativeStickyAssignor documentation, see [CooperativeStickyAssignor][].
+  For more information, refer to the Kafka CooperativeStickyAssignor documentation, refer to [CooperativeStickyAssignor][].
+
+Use `group_rebalance_strategies` to advertise more than one strategy to the group coordinator, in order of preference.
+It accepts the same values as `group_rebalance_strategy`:
+
+```alloy
+group_rebalance_strategies = ["cooperative-sticky", "range"]
+```
+
+{{< admonition type="note" >}}
+The upstream OpenTelemetry Collector setting behind `group_rebalance_strategy` is deprecated in favor of `group_rebalance_strategies`.
+`group_rebalance_strategy` continues to work, and the `range` default is unchanged.
+The two arguments are mutually exclusive, so setting both fails to load.
+{{< /admonition >}}
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
 
@@ -307,7 +321,7 @@ The following arguments are supported:
 | `include_unsuccessful` | `bool` | Whether failed forwards should be marked as read.                  | `false` | no       |
 
 By default, a Kafka message is marked as read immediately after it's retrieved from the Kafka broker.
-If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in [the `output` block][output].
+If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in the [`output`](#output) block.
 
 When `after_execution` is true, messages are only marked as read when they're decoded successfully and components where the data was forwarded didn't return an error.
 If the `include_unsuccessful` argument is true, messages are marked as read even if decoding or forwarding failed.

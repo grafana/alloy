@@ -9,6 +9,9 @@ permissions: {}
 jobs:
   submit_winget_manifest:
     name: Submit WinGet Manifest
+    # Only the Alloy binary (vX.Y.Z tags) has a WinGet package; skip component
+    # releases like syntax/v0.2.0.
+    if: ${{ startsWith(github.event.release.tag_name, 'v') }}
     uses: ./.github/workflows/release-submit-winget-manifest.yml
     permissions:
       contents: read

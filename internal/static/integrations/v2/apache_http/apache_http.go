@@ -2,12 +2,12 @@
 package apache_http
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 
 	ae "github.com/Lusitaniae/apache_exporter/collector"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
+	"github.com/grafana/alloy/internal/slogadapter"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -63,29 +63,29 @@ func (c *Config) Name() string {
 
 type apacheHandler struct {
 	cfg *Config
-	log log.Logger
+	log *slog.Logger
 }
 
 // NewIntegration instantiates a new integrations.MetricsIntegration
 // which will handle requests to the apache http integration.
-func (c *Config) NewIntegration(logger log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
+func (c *Config) NewIntegration(logger *slog.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
 	ah := &apacheHandler{cfg: c, log: logger}
 	h, err := ah.createHandler()
 	if err != nil {
 		return nil, err
 	}
 
-	return metricsutils.NewMetricsHandlerIntegration(logger, c, c.Common, globals, h)
+	return metricsutils.NewMetricsHandlerIntegration(c, c.Common, globals, h)
 }
 
 func (ah *apacheHandler) createHandler() (http.HandlerFunc, error) {
 	_, err := url.ParseRequestURI(ah.cfg.ApacheAddr)
 	if err != nil {
-		level.Error(ah.log).Log("msg", "scrape_uri is invalid", "err", err)
+		ah.log.Error("scrape_uri is invalid", "err", err)
 		return nil, err
 	}
 
-	aeExporter := ae.NewExporter(ah.log, &ae.Config{
+	aeExporter := ae.NewExporter(slogadapter.GoKit(ah.log.Handler()), &ae.Config{
 		ScrapeURI:    ah.cfg.ApacheAddr,
 		HostOverride: ah.cfg.ApacheHostOverride,
 		Insecure:     ah.cfg.ApacheInsecure,

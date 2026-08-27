@@ -5,20 +5,20 @@ package java
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -37,7 +37,7 @@ func init() {
 	})
 }
 
-func New(logger log.Logger, reg prometheus.Registerer, id string, a Arguments) (*Component, error) {
+func New(logger *slog.Logger, reg prometheus.Registerer, id string, a Arguments) (*Component, error) {
 	if os.Getuid() != 0 {
 		return nil, fmt.Errorf("java profiler: must be run as root")
 	}
@@ -50,13 +50,13 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, a Arguments) (
 		if err != nil {
 			return nil, fmt.Errorf("invalid asprof dist: %w", err)
 		}
-		_ = logger.Log("msg", "using extracted asprof dist", "dist", a.Dist)
+		logger.Info("using extracted asprof dist", "dist", a.Dist)
 	} else {
 		dist, err = asprof.ExtractDistribution(asprof.EmbeddedArchive, a.TmpDir, asprof.EmbeddedArchive.DistName())
 		if err != nil {
 			return nil, fmt.Errorf("extract asprof: %w", err)
 		}
-		_ = logger.Log("msg", "using embedded asprof dist")
+		logger.Info("using embedded asprof dist")
 	}
 	forwardTo := pyroscope.NewFanout(a.ForwardTo, id, reg)
 	c := &Component{
@@ -96,7 +96,7 @@ var (
 )
 
 type Component struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	args      Arguments
 	forwardTo *pyroscope.Fanout
 
@@ -144,23 +144,25 @@ func (j *Component) updateTargets(args Arguments) {
 	for _, target := range args.Targets {
 		pidStr, ok := target.Get(LabelProcessID)
 		if !ok {
-			_ = level.Error(j.logger).Log("msg", "could not find PID label", "pid", pidStr)
+			j.logger.Error("could not find PID label", "pid", pidStr)
 			continue
 		}
 		pid64, err := strconv.ParseInt(pidStr, 10, 32)
 		if err != nil {
-			_ = level.Error(j.logger).Log("msg", "could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
+			j.logger.Error("could not convert process ID to a 32 bit integer", "pid", pidStr, "err", err)
 			continue
 		}
 		pid := int(pid64)
 
-		_ = level.Debug(j.logger).Log("msg", "active target",
+		j.logger.Debug(
+			"active target",
 			"target", fmt.Sprintf("%+v", target),
-			"pid", pid)
+			"pid", pid,
+		)
 		proc := j.pid2process[pid]
 		if proc == nil {
 			proc = newProfilingLoop(pid, target, j.logger, j.profiler, j.forwardTo, j.args.ProfilingConfig)
-			_ = level.Debug(j.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
+			j.logger.Debug("new process", "target", fmt.Sprintf("%+v", target))
 			j.pid2process[pid] = proc
 		} else {
 			proc.update(target, j.args.ProfilingConfig)
@@ -171,19 +173,19 @@ func (j *Component) updateTargets(args Arguments) {
 		if _, ok := active[pid]; ok {
 			continue
 		}
-		_ = level.Debug(j.logger).Log("msg", "inactive target", "pid", pid)
+		j.logger.Debug("inactive target", "pid", pid)
 		_ = j.pid2process[pid].Close()
 		delete(j.pid2process, pid)
 	}
 }
 
 func (j *Component) stop() {
-	_ = level.Debug(j.logger).Log("msg", "stopping")
+	j.logger.Debug("stopping")
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
 	for _, proc := range j.pid2process {
 		proc.Close()
-		_ = level.Debug(j.logger).Log("msg", "stopped", "pid", proc.pid)
+		j.logger.Debug("stopped", "pid", proc.pid)
 		delete(j.pid2process, proc.pid)
 	}
 }

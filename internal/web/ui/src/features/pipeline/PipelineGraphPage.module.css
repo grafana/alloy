@@ -1,0 +1,9 @@
+.graphWrapper {
+  height: 100%;
+  min-height: 400px;
+}
+
+.infoText {
+  font-size: 0.875rem;
+  color: #6e6e6e;
+}

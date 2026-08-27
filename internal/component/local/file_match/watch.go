@@ -1,14 +1,12 @@
 package file_match
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/glob"
 )
@@ -16,7 +14,7 @@ import (
 // watch handles a single discovery.target for file watching.
 type watch struct {
 	target          discovery.Target
-	log             log.Logger
+	log             *slog.Logger
 	ignoreOlderThan time.Duration
 	globber         glob.Globber
 }
@@ -37,7 +35,7 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 		}
 		abs, err := filepath.Abs(m)
 		if err != nil {
-			level.Error(w.log).Log("msg", "error getting absolute path", "path", m, "err", err)
+			w.log.Error("error getting absolute path", "path", m, "err", err)
 			continue
 		}
 		fi, err := os.Stat(abs)
@@ -45,9 +43,9 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 			// On some filesystems we can get errors accessing the discovered paths. Don't log these as errors.
 			// local.file_match will retry on the next sync period if the access is blocked temporarily only.
 			if util.IsEphemeralOrFileClosed(err) {
-				level.Debug(w.log).Log("msg", "I/O error when getting os stat", "path", abs, "err", err)
+				w.log.Debug("I/O error when getting os stat", "path", abs, "err", err)
 			} else {
-				level.Error(w.log).Log("msg", "error getting os stat", "path", abs, "err", err)
+				w.log.Error("error getting os stat", "path", abs, "err", err)
 			}
 			continue
 		}

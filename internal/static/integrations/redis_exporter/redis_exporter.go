@@ -4,6 +4,7 @@ package redis_exporter
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -12,8 +13,6 @@ import (
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	re "github.com/oliver006/redis_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 )
@@ -122,7 +121,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration converts the config into an integration instance.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -133,8 +132,8 @@ func init() {
 
 // New creates a new redis_exporter integration. The integration queries
 // a redis instance's INFO and exposes the results as metrics.
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
-	level.Debug(log).Log("msg", "initializing redis_exporter", "config", c)
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
+	log.Debug("initializing redis_exporter", "config", c)
 
 	exporterConfig := c.GetExporterOptions()
 

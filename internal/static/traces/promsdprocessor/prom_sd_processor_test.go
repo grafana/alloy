@@ -3,13 +3,13 @@ package promsdprocessor
 import (
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestSyncGroups(t *testing.T) {
@@ -105,7 +105,7 @@ func TestSyncGroups(t *testing.T) {
 			}
 
 			p := &promServiceDiscoProcessor{
-				logger:         log.NewNopLogger(),
+				logger:         util.TestAlloyLogger(t).Slog(),
 				relabelConfigs: tc.relabelCfgs,
 			}
 

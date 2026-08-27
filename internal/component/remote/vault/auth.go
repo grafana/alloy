@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/alloy/syntax/alloytypes"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/api/auth/approle"
 	"github.com/hashicorp/vault/api/auth/aws"
@@ -13,6 +12,8 @@ import (
 	"github.com/hashicorp/vault/api/auth/kubernetes"
 	"github.com/hashicorp/vault/api/auth/ldap"
 	"github.com/hashicorp/vault/api/auth/userpass"
+
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // An authMethod can configure a Vault client to be authenticated using a

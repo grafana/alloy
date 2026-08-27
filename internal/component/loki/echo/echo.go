@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {
@@ -40,6 +41,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 var (
+	_ loki.Consumer       = (*Component)(nil)
 	_ component.Component = (*Component)(nil)
 )
 
@@ -77,13 +79,8 @@ func (c *Component) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case entry := <-c.receiver.Chan():
-			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-			if err != nil {
-				c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
-				structured_metadata = []byte("{}")
-			}
-			c.opts.SLogger.Info("received log entry", "receiver", c.opts.ID, "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+		case e := <-c.receiver.Chan():
+			c.printEntry(e.Labels.String(), e.Entry)
 		}
 	}
 }
@@ -97,4 +94,27 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 
 	return nil
+}
+
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
+		lbls := stream.Labels.String()
+		for _, e := range stream.Entries {
+			c.printEntry(lbls, e)
+		}
+		return nil
+	})
+}
+
+func (c *Component) printEntry(lbls string, e push.Entry) {
+	sm, err := e.StructuredMetadata.MarshalJSON()
+	if err != nil {
+		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+		sm = []byte("{}")
+	}
+	c.opts.Logger.Info("received log entry", "labels", lbls, "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
+}
+
+func (c *Component) String() string {
+	return c.opts.ID + ".receiver"
 }

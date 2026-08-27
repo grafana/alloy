@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/go-kit/log"
+	"go.opentelemetry.io/collector/pdata/ptrace"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -15,11 +16,9 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func init() {
@@ -82,7 +81,6 @@ func (args *Arguments) Validate() error {
 // Component is the otelcol.exporter.discovery component.
 type Component struct {
 	consumer           *promsdconsumer.Consumer
-	logger             log.Logger
 	debugDataPublisher livedebugging.DebugDataPublisher
 
 	opts component.Options
@@ -99,7 +97,7 @@ var (
 // New creates a new otelcol.exporter.discovery component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Logs != nil || c.Output.Metrics != nil {
-		level.Warn(o.Logger).Log("msg", "non-trace output detected; this component only works for traces")
+		o.Logger.Warn("non-trace output detected; this component only works for traces")
 	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
@@ -130,7 +128,6 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 	res := &Component{
 		consumer:           consumer,
-		logger:             o.Logger,
 		opts:               o,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
@@ -168,7 +165,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for _, labels := range c.args.Targets {
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
-			level.Warn(c.logger).Log("msg", "ignoring target, unable to find address", "err", err)
+			c.opts.Logger.Warn("ignoring target, unable to find address", "err", err)
 			continue
 		}
 

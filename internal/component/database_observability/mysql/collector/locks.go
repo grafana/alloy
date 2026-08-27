@@ -5,16 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -51,13 +50,13 @@ type LocksArguments struct {
 	LockWaitThreshold time.Duration
 	EntryHandler      loki.EntryHandler
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type Locks struct {
 	mySQLClient     *sql.DB
 	collectInterval time.Duration
-	logger          log.Logger
+	logger          *slog.Logger
 	entryHandler    loki.EntryHandler
 
 	// The minimum amount of time elapsed waiting due to a lock
@@ -87,13 +86,13 @@ func NewLocks(args LocksArguments) (*Locks, error) {
 		collectInterval:   args.CollectInterval,
 		lockTimeThreshold: args.LockWaitThreshold,
 		entryHandler:      args.EntryHandler,
-		logger:            log.With(args.Logger, "collector", LocksCollector),
+		logger:            args.Logger.With("collector", LocksCollector),
 		running:           &atomic.Bool{},
 	}, nil
 }
 
 func (c *Locks) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -108,7 +107,7 @@ func (c *Locks) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchLocks(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -148,7 +147,7 @@ func (c *Locks) fetchLocks(ctx context.Context) error {
 		err := rsdl.Scan(&waitingTimerWait, &waitingLockTime, &waitingDigest, &waitingDigestText,
 			&blockingTimerWait, &blockingLockTime, &blockingDigest, &blockingDigestText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan data locks", "err", err)
+			c.logger.Error("failed to scan data locks", "err", err)
 			continue
 		}
 

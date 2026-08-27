@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/mimir/client"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type fakeMimirClient struct {
@@ -136,7 +136,7 @@ func TestEventLoop(t *testing.T) {
 		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
 		metrics:            newMetrics(),
-		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		logger:             util.TestAlloyLogger(t).Slog(),
 	}
 
 	ctx := t.Context()
@@ -240,7 +240,7 @@ func TestAdditionalLabels(t *testing.T) {
 		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
 		metrics:            newMetrics(),
-		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		logger:             util.TestAlloyLogger(t).Slog(),
 		externalLabels:     map[string]string{"foo": "bar"},
 	}
 
@@ -340,7 +340,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
 		metrics:            newMetrics(),
-		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		logger:             util.TestAlloyLogger(t).Slog(),
 		extraQueryMatchers: &ExtraQueryMatchers{Matchers: []Matcher{
 			{
 				Name:      "cluster",
@@ -456,7 +456,7 @@ func TestSourceTenants(t *testing.T) {
 		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
 		metrics:            newMetrics(),
-		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		logger:             util.TestAlloyLogger(t).Slog(),
 	}
 
 	ctx := t.Context()

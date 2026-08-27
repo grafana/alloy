@@ -3,14 +3,12 @@ package remotewrite
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
@@ -20,8 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
@@ -50,7 +46,6 @@ func init() {
 
 // Component is the prometheus.remote_write component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	walStore    *wal.Storage
@@ -77,19 +72,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	oldDataPath := filepath.Join(o.DataPath, "wal", o.ID)
 	_ = os.RemoveAll(oldDataPath)
 
-	walLogger := log.With(o.Logger, "subcomponent", "wal")
-	walStorage, err := wal.NewStorage(walLogger, o.Registerer, o.DataPath)
+	walStorage, err := wal.NewStorage(o.Logger.With("subcomponent", "wal"), o.Registerer, o.DataPath)
 	if err != nil {
 		return nil, err
 	}
 
-	remoteLogger := slog.New(
-		logging.NewSlogGoKitHandler(
-			log.With(o.Logger, "subcomponent", "rw"),
-		),
-	)
 	// TODO: Expose the option to enable type and unit labels: https://github.com/grafana/alloy/issues/4659
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	remoteStore := remote.NewStorage(o.Logger.With("subcomponent", "rw"), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -108,17 +97,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	fanoutLogger := slog.New(
-		logging.NewSlogGoKitHandler(
-			log.With(o.Logger, "subcomponent", "fanout"),
-		),
-	)
 	res := &Component{
-		log:                o.Logger,
 		opts:               o,
 		walStore:           walStorage,
 		remoteStore:        remoteStore,
-		storage:            storage.NewFanout(fanoutLogger, walStorage, remoteStore),
+		storage:            storage.NewFanout(o.Logger.With("subcomponent", "fanout"), walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -144,11 +127,11 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.exited.Store(true)
 
-		level.Debug(c.log).Log("msg", "closing storage")
+		c.opts.Logger.Debug("closing storage")
 		err := c.storage.Close()
-		level.Debug(c.log).Log("msg", "storage closed")
+		c.opts.Logger.Debug("storage closed")
 		if err != nil {
-			level.Error(c.log).Log("msg", "error when closing storage", "err", err)
+			c.opts.Logger.Error("error when closing storage", "err", err)
 		}
 	}()
 
@@ -192,17 +175,17 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 
 			if ts == lastTs {
-				level.Debug(c.log).Log("msg", "not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
+				c.opts.Logger.Debug("not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
 				continue
 			}
 			lastTs = ts
 
-			level.Debug(c.log).Log("msg", "truncating the WAL", "ts", ts)
+			c.opts.Logger.Debug("truncating the WAL", "ts", ts)
 			err := c.walStore.Truncate(ts)
 			if err != nil {
 				// The only issue here is larger disk usage and a greater replay time,
 				// so we'll only log this as a warning.
-				level.Warn(c.log).Log("msg", "could not truncate WAL", "err", err)
+				c.opts.Logger.Warn("could not truncate WAL", "err", err)
 			}
 		}
 	}

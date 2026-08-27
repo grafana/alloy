@@ -107,5 +107,8 @@ func (a *Arguments) SetToDefault() {
 			Exclude:     col.ConfigDefaults.Net.NicExclude.String(),
 			Include:     col.ConfigDefaults.Net.NicInclude.String(),
 		},
+		Time: TimeConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.Time.CollectorsEnabled),
+		},
 	}
 }

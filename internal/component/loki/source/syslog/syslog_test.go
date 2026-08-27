@@ -28,7 +28,7 @@ import (
 
 func Test(t *testing.T) {
 	opts := component.Options{
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -111,7 +111,7 @@ func Test(t *testing.T) {
 
 func TestWithRelabelRules(t *testing.T) {
 	opts := component.Options{
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -203,7 +203,7 @@ func mustNewRegexp(s string) alloy_relabel.Regexp {
 
 func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	opts := component.Options{
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -309,7 +309,7 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.label, func(t *testing.T) {
 			opts := component.Options{
-				SLogger:       logging.NewSlogNop(),
+				Logger:        logging.NewSlogNop(),
 				Registerer:    prometheus.NewRegistry(),
 				OnStateChange: func(e component.Exports) {},
 				MinStability:  featuregate.StabilityGenerallyAvailable,
@@ -341,7 +341,7 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 
 func TestLiveDebuggingServiceWorks(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		Logger:        util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		GetServiceData: func(name string) (any, error) {

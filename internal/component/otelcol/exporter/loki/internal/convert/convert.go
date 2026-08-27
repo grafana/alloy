@@ -10,21 +10,22 @@ package convert
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // Converter implements consumer.Logs and converts received OTel logs into
 // Loki-compatible log entries.
 type Converter struct {
-	log     log.Logger
+	log     *slog.Logger
 	metrics *metrics
 
 	mut  sync.RWMutex
@@ -35,9 +36,9 @@ var _ consumer.Logs = (*Converter)(nil)
 
 // New returns a new Converter. Converted logs are passed to the provided list
 // of LogsReceivers.
-func New(l log.Logger, r prometheus.Registerer, next []loki.LogsReceiver) *Converter {
+func New(l *slog.Logger, r prometheus.Registerer, next []loki.LogsReceiver) *Converter {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = logging.NewSlogNop()
 	}
 	m := newMetrics(r)
 	return &Converter{log: l, metrics: m, next: next}
@@ -72,7 +73,7 @@ func (conv *Converter) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 				// https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/23863/files#diff-ef7831fcba373f6e8aa7f799b5b89f4e113b2064cd7ef1688286ce193d2256a8
 				entry, err := loki_translator.LogToLokiEntry(logs.At(k), rls.At(i).Resource(), scope, nil)
 				if err != nil {
-					level.Error(conv.log).Log("msg", "failed to convert log to loki entry", "err", err)
+					conv.log.Error("failed to convert log to loki entry", "err", err)
 					conv.metrics.entriesFailed.Inc()
 					continue
 				}

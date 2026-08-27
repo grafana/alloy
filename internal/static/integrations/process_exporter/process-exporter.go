@@ -5,10 +5,9 @@ package process_exporter
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -20,8 +19,8 @@ type Integration struct {
 
 // New creates a process_exporter integration for non-Linux platforms, which is always a
 // no-op.
-func New(logger log.Logger, c *Config) (*Integration, error) {
-	level.Warn(logger).Log("msg", "the process_exporter only works on Linux; enabling it otherwise will do nothing")
+func New(logger *slog.Logger, c *Config) (*Integration, error) {
+	logger.Warn("the process_exporter only works on Linux; enabling it otherwise will do nothing")
 	return &Integration{c: c}, nil
 }
 

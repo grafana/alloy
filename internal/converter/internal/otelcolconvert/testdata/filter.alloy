@@ -4,7 +4,10 @@ otelcol.receiver.otlp "default" {
 	}
 
 	http {
-		endpoint = "localhost:4318"
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {
@@ -15,8 +18,6 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.filter "default_ottl" {
-	error_mode = "ignore"
-
 	traces {
 		span      = ["attributes[\"container.name\"] == \"app_container_1\"", "resource.attributes[\"host.name\"] == \"localhost\"", "name == \"app_3\""]
 		spanevent = ["attributes[\"grpc\"] == true", "IsMatch(name, \".*grpc.*\")"]

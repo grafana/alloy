@@ -3,12 +3,12 @@ package otelcolconvert
 import (
 	"fmt"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
@@ -53,26 +53,27 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 	)
 
 	var tlsCfgPtr *otelcol.TLSClientArguments
-	if cfg.TLS != nil {
-		tlsCfg := toTLSClientArguments(*cfg.TLS)
+	if cfg.ClientConfig.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.ClientConfig.TLS)
 		tlsCfgPtr = &tlsCfg
 	}
 
+	rebalanceStrategy, rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
 	return &kafka.Arguments{
-		Brokers:           cfg.Brokers,
-		ProtocolVersion:   cfg.ProtocolVersion,
-		SessionTimeout:    cfg.SessionTimeout,
-		HeartbeatInterval: cfg.HeartbeatInterval,
-		GroupID:           cfg.GroupID,
-		ClientID:          cfg.ClientID,
-		InitialOffset:     cfg.InitialOffset,
-		ConnIdleTimeout:   cfg.ConnIdleTimeout,
+		Brokers:           cfg.ClientConfig.Brokers,
+		ProtocolVersion:   cfg.ClientConfig.ProtocolVersion,
+		SessionTimeout:    cfg.ConsumerConfig.SessionTimeout,
+		HeartbeatInterval: cfg.ConsumerConfig.HeartbeatInterval,
+		GroupID:           cfg.ConsumerConfig.GroupID,
+		ClientID:          cfg.ClientConfig.ClientID,
+		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
+		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
 
-		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
+		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
 
-		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
-		Metadata:         toKafkaMetadata(cfg.Metadata),
-		AutoCommit:       toKafkaAutoCommit(cfg.AutoCommit),
+		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
+		AutoCommit:       toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
@@ -82,14 +83,15 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
 		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
 
-		MinFetchSize:           cfg.MinFetchSize,
-		MaxFetchSize:           cfg.MaxFetchSize,
-		MaxPartitionFetchSize:  cfg.MaxPartitionFetchSize,
-		MaxFetchWait:           cfg.MaxFetchWait,
-		RackID:                 cfg.RackID,
-		UseLeaderEpoch:         cfg.UseLeaderEpoch,
-		GroupRebalanceStrategy: string(cfg.GroupRebalanceStrategy),
-		GroupInstanceID:        cfg.GroupInstanceID,
+		MinFetchSize:             cfg.ConsumerConfig.MinFetchSize,
+		MaxFetchSize:             cfg.ConsumerConfig.MaxFetchSize,
+		MaxPartitionFetchSize:    cfg.ConsumerConfig.MaxPartitionFetchSize,
+		MaxFetchWait:             cfg.ConsumerConfig.MaxFetchWait,
+		RackID:                   cfg.ClientConfig.RackID,
+		UseLeaderEpoch:           cfg.ClientConfig.UseLeaderEpoch,
+		GroupRebalanceStrategy:   rebalanceStrategy,
+		GroupRebalanceStrategies: rebalanceStrategies,
+		GroupInstanceID:          cfg.ConsumerConfig.GroupInstanceID,
 
 		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
 
@@ -239,5 +241,20 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	return kafka.HeaderExtraction{
 		ExtractHeaders: cfg.ExtractHeaders,
 		Headers:        cfg.Headers,
+	}
+}
+
+func toKafkaRebalance(cfg configkafka.ConsumerConfig) (strategy string, strategies []string) {
+	switch {
+	case len(cfg.GroupRebalanceStrategies) > 0:
+		strategies = make([]string, 0, len(cfg.GroupRebalanceStrategies))
+		for _, s := range cfg.GroupRebalanceStrategies {
+			strategies = append(strategies, string(s))
+		}
+		return "", strategies
+	case cfg.GroupRebalanceStrategy != "":
+		return string(cfg.GroupRebalanceStrategy), nil
+	default:
+		return string(configkafka.CooperativeStickyBalanceStrategy), nil
 	}
 }

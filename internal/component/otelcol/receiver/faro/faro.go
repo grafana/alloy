@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.faro",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -45,6 +45,9 @@ func (args *Arguments) SetToDefault() {
 		HTTPServer: otelcol.HTTPServerArguments{
 			Endpoint:              "localhost:8080",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
 	}
 	args.DebugMetrics.SetToDefault()

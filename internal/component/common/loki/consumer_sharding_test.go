@@ -42,19 +42,21 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		gotFirst := got[first.String()]
 		require.Equal(t, 1, gotFirst.StreamLen())
 		require.Equal(t, 1, gotFirst.EntryLen())
-		gotFirst.ConsumeStreams(func(stream Stream, created int64) {
+		_ = gotFirst.ConsumeStreams(func(stream Stream, created int64) error {
 			require.Equal(t, original.Created(), created)
 			require.Equal(t, first, stream.Labels)
 			require.Equal(t, "1", stream.Entries[0].Line)
+			return nil
 		})
 
 		gotSecond := got[second.String()]
 		require.Equal(t, 1, gotSecond.StreamLen())
 		require.Equal(t, 1, gotSecond.EntryLen())
-		gotSecond.ConsumeStreams(func(stream Stream, created int64) {
+		_ = gotSecond.ConsumeStreams(func(stream Stream, created int64) error {
 			require.Equal(t, original.Created(), created)
 			require.Equal(t, second, stream.Labels)
 			require.Equal(t, "2", stream.Entries[0].Line)
+			return nil
 		})
 	})
 
@@ -79,10 +81,11 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		got := batches[0]
 		require.Equal(t, 1, got.StreamLen())
 		require.Equal(t, 2, got.EntryLen())
-		got.ConsumeStreams(func(stream Stream, _ int64) {
+		_ = got.ConsumeStreams(func(stream Stream, _ int64) error {
 			require.Equal(t, labels, stream.Labels)
 			require.Equal(t, "1", stream.Entries[0].Line)
 			require.Equal(t, "2", stream.Entries[1].Line)
+			return nil
 		})
 	})
 
@@ -199,131 +202,6 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		batch.Add(NewStream(labelsForShard(consumer, 0), push.Entry{Line: "first"}))
 
 		err := consumer.Consume(t.Context(), batch)
-		require.ErrorIs(t, err, ErrConsumerStopped)
-	})
-}
-
-func TestShardingConsumer_ConsumeEntry(t *testing.T) {
-	t.Run("forwards entry to consumer", func(t *testing.T) {
-		c := NewCollectingConsumer()
-		consumer := NewShardingConsumer(2, c)
-		defer consumer.Stop()
-
-		entry := NewEntry(model.LabelSet{"job": "foo"}, push.Entry{
-			Line: "hello",
-		})
-
-		err := consumer.ConsumeEntry(t.Context(), entry)
-		require.NoError(t, err)
-
-		entries := c.Entries()
-		require.Len(t, entries, 1)
-		got := entries[0]
-		require.Equal(t, entry.Line, got.Line)
-		require.Equal(t, entry.Labels, got.Labels)
-		require.Equal(t, entry.Created(), got.Created())
-	})
-
-	t.Run("preserves backpressure per shard", func(t *testing.T) {
-		var (
-			wg             sync.WaitGroup
-			callCount      = atomic.NewInt64(0)
-			linesProcessed = make(chan string)
-			release        = make(chan struct{})
-		)
-
-		consumer := NewShardingConsumer(2, consumerFunc{
-			consumeEntry: func(_ context.Context, entry Entry) error {
-				callCount.Inc()
-				linesProcessed <- entry.Line
-
-				<-release
-				return nil
-			},
-		})
-		defer consumer.Stop()
-
-		first := NewEntry(labelsForShard(consumer, 0), push.Entry{Line: "first"})
-		wg.Go(func() {
-			_ = consumer.ConsumeEntry(t.Context(), first)
-		})
-
-		requireReceive(t, linesProcessed, "first", 1*time.Second)
-		require.Equal(t, int64(1), callCount.Load())
-
-		second := NewEntry(labelsForShard(consumer, 0), push.Entry{Line: "second"})
-		wg.Go(func() {
-			_ = consumer.ConsumeEntry(t.Context(), second)
-		})
-
-		third := NewEntry(labelsForShard(consumer, 1), push.Entry{Line: "third"})
-		wg.Go(func() {
-			_ = consumer.ConsumeEntry(t.Context(), third)
-		})
-
-		requireReceive(t, linesProcessed, "third", 1*time.Second)
-		require.Equal(t, int64(2), callCount.Load())
-
-		close(release)
-
-		requireReceive(t, linesProcessed, "second", 1*time.Second)
-		require.Equal(t, int64(3), callCount.Load())
-
-		wg.Wait()
-	})
-
-	t.Run("returns context error while waiting for shard", func(t *testing.T) {
-		var (
-			wg        sync.WaitGroup
-			errs      = make(chan error, 2)
-			callCount = atomic.NewInt64(0)
-		)
-
-		consumer := NewShardingConsumer(1, consumerFunc{
-			consumeEntry: func(ctx context.Context, entry Entry) error {
-				callCount.Inc()
-				<-ctx.Done()
-				return ctx.Err()
-			},
-		})
-		defer consumer.Stop()
-
-		ctx1, cancel1 := context.WithCancel(context.Background())
-		first := NewEntry(labelsForShard(consumer, 0), push.Entry{Line: "first"})
-		wg.Go(func() {
-			errs <- consumer.ConsumeEntry(ctx1, first)
-		})
-
-		require.Eventually(
-			t,
-			func() bool { return callCount.Load() == 1 },
-			1*time.Second,
-			50*time.Microsecond,
-		)
-
-		ctx2, cancel2 := context.WithCancel(context.Background())
-		second := NewEntry(labelsForShard(consumer, 0), push.Entry{Line: "second"})
-		wg.Go(func() {
-			errs <- consumer.ConsumeEntry(ctx2, second)
-		})
-
-		cancel2()
-		require.ErrorIs(t, <-errs, context.Canceled)
-
-		cancel1()
-		require.ErrorIs(t, <-errs, context.Canceled)
-		require.Equal(t, int64(1), callCount.Load())
-
-		wg.Wait()
-	})
-
-	t.Run("returns error after stop", func(t *testing.T) {
-		consumer := NewShardingConsumer(1, consumerFunc{})
-		consumer.Stop()
-
-		entry := NewEntry(labelsForShard(consumer, 0), push.Entry{Line: "first"})
-
-		err := consumer.ConsumeEntry(t.Context(), entry)
 		require.ErrorIs(t, err, ErrConsumerStopped)
 	})
 }

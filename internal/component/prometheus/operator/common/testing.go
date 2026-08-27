@@ -2,14 +2,15 @@ package common
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,7 +51,7 @@ func NewFakeK8sFactory(k8sClient kubernetes.Interface) *FakeK8sFactory {
 }
 
 // New returns the fake Kubernetes client and a cache factory that creates FakeCaches.
-func (f *FakeK8sFactory) New(_ commonk8s.ClientArguments, _ log.Logger) (kubernetes.Interface, CacheFactory, error) {
+func (f *FakeK8sFactory) New(_ commonk8s.ClientArguments, _ *slog.Logger) (kubernetes.Interface, CacheFactory, error) {
 	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
 		return &FakeCache{
 			factory: f,
@@ -229,8 +230,9 @@ type TestCrdManagerFactory struct {
 }
 
 // New implements crdManagerFactory.
-func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface {
 	m := newCrdManager(opts, cluster, logger, args, kind, ls)
+	m.serviceMonitorSettings = serviceMonitorSettings
 
 	// Create and inject the FakeK8sFactory
 	f.mu.Lock()
@@ -275,6 +277,19 @@ func (f *TestCrdManagerFactory) GetScrapeConfigJobNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// GetScrapeConfigForJob returns the scrape config for a specific job name, or nil if not found.
+func (f *TestCrdManagerFactory) GetScrapeConfigForJob(jobName string) *promconfig.ScrapeConfig {
+	f.mu.RLock()
+	m := f.manager
+	f.mu.RUnlock()
+	if m == nil {
+		return nil
+	}
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	return m.scrapeConfigs[jobName]
 }
 
 // InjectStaticTargets injects static targets for a job, replacing k8s service discovery.

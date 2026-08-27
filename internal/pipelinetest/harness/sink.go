@@ -68,7 +68,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 
 		s.mux.Lock()
 		for _, stream := range req.Streams {
-			labels, err := promql_parser.ParseMetric(stream.Labels)
+			labels, err := promql_parser.NewParser(promql_parser.Options{}).ParseMetric(stream.Labels)
 			if err != nil {
 				s.mux.Unlock()
 				w.WriteHeader(http.StatusBadRequest)

@@ -3,28 +3,28 @@ package snmp_exporter_v2
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
-	"github.com/grafana/alloy/internal/static/integrations/v2"
-	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
-	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
-
-	"github.com/go-kit/log"
 	snmp_config "github.com/prometheus/snmp_exporter/config"
+
+	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
+	"github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 type snmpHandler struct {
 	cfg     *Config
 	snmpCfg *snmp_config.Config
-	log     log.Logger
+	log     *slog.Logger
 }
 
 func (sh *snmpHandler) Targets(ep integrations.Endpoint) []*targetgroup.Group {

@@ -1,5 +1,5 @@
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
-{{- if and (or (eq .Values.controller.type "deployment") (eq .Values.controller.type "statefulset" )) (or .Values.controller.autoscaling.horizontal.enabled .Values.controller.autoscaling.enabled)  }}
+{{- if and (or (eq .Values.controller.type "deployment") (eq .Values.controller.type "statefulset" )) (or .Values.controller.autoscaling.horizontal.enabled .Values.controller.autoscaling.enabled) (not .Values.controller.autoscaling.horizontal.externalHPA) }}
 {{ $autoscaling := .Values.controller.autoscaling }}
 {{- if .Values.controller.autoscaling.horizontal.enabled }}
 {{- $autoscaling = .Values.controller.autoscaling.horizontal }}

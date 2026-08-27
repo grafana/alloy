@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	"github.com/stretchr/testify/require"
 
@@ -145,6 +145,45 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"vultr":            vultr.DefaultArguments.Convert(),
 				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
 				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "fail_on_missing_metadata_explicit",
+			cfg: `
+			fail_on_missing_metadata = true
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors":                []string{"env"},
+				"timeout":                  5 * time.Second,
+				"override":                 true,
+				"fail_on_missing_metadata": true,
+				"ec2":                      ec2.DefaultArguments.Convert(),
+				"ecs":                      ecs.DefaultArguments.Convert(),
+				"eks":                      eks.DefaultArguments.Convert(),
+				"elasticbeanstalk":         elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":                   lambda.DefaultArguments.Convert(),
+				"azure":                    azure.DefaultArguments.Convert(),
+				"aks":                      aks.DefaultArguments.Convert(),
+				"akamai":                   akamai.DefaultArguments.Convert(),
+				"consul":                   consul.DefaultArguments.Convert(),
+				"digitalocean":             digitalocean.DefaultArguments.Convert(),
+				"docker":                   docker.DefaultArguments.Convert(),
+				"gcp":                      gcp.DefaultArguments.Convert(),
+				"heroku":                   heroku.DefaultArguments.Convert(),
+				"hetzner":                  hetzner.DefaultArguments.Convert(),
+				"system":                   defaultArgs.Convert(),
+				"openshift":                openshift.DefaultArguments.Convert(),
+				"nova":                     openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":              oraclecloud.DefaultArguments.Convert(),
+				"k8snode":                  kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":                  kubeadm.DefaultArguments.Convert(),
+				"dynatrace":                dynatrace.DefaultArguments.Convert(),
+				"scaleway":                 scaleway.DefaultArguments.Convert(),
+				"upcloud":                  upcloud.DefaultArguments.Convert(),
+				"vultr":                    vultr.DefaultArguments.Convert(),
+				"tencent_cvm":              tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":              alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{

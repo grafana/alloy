@@ -19,8 +19,7 @@ loki.process "example" {
 
 	stage.truncate {
 		rule {
-			limit       = "256KiB"
-			source_type = "line"
+			limit = "256KiB"
 		}
 	}
 }

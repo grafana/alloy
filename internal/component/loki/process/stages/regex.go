@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/prometheus/common/model"
 )
 

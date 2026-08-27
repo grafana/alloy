@@ -53,7 +53,7 @@ To configure a `prometheus.remote_write` component for metrics delivery, complet
 
    * _`<LABEL>`_: The label for the component, such as `default`.
      The label you use must be unique across all `prometheus.remote_write` components in the same configuration file.
-   * _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/v1/write` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
+   * _`<PROMETHEUS_URL>`_ The full URL of the Prometheus-compatible endpoint where metrics are sent, such as `https://prometheus-us-central1.grafana.net/api/prom/push` for Prometheus or `https://mimir-us-central1.grafana.net/api/v1/push/` for Mimir. The endpoint URL depends on the database you use.
 
 1. If your endpoint requires basic authentication, paste the following inside the `endpoint` block.
 
@@ -76,7 +76,7 @@ The following example demonstrates configuring `prometheus.remote_write` with mu
 ```alloy
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 
   endpoint {
@@ -221,7 +221,7 @@ prometheus.scrape "pods" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```
@@ -318,7 +318,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
        Replace the following:
 
        * _`<SCRAPE_LABEL>`_: The label for the component, such as `services`.
-         The label you use must be unique across all `prometeus.scrape` components in the same configuration file.
+         The label you use must be unique across all `prometheus.scrape` components in the same configuration file.
        * _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
        * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 
@@ -347,7 +347,7 @@ prometheus.scrape "services" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```
@@ -402,7 +402,7 @@ prometheus.scrape "custom_targets" {
     },
     {
       __address__      = "custom-application:80",
-      __metrics_path__ = "/custom-metrics–path",
+      __metrics_path__ = "/custom-metrics-path",
     },
     {
       __address__ = "alloy:12345",
@@ -416,7 +416,7 @@ prometheus.scrape "custom_targets" {
 
 prometheus.remote_write "default" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```

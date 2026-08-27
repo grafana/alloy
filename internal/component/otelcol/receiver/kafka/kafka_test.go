@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"github.com/stretchr/testify/require"
@@ -698,4 +698,69 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
 		})
 	}
+}
+
+func TestGroupRebalanceStrategies(t *testing.T) {
+	base := `
+		brokers          = ["broker:9092"]
+		protocol_version = "2.0.0"
+
+		output {}
+	`
+
+	convert := func(t *testing.T, cfg string) *kafkareceiver.Config {
+		var args kafka.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		converted, err := args.Convert()
+		require.NoError(t, err)
+		return converted.(*kafkareceiver.Config)
+	}
+
+	t.Run("defaults to the singular strategy", func(t *testing.T) {
+		otelObj := convert(t, base)
+
+		require.Equal(t, configkafka.GroupRebalanceStrategy("range"), otelObj.ConsumerConfig.GroupRebalanceStrategy)
+		require.Empty(t, otelObj.ConsumerConfig.GroupRebalanceStrategies)
+	})
+
+	t.Run("the plural form replaces the singular", func(t *testing.T) {
+		otelObj := convert(t, `
+			brokers                    = ["broker:9092"]
+			protocol_version           = "2.0.0"
+			group_rebalance_strategies = ["cooperative-sticky", "range"]
+
+			output {}
+		`)
+
+		require.Equal(t, []configkafka.GroupRebalanceStrategy{"cooperative-sticky", "range"}, otelObj.ConsumerConfig.GroupRebalanceStrategies)
+		// Upstream rejects both forms being set, so the singular must be cleared.
+		require.Empty(t, otelObj.ConsumerConfig.GroupRebalanceStrategy)
+	})
+
+	t.Run("setting both forms is rejected", func(t *testing.T) {
+		var args kafka.Arguments
+		err := syntax.Unmarshal([]byte(`
+			brokers                    = ["broker:9092"]
+			protocol_version           = "2.0.0"
+			group_rebalance_strategy   = "sticky"
+			group_rebalance_strategies = ["range"]
+
+			output {}
+		`), &args)
+
+		require.ErrorContains(t, err, "mutually exclusive")
+	})
+
+	t.Run("an invalid strategy in the list is rejected", func(t *testing.T) {
+		var args kafka.Arguments
+		err := syntax.Unmarshal([]byte(`
+			brokers                    = ["broker:9092"]
+			protocol_version           = "2.0.0"
+			group_rebalance_strategies = ["range", "nonsense"]
+
+			output {}
+		`), &args)
+
+		require.ErrorContains(t, err, "must be one of")
+	})
 }

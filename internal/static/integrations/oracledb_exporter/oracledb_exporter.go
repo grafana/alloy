@@ -2,16 +2,16 @@ package oracledb_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
+	config_util "github.com/prometheus/common/config"
 
+	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	config_util "github.com/prometheus/common/config"
 )
 
 const oracleScheme = "oracle://"
@@ -92,8 +92,8 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration returns the OracleDB Exporter Integration
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	return New(logger, c)
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
 }
 
 func init() {

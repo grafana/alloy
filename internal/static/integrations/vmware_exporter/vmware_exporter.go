@@ -6,11 +6,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/vmware_exporter/vsphere"
 	config_util "github.com/prometheus/common/config"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 )
 
@@ -60,7 +58,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // New creates a new instance of this integration.
-func (c *Config) NewIntegration(log log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	vsphereURL, err := url.Parse(c.VSphereURL)
 	if err != nil {
 		return nil, err
@@ -74,7 +72,7 @@ func (c *Config) NewIntegration(log log.Logger) (integrations.Integration, error
 		ObjectDiscoveryInterval: c.ObjectDiscoveryInterval,
 		EnableExporterMetrics:   c.EnableExporterMetrics,
 	}
-	exporter, err := vsphere.NewExporter(slog.New(logging.NewSlogGoKitHandler(log)), &exporterConfig)
+	exporter, err := vsphere.NewExporter(l, &exporterConfig)
 	if err != nil {
 		return nil, err
 	}

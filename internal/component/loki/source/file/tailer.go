@@ -100,22 +100,7 @@ func (t *tailer) Run(ctx context.Context) {
 
 	// We call report so that retries won't log.
 	t.report.Do(func() {})
-
-	t.metrics.filesActive.Add(1.)
-
-	ctx, cancel := context.WithCancel(ctx)
-	var wg sync.WaitGroup
-
-	wg.Go(func() {
-		t.readLines(ctx, pos)
-		cancel()
-	})
-
-	t.running.Store(true)
-	defer t.running.Store(false)
-
-	<-ctx.Done()
-	t.stop(&wg)
+	t.tail(ctx, pos)
 }
 
 func (t *tailer) initRun() (int64, error) {
@@ -161,7 +146,7 @@ func (t *tailer) initRun() (int64, error) {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 
-	tail, err := tail.NewFile(t.logger, &tail.Config{
+	file, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
 		StartFromEnd:  startFromEnd,
@@ -174,18 +159,16 @@ func (t *tailer) initRun() (int64, error) {
 		return pos, fmt.Errorf("failed to tail the file: %w", err)
 	}
 
-	t.file = tail
+	t.file = file
 
 	return pos, nil
 }
 
-// readLines reads lines from the tailed file by calling Next() in a loop.
-// It processes each line by sending it to the receiver's channel and updates
-// position tracking periodically. It exits either when Next() returns an error
-// (for example, when the tail.File is stopped, we have an unrecoverable error, or EOF
-// is reached for a fully consumed compressed file) or when the context is canceled,
-// including while a send to the receiver's channel is blocked.
-func (t *tailer) readLines(ctx context.Context, pos int64) {
+// tail reads lines from the file and forwards them to the receiver, periodically
+// recording the read offset. It blocks until ctx is canceled or the file is fully read.
+func (t *tailer) tail(ctx context.Context, pos int64) {
+	t.running.Store(true)
+	t.metrics.filesActive.Add(1.)
 	t.logger.Info("start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
@@ -201,17 +184,56 @@ func (t *tailer) readLines(ctx context.Context, pos int64) {
 	)
 
 	defer func() {
+		t.running.Store(false)
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
+
+		if err := t.file.Close(); err != nil {
+			if util.IsEphemeralOrFileClosed(err) {
+				// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
+				// when files are rotating while being read and the tailer would have stopped correctly anyway.
+				t.logger.Debug("failed to stop tailer", "error", err)
+			} else if !errors.Is(err, os.ErrNotExist) {
+				// Log as error for other reasons, as a resource leak may have happened.
+				t.logger.Error("failed to stop tailer", "error", err)
+			}
+		}
+
+		t.logger.Info("stopped tailing file")
+
+		// We need to cleanup created metrics.
+		t.cleanupMetrics()
+		if !t.shouldKeepPosition() {
+			t.positions.Remove(t.key.Path, t.key.Labels)
+		}
 	}()
 
+	nextLine := func() (*tail.Line, error) {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
+
+			line, err := t.file.Next()
+			if !errors.Is(err, io.EOF) {
+				return line, err
+			}
+
+			if t.decompression.Enabled {
+				return t.file.Flush()
+			}
+
+			if err := t.file.Wait(ctx); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	for {
-		line, err := t.file.Next()
+		line, err := nextLine()
 		if err != nil {
-			// We get context.Canceled if tail.File was stopped so we don't have to log it.
-			// If we get context.Canceled it means that tail.File was stopped. If we get EOF
-			// that means that we consumed the file fully and don't wait for more events, this
-			// happens when compression is configured.
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
 				t.logger.Error("failed to tail file", "err", err)
 			}
@@ -219,7 +241,6 @@ func (t *tailer) readLines(ctx context.Context, pos int64) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-
 		select {
 		case <-ctx.Done():
 			return
@@ -238,37 +259,10 @@ func (t *tailer) readLines(ctx context.Context, pos int64) {
 }
 
 func (t *tailer) updateStats(offset int64, size int64) {
-	// Update metrics and positions file all together to avoid race conditions when `t.tail` is stopped.
+	// Update metrics and the positions file together so the reported offset stays consistent.
 	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
 	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
 	t.positions.Put(t.key.Path, t.key.Labels, offset)
-}
-
-func (t *tailer) stop(wg *sync.WaitGroup) {
-	if err := t.file.Stop(); err != nil {
-		if util.IsEphemeralOrFileClosed(err) {
-			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
-			// when files are rotating while being read and the tailer would have stopped correctly anyway.
-			t.logger.Debug("failed to stop tailer", "error", err)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			// Log as error for other reasons, as a resource leak may have happened.
-			t.logger.Error("failed to stop tailer", "error", err)
-		}
-	}
-
-	t.logger.Debug("waiting for readLines to exit")
-
-	// Wait for readLines() to exit.
-	wg.Wait()
-
-	t.logger.Info("stopped tailing file")
-
-	// We need to cleanup created metrics.
-	t.cleanupMetrics()
-
-	if !t.shouldKeepPosition() {
-		t.positions.Remove(t.key.Path, t.key.Labels)
-	}
 }
 
 func (t *tailer) Key() positions.Entry {

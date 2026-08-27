@@ -4,15 +4,15 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60 AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6 AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
-RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
-    npm install                                               \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund                         \
     && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -64,8 +64,10 @@ COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
 
 # Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
 # OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
-COPY packaging/docker/otelcol.sh /bin/otelcol
-RUN chmod 755 /bin/otelcol
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otelcol.sh /bin/otelcol
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor as PID 1
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otel-supervisor.sh /bin/otel-supervisor
 
 # Create alloy user in container, but do not set it as default
 #
@@ -73,7 +75,7 @@ RUN chmod 755 /bin/otelcol
 # undocumented feature; use at your own risk.
 RUN groupadd --gid $UID $USERNAME \
     && useradd -m -u $UID -g $UID $USERNAME \
-    && mkdir -p /var/lib/alloy/data \
+    && mkdir -p /var/lib/alloy/data /var/lib/alloy/supervisor \
     && chown -R $USERNAME:$USERNAME /var/lib/alloy \
     && chmod -R 770 /var/lib/alloy
 

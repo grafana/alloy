@@ -6,12 +6,13 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestFile(t *testing.T) {
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := util.TestAlloyLogger(t).Slog()
 	getTempDir := func(t *testing.T) string {
 		dir := t.TempDir()
 		return dir

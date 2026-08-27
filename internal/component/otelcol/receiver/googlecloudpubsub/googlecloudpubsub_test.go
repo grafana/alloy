@@ -29,6 +29,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
+				FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
+					TriggerAckBatchDuration: 10 * time.Second,
+					StreamAckDeadline:       60 * time.Second,
+				},
 			},
 		},
 		{
@@ -37,6 +41,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				project = "test-project"
 				user_agent = "custom-user-agent"
 				endpoint = "https://www.googleapis.com/"
+				universe_domain = "example-sovereign.example.com"
 				insecure = true
 				subscription = "projects/test-project/subscriptions/test-subscription"
 				encoding = "otlp_proto_log"
@@ -51,6 +56,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ProjectID:           "test-project",
 				UserAgent:           "custom-user-agent",
 				Endpoint:            "https://www.googleapis.com/",
+				UniverseDomain:      "example-sovereign.example.com",
 				Insecure:            true,
 				Subscription:        "projects/test-project/subscriptions/test-subscription",
 				Encoding:            "otlp_proto_log",
@@ -59,6 +65,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ClientID:            "123",
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 15 * time.Second,
+				},
+				FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
+					TriggerAckBatchDuration: 10 * time.Second,
+					StreamAckDeadline:       60 * time.Second,
 				},
 			},
 		},

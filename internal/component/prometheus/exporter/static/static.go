@@ -3,10 +3,10 @@ package static
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/expfmt"
@@ -75,7 +75,7 @@ func (c *Config) Name() string {
 	return "static"
 }
 
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
 	return &Integration{cfg: *c, reg: prometheus.NewRegistry()}, nil
 }
 

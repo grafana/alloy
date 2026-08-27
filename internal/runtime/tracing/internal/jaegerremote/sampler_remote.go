@@ -18,7 +18,6 @@
 package jaegerremote
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,10 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	jaeger_api_v2 "github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 const (
@@ -314,7 +314,7 @@ type samplingStrategyParserImpl struct{}
 
 func (p *samplingStrategyParserImpl) Parse(response []byte) (any, error) {
 	strategy := new(jaeger_api_v2.SamplingStrategyResponse)
-	if err := jsonpb.Unmarshal(bytes.NewReader(response), strategy); err != nil {
+	if err := protojson.Unmarshal(response, protoadapt.MessageV2Of(strategy)); err != nil {
 		return nil, err
 	}
 	return strategy, nil

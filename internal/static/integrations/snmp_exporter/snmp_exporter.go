@@ -4,11 +4,12 @@ package snmp_exporter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
+	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/snmp_exporter/collector"
@@ -68,7 +69,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration creates a new SNMP integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -77,7 +78,7 @@ func init() {
 }
 
 // New creates a new snmp_exporter integration
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err
@@ -145,9 +146,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 	return collector.Metrics{
 		SNMPCollectionDuration: promauto.With(reg).NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: namespace,
-				Name:      "collection_duration_seconds",
-				Help:      "Duration of collections by the SNMP exporter",
+				Namespace:                       namespace,
+				Name:                            "collection_duration_seconds",
+				Help:                            "Duration of collections by the SNMP exporter",
+				Buckets:                         prometheus.DefBuckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
 			},
 			[]string{"module"},
 		),
@@ -160,10 +165,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 		),
 		SNMPDuration: promauto.With(reg).NewHistogram(
 			prometheus.HistogramOpts{
-				Namespace: namespace,
-				Name:      "packet_duration_seconds",
-				Help:      "A histogram of latencies for SNMP packets.",
-				Buckets:   buckets,
+				Namespace:                       namespace,
+				Name:                            "packet_duration_seconds",
+				Help:                            "A histogram of latencies for SNMP packets.",
+				Buckets:                         buckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
 			},
 		),
 		SNMPPackets: promauto.With(reg).NewCounter(

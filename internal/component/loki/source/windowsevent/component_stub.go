@@ -16,7 +16,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			opts.SLogger.Info("loki.source.windowsevent only works on windows platforms")
+			opts.Logger.Info("loki.source.windowsevent only works on windows platforms")
 			return &FakeComponent{}, nil
 		},
 	})

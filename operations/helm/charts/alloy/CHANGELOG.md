@@ -10,6 +10,60 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.12.0 (2026-08-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.19.0 (@dehaansa)
+
+1.11.1 (2026-08-06)
+----------
+
+### Enhancements
+
+- Harden the default `securityContext` for the config reloader sidecar: disable privilege escalation, use a read-only root filesystem, drop all capabilities, run as non-root, and set the `RuntimeDefault` seccomp profile. (@petewall)
+
+- Update to Grafana Alloy v1.18.1 (@blewis12)
+
+1.11.0 (2026-07-20)
+----------
+
+### Enhancements
+
+- Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
+
+- Update to Grafana Alloy v1.18.0 (@blewis12)
+
+1.10.1 (2026-06-29)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.17.1 (@x1unix)
+
+1.10.0 (2026-06-12)
+----------
+
+### Enhancements
+
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
+
+- Update to Grafana Alloy v1.17.0 (@kgeckhart)
+
+1.9.0 (2026-06-08)
+----------
+
+### Enhancements
+
+- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
+
+- Update to Grafana Alloy v1.16.3 (@kgeckhart)
+
+### Bug fixes
+
+- Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
+
 1.8.2 (2026-05-25)
 ----------
 

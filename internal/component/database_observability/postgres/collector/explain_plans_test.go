@@ -9,7 +9,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -798,7 +798,7 @@ func TestExplainPlanOutput(t *testing.T) {
 							Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
 							Details: database_observability.ExplainPlanNodeDetails{
 								Alias:         stringPtr("e"),
-								Condition:     stringPtr("((hire_date < ?::date) AND (EXTRACT(month FROM hire_date) = EXTRACT(month FROM CURRENT_DATE)))"),
+								Condition:     stringPtr("((hire_date < ?::date) AND (EXTRACT(? FROM hire_date) = EXTRACT(? FROM CURRENT_DATE)))"),
 								EstimatedRows: 486,
 								EstimatedCost: floatPtr(6476.12),
 							},
@@ -1489,7 +1489,7 @@ func TestExplainPlanOutput(t *testing.T) {
 														Alias:         stringPtr("e"),
 														EstimatedRows: 882,
 														EstimatedCost: floatPtr(5151.27),
-														Condition:     stringPtr("(EXTRACT(year FROM hire_date) = ?::numeric)"),
+														Condition:     stringPtr("(EXTRACT(? FROM hire_date) = ?::numeric)"),
 													},
 												},
 											},
@@ -2252,7 +2252,7 @@ func TestNewExplainPlan(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
@@ -2286,6 +2286,8 @@ func TestNewExplainPlan(t *testing.T) {
 		assert.NotNil(t, explainPlan.queryCache)
 		assert.NotNil(t, explainPlan.queryDenylist)
 		assert.NotNil(t, explainPlan.finishedQueryCache)
+		assert.NotNil(t, explainPlan.lastEmittedAt)
+		assert.NotNil(t, explainPlan.now)
 		assert.NotNil(t, explainPlan.running)
 		assert.False(t, explainPlan.running.Load())
 	})
@@ -2293,6 +2295,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from docker image", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)
@@ -2306,6 +2309,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from percona helm", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "17.7 - Percona Server for PostgreSQL 17.7.1",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)
@@ -2314,6 +2318,168 @@ func TestNewExplainPlan(t *testing.T) {
 		assert.Equal(t, ep.dbVersion.Major, uint64(17))
 		assert.Equal(t, ep.dbVersion.Minor, uint64(7))
 		assert.Equal(t, ep.dbVersion.Patch, uint64(0))
+	})
+}
+
+func TestExplainPlansThrottling(t *testing.T) {
+	base := time.Date(2026, time.July, 31, 12, 0, 0, 0, time.UTC)
+
+	t.Run("all emitted results start the throttle", func(t *testing.T) {
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlan(ExplainPlansArguments{
+			Logger:       logging.NewSlogNop(),
+			EntryHandler: lokiClient,
+			DBVersion:    "17.0",
+		})
+		require.NoError(t, err)
+		c.now = func() time.Time { return base }
+
+		results := []database_observability.ExplainProcessingResult{
+			database_observability.ExplainProcessingResultSuccess,
+			database_observability.ExplainProcessingResultSkipped,
+			database_observability.ExplainProcessingResultError,
+		}
+		for i, result := range results {
+			queryID := fmt.Sprintf("%d", i)
+			require.NoError(t, c.sendExplainPlansOutput(
+				"testdb",
+				queryID,
+				base.Format(time.RFC3339),
+				result,
+				"",
+				nil,
+			))
+			require.Equal(t, base, c.lastEmittedAt[explainPlanQueryKey("testdb", queryID)])
+		}
+
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), len(results))
+	})
+
+	t.Run("skips explain within interval and retries after interval", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlan(ExplainPlansArguments{
+			DB:             db,
+			DSN:            "postgres://user:pass@host:1234/database",
+			Logger:         logging.NewSlogNop(),
+			PerScrapeRatio: 1,
+			EntryHandler:   lokiClient,
+			DBVersion:      "17.0",
+		})
+		require.NoError(t, err)
+
+		dbConnFactory := &mockDbConnectionFactory{
+			db:   db,
+			Mock: &mock,
+		}
+		c.dbConnectionFactory = dbConnFactory.NewDBConnection
+		fakeNow := base
+		c.now = func() time.Time { return fakeNow }
+
+		queryID := "123456"
+		key := explainPlanQueryKey("testdb", queryID)
+		require.NoError(t, c.sendExplainPlansOutput(
+			"testdb",
+			queryID,
+			base.Format(time.RFC3339),
+			database_observability.ExplainProcessingResultSuccess,
+			"",
+			nil,
+		))
+		require.Equal(t, base, c.lastEmittedAt[key])
+		c.finishedQueryCache[key] = processedQueryInfo{calls: 10, callsReset: base}
+
+		fakeNow = base.Add(time.Minute)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", queryID, "select * from some_table", int64(11), base).
+				AddRow("otherdb", "654321", "select * from other_table", int64(1), base))
+
+		require.NoError(t, c.populateQueryCache(t.Context()))
+		require.NotContains(t, c.queryCache, key)
+		require.Contains(t, c.queryCache, explainPlanQueryKey("otherdb", "654321"))
+		require.Equal(t, int64(11), c.finishedQueryCache[key].calls)
+		require.Equal(t, 1, c.currentBatchSize)
+		require.Equal(t, 0, dbConnFactory.InstantiationCount)
+		require.Equal(t, base, c.lastEmittedAt[key])
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		delete(c.queryCache, explainPlanQueryKey("otherdb", "654321"))
+		fakeNow = base.Add(database_observability.EmitInterval + time.Minute)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", queryID, "select * from some_table", int64(12), base))
+
+		require.NoError(t, c.populateQueryCache(t.Context()))
+		require.Contains(t, c.queryCache, key)
+		require.Equal(t, 1, c.currentBatchSize)
+
+		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").
+			WillReturnRows(sqlmock.NewRows([]string{"json"}).
+				AddRow([]byte(`[{"Plan":{"Node Type":"Seq Scan","Alias":"some_table","Total Cost":1,"Plan Rows":1}}]`)))
+		mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+		require.NoError(t, c.fetchExplainPlans(t.Context()))
+		require.Equal(t, fakeNow, c.lastEmittedAt[key])
+		require.Equal(t, 1, dbConnFactory.InstantiationCount)
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), 2)
+	})
+
+	t.Run("throttles denylist output and prunes absent queries", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlan(ExplainPlansArguments{
+			DB:             db,
+			Logger:         logging.NewSlogNop(),
+			PerScrapeRatio: 1,
+			EntryHandler:   lokiClient,
+			DBVersion:      "17.0",
+		})
+		require.NoError(t, err)
+		c.now = func() time.Time { return base }
+
+		key := explainPlanQueryKey("testdb", "123456")
+		c.queryDenylist[key] = struct{}{}
+		require.NoError(t, c.sendExplainPlansOutput(
+			"testdb",
+			"123456",
+			base.Format(time.RFC3339),
+			database_observability.ExplainProcessingResultSkipped,
+			"query denylisted",
+			nil,
+		))
+		c.lastEmittedAt["absent999"] = base
+
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", "123456", "select * from some_table", int64(10), base))
+
+		require.NoError(t, c.populateQueryCache(t.Context()))
+		require.Empty(t, c.queryCache)
+		require.Contains(t, c.lastEmittedAt, key)
+		require.NotContains(t, c.lastEmittedAt, "absent999")
+		require.Equal(t, base, c.lastEmittedAt[key])
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), 1)
 	})
 }
 
@@ -2346,8 +2512,7 @@ func TestNewQueryInfo(t *testing.T) {
 	assert.Equal(t, queryText, qi.queryText)
 	assert.Equal(t, calls, qi.calls)
 	assert.Equal(t, callsReset, qi.callsReset)
-	assert.Equal(t, datname+queryId, qi.uniqueKey)
-	assert.Equal(t, 0, qi.failureCount)
+	assert.Equal(t, "testdb:123456789", qi.uniqueKey)
 }
 
 func TestPlanNode_TotalCost(t *testing.T) {
@@ -2520,7 +2685,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
 	require.NoError(t, err)
@@ -2538,8 +2703,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection:       db,
 				dbVersion:          pre17ver,
 				queryCache:         make(map[string]*queryInfo),
-				queryDenylist:      make(map[string]*queryInfo),
-				finishedQueryCache: make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]struct{}),
+				finishedQueryCache: make(map[string]processedQueryInfo),
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             logger,
@@ -2563,7 +2728,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			assert.Len(t, explainPlan.queryCache, 1)
 			assert.Equal(t, 1, explainPlan.currentBatchSize)
 
-			qi := explainPlan.queryCache["testdb123456"]
+			qi := explainPlan.queryCache[explainPlanQueryKey("testdb", "123456")]
 			assert.Equal(t, resetTime, qi.callsReset)
 
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -2578,8 +2743,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection:       db,
 				dbVersion:          post17ver,
 				queryCache:         make(map[string]*queryInfo),
-				queryDenylist:      make(map[string]*queryInfo),
-				finishedQueryCache: make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]struct{}),
+				finishedQueryCache: make(map[string]processedQueryInfo),
 				excludeDatabases:   []string{"information_schema"},
 				perScrapeRatio:     0.5,
 				logger:             logger,
@@ -2600,8 +2765,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			assert.Len(t, explainPlan.queryCache, 2)
 			assert.Equal(t, 1, explainPlan.currentBatchSize)
 
-			assert.Contains(t, explainPlan.queryCache, "testdb123456")
-			assert.Contains(t, explainPlan.queryCache, "testdb2345678")
+			assert.Contains(t, explainPlan.queryCache, explainPlanQueryKey("testdb", "123456"))
+			assert.Contains(t, explainPlan.queryCache, explainPlanQueryKey("testdb2", "345678"))
 
 			assert.NoError(t, mock.ExpectationsWereMet())
 		})
@@ -2619,8 +2784,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				finishedQueryCache: map[string]processedQueryInfo{
+					explainPlanQueryKey("testdb", "123456"): {calls: int64(10), callsReset: time.Now()},
 				},
 			}
 
@@ -2645,8 +2810,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now().Add(-time.Hour)),
+				finishedQueryCache: map[string]processedQueryInfo{
+					explainPlanQueryKey("testdb", "123456"): {calls: int64(10), callsReset: time.Now().Add(-time.Hour)},
 				},
 			}
 
@@ -2672,8 +2837,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				finishedQueryCache: map[string]processedQueryInfo{
+					explainPlanQueryKey("testdb", "123456"): {calls: int64(10), callsReset: time.Now()},
 				},
 			}
 
@@ -2749,12 +2914,47 @@ func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
 	assert.Equal(t, database_observability.ExplainPlanJoinAlgorithmHash, *result.Details.JoinAlgorithm)
 }
 
+func TestExplainPlanBatchSizeLimitsProcessing(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlan(ExplainPlansArguments{
+		Logger:         logging.NewSlogNop(),
+		ScrapeInterval: time.Second,
+		PerScrapeRatio: 1,
+		EntryHandler:   lokiClient,
+		DBVersion:      "17.0",
+	})
+	require.NoError(t, err)
+
+	c.queryCache = map[string]*queryInfo{
+		explainPlanQueryKey("db", "1"): newQueryInfo("db", "1", "select * from table_1 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "2"): newQueryInfo("db", "2", "select * from table_2 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "3"): newQueryInfo("db", "3", "select * from table_3 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "4"): newQueryInfo("db", "4", "select * from table_4 where ...", 1, time.Now()),
+	}
+	c.currentBatchSize = 2
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.Len(t, c.queryCache, 2, "batch size limit should leave unprocessed items in cache")
+	require.Len(t, c.finishedQueryCache, 2)
+	require.Empty(t, c.queryDenylist)
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 2 },
+		5*time.Second,
+		10*time.Millisecond,
+		"expected exactly 2 Loki entries, got %d",
+		len(lokiClient.Received()),
+	)
+}
+
 func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 
 	post17ver, err := semver.ParseTolerant("17.0")
 	require.NoError(t, err)
@@ -2765,8 +2965,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		dbDSN:               "postgres://user:pass@host:1234/database",
 		dbVersion:           post17ver,
 		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]struct{}),
+		finishedQueryCache:  make(map[string]processedQueryInfo),
 		excludeDatabases:    []string{},
 		perScrapeRatio:      1.0,
 		logger:              logger,
@@ -2785,6 +2985,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		// Should succeed but not process any queries since they require actual DB connections
 		require.NoError(t, err)
 		require.Equal(t, 1, len(explainPlan.finishedQueryCache))
+		require.Empty(t, explainPlan.lastEmittedAt, "a failure without explain_plan_output must remain unthrottled")
 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -2794,6 +2995,12 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+		slogger := logger.Slog()
 
 		t.Run("skips truncated queries", func(t *testing.T) {
 			lokiClient.Clear()
@@ -2804,18 +3011,18 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						queryId:    "123456",
 						queryText:  "SELECT * FROM users WHERE ...",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				entryHandler:       lokiClient,
 				currentBatchSize:   1,
 			}
@@ -2847,48 +3054,48 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbDSN:               "postgres://user:pass@host:1234/database",
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						queryId:    "123456",
 						queryText:  "update some_table set col = 1 where id = 1",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
-					"testdb123457": {
+					explainPlanQueryKey("testdb", "123457"): {
 						queryId:    "123457",
 						queryText:  "delete from some_table",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
-					"testdb123458": {
+					explainPlanQueryKey("testdb", "123458"): {
 						queryId:    "123458",
 						queryText:  "insert into some_table (col) values (1)",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
-					"testdb123459": {
+					explainPlanQueryKey("testdb", "123459"): {
 						queryId:    "123459",
 						queryText:  "show search_path",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
-					"testdb123460": {
+					explainPlanQueryKey("testdb", "123460"): {
 						queryId:    "123460",
 						queryText:  "call refresh_summary()",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
-					"testdb123461": {
+					explainPlanQueryKey("testdb", "123461"): {
 						queryId:    "123461",
 						queryText:  "do 'begin perform 1; end'",
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				entryHandler:       lokiClient,
 				currentBatchSize:   6,
 			}
@@ -2929,7 +3136,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						datname:    "testdb",
 						queryId:    "123456",
 						queryText:  "select * from some_table where id = $1",
@@ -2937,11 +3144,11 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -2996,7 +3203,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						datname:    "testdb",
 						queryId:    "123456",
 						queryText:  "with cte as (select * from some_table where id = $1) select * from cte",
@@ -3004,11 +3211,11 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3064,7 +3271,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						datname:    "testdb",
 						queryId:    "123456",
 						queryText:  dupParamQuery,
@@ -3072,11 +3279,11 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3120,6 +3327,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 
 			lokiClient.Clear()
 			logBuffer.Reset()
+
 			dbConnFactory := &mockDbConnectionFactory{
 				db:                 db,
 				Mock:               &mock,
@@ -3131,7 +3339,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				dbConnectionFactory: dbConnFactory.NewDBConnection,
 				dbVersion:           post17ver,
 				queryCache: map[string]*queryInfo{
-					"testdb123456": {
+					explainPlanQueryKey("testdb", "123456"): {
 						datname:    "testdb",
 						queryId:    "123456",
 						queryText:  "select * from some_table",
@@ -3139,11 +3347,11 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3194,6 +3402,12 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 
 	post17ver := semver.MustParse("17.0.0")
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -3202,11 +3416,11 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 		dbConnection:       db,
 		dbVersion:          post17ver,
 		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
 		excludeDatabases:   []string{"excluded_db"},
 		perScrapeRatio:     1.0,
-		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		logger:             logger.Slog(),
 		entryHandler:       lokiClient,
 	}
 
@@ -3224,7 +3438,7 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 
 	// Verify only included_db query is in the cache
 	assert.Len(t, explainPlan.queryCache, 1)
-	assert.Contains(t, explainPlan.queryCache, "included_db222222")
+	assert.Contains(t, explainPlan.queryCache, explainPlanQueryKey("included_db", "222222"))
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
@@ -3238,6 +3452,12 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 
 	post17ver := semver.MustParse("17.0.0")
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -3245,11 +3465,11 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 		dbConnection:       db,
 		dbVersion:          post17ver,
 		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
 		excludeUsers:       []string{"excluded_user"},
 		perScrapeRatio:     1.0,
-		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		logger:             logger.Slog(),
 		entryHandler:       lokiClient,
 	}
 
@@ -3265,7 +3485,7 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Len(t, explainPlan.queryCache, 1)
-	assert.Contains(t, explainPlan.queryCache, "testdb111111")
+	assert.Contains(t, explainPlan.queryCache, explainPlanQueryKey("testdb", "111111"))
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

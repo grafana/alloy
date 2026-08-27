@@ -2,15 +2,11 @@ package snmp_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"log/slog"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/snmp_exporter/collector"
@@ -24,10 +20,10 @@ const (
 type snmpHandler struct {
 	cfg     *Config
 	snmpCfg *snmp_config.Config
-	log     log.Logger
+	log     *slog.Logger
 }
 
-func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg *snmp_config.Config,
+func Handler(w http.ResponseWriter, r *http.Request, logger *slog.Logger, snmpCfg *snmp_config.Config,
 	targets []SNMPTarget, wParams map[string]snmp_config.WalkParams, concurrency int) {
 
 	query := r.URL.Query()
@@ -110,9 +106,9 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
 	}
 	if walkParams != "" {
-		logger = log.With(logger, "module_param", moduleParam, "target", target, "walk_params", walkParams)
+		logger = logger.With("module_param", moduleParam, "target", target, "walk_params", walkParams)
 	} else {
-		logger = log.With(logger, "module_param", moduleParam, "target", target)
+		logger = logger.With("module_param", moduleParam, "target", target)
 	}
 
 	auth, ok := (*snmpCfg).Auths[authName]
@@ -121,17 +117,17 @@ func Handler(w http.ResponseWriter, r *http.Request, logger log.Logger, snmpCfg 
 		return
 	}
 
-	level.Debug(logger).Log("msg", "Starting scrape")
+	logger.Debug("Starting scrape")
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, slog.New(logging.NewSlogGoKitHandler(logger)), NewSNMPMetrics(registry), concurrency, false)
+	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
 	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
 	duration := time.Since(start).Seconds()
-	level.Debug(logger).Log("msg", "Finished scrape", "duration_seconds", duration)
+	logger.Debug("Finished scrape", "duration_seconds", duration)
 }
 
 func (sh snmpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

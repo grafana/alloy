@@ -169,6 +169,11 @@ func TestPgSqlParser_Redact(t *testing.T) {
 			want: "SELECT id, name, ?::timestamp FROM users",
 		},
 		{
+			name: "extract date part",
+			sql:  "SELECT * FROM employees WHERE EXTRACT(year FROM hire_date) = 1985",
+			want: "SELECT * FROM employees WHERE EXTRACT(? FROM hire_date) = ?",
+		},
+		{
 			name: "table wildcard",
 			sql:  "SELECT u.* FROM users u",
 			want: "SELECT u.* FROM users u",

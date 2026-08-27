@@ -52,14 +52,14 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 	)
 
 	return &k8sattributes.Arguments{
-		AuthType:    string(cfg.AuthType),
+		AuthType:    string(cfg.APIConfig.AuthType),
 		Passthrough: cfg.Passthrough,
 		ExtractConfig: k8sattributes.ExtractConfig{
 			Metadata:                     cfg.Extract.Metadata,
 			Annotations:                  toFilterExtract(cfg.Extract.Annotations),
 			Labels:                       toFilterExtract(cfg.Extract.Labels),
 			OtelAnnotations:              cfg.Extract.OtelAnnotations,
-			DeploymentNameFromReplicaSet: cfg.Extract.DeploymentNameFromReplicaSet,
+			DeploymentNameFromReplicaSet: cfg.Extract.DeploymentNameFromReplicaSet, //nolint:staticcheck // deprecated upstream (defaults to true) but still read so existing configs convert; drop when upstream removes it
 		},
 		Filter: k8sattributes.FilterConfig{
 			Node:      cfg.Filter.Node,
@@ -71,6 +71,8 @@ func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *
 		Exclude:                toExclude(cfg.Exclude),
 		WaitForMetadata:        cfg.WaitForMetadata,
 		WaitForMetadataTimeout: cfg.WaitForMetadataTimeout,
+		WatchSyncPeriod:        cfg.WatchSyncPeriod,
+		PodDeleteGracePeriod:   cfg.PodDeleteGracePeriod,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

@@ -3,15 +3,16 @@ package blackbox_exporter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 
-	"github.com/go-kit/log"
 	blackbox_config "github.com/prometheus/blackbox_exporter/config"
 	"github.com/prometheus/blackbox_exporter/prober"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v3"
 
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/grafana/alloy/internal/util"
@@ -23,10 +24,10 @@ var DefaultConfig = Config{
 	ProbeTimeoutOffset: 0.5,
 }
 
-func loadFile(filename string, log log.Logger) (*blackbox_config.Config, error) {
+func loadFile(filename string, log *slog.Logger) (*blackbox_config.Config, error) {
 	r := prometheus.NewRegistry()
 	sc := blackbox_config.NewSafeConfig(r)
-	err := sc.ReloadConfig(filename, log)
+	err := sc.ReloadConfig(filename, slogadapter.GoKit(log.Handler()))
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration creates a new blackbox integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -82,7 +83,7 @@ func init() {
 
 // LoadBlackboxConfig loads the blackbox config from the given file or from embedded yaml block
 // it also validates that targets are properly defined
-func LoadBlackboxConfig(log log.Logger, configFile string, targets []BlackboxTarget, modules *blackbox_config.Config) (*blackbox_config.Config, error) {
+func LoadBlackboxConfig(log *slog.Logger, configFile string, targets []BlackboxTarget, modules *blackbox_config.Config) (*blackbox_config.Config, error) {
 	var err error
 
 	if configFile != "" {
@@ -103,7 +104,7 @@ func LoadBlackboxConfig(log log.Logger, configFile string, targets []BlackboxTar
 }
 
 // New creates a new blackbox_exporter integration
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 	if c.BlackboxConfigFile == "" && c.BlackboxConfig == nil {
 		return nil, fmt.Errorf("failed to load blackbox config; no config file or config block provided")
 	}
@@ -132,13 +133,13 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 type Integration struct {
 	cfg     *Config
 	modules *blackbox_config.Config
-	log     log.Logger
+	log     *slog.Logger
 }
 
 // MetricsHandler implements Integration.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		prober.Handler(w, r, i.modules, i.log, &prober.ResultHistory{}, i.cfg.ProbeTimeoutOffset, nil, nil)
+		prober.Handler(w, r, i.modules, slogadapter.GoKit(i.log.Handler()), &prober.ResultHistory{}, i.cfg.ProbeTimeoutOffset, nil, nil)
 	}), nil
 }
 

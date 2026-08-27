@@ -2,17 +2,17 @@ package collector
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -300,21 +300,21 @@ func TestExplainPlansRedactor(t *testing.T) {
 func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
 		notJsonData := []byte("not json data")
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		_, err := newExplainPlansOutput(logger, notJsonData)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		explainPlanOutput, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"))
 		require.NoError(t, err)
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
 
 	t.Run("zero rows", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
 		require.NoError(t, err)
 	})
@@ -1495,7 +1495,7 @@ func TestExplainPlansOutput(t *testing.T) {
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+			logger := util.TestAlloyLogger(t).Slog()
 			output, err := newExplainPlansOutput(logger, jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
 			require.Equal(t, test.result.Plan, *output)
@@ -1515,7 +1515,7 @@ func TestExplainPlans(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1569,240 +1569,506 @@ func TestExplainPlans(t *testing.T) {
 		err = mock.ExpectationsWereMet()
 		require.NoError(t, err)
 	})
+}
 
-	t.Run("query validation", func(t *testing.T) {
+func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest",
+		"select * from some_table where ...",
+		lastSeen,
+	))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 1 },
+		5*time.Second,
+		10*time.Millisecond,
+		"did not receive the explain plan output log message within the timeout",
+	)
+	require.NotContains(t, logBuffer.String(), "error")
+	lokiEntries := lokiClient.Received()
+	require.Equal(t, 1, len(lokiEntries))
+	epo, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntries[0])
+	require.NoError(t, err)
+	require.Equal(t, database_observability.ExplainProcessingResultSkipped, epo.Metadata.ProcessingResult)
+	require.Equal(t, "query is truncated", epo.Metadata.ProcessingResultReason)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"update_digest",
+		"update some_table set col = 1 where id = 1",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"delete_digest",
+		"delete from some_table",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"insert_digest",
+		"insert into some_table (col) values (1)",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"show_digest",
+		"show global status like 'Uptime'",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"kill_digest",
+		"kill query 123",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"call_digest",
+		"call refresh_summary()",
+		lastSeen,
+	).AddRow(
+		"some_schema",
+		"do_digest",
+		"do release_lock('foo')",
+		lastSeen,
+	))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 7 },
+		5*time.Second,
+		10*time.Millisecond,
+		"did not receive the explain plan output log messages within the timeout",
+	)
+
+	lokiEntries := lokiClient.Received()
+	require.Equal(t, 7, len(lokiEntries))
+
+	for _, lokiEntry := range lokiEntries {
+		ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)
+		require.NoError(t, err)
+		require.Equal(t, database_observability.ExplainProcessingResultSkipped, ep.Metadata.ProcessingResult)
+		require.Equal(t, "query contains reserved word", ep.Metadata.ProcessingResultReason)
+	}
+
+	require.NotContains(t, logBuffer.String(), "error")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlansSkipsNoRowResult(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest",
+		"select * from some_table where id = 1",
+		lastSeen,
+	))
+
+	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
+		"json",
+	}).AddRow(
+		[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
+	))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+
+	require.NotContains(t, logBuffer.String(), "error")
+	require.Contains(t, logBuffer.String(), "no matching row in const table")
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest",
+		"select * from some_table where id = 1",
+		lastSeen,
+	))
+
+	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
+		"json",
+	}).AddRow(
+		[]byte(`{"query_block": {"select_id": 1}}`),
+	))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+
+	require.NotContains(t, logBuffer.String(), "error")
+
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 1 },
+		5*time.Second,
+		10*time.Millisecond,
+		"did not receive the explain plan output log message within the timeout",
+	)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"some_schema",
+		"some_digest",
+		"with cte as (select * from some_table where id = 1) select * from cte",
+		lastSeen,
+	))
+
+	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectQuery(selectExplainPlanPrefix + "with cte as (select * from some_table where id = 1) select * from cte").WillReturnRows(sqlmock.NewRows([]string{
+		"json",
+	}).AddRow(
+		[]byte(`{"query_block": {"select_id": 1}}`),
+	))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+
+	require.NotContains(t, logBuffer.String(), "error")
+
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 1 },
+		5*time.Second,
+		10*time.Millisecond,
+		"did not receive the explain plan output log message within the timeout",
+	)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlansThrottling(t *testing.T) {
+	base := time.Date(2026, time.July, 31, 12, 0, 0, 0, time.UTC)
+
+	t.Run("all emitted results start the throttle", func(t *testing.T) {
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlans(ExplainPlansArguments{
+			Logger:       util.TestAlloyLogger(t).Slog(),
+			EntryHandler: lokiClient,
+			DBVersion:    "8.0.32",
+		})
+		require.NoError(t, err)
+		c.now = func() time.Time { return base }
+
+		results := []database_observability.ExplainProcessingResult{
+			database_observability.ExplainProcessingResultSuccess,
+			database_observability.ExplainProcessingResultSkipped,
+			database_observability.ExplainProcessingResultError,
+		}
+		for i, result := range results {
+			digest := fmt.Sprintf("digest_%d", i)
+			require.NoError(t, c.sendExplainPlansOutput(
+				"some_schema",
+				digest,
+				base.Format(time.RFC3339),
+				result,
+				"",
+				nil,
+			))
+			require.Equal(t, base, c.lastEmittedAt[explainPlanQueryKey("some_schema", digest)])
+		}
+
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), len(results))
+	})
+
+	t.Run("skips explain within interval and retries after interval", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
-		lastSeen := time.Now().Add(-time.Hour)
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
-		logBuffer := syncbuffer.Buffer{}
+		c, err := NewExplainPlans(ExplainPlansArguments{
+			DB:             db,
+			Logger:         util.TestAlloyLogger(t).Slog(),
+			PerScrapeRatio: 1,
+			EntryHandler:   lokiClient,
+			DBVersion:      "8.0.32",
+		})
+		require.NoError(t, err)
+
+		fakeNow := base
+		c.now = func() time.Time { return fakeNow }
+		qi := newQueryInfo("some_schema", "some_digest", "select * from some_table")
+		explainJSON := []byte(`{"query_block":{"table":{"table_name":"some_table","access_type":"ALL"}}}`)
+
+		expectExplain := func() {
+			mock.ExpectExec("USE `some_schema`").WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectQuery(selectExplainPlanPrefix + qi.queryText).
+				WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(explainJSON))
+		}
+		queueQuery := func() {
+			c.queryCache[qi.uniqueKey] = qi
+			c.currentBatchSize = 1
+		}
+
+		expectExplain()
+		queueQuery()
+		require.NoError(t, c.fetchExplainPlans(t.Context()))
+		require.Equal(t, base, c.lastEmittedAt[qi.uniqueKey])
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		fakeNow = base.Add(time.Minute)
+		queueQuery()
+		require.NoError(t, c.fetchExplainPlans(t.Context()))
+		require.Empty(t, c.queryCache)
+		require.Equal(t, base, c.lastEmittedAt[qi.uniqueKey])
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		fakeNow = base.Add(database_observability.EmitInterval + time.Minute)
+		expectExplain()
+		queueQuery()
+		require.NoError(t, c.fetchExplainPlans(t.Context()))
+		require.Equal(t, fakeNow, c.lastEmittedAt[qi.uniqueKey])
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), 2)
+	})
+
+	t.Run("filters throttled discoveries without consuming batch capacity", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			ScrapeInterval:  time.Second,
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio:  1,
+			InitialLookback: base.Add(-time.Hour),
+		})
+		require.NoError(t, err)
+
+		fakeNow := base.Add(time.Minute)
+		c.now = func() time.Time { return fakeNow }
+		throttledKey := explainPlanQueryKey("some_schema", "throttled_digest")
+		c.lastEmittedAt[throttledKey] = base
+
+		nextSeen := base.Add(2 * time.Minute)
+		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
+			WithArgs(base.Add(-time.Hour)).
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
+				AddRow("some_schema", "throttled_digest", "select * from throttled_table", base).
+				AddRow("some_schema", "due_digest", "select * from due_table", nextSeen))
+
+		require.NoError(t, c.populateQueryCache(t.Context()))
+		require.NotContains(t, c.queryCache, throttledKey)
+		require.Contains(t, c.queryCache, explainPlanQueryKey("some_schema", "due_digest"))
+		require.Equal(t, 1, c.currentBatchSize)
+		require.Equal(t, nextSeen, c.lastSeen)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		fakeNow = base.Add(database_observability.EmitInterval)
+		c.pruneExpiredThrottle()
+		require.NotContains(t, c.lastEmittedAt, throttledKey)
+	})
+
+	t.Run("throttles denylist output", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		c, err := NewExplainPlans(ExplainPlansArguments{
+			DB:              db,
+			Logger:          util.TestAlloyLogger(t).Slog(),
+			PerScrapeRatio:  1,
+			InitialLookback: base.Add(-time.Hour),
 			EntryHandler:    lokiClient,
 			DBVersion:       "8.0.32",
-			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
+		c.now = func() time.Time { return base }
 
-		t.Run("skips truncated queries", func(t *testing.T) {
-			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_sample_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"select * from some_table where ...",
-				lastSeen,
-			))
+		key := explainPlanQueryKey("some_schema", "some_digest")
+		c.queryDenylist[key] = struct{}{}
+		require.NoError(t, c.sendExplainPlansOutput(
+			"some_schema",
+			"some_digest",
+			base.Format(time.RFC3339),
+			database_observability.ExplainProcessingResultSkipped,
+			"query denylisted",
+			nil,
+		))
 
-			err = c.fetchExplainPlans(t.Context())
-			require.NoError(t, err)
+		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
+			WithArgs(base.Add(-time.Hour)).
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
+				AddRow("some_schema", "some_digest", "select * from some_table", base))
 
-			require.Eventually(
-				t,
-				func() bool { return len(lokiClient.Received()) == 1 },
-				5*time.Second,
-				10*time.Millisecond,
-				"did not receive the explain plan output log message within the timeout",
-			)
-			require.NotContains(t, logBuffer.String(), "error")
-			lokiEntries := lokiClient.Received()
-			require.Equal(t, 1, len(lokiEntries))
-			epo, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntries[0])
-			require.NoError(t, err)
-			require.Equal(t, database_observability.ExplainProcessingResultSkipped, epo.Metadata.ProcessingResult)
-			require.Equal(t, "query is truncated", epo.Metadata.ProcessingResultReason)
-			lokiClient.Clear()
-		})
-
-		t.Run("skips non-select queries", func(t *testing.T) {
-			lokiClient.Clear()
-			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_sample_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"update_digest",
-				"update some_table set col = 1 where id = 1",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"delete_digest",
-				"delete from some_table",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"insert_digest",
-				"insert into some_table (col) values (1)",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"show_digest",
-				"show global status like 'Uptime'",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"kill_digest",
-				"kill query 123",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"call_digest",
-				"call refresh_summary()",
-				lastSeen,
-			).AddRow(
-				"some_schema",
-				"do_digest",
-				"do release_lock('foo')",
-				lastSeen,
-			))
-
-			err = c.fetchExplainPlans(t.Context())
-			require.NoError(t, err)
-
-			require.Eventually(
-				t,
-				func() bool { return len(lokiClient.Received()) == 7 },
-				5*time.Second,
-				10*time.Millisecond,
-				"did not receive the explain plan output log messages within the timeout",
-			)
-
-			lokiEntries := lokiClient.Received()
-			require.Equal(t, 7, len(lokiEntries))
-
-			for _, lokiEntry := range lokiEntries {
-				ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)
-				require.NoError(t, err)
-				require.Equal(t, database_observability.ExplainProcessingResultSkipped, ep.Metadata.ProcessingResult)
-				require.Equal(t, "query contains reserved word", ep.Metadata.ProcessingResultReason)
-			}
-
-			require.NotContains(t, logBuffer.String(), "error")
-			lokiClient.Clear()
-		})
-
-		t.Run("skips no row result", func(t *testing.T) {
-			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_sample_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"select * from some_table where id = 1",
-				lastSeen,
-			))
-
-			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
-
-			mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
-				"json",
-			}).AddRow(
-				[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
-			))
-
-			err = c.fetchExplainPlans(t.Context())
-			require.NoError(t, err)
-
-			lokiClient.Clear()
-
-			require.NotContains(t, logBuffer.String(), "error")
-			require.Contains(t, logBuffer.String(), "no matching row in const table")
-		})
-
-		t.Run("passes queries beginning in select", func(t *testing.T) {
-			lokiClient.Clear()
-			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_sample_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"select * from some_table where id = 1",
-				lastSeen,
-			))
-
-			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
-
-			mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").WillReturnRows(sqlmock.NewRows([]string{
-				"json",
-			}).AddRow(
-				[]byte(`{"query_block": {"select_id": 1}}`),
-			))
-
-			err = c.fetchExplainPlans(t.Context())
-			require.NoError(t, err)
-
-			require.NotContains(t, logBuffer.String(), "error")
-
-			require.Eventually(
-				t,
-				func() bool { return len(lokiClient.Received()) == 1 },
-				5*time.Second,
-				10*time.Millisecond,
-				"did not receive the explain plan output log message within the timeout",
-			)
-		})
-
-		t.Run("passes queries beginning in with", func(t *testing.T) {
-			lokiClient.Clear()
-			logBuffer.Reset()
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_sample_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"with cte as (select * from some_table where id = 1) select * from cte",
-				lastSeen,
-			))
-
-			mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
-
-			mock.ExpectQuery(selectExplainPlanPrefix + "with cte as (select * from some_table where id = 1) select * from cte").WillReturnRows(sqlmock.NewRows([]string{
-				"json",
-			}).AddRow(
-				[]byte(`{"query_block": {"select_id": 1}}`),
-			))
-
-			err = c.fetchExplainPlans(t.Context())
-			require.NoError(t, err)
-
-			require.NotContains(t, logBuffer.String(), "error")
-
-			require.Eventually(
-				t,
-				func() bool { return len(lokiClient.Received()) == 1 },
-				5*time.Second,
-				10*time.Millisecond,
-				"did not receive the explain plan output log message within the timeout",
-			)
-		})
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+		require.NoError(t, c.populateQueryCache(t.Context()))
+		require.Empty(t, c.queryCache)
+		require.Equal(t, base, c.lastSeen)
+		require.Equal(t, base, c.lastEmittedAt[key])
+		require.NoError(t, mock.ExpectationsWereMet())
+		lokiClient.Stop()
+		require.Len(t, lokiClient.Received(), 1)
 	})
 }
 
@@ -1816,12 +2082,17 @@ func TestQueryFailureDenylist(t *testing.T) {
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
 
-	queryUnderTestHash := "some_schemasome_digest1"
+	queryUnderTestHash := explainPlanQueryKey("some_schema", "some_digest1")
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
@@ -1842,6 +2113,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	))
 
 	c.populateQueryCache(t.Context())
+
 	t.Run("non-recoverable sql error denylists query", func(t *testing.T) {
 		lokiClient.Clear()
 		logBuffer.Reset()
@@ -1854,7 +2126,8 @@ func TestQueryFailureDenylist(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 0, len(c.queryCache))
 		require.Equal(t, 1, len(c.queryDenylist))
-		require.Equal(t, 1, c.queryDenylist[queryUnderTestHash].failureCount)
+		require.Contains(t, c.queryDenylist, queryUnderTestHash)
+		require.Empty(t, c.lastEmittedAt, "a failure without explain_plan_output must remain unthrottled")
 	})
 
 	t.Run("denylisted queries are not added to query cache", func(t *testing.T) {
@@ -1907,7 +2180,7 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:             db,
-		Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+		Logger:         util.TestAlloyLogger(t).Slog(),
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
 		EntryHandler:   lokiClient,
@@ -1916,10 +2189,10 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 	require.NoError(t, err)
 
 	c.queryCache = map[string]*queryInfo{
-		"s1d1": newQueryInfo("s1", "d1", "select * from t1 where ..."),
-		"s1d2": newQueryInfo("s1", "d2", "select * from t2 where ..."),
-		"s1d3": newQueryInfo("s1", "d3", "select * from t3 where ..."),
-		"s1d4": newQueryInfo("s1", "d4", "select * from t4 where ..."),
+		explainPlanQueryKey("s1", "d1"): newQueryInfo("s1", "d1", "select * from t1 where ..."),
+		explainPlanQueryKey("s1", "d2"): newQueryInfo("s1", "d2", "select * from t2 where ..."),
+		explainPlanQueryKey("s1", "d3"): newQueryInfo("s1", "d3", "select * from t3 where ..."),
+		explainPlanQueryKey("s1", "d4"): newQueryInfo("s1", "d4", "select * from t4 where ..."),
 	}
 	c.currentBatchSize = 2
 
@@ -1928,7 +2201,8 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 
 	require.Equal(t, 2, len(c.queryCache), "batch size limit should leave unprocessed items in cache")
 
-	require.Eventually(t,
+	require.Eventually(
+		t,
 		func() bool { return len(lokiClient.Received()) == 2 },
 		5*time.Second, 10*time.Millisecond,
 		"expected exactly 2 loki entries (one per processed item), got %d", len(lokiClient.Received()),
@@ -1948,10 +2222,15 @@ func TestSchemaDenylist(t *testing.T) {
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		ExcludeSchemas:  []string{"some_schema"},

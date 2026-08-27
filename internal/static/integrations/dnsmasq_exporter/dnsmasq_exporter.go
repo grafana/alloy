@@ -2,7 +2,8 @@
 package dnsmasq_exporter
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
 	"github.com/google/dnsmasq_exporter/collector"
 	"github.com/miekg/dns"
 
@@ -41,8 +42,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
-	return New(l, c)
+func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
+	return New(c)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -60,7 +61,7 @@ func init() {
 
 // New creates a new dnsmasq_exporter integration. The integration scrapes metrics
 // from a dnsmasq server.
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(c *Config) (integrations.Integration, error) {
 	dnsmasqConfig := collector.Config{
 		DnsClient: &dns.Client{
 			SingleInflight: true,

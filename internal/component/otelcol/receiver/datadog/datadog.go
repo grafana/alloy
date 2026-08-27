@@ -35,8 +35,16 @@ func init() {
 type Arguments struct {
 	HTTPServer otelcol.HTTPServerArguments `alloy:",squash"`
 
-	ReadTimeout      time.Duration `alloy:"read_timeout,attr,optional"`
-	TraceIDCacheSize int           `alloy:"trace_id_cache_size,attr,optional"`
+	TraceIDCacheSize int `alloy:"trace_id_cache_size,attr,optional"`
+
+	// IdleSeriesTimeout is the duration after which a series is considered stale and evicted. 0 disables eviction.
+	IdleSeriesTimeout time.Duration `alloy:"idle_series_timeout,attr,optional"`
+	// IdleSeriesCleanupInterval defines how frequently the receiver checks for stale series.
+	IdleSeriesCleanupInterval time.Duration `alloy:"idle_series_cleanup_interval,attr,optional"`
+
+	// DecodeJSONMessage parses a log record whose message is itself a JSON
+	// object and lifts its fields into the log record. Defaults to true
+	DecodeJSONMessage bool `alloy:"decode_json_message,attr,optional"`
 
 	Intake *IntakeArguments `alloy:"intake,block,optional"`
 
@@ -101,8 +109,13 @@ func (args *Arguments) SetToDefault() {
 		HTTPServer: otelcol.HTTPServerArguments{
 			Endpoint:              "localhost:8126",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			ReadTimeout:           60 * time.Second,
+			IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
-		ReadTimeout: 60 * time.Second,
+		IdleSeriesCleanupInterval: 5 * time.Minute,
+		DecodeJSONMessage:         true,
 	}
 	args.DebugMetrics.SetToDefault()
 }
@@ -115,9 +128,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	cfg := &datadogreceiver.Config{
-		ServerConfig:     *convertedHttpServer,
-		ReadTimeout:      args.ReadTimeout,
-		TraceIDCacheSize: args.TraceIDCacheSize,
+		ServerConfig:              *convertedHttpServer,
+		TraceIDCacheSize:          args.TraceIDCacheSize,
+		IdleSeriesTimeout:         args.IdleSeriesTimeout,
+		IdleSeriesCleanupInterval: args.IdleSeriesCleanupInterval,
+		Logs:                      datadogreceiver.LogsConfig{DecodeJSONMessage: args.DecodeJSONMessage},
 	}
 
 	if args.Intake != nil {

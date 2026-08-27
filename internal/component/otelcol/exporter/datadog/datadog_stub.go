@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -16,7 +15,7 @@ func init() {
 		Args:      Argument{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			level.Info(opts.Logger).Log("msg", "otelcol.exporter.datadog is unsupported on freebsd")
+			opts.Logger.Warn("otelcol.exporter.datadog is unsupported on freebsd")
 			return &FakeComponent{}, nil
 		},
 	})

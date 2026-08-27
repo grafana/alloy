@@ -36,6 +36,7 @@ func createExtension(
 	settings extension.Settings,
 	cfg component.Config,
 ) (extension.Extension, error) {
+
 	config := cfg.(*Config)
 
 	return newAlloyEngineExtension(config, settings.TelemetrySettings), nil

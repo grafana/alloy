@@ -4,7 +4,6 @@ package loki
 import (
 	"context"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -33,7 +32,6 @@ type Arguments struct {
 
 // Component is the otelcol.exporter.loki component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	converter *convert.Converter
@@ -46,7 +44,6 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	converter := convert.New(o.Logger, o.Registerer, c.ForwardTo)
 
 	res := &Component{
-		log:  o.Logger,
 		opts: o,
 
 		converter: converter,

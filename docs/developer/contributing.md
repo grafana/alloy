@@ -16,6 +16,14 @@ For trivial fixes or improvements, pull requests can be opened immediately witho
     Environments][best-practices]
   - The [Uber Go Style Guide][uber-style-guide]
 - Sign our [CLA][], otherwise we're not able to accept contributions.
+- If you use generative AI tools, review our [Generative AI Contribution Policy](./genai.md).
+
+### Signed commits
+
+All Grafana Labs repositories [require signed commits](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-signed-commits).
+To learn how to enable commit verification, refer to [about commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification) and refer to this page to learn about [checking your commit signature verification status](https://docs.github.com/en/authentication/troubleshooting-commit-signature-verification/checking-your-commit-and-tag-signature-verification-status).
+
+**NOTE** Unsigned commits and pull requests will be rejected and closed. This includes pull requests that have been authored by Agents.
 
 ## Steps to Contribute
 
@@ -47,6 +55,24 @@ offending line.
 
 All our issues are regularly tagged with labels so that you can also filter down the issues
 involving the components you want to work on.
+
+## Development tools
+
+We use [mise](https://mise.jdx.dev) to manage the versions of the tools used to build, lint, and test
+Alloy. The pinned versions live in the `[tools]` section of [`mise.toml`](../../mise.toml), so a
+single command installs the complete toolchain:
+
+1. [Install mise](https://mise.jdx.dev/installing-mise.html) and [activate it in your
+   shell](https://mise.jdx.dev/installing-mise.html#shells).
+2. From the repository root, run:
+
+   ```bash
+   mise install
+   ```
+
+mise puts the tools on your `PATH` whenever you're inside the repository, so `make lint`, `make test`,
+and the Helm chart targets run with the same versions as CI. See the `[tools]` section of
+[`mise.toml`](../../mise.toml) for the full list, and run `mise ls` to see what's installed.
 
 ## Compiling Alloy
 
@@ -91,8 +117,7 @@ Compiling Alloy on Linux requires extra dependencies:
 
 Compiling Alloy on Windows requires extra dependencies:
 
-- [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64-bit install for compiling C
-  dependencies.
+- A 64-bit [mingw-w64](https://www.mingw-w64.org/) gcc toolchain for compiling C dependencies. The [WinLibs](https://winlibs.com/) build is recommended (it is also what CI uses, installed via `choco install mingw`).
 
 ## Pull Request Checklist
 
@@ -117,7 +142,7 @@ Slack channel [#alloy](https://slack.grafana.com).
 #### PR titles (and by extension CHANGELOG entries) should:
 
 1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
-   of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
+   of the ["types" defined in our linting workflow](../../.github/workflows/release-lint-pr-title.yml).
 2. Read as a complete sentence in the imperative, present tense (e.g. "Change", not "Changes" or
    "Changed").
 3. Have a "description" which starts with an uppercase letter.
@@ -165,7 +190,7 @@ When a maintainer goes to merge your PR, the prompt they get will contain the PR
 commit's title and all of the individual commit details as the squashed commit's body.
 
 You can find the list of all Conventional Commit "types" we allow
-[here](../../.github/workflows/lint-pr-title.yml#L43).
+[here](../../.github/workflows/release-lint-pr-title.yml).
 
 ## (Maintainers) Merging a PR
 
@@ -249,7 +274,7 @@ If upstream is unresponsive, consider choosing a different dependency or making 
 creating a new Go module with the same source).
 
 [new-issue]: https://github.com/grafana/alloy/issues/new
-[code-review-comments]: https://code.google.com/p/go-wiki/wiki/CodeReviewComments
+[code-review-comments]: https://go.dev/wiki/CodeReviewComments
 [best-practices]: https://peter.bourgon.org/go-in-production/#formatting-and-style
 [uber-style-guide]: https://github.com/uber-go/guide/blob/master/style.md
 [CLA]: https://cla-assistant.io/grafana/alloy

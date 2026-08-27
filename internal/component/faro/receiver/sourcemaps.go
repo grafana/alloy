@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,14 +17,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/go-sourcemap/sourcemap"
-	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/internal/util/wildcard"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vincent-petithory/dataurl"
+
+	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/wildcard"
 )
 
 // sourceMapsStore is an interface for a sourcemap service capable of
@@ -114,7 +114,7 @@ func (realTimeSource) Now() time.Time {
 }
 
 type sourceMapsStoreImpl struct {
-	log     log.Logger
+	log     *slog.Logger
 	cli     httpClient
 	fs      fileService
 	args    SourceMapsArguments
@@ -138,7 +138,7 @@ type cachedSourceMap struct {
 // newSourceMapStore creates an implementation of sourceMapsStore. The returned
 // implementation is not dynamically updatable; create a new sourceMapsStore
 // implementation if arguments change.
-func newSourceMapsStore(log log.Logger, args SourceMapsArguments, metrics *sourceMapMetrics, cli httpClient, fs fileService) *sourceMapsStoreImpl {
+func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sourceMapMetrics, cli httpClient, fs fileService) *sourceMapsStoreImpl {
 	// TODO(rfratto): it would be nice for this to be dynamically updatable, but
 	// that will require swapping out the http client (when the timeout changes)
 	// or to find a way to inject a download timeout without modifying the http
@@ -198,10 +198,10 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 	consumer, err := sourcemap.Parse(sourceMapURL, content)
 	if err != nil {
 		store.cache[cacheKey] = nil
-		level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
+		store.log.Debug("failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
 		return nil, err
 	}
-	level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
+	store.log.Info("successfully parsed source map", "url", sourceMapURL, "release", release)
 	store.cache[cacheKey] = &cachedSourceMap{
 		consumer: consumer,
 		lastUsed: store.timeSource.Now(),
@@ -364,16 +364,16 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 	validMapFilePath, err := store.fs.ValidateFilePath(mapFilePath)
 	if err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "invalid_path").Inc()
-		level.Debug(store.log).Log("msg", "source map path contains invalid characters", "url", sourceURL, "file_path", mapFilePath)
+		store.log.Debug("source map path contains invalid characters", "url", sourceURL, "file_path", mapFilePath)
 		return nil, "", err
 	}
 
 	if _, err := store.fs.Stat(validMapFilePath); err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "not_found").Inc()
-		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
+		store.log.Debug("source map not found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 		return nil, "", nil
 	}
-	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
+	store.log.Debug("source map found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 
 	content, err = store.fs.ReadFile(validMapFilePath)
 	if err != nil {
@@ -400,13 +400,13 @@ func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, relea
 	subPath := strings.TrimPrefix(strings.Split(sourceURL, "?")[0], loc.MinifiedPathPrefix) + ".map"
 	mapURL, err := url.JoinPath(rootPath.String(), subPath)
 	if err != nil {
-		level.Debug(store.log).Log("msg", "failed to construct sourcemap url for remote location", "base_path", rootPath, "sub_path", subPath, "err", err)
+		store.log.Debug("failed to construct sourcemap url for remote location", "base_path", rootPath, "sub_path", subPath, "err", err)
 		return nil, "", err
 	}
 
 	content, err = store.downloadFileContents(mapURL)
 	if err != nil {
-		level.Debug(store.log).Log("msg", "failed to download sourcemap file from remote location", "url", mapURL, "err", err)
+		store.log.Debug("failed to download sourcemap file from remote location", "url", mapURL, "err", err)
 		return nil, "", err
 	}
 
@@ -414,17 +414,17 @@ func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, relea
 }
 
 func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (content []byte, resolvedSourceMapURL string, err error) {
-	level.Debug(store.log).Log("msg", "attempting to download source file", "url", sourceURL)
+	store.log.Debug("attempting to download source file", "url", sourceURL)
 
 	result, err := store.downloadFileContents(sourceURL)
 	if err != nil {
-		level.Debug(store.log).Log("msg", "failed to download source file", "url", sourceURL, "err", err)
+		store.log.Debug("failed to download source file", "url", sourceURL, "err", err)
 		return nil, "", err
 	}
 
 	match := reSourceMap.FindAllStringSubmatch(string(result), -1)
 	if len(match) == 0 {
-		level.Debug(store.log).Log("msg", "no source map url found in source", "url", sourceURL)
+		store.log.Debug("no source map url found in source", "url", sourceURL)
 		return nil, "", nil
 	}
 	sourceMapURL := match[len(match)-1][2]
@@ -433,11 +433,11 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 	if strings.HasPrefix(sourceMapURL, "data:") {
 		dataURL, err := dataurl.DecodeString(sourceMapURL)
 		if err != nil {
-			level.Debug(store.log).Log("msg", "failed to parse inline source map data url", "url", sourceURL, "err", err)
+			store.log.Debug("failed to parse inline source map data url", "url", sourceURL, "err", err)
 			return nil, "", err
 		}
 
-		level.Info(store.log).Log("msg", "successfully parsed inline source map data url", "url", sourceURL)
+		store.log.Info("successfully parsed inline source map data url", "url", sourceURL)
 		return dataURL.Data, sourceURL + ".map", nil
 	}
 	// Remote sourcemap
@@ -447,23 +447,23 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 	if !strings.HasPrefix(resolvedSourceMapURL, "http") {
 		base, err := url.Parse(sourceURL)
 		if err != nil {
-			level.Debug(store.log).Log("msg", "failed to parse source URL", "url", sourceURL, "err", err)
+			store.log.Debug("failed to parse source URL", "url", sourceURL, "err", err)
 			return nil, "", err
 		}
 		relative, err := url.Parse(sourceMapURL)
 		if err != nil {
-			level.Debug(store.log).Log("msg", "failed to parse source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL, "err", err)
+			store.log.Debug("failed to parse source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL, "err", err)
 			return nil, "", err
 		}
 
 		resolvedSourceMapURL = base.ResolveReference(relative).String()
-		level.Debug(store.log).Log("msg", "resolved absolute source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL)
+		store.log.Debug("resolved absolute source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL)
 	}
 
-	level.Debug(store.log).Log("msg", "attempting to download source map file", "url", resolvedSourceMapURL)
+	store.log.Debug("attempting to download source map file", "url", resolvedSourceMapURL)
 	result, err = store.downloadFileContents(resolvedSourceMapURL)
 	if err != nil {
-		level.Debug(store.log).Log("msg", "failed to download source map file", "url", resolvedSourceMapURL, "err", err)
+		store.log.Debug("failed to download source map file", "url", resolvedSourceMapURL, "err", err)
 		return nil, "", err
 	}
 
@@ -520,7 +520,7 @@ func cleanFilePathPart(x string) string {
 	return strings.TrimLeft(strings.ReplaceAll(strings.ReplaceAll(x, "\\", ""), "/", ""), ".")
 }
 
-func transformException(log log.Logger, store sourceMapsStore, ex *payload.Exception, release string) *payload.Exception {
+func transformException(log *slog.Logger, store sourceMapsStore, ex *payload.Exception, release string) *payload.Exception {
 	if ex.Stacktrace == nil {
 		return ex
 	}
@@ -529,7 +529,7 @@ func transformException(log log.Logger, store sourceMapsStore, ex *payload.Excep
 	for _, frame := range ex.Stacktrace.Frames {
 		mappedFrame, err := resolveSourceLocation(store, &frame, release)
 		if err != nil {
-			level.Error(log).Log("msg", "Error resolving stack trace frame source location", "err", err)
+			log.Error("Error resolving stack trace frame source location", "err", err)
 			frames = append(frames, frame)
 		} else if mappedFrame != nil {
 			frames = append(frames, *mappedFrame)

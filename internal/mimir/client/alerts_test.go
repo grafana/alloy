@@ -3,12 +3,12 @@ package client
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +31,7 @@ func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
 		Address: ts.URL,
 	}
 
-	client, err := New(log.NewNopLogger(), clientConfig, nil)
+	client, err := New(slog.New(slog.DiscardHandler), clientConfig, nil)
 	require.NoError(t, err)
 
 	// This Alertmanager config was copied from:

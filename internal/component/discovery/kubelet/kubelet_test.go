@@ -17,7 +17,6 @@ func TestAlloyConfig(t *testing.T) {
 	var exampleAlloyConfig = `
 	bearer_token_file = "/path/to/file.token"
 `
-
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)

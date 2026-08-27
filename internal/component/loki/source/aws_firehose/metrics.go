@@ -1,6 +1,8 @@
 package aws_firehose
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/util"
@@ -34,8 +36,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help: "Number of records received from AWS Firehose",
 		}, []string{"type"})).(*prometheus.CounterVec),
 		batchSize: util.MustRegisterOrGet(reg, prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name: "loki_source_awsfirehose_batch_size",
-			Help: "AWS Firehose received batch size in number of records",
+			Name:                            "loki_source_awsfirehose_batch_size",
+			Help:                            "AWS Firehose received batch size in number of records",
+			Buckets:                         prometheus.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		})).(prometheus.Observer),
 		invalidStaticLabelsCount: util.MustRegisterOrGet(reg, prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "loki_source_awsfirehose_invalid_static_labels_errors",

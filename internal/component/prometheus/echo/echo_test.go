@@ -1,13 +1,14 @@
 package echo
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
@@ -24,7 +25,7 @@ func TestComponent_Creation(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 	require.NotNil(t, comp)
@@ -45,7 +46,7 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {
 			exports = e
 		},
@@ -63,7 +64,7 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 func TestAppender_BasicMetrics(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -84,7 +85,7 @@ func TestAppender_BasicMetrics(t *testing.T) {
 func TestAppender_Rollback(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -104,7 +105,7 @@ func TestAppender_Rollback(t *testing.T) {
 func TestAppender_MultipleMetrics(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -134,7 +135,7 @@ func TestAppender_MultipleMetrics(t *testing.T) {
 func TestComponent_Update(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: log.NewNopLogger(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -143,20 +144,16 @@ func TestComponent_Update(t *testing.T) {
 }
 
 func TestAppender_WithExpfmtEncoding(t *testing.T) {
-	var loggedOutput string
-
-	logger := log.LoggerFunc(func(keyvals ...any) error {
-		for i := 0; i < len(keyvals); i += 2 {
-			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
-				loggedOutput = keyvals[i+1].(string)
-			}
-		}
-		return nil
+	var buf bytes.Buffer
+	logger, err := logging.New(&buf, logging.Options{
+		Level:  logging.LevelInfo,
+		Format: logging.FormatLogfmt,
 	})
+	require.NoError(t, err)
 
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: logger,
+		Logger: logger.Slog(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -170,10 +167,11 @@ func TestAppender_WithExpfmtEncoding(t *testing.T) {
 	err = appender.Commit()
 	require.NoError(t, err)
 
+	loggedOutput := buf.String()
 	require.NotEmpty(t, loggedOutput)
 	require.Contains(t, loggedOutput, "test_metric")
-	require.Contains(t, loggedOutput, "job=\"test_job\"")
-	require.Contains(t, loggedOutput, "instance=\"localhost:8080\"")
+	require.Contains(t, loggedOutput, "job=\\\"test_job\\\"")
+	require.Contains(t, loggedOutput, "instance=\\\"localhost:8080\\\"")
 	require.Contains(t, loggedOutput, "42")
 
 	require.NotContains(t, loggedOutput, "Prometheus metrics received by")
@@ -181,22 +179,18 @@ func TestAppender_WithExpfmtEncoding(t *testing.T) {
 }
 
 func TestAppender_WithOpenMetricsFormat(t *testing.T) {
-	var loggedOutput string
-
-	logger := log.LoggerFunc(func(keyvals ...any) error {
-		for i := 0; i < len(keyvals); i += 2 {
-			if keyvals[i] == "metrics" && i+1 < len(keyvals) {
-				loggedOutput = keyvals[i+1].(string)
-			}
-		}
-		return nil
+	var buf bytes.Buffer
+	logger, err := logging.New(&buf, logging.Options{
+		Level:  logging.LevelInfo,
+		Format: logging.FormatLogfmt,
 	})
+	require.NoError(t, err)
 
 	args := Arguments{Format: "openmetrics"}
 
 	comp, err := New(component.Options{
 		ID:     "test",
-		Logger: logger,
+		Logger: logger.Slog(),
 	}, args)
 	require.NoError(t, err)
 
@@ -210,9 +204,11 @@ func TestAppender_WithOpenMetricsFormat(t *testing.T) {
 	err = appender.Commit()
 	require.NoError(t, err)
 
+	loggedOutput := buf.String()
+
 	require.NotEmpty(t, loggedOutput)
 	require.Contains(t, loggedOutput, "test_metric")
-	require.Contains(t, loggedOutput, "job=\"test_job\"")
+	require.Contains(t, loggedOutput, "job=\\\"test_job\\\"")
 
 	t.Logf("OpenMetrics output: %s", loggedOutput)
 }

@@ -4,12 +4,12 @@ package k8sattributes
 import (
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -48,6 +48,13 @@ type Arguments struct {
 	// The maximum time the processor will wait for the k8s metadata to be synced.
 	WaitForMetadataTimeout time.Duration `alloy:"wait_for_metadata_timeout,attr,optional"`
 
+	// WatchSyncPeriod determines the resync period for the k8s informers. 0 disables periodic resync.
+	WatchSyncPeriod time.Duration `alloy:"watch_sync_period,attr,optional"`
+
+	// PodDeleteGracePeriod is how long to keep a Pod's metadata cached after receiving
+	// a delete event, so that in-flight telemetry can still be enriched.
+	PodDeleteGracePeriod time.Duration `alloy:"pod_delete_grace_period,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -65,7 +72,11 @@ func (args *Arguments) SetToDefault() {
 			{Name: "jaeger-collector"},
 		},
 	}
-	args.WaitForMetadataTimeout = 10 * time.Second
+	def := k8sattributesprocessor.NewFactory().CreateDefaultConfig().(*k8sattributesprocessor.Config)
+	args.WaitForMetadataTimeout = def.WaitForMetadataTimeout
+	args.WatchSyncPeriod = def.WatchSyncPeriod
+	args.PodDeleteGracePeriod = def.PodDeleteGracePeriod
+	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -109,7 +120,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		input["exclude"] = exclude
 	}
 
-	var result k8sattributesprocessor.Config
+	result := *k8sattributesprocessor.NewFactory().CreateDefaultConfig().(*k8sattributesprocessor.Config)
 	err := mapstructure.Decode(input, &result)
 
 	if err != nil {
@@ -119,6 +130,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// Set the timeout after the decoding step.
 	// That way we don't have to convert a duration to a string.
 	result.WaitForMetadataTimeout = args.WaitForMetadataTimeout
+	result.WatchSyncPeriod = args.WatchSyncPeriod
+	result.PodDeleteGracePeriod = args.PodDeleteGracePeriod
 
 	return &result, nil
 }

@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 )
 
 func TestQueue_append(t *testing.T) {
-	q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+	q := newQueue(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), Config{
 		BatchSize: twoEntriesSize,
 	})
 
@@ -58,7 +58,7 @@ func TestQueue_append(t *testing.T) {
 func TestQueue_drain(t *testing.T) {
 	t.Run("should drain queue and current batch", func(t *testing.T) {
 		// a queue with batches that will fit two entries and only one batch can queued at any given time.
-		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), Config{
 			BatchSize: twoEntriesSize,
 		})
 
@@ -76,7 +76,7 @@ func TestQueue_drain(t *testing.T) {
 
 	t.Run("should only drain queue", func(t *testing.T) {
 		// a queue with batches that will fit two entries and only one batch can queued at any given time.
-		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), Config{
 			BatchSize: twoEntriesSize,
 			BatchWait: 10 * time.Second,
 		})
@@ -97,7 +97,7 @@ func TestQueue_drain(t *testing.T) {
 func TestQueue_flushAndShutdown(t *testing.T) {
 	t.Run("should flush all batches to queue", func(t *testing.T) {
 		// a queue with batches that will fit two entries and only one batch can queued at any given time.
-		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), Config{
 			BatchSize: twoEntriesSize,
 		})
 
@@ -132,7 +132,7 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 
 	t.Run("should stop early if done channel is closed", func(t *testing.T) {
 		// a queue with batches that will fit two entries and only one batch can queued at any given time.
-		q := newQueue(newMetrics(prometheus.NewRegistry()), log.NewNopLogger(), Config{
+		q := newQueue(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), Config{
 			BatchSize: twoEntriesSize,
 		})
 

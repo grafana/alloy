@@ -1,13 +1,13 @@
 package mssql
 
 import (
-	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConfig_validate(t *testing.T) {
@@ -75,7 +75,7 @@ metrics:
 				MaxOpenConnections: 0,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_connections must be at least 1",
+			err: "max_open_connections must be at least 1",
 		},
 		{
 			name: "max idle connections is less than 1",
@@ -85,7 +85,7 @@ metrics:
 				MaxOpenConnections: 3,
 				Timeout:            10 * time.Second,
 			},
-			err: "max_idle_connection must be at least 1",
+			err: "max_idle_connections must be at least 1",
 		},
 		{
 			name: "timeout is not positive",
@@ -96,6 +96,17 @@ metrics:
 				Timeout:            0,
 			},
 			err: "timeout must be positive",
+		},
+		{
+			name: "max connection lifetime is negative",
+			input: Config{
+				ConnectionString:      "sqlserver://user:pass@localhost:1433",
+				MaxIdleConnections:    3,
+				MaxOpenConnections:    3,
+				MaxConnectionLifetime: -1 * time.Second,
+				Timeout:               10 * time.Second,
+			},
+			err: "max_connection_lifetime must not be negative",
 		},
 		{
 			name: "good query config",
@@ -195,7 +206,7 @@ metrics:
 			QueryConfig:        []byte(strQueryConfig),
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.NoError(t, err)
 		require.NotNil(t, i)
 	})
@@ -208,7 +219,7 @@ metrics:
 			Timeout:            10 * time.Second,
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "failed to validate config:")
 	})
@@ -230,7 +241,7 @@ metrics:
 			QueryConfig:        []byte(strQueryConfig),
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "failed to create mssql target: query_config not in correct format: ")
 	})

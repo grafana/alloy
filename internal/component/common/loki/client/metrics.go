@@ -76,8 +76,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramMinResetDuration: 1 * time.Hour,
 	}, []string{labelHost, labelTenant})
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "loki_write_request_duration_seconds",
-		Help: "Duration of send requests.",
+		Name:                            "loki_write_request_duration_seconds",
+		Help:                            "Duration of send requests.",
+		Buckets:                         prometheus.DefBuckets,
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
 	}, []string{"status_code", labelHost, labelTenant})
 	m.batchRetries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_batch_retries_total",

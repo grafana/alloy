@@ -111,6 +111,16 @@ If it's not specified, `pyroscope.scrape` will attempt to infer it from either o
 
 If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
 
+The following labels are automatically injected into the collected profiles if you haven't defined them:
+
+| Label                | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `otel.scope.name`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.java`. |
+| `otel.scope.version` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.        |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
+
 ## Blocks
 
 You can use the following block with `pyroscope.java`:
@@ -143,6 +153,7 @@ The following arguments are supported:
 | `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                         | `false`    | no       |
 | `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                                    | `false`    | no       |
 | `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                    | `100`      | no       |
+| `tlab`                            | `bool`          | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc` to be set.                            | `false`    | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
@@ -166,7 +177,7 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 When `custom_arguments` is set, Alloy skips these options from this block:
 
-`cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`.
+`cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`, `tlab`.
 
 For example, this enables multi-event profiling (`cpu`, `alloc`, and `lock`) with custom thresholds:
 

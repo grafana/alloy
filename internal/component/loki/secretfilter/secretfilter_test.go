@@ -2,6 +2,7 @@ package secretfilter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -37,8 +38,7 @@ func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragmen
 func newTestOptions(t require.TestingT, reg prometheus.Registerer) component.Options {
 	logger := util.TestAlloyLogger(t)
 	return component.Options{
-		Logger:         logger,
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 		Registerer:     reg,
@@ -190,6 +190,7 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 	args := Arguments{
 		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactPercent: 100,
+		Rate:          1,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -198,7 +199,8 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["grafana_api_key"].Log},
 	}
-	processed, _ := c.processEntry(context.Background(), entry)
+	processed, err := c.processEntry(context.Background(), entry)
+	require.NoError(t, err)
 	require.Contains(t, processed.Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
 	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["grafana-api-key"].Value)
 }
@@ -209,6 +211,7 @@ func TestRedactPercent_Partial(t *testing.T) {
 	args := Arguments{
 		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactPercent: 80,
+		Rate:          1,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -234,6 +237,7 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 	args := Arguments{
 		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactWith: "***REDACTED***",
+		Rate:       1,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -254,6 +258,7 @@ func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 	opts := newTestOptions(t, registry)
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		Rate:      1,
 		// RedactWith and RedactPercent left at zero values => effective 80%
 	}
 	c, err := New(opts, args)
@@ -291,7 +296,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
 	opts := component.Options{
-		SLogger:        logging.NewSlogNop(),
+		Logger:         logging.NewSlogNop(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 	}
@@ -402,6 +407,7 @@ func TestMetrics(t *testing.T) {
 			args := Arguments{
 				ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 				OriginLabel: "job",
+				Rate:        1,
 			}
 
 			// Create options with the test registry
@@ -489,6 +495,7 @@ func TestMetrics_NoOriginLabel(t *testing.T) {
 	args := Arguments{
 		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 		OriginLabel: "",
+		Rate:        1,
 	}
 	opts := newTestOptions(t, registry)
 
@@ -525,6 +532,7 @@ func TestMetricsRegistration(t *testing.T) {
 	args := Arguments{
 		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 		OriginLabel: "job",
+		Rate:        1,
 	}
 
 	c, err := New(opts, args)
@@ -567,6 +575,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	args := Arguments{
 		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 		OriginLabel: "job",
+		Rate:        1,
 	}
 
 	opts := newTestOptions(t, registry)
@@ -629,6 +638,7 @@ func TestArgumentsUpdate(t *testing.T) {
 	initialArgs := Arguments{
 		ForwardTo:   []loki.LogsReceiver{ch1},
 		OriginLabel: "",
+		Rate:        1,
 	}
 
 	// Create options with the test registry
@@ -654,6 +664,7 @@ func TestArgumentsUpdate(t *testing.T) {
 			args: Arguments{
 				ForwardTo:   []loki.LogsReceiver{ch1},
 				OriginLabel: "job",
+				Rate:        1,
 			},
 			inputLog: testhelper.TestLogs["gcp_api_key"].Log,
 		},
@@ -662,6 +673,7 @@ func TestArgumentsUpdate(t *testing.T) {
 			args: Arguments{
 				ForwardTo:   []loki.LogsReceiver{ch1},
 				OriginLabel: "instance",
+				Rate:        1,
 			},
 			inputLog: testhelper.TestLogs["stripe_key"].Log,
 		},
@@ -703,6 +715,7 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
 		ProcessingTimeout: 10 * time.Millisecond,
+		Rate:              1,
 	})
 	require.NoError(t, err)
 	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
@@ -715,9 +728,9 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	processed, dropped := c.processEntry(context.Background(), entry)
+	processed, err := c.processEntry(context.Background(), entry)
 
-	require.False(t, dropped, "entry should not be dropped when drop_on_timeout is false")
+	require.NoError(t, err, "entry should not be dropped when drop_on_timeout is false")
 	require.Equal(t, line, processed.Entry.Line, "original unredacted line should be forwarded on timeout")
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
@@ -732,6 +745,7 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
 		ProcessingTimeout: 10 * time.Millisecond,
 		DropOnTimeout:     true,
+		Rate:              1,
 	})
 	require.NoError(t, err)
 	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
@@ -744,9 +758,9 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	_, dropped := c.processEntry(context.Background(), entry)
+	_, err = c.processEntry(context.Background(), entry)
 
-	require.True(t, dropped, "entry should be dropped when drop_on_timeout is true")
+	require.ErrorIs(t, err, errProcessingTimeout)
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
@@ -759,6 +773,7 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 	c, err := New(opts, Arguments{
 		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
 		// ProcessingTimeout left at zero: disabled
+		Rate: 1,
 	})
 	require.NoError(t, err)
 
@@ -766,9 +781,9 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	processed, dropped := c.processEntry(context.Background(), entry)
+	processed, err := c.processEntry(context.Background(), entry)
 
-	require.False(t, dropped)
+	require.NoError(t, err)
 	require.NotEqual(t, line, processed.Entry.Line, "secret should be redacted when no timeout is set")
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
@@ -783,7 +798,7 @@ func TestTimeoutLabel(t *testing.T) {
 		labelTimedOut bool
 		dropOnTimeout bool
 		wantLabel     bool
-		wantDropped   bool
+		wantErr       error
 		wantRedaction bool
 	}{
 		{
@@ -810,7 +825,7 @@ func TestTimeoutLabel(t *testing.T) {
 			findings:      nil,
 			labelTimedOut: true,
 			dropOnTimeout: true,
-			wantDropped:   true,
+			wantErr:       errProcessingTimeout,
 		},
 	}
 
@@ -822,6 +837,7 @@ func TestTimeoutLabel(t *testing.T) {
 				ProcessingTimeout: 10 * time.Millisecond,
 				LabelTimedOut:     tc.labelTimedOut,
 				DropOnTimeout:     tc.dropOnTimeout,
+				Rate:              1,
 			})
 			require.NoError(t, err)
 			findings := tc.findings
@@ -835,10 +851,10 @@ func TestTimeoutLabel(t *testing.T) {
 				Labels: model.LabelSet{"job": "myservice"},
 				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 			}
-			processed, dropped := c.processEntry(context.Background(), entry)
+			processed, err := c.processEntry(context.Background(), entry)
 
-			require.Equal(t, tc.wantDropped, dropped)
-			if !dropped {
+			require.ErrorIs(t, err, tc.wantErr)
+			if errors.Is(err, errProcessingTimeout) {
 				if tc.wantLabel {
 					require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
 					require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")

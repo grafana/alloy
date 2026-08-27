@@ -5,21 +5,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 // Dimension defines the dimension name and optional default value if the Dimension is missing from a span attribute.
 type Dimension struct {
-	Name    string  `alloy:"name,attr"`
+	Name    string  `alloy:"name,attr,optional"`
 	Default *string `alloy:"default,attr,optional"`
+	Glob    string  `alloy:"glob,attr,optional"`
 }
 
 func (d Dimension) Convert() spanmetricsconnector.Dimension {
 	res := spanmetricsconnector.Dimension{
 		Name: d.Name,
+		Glob: d.Glob,
 	}
 
 	if d.Default != nil {

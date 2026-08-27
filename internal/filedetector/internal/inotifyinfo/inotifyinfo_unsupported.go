@@ -2,9 +2,11 @@
 
 package inotifyinfo
 
-import "github.com/go-kit/log"
+import (
+	"log/slog"
+)
 
 // Inotify is a Linux-specific mechanism.
-func DiagnosticsJson(logger log.Logger) string {
+func DiagnosticsJson(_ *slog.Logger) string {
 	return ""
 }

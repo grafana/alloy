@@ -3,13 +3,14 @@ package consul_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
-	"github.com/go-kit/log"
 	consul_api "github.com/hashicorp/consul/api"
 	"github.com/prometheus/consul_exporter/pkg/exporter"
 
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -65,7 +66,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration converts the config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -76,7 +77,7 @@ func init() {
 
 // New creates a new consul_exporter integration. The integration scrapes
 // metrics from a consul process.
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 	var (
 		consulOpts = exporter.ConsulOpts{
 			CAFile:       c.CAFile,
@@ -94,7 +95,7 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 		}
 	)
 
-	e, err := exporter.New(consulOpts, queryOptions, c.KVPrefix, c.KVFilter, c.HealthSummary, log)
+	e, err := exporter.New(consulOpts, queryOptions, c.KVPrefix, c.KVFilter, c.HealthSummary, slogadapter.GoKit(log.Handler()))
 	if err != nil {
 		return nil, err
 	}

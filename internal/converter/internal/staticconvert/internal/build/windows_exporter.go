@@ -131,6 +131,9 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		TCP: windows.TCPConfig{
 			EnabledList: split(config.TCP.EnabledList),
 		},
+		Time: windows.TimeConfig{
+			EnabledList: split(config.Time.EnabledList),
+		},
 		DNS: windows.DNSConfig{
 			EnabledList: split(config.DNS.EnabledList),
 		},

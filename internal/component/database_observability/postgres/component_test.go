@@ -9,30 +9,30 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
-	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
 	t.Helper()
 	opts := cmp.Options{
 		ID:            "test",
-		Logger:        kitlog.NewNopLogger(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -52,16 +52,18 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		args:         args,
 		fanout:       loki.NewFanout(args.ForwardTo),
 		handler:      loki.NewLogsReceiver(),
-		registry:     prometheus.NewRegistry(),
-		healthErr:    atomic.NewString(""),
 		openSQL:      openSQL,
 		logsReceiver: loki.NewLogsReceiver(),
+		instance: &dbInstance{
+			instanceKey: "test-instance",
+			baseTarget: discovery.NewTargetFromMap(map[string]string{
+				"instance": "test-instance",
+				"job":      "database_observability",
+			}),
+			registry:  prometheus.NewRegistry(),
+			healthErr: atomic.NewString(""),
+		},
 	}
-	c.instanceKey = "test-instance"
-	c.baseTarget = discovery.NewTargetFromMap(map[string]string{
-		"instance": c.instanceKey,
-		"job":      "database_observability",
-	})
 	return c
 }
 
@@ -665,7 +667,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
 		ID:            "test.postgres",
-		Logger:        kitlog.NewNopLogger(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
@@ -694,47 +696,6 @@ func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testi
 	require.NoError(t, err)
 
 	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
-}
-
-func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *testing.T) {
-	t.Run("default cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
-	})
-
-	t.Run("custom cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		schema_details {
-			collect_interval = "30s"
-			cache_enabled = false
-			cache_size = 512
-			cache_ttl = "5m"
-		}
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, 30*time.Second, args.SchemaDetailsArguments.CollectInterval)
-		assert.False(t, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, 512, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, 5*time.Minute, args.SchemaDetailsArguments.CacheTTL)
-	})
 }
 
 func Test_parseCloudProvider(t *testing.T) {
@@ -869,7 +830,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	var exports Exports
 	opts := cmp.Options{
 		ID:         "test",
-		Logger:     kitlog.NewNopLogger(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: nil,
 		OnStateChange: func(e cmp.Exports) {
 			exports = e.(Exports)
@@ -902,7 +863,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:        kitlog.NewNopLogger(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -935,7 +896,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		// an existing connection before attempting a new one
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:        kitlog.NewNopLogger(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -958,7 +919,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		require.NoError(t, err)
 
 		// The component should handle nil dbConnection gracefully
-		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
+		assert.Nil(t, c.instance.dbConnection, "dbConnection should be nil initially after failed connection")
 
 		// Calling connectAndStartCollectors again should not panic
 		err = c.connectAndStartCollectors(context.Background())
@@ -990,14 +951,16 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		require.NoError(t, registry.Register(collector))
 
 		c := &Component{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
+			instance: &dbInstance{
+				registry:           registry,
+				exporterCollectors: []prometheus.Collector{collector},
+			},
 		}
 
 		c.cleanupExporterCollectors()
 
 		assert.Equal(t, 1, collector.closeCalls)
-		assert.Nil(t, c.exporterCollectors)
+		assert.Nil(t, c.instance.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 
@@ -1011,13 +974,15 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		require.NoError(t, registry.Register(collector))
 
 		c := &Component{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
+			instance: &dbInstance{
+				registry:           registry,
+				exporterCollectors: []prometheus.Collector{collector},
+			},
 		}
 
 		c.cleanupExporterCollectors()
 
-		assert.Nil(t, c.exporterCollectors)
+		assert.Nil(t, c.instance.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 }
@@ -1026,7 +991,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			Logger:        kitlog.NewNopLogger(),
+			Logger:        logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -1042,11 +1007,11 @@ func TestPostgres_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.healthErr.Store("initial error")
+		c.instance.healthErr.Store("initial error")
 
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.instance.healthErr.Load())
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -1062,7 +1027,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.instance.healthErr.Load())
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1077,14 +1042,14 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// Second attempt: connection succeeds and clears error
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.healthErr.Load())
+		assert.Empty(t, c.instance.healthErr.Load())
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
 		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
-		require.NoError(t, c.registry.Register(oldCollector))
-		c.exporterCollectors = []prometheus.Collector{oldCollector}
+		require.NoError(t, c.instance.registry.Register(oldCollector))
+		c.instance.exporterCollectors = []prometheus.Collector{oldCollector}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -1093,8 +1058,8 @@ func TestPostgres_Reconnection(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, oldCollector.closeCalls)
-		assert.Nil(t, c.exporterCollectors)
-		assert.False(t, c.registry.Unregister(oldCollector))
+		assert.Nil(t, c.instance.exporterCollectors)
+		assert.False(t, c.instance.registry.Unregister(oldCollector))
 	})
 }
 

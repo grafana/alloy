@@ -39,8 +39,8 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		}
 		cfg.ScrapeProtocols = protocols
 	}
-	if m.Spec.ProberSpec.Scheme != "" {
-		cfg.Scheme = m.Spec.ProberSpec.Scheme
+	if m.Spec.ProberSpec.Scheme != nil && *m.Spec.ProberSpec.Scheme != "" {
+		cfg.Scheme = string(*m.Spec.ProberSpec.Scheme)
 	}
 	if m.Spec.ProberSpec.ProxyURL != nil && *m.Spec.ProberSpec.ProxyURL != "" {
 		if u, err := url.Parse(*m.Spec.ProberSpec.ProxyURL); err != nil {
@@ -208,8 +208,8 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 			return nil, err
 		}
 	}
-	if m.Spec.BearerTokenSecret.Name != "" {
-		val, err := cg.Secrets.GetSecretValue(m.Namespace, m.Spec.BearerTokenSecret)
+	if m.Spec.BearerTokenSecret != nil && m.Spec.BearerTokenSecret.Name != "" { //nolint:staticcheck
+		val, err := cg.Secrets.GetSecretValue(m.Namespace, *m.Spec.BearerTokenSecret) //nolint:staticcheck
 		if err != nil {
 			return nil, err
 		}

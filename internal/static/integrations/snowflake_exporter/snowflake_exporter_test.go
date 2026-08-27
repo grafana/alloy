@@ -1,12 +1,12 @@
 package snowflake_exporter
 
 import (
-	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConfig_UnmarshalYaml(t *testing.T) {
@@ -42,7 +42,7 @@ func TestConfig_NewIntegration(t *testing.T) {
 			ExcludeDeletedTables: true,
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.NoError(t, err)
 		require.NotNil(t, i)
 	})
@@ -55,7 +55,7 @@ func TestConfig_NewIntegration(t *testing.T) {
 			Role:      "ACCOUNTADMIN",
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "")
 	})

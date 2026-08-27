@@ -314,7 +314,12 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	} else {
 		// Relabel against a copy of the labels to prevent modifying the original
 		// slice.
-		relabelled, keep = relabel.Process(lbls.Copy(), c.mrc...)
+		lb := labels.NewBuilder(lbls)
+		if keep = relabel.ProcessBuilder(lb, c.mrc...); keep {
+			relabelled = lb.Labels()
+		} else {
+			relabelled = labels.EmptyLabels()
+		}
 		c.cacheMisses.Inc()
 		c.addToCache(lbls, relabelled, keep)
 	}
@@ -329,14 +334,16 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 		count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
 	}
 	componentID := livedebugging.ComponentID(c.opts.ID)
-	c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-		componentID,
-		livedebugging.PrometheusMetric,
-		count,
-		func() string {
-			return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
-		},
-	))
+	if c.debugDataPublisher.IsActive(componentID) {
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.PrometheusMetric,
+			count,
+			func() string {
+				return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
+			},
+		))
+	}
 
 	return relabelled
 }

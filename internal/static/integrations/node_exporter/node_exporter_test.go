@@ -8,10 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/prometheus/model/textparse"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 // TestNodeExporter runs an integration test for node_exporter, doing the
@@ -36,7 +37,7 @@ func TestNodeExporter(t *testing.T) {
 	cfg.DisableCollectors = []string{CollectorPerf, CollectorBuddyInfo, CollectorSystemd}
 
 	// Check that the flags convert and the integration initializes
-	logger := log.NewNopLogger()
+	logger := util.TestAlloyLogger(t).Slog()
 	integration, err := New(logger, &cfg)
 	require.NoError(t, err, "failed to setup node_exporter")
 

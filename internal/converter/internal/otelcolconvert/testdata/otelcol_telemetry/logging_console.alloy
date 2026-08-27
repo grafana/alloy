@@ -8,7 +8,10 @@ otelcol.receiver.otlp "default" {
 	}
 
 	http {
-		endpoint = "localhost:4318"
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {

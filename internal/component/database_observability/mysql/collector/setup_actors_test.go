@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func Test_SetupActors(t *testing.T) {
@@ -31,7 +31,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -68,7 +68,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -104,7 +104,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: false,
 		})
@@ -140,7 +140,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -175,7 +175,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: false,
 		})
@@ -207,7 +207,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -237,7 +237,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -278,7 +278,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -319,7 +319,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -356,7 +356,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -391,7 +391,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -427,7 +427,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -468,7 +468,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -511,7 +511,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -550,7 +550,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})
@@ -589,7 +589,7 @@ func Test_SetupActors(t *testing.T) {
 
 		c, err := NewSetupActors(SetupActorsArguments{
 			DB:                    db,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			CollectInterval:       time.Millisecond,
 			AutoUpdateSetupActors: true,
 		})

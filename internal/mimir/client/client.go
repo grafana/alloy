@@ -7,11 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/go-kit/log"
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/alloy/internal/mimir/client/internal"
 	"github.com/grafana/alloy/internal/useragent"
@@ -56,11 +56,11 @@ type MimirClient struct {
 	endpoint *url.URL
 	client   internal.Requester
 	apiPath  string
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 // New returns a new MimirClient.
-func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec) (*MimirClient, error) {
+func New(logger *slog.Logger, cfg Config, timingHistogram *prometheus.HistogramVec) (*MimirClient, error) {
 	endpoint, err := url.Parse(cfg.Address)
 	if err != nil {
 		return nil, err

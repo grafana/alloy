@@ -3,13 +3,12 @@ package receive_http
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
@@ -33,21 +32,21 @@ func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	return clients[0], nil
 }
 
-func (c *Component) recordDownstream(l log.Logger, method string, err error) {
+func (c *Component) recordDownstream(l *slog.Logger, method string, err error) {
 	result := "success"
 	if err != nil {
 		result = "failure"
 	}
 	c.metrics.debugInfoDownstreamCalls.WithLabelValues(method, result).Inc()
 	if err != nil {
-		_ = level.Error(l).Log("err", err)
+		l.Error(method, "err", err)
 	} else {
-		_ = level.Debug(l).Log("result", "ok")
+		l.Debug(method, "result", "ok")
 	}
 }
 
 func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
-	l := log.With(c.logger,
+	l := c.logger.With(
 		"pyroscope_proxy", "debuginfo",
 		"method", "ShouldInitiateUpload DS",
 		"name", req.Msg.File.Name,
@@ -65,7 +64,7 @@ func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Reque
 }
 
 func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
-	l := log.With(c.logger,
+	l := c.logger.With(
 		"pyroscope_proxy", "debuginfo",
 		"method", "UploadFinished DS",
 		"gnu_build_id", req.Msg.GnuBuildId,
@@ -82,7 +81,7 @@ func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[deb
 func (c *Component) UploadHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gnuBuildID := mux.Vars(r)["gnu_build_id"]
-		l := log.With(c.logger,
+		l := c.logger.With(
 			"pyroscope_proxy", "debuginfo",
 			"method", "Upload DS",
 			"gnu_build_id", gnuBuildID,

@@ -61,8 +61,9 @@ func toGoogleCloudPubSubExporter(cfg *googlecloudpubsubexporter.Config) *googlec
 			Behavior:     cfg.Watermark.Behavior,
 			AllowedDrift: cfg.Watermark.AllowedDrift,
 		},
-		Endpoint: cfg.Endpoint,
-		Insecure: cfg.Insecure,
+		Endpoint:       cfg.Endpoint,
+		UniverseDomain: cfg.UniverseDomain,
+		Insecure:       cfg.Insecure,
 		Ordering: googlecloudpubsubconfig.GoogleCloudPubSubOrderingConfigArguments{
 			Enabled:                 cfg.Ordering.Enabled,
 			FromResourceAttribute:   cfg.Ordering.FromResourceAttribute,

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
@@ -18,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
@@ -96,7 +96,7 @@ func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) (debugin
 	t.Helper()
 	comp := &Component{
 		appendables:            appendables,
-		logger:                 log.NewNopLogger(),
+		logger:                 testlog.TestLogger(t),
 		debugInfoUploadTimeout: 2 * time.Minute,
 		metrics:                newMetrics(nil),
 	}

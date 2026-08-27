@@ -3,7 +3,6 @@ package scrape
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/url"
 	"reflect"
 	"slices"
@@ -26,8 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -139,6 +136,9 @@ type Arguments struct {
 	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 	// Whether the metric's type and unit should be added as labels.
 	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
+	// Whether to parse the start timestamp from the scraped metrics and inject
+	// a zero sample at that timestamp, marking a counter reset.
+	StartTimestampZeroIngestion bool `alloy:"start_timestamp_zero_ingestion,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -313,6 +313,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
+	if args.StartTimestampZeroIngestion && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("start_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		HTTPClientOptions: []config_util.HTTPClientOption{
@@ -323,6 +327,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// otelcol.receiver.prometheus gets metadata from context
 		PassMetadataInContext:   args.HonorMetadata,
 		EnableTypeAndUnitLabels: args.EnableTypeAndUnitLabels,
+		// ParseST extracts the start timestamp from the scrape formats;
+		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
+		// Prometheus' start-timestamp-zero-ingestion feature sets both together.
+		ParseST:                           args.StartTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: args.StartTimestampZeroIngestion,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)
@@ -360,9 +369,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	scraper, err := scrape.NewManager(
 		scrapeOptions,
-		slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)),
+		c.opts.Logger,
 		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
 		interceptor,
+		nil,
 		unregisterer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
@@ -375,7 +385,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	if args.EnableProtobufNegotiation {
-		level.Warn(o.Logger).Log("msg", "enable_protobuf_negotiation is deprecated and will be removed in a future major release, use scrape_protocols instead")
+		o.Logger.Warn("enable_protobuf_negotiation is deprecated and will be removed in a future major release, use scrape_protocols instead")
 	}
 
 	return c, nil
@@ -391,9 +401,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 	go func() {
 		err := c.scraper.Run(targetSetsChan)
-		level.Info(c.opts.Logger).Log("msg", "scrape manager stopped")
+		c.opts.Logger.Info("scrape manager stopped")
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "scrape manager failed", "err", err)
+			c.opts.Logger.Error("scrape manager failed", "err", err)
 		}
 	}()
 
@@ -424,7 +434,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 			select {
 			case targetSetsChan <- newTargetGroups:
-				level.Debug(c.opts.Logger).Log("msg", "passed new targets to scrape manager")
+				c.opts.Logger.Debug("passed new targets to scrape manager")
 			case <-ctx.Done():
 			}
 		}
@@ -480,11 +490,11 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		// TODO: When these change we could stop and re-create scrape manager.
 		if c.args.HonorMetadata != newArgs.HonorMetadata {
-			level.Warn(c.opts.Logger).Log("msg", "honor_metadata cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.HonorMetadata, "requested", newArgs.HonorMetadata)
+			c.opts.Logger.Warn("honor_metadata cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.HonorMetadata, "requested", newArgs.HonorMetadata)
 			newArgs.HonorMetadata = c.args.HonorMetadata
 		}
 		if c.args.EnableTypeAndUnitLabels != newArgs.EnableTypeAndUnitLabels {
-			level.Warn(c.opts.Logger).Log("msg", "enable_type_and_unit_labels cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.EnableTypeAndUnitLabels, "requested", newArgs.EnableTypeAndUnitLabels)
+			c.opts.Logger.Warn("enable_type_and_unit_labels cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.EnableTypeAndUnitLabels, "requested", newArgs.EnableTypeAndUnitLabels)
 			newArgs.EnableTypeAndUnitLabels = c.args.EnableTypeAndUnitLabels
 		}
 	}
@@ -493,7 +503,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 
-	promConfig, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)))
+	promConfig, err := config.Load("", c.opts.Logger)
 	if err != nil {
 		return fmt.Errorf("error loading blank prometheus config: %w", err)
 	}
@@ -503,7 +513,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
-	level.Debug(c.opts.Logger).Log("msg", "scrape config was updated")
+	c.opts.Logger.Debug("scrape config was updated")
 
 	return nil
 }
@@ -650,7 +660,7 @@ func (c *Component) populatePromLabels(targets []discovery.Target, jobName strin
 				labels.NewBuilder(labels.EmptyLabels()),
 			)
 			for _, err := range errs {
-				level.Warn(c.opts.Logger).Log("msg", "error while populating labels of targets using prom config", "err", err)
+				c.opts.Logger.Warn("error while populating labels of targets using prom config", "err", err)
 			}
 			allTargets = append(allTargets, promTargets...)
 		}

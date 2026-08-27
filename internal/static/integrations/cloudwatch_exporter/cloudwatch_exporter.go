@@ -5,15 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 
-	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
-
-	"github.com/go-kit/log"
 	yace "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg"
 	yaceClients "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients"
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -35,20 +32,18 @@ type exporter struct {
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
-func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase, debug bool) (*exporter, error) {
+func NewCloudwatchExporter(name string, logger *slog.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase bool) (*exporter, error) {
 	var factory cachingFactory
 	var err error
 
-	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
-
-	factory, err = yaceClients.NewFactory(l, conf, fipsEnabled)
+	factory, err = yaceClients.NewFactory(logger, conf, fipsEnabled)
 	if err != nil {
 		return nil, err
 	}
 
 	return &exporter{
 		name:                 name,
-		logger:               l,
+		logger:               logger,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		labelsSnakeCase:      labelsSnakeCase,

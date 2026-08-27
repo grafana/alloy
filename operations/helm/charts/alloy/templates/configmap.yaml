@@ -10,8 +10,8 @@ metadata:
     app.kubernetes.io/component: config
 data:
   {{- if $values.configMap.content }}
-  config.alloy: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
+  {{ include "alloy.config-map.key" . }}: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
   {{- else }}
-  config.alloy: |- {{- .Files.Get "config/example.alloy" | trim | nindent 4 }}
+  {{ include "alloy.config-map.key" . }}: |- {{- .Files.Get "config/example.alloy" | trim | nindent 4 }}
   {{- end }}
 {{- end }}

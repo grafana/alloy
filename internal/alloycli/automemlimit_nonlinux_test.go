@@ -8,14 +8,19 @@ import (
 	"testing"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestNoMemlimitErrorLogs(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)
 
-	l, err := logging.New(buffer, logging.DefaultOptions)
+	l, err := logging.New(buffer, logging.Options{
+		Level:       logging.LevelDefault,
+		Format:      logging.FormatDefault,
+		Destination: logging.LogDestinationStderr,
+	})
 	require.NoError(t, err)
 
 	applyAutoMemLimit(l)

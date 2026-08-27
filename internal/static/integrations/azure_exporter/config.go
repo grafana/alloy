@@ -5,13 +5,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	duration "github.com/channelmeter/iso8601duration"
-	"github.com/go-kit/log"
 	azure_config "github.com/webdevops/azure-metrics-exporter/config"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
 	"github.com/webdevops/go-common/azuresdk/cloudconfig"
@@ -20,7 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/grafana/alloy/internal/util/zapadapter"
 )
 
 func init() {
@@ -98,7 +97,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 	return getHash(c)
 }
 
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	concurrencyConfig := azure_config.Opts{
 		// Necessary to match OSS definition
 		Prober: struct {
@@ -112,7 +111,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 
 	return Exporter{
 		cfg:               *c,
-		logger:            zapadapter.New(l).Sugar(),
+		logger:            l,
 		ConcurrencyConfig: concurrencyConfig,
 	}, nil
 }

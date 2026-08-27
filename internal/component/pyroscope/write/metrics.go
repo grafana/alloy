@@ -1,6 +1,8 @@
 package write
 
 import (
+	"time"
+
 	pyrometricsutil "github.com/grafana/alloy/internal/component/pyroscope/util/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -38,8 +40,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help: "Total number of retries to Pyroscope.",
 		}, []string{"endpoint"}),
 		latency: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name: "pyroscope_write_latency",
-			Help: "Write latency for sending profiles to pyroscope",
+			Name:                            "pyroscope_write_latency",
+			Help:                            "Write latency for sending profiles to pyroscope",
+			Buckets:                         prometheus.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, []string{"endpoint", "type"}),
 		debugInfoUploadBytes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_ebpf_debug_info_upload_bytes_total",

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -95,7 +95,8 @@ var (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	ErrorMode: ottl.PropagateError,
+	// Matches the upstream default since v0.153 (the processor.transform.defaultErrorModeIgnore gate is on by default).
+	ErrorMode: ottl.IgnoreError,
 }
 
 // SetToDefault implements syntax.Defaulter.

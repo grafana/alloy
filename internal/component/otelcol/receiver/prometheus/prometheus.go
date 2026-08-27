@@ -6,7 +6,14 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/go-kit/log"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/storage"
+	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	otelreceiver "go.opentelemetry.io/collector/receiver"
+	metricNoop "go.opentelemetry.io/otel/metric/noop"
+	traceNoop "go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -17,14 +24,7 @@ import (
 	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util/zapadapter"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/storage"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/pdata/pmetric"
-	otelreceiver "go.opentelemetry.io/collector/receiver"
-	metricNoop "go.opentelemetry.io/otel/metric/noop"
-	traceNoop "go.opentelemetry.io/otel/trace/noop"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 func init() {
@@ -61,7 +61,6 @@ type Exports struct {
 
 // Component is the otelcol.receiver.prometheus component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	mut        sync.RWMutex
@@ -84,7 +83,6 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		log:                o.Logger,
 		opts:               o,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
@@ -133,7 +131,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	settings := otelreceiver.Settings{
 		ID: otelcomponent.NewIDWithName(otelcomponent.MustNewType("prometheus"), c.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: zapadapter.New(c.opts.Logger),
+			Logger: slogadapter.NewZap(c.opts.Logger),
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  mp,

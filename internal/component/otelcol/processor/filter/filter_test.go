@@ -3,10 +3,10 @@ package filter_test
 import (
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/filter"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]any{
-				"error_mode": "propagate",
+				"error_mode": "ignore",
 			},
 		},
 		{

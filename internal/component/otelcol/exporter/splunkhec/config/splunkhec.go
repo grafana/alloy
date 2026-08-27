@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -65,9 +64,6 @@ type SplunkHecClientArguments struct {
 	ForceAttemptHTTP2 bool `alloy:"force_attempt_http2,attr,optional"`
 }
 type SplunkConf struct {
-	// DeprecatedBatcher is the deprecated batcher configuration.
-	DeprecatedBatcher *DeprecatedBatchConfig `alloy:"batcher,block,optional"`
-
 	// Experimental: This configuration is at the early stage of development and may change without backward compatibility
 	// until https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved.
 	// LogDataEnabled can be used to disable sending logs by the exporter.
@@ -115,34 +111,6 @@ type SplunkConf struct {
 	Heartbeat SplunkHecHeartbeat `alloy:"heartbeat,block,optional"`
 	// Telemetry is the configuration for splunk hec exporter telemetry
 	Telemetry SplunkHecTelemetry `alloy:"telemetry,block,optional"`
-}
-
-type DeprecatedBatchConfig struct {
-	// Enabled indicates whether to not enqueue batches before sending to the consumerSender.
-	Enabled bool `alloy:"enabled,attr,optional"`
-
-	// FlushTimeout sets the time after which a batch will be sent regardless of its size.
-	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
-
-	MinSize int64  `alloy:"min_size,attr,optional"`
-	MaxSize int64  `alloy:"max_size,attr,optional"`
-	Sizer   string `alloy:"sizer,attr,optional"`
-}
-
-func (args *DeprecatedBatchConfig) Convert() splunkhecexporter.DeprecatedBatchConfig {
-	if args == nil {
-		return splunkhecexporter.DeprecatedBatchConfig{}
-	}
-	sizer := exporterhelper.RequestSizerType{}
-	// ignore error here because we check for valid sizer in Validate()
-	_ = sizer.UnmarshalText([]byte(args.Sizer))
-	return splunkhecexporter.DeprecatedBatchConfig{ //nolint:staticcheck
-		Enabled:      args.Enabled,
-		FlushTimeout: args.FlushTimeout,
-		Sizer:        sizer,
-		MinSize:      args.MinSize,
-		MaxSize:      args.MaxSize,
-	}
 }
 
 type HecFields struct {
@@ -291,12 +259,6 @@ func (args *SplunkConf) Validate() error {
 	if args.MaxContentLengthTraces > 838860800 {
 		return errors.New("max_content_length_traces must be less than 838860800")
 	}
-	if args.DeprecatedBatcher != nil {
-		if args.DeprecatedBatcher.Sizer != "items" && args.DeprecatedBatcher.Sizer != "bytes" && args.DeprecatedBatcher.Sizer != "requests" {
-			return errors.New("sizer must be one of items, bytes, or requests")
-		}
-	}
-
 	return nil
 }
 
@@ -305,7 +267,6 @@ func (args SplunkHecArguments) Convert() (otelcomponent.Config, error) {
 	cfg := &splunkhecexporter.Config{
 		ClientConfig:            *args.SplunkHecClientArguments.Convert(),
 		BackOffConfig:           *args.RetrySettings.Convert(),
-		DeprecatedBatcher:       args.Splunk.DeprecatedBatcher.Convert(),
 		LogDataEnabled:          args.Splunk.LogDataEnabled,
 		ProfilingDataEnabled:    args.Splunk.ProfilingDataEnabled,
 		Token:                   configopaque.String(args.Splunk.Token),

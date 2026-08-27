@@ -2,17 +2,17 @@ package collector
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func Test_getSetupConsumers(t *testing.T) {
@@ -30,7 +30,7 @@ func Test_getSetupConsumers(t *testing.T) {
 			Registry:        reg,
 			DB:              db,
 			CollectInterval: 1 * time.Second,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 
@@ -59,7 +59,7 @@ func Test_getSetupConsumers(t *testing.T) {
 			Registry:        reg,
 			DB:              db,
 			CollectInterval: 1 * time.Second,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 
@@ -84,7 +84,7 @@ func Test_getSetupConsumers(t *testing.T) {
 			DB:              db,
 			Registry:        prometheus.NewRegistry(),
 			CollectInterval: 1 * time.Second,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 

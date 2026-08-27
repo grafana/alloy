@@ -121,7 +121,7 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		c.server, err = source.NewServer(c.opts.SLogger, registry, c.handler, source.ServerConfig{
+		c.server, err = source.NewServer(c.opts.Logger, registry, c.handler, source.ServerConfig{
 			Namespace:      "loki_source_awsfirehose",
 			EntriesWritten: c.metrics.entriesWritten,
 			NetConfig:      newArgs.Server,

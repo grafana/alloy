@@ -70,7 +70,7 @@ func TestNil(t *testing.T) {
 	}))
 	relabeller, err := New(component.Options{
 		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         util.TestAlloyLogger(t).Slog(),
 		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
@@ -152,7 +152,7 @@ func TestCacheSizeMetric(t *testing.T) {
 			}
 			relabeller, err := New(component.Options{
 				ID:             "1",
-				Logger:         util.TestAlloyLogger(t),
+				Logger:         util.TestAlloyLogger(t).Slog(),
 				OnStateChange:  func(e component.Exports) {},
 				Registerer:     reg,
 				GetServiceData: getServiceData,
@@ -191,6 +191,57 @@ func TestMetrics(t *testing.T) {
 	require.True(t, *(m.Counter.Value) == 1)
 }
 
+func TestRelabelDebuggingRespectsActivity(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		active           bool
+		wantPublishCalls int
+	}{
+		{name: "inactive", active: false, wantPublishCalls: 0},
+		{name: "active", active: true, wantPublishCalls: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			relabeller := generateRelabel(t)
+			componentID := livedebugging.ComponentID(relabeller.opts.ID)
+			publisher := &debugDataPublisherSpy{active: tc.active}
+			relabeller.debugDataPublisher = publisher
+
+			relabeller.relabel(1, labels.FromStrings("__name__", "test_metric"))
+			require.Equal(t, 1, publisher.isActiveCalls)
+			require.Equal(t, componentID, publisher.isActiveComponentID)
+			require.Equal(t, tc.wantPublishCalls, publisher.publishCalls)
+
+			if tc.active {
+				require.Equal(t, componentID, publisher.publishedData.ComponentID)
+				require.Equal(t, livedebugging.PrometheusMetric, publisher.publishedData.Type)
+				require.Equal(t, uint64(1), publisher.publishedData.Count)
+				wantData := `{__name__="test_metric"} => {__name__="test_metric"}`
+				require.Equal(t, wantData, publisher.publishedData.DataFunc())
+			}
+		})
+	}
+}
+
+type debugDataPublisherSpy struct {
+	active        bool
+	isActiveCalls int
+	publishCalls  int
+
+	isActiveComponentID livedebugging.ComponentID
+	publishedData       livedebugging.Data
+}
+
+func (p *debugDataPublisherSpy) IsActive(componentID livedebugging.ComponentID) bool {
+	p.isActiveCalls++
+	p.isActiveComponentID = componentID
+	return p.active
+}
+
+func (p *debugDataPublisherSpy) PublishIfActive(data livedebugging.Data) {
+	p.publishCalls++
+	p.publishedData = data
+}
+
 func BenchmarkCacheParallel(b *testing.B) {
 	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		return ref, nil
@@ -198,7 +249,7 @@ func BenchmarkCacheParallel(b *testing.B) {
 	var entry storage.Appendable
 	_, err := New(component.Options{
 		ID:     "1",
-		Logger: util.TestAlloyLogger(b),
+		Logger: util.TestAlloyLogger(b).Slog(),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
@@ -238,7 +289,7 @@ func BenchmarkCache(b *testing.B) {
 	var entry storage.Appendable
 	_, err := New(component.Options{
 		ID:     "1",
-		Logger: util.TestAlloyLogger(b),
+		Logger: util.TestAlloyLogger(b).Slog(),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
@@ -298,7 +349,7 @@ func BenchmarkCacheModes(b *testing.B) {
 			var entry storage.Appendable
 			_, err := New(component.Options{
 				ID:     "1",
-				Logger: util.TestAlloyLogger(b),
+				Logger: util.TestAlloyLogger(b).Slog(),
 				OnStateChange: func(e component.Exports) {
 					entry = e.(Exports).Receiver
 				},
@@ -338,7 +389,7 @@ func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	}
 	relabeller, err := New(component.Options{
 		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         util.TestAlloyLogger(t).Slog(),
 		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,

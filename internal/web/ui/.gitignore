@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated test fixtures
+src/test/fixtures/large_disc_output.json

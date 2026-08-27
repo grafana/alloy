@@ -21,7 +21,7 @@ This component does not work with [Grafana Cloud Frontend Observability][fronten
 For more information, refer to the [Choose a component][frontend-telemetry] guide.
 
 [frontend-telemetry]: ../../../../collect/choose-component/#frontend-telemetry
-[frontend-observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[frontend-observability]: https://grafana.com/products/cloud/frontend-observability/
 {{< /admonition >}}
 
 ## Usage
@@ -171,7 +171,7 @@ The `*` character indicates a wildcard.
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
 
-To retrieve sourcemaps from disk or another network location, specify one or more [`location` blocks][location].
+To retrieve sourcemaps from disk or another network location, specify one or more [`location` blocks](#location).
 When `location` blocks are provided, they're checked first for sourcemaps before falling back to downloading.
 
 #### `cache`

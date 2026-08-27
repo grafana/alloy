@@ -2,9 +2,9 @@ package harness
 
 import (
 	"context"
+	"log/slog"
 	"net"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func defaultServices(l log.Logger) []service.Service {
+func defaultServices(l *slog.Logger) []service.Service {
 	return []service.Service{
 		livedebugging.New(),
 		labelstore.New(l, prometheus.NewRegistry()),

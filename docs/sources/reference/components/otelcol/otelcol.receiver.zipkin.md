@@ -42,10 +42,14 @@ You can use the following arguments with `otelcol.receiver.zipkin`:
 | `auth`                   | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to use for authenticating requests. |                                                            | no       |
 | `compression_algorithms` | `list(string)`             | A list of compression algorithms the server can accept.                      | `["", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"]` | no       |
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:9411"`                                           | no       |
+| `idle_timeout`           | `duration`                 | Maximum idle time before closing a keep-alive connection.                    | `"1m"`                                                     | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
 | `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `parse_string_tags`      | `bool`                     | Parse string tags and binary annotations into non-string types.              | `false`                                                    | no       |
+| `read_header_timeout`    | `duration`                 | Maximum time allowed to read request headers.                                | `"1m"`                                                     | no       |
+| `read_timeout`           | `duration`                 | Maximum time allowed to read an HTTP request, including the body.            | `""`                                                       | no       |
+| `write_timeout`          | `duration`                 | Maximum time allowed to write an HTTP response.                              | `"30s"`                                                    | no       |
 
 
 If `parse_string_tags` is `true`, string tags and binary annotations are converted to `int`, `bool`, and `float` if possible.
@@ -89,11 +93,12 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-| Name              | Type           | Description                                              | Default                | Required |
-|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
-| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
-| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
+| Name              | Type           | Description                                                     | Default                | Required |
+|-------------------|----------------|-----------------------------------------------------------------|------------------------|----------|
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                            | `["X-Requested-With"]` | no       |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                         |                        | no       |
+| `exposed_headers` | `list(string)` | Configures the `Access-Control-Expose-Headers` response header. |                        | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header.        |                        | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:

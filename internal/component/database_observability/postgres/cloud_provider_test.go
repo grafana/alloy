@@ -33,4 +33,12 @@ func TestPopulateCloudProvider(t *testing.T) {
 			},
 		}, got)
 	})
+
+	t.Run("does not panic on a malformed rds host", func(t *testing.T) {
+		dsn := "postgres://user:pass@rds.amazonaws.com:5432/mydb"
+		got, err := populateCloudProviderFromDSN(dsn)
+		require.NoError(t, err)
+
+		assert.Equal(t, &database_observability.CloudProvider{}, got)
+	})
 }

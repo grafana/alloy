@@ -2,9 +2,8 @@ package integrations
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
-
-	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
@@ -28,7 +27,7 @@ type Config interface {
 	InstanceKey(defaultKey string) (string, error)
 
 	// NewIntegration returns an integration for the given with the given logger.
-	NewIntegration(l log.Logger) (Integration, error)
+	NewIntegration(l *slog.Logger) (Integration, error)
 }
 
 // An Integration is a process that integrates with some external system and
@@ -53,7 +52,7 @@ type Integration interface {
 
 // NewIntegrationWithInstanceKey uses cfg to construct an integration and
 // return it along its instance key.
-func NewIntegrationWithInstanceKey(l log.Logger, cfg Config, defaultKey string) (Integration, string, error) {
+func NewIntegrationWithInstanceKey(l *slog.Logger, cfg Config, defaultKey string) (Integration, string, error) {
 	key, err := cfg.InstanceKey(defaultKey)
 	if err != nil {
 		return nil, key, err

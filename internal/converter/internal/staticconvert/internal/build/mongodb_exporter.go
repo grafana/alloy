@@ -1,6 +1,8 @@
 package build
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb"
 	"github.com/grafana/alloy/internal/static/integrations/mongodb_exporter"
@@ -19,6 +21,7 @@ func toMongodbExporter(config *mongodb_exporter.Config) *mongodb.Arguments {
 		CollectAll:               config.CollectAll,
 		DirectConnect:            config.DirectConnect,
 		DiscoveringMode:          config.DiscoveringMode,
+		CurrentopSlowTime:        1 * time.Minute,
 		EnableDBStats:            config.EnableDBStats,
 		EnableDBStatsFreeStorage: config.EnableDBStatsFreeStorage,
 		EnableDiagnosticData:     config.EnableDiagnosticData,

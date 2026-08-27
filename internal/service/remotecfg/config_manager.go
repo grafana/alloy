@@ -4,15 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax/ast"
@@ -40,7 +39,7 @@ type configManager struct {
 	metrics *metrics
 
 	// Logger for the config manager
-	logger log.Logger
+	logger *slog.Logger
 
 	// The root path for the remotecfg storage on disk.
 	remotecfgPath string
@@ -91,7 +90,7 @@ type configManager struct {
 	lastSentEffectiveConfig *collectorv1.EffectiveConfig
 }
 
-func newConfigManager(metrics *metrics, logger log.Logger, remotecfgPath string, configPath string) *configManager {
+func newConfigManager(metrics *metrics, logger *slog.Logger, remotecfgPath string, configPath string) *configManager {
 	return &configManager{
 		metrics:          metrics,
 		logger:           logger,
@@ -140,7 +139,7 @@ func (cm *configManager) setCachedConfig(b []byte) {
 	p := cm.getCachedConfigPath()
 	err := os.WriteFile(p, b, 0750)
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to flush remote configuration contents the on-disk cache", "err", err)
+		cm.logger.Error("failed to flush remote configuration contents the on-disk cache", "err", err)
 	}
 }
 
@@ -179,7 +178,7 @@ func (cm *configManager) parseAndLoad(b []byte) error {
 
 	file, err := ctrl.LoadSource(b, nil, configPath)
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to parse and load configuration", "config_size", len(b), "err", err)
+		cm.logger.Error("failed to parse and load configuration", "config_size", len(b), "err", err)
 		return err
 	}
 
@@ -212,10 +211,10 @@ func (cm *configManager) getAstFile() *ast.File {
 func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error), useCacheAsFallback bool) {
 	if err := cm.fetchLoadRemoteConfig(getAPIConfig); err != nil && err != errNotModified {
 		if useCacheAsFallback {
-			level.Error(cm.logger).Log("msg", "failed to fetch remote config, falling back to cache", "err", err)
+			cm.logger.Error("failed to fetch remote config, falling back to cache", "err", err)
 			cm.fetchLoadLocalConfig()
 		} else {
-			level.Error(cm.logger).Log("msg", "failed to fetch remote config, continuing with current config", "err", err)
+			cm.logger.Error("failed to fetch remote config, continuing with current config", "err", err)
 		}
 	}
 
@@ -227,31 +226,31 @@ func (cm *configManager) fetchLoadConfig(getAPIConfig func() (*collectorv1.GetCo
 func (cm *configManager) notifyStatusUpdate(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) {
 	// Avoid unnecessary immediate calls if there's nothing new to report.
 	if !cm.hasPendingUpdates() {
-		level.Debug(cm.logger).Log("msg", "no pending status/effective-config updates; skipping notify")
+		cm.logger.Debug("no pending status/effective-config updates; skipping notify")
 		return
 	}
 
 	// Make the API call but ignore the response and any errors
 	// This is not a critical operation since the GetConfig call will
 	// be made again on the polling frequency
-	level.Debug(cm.logger).Log("msg", "making immediate GetConfig call to report status update")
+	cm.logger.Debug("making immediate GetConfig call to report status update")
 	_, err := getAPIConfig()
 	if err != nil && err != errNotModified {
-		level.Error(cm.logger).Log("msg", "status notification call failed, will retry on next poll", "err", err)
+		cm.logger.Error("status notification call failed, will retry on next poll", "err", err)
 	} else {
-		level.Debug(cm.logger).Log("msg", "successfully notified server of status update")
+		cm.logger.Debug("successfully notified server of status update")
 	}
 }
 
 func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1.GetConfigResponse, error)) error {
-	level.Debug(cm.logger).Log("msg", "fetching remote configuration")
+	cm.logger.Debug("fetching remote configuration")
 
 	gcr, err := getAPIConfig()
 	cm.metrics.totalAttempts.Add(1)
 
 	// Handle "not modified" response specifically
 	if err == errNotModified {
-		level.Debug(cm.logger).Log("msg", "skipping over API response since it has not been modified since last fetch")
+		cm.logger.Debug("skipping over API response since it has not been modified since last fetch")
 		cm.metrics.lastFetchNotModified.Set(1)
 
 		// Only mark APPLIED if the last received remote config matches the currently
@@ -262,7 +261,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		if loaded != "" && received != "" && loaded == received {
 			cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 		} else {
-			level.Debug(cm.logger).Log("msg", "not modified but loaded config does not match last received; retaining status", "loaded_hash", loaded, "received_hash", received)
+			cm.logger.Debug("not modified but loaded config does not match last received; retaining status", "loaded_hash", loaded, "received_hash", received)
 		}
 
 		return nil
@@ -270,7 +269,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 	// Handle other errors
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to fetch remote config", "err", err)
+		cm.logger.Error("failed to fetch remote config", "err", err)
 		cm.metrics.totalFailures.Add(1)
 		cm.metrics.lastLoadSuccess.Set(0)
 
@@ -283,7 +282,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 	// Store the remote hash from the API response
 	if gcr.Hash != "" {
-		level.Debug(cm.logger).Log("msg", "setting remote hash", "hash", gcr.Hash)
+		cm.logger.Debug("setting remote hash", "hash", gcr.Hash)
 		cm.setRemoteHash(gcr.Hash)
 	}
 
@@ -295,7 +294,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	alreadyLoaded := cm.getLastLoadedCfgHash() == newConfigHash
 
 	if alreadyReceived {
-		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last received one", "config_hash", newConfigHash)
+		cm.logger.Debug("skipping over API response since it matched the last received one", "config_hash", newConfigHash)
 		return nil
 	}
 
@@ -306,20 +305,20 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// that the newConfigHash is the same as the lastLoadedConfigHash. We do not need
 	// to reload the config in this case since it is already loaded.
 	if alreadyLoaded {
-		level.Debug(cm.logger).Log("msg", "skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
+		cm.logger.Debug("skipping over API response since it matched the last loaded one", "config_hash", newConfigHash)
 		// Set status to APPLIED since the new remote config was previously loaded.
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 		return nil
 	}
 
-	level.Info(cm.logger).Log("msg", "attempting to parse and load new remote configuration", "config_hash", newConfigHash)
+	cm.logger.Info("attempting to parse and load new remote configuration", "config_hash", newConfigHash)
 
 	// Set status to APPLYING when we start processing remote config
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING, "")
 	err = cm.parseAndLoad(b)
 	if err != nil {
 		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
-		level.Error(cm.logger).Log("msg", "failed to parse and load new remote configuration",
+		cm.logger.Error("failed to parse and load new remote configuration",
 			"received_hash", newConfigHash, "loaded_hash", cm.getLastLoadedCfgHash(), "err", err)
 		cm.metrics.lastLoadSuccess.Set(0)
 
@@ -329,20 +328,20 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		// If we have a cached config, attempt to reload it to restore component health.
 		// Otherwise a partial working config will be left in the controller.
 		if cm.getLastLoadedCfgHash() != "" {
-			level.Info(cm.logger).Log("msg", "attempting to reload cached configuration to restore component health")
+			cm.logger.Info("attempting to reload cached configuration to restore component health")
 			cachedConfig, err := cm.getCachedConfig()
 			if err != nil {
-				level.Error(cm.logger).Log("msg", "failed to read cached configuration for fallback", "err", err)
+				cm.logger.Error("failed to read cached configuration for fallback", "err", err)
 				return err
 			}
 
 			err = cm.parseAndLoad(cachedConfig)
 			if err != nil {
-				level.Error(cm.logger).Log("msg", "failed to reload cached configuration", "err", err)
+				cm.logger.Error("failed to reload cached configuration", "err", err)
 				return err
 			}
 
-			level.Info(cm.logger).Log("msg", "successfully restored cached configuration")
+			cm.logger.Info("successfully restored cached configuration")
 			cm.metrics.lastLoadSuccess.Set(1)
 			return nil
 		}
@@ -358,7 +357,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	// so the server knows about both the status change and the effective config update
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 
-	level.Info(cm.logger).Log("msg", "successfully loaded remote configuration",
+	cm.logger.Info("successfully loaded remote configuration",
 		"config_hash", newConfigHash, "config_size", len(b))
 
 	// If successful, flush to disk and keep a copy.
@@ -369,13 +368,13 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 func (cm *configManager) fetchLoadLocalConfig() {
 	b, err := cm.getCachedConfig()
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to read from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
+		cm.logger.Error("failed to read from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
 		return
 	}
 
 	err = cm.parseAndLoad(b)
 	if err != nil {
-		level.Error(cm.logger).Log("msg", "failed to load from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
+		cm.logger.Error("failed to load from cache", "cache_path", cm.getCachedConfigPath(), "err", err)
 		return
 	}
 
@@ -383,7 +382,7 @@ func (cm *configManager) fetchLoadLocalConfig() {
 	cacheHash := getHash(b)
 	cm.setLastLoadedCfgHash(cacheHash)
 
-	level.Info(cm.logger).Log("msg", "successfully loaded configuration from cache",
+	cm.logger.Info("successfully loaded configuration from cache",
 		"config_hash", cacheHash, "config_size", len(b), "cache_path", cm.getCachedConfigPath())
 }
 

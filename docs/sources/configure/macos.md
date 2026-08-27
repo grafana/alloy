@@ -17,7 +17,7 @@ To configure {{< param "PRODUCT_NAME" >}} on macOS, perform the following steps:
 1. Run the following command in a terminal to restart the {{< param "PRODUCT_NAME" >}} service:
 
    ```shell
-   brew services restart  grafana/grafana/alloy
+   brew services restart grafana/grafana/alloy
    ```
 
 ## Configure the {{% param "PRODUCT_NAME" %}} service
@@ -50,13 +50,13 @@ To customize the {{< param "PRODUCT_NAME" >}} service on macOS, perform the foll
 1. Reinstall the {{< param "PRODUCT_NAME" >}} Formula by running the following command in a terminal:
 
    ```shell
-   brew reinstall --formula  grafana/grafana/alloy
+   brew reinstall --formula grafana/grafana/alloy
    ```
 
 1. Restart the {{< param "PRODUCT_NAME" >}} service by running the command in a terminal:
 
    ```shell
-   brew services restart  grafana/grafana/alloy
+   brew services restart grafana/grafana/alloy
    ```
 
 ## Configure environment variables

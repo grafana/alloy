@@ -22,16 +22,55 @@ import (
 // JSON or logfmt, and create a new inner handler if needed.
 
 type handler struct {
-	w         io.Writer
+	// w owns every sink: innerWriter (stderr), lokiWriter, tmpWriter,
+	// and the optional Windows event log.
+	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
+	replacer  func(groups []string, a slog.Attr) slog.Attr
 
 	nested []nesting
 
-	mut           sync.RWMutex
-	currentFormat Format
-	inner         slog.Handler
-	replacer      func(groups []string, a slog.Attr) slog.Attr
+	// scratchPool holds per-call scratch (a cached slog handler + leveledWriter).
+	// It's per handler instance so each scratch's cached handler matches this
+	// handler's nested attrs/groups, and pooled (rather than a single shared
+	// handler) because the per-call level on the leveledWriter is mutable state
+	// that can't be shared across goroutines.
+	scratchPool sync.Pool
+}
+
+func newHandler(
+	w *writerVar,
+	leveler slog.Leveler,
+	formatter formatter,
+	replacer func(groups []string, a slog.Attr) slog.Attr,
+	nested []nesting,
+) *handler {
+
+	return &handler{
+		w:         w,
+		leveler:   leveler,
+		formatter: formatter,
+		replacer:  replacer,
+		nested:    nested,
+		scratchPool: sync.Pool{
+			New: func() any {
+				return &scratch{lw: &leveledWriter{w: w}}
+			},
+		},
+	}
+}
+
+type scratch struct {
+	// Carries the record's level.
+	lw *leveledWriter
+
+	// Formats the record and writes the bytes straight to the configured sinks.
+	hdlr slog.Handler
+
+	// Records which format the cached handler was built for,
+	// so a runtime format change triggers a rebuild.
+	format Format
 }
 
 // nesting is used since attrs and groups need to be nested in the order they were entered.
@@ -47,64 +86,58 @@ type formatter interface {
 var _ slog.Handler = (*handler)(nil)
 
 func (h *handler) Enabled(ctx context.Context, l slog.Level) bool {
-	// Bypass the cache and check the underlying leveler directly.
+	// Check the underlying leveler directly rather than going through a handler.
 	return l >= h.leveler.Level()
 }
 
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
-	return h.buildHandler().Handle(ctx, r)
+	s := h.getScratch()
+	defer h.scratchPool.Put(s)
+
+	s.lw.level = r.Level
+	return s.hdlr.Handle(ctx, r)
 }
 
-func (h *handler) buildHandler() slog.Handler {
-	// Get the expected format for the duration of this call. It's possible that
-	// this will be stale by the time the call returns, but it will be correct on
-	// the next call.
+// getScratch returns scratch space whose cached handler matches the current
+// format, rebuilding the handler only when the format changed (or on first use).
+func (h *handler) getScratch() *scratch {
 	expectFormat := h.formatter.Format()
-
-	// Fast path: if our cached handler is still valid, immediately return it.
-	h.mut.RLock()
-	if h.currentFormat == expectFormat && h.inner != nil {
-		defer h.mut.RUnlock()
-		return h.inner
+	s := h.scratchPool.Get().(*scratch)
+	if s.hdlr == nil || s.format != expectFormat {
+		s.hdlr = h.buildHandler(s.lw)
+		s.format = expectFormat
 	}
-	h.mut.RUnlock()
+	return s
+}
 
-	// Slow path: we need to build a new handler.
-	h.mut.Lock()
-	defer h.mut.Unlock()
-
-	var newHandler slog.Handler
-
+// buildHandler constructs a fresh slog handler writing into w, with the
+// current format and the WithAttrs/WithGroup chain applied.
+func (h *handler) buildHandler(w io.Writer) slog.Handler {
 	handlerOpts := slog.HandlerOptions{
 		AddSource: false,
 		Level:     h.leveler,
-
-		// Replace attributes with how they were represented in go-kit/log for
-		// consistency.
+		// Replace attributes with how they were represented in go-kit/log
+		// for consistency.
 		ReplaceAttr: h.replacer,
 	}
-
-	switch expectFormat {
+	var hdlr slog.Handler
+	switch h.formatter.Format() {
 	case FormatLogfmt:
-		newHandler = slog.NewTextHandler(h.w, &handlerOpts)
+		hdlr = slog.NewTextHandler(w, &handlerOpts)
 	case FormatJSON:
-		newHandler = slog.NewJSONHandler(h.w, &handlerOpts)
+		hdlr = slog.NewJSONHandler(w, &handlerOpts)
 	default:
-		panic(fmt.Sprintf("unknown format %v", expectFormat))
+		panic(fmt.Sprintf("unknown format %v", h.formatter.Format()))
 	}
-
-	// Need to replay our groups and attrs in the correct order.
+	// Replay our groups and attrs in the order they were entered.
 	for _, n := range h.nested {
 		if n.group != "" {
-			newHandler = newHandler.WithGroup(n.group)
+			hdlr = hdlr.WithGroup(n.group)
 		} else {
-			newHandler = newHandler.WithAttrs(n.attrs)
+			hdlr = hdlr.WithAttrs(n.attrs)
 		}
 	}
-
-	h.currentFormat = expectFormat
-	h.inner = newHandler
-	return newHandler
+	return hdlr
 }
 
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
@@ -114,14 +147,7 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		attrs: attrs,
 	})
 
-	return &handler{
-		w:         h.w,
-		leveler:   h.leveler,
-		formatter: h.formatter,
-
-		nested:   newNest,
-		replacer: h.replacer,
-	}
+	return newHandler(h.w, h.leveler, h.formatter, h.replacer, newNest)
 }
 
 func (h *handler) WithGroup(name string) slog.Handler {
@@ -130,14 +156,7 @@ func (h *handler) WithGroup(name string) slog.Handler {
 	newNest = append(newNest, nesting{
 		group: name,
 	})
-	return &handler{
-		w:         h.w,
-		leveler:   h.leveler,
-		formatter: h.formatter,
-
-		nested:   newNest,
-		replacer: h.replacer,
-	}
+	return newHandler(h.w, h.leveler, h.formatter, h.replacer, newNest)
 }
 
 var unsafeKeyCharReplacer = strings.NewReplacer(

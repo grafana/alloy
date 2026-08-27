@@ -14,7 +14,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Server exposes HTTP routes that ingest log entries and forward them in batches.
@@ -87,9 +86,7 @@ type LogsConfig struct {
 }
 
 func NewServer(logger *slog.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
-	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	server, err := fnet.NewTargetServer(slogadapter.GoKit(logger.Handler()), cfg.Namespace, reg, cfg.NetConfig)
+	server, err := fnet.NewTargetServer(logger, cfg.Namespace, reg, cfg.NetConfig)
 	if err != nil {
 		return nil, err
 	}

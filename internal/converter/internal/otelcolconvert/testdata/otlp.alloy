@@ -4,8 +4,18 @@ otelcol.receiver.otlp "default" {
 	}
 
 	http {
-		endpoint               = "localhost:4318"
+		endpoint = "localhost:4318"
+
+		cors {
+			allowed_origins = ["https://*.example.com"]
+			allowed_headers = ["X-Custom-Header"]
+			exposed_headers = ["X-Request-Id"]
+			max_age         = 7200
+		}
 		compression_algorithms = ["zlib"]
+		idle_timeout           = "0s"
+		write_timeout          = "0s"
+		read_header_timeout    = "0s"
 	}
 
 	output {

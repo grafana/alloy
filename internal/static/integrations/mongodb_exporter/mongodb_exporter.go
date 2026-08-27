@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"time"
 
-	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -21,6 +20,7 @@ var DefaultConfig = Config{
 	CollectAll:               true,
 	DirectConnect:            true,
 	DiscoveringMode:          true,
+	CurrentopSlowTime:        1 * time.Minute,
 	EnableDBStats:            false,
 	EnableDBStatsFreeStorage: false,
 	EnableDiagnosticData:     false,
@@ -50,6 +50,7 @@ type Config struct {
 	EnableReplicasetStatus   bool               `yaml:"enable_replicaset_status,omitempty"`
 	EnableReplicasetConfig   bool               `yaml:"enable_replicaset_config,omitempty"`
 	EnableCurrentopMetrics   bool               `yaml:"enable_currentop_metrics,omitempty"`
+	CurrentopSlowTime        time.Duration      `yaml:"currentop_slow_time,omitempty"`
 	EnableTopMetrics         bool               `yaml:"enable_top_metrics,omitempty"`
 	EnableIndexStats         bool               `yaml:"enable_index_stats,omitempty"`
 	EnableCollStats          bool               `yaml:"enable_coll_stats,omitempty"`
@@ -81,8 +82,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new mongodb_exporter
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	return New(logger, c)
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
 }
 
 func init() {
@@ -91,15 +92,13 @@ func init() {
 }
 
 // New creates a new mongodb_exporter integration.
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
-
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	exp := exporter.New(&exporter.Opts{
-		URI:                    string(c.URI),
-		Logger:                 logrusLogger,
-		DisableDefaultRegistry: true,
-
+		URI:                      string(c.URI),
+		Logger:                   logger,
+		DisableDefaultRegistry:   true,
 		CompatibleMode:           c.CompatibleMode,
+		CurrentOpSlowTime:        c.CurrentopSlowTime.String(),
 		CollectAll:               c.CollectAll,
 		DirectConnect:            c.DirectConnect,
 		DiscoveringMode:          c.DiscoveringMode,
