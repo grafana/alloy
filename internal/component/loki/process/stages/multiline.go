@@ -2,12 +2,14 @@ package stages
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
@@ -16,10 +18,9 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-// Configuration errors.
 var (
-	ErrMultilineStageEmptyConfig  = errors.New("multiline stage config must define `firstline` regular expression")
-	ErrMultilineStageInvalidRegex = errors.New("multiline stage first line regex compilation error")
+	errMultilineStageEmptyConfig  = errors.New("multiline stage config must define `firstline` regular expression")
+	errMultilineStageInvalidRegex = errors.New("multiline stage first line regex compilation error")
 )
 
 // MultilineConfig contains the configuration for a Multiline stage.
@@ -30,8 +31,8 @@ type MultilineConfig struct {
 	TrimNewlines bool          `alloy:"trim_newlines,attr,optional"`
 }
 
-// DefaultMultilineConfig applies the default values on
-var DefaultMultilineConfig = MultilineConfig{
+// defaultMultilineConfig applies the default values on
+var defaultMultilineConfig = MultilineConfig{
 	MaxLines:     128,
 	MaxWaitTime:  3 * time.Second,
 	TrimNewlines: true,
@@ -39,7 +40,7 @@ var DefaultMultilineConfig = MultilineConfig{
 
 // SetToDefault implements syntax.Defaulter.
 func (args *MultilineConfig) SetToDefault() {
-	*args = DefaultMultilineConfig
+	*args = defaultMultilineConfig
 }
 
 // Validate implements syntax.Validator.
@@ -53,23 +54,56 @@ func (args *MultilineConfig) Validate() error {
 
 func validateMultilineConfig(cfg MultilineConfig) (*regexp.Regexp, error) {
 	if cfg.Expression == "" {
-		return nil, ErrMultilineStageEmptyConfig
+		return nil, errMultilineStageEmptyConfig
 	}
 
 	expr, err := regexp.Compile(cfg.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrMultilineStageInvalidRegex, err)
+		return nil, fmt.Errorf("%v: %w", errMultilineStageInvalidRegex, err)
 	}
 
 	return expr, nil
 }
 
+var (
+	_ Stage = (*multilineStage)(nil)
+
+	_ entryProcessor = (*multilineStage)(nil)
+	_ starter        = (*multilineStage)(nil)
+	_ stopper        = (*multilineStage)(nil)
+)
+
+// newMultilineStage creates a mulitlineStage from config
+func newMultilineStage(logger *slog.Logger, config MultilineConfig, next NextFn) (Stage, error) {
+	regex, err := validateMultilineConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &multilineStage{
+		next:    next,
+		logger:  logger.With("stage", "multiline"),
+		cfg:     config,
+		regex:   regex,
+		streams: make(map[model.Fingerprint]*multilineState),
+		done:    make(chan struct{}),
+	}, nil
+}
+
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
 type multilineStage struct {
-	logger  *slog.Logger
-	cfg     MultilineConfig
-	regex   *regexp.Regexp
+	next   NextFn
+	logger *slog.Logger
+	cfg    MultilineConfig
+	regex  *regexp.Regexp
+
+	// mut is only used when we are running with pipeline2.
+	mut     sync.Mutex
 	streams map[model.Fingerprint]*multilineState
+
+	done chan struct{}
+	once sync.Once
+	wg   sync.WaitGroup
 }
 
 // multilineState captures the internal state of a running multiline stage.
@@ -78,21 +112,6 @@ type multilineState struct {
 	startLineEntry Entry  // The entry of the start line of a multiline block.
 	currentLines   uint64 // The number of lines of the current multiline block.
 	lastSeen       time.Time
-}
-
-// newMultilineStage creates a MulitlineStage from config
-func newMultilineStage(logger *slog.Logger, config MultilineConfig) (Stage, error) {
-	regex, err := validateMultilineConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &multilineStage{
-		logger:  logger.With("stage", "multiline"),
-		cfg:     config,
-		regex:   regex,
-		streams: make(map[model.Fingerprint]*multilineState),
-	}, nil
 }
 
 func (m *multilineStage) Run(in chan Entry) chan Entry {
@@ -199,6 +218,169 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
+// process implements stage.
+func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
+	m.mut.Lock()
+	var dst int
+
+	for _, e := range entries {
+		key := e.Labels.FastFingerprint()
+
+		if m.streams == nil {
+			m.streams = make(map[model.Fingerprint]*multilineState)
+		}
+
+		state, hasState := m.streams[key]
+		isFirstLine := m.regex.MatchString(e.Line)
+
+		if !hasState {
+			// Stream does not have any existing state and it's not identified
+			// as the first line of a multiline block so we forward as is.
+			if !isFirstLine {
+				entries[dst] = e
+				dst++
+				continue
+			}
+
+			// First time we see start of a multiline block so we initiate empty state.
+			state = &multilineState{buffer: new(bytes.Buffer)}
+			m.streams[key] = state
+		}
+
+		switch {
+		// Start of new multiline block, flush previous state and set new state
+		case isFirstLine:
+			if state.currentLines > 0 {
+				entries[dst] = m.flushState(state)
+				dst++
+			}
+
+			state.startLineEntry = e
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+
+			state.buffer.WriteString(line)
+			state.currentLines++
+			state.lastSeen = time.Now()
+		// Not a new block but we have a stale block that we need to flush.
+		case state.currentLines > 0 && time.Since(state.lastSeen) >= m.cfg.MaxWaitTime:
+			entries[dst] = m.flushState(state)
+			dst++
+
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+
+			state.buffer.WriteString(line)
+			state.currentLines++
+			state.lastSeen = time.Now()
+		// Append to existing multiline block.
+		default:
+			if state.buffer.Len() > 0 {
+				state.buffer.WriteRune('\n')
+			}
+
+			line := e.Line
+			if m.cfg.TrimNewlines {
+				line = strings.TrimRight(line, "\r\n")
+			}
+
+			state.buffer.WriteString(line)
+			state.currentLines++
+			state.lastSeen = time.Now()
+		}
+
+		// Three places can write to entries[dst]: the isFirstLine case,
+		// stale-block case, and this check. The two cases are
+		// mutually exclusive switch branches and whichever does resets
+		// currentLines to 0 before this entry is appended.
+		// So if any of these cases wrote state.currentLines will be 1
+		// and can only match if MaxLines == 1. But if MaxLines == 1 we
+		// always flush the entry and none of the cases above will ever
+		// perform their write.
+		if state.currentLines == m.cfg.MaxLines {
+			entries[dst] = m.flushState(state)
+			dst++
+		}
+	}
+
+	m.mut.Unlock()
+
+	if dst == 0 {
+		return nil
+	}
+
+	// FIXME(kallep): If we fail future down in the pipeline we should restore the state.
+	return m.next(ctx, entries[:dst])
+}
+
+// start implements starter.
+func (m *multilineStage) start() {
+	m.wg.Go(func() {
+		ticker := time.NewTicker(m.cfg.MaxWaitTime)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-m.done:
+				return
+			case <-ticker.C:
+				m.mut.Lock()
+				var (
+					expired []Entry
+					now     = time.Now()
+				)
+
+				for key, state := range m.streams {
+					if !state.lastSeen.Add(m.cfg.MaxWaitTime).After(now) {
+						if state.currentLines > 0 {
+							expired = append(expired, m.flushState(state))
+						}
+						delete(m.streams, key)
+					}
+				}
+
+				if len(expired) > 0 {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					// FIXME(kallep): If we fail future down in the pipeline we should restore the state.
+					if err := m.next(ctx, expired); err != nil {
+						m.logger.Error("failed to flush", "err", err)
+					}
+					cancel()
+				}
+				m.mut.Unlock()
+			}
+		}
+	})
+}
+
+// stop implements stopper.
+func (m *multilineStage) stop() {
+	m.once.Do(func() { close(m.done) })
+	m.wg.Wait()
+
+	m.mut.Lock()
+	entries := make([]Entry, 0, len(m.streams))
+	for _, state := range m.streams {
+		if state.currentLines > 0 {
+			entries = append(entries, m.flushState(state))
+		}
+	}
+	m.streams = nil
+	m.mut.Unlock()
+
+	if len(entries) > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := m.next(ctx, entries); err != nil {
+			m.logger.Error("failed to flush", "err", err)
+		}
+	}
+}
+
 // processEntry processes a single entry synchronously, returning any entries
 // ready to emit. Before the first start line is seen for a stream, non-start
 // lines are passed through unchanged. Once a stream is started, all lines are
@@ -292,6 +474,4 @@ func (m *multilineStage) flushState(s *multilineState) Entry {
 }
 
 // Cleanup implements Stage.
-func (*multilineStage) Cleanup() {
-	// no-op
-}
+func (*multilineStage) Cleanup() {}

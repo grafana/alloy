@@ -138,7 +138,7 @@ func newStageWithNextFn(
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(slogger, *cfg.MultilineConfig)
+		s, err = newMultilineStage(slogger, *cfg.MultilineConfig, next)
 		if err != nil {
 			return nil, err
 		}

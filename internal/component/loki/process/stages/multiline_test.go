@@ -1,7 +1,7 @@
 package stages
 
 import (
-	"sort"
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -9,629 +9,557 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/syntax"
 )
 
-func TestMultilineStageProcess(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
+func TestMultilineStage(t *testing.T) {
+	now := time.Now()
 
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
-	out := processEntries(stage,
-		simpleEntry("not a start line before 1", "label"),
-		simpleEntry("not a start line before 2", "label"),
-		simpleEntry("START line 1", "label"),
-		simpleEntry("not a start line", "label"),
-		simpleEntry("START line 2", "label"),
-		simpleEntry("START line 3", "label"))
-
-	require.Len(t, out, 5)
-	require.Equal(t, "not a start line before 1", out[0].Line)
-	require.Equal(t, "not a start line before 2", out[1].Line)
-	require.Equal(t, "START line 1\nnot a start line", out[2].Line)
-	require.Equal(t, "START line 2", out[3].Line)
-	require.Equal(t, "START line 3", out[4].Line)
-}
-
-func TestMultilineStageMultiStreams(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	out := processEntries(stage,
-		simpleEntry("START line 1\r\n", "one"),
-		simpleEntry("not a start line 1\r\n", "one"),
-		simpleEntry("START line 1\n", "two"),
-		simpleEntry("not a start line 2\n", "one"),
-		simpleEntry("START line 2\n", "two"),
-		simpleEntry("START line 2", "one"),
-		simpleEntry("not a start line 1", "one"),
-	)
-
-	sort.Slice(out, func(l, r int) bool {
-		return out[l].Timestamp.Before(out[r].Timestamp)
-	})
-
-	require.Len(t, out, 4)
-
-	require.Equal(t, "START line 1\nnot a start line 1\nnot a start line 2", out[0].Line)
-	require.Equal(t, model.LabelValue("one"), out[0].Labels["value"])
-
-	require.Equal(t, "START line 1", out[1].Line)
-	require.Equal(t, model.LabelValue("two"), out[1].Labels["value"])
-
-	require.Equal(t, "START line 2", out[2].Line)
-	require.Equal(t, model.LabelValue("two"), out[2].Labels["value"])
-
-	require.Equal(t, "START line 2\nnot a start line 1", out[3].Line)
-	require.Equal(t, model.LabelValue("one"), out[3].Labels["value"])
-}
-
-func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: false}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	out := processEntries(stage,
-		simpleEntry("not a start line before 1", "label"),
-		simpleEntry("not a start line before 2", "label"),
-		simpleEntry("START line 1\n", "label"),
-		simpleEntry("not a start line", "label"),
-		simpleEntry("START line 2\r\n", "label"),
-		simpleEntry("START line 3", "label"))
-
-	require.Len(t, out, 5)
-	require.Equal(t, "not a start line before 1", out[0].Line)
-	require.Equal(t, "not a start line before 2", out[1].Line)
-	require.Equal(t, "START line 1\n\nnot a start line", out[2].Line)
-	require.Equal(t, "START line 2\r\n", out[3].Line)
-	require.Equal(t, "START line 3", out[4].Line)
-}
-
-func TestMultilineStageMaxWaitTime(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	in := make(chan Entry, 2)
-	out := stage.Run(in)
-
-	// Accumulate result
-	mu := new(sync.Mutex)
-	var res []Entry
-	go func() {
-		for e := range out {
-			mu.Lock()
-			t.Logf("appending %s", e.Line)
-			res = append(res, e)
-			mu.Unlock()
-		}
-	}()
-
-	// Write input with a delay
-	go func() {
-		in <- simpleEntry("START line", "label")
-
-		// Trigger flush due to max wait timeout
-		time.Sleep(150 * time.Millisecond)
-
-		in <- simpleEntry("not a start line hitting timeout", "label")
-
-		// Signal pipeline we are done.
-		close(in)
-	}()
-
-	require.Eventually(t, func() bool { mu.Lock(); defer mu.Unlock(); return len(res) == 2 }, 2*time.Second, 200*time.Millisecond)
-	require.Equal(t, "START line", res[0].Line)
-	require.Equal(t, "not a start line hitting timeout", res[1].Line)
-}
-
-func TestMultilineStageStartLineFlushedBeforeNew(t *testing.T) {
-	mcfg := MultilineConfig{
-		Expression:   "^START",
-		MaxLines:     2,
-		MaxWaitTime:  3 * time.Second,
-		TrimNewlines: true,
-	}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	startTs := time.Now()
-	lset := model.LabelSet{"value": "label"}
-
-	out := processEntries(stage,
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs, Line: "START line 1"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(1 * time.Second), Line: "continuation line 1"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(2 * time.Second), Line: "continuation line 2"}),
-		},
-	)
-
-	require.Len(t, out, 2)
-	require.Equal(t, lset, out[0].Labels)
-	require.Equal(t, startTs, out[0].Timestamp)
-	require.Equal(t, "START line 1\ncontinuation line 1", out[0].Line)
-
-	require.Equal(t, lset, out[1].Labels)
-	require.Equal(t, startTs, out[1].Timestamp)
-	require.Equal(t, "continuation line 2", out[1].Line)
-}
-
-// TestMultilineStageMultipleMaxLinesFlushes verifies that startLineEntry is
-// preserved across max_lines flushes, so all sub-blocks inherit the original
-// start line's timestamp.
-func TestMultilineStageMultipleMaxLinesFlushes(t *testing.T) {
-	mcfg := MultilineConfig{
-		Expression:   "^START",
-		MaxLines:     2,
-		MaxWaitTime:  3 * time.Second,
-		TrimNewlines: true,
-	}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	startTs := time.Now()
-	lset := model.LabelSet{"value": "label"}
-
-	out := processEntries(stage,
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs, Line: "START line 1"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(1 * time.Second), Line: "continuation 1"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(2 * time.Second), Line: "continuation 2"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(3 * time.Second), Line: "continuation 3"}),
-		},
-		Entry{
-			Extracted: map[string]any{},
-			Entry:     loki.NewEntry(lset.Clone(), push.Entry{Timestamp: startTs.Add(4 * time.Second), Line: "continuation 4"}),
-		},
-	)
-
-	require.Len(t, out, 3)
-	require.Equal(t, "START line 1\ncontinuation 1", out[0].Line)
-	require.Equal(t, startTs, out[0].Timestamp)
-	require.Equal(t, "continuation 2\ncontinuation 3", out[1].Line)
-	require.Equal(t, startTs, out[1].Timestamp)
-	require.Equal(t, "continuation 4", out[2].Line)
-	require.Equal(t, startTs, out[2].Timestamp)
-}
-
-func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	line1 := Entry{
-		Extracted: map[string]any{},
-		Entry: loki.Entry{
-			Labels: model.LabelSet{"value": "one"},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      "START line 1",
-				StructuredMetadata: push.LabelsAdapter{
-					push.LabelAdapter{
-						Name:  "sm-key1",
-						Value: "sm-value1",
-					},
-				},
+	tests := []testCase{
+		{
+			name: "flush on new start line",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_wait_time = "3s"
+				trim_newlines = true
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line before 1", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line before 2", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 1", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 2", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation A", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation B", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "not a start line before 1", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "not a start line before 2", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 1\nnot a start line", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 2\ncontinuation A\ncontinuation B", now),
 			},
 		},
-	}
-	time.Sleep(1 * time.Millisecond)
-	line2 := Entry{
-		Extracted: map[string]any{},
-		Entry: loki.Entry{
-			Labels: model.LabelSet{"value": "one"},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      "START line 2",
-				StructuredMetadata: push.LabelsAdapter{
-					push.LabelAdapter{
-						Name:  "sm-key2",
-						Value: "sm-value2",
+		{
+			name: "multiple streams flush independently",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_wait_time = "3s"
+				trim_newlines = true
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "one"}, "START line 1\r\n", now.Add(0*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "one"}, "not a start line 1\r\n", now.Add(1*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "two"}, "START line 1\n", now.Add(2*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "one"}, "not a start line 2\n", now.Add(3*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "two"}, "START line 2\n", now.Add(4*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "one"}, "START line 2", now.Add(5*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "one"}, "not a start line 1", now.Add(6*time.Millisecond)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"value": "one"}, model.LabelSet{"value": "one"}, "START line 1\nnot a start line 1\nnot a start line 2", now.Add(0*time.Millisecond)),
+				newEntry(map[string]any{"value": "two"}, model.LabelSet{"value": "two"}, "START line 1", now.Add(2*time.Millisecond)),
+				newEntry(map[string]any{"value": "two"}, model.LabelSet{"value": "two"}, "START line 2", now.Add(4*time.Millisecond)),
+				newEntry(map[string]any{"value": "one"}, model.LabelSet{"value": "one"}, "START line 2\nnot a start line 1", now.Add(5*time.Millisecond)),
+			},
+		},
+		{
+			name: "max lines of 1",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_lines     = 1
+				max_wait_time = "1h"
+				trim_newlines = true
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation line", now.Add(1*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 2", now.Add(2*time.Millisecond)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation line", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 2", now.Add(2*time.Millisecond)),
+			},
+		},
+		{
+			name: "start line entry preserved across repeated max_lines flushes",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_lines     = 2
+				max_wait_time = "3s"
+				trim_newlines = true
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 1", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation 1", now.Add(1*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation 2", now.Add(2*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation 3", now.Add(3*time.Millisecond)),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation 4", now.Add(4*time.Millisecond)),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 1\ncontinuation 1", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation 2\ncontinuation 3", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation 4", now),
+			},
+		},
+		{
+			name: "structured metadata is kept per flushed block",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_wait_time = "3s"
+				trim_newlines = true
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{"value": "one"}, push.Entry{
+					Timestamp: now,
+					Line:      "START line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						push.LabelAdapter{Name: "sm-key1", Value: "sm-value1"},
 					},
-				},
+				}),
+				newTestEntry(map[string]any{}, model.LabelSet{"value": "one"}, push.Entry{
+					Timestamp: now.Add(1 * time.Millisecond),
+					Line:      "START line 2",
+					StructuredMetadata: push.LabelsAdapter{
+						push.LabelAdapter{Name: "sm-key2", Value: "sm-value2"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{"value": "one"}, model.LabelSet{"value": "one"}, push.Entry{
+					Timestamp: now,
+					Line:      "START line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						push.LabelAdapter{Name: "sm-key1", Value: "sm-value1"},
+					},
+				}),
+				newTestEntry(map[string]any{"value": "one"}, model.LabelSet{"value": "one"}, push.Entry{
+					Timestamp: now.Add(1 * time.Millisecond),
+					Line:      "START line 2",
+					StructuredMetadata: push.LabelsAdapter{
+						push.LabelAdapter{Name: "sm-key2", Value: "sm-value2"},
+					},
+				}),
+			},
+		},
+		{
+			name: "trim_newlines false leaves newlines in the joined lines",
+			config: `
+			stage.multiline {
+				firstline     = "^START"
+				max_wait_time = "3s"
+				trim_newlines = false
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line before 1", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line before 2", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 1\n", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 2\r\n", now),
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 3", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "not a start line before 1", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "not a start line before 2", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 1\n\nnot a start line", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 2\r\n", now),
+				newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 3", now),
 			},
 		},
 	}
 
-	out := processEntries(stage,
-		line1,
-		line2,
-	)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	sort.Slice(out, func(l, r int) bool {
-		return out[l].Timestamp.Before(out[r].Timestamp)
-	})
-
-	require.Len(t, out, 2)
-
-	require.Equal(t, "START line 1", out[0].Line)
-	require.Equal(t, model.LabelValue("one"), out[0].Labels["value"])
-	require.Equal(t, "sm-key1", out[0].StructuredMetadata[0].Name)
-	require.Equal(t, "sm-value1", out[0].StructuredMetadata[0].Value)
-
-	require.Equal(t, "START line 2", out[1].Line)
-	require.Equal(t, model.LabelValue("one"), out[1].Labels["value"])
-	require.Equal(t, "sm-key2", out[1].StructuredMetadata[0].Name)
-	require.Equal(t, "sm-value2", out[1].StructuredMetadata[0].Value)
-}
-
-// TestMultilineStageMaxWaitTimeMultiStream verifies that the timeout flush only
-// affects streams that have been idle for at least max_wait_time, leaving
-// recently-active streams alone.
-func TestMultilineStageMaxWaitTimeMultiStream(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	in := make(chan Entry, 4)
-	out := stage.Run(in)
-
-	mu := new(sync.Mutex)
-	var res []Entry
-	go func() {
-		for e := range out {
-			mu.Lock()
-			res = append(res, e)
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		// Stream "idle" accumulates a block and then goes quiet — should be
-		// flushed by the timeout.
-		in <- simpleEntry("START idle", "idle")
-
-		// Stream "active" starts a block around the same time.
-		in <- simpleEntry("START active", "active")
-
-		// After the timeout window, "active" gets a new line — keeping it alive.
-		time.Sleep(80 * time.Millisecond)
-		in <- simpleEntry("continuation active", "active")
-
-		// Wait long enough for the idle stream to time out while active does not.
-		time.Sleep(150 * time.Millisecond)
-
-		close(in)
-	}()
-
-	// Wait for both streams to eventually flush (timeout + close).
-	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(res) == 2
-	}, 2*time.Second, 20*time.Millisecond)
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	lines := map[string]bool{}
-	for _, e := range res {
-		lines[e.Line] = true
-	}
-	require.True(t, lines["START idle"], "idle stream should have been flushed by timeout")
-	require.True(t, lines["START active\ncontinuation active"], "active stream should have been flushed on close")
-}
-
-// TestMultilineStagePostTimeoutContinuation verifies the three-phase sequence:
-// (1) start line accumulated, (2) timeout flushes the block, (3) a non-start
-// line arrives and is accumulated as a new block using the preserved
-// startLineEntry, (4) a new start line flushes that block.
-func TestMultilineStagePostTimeoutContinuation(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 100 * time.Millisecond, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{
-		cfg:    mcfg,
-		regex:  regex,
-		logger: logging.NewSlogNop(),
-	}
-
-	in := make(chan Entry, 4)
-	out := stage.Run(in)
-
-	mu := new(sync.Mutex)
-	var res []Entry
-	go func() {
-		for e := range out {
-			mu.Lock()
-			res = append(res, e)
-			mu.Unlock()
-		}
-	}()
-
-	go func() {
-		in <- simpleEntry("START first", "label")
-
-		// Let the timeout flush the first block.
-		time.Sleep(150 * time.Millisecond)
-
-		// Non-start line after timeout — accumulated as a new block.
-		in <- simpleEntry("continuation after timeout", "label")
-
-		// New start line should flush the accumulated non-start block, then
-		// begin its own block.
-		in <- simpleEntry("START second", "label")
-
-		close(in)
-	}()
-
-	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(res) == 3
-	}, 2*time.Second, 20*time.Millisecond)
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	require.Equal(t, "START first", res[0].Line)
-	require.Equal(t, "continuation after timeout", res[1].Line)
-	require.Equal(t, "START second", res[2].Line)
-}
-
-// TestMultilineStageStreamsMapCleanedUpOnClose verifies that the streams map
-// is empty after the input channel closes, so that closed-over state from one
-// pipeline run cannot leak into a future run.
-func TestMultilineStageStreamsMapCleanedUpOnClose(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-	stage := &multilineStage{
-		cfg:     mcfg,
-		regex:   regex,
-		logger:  logging.NewSlogNop(),
-		streams: make(map[model.Fingerprint]*multilineState),
-	}
-
-	processEntries(stage,
-		simpleEntry("START a", "stream-a"),
-		simpleEntry("START b", "stream-b"),
-		simpleEntry("START c", "stream-c"),
-	)
-
-	require.Equal(t, 0, len(stage.streams), "streams map should be empty after channel close")
-}
-
-// TestMultilineStageStreamsMapCleanedUpAfterTimeout verifies that streams are
-// removed from the map when the timer-based flush fires, so the map does not
-// accumulate dead entries for streams that go idle.
-func TestMultilineStageStreamsMapCleanedUpAfterTimeout(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 50 * time.Millisecond, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-	stage := &multilineStage{
-		cfg:     mcfg,
-		regex:   regex,
-		logger:  logging.NewSlogNop(),
-		streams: make(map[model.Fingerprint]*multilineState),
-	}
-
-	in := make(chan Entry, 3)
-	in <- simpleEntry("START a", "stream-a")
-	in <- simpleEntry("START b", "stream-b")
-	in <- simpleEntry("START c", "stream-c")
-
-	out := stage.Run(in)
-
-	mu := new(sync.Mutex)
-	var res []Entry
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for e := range out {
-			mu.Lock()
-			res = append(res, e)
-			mu.Unlock()
-		}
-	}()
-
-	// Wait until the timer has flushed all 3 streams. Verifying len(res)==3
-	// before closing in proves the timer (not the close path) did the flush,
-	// which also deleted the streams from the map in the same goroutine.
-	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(res) == 3
-	}, 2*time.Second, 20*time.Millisecond)
-
-	// Close input and wait for the Run goroutine to exit; m.streams is then
-	// safe to inspect without a data race.
-	close(in)
-	<-done
-
-	require.Equal(t, 0, len(stage.streams), "streams map should be empty after timer-based flush")
-}
-
-// TestMultilineStagePassThroughNoLabelRace is a race-detector regression test.
-// Pass-through entries (non-start lines before any start line) are emitted
-// unchanged, meaning the downstream stage goroutine shares the same Labels map.
-// A bug where FastFingerprint() was called after out<-r would race with
-// downstream label mutations; this test exercises that path.
-func TestMultilineStagePassThroughNoLabelRace(t *testing.T) {
-	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-
-	stage := &multilineStage{cfg: mcfg, regex: regex, logger: logging.NewSlogNop()}
-
-	in := make(chan Entry)
-	out := stage.Run(in)
-
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for e := range out {
-			// Simulate a downstream stage (e.g. static_labels) mutating the
-			// Labels map of a received entry. This races with any post-emit
-			// read of e.Labels in the multiline goroutine.
-			e.Labels["injected"] = "value"
-		}
-	}()
-
-	go func() {
-		for i := 0; i < 50; i++ {
-			in <- simpleEntry("not a start line", "label")
-		}
-		close(in)
-	}()
-
-	<-done
-}
-
-var mlBenchTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-
-// BenchmarkMultilineStage benchmarks the multiline stage with a realistic
-// stack-trace pattern: 1 firstline ("Date:") followed by 9 continuation lines,
-// cycling continuously. Each input line amortises one-tenth of the flush cost.
-func BenchmarkMultilineStage(b *testing.B) {
-	for _, debugEnabled := range []bool{false, true} {
-		name := "debug=false"
-		if debugEnabled {
-			name = "debug=true"
-		}
-		b.Run(name, func(b *testing.B) {
-			stages := []StageConfig{
-				{
-					MultilineConfig: &MultilineConfig{
-						Expression:   "^Date:",
-						MaxWaitTime:  3 * time.Second,
-						MaxLines:     128,
-						TrimNewlines: true,
-					},
-				},
-			}
-
-			pl, err := NewPipeline(
-				logging.NewSlogNop(),
-				stages,
-				prometheus.NewRegistry(),
-				featuregate.StabilityGenerallyAvailable,
-			)
-			if err != nil {
-				b.Fatalf("NewPipeline: %v", err)
-			}
-
-			in := make(chan Entry)
-			out := pl.Run(in)
-
-			done := make(chan struct{})
-			go func() {
-				defer close(done)
-				for range out {
-				}
-			}()
-
-			const linesPerBlock = 10
-			block := make([]Entry, linesPerBlock)
-			block[0] = newEntry(nil, model.LabelSet{"job": "bench"},
-				"Date: Mon, 01 Jan 2024 00:00:00 +0000 error occurred", mlBenchTime)
-			for i := 1; i < linesPerBlock; i++ {
-				block[i] = newEntry(nil, model.LabelSet{"job": "bench"},
-					"\tat com.example.Foo.bar(Foo.java:42)", mlBenchTime)
-			}
-
-			b.ReportAllocs()
-			b.ResetTimer()
-
-			i := 0
-			for b.Loop() {
-				e := block[i%linesPerBlock]
-				e.Entry.Labels = e.Entry.Labels.Clone()
-				e.Extracted = make(map[string]any)
-				in <- e
-				i++
-			}
-
-			close(in)
-			<-done
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }
 
-func simpleEntry(line, label string) Entry {
-	// We're adding a small wait time here, because on Windows, timers have a
-	// smaller resolution than on Linux. This can mess with the ordering of log
-	// lines, making the test Flaky on Windows runners.
-	time.Sleep(1 * time.Millisecond)
-	return Entry{
-		Extracted: map[string]any{},
-		Entry: loki.Entry{
-			Labels: model.LabelSet{"value": model.LabelValue(label)},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
-			},
+func TestMultilineStageMaxWaitTime(t *testing.T) {
+	cfgs := loadConfig(`
+	stage.multiline {
+		firstline     = "^START"
+		max_wait_time = "100ms"
+		trim_newlines = true
+	}
+	`)
+
+	var (
+		now     = time.Now()
+		entries = []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line", now),
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation line 1", now.Add(1*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation line 2", now.Add(2*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 2", now.Add(3*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "continuation line 1", now.Add(4*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "START line 3", now.Add(5*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "active"}, "START active", now.Add(6*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "idle"}, "START idle", now.Add(7*time.Second)),
+			newEntry(map[string]any{}, model.LabelSet{"value": "active"}, "continuation active", now.Add(8*time.Second)),
+		}
+		expected = []Entry{
+			newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line\ncontinuation line 1", entries[0].Timestamp),
+			newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation line 2", entries[2].Timestamp),
+			newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 2", entries[3].Timestamp),
+			newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "continuation line 1", entries[4].Timestamp),
+			newEntry(map[string]any{"value": "label"}, model.LabelSet{"value": "label"}, "START line 3", entries[5].Timestamp),
+			newEntry(map[string]any{"value": "idle"}, model.LabelSet{"value": "idle"}, "START idle", entries[7].Timestamp),
+			newEntry(map[string]any{"value": "active"}, model.LabelSet{"value": "active"}, "START active\ncontinuation active", entries[6].Timestamp),
+		}
+	)
+
+	t.Run("Stage", func(t *testing.T) {
+		// Pipeline.Run seeds Extracted from Labels itself, so a plain clone is enough.
+		cloned := cloneEntries(entries)
+
+		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		in := make(chan Entry, len(cloned))
+		out := pl.Run(in)
+
+		var (
+			mu        sync.Mutex
+			collected []Entry
+			done      = make(chan struct{})
+		)
+		go func() {
+			defer close(done)
+			for e := range out {
+				mu.Lock()
+				collected = append(collected, e)
+				mu.Unlock()
+			}
+		}()
+
+		in <- cloned[0]
+		in <- cloned[1]
+		time.Sleep(300 * time.Millisecond)
+		in <- cloned[2]
+		in <- cloned[3]
+		time.Sleep(300 * time.Millisecond)
+		in <- cloned[4]
+		in <- cloned[5]
+		in <- cloned[6]
+		in <- cloned[7]
+		time.Sleep(50 * time.Millisecond)
+		in <- cloned[8]
+
+		close(in)
+		<-done
+
+		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		cloned := cloneEntries(entries)
+		for i := range cloned {
+			for labelName, labelValue := range cloned[i].Labels {
+				cloned[i].Extracted[string(labelName)] = string(labelValue)
+			}
+		}
+
+		var (
+			mu        sync.Mutex
+			collected []Entry
+		)
+		next := func(_ context.Context, entries []Entry) error {
+			mu.Lock()
+			collected = append(collected, entries...)
+			mu.Unlock()
+			return nil
+		}
+
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		defer p.Stop()
+
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[0]}))
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[1]}))
+		time.Sleep(300 * time.Millisecond)
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[2]}))
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[3]}))
+		time.Sleep(300 * time.Millisecond)
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[4]}))
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[5]}))
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[6]}))
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[7]}))
+		time.Sleep(50 * time.Millisecond)
+		require.NoError(t, p.process(context.Background(), []Entry{cloned[8]}))
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			mu.Lock()
+			defer mu.Unlock()
+			assertEntriesUnordered(c, expected, collected, entryCheckFNs{})
+		}, 2*time.Second, 100*time.Millisecond)
+	})
+}
+
+// TestMultilineStageStreamsMapCleaned verifies that the streams map is empty after the stopping.
+func TestMultilineStageStreamsMapCleanup(t *testing.T) {
+	cfgs := loadConfig(`
+	stage.multiline {
+		firstline     = "^START"
+		max_wait_time = "50ms"
+		trim_newlines = true
+	}
+	`)
+
+	t.Run("Stage", func(t *testing.T) {
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+		ms, ok := p.stages[0].(*multilineStage)
+		require.True(t, ok)
+
+		in := make(chan Entry, 2)
+		out := p.Run(in)
+
+		var (
+			mu   sync.Mutex
+			res  []Entry
+			done = make(chan struct{})
+		)
+		go func() {
+			defer close(done)
+			for e := range out {
+				mu.Lock()
+				res = append(res, e)
+				mu.Unlock()
+			}
+		}()
+
+		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-a"}, "START a", time.Now())
+		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-b"}, "START b", time.Now())
+		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-c"}, "START c", time.Now())
+		close(in)
+		<-done
+
+		require.Eventually(t, func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(res) == 3
+		}, 2*time.Second, 20*time.Millisecond)
+
+		require.Equal(t, 0, len(ms.streams), "streams map should be empty after channel close")
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		var (
+			mu  sync.Mutex
+			res []Entry
+		)
+		next := func(_ context.Context, entries []Entry) error {
+			mu.Lock()
+			res = append(res, entries...)
+			mu.Unlock()
+			return nil
+		}
+
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		ms, ok := p.stages[0].(*multilineStage)
+		require.True(t, ok)
+
+		require.NoError(t, p.process(context.Background(), []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"value": "stream-a"}, "START a", time.Now()),
+		}))
+
+		require.NoError(t, p.process(context.Background(), []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"value": "stream-b"}, "START b", time.Now()),
+		}))
+
+		require.NoError(t, p.process(context.Background(), []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"value": "stream-c"}, "START c", time.Now()),
+		}))
+
+		p.Stop()
+
+		require.Eventually(t, func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return len(res) == 3
+		}, 2*time.Second, 20*time.Millisecond)
+
+		require.Equal(t, 0, len(ms.streams), "streams map should be empty after Stop")
+	})
+}
+
+// TestMultilineStagePassThroughNoLabelRace is a race-detector regression test.
+// Pass-through entries (non-start lines before any start line) are emitted
+// unchanged, meaning a downstream stage can share the same Labels map. A bug
+// where FastFingerprint() was called after emitting an entry would race with
+// downstream label mutations.
+func TestMultilineStagePassThroughNoLabelRace(t *testing.T) {
+	cfgs := loadConfig(`
+	stage.multiline {
+		firstline     = "^START"
+		max_wait_time = "3s"
+		trim_newlines = true
+	}
+	`)
+
+	t.Run("Stage", func(t *testing.T) {
+		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		in := make(chan Entry)
+		out := pl.Run(in)
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for e := range out {
+				// Simulate a downstream stage (e.g. static_labels) mutating the
+				// Labels map of a received entry. This races with any post-emit
+				// read of e.Labels in the multiline goroutine.
+				e.Labels["injected"] = "value"
+			}
+		}()
+
+		go func() {
+			for i := 0; i < 50; i++ {
+				in <- newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", time.Now())
+			}
+			close(in)
+		}()
+
+		<-done
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		var wg sync.WaitGroup
+		next := func(_ context.Context, entries []Entry) error {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for _, e := range entries {
+					// Simulate a downstream stage (e.g. static_labels)
+					// mutating the Labels map of a received entry,
+					// concurrently with this stage processing later batches.
+					e.Labels["injected"] = "value"
+				}
+			}()
+			return nil
+		}
+
+		p, err := NewPipeline2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+
+		for i := 0; i < 50; i++ {
+			require.NoError(t, p.process(context.Background(), []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", time.Now()),
+			}))
+		}
+
+		wg.Wait()
+		p.Stop()
+	})
+}
+
+func TestValidateMultilineConfig(t *testing.T) {
+	type testCase struct {
+		name      string
+		config    string
+		expectErr bool
+	}
+
+	tests := []testCase{
+		{
+			name: "valid",
+			config: `
+				firstline     = "^START"
+				max_wait_time = "3s"
+			`,
+		},
+		{
+			name: "max_wait_time must be greater than 0",
+			config: `
+				firstline     = "^START"
+				max_wait_time = "0s"
+			`,
+			expectErr: true,
+		},
+		{
+			name: "empty expression",
+			config: `
+				firstline = ""
+			`,
+			expectErr: true,
+		},
+		{
+			name: "invalid regex",
+			config: `
+				firstline = "["
+			`,
+			expectErr: true,
 		},
 	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg MultilineConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if err != nil {
+				require.True(t, tt.expectErr, "unexpected error unmarshaling config: %v", err)
+				return
+			}
+
+			_, err = validateMultilineConfig(cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func BenchmarkMultilineStage(b *testing.B) {
+	cfgs := loadConfig(`
+	stage.multiline {
+		firstline     = "^Date:"
+		max_wait_time = "3s"
+		max_lines     = 128
+		trim_newlines = true
+	}
+	`)
+
+	entries := make([]push.Entry, 10)
+	entries[0] = push.Entry{Timestamp: time.Now(), Line: "Date: Mon, 01 Jan 2024 00:00:00 +0000 error occurred"}
+	for i := 1; i < len(entries); i++ {
+		entries[i] = push.Entry{Timestamp: time.Now(), Line: "\tat com.example.Foo.bar(Foo.java:42)"}
+	}
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"job": "bench"}, entries...))
+
+	runPipelineBenchmark(b, cfgs, batch)
 }
