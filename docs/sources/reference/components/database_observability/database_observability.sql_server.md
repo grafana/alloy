@@ -144,6 +144,18 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 
 The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+| Name      | Type                | Description                                                                |
+| --------- | ------------------- | -------------------------------------------------------------------------- |
+| `targets` | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.    |
+
+## Component health
+
+`database_observability.sql_server` is reported as unhealthy if one or more collectors fail to start or if any database instance encounters connection or configuration errors. Otherwise, the component is reported as healthy.
+
 ## Debug information
 
 `database_observability.sql_server` doesn't expose any component-specific debug information.

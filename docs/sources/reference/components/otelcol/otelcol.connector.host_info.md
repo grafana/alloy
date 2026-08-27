@@ -74,6 +74,10 @@ The following fields are exported and can be referenced by other components:
 `input` accepts `otelcol.Consumer` traces telemetry data.
 It doesn't accept metrics and logs.
 
+## Component health
+
+`otelcol.connector.host_info` is only reported as unhealthy if given an invalid configuration.
+
 ## Debug information
 
 `otelcol.connector.host_info` doesn't expose any component-specific debug information.

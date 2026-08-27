@@ -60,6 +60,10 @@ If you use the short form, you must define `eventlog_name`.
 
 The `loki.source.windowsevent` component doesn't support any blocks. You can configure this component with arguments.
 
+## Exported fields
+
+The `loki.source.windowsevent` component doesn't export any values.
+
 ## Component health
 
 `loki.source.windowsevent` is only reported as unhealthy if given an invalid configuration.

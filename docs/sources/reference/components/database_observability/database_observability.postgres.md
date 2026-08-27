@@ -178,6 +178,19 @@ The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+| Name            | Type                | Description                                                                          |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| `targets`       | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.              |
+| `logs_receiver` | `LogsReceiver`      | A value that other components can use to send log entries to.                       |
+
+## Component health
+
+`database_observability.postgres` is reported as unhealthy if one or more collectors fail to start or if any database instance encounters connection or configuration errors. Otherwise, the component is reported as healthy.
+
 ## `logs` collector
 
 The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.

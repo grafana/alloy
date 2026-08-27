@@ -56,13 +56,17 @@ If not provided, the `logs_match_label` attribute will default to the value of `
 
 The `loki.enrich` component doesn't support any blocks. You can configure this component with arguments.
 
-## Exports
+## Exported fields
 
-The following values are exported:
+The following fields are exported and can be referenced by other components:
 
-| Name       | Type                | Description                                                 |
-| ---------- | ------------------- | ----------------------------------------------------------- |
-| `receiver` | `loki.LogsReceiver` | A receiver that can be used to send logs to this component. |
+| Name       | Type           | Description                                                   |
+| ---------- | -------------- | ------------------------------------------------------------- |
+| `receiver` | `LogsReceiver` | A value that other components can use to send log entries to. |
+
+## Component health
+
+`loki.enrich` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 

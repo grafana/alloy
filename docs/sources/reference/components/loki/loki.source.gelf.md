@@ -60,6 +60,10 @@ To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] compon
 
 The `loki.source.gelf` component doesn't support any blocks. You can configure this component with arguments.
 
+## Exported fields
+
+The `loki.source.gelf` component doesn't export any values.
+
 ## Component health
 
 `loki.source.gelf` is only reported as unhealthy if given an invalid configuration.
