@@ -280,7 +280,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c.interceptor = loki.NewInterceptorConsumer(
 		o.ID,
 		loki.NewNopConsumer(),
-		loki.WithConsumeHook(func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+		func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
 			c.mut.RLock()
 			defer c.mut.RUnlock()
 
@@ -318,33 +318,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			})
 
 			return batch, terminalErr
-		}),
-		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
-			c.mut.RLock()
-			defer c.mut.RUnlock()
-
-			if c.stopped {
-				return loki.Entry{}, false, loki.ErrConsumerStopped
-			}
-
-			newEntry, err := c.processEntry(ctx, entry)
-			if err != nil {
-				if errors.Is(err, errProcessingTimeout) {
-					return loki.Entry{}, false, nil
-				}
-				return loki.Entry{}, false, err
-			}
-
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				livedebugging.ComponentID(c.opts.ID),
-				livedebugging.LokiLog,
-				1,
-				func() string {
-					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
-				},
-			))
-			return newEntry, true, nil
-		}),
+		},
 	)
 
 	// Immediately export the receiver which remains the same for the component
