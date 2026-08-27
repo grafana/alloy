@@ -415,29 +415,11 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
-	rows, err := c.initialConnection.QueryContext(ctx, query)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
-		return nil, fmt.Errorf("failed to discover databases: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var databases []string
-	for rows.Next() {
-		var datname string
-		if err := rows.Scan(&datname); err != nil {
-			c.logger.Error("failed to scan database name", "err", err)
-			continue
-		}
-		databases = append(databases, datname)
-	}
-
-	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating database rows", "err", err)
-		return nil, fmt.Errorf("error iterating database rows: %w", err)
-	}
-
 	return databases, nil
 }
 
@@ -597,31 +579,19 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	}
 
 	for _, dbName := range databases {
-		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
+		conn, closeConn, err := connectToDatabase(c.dbDSN, dbName, c.dbConnectionFactory, c.initialConnection)
 		if err != nil {
-			c.logger.Error("failed to create DSN for database", "datname", dbName, "err", err)
-			continue
-		}
-
-		conn, err := c.dbConnectionFactory(databaseDSN)
-		if err != nil {
-			c.logger.Error("failed to create connection to database", "datname", dbName, "err", err)
+			c.logger.Error("failed to connect to database", "datname", dbName, "err", err)
 			continue
 		}
 
 		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
 			c.logger.Error("failed to collect schema from database", "datname", dbName, "err", err)
-			if conn != c.initialConnection {
-				conn.Close()
-			}
+			closeConn()
 			continue
 		}
 
-		if conn != c.initialConnection {
-			if err := conn.Close(); err != nil {
-				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
-			}
-		}
+		closeConn()
 	}
 
 	// Drop throttle entries for databases that getAllDatabases no longer

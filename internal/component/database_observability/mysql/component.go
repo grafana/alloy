@@ -810,6 +810,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
+		collector.IndexIOWaitsCollector:   false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -994,6 +995,23 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, epCollector)
+		}
+	}
+
+	if collectors[collector.IndexIOWaitsCollector] {
+		iiwCollector, err := collector.NewIndexIOWaits(collector.IndexIOWaitsArguments{
+			DB:             inst.dbConnection,
+			ExcludeSchemas: c.args.ExcludeSchemas,
+			Registry:       inst.registry,
+			Logger:         c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.IndexIOWaitsCollector, "create", err)
+		} else {
+			if err := iiwCollector.Start(context.Background()); err != nil {
+				logStartError(collector.IndexIOWaitsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, iiwCollector)
 		}
 	}
 
