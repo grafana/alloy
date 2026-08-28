@@ -210,7 +210,7 @@ func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
 		return buf
 	}
 
-	buf = slices.Grow(buf, len(buf)+len(c.partialLines))
+	buf = slices.Grow(buf, len(c.partialLines))
 
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
 	if c.partialLinesFlushedMetric != nil {
