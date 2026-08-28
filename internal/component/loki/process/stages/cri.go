@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
+	"slices"
 	"sync"
 	"time"
 
@@ -107,75 +107,23 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 			return []Entry{e}, false
 		}
 
-		// NOTE: Previous implementation used a "sub-pipeline"
-		// to parse CRI logs where the regex stage added these fields
-		// as "extracted" values so the other stages could operate on them.
-		// We don't need this anymore but it would be a breaking change to
-		// no longer set these.
-		e.Extracted[criFlags] = parsed.Flag.String()
-		e.Extracted[criStream] = parsed.Stream.String()
-		e.Extracted[criContent] = parsed.Content
-		e.Extracted[criTime] = parsed.Timestamp
-
-		e.Line = parsed.Content
-
-		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
-		if err == nil {
-			e.Timestamp = ts
-		}
-
-		e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
+		setCRIProperties(&e, parsed)
 
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			if len(c.partialLines) >= c.cfg.MaxPartialLines {
-				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-				if c.partialLinesFlushedMetric != nil {
-					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
-				}
-
-				// Merge existing partialLines
-				entries := make([]Entry, 0, len(c.partialLines))
-				for _, v := range c.partialLines {
-					entries = append(entries, v)
-				}
-
-				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
-				c.ensureTruncateIfRequired(&e)
-				c.partialLines[fingerprint] = e
-
-				return entries, false
-			}
-
-			prev, ok := c.partialLines[fingerprint]
-			if ok {
-				var builder strings.Builder
-				builder.WriteString(prev.Line)
-				builder.WriteString(e.Line)
-				e.Line = builder.String()
-			}
-			c.ensureTruncateIfRequired(&e)
-			c.partialLines[fingerprint] = e
-
-			// it's a partial-line so skip it.
-			return nil, true
+			// flush any partial lines if we have buffered too many.
+			entries := make([]Entry, 0, len(c.partialLines))
+			entries = c.flushPartialLinesIfExceeded(entries)
+			// it's a partial-line buffer it and move on.
+			c.addPartialLine(fingerprint, e)
+			return entries, len(entries) == 0
 		}
 
 		// We got full-line 'F'.
 		// If any old partial lines matches with this full-line stream, merge it,
 		// else just return the full line.
-		prev, ok := c.partialLines[fingerprint]
-		if ok {
-			var builder strings.Builder
-			builder.WriteString(prev.Line)
-			builder.WriteString(e.Line)
-			e.Line = builder.String()
-			c.ensureTruncateIfRequired(&e)
-			delete(c.partialLines, fingerprint)
-		}
-
-		return []Entry{e}, false
+		return []Entry{c.completeFullLine(fingerprint, e)}, false
 	})
 }
 
@@ -198,72 +146,22 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 			continue
 		}
 
-		// NOTE: Previous implementation used a "sub-pipeline"
-		// to parse CRI logs where the regex stage added these fields
-		// as "extracted" values so the other stages could operate on them.
-		// We don't need this anymore but it would be a breaking change to
-		// no longer set these.
-		e.Extracted[criFlags] = parsed.Flag.String()
-		e.Extracted[criStream] = parsed.Stream.String()
-		e.Extracted[criContent] = parsed.Content
-		e.Extracted[criTime] = parsed.Timestamp
-
-		e.Line = parsed.Content
-
-		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
-		if err == nil {
-			e.Timestamp = ts
-		}
-
-		e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
+		setCRIProperties(&e, parsed)
 
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			if len(c.partialLines) >= c.cfg.MaxPartialLines {
-				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-				if c.partialLinesFlushedMetric != nil {
-					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
-				}
-
-				// Add existing partialLines
-				for _, v := range c.partialLines {
-					extra = append(extra, v)
-				}
-
-				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
-				c.ensureTruncateIfRequired(&e)
-				c.partialLines[fingerprint] = e
-				continue
-			}
-
-			prev, ok := c.partialLines[fingerprint]
-			if ok {
-				var builder strings.Builder
-				builder.WriteString(prev.Line)
-				builder.WriteString(e.Line)
-				e.Line = builder.String()
-			}
-			c.ensureTruncateIfRequired(&e)
-			c.partialLines[fingerprint] = e
-			// it's a partial-line so skip it.
+			// flush any partial lines if we have buffered too many.
+			extra = c.flushPartialLinesIfExceeded(extra)
+			// it's a partial-line buffer it and move on.
+			c.addPartialLine(fingerprint, e)
 			continue
 		}
 
 		// We got full-line 'F'.
 		// If any old partial lines matches with this full-line stream, merge it,
 		// else just return the full line.
-		prev, ok := c.partialLines[fingerprint]
-		if ok {
-			var builder strings.Builder
-			builder.WriteString(prev.Line)
-			builder.WriteString(e.Line)
-			e.Line = builder.String()
-			c.ensureTruncateIfRequired(&e)
-			delete(c.partialLines, fingerprint)
-		}
-
-		entries[dst] = e
+		entries[dst] = c.completeFullLine(fingerprint, e)
 		dst++
 	}
 
@@ -281,6 +179,46 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	return c.next(ctx, out)
+}
+
+func (c *criStage) addPartialLine(fp model.Fingerprint, e Entry) {
+	prev, ok := c.partialLines[fp]
+	if ok {
+		e.Line = prev.Line + e.Line
+	}
+	c.ensureTruncateIfRequired(&e)
+	c.partialLines[fp] = e
+}
+
+func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
+	prev, ok := c.partialLines[fp]
+	if ok {
+		e.Line = prev.Line + e.Line
+		c.ensureTruncateIfRequired(&e)
+		delete(c.partialLines, fp)
+	}
+	return e
+}
+
+func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
+	if len(c.partialLines) < c.cfg.MaxPartialLines {
+		return buf
+	}
+
+	buf = slices.Grow(buf, len(buf)+len(c.partialLines))
+
+	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
+	if c.partialLinesFlushedMetric != nil {
+		c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+	}
+
+	for _, v := range c.partialLines {
+		buf = append(buf, v)
+	}
+
+	c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
+
+	return buf
 }
 
 // stop implements stopper and is only used by our new pipeline.
@@ -317,3 +255,24 @@ func (c *criStage) ensureTruncateIfRequired(e *Entry) {
 }
 
 func (c *criStage) Cleanup() {}
+
+func setCRIProperties(e *Entry, parsed crip.Parsed) {
+	// NOTE: Previous implementation used a "sub-pipeline"
+	// to parse CRI logs where the regex stage added these fields
+	// as "extracted" values so the other stages could operate on them.
+	// We don't need this anymore but it would be a breaking change to
+	// no longer set these.
+	e.Extracted[criFlags] = parsed.Flag.String()
+	e.Extracted[criStream] = parsed.Stream.String()
+	e.Extracted[criContent] = parsed.Content
+	e.Extracted[criTime] = parsed.Timestamp
+
+	e.Line = parsed.Content
+
+	ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
+	if err == nil {
+		e.Timestamp = ts
+	}
+
+	e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
+}
