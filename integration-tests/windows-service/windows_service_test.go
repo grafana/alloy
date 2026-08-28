@@ -104,6 +104,10 @@ func TestWindowsService(t *testing.T) {
 		v, err := util.RegistryStringValue(registryPath, "ALLOY_OTEL_MODE")
 		assert.NoError(c, err)
 		assert.Equal(c, "", v)
+
+		args, err := util.RegistryStringsValue(registryPath, "OTelArguments")
+		assert.NoError(c, err)
+		assert.Empty(c, args)
 	}, waitTimeout*waitAttempts, waitTimeout)
 }
 

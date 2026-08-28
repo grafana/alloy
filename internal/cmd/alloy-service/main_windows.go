@@ -51,7 +51,7 @@ func main() {
 	}
 
 	otelConfigDefault := filepath.Join(filepath.Dir(managerConfig.ServicePath), "config.yaml")
-	args := resolveEngineArgs(managerConfig.OtelMode, otelConfigDefault, managerConfig.Args)
+	args := resolveEngineArgs(managerConfig.OtelMode, otelConfigDefault, managerConfig.OtelArguments, managerConfig.Args)
 
 	cfg := serviceManagerConfig{
 		path:        managerConfig.ServicePath,
