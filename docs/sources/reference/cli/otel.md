@@ -70,7 +70,7 @@ The {{< param "OTEL_ENGINE" >}} includes:
 You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
 
 The {{< param "OTEL_ENGINE" >}} bundles a curated subset of these components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
-{{< param "PRODUCT_NAME" >}} chooses each component based on demand and quality, maintains what it bundles, and keeps its dependency and security surface small and actively monitored.
+The bundled component set is based on demand, maturity, maintenance cost, dependency footprint, security risk, and license compatibility.
 Because the {{< param "OTEL_ENGINE" >}} is the Grafana distribution of the OpenTelemetry Collector, it always includes the components you need for a smooth integration with Grafana products.
 For the criteria {{< param "PRODUCT_NAME" >}} uses to decide what to bundle, refer to the contributor guide on [adding OpenTelemetry components](https://github.com/grafana/alloy/blob/main/docs/developer/add-otel-component.md#inclusion-criteria).
 
