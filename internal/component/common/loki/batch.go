@@ -76,9 +76,14 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 		)
 
 		for _, e := range stream.Entries {
+<<<<<<< HEAD
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
 			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e)
+=======
+			//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
+>>>>>>> 0c8b8360b (Add comments about label clones)
 			if !fn(&entry) {
 				continue
 			}
@@ -137,8 +142,12 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// and may merge into an existing stream.
 	for i := range b.streams {
 		stream := Stream{
+<<<<<<< HEAD
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
+=======
+			//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+>>>>>>> 0c8b8360b (Add comments about label clones)
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
 			created: b.streams[i].created,
