@@ -52,7 +52,7 @@ Maintainers weigh the signals together and make the final call, so meeting indiv
 A proposal results in one of three outcomes:
 
 * **Bundled and maintained.** The component is added to both engines and maintained by the Alloy team.
-* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OpenTelemetry Collector Builder (OCB) build. A community component still needs to serve a valid use case: even without a maintenance commitment, any heavy dependencies or security concerns it introduces remain the responsibility of the Alloy maintainers to ship.
+* **Community component.** The component is added to the Default Engine as a [community component](https://grafana.com/docs/alloy/latest/get-started/community_components/) with opt-in, best-effort support, and isn't bundled in the OTel Engine. You can still use it there through a custom OpenTelemetry Collector Builder (OCB) build. A community component still needs to serve a valid use case. Even without a maintenance commitment, the Alloy maintainers remain responsible for shipping any heavy dependencies or security concerns it introduces.
 * **Not bundled.** The component isn't added to the distribution. You can still use it in your own build through OCB.
 
 ## Component lifecycle and removal
