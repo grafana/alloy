@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -euf
 
 ALLOY_BIN="${ALLOY_BIN:-/usr/bin/alloy}"
 CONFIG_FILE="${CONFIG_FILE:-/etc/alloy/config.alloy}"

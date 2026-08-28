@@ -173,6 +173,16 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
 			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
+		{
+			name:     "default engine, CUSTOM_ARGS containing a glob character is passed through literally",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_ARGS="--set=/etc/alloy/*"`,
+			expected: "run --set=/etc/alloy/* --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+		},
+		{
+			name:     "otel engine, CUSTOM_OTEL_ARGS containing a glob character is passed through literally",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=/etc/alloy/*"`,
+			expected: "otel --set=/etc/alloy/* --config=/etc/alloy/config.yaml\n",
+		},
 	}
 
 	for _, tc := range tt {
