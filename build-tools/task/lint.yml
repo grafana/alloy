@@ -43,6 +43,11 @@ tasks:
     cmds:
       - go run ./internal/cmd/stabilitycheck
 
+  stabilitycheck-update:
+    desc: Format .stability.yaml and scaffold missing entries. Pass EXPIRES=YYYY-MM-DD to override the new-entry expiry.
+    cmds:
+      - go run ./internal/cmd/stabilitycheck --update {{if .EXPIRES}}--expires={{.EXPIRES}}{{end}}
+
   alloylint:
     desc: Run the alloylint linter.
     vars:

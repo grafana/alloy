@@ -24,7 +24,26 @@ import (
 
 func main() {
 	configPath := flag.String("config", ".stability.yaml", "path to the stability tracking config")
+	update := flag.Bool("update", false, "add TODO entries for untracked non-GA components, sort the file, then exit")
+	expiresFlag := flag.String("expires", "", "expiry date (YYYY-MM-DD) for entries added by --update; default is 6 months from today")
 	flag.Parse()
+
+	if *update {
+		expires := time.Now().AddDate(0, 6, 0)
+		if *expiresFlag != "" {
+			parsed, err := time.Parse("2006-01-02", *expiresFlag)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "invalid --expires %q: want YYYY-MM-DD\n", *expiresFlag)
+				os.Exit(2)
+			}
+			expires = parsed
+		}
+		if err := runUpdate(*configPath, enumerate(), expires, os.Stdout); err != nil {
+			fmt.Fprintf(os.Stderr, "update: %v\n", err)
+			os.Exit(2)
+		}
+		return
+	}
 
 	cfg, err := loadConfig(*configPath)
 	if err != nil {

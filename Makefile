@@ -19,6 +19,7 @@
 ##   lint                  Lint code
 ##   govulncheck           Run govulncheck across all Go modules
 ##   stabilitycheck        Check non-GA component tracking in .stability.yaml
+##   stabilitycheck-update Format .stability.yaml and scaffold missing entries
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -239,6 +240,12 @@ govulncheck:
 # internal/cmd/stabilitycheck/).
 stabilitycheck:
 	go run ./internal/cmd/stabilitycheck
+
+.PHONY: stabilitycheck-update
+# Format .stability.yaml: add TODO entries for untracked non-GA components and
+# sort both sections. Pass EXPIRES=YYYY-MM-DD to set the expiry for new entries.
+stabilitycheck-update:
+	go run ./internal/cmd/stabilitycheck --update $(if $(EXPIRES),--expires=$(EXPIRES))
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)

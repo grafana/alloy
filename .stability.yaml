@@ -158,7 +158,6 @@ components:
     stability: experimental
     reason: TODO
     expires: 2026-10-01
-
 features:
   - name: Windows process priority
     stability: public-preview
