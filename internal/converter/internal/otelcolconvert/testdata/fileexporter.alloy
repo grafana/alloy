@@ -1,0 +1,24 @@
+otelcol.receiver.filelog "default" {
+	include = ["/var/log/*.log"]
+	exclude = ["/var/log/excluded.log"]
+
+	ordering_criteria { }
+	fingerprint_size = "1000B"
+
+	multiline { }
+}
+
+otelcol.exporter.file "default" {
+	path        = "/var/log/otel-logs-*.log"
+	append      = true
+	compression = "zstd"
+
+	compression_params {
+		level = 6
+	}
+
+	group_by {
+		enabled            = true
+		resource_attribute = "svc.name"
+	}
+}

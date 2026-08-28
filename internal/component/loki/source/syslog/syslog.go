@@ -1,0 +1,241 @@
+package syslog
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"sync"
+
+	"github.com/prometheus/prometheus/model/relabel"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
+	st "github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
+	"github.com/grafana/alloy/internal/featuregate"
+)
+
+var _ component.LiveDebugging = (*Component)(nil)
+
+func init() {
+	component.Register(component.Registration{
+		Name:      "loki.source.syslog",
+		Stability: featuregate.StabilityGenerallyAvailable,
+		Args:      Arguments{},
+
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			return New(opts, args.(Arguments))
+		},
+	})
+}
+
+// Arguments holds values which are used to configure the loki.source.syslog
+// component.
+type Arguments struct {
+	SyslogListeners []ListenerConfig    `alloy:"listener,block"`
+	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	RelabelRules    alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
+}
+
+// Component implements the loki.source.syslog component.
+type Component struct {
+	opts    component.Options
+	metrics *st.Metrics
+	fanout  *loki.Fanout
+	handler loki.LogsReceiver
+
+	mut             sync.RWMutex
+	args            Arguments
+	targets         []*st.SyslogTarget
+	liveDbgListener st.DebugListener
+
+	targetsUpdated chan struct{}
+}
+
+// LiveDebugging implements component.LiveDebugging.
+func (*Component) LiveDebugging() {}
+
+// New creates a new loki.source.syslog component.
+func New(o component.Options, args Arguments) (*Component, error) {
+	c := &Component{
+		opts:            o,
+		metrics:         st.NewMetrics(o.Registerer),
+		handler:         loki.NewLogsReceiver(),
+		fanout:          loki.NewFanout(args.ForwardTo),
+		targetsUpdated:  make(chan struct{}, 1),
+		targets:         []*st.SyslogTarget{},
+		liveDbgListener: newLiveDebuggingListener(o),
+	}
+
+	// Call to Update() to start readers and set receivers once at the start.
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// Run implements component.Component.
+func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.opts.Logger.Info("loki.source.syslog component shutting down, stopping listeners")
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			for _, l := range c.targets {
+				if err := l.Stop(); err != nil {
+					c.opts.Logger.Error("error while stopping syslog listener", "err", err)
+				}
+			}
+		})
+	}()
+
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				cancel()
+				return
+			case <-c.targetsUpdated:
+				c.reloadTargets()
+			}
+		}
+	})
+	wg.Wait()
+	return nil
+}
+
+// Update implements component.Component.
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	newArgs := args.(Arguments)
+	if err := c.checkExperimentalFeatures(newArgs); err != nil {
+		return err
+	}
+
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	prevArgs := c.args
+	c.args = newArgs
+	if listenersChanged(prevArgs.SyslogListeners, newArgs.SyslogListeners) || relabelRulesChanged(prevArgs.RelabelRules, newArgs.RelabelRules) {
+		// trigger targets update
+		select {
+		case c.targetsUpdated <- struct{}{}:
+		default:
+		}
+	}
+
+	return nil
+}
+
+func (c *Component) checkExperimentalFeatures(args Arguments) error {
+	isExperimental := c.opts.MinStability.Permits(featuregate.StabilityExperimental)
+	if isExperimental {
+		return nil
+	}
+
+	for _, listener := range args.SyslogListeners {
+		if listener.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+			return fmt.Errorf("%q syslog format is available only at experimental stability level", scrapeconfig.SyslogFormatRaw)
+		}
+
+		if listener.RFC3164CiscoComponents != nil {
+			return errors.New("rfc3164_cisco_components block is available only at experimental stability level")
+		}
+	}
+
+	return nil
+}
+
+func (c *Component) reloadTargets() {
+	// Grab current state
+	c.mut.RLock()
+	var rcs []*relabel.Config
+	if len(c.args.RelabelRules) > 0 {
+		rcs = alloy_relabel.ComponentToPromRelabelConfigs(c.args.RelabelRules)
+	}
+	targetsToStop := make([]*st.SyslogTarget, len(c.targets))
+	copy(targetsToStop, c.targets)
+	c.mut.RUnlock()
+
+	// Stop existing targets
+	for _, l := range targetsToStop {
+		if err := l.Stop(); err != nil {
+			c.opts.Logger.Error("error while stopping syslog listener", "err", err)
+		}
+	}
+
+	// Create new targets
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.targets = make([]*st.SyslogTarget, 0)
+	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
+
+	for _, cfg := range c.args.SyslogListeners {
+		promtailCfg, cfgErr := cfg.Convert()
+		if cfgErr != nil {
+			c.opts.Logger.Error("failed to convert syslog listener config", "err", cfgErr)
+			continue
+		}
+
+		t, err := st.NewSyslogTarget(st.TargetParams{
+			Metrics:       c.metrics,
+			Logger:        c.opts.Logger,
+			Handler:       entryHandler,
+			Relabel:       rcs,
+			Config:        promtailCfg,
+			DebugListener: c.liveDbgListener,
+		})
+		if err != nil {
+			c.opts.Logger.Error("failed to create syslog listener with provided config", "err", err)
+			continue
+		}
+		c.targets = append(c.targets, t)
+	}
+}
+
+// DebugInfo returns information about the status of listeners.
+func (c *Component) DebugInfo() any {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	var res readerDebugInfo
+
+	for _, t := range c.targets {
+		res.ListenersInfo = append(res.ListenersInfo, listenerInfo{
+			Ready:         t.Ready(),
+			ListenAddress: t.ListenAddress().String(),
+			Labels:        t.Labels().String(),
+		})
+	}
+	return res
+}
+
+type readerDebugInfo struct {
+	ListenersInfo []listenerInfo `alloy:"listeners_info,attr"`
+}
+
+type listenerInfo struct {
+	Ready         bool   `alloy:"ready,attr"`
+	ListenAddress string `alloy:"listen_address,attr"`
+	Labels        string `alloy:"labels,attr"`
+}
+
+func listenersChanged(prev, next []ListenerConfig) bool {
+	return !reflect.DeepEqual(prev, next)
+}
+
+func relabelRulesChanged(prev, next alloy_relabel.Rules) bool {
+	return !reflect.DeepEqual(prev, next)
+}

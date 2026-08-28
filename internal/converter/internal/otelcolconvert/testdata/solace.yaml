@@ -1,0 +1,24 @@
+receivers:
+  solace:
+    broker: [localhost:5672]
+    auth:
+      sasl_plain:
+        username: otel
+        password: otel01$
+    flow_control:
+      delayed_retry:
+        delay: 20ms
+    tls:
+      insecure: true
+    queue: queue://#telemetry-profile123
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [solace]
+      processors: []
+      exporters: [otlp]

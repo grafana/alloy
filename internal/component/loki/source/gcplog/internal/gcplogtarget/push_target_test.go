@@ -1,0 +1,493 @@
+package gcplogtarget
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/phayes/freeport"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	fnet "github.com/grafana/alloy/internal/component/common/net"
+	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/runtime/logging"
+)
+
+const localhost = "127.0.0.1"
+
+const expectedMessageData = `{"insertId":"4affa858-e5f2-47f7-9254-e609b5c014d0","labels":{},"logName":"projects/test-project/logs/cloudaudit.googleapis.com%2Fdata_access","receiveTimestamp":"2022-09-06T18:07:43.417714046Z","resource":{"labels":{"cluster_name":"dev-us-central-42","location":"us-central1","project_id":"test-project"},"type":"k8s_cluster"},"timestamp":"2022-09-06T18:07:42.363113Z"}
+`
+const testPayload = `
+{
+	"message": {
+		"attributes": {
+			"logging.googleapis.com/timestamp": "2022-07-25T22:19:09.903683708Z"
+		},
+		"data": "eyJpbnNlcnRJZCI6IjRhZmZhODU4LWU1ZjItNDdmNy05MjU0LWU2MDliNWMwMTRkMCIsImxhYmVscyI6e30sImxvZ05hbWUiOiJwcm9qZWN0cy90ZXN0LXByb2plY3QvbG9ncy9jbG91ZGF1ZGl0Lmdvb2dsZWFwaXMuY29tJTJGZGF0YV9hY2Nlc3MiLCJyZWNlaXZlVGltZXN0YW1wIjoiMjAyMi0wOS0wNlQxODowNzo0My40MTc3MTQwNDZaIiwicmVzb3VyY2UiOnsibGFiZWxzIjp7ImNsdXN0ZXJfbmFtZSI6ImRldi11cy1jZW50cmFsLTQyIiwibG9jYXRpb24iOiJ1cy1jZW50cmFsMSIsInByb2plY3RfaWQiOiJ0ZXN0LXByb2plY3QifSwidHlwZSI6Ims4c19jbHVzdGVyIn0sInRpbWVzdGFtcCI6IjIwMjItMDktMDZUMTg6MDc6NDIuMzYzMTEzWiJ9Cg==",
+		"messageId": "5187581549398349",
+		"message_id": "5187581549398349",
+		"publishTime": "2022-07-25T22:19:15.56Z",
+		"publish_time": "2022-07-25T22:19:15.56Z"
+	},
+	"subscription": "projects/test-project/subscriptions/test"
+}`
+
+func makeGCPPushRequest(host string, body string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/gcp/api/v1/push", host), strings.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+func TestPushTarget(t *testing.T) {
+	logger := logging.NewSlogNop()
+
+	type expectedEntry struct {
+		labels model.LabelSet
+		line   string
+	}
+	type args struct {
+		RequestBody    string
+		RelabelConfigs []*relabel.Config
+		Labels         model.LabelSet
+	}
+
+	cases := map[string]struct {
+		args            args
+		expectedEntries []expectedEntry
+	}{
+		"simplified cloud functions log line": {
+			args: args{
+				RequestBody: testPayload,
+				Labels: model.LabelSet{
+					"job": "some_job_name",
+				},
+			},
+			expectedEntries: []expectedEntry{
+				{
+					labels: model.LabelSet{
+						"job": "some_job_name",
+					},
+					line: expectedMessageData,
+				},
+			},
+		},
+		"simplified cloud functions log line, with relabeling custom attribute and message id": {
+			args: args{
+				RequestBody: testPayload,
+				Labels: model.LabelSet{
+					"job": "some_job_name",
+				},
+				RelabelConfigs: []*relabel.Config{
+					{
+						SourceLabels:         model.LabelNames{"__gcp_attributes_logging_googleapis_com_timestamp"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "google_timestamp",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+					{
+						SourceLabels:         model.LabelNames{"__gcp_message_id"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "message_id",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+					{
+						SourceLabels:         model.LabelNames{"__gcp_subscription_name"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "subscription",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+					// Internal GCP Log entry attributes and labels
+					{
+						SourceLabels:         model.LabelNames{"__gcp_logname"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "log_name",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+					{
+						SourceLabels:         model.LabelNames{"__gcp_resource_type"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "resource_type",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+					{
+						SourceLabels:         model.LabelNames{"__gcp_resource_labels_cluster_name"},
+						Regex:                relabel.MustNewRegexp("(.*)"),
+						Replacement:          "$1",
+						TargetLabel:          "cluster",
+						Action:               relabel.Replace,
+						NameValidationScheme: model.LegacyValidation,
+					},
+				},
+			},
+			expectedEntries: []expectedEntry{
+				{
+					labels: model.LabelSet{
+						"job":              "some_job_name",
+						"google_timestamp": "2022-07-25T22:19:09.903683708Z",
+						"message_id":       "5187581549398349",
+						"subscription":     "projects/test-project/subscriptions/test",
+						"log_name":         "projects/test-project/logs/cloudaudit.googleapis.com%2Fdata_access",
+						"resource_type":    "k8s_cluster",
+						"cluster":          "dev-us-central-42",
+					},
+					line: expectedMessageData,
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			eh := loki.NewCollectingHandler()
+			defer eh.Stop()
+
+			port, err := freeport.GetFreePort()
+			require.NoError(t, err)
+			lbls := make(map[string]string, len(tc.args.Labels))
+			for k, v := range tc.args.Labels {
+				lbls[string(k)] = string(v)
+			}
+			config := &gcptypes.PushConfig{
+				Labels:               lbls,
+				UseIncomingTimestamp: false,
+				Server: &fnet.ServerConfig{
+					HTTP: &fnet.HTTPConfig{
+						ListenAddress: "localhost",
+						ListenPort:    port,
+					},
+					// assign random grpc port
+					GRPC: &fnet.GRPCConfig{ListenPort: 0},
+				},
+			}
+
+			var (
+				reg     = prometheus.NewRegistry()
+				metrics = NewMetrics(reg)
+			)
+			pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, tc.args.RelabelConfigs, reg)
+			require.NoError(t, err)
+			defer pt.Stop()
+			require.NoError(t, pt.Run())
+
+			// Clear received lines after test case is ran
+			defer eh.Clear()
+
+			// Send some logs
+			ts := time.Now()
+
+			req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), tc.args.RequestBody)
+			require.NoError(t, err, "expected request to be created successfully")
+			res, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusNoContent, res.StatusCode, "expected no-content status code")
+
+			waitForMessages(eh)
+
+			// Make sure we didn't time out
+			require.Equal(t, 1, len(eh.Received()))
+
+			require.Equal(t, len(eh.Received()), len(tc.expectedEntries), "expected to receive equal amount of expected label sets")
+			for i, expectedEntry := range tc.expectedEntries {
+				// TODO: Add assertion over propagated timestamp
+				actualEntry := eh.Received()[i]
+
+				require.Equal(t, expectedEntry.line, actualEntry.Line, "expected line to be equal for %d-th entry", i)
+
+				expectedLS := expectedEntry.labels
+				actualLS := actualEntry.Labels
+				for label, value := range expectedLS {
+					require.Equal(t, expectedLS[label], actualLS[label], "expected label %s to be equal to %s in %d-th entry", label, value, i)
+				}
+
+				// Timestamp is always set in the handler, we expect received timestamps to be slightly higher than the timestamp when we started sending logs.
+				require.GreaterOrEqual(t, actualEntry.Timestamp.Unix(), ts.Unix(), "expected %d-th entry to have a received timestamp greater than publish time", i)
+			}
+		})
+	}
+}
+
+func TestPushTarget_UseIncomingTimestamp(t *testing.T) {
+	logger := logging.NewSlogNop()
+
+	eh := loki.NewCollectingHandler()
+	defer eh.Stop()
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	require.NoError(t, err, "error generating server config or finding open port")
+	config := &gcptypes.PushConfig{
+		Labels:               nil,
+		UseIncomingTimestamp: true,
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+			},
+			// assign random grpc port
+			GRPC: &fnet.GRPCConfig{ListenPort: 0},
+		},
+	}
+
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, nil, reg)
+	require.NoError(t, err)
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
+
+	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+	require.NoError(t, err, "expected request to be created successfully")
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, res.StatusCode, "expected no-content status code")
+
+	waitForMessages(eh)
+
+	// Make sure we didn't time out
+	require.Equal(t, 1, len(eh.Received()))
+
+	expectedTs, err := time.Parse(time.RFC3339Nano, "2022-09-06T18:07:42.363113Z")
+	require.NoError(t, err, "expected expected timestamp to be parse correctly")
+	require.Equal(t, expectedTs, eh.Received()[0].Timestamp, "expected entry timestamp to be overridden by received one")
+}
+
+func TestPushTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
+	logger := logging.NewSlogNop()
+
+	eh := loki.NewCollectingHandler()
+	defer eh.Stop()
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	config := &gcptypes.PushConfig{
+		Labels:               nil,
+		UseIncomingTimestamp: true,
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+			},
+			// assign random grpc port
+			GRPC: &fnet.GRPCConfig{ListenPort: 0},
+		},
+	}
+
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
+	tenantIDRelabelConfig := []*relabel.Config{
+		{
+			SourceLabels:         model.LabelNames{"__tenant_id__"},
+			Regex:                relabel.MustNewRegexp("(.*)"),
+			Replacement:          "$1",
+			TargetLabel:          "tenant_id",
+			Action:               relabel.Replace,
+			NameValidationScheme: model.LegacyValidation,
+		},
+	}
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, tenantIDRelabelConfig, reg)
+	require.NoError(t, err)
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
+
+	// Clear received lines after test case is ran
+	defer eh.Clear()
+
+	req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+	require.NoError(t, err, "expected request to be created successfully")
+	req.Header.Set("X-Scope-OrgID", "42")
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, res.StatusCode, "expected no-content status code")
+
+	waitForMessages(eh)
+
+	// Make sure we didn't time out
+	require.Equal(t, 1, len(eh.Received()))
+
+	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels[reservedLabelTenantID])
+	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
+}
+
+func TestPushTarget_ErroneousPayloadsAreRejected(t *testing.T) {
+	logger := logging.NewSlogNop()
+
+	eh := loki.NewCollectingHandler()
+	defer eh.Stop()
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	config := &gcptypes.PushConfig{
+		Labels: nil,
+		Server: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "localhost",
+				ListenPort:    port,
+			},
+			// assign random grpc port
+			GRPC: &fnet.GRPCConfig{ListenPort: 0},
+		},
+	}
+
+	var (
+		reg     = prometheus.NewRegistry()
+		metrics = NewMetrics(reg)
+	)
+	pt, err := NewPushTarget(metrics, logger, eh.Receiver(), config, nil, reg)
+	require.NoError(t, err)
+	defer pt.Stop()
+	require.NoError(t, pt.Run())
+
+	for caseName, testPayload := range map[string]string{
+		"invalid JSON": "{",
+		"empty":        "{}",
+		"missing subscription": `{
+			"message": {
+				"message_id": "123",
+				"data": "some data"
+			}
+		}`,
+		"missing message ID": `{
+			"subscription": "sub",
+			"message": {
+				"data": "data"
+			}
+		}`,
+		"missing data": `{
+			"subscription": "sub",
+			"message": {
+				"data": "",
+				"message_id":"123"
+			}
+		}`,
+	} {
+		t.Run(caseName, func(t *testing.T) {
+			req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+			require.NoError(t, err, "expected request to be created successfully")
+			res, err := http.DefaultClient.Do(req)
+			res.Request.Body.Close()
+			require.NoError(t, err)
+			require.Equal(t, http.StatusBadRequest, res.StatusCode, "expected bad request status code")
+		})
+	}
+}
+
+// blockingReceiver implements an loki.LogsReceiver that has no space in
+// its receive channel, blocking when an loki.Entry is sent down the pipe.
+type blockingReceiver struct {
+	ch chan loki.Entry
+}
+
+func newBlockingReceiver() *blockingReceiver {
+	filledChannel := make(chan loki.Entry)
+	return &blockingReceiver{ch: filledChannel}
+}
+
+func (t *blockingReceiver) Chan() chan loki.Entry {
+	return t.ch
+}
+
+func TestPushTargetBlocked(t *testing.T) {
+	t.Run("configured request timeout", func(t *testing.T) {
+		eh := newBlockingReceiver()
+
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		config := &gcptypes.PushConfig{
+			PushTimeout: time.Second,
+			Server: &fnet.ServerConfig{
+				HTTP: &fnet.HTTPConfig{
+					ListenAddress: "localhost",
+					ListenPort:    port,
+				},
+				// assign random grpc port
+				GRPC: &fnet.GRPCConfig{ListenPort: 0},
+			},
+		}
+
+		var (
+			reg     = prometheus.NewRegistry()
+			metrics = NewMetrics(reg)
+		)
+		pt, err := NewPushTarget(metrics, logging.NewSlogNop(), eh, config, nil, reg)
+		require.NoError(t, err)
+		defer pt.Stop()
+		require.NoError(t, pt.Run())
+
+		req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+		require.NoError(t, err, "expected request to be created successfully")
+		res, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusServiceUnavailable, res.StatusCode, "expected timeout response")
+	})
+
+	t.Run("force shutdown", func(t *testing.T) {
+		eh := newBlockingReceiver()
+
+		port, err := freeport.GetFreePort()
+		require.NoError(t, err)
+		config := &gcptypes.PushConfig{
+			Server: &fnet.ServerConfig{
+				GracefulShutdownTimeout: 2 * time.Second,
+				HTTP: &fnet.HTTPConfig{
+					ListenAddress: "localhost",
+					ListenPort:    port,
+				},
+				// assign random grpc port
+				GRPC: &fnet.GRPCConfig{ListenPort: 0},
+			},
+		}
+
+		var (
+			reg     = prometheus.NewRegistry()
+			metrics = NewMetrics(reg)
+		)
+		pt, err := NewPushTarget(metrics, logging.NewSlogNop(), eh, config, nil, reg)
+		require.NoError(t, err)
+		require.NoError(t, pt.Run())
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			time.Sleep(1 * time.Second)
+			// We stop the server and after 2 seconds server should stop all in-flight request.
+			pt.Stop()
+		})
+
+		req, err := makeGCPPushRequest(fmt.Sprintf("http://%s:%d", localhost, port), testPayload)
+		require.NoError(t, err, "expected request to be created successfully")
+		res, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+		wg.Wait()
+	})
+}
+
+func waitForMessages(eh *loki.CollectingHandler) {
+	countdown := 1000
+	for len(eh.Received()) != 1 && countdown > 0 {
+		time.Sleep(1 * time.Millisecond)
+		countdown--
+	}
+}

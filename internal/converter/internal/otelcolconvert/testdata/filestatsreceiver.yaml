@@ -1,0 +1,42 @@
+receivers:
+  filestats:
+    include: "/var/log/**/*.log"
+    collection_interval: "15s"
+    initial_delay: "1m"
+    timeout: "10s"
+
+    metrics:
+      file.atime:
+        enabled: true
+      file.count:
+        enabled: true
+      file.ctime:
+        enabled: true
+      file.mtime:
+        enabled: true
+      file.size:
+        enabled: true
+
+    resource_attributes:
+      file.name:
+        enabled: true
+        metrics_include:
+          - strict: "foo"
+          - regexp: "bar.*"
+
+      file.path:
+        enabled: true
+        metrics_exclude:
+          - strict: "fizz"
+          - regexp: "buzz.*"
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [filestats]
+      processors: []
+      exporters: [otlp]

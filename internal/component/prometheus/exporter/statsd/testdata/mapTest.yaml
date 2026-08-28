@@ -1,0 +1,109 @@
+defaults:
+  observer_type: histogram
+  histogram_options:
+    buckets: [.005, .01, .025, .05, .1, .25, .5, 1, 2.5 ]
+    native_histogram_bucket_factor: 1.1
+    native_histogram_max_buckets: 256
+  summary_options:
+    quantiles:
+      - quantile: 0.99
+        error: 0.001
+      - quantile: 0.95
+        error: 0.01
+      - quantile: 0.9
+        error: 0.05
+      - quantile: 0.5
+        error: 0.005
+    max_age: 5m
+    age_buckets: 2
+    buf_cap: 1000
+  match_type: glob
+  glob_disable_ordering: false
+  ttl: 0 # metrics do not expire
+mappings:
+# This will be a histogram using the buckets set in `defaults`.
+- match: "test.timing.*.*.*"
+  name: "my_timer"
+  labels:
+    provider: "$2"
+    outcome: "$3"
+    job: "${1}_server"
+# This will be a summary using the summary_options set in `defaults`
+- match: "other.distribution.*.*.*"
+  observer_type: summary
+  name: "other_distribution"
+  labels:
+    provider: "$2"
+    outcome: "$3"
+    job: "${1}_server_other"
+- match: "test\\.(\\w+)\\.(\\w+)\\.counter"
+  match_type: regex
+  name: "${2}_total"
+  labels:
+    provider: "$1"
+- match: "(.*)\\.(.*)--(.*)\\.status\\.(.*)\\.count"
+  match_type: regex
+  name: "request_total"
+  labels:
+    hostname: "$1"
+    exec: "$2"
+    protocol: "$3"
+    code: "$4"
+- match: "test\\.(\\w+)\\.(\\w+)\\.counter"
+  match_type: regex
+  name: "${2}_total"
+  labels:
+    provider: "$1"
+- match: ".+"
+  match_type: regex
+  name: "$0"
+  labels:
+    statsd_metric_name: "$0"
+- match: "http.request.*"
+  help: "Total number of http requests"
+  name: "http_requests_total"
+  labels:
+    code: "$1"
+- match: "test.timing.*.*.*"
+  observer_type: summary
+  name: "my_timer"
+  labels:
+    provider: "$2"
+    outcome: "$3"
+    job: "${1}_server"
+  summary_options:
+    quantiles:
+      - quantile: 0.99
+        error: 0.001
+      - quantile: 0.95
+        error: 0.01
+      - quantile: 0.9
+        error: 0.05
+      - quantile: 0.5
+        error: 0.005
+    max_age: 30s
+    age_buckets: 3
+    buf_cap: 1000
+- match: "test.timing.*.*.*"
+  observer_type: histogram
+  histogram_options:
+    buckets: [ 0.01, 0.025, 0.05, 0.1 ]
+    native_histogram_bucket_factor: 1.1
+    native_histogram_max_buckets: 256
+  name: "my_timer"
+  labels:
+    provider: "$2"
+    outcome: "$3"
+    job: "${1}_server"
+# This metric would match as normal.
+- match: "test.timing.*.*.*"
+  name: "my_timer"
+  labels:
+    provider: "$2"
+    outcome: "$3"
+    job: "${1}_server"
+# Any metric not matched will be dropped because "." matches all metrics.
+- match: "."
+  match_type: regex
+  action: drop
+  name: "dropped"

@@ -1,0 +1,45 @@
+scrape_configs:
+  - job_name: fun
+    loki_push_api:
+      server:
+        http_listen_address: localhost
+        http_listen_port: 9094
+        http_listen_conn_limit: 100
+        http_server_read_timeout: 10s
+        http_server_write_timeout: 10s
+        http_server_idle_timeout: 10s
+        http_tls_config:
+          cert_file: /var/cert
+
+        grpc_listen_address: 127.0.0.1
+        grpc_listen_port: 9095
+        grpc_listen_conn_limit: 100
+        grpc_server_max_connection_age: 10s
+        grpc_server_max_connection_age_grace: 10s
+        grpc_server_max_connection_idle: 1m
+        grpc_server_max_recv_msg_size: 1000
+        grpc_server_max_send_msg_size: 1000
+        grpc_server_max_concurrent_streams: 100
+        grpc_tls_config:
+          cert_file: /var/cert
+
+        # unsupported fields
+        http_listen_network: tcp4
+        grpc_listen_network: tcp4
+        tls_cipher_suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        tls_min_version: tls12
+        register_instrumentation: true
+        graceful_shutdown_timeout: 10s
+        grpc_server_keepalive_time: 10s
+        grpc_server_keepalive_timeout: 10s
+        grpc_server_min_time_between_pings: 10s
+        grpc_server_ping_without_stream_allowed: true
+        log_format: json
+        log_level: debug
+        log_source_ips_enabled: true
+        log_source_ips_header: IP_ADDR
+        log_source_ips_regex: .*
+        log_request_at_info_level_enabled: true
+        http_path_prefix: /my/path
+tracing: { enabled: false }
+server: { register_instrumentation: false }

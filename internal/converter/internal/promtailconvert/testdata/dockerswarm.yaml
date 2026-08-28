@@ -1,0 +1,22 @@
+scrape_configs:
+  - job_name: fun
+    dockerswarm_sd_configs:
+      - host : "http://localhost:8081"
+        role: "nodes"
+        port: 81
+        filters:
+          - name: "n1"
+            values:
+            - "v1"
+            - "v2"
+          - name: "n2"
+            values:
+            - "v3"
+        refresh_interval: 5m
+        basic_auth:
+          username: "username"
+          password: "password"
+      - host : "http://localhost:8080"
+        role: "services"
+tracing: {enabled: false}
+server: {register_instrumentation: false}

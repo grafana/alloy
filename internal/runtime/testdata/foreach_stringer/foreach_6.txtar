@@ -1,0 +1,22 @@
+A collection containing a string with a dot.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = ["aaa.bbb"]
+  var = "item"
+
+  template {
+    testcomponents.stringer "st" {
+      input_string = item
+      forward_to = [testcomponents.string_receiver.log.receiver]
+    }
+  }
+}
+
+// Receive strings and append them to a log,
+// separated by a new line.
+testcomponents.string_receiver "log" {
+}
+
+-- expected_debug_info.txt --
+"aaa.bbb"

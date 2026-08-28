@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "gen/grafonnet-latest"
+        }
+      },
+      "version": "41e6bfcbe4ef1054298ffff8664f1354c897dd2d",
+      "sum": "djejYCGNdtWsAd39+cHU1QNBIUKePhUyY4QNZt7XO4o="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "gen/grafonnet-v11.0.0"
+        }
+      },
+      "version": "41e6bfcbe4ef1054298ffff8664f1354c897dd2d",
+      "sum": "0BvzR0i4bS4hc2O3xDv6i9m52z7mPrjvqxtcPrGhynA="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/grafonnet.git",
+          "subdir": "gen/grafonnet-v13.0.0"
+        }
+      },
+      "version": "41e6bfcbe4ef1054298ffff8664f1354c897dd2d",
+      "sum": "hZfIVja9O6czp3Pg8fzqmN891FLz8nPvy2IJND5qlGw="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/jsonnet-libs.git",
+          "subdir": "logs-lib/"
+        }
+      },
+      "version": "17c758609bfd9e37c62668b9778e540256147d75",
+      "sum": "rgzaIMC4Gujx86mPdsVfQnzSfxzfuCg/sZPrDJBV3bU="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/jsonnet-libs.git",
+          "subdir": "logs-lib/logs"
+        }
+      },
+      "version": "17c758609bfd9e37c62668b9778e540256147d75",
+      "sum": "GkY3L75913fiYk9+Rq/R1JEaHEwkFrtvufIWhJZ6MP8="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
+          "subdir": "doc-util"
+        }
+      },
+      "version": "bf6f08ae02a51c48bdcec4629b1c1a5a62c6f803",
+      "sum": "BrAL/k23jq+xy9oA7TWIhUx07dsA/QLm3g7ktCwe//U="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/xtd.git",
+          "subdir": ""
+        }
+      },
+      "version": "4d7f8cb24d613430799f9d56809cc6964f35cea9",
+      "sum": "hOrwkOx34tOXqoDVnwuI/Uf/dr9HFFSPWpDPOvnEGrk="
+    }
+  ],
+  "legacyImports": false
+}

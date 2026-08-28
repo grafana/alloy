@@ -1,0 +1,4 @@
+integrations:
+  node_exporter:
+    scrape_integration: true
+    enabled: true

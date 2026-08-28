@@ -1,0 +1,48 @@
+logging {
+    level = "debug"
+}
+
+livedebugging {}
+
+prometheus.scrape "otlp_metadata" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+  params = { "metric-prefix" = ["otlp_metadata_"] }
+  forward_to = [
+    otelcol.receiver.prometheus.otlp_metadata.receiver,
+  ]
+  scrape_classic_histograms = true
+  scrape_native_histograms = true
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+  honor_metadata = true
+}
+
+otelcol.receiver.prometheus "otlp_metadata" {
+  output {
+    metrics = [otelcol.processor.attributes.otlp_metadata.input]
+  }
+}
+
+otelcol.processor.attributes "otlp_metadata" {
+  action {
+    key = "test_name"
+    value = "otlp_metadata"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.otlp_metadata.input]
+  }
+}
+
+otelcol.exporter.otlphttp "otlp_metadata" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}

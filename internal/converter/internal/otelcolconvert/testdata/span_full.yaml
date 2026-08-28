@@ -1,0 +1,62 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  # Since this processor has deeply nested attributes, we're adding a more
+  # fleshed out testdata case to make sure we're hitting all the possible
+  # conversion code paths.
+  span:
+    name:
+      from_attributes: ["db.svc", "operation"]
+      separator: "::"
+      to_attributes:
+        break_after_match: true
+        rules:
+          - ^\/api\/v1\/document\/(?P<documentId>.*)\/update$
+    status:
+      code: Error
+      description: "some error description"
+    include:
+      match_type: "strict"
+      attributes:
+        - key: "key1"
+          value: "value1"
+      span_names: ["span1", "span2"]
+      span_kinds: ["spankind1", "spankind2"]
+      log_bodies: ["lb1", "lb2"]
+      log_severity_texts: ["ls1", "ls2"]
+    exclude:
+      match_type: "regex"
+      services: ["svc1", "svc2"]
+      resources:
+        - key: "key1"
+          value: "value1"
+      libraries:
+        - name: "name1"
+          version: "version1"
+      log_severity_number:
+        min: 2
+        match_undefined: false
+      metric_names: ["mn1", "mn2"]
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: [span]
+      exporters: [otlp]

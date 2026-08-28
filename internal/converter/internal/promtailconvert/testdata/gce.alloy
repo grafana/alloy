@@ -1,0 +1,15 @@
+discovery.gce "fun" {
+	project = "your-project-id"
+	zone    = "us-central1-a"
+	port    = 8080
+}
+
+loki.source.file "fun" {
+	targets    = discovery.gce.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

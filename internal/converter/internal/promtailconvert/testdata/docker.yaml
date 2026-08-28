@@ -1,0 +1,45 @@
+scrape_configs:
+  - job_name: fun
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        port: 12345
+        filters:
+          - name: v60
+            values: [small, large]
+          - name: aeropress
+            values: [regular, inverted]
+        refresh_interval: 10s
+        host_networking_host: localhost
+
+        proxy_url: http://proxy.example.com
+        basic_auth:
+          username: robin
+          password_file: /home/robin/.password
+        tls_config:
+          ca_file: /home/robin/.ca
+          cert_file: /home/robin/.cert
+          key_file: /home/robin/.key
+          server_name: example.local
+          insecure_skip_verify: true
+
+      - host: unix:///var/run/docker.sock
+        port: 54321
+        filters:
+          - name: sunscreen
+            values: [ spf20, spf50, spf100 ]
+        refresh_interval: 10s
+        host_networking_host: localhost
+
+        oauth2:
+          client_id: client_id
+          client_secret_file: foo/bar
+          scopes:
+            - scope1
+            - scope2
+          token_url: https://example/oauth2/token
+          endpoint_params:
+            host: example
+            path: /oauth2/token
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

@@ -1,0 +1,11 @@
+Error: missing.alloy:1:1: cannot find the definition of component name "local.missing"
+
+1 | local.missing "missing" {
+  | ^^^^^^^^^^^^^
+2 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+
+Error: missing_label.alloy:1:1: component "local.file" must have a label
+
+1 | local.file {
+  | ^^^^^^^^^^
+2 |     filename = "/tmp/app-logs/app.log"

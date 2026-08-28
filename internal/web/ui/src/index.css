@@ -1,0 +1,34 @@
+@import url('./static/fonts.css');
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: #f4f4f5;
+  font-family: 'Roboto', sans-serif;
+}
+
+.app-navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e4e5e5;
+}
+
+.app-navbar .navbar-brand img:hover {
+  cursor: pointer;
+}
+
+.app-navbar div[role='menu'] {
+  border: 1px solid #e4e5e5;
+}
+
+.app-navbar a {
+  color: #25292e;
+}
+
+pre,
+code {
+  font-family: 'Fira Code', monospace;
+}

@@ -1,0 +1,46 @@
+---
+# Alloy running the OTel engine (`alloy otel`) with the alloyengine extension.
+# The extension runs an inner Alloy config (mounted as config.alloy) whose
+# prometheus.remote_write carries the "Alloy OTel Extension" User-Agent. The image
+# ENTRYPOINT is /bin/alloy, so args run `alloy otel --config=...`. __ALLOY_IMAGE__
+# is substituted by the AlloyOtel dependency at install time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy-otel
+  labels:
+    app: alloy-otel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alloy-otel
+  template:
+    metadata:
+      labels:
+        app: alloy-otel
+    spec:
+      containers:
+        - name: alloy
+          image: __ALLOY_IMAGE__
+          imagePullPolicy: Never
+          args:
+            - otel
+            - --config=/etc/alloy/collector.yaml
+          ports:
+            - name: health
+              containerPort: 13133
+          readinessProbe:
+            tcpSocket:
+              port: 13133
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 3
+            failureThreshold: 30
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-otel-config

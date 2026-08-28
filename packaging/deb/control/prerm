@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -e
+
+# shellcheck disable=SC1091
+[ -f /etc/default/alloy ] && . /etc/default/alloy
+
+if [ "$1" = "remove" ]; then
+    if command -v systemctl 2>/dev/null; then
+        systemctl stop alloy.service > /dev/null 2>&1 || :
+    fi
+fi

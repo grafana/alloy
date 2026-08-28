@@ -1,0 +1,820 @@
+package common
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/grafana/ckit/shard"
+	"github.com/grafana/dskit/backoff"
+	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/config"
+	"github.com/prometheus/prometheus/discovery"
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/prometheus/prometheus/scrape"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
+	toolscache "k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/grafana/alloy/internal/component"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
+	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
+	compscrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/util"
+)
+
+type crdManagerInterface interface {
+	Run(ctx context.Context) error
+	ClusteringUpdated()
+	DebugInfo() any
+	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
+}
+
+type crdManagerFactory interface {
+	New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface
+}
+
+type realCrdManagerFactory struct{}
+
+func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface {
+	m := newCrdManager(opts, cluster, logger, args, kind, ls)
+	m.serviceMonitorSettings = serviceMonitorSettings
+	return m
+}
+
+// CacheFactory creates controller-runtime caches with the given options.
+// This is returned by K8sFactory.New and can be called multiple times (e.g., once per namespace).
+type CacheFactory func(opts cache.Options) (cache.Cache, error)
+
+// K8sFactory creates Kubernetes clients and cache factories.
+// This allows tests to inject fake implementations while production code uses real ones.
+type K8sFactory interface {
+	// New creates a Kubernetes client and a cache factory.
+	// The cache factory can be called multiple times to create caches with different options.
+	New(clientConfig commonk8s.ClientArguments, logger *slog.Logger) (kubernetes.Interface, CacheFactory, error)
+}
+
+// realK8sFactory is the production implementation that creates real Kubernetes clients and caches.
+type realK8sFactory struct{}
+
+func (realK8sFactory) New(clientConfig commonk8s.ClientArguments, logger *slog.Logger) (kubernetes.Interface, CacheFactory, error) {
+	restConfig, err := clientConfig.BuildRESTConfig(logger)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating rest config: %w", err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
+	}
+
+	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
+		return cache.New(restConfig, opts)
+	}
+
+	return k8sClient, cacheFactory, nil
+}
+
+// defaultK8sFactory is the production K8sFactory used when none is injected.
+var defaultK8sFactory K8sFactory = realK8sFactory{}
+
+// crdManager is all of the fields required to run a crd based component.
+// on update, this entire thing should be recreated and restarted
+type crdManager struct {
+	mut sync.Mutex
+
+	// these maps are keyed by job name
+	discoveryConfigs map[string]discovery.Configs
+	scrapeConfigs    map[string]*config.ScrapeConfig
+
+	// list of keys to the above maps for a given resource by `ns/name`
+	crdsToMapKeys map[string][]string
+	// debug info by `kind/ns/name`
+	debugInfo map[string]*operator.DiscoveredResource
+
+	discoveryManager  discoveryManager
+	scrapeManager     scrapeManager
+	clusteringUpdated chan struct{}
+	ls                labelstore.LabelStore
+
+	opts    component.Options
+	logger  *slog.Logger
+	args    *operator.Arguments
+	cluster cluster.Cluster
+
+	client     kubernetes.Interface
+	k8sFactory K8sFactory
+
+	kind                                      string
+	serviceMonitorSettings                    *ServiceMonitorSettings
+	serviceMonitorArbitraryFileAccessWarnings map[string]string
+}
+
+const (
+	KindPodMonitor     string = "podMonitor"
+	KindServiceMonitor string = "serviceMonitor"
+	KindProbe          string = "probe"
+	KindScrapeConfig   string = "scrapeConfig"
+)
+
+func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) *crdManager {
+	switch kind {
+	case KindPodMonitor, KindServiceMonitor, KindProbe, KindScrapeConfig:
+	default:
+		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
+	}
+	defaultServiceMonitorSettings := (*ServiceMonitorSettings)(nil)
+	if kind == KindServiceMonitor {
+		settings := DefaultServiceMonitorSettings
+		defaultServiceMonitorSettings = &settings
+	}
+
+	return &crdManager{
+		opts:                   opts,
+		logger:                 logger.With("kind", kind),
+		args:                   args,
+		cluster:                cluster,
+		discoveryConfigs:       map[string]discovery.Configs{},
+		scrapeConfigs:          map[string]*config.ScrapeConfig{},
+		crdsToMapKeys:          map[string][]string{},
+		debugInfo:              map[string]*operator.DiscoveredResource{},
+		kind:                   kind,
+		clusteringUpdated:      make(chan struct{}, 1),
+		ls:                     ls,
+		k8sFactory:             defaultK8sFactory,
+		serviceMonitorSettings: defaultServiceMonitorSettings,
+		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
+	}
+}
+
+func (c *crdManager) Run(ctx context.Context) error {
+	// Create Kubernetes client and cache factory
+	var err error
+	var cacheFactory CacheFactory
+	c.client, cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
+	if err != nil {
+		return fmt.Errorf("creating kubernetes client and cache factory: %w", err)
+	}
+
+	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
+	defer unregisterer.UnregisterAll()
+
+	sdMetrics, err := discovery.CreateAndRegisterSDMetrics(unregisterer)
+	if err != nil {
+		return fmt.Errorf("creating and registering service discovery metrics: %w", err)
+	}
+
+	// Start prometheus service discovery manager
+	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
+	go func() {
+		err := c.discoveryManager.Run()
+		if err != nil {
+			c.logger.Error("discovery manager stopped", "err", err)
+		}
+	}()
+
+	// Start prometheus scrape manager.
+	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
+	defer alloyAppendable.Clear()
+
+	scrapeOpts := &scrape.Options{
+		AppendMetadata:          c.args.Scrape.HonorMetadata,
+		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
+		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
+		// ParseST extracts the start timestamp from the scrape formats;
+		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
+		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
+	}
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
+	if err != nil {
+		return fmt.Errorf("creating scrape manager: %w", err)
+	}
+	defer c.scrapeManager.Stop()
+	targetSetsChan := make(chan map[string][]*targetgroup.Group)
+	go func() {
+		err := c.scrapeManager.Run(targetSetsChan)
+		c.logger.Info("scrape manager stopped")
+		if err != nil {
+			c.logger.Error("scrape manager failed", "err", err)
+		}
+	}()
+
+	// run informers after everything else is running
+	if err := c.runInformers(cacheFactory, ctx); err != nil {
+		return err
+	}
+	c.logger.Info("informers started")
+
+	var cachedTargets map[string][]*targetgroup.Group
+	// Start the target discovery loop to update the scrape manager with new targets.
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case m := <-c.discoveryManager.SyncCh():
+			cachedTargets = m
+			if c.args.Clustering.Enabled {
+				m = filterTargets(m, c.cluster)
+			}
+			targetSetsChan <- m
+		case <-c.clusteringUpdated:
+			// if clustering updates while running, just re-filter the targets and pass them
+			// into scrape manager again, instead of reloading everything
+			targetSetsChan <- filterTargets(cachedTargets, c.cluster)
+		}
+	}
+}
+
+func (c *crdManager) ClusteringUpdated() {
+	select {
+	case c.clusteringUpdated <- struct{}{}:
+	default:
+	}
+}
+
+// TODO: merge this code with the code in prometheus.scrape. This is a copy of that code, mostly because
+// we operate on slightly different data structures.
+func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[string][]*targetgroup.Group {
+	if !c.Ready() { // if cluster not ready, we don't take any traffic locally
+		return make(map[string][]*targetgroup.Group)
+	}
+	// the key in the map is the job name.
+	// the targetGroups have zero or more targets inside them.
+	// we should keep the same structure even when there are no targets in a group for this node to scrape,
+	// since an empty target group tells the scrape manager to stop scraping targets that match.
+	m2 := make(map[string][]*targetgroup.Group, len(m))
+	for k, groups := range m {
+		m2[k] = make([]*targetgroup.Group, len(groups))
+		for i, group := range groups {
+			g2 := &targetgroup.Group{
+				Labels:  group.Labels.Clone(),
+				Source:  group.Source,
+				Targets: make([]model.LabelSet, 0, len(group.Targets)),
+			}
+			// Check the hash based on each target's labels
+			// We should not need to include the group's common labels, as long
+			// as each node does this consistently.
+			for _, t := range group.Targets {
+				peers, err := c.Lookup(shard.StringKey(nonMetaLabelString(t)), 1, shard.OpReadWrite)
+				if len(peers) == 0 || err != nil {
+					// If the cluster found no peers or returned an error, we fall
+					// back to owning the target ourselves.
+					g2.Targets = append(g2.Targets, t)
+				} else if peers[0].Self {
+					g2.Targets = append(g2.Targets, t)
+				}
+			}
+			m2[k][i] = g2
+		}
+	}
+	return m2
+}
+
+// nonMetaLabelString returns a string representation of the given label set, excluding meta labels.
+func nonMetaLabelString(l model.LabelSet) string {
+	lstrs := make([]string, 0, len(l))
+	for l, v := range l {
+		if !strings.HasPrefix(string(l), model.MetaLabelPrefix) {
+			lstrs = append(lstrs, fmt.Sprintf("%s=%q", l, v))
+		}
+	}
+	sort.Strings(lstrs)
+	return fmt.Sprintf("{%s}", strings.Join(lstrs, ", "))
+}
+
+// DebugInfo returns debug information for the CRDManager.
+func (c *crdManager) DebugInfo() any {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	var info operator.DebugInfo
+	for _, pm := range c.debugInfo {
+		info.DiscoveredCRDs = append(info.DiscoveredCRDs, pm)
+	}
+
+	// c.scrapeManager can be nil if the client failed to build.
+	if c.scrapeManager != nil {
+		info.Targets = compscrape.BuildTargetStatuses(c.scrapeManager.TargetsActive())
+	}
+	return info
+}
+
+func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
+	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)
+	matches := []*config.ScrapeConfig{}
+	for k, v := range c.scrapeConfigs {
+		if strings.HasPrefix(k, prefix) {
+			matches = append(matches, v)
+		}
+	}
+	return matches
+}
+
+// runInformers starts all the informers that are required to discover CRDs.
+func (c *crdManager) runInformers(cacheFactory CacheFactory, ctx context.Context) error {
+	scheme := runtime.NewScheme()
+	for _, add := range []func(*runtime.Scheme) error{
+		promopv1.AddToScheme,
+		promopv1alpha1.AddToScheme,
+	} {
+		if err := add(scheme); err != nil {
+			return fmt.Errorf("unable to register scheme: %w", err)
+		}
+	}
+
+	ls, err := c.args.LabelSelector.BuildSelector()
+	if err != nil {
+		return fmt.Errorf("building label selector: %w", err)
+	}
+	for _, ns := range c.args.Namespaces {
+		// TODO: This is going down an unnecessary extra step in the cache when `c.args.Namespaces` defaults to NamespaceAll.
+		// This code path should be simplified and support a scenario when len(c.args.Namespace) == 0.
+		defaultNamespaces := map[string]cache.Config{}
+		defaultNamespaces[ns] = cache.Config{}
+		opts := cache.Options{
+			Scheme:            scheme,
+			DefaultNamespaces: defaultNamespaces,
+		}
+
+		if ls != labels.Nothing() {
+			opts.DefaultLabelSelector = ls
+		}
+		informerCache, err := cacheFactory(opts)
+		if err != nil {
+			return err
+		}
+
+		informers := informerCache
+
+		go func() {
+			err := informers.Start(ctx)
+			// If the context was canceled, we don't want to log an error.
+			if err != nil && ctx.Err() == nil {
+				c.logger.Error("failed to start informers", "err", err)
+			}
+		}()
+		if !informers.WaitForCacheSync(ctx) {
+			return fmt.Errorf("informer caches failed to sync")
+		}
+		if err := c.configureInformers(ctx, informers); err != nil {
+			return fmt.Errorf("failed to configure informers: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func getInformer(ctx context.Context, informers cache.Informers, prototype client.Object, timeout time.Duration) (cache.Informer, error) {
+	informerCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	informer, err := informers.GetInformer(informerCtx, prototype)
+	if err != nil {
+		if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
+			return nil, fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
+				" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %T", prototype)
+		}
+
+		return nil, err
+	}
+
+	return informer, err
+}
+
+// configureInformers configures the informers for the CRDManager to watch for crd changes.
+func (c *crdManager) configureInformers(ctx context.Context, informers cache.Informers) error {
+	var prototype client.Object
+	switch c.kind {
+	case KindPodMonitor:
+		prototype = &promopv1.PodMonitor{}
+	case KindServiceMonitor:
+		prototype = &promopv1.ServiceMonitor{}
+	case KindProbe:
+		prototype = &promopv1.Probe{}
+	case KindScrapeConfig:
+		prototype = &promopv1alpha1.ScrapeConfig{}
+	default:
+		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
+	}
+
+	// On node restart, the API server is not always immediately available.
+	// Retry with backoff to give time for the network to initialize.
+	var informer cache.Informer
+	var err error
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
+	deadline, _ := timeoutCtx.Deadline()
+	defer cancel()
+	backoff := backoff.New(
+		timeoutCtx,
+		backoff.Config{
+			MinBackoff: 1 * time.Second,
+			MaxBackoff: 10 * time.Second,
+			MaxRetries: 0, // Will retry until InformerSyncTimeout is reached
+		},
+	)
+	for {
+		// Retry to get the informer in case of a timeout.
+		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
+		nextDelay := backoff.NextDelay()
+		// exit loop on success, timeout, max retries reached, or if next backoff exceeds timeout
+		if err == nil || !backoff.Ongoing() || time.Now().Add(nextDelay).After(deadline) {
+			break
+		}
+		c.logger.Warn("failed to get informer, retrying", "next backoff", nextDelay, "err", err)
+		backoff.Wait()
+	}
+	if err != nil {
+		return err
+	}
+
+	const resync = 5 * time.Minute
+	switch c.kind {
+	case KindPodMonitor:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddPodMonitor,
+			UpdateFunc: c.onUpdatePodMonitor,
+			DeleteFunc: c.onDeletePodMonitor,
+		}), resync)
+	case KindServiceMonitor:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddServiceMonitor,
+			UpdateFunc: c.onUpdateServiceMonitor,
+			DeleteFunc: c.onDeleteServiceMonitor,
+		}), resync)
+	case KindProbe:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddProbe,
+			UpdateFunc: c.onUpdateProbe,
+			DeleteFunc: c.onDeleteProbe,
+		}), resync)
+	case KindScrapeConfig:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddScrapeConfig,
+			UpdateFunc: c.onUpdateScrapeConfig,
+			DeleteFunc: c.onDeleteScrapeConfig,
+		}), resync)
+	default:
+		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
+	}
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// apply applies the current state of the Manager to the Prometheus discovery manager and scrape manager.
+func (c *crdManager) apply() error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	err := c.discoveryManager.ApplyConfig(c.discoveryConfigs)
+	if err != nil {
+		c.logger.Error("error applying discovery configs", "err", err)
+		return err
+	}
+	scs := []*config.ScrapeConfig{}
+	for _, sc := range c.scrapeConfigs {
+		scs = append(scs, sc)
+	}
+
+	cfg, err := config.Load("", c.logger)
+	if err != nil {
+		return fmt.Errorf("loading empty config: %w", err)
+	}
+	cfg.ScrapeConfigs = scs
+
+	err = c.scrapeManager.ApplyConfig(cfg)
+	if err != nil {
+		c.logger.Error("error applying scrape configs", "err", err)
+		return err
+	}
+	c.logger.Debug("scrape config was updated")
+	return nil
+}
+
+func (c *crdManager) addDebugInfo(ns string, name string, err error) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	debug := &operator.DiscoveredResource{}
+	debug.Namespace = ns
+	debug.Name = name
+	debug.LastReconcile = time.Now()
+	if err != nil {
+		debug.ReconcileError = err.Error()
+	} else {
+		debug.ReconcileError = ""
+	}
+	if data, err := c.opts.GetServiceData(http.ServiceName); err == nil {
+		if hdata, ok := data.(http.Data); ok {
+			// HTTPPathForComponent already returns a path with a trailing slash.
+			debug.ScrapeConfigsURL = fmt.Sprintf("%s%sscrapeConfig/%s/%s", hdata.HTTPListenAddr, hdata.HTTPPathForComponent(c.opts.ID), ns, name)
+		}
+	}
+	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)
+	c.debugInfo[prefix] = debug
+}
+
+func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
+	var err error
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+	mapKeys := []string{}
+	for i, ep := range pm.Spec.PodMetricsEndpoints {
+		var scrapeConfig *config.ScrapeConfig
+		scrapeConfig, err = gen.GeneratePodMonitorConfig(pm, ep, i)
+		if err != nil {
+			// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <podmonitor>`.
+			c.logger.Error("error generating scrapeconfig from podmonitor", "name", pm.Name, "err", err)
+			break
+		}
+		mapKeys = append(mapKeys, scrapeConfig.JobName)
+		c.mut.Lock()
+		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
+		c.mut.Unlock()
+	}
+	if err != nil {
+		c.addDebugInfo(pm.Namespace, pm.Name, err)
+		return
+	}
+	c.mut.Lock()
+	c.crdsToMapKeys[fmt.Sprintf("%s/%s", pm.Namespace, pm.Name)] = mapKeys
+	c.mut.Unlock()
+	if err = c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs", "name", pm.Name, "err", err)
+	}
+	c.addDebugInfo(pm.Namespace, pm.Name, err)
+}
+
+func (c *crdManager) onAddPodMonitor(obj any) {
+	pm := obj.(*promopv1.PodMonitor)
+	c.logger.Info("found pod monitor", "name", pm.Name)
+	c.addPodMonitor(pm)
+}
+
+func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
+	pm := oldObj.(*promopv1.PodMonitor)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addPodMonitor(newObj.(*promopv1.PodMonitor))
+}
+
+func (c *crdManager) onDeletePodMonitor(obj any) {
+	pm := obj.(*promopv1.PodMonitor)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
+	}
+}
+
+func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
+	var err error
+	serviceMonitorSettings := DefaultServiceMonitorSettings
+	if c.serviceMonitorSettings != nil {
+		serviceMonitorSettings = *c.serviceMonitorSettings
+	}
+
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AllowArbitraryFileAccess: serviceMonitorSettings.AllowArbitraryFileAccess,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+
+	for i, ep := range sm.Spec.Endpoints {
+		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
+	}
+
+	mapKeys := []string{}
+	discoveryConfigs := map[string]discovery.Configs{}
+	scrapeConfigs := map[string]*config.ScrapeConfig{}
+	for i, ep := range sm.Spec.Endpoints {
+		var scrapeConfig *config.ScrapeConfig
+		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
+		if err != nil {
+			// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <servicemonitor>`.
+			c.logger.Error("error generating scrapeconfig from serviceMonitor", "name", sm.Name, "err", err)
+			break
+		}
+		mapKeys = append(mapKeys, scrapeConfig.JobName)
+		discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
+	}
+	if err != nil {
+		c.addDebugInfo(sm.Namespace, sm.Name, err)
+		return
+	}
+	c.mut.Lock()
+	for k, v := range discoveryConfigs {
+		c.discoveryConfigs[k] = v
+	}
+	for k, v := range scrapeConfigs {
+		c.scrapeConfigs[k] = v
+	}
+	c.crdsToMapKeys[fmt.Sprintf("%s/%s", sm.Namespace, sm.Name)] = mapKeys
+	c.mut.Unlock()
+	if err = c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs", "name", sm.Name, "err", err)
+	}
+	c.addDebugInfo(sm.Namespace, sm.Name, err)
+}
+
+func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.ServiceMonitor, endpointIndex int, ep promopv1.Endpoint) {
+	field := configgen.ServiceMonitorEndpointArbitraryFileField(ep)
+	if field == "" {
+		return
+	}
+
+	if !c.recordServiceMonitorArbitraryFileAccessWarning(sm, endpointIndex, field) {
+		return
+	}
+
+	c.logger.Warn(
+		"serviceMonitor endpoint references an arbitrary file from Alloy's filesystem",
+		"namespace", sm.Namespace,
+		"name", sm.Name,
+		"endpoint", endpointIndex,
+		"field", field,
+		"mitigation", "remove the file reference or set allow_arbitrary_file_access to true to opt out",
+	)
+}
+
+func (c *crdManager) recordServiceMonitorArbitraryFileAccessWarning(sm *promopv1.ServiceMonitor, endpointIndex int, field string) bool {
+	key := fmt.Sprintf("%s/%s/%d/%s", sm.Namespace, sm.Name, endpointIndex, field)
+
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	if lastResourceVersion, ok := c.serviceMonitorArbitraryFileAccessWarnings[key]; ok && lastResourceVersion == sm.ResourceVersion {
+		return false
+	}
+	c.serviceMonitorArbitraryFileAccessWarnings[key] = sm.ResourceVersion
+	return true
+}
+
+func (c *crdManager) onAddServiceMonitor(obj any) {
+	pm := obj.(*promopv1.ServiceMonitor)
+	c.logger.Info("found service monitor", "name", pm.Name)
+	c.addServiceMonitor(pm)
+}
+
+func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
+	pm := oldObj.(*promopv1.ServiceMonitor)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addServiceMonitor(newObj.(*promopv1.ServiceMonitor))
+}
+
+func (c *crdManager) onDeleteServiceMonitor(obj any) {
+	pm := obj.(*promopv1.ServiceMonitor)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.clearServiceMonitorArbitraryFileAccessWarnings(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
+	}
+}
+
+func (c *crdManager) clearServiceMonitorArbitraryFileAccessWarnings(namespace, name string) {
+	prefix := fmt.Sprintf("%s/%s/", namespace, name)
+
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	for key := range c.serviceMonitorArbitraryFileAccessWarnings {
+		if strings.HasPrefix(key, prefix) {
+			delete(c.serviceMonitorArbitraryFileAccessWarnings, key)
+		}
+	}
+}
+
+func (c *crdManager) addProbe(p *promopv1.Probe) {
+	var err error
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+	var pmc *config.ScrapeConfig
+	pmc, err = gen.GenerateProbeConfig(p)
+	if err != nil {
+		// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <probe>`.
+		c.logger.Error("error generating scrapeconfig from probe", "name", p.Name, "err", err)
+		c.addDebugInfo(p.Namespace, p.Name, err)
+		return
+	}
+	c.mut.Lock()
+	c.discoveryConfigs[pmc.JobName] = pmc.ServiceDiscoveryConfigs
+	c.scrapeConfigs[pmc.JobName] = pmc
+	c.crdsToMapKeys[fmt.Sprintf("%s/%s", p.Namespace, p.Name)] = []string{pmc.JobName}
+	c.mut.Unlock()
+
+	if err = c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs", "name", p.Name, "err", err)
+	}
+	c.addDebugInfo(p.Namespace, p.Name, err)
+}
+
+func (c *crdManager) onAddProbe(obj any) {
+	pm := obj.(*promopv1.Probe)
+	c.logger.Info("found probe", "name", pm.Name)
+	c.addProbe(pm)
+}
+
+func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
+	pm := oldObj.(*promopv1.Probe)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addProbe(newObj.(*promopv1.Probe))
+}
+
+func (c *crdManager) onDeleteProbe(obj any) {
+	pm := obj.(*promopv1.Probe)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
+	}
+}
+
+func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
+	var err error
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+	mapKeys := []string{}
+	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)
+	objName := fmt.Sprintf("%s/%s", pm.Namespace, pm.Name)
+	for _, err := range errs {
+		c.logger.Warn("error in scrape config", "source", objName, "err", err)
+	}
+	if len(errs) > 0 {
+		c.addDebugInfo(pm.Namespace, pm.Name, errors.Join(errs...))
+		if len(scrapeConfigs) == 0 {
+			return
+		}
+	}
+	c.mut.Lock()
+	for _, scrapeConfig := range scrapeConfigs {
+		mapKeys = append(mapKeys, scrapeConfig.JobName)
+		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
+	}
+	c.crdsToMapKeys[objName] = mapKeys
+	c.mut.Unlock()
+	if err = c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs", "name", pm.Name, "err", err)
+	}
+	c.addDebugInfo(pm.Namespace, pm.Name, err)
+}
+
+func (c *crdManager) onAddScrapeConfig(obj any) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
+	c.logger.Info("found scrape config", "name", pm.Name)
+	c.addScrapeConfig(pm)
+}
+
+func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
+	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addScrapeConfig(newObj.(*promopv1alpha1.ScrapeConfig))
+}
+
+func (c *crdManager) onDeleteScrapeConfig(obj any) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
+	}
+}
+
+func (c *crdManager) clearConfigs(ns, name string) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	for _, k := range c.crdsToMapKeys[fmt.Sprintf("%s/%s", ns, name)] {
+		delete(c.discoveryConfigs, k)
+		delete(c.scrapeConfigs, k)
+	}
+	delete(c.debugInfo, fmt.Sprintf("%s/%s/%s", c.kind, ns, name))
+}

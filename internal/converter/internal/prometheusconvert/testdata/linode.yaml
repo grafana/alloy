@@ -1,0 +1,15 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    linode_sd_configs:
+      - refresh_interval: "100s"
+        port: 8080
+  - job_name: "prometheus2"
+    linode_sd_configs:
+      - {}
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"
+

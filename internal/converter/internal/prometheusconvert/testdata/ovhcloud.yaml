@@ -1,0 +1,21 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    ovhcloud_sd_configs:
+      - application_key: "app_key"
+        application_secret: "app_secret"
+        consumer_key: "cons_key"
+        service: "vps"
+  - job_name: "prometheus2"
+    ovhcloud_sd_configs:
+      - application_key: "app_key_2"
+        application_secret: "app_secret_2"
+        consumer_key: "cons_key_2"
+        service: "dedicated_server"
+        endpoint: "ovh-us"
+        refresh_interval: "14m"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

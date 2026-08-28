@@ -1,0 +1,38 @@
+discovery.nerve "prometheus1" {
+	servers = ["1.2.3.4"]
+	paths   = ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
+	timeout = "15s"
+}
+
+discovery.nerve "prometheus2" {
+	servers = ["127.0.0.1"]
+	paths   = ["/nerve/services/your_http_service/services"]
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.nerve.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.nerve.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

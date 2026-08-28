@@ -1,0 +1,15 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    consul_sd_configs:
+      - server: 'localhost:8500'
+        services: ['myapp']
+  - job_name: "prometheus2"
+    consul_sd_configs:
+      - server: 'localhost:8500'
+        services: ['otherapp']
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

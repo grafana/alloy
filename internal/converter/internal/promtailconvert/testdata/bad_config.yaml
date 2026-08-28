@@ -1,0 +1,15 @@
+clients:
+  - external_labels:
+      cluster: backyard-pine-treehouse-1
+    url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: kubernetes-pods
+    kubernetes_sd_configs:
+      - role: pod
+    pipeline_stages:
+      - cri: {}
+not_a_thing: true
+server:
+  profiling_enabled: true
+tracing:
+  enabled: false

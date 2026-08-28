@@ -1,0 +1,16 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: fun
+    journal:
+      json: true
+      max_age: 20h
+      labels:
+        variety: chardonnay
+        region: chablis
+    relabel_configs:
+      - source_labels:
+          - __trail__
+        target_label: __path__
+tracing: {enabled: false}
+server: {register_instrumentation: false}

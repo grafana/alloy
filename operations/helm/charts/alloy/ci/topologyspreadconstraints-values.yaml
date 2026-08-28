@@ -1,0 +1,10 @@
+controller:
+  type: deployment
+  topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: alloy
+        app.kubernetes.io/instance: alloy

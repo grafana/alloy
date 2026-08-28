@@ -1,0 +1,36 @@
+Test to make sure debug metrics are disabled by default for foreach.
+Use a foreach with only one item. The pulse will send "1" to the receiver of the summation component until it reaches 10.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [10]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+// Similar to testcomponents.summation, but with a "receiver" export
+testcomponents.summation_receiver "sum" {
+}
+
+-- expected_metrics.prom --
+
+# HELP alloy_component_controller_evaluating Tracks if the controller is currently in the middle of a graph evaluation
+# TYPE alloy_component_controller_evaluating gauge
+alloy_component_controller_evaluating{controller_id="",controller_path="/"} 0
+# HELP alloy_component_controller_running_components Total number of running components.
+# TYPE alloy_component_controller_running_components gauge
+alloy_component_controller_running_components{controller_id="",controller_path="/",health_type="healthy"} 2
+# HELP alloy_component_evaluation_queue_size Tracks the number of components waiting to be evaluated in the worker pool
+# TYPE alloy_component_evaluation_queue_size gauge
+alloy_component_evaluation_queue_size{controller_id="",controller_path="/"} 1
+
+-- expected_duration_metrics.prom --
+
+2

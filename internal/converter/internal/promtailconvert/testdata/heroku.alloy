@@ -1,0 +1,48 @@
+loki.process "fun" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.heroku "fun" {
+	http {
+		listen_address = "localhost"
+		listen_port    = 9094
+	}
+
+	grpc {
+		listen_address = "127.0.0.1"
+		listen_port    = 9095
+	}
+	graceful_shutdown_timeout = "0s"
+	labels                    = {
+		job     = "fun",
+		quality = "excellent",
+	}
+	use_incoming_timestamp = true
+	forward_to             = [loki.process.fun.receiver]
+	relabel_rules          = discovery.relabel.fun.rules
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

@@ -1,0 +1,27 @@
+scrape_configs:
+  - job_name: fun
+    consul_sd_configs:
+      - server: 'localhost:8500'
+        datacenter: bigdata
+        scheme: sketchy
+        username: toby
+        password: this_password_is_safe_innit?
+        tags:
+          - better
+          - faster
+          - stronger
+        services: [ 'myapp' ]
+        node_meta:
+          where: here
+          what: this
+        tag_separator: ";"
+        allow_stale: false
+        refresh_interval: 10m
+
+    relabel_configs:
+      - source_labels:
+          - host
+        target_label: hostname
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

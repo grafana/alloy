@@ -1,0 +1,76 @@
+discovery.azure "prometheus2" {
+	subscription_id = "subscription"
+
+	oauth {
+		client_id     = "client"
+		tenant_id     = "tenant"
+		client_secret = "secret"
+	}
+}
+
+discovery.relabel "prometheus1" {
+	targets = [{
+		__address__ = "localhost:9090",
+	}]
+
+	rule {
+		source_labels = ["__address1__"]
+		target_label  = "__param_target1"
+	}
+
+	rule {
+		source_labels = ["__address2__"]
+		regex         = "\""
+		target_label  = "instance"
+		replacement   = "${1}"
+	}
+
+	rule {
+		source_labels = ["__address3__"]
+		regex         = "\""
+		target_label  = "instance"
+		replacement   = "${1}"
+	}
+}
+
+discovery.relabel "prometheus2" {
+	targets = array.concat(
+		discovery.azure.prometheus2.targets,
+		[{
+			__address__ = "localhost:9091",
+		}],
+	)
+
+	rule {
+		source_labels = ["__address1__"]
+		target_label  = "__param_target1"
+	}
+
+	rule {
+		source_labels = ["__address2__"]
+		target_label  = "__param_target2"
+	}
+}
+
+prometheus.scrape "prometheus1" {
+	targets    = discovery.relabel.prometheus1.output
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.relabel.prometheus2.output
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

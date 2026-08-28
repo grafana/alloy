@@ -1,0 +1,15 @@
+# Test that the strict validation fails when both horizontal.enabled and
+# horizontal.externalHPA are true. This file MUST cause `helm template` to fail.
+# Verified by an explicit CI shell step (D12), NOT by `ct install` or
+# `make generate-helm-tests` — the lack of `-values` suffix keeps it out of
+# both tools' discovery paths.
+controller:
+  type: statefulset
+  autoscaling:
+    horizontal:
+      enabled: true
+      externalHPA: true
+alloy:
+  resources:
+    requests:
+      memory: 100Mi

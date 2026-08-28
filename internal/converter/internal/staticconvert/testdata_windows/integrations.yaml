@@ -1,0 +1,23 @@
+server:
+  log_level: debug
+  log_format: json
+  http_tls_config:
+    client_auth_type: "VerifyClientCertIfGiven"
+    windows_certificate_filter:
+        server:
+          store: "something"
+        client:
+          issuer_common_names:
+            - "1"
+          subject_regex: "2"
+          template_id: "something2"
+
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+
+integrations:
+  scrape_integrations: true
+  windows_exporter:
+    enabled: true

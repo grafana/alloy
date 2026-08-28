@@ -1,0 +1,23 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+  
+  faro:
+    endpoint: localhost:8080
+
+exporters:
+  faro:
+    endpoint: https://faro.example.com/collect
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp, faro]
+      processors: []
+      exporters: [faro]
+    traces:
+      receivers: [otlp, faro]
+      processors: []
+      exporters: [faro]

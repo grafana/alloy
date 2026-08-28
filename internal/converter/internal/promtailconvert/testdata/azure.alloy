@@ -1,0 +1,19 @@
+discovery.azure "fun" {
+	subscription_id = "subscription"
+
+	oauth {
+		client_id     = "client"
+		tenant_id     = "tenant"
+		client_secret = "secret"
+	}
+}
+
+loki.source.file "fun" {
+	targets    = discovery.azure.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

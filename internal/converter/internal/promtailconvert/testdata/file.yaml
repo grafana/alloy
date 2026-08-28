@@ -1,0 +1,15 @@
+scrape_configs:
+  - job_name: fun
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/*.json
+          - /etc/prometheus/targets/*.yaml
+          - /etc/prometheus/targets/*.json
+        refresh_interval: 5m
+      - files:
+          - /etc/agent/targets/*.json
+          - /etc/agent/targets/*.yaml
+          - /etc/agent/targets/*.yml
+        refresh_interval: 30m
+tracing: {enabled: false}
+server: {register_instrumentation: false}

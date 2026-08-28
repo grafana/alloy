@@ -1,0 +1,13 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    docker_sd_configs:
+      - host: "unix:///var/run/docker.sock"
+  - job_name: "prometheus2"
+    docker_sd_configs:
+      - host: "unix:///var/run/docker.sock"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

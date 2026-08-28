@@ -1,0 +1,8 @@
+controller:
+  type: deployment
+
+alloy:
+  lifecycle:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 1"]

@@ -1,0 +1,10 @@
+image:
+  registry: "docker.io"
+  repository: "grafana/agent"
+  digest: "sha256:82575a7be3e4770e53f620298e58bcc4cdb0fd0338e01c4b206cae9e3ca46ebf"
+
+configReloader:
+  image:
+    registry: "docker.io"
+    repository: "jimmidyson/configmap-reload"
+    digest: "sha256:5af9d3041d12a3e63f115125f89b66d2ba981fe82e64302ac370c5496055059c"

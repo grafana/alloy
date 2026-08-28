@@ -1,0 +1,56 @@
+discovery.kubernetes "funny_one" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+discovery.kubernetes "funny_one_2" {
+	role            = "node"
+	kubeconfig_file = "/home/toby/.kube/config"
+}
+
+loki.process "funny_one" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "funny_one" {
+	targets = array.concat(
+		discovery.kubernetes.funny_one.targets,
+		discovery.kubernetes.funny_one_2.targets,
+	)
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.file "funny_one" {
+	targets    = discovery.relabel.funny_one.output
+	forward_to = [loki.process.funny_one.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

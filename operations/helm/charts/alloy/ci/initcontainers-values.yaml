@@ -1,0 +1,29 @@
+controller:
+  initContainers:
+  - name: geo-ip
+    image: ghcr.io/maxmind/geoipupdate:v6.0
+    volumeMounts:
+      - name: geoip
+        mountPath: /etc/geoip
+    volumes:
+    - name: geoip
+      emptyDir: {}
+    env:
+    - name: GEOIPUPDATE_ACCOUNT_ID
+      value: "geoipupdate_account_id"
+    - name: GEOIPUPDATE_LICENSE_KEY
+      value: "geoipupdate_license_key"
+    - name: GEOIPUPDATE_EDITION_IDS
+      value: "GeoLite2-ASN GeoLite2-City GeoLite2-Country"
+    - name: GEOIPUPDATE_DB_DIR
+      value: "/etc/geoip"
+  volumes:
+    extra:
+      - name: geoip
+        mountPath: /etc/geoip
+
+alloy:
+  mounts:
+    extra:
+      - name: geoip
+        mountPath: /etc/geoip

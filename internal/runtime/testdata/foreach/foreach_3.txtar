@@ -1,0 +1,37 @@
+The config is reloaded to reach a total sum of 30.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [5, 5]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}
+
+-- reload_config.alloy --
+foreach "testForeach" {
+  // For the tests you must put different numbers in the collection because the foreach node caches the nodes.
+  // Here we need all nodes to be created new because the pulse components will stop sending pulses after they reach their max.
+  collection = [6, 8, 6]
+  var = "num"
+
+  template {
+    testcomponents.pulse "pt" {
+      max = num
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}

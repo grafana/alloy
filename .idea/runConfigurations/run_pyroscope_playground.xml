@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="run pyroscope playground" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="alloy" />
+    <working_directory value="$PROJECT_DIR$" />
+    <sudo value="true" />
+    <kind value="FILE" />
+    <package value="github.com/grafana/alloy" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/internal/component/pyroscope/util/internal/cmd/playground/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -1,0 +1,26 @@
+loki.source.journal "fun" {
+	format_as_json = true
+	max_age        = "20h0m0s"
+	relabel_rules  = null
+	forward_to     = [loki.write.default.receiver]
+	labels         = {
+		region  = "chablis",
+		variety = "chardonnay",
+	}
+}
+
+loki.source.journal "example" {
+	relabel_rules = null
+	forward_to    = [loki.write.default.receiver]
+	labels        = {
+		best_friend = "bob",
+		name        = "alice",
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

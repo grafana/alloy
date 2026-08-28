@@ -1,0 +1,11 @@
+# Test rendering of the chart with the global image registry explicitly set to another value.
+global:
+  image:
+    registry: quay.io
+
+image:
+  registry: docker.com   # Invalid value by default
+
+configReloader:
+  image:
+    registry: docker.com

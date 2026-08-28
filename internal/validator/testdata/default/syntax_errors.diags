@@ -1,0 +1,47 @@
+Error: main.alloy:2:18: string literal not terminated
+
+1 | // Missing string termination.
+2 | local.file_match "applogs {
+  |                  ^
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+
+Error: main.alloy:2:18: expected block label to be a valid identifier, but got "applogs "
+
+1 | // Missing string termination.
+2 | local.file_match "applogs {
+  |                  ^
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+
+Error: main.alloy:3:5: expected TERMINATOR, got IDENT
+
+2 | local.file_match "applogs {
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+  |     ^
+4 | }
+
+Error: main.alloy:4:1: expected identifier, got }
+
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+4 | }
+  | ^
+5 | 
+
+Error: secondary.alloy:3:59: missing ',' in expression list
+
+2 | local.file_match "applogs" {
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}
+  |                                                           
+4 | }
+
+Error: secondary.alloy:4:1: expected expression, got }
+
+3 |     path_targets = [{"__path__" = "/tmp/app-logs/app.log"}
+4 | }
+  | ^
+5 | 
+
+Error: secondary.alloy:5:1: expected ], got EOF
+
+4 | }
+5 | 
+  | 

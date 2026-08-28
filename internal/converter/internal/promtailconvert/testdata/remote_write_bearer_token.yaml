@@ -1,0 +1,31 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+    follow_redirects: false
+    enable_http2: false
+    headers:
+      fat: ball
+      bird: house
+    tenant_id: sparrow
+    batchwait: 10s
+    batchsize: 1024
+    bearer_token: "MySecretsAreSafeHere"
+    proxy_url: http://proxy.example.com
+    tls_config:
+      ca_file: /home/robin/.ca
+      cert_file: /home/robin/.cert
+      key_file: /home/robin/.key
+      server_name: example.local
+      insecure_skip_verify: true
+    backoff_config:
+      min_period: 100ms
+      max_period: 10s
+      max_retries: 20
+    external_labels:
+      cluster: backyard-pine-treehouse-1
+      host: strawberry-pi
+    timeout: 30s
+tracing:
+  enabled: false
+server:
+  disable: true
+  register_instrumentation: false

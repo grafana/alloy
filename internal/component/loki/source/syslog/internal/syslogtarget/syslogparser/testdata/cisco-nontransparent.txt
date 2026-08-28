@@ -1,0 +1,8 @@
+<189>77: 000073: *Jan  1 2006 23:12:00.975: %SYS-5-CONFIG_I: Configured from console by console
+<189>78: 000074: *Jan  1 2006 23:12:02.720: %SYS-5-CONFIG_I: Configured from console by console
+<190>79: 000075: *Jan  1 2006 23:12:06.981: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 started - reconnection
+<190>82: *Jan  1 2006 23:12:48.455: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 stopped - CLI initiated
+<190>90: *Jan  1 2006 23:14:34.738: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 started - CLI initiated
+<190>94: 000090: *Jan  1 2006 23:14:54.141: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 started - reconnection
+<190>102: [syslog@9 s_id ="testswitch:514"]: *Jan  1 2006 23:16:34.813: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 restored CLI initiated
+<190>106: [syslog@9 s_sn="17" s_id ="0.0.0.0:514"]: *Jan  1 2006 23:17:23.240: %SYS-6-LOGGINGHOST_STARTSTOP: Logging to host 10.0.0.10 port 514 restored CLI initiated

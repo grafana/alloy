@@ -1,0 +1,43 @@
+discovery.ovhcloud "prometheus1" {
+	application_key    = "app_key"
+	application_secret = "app_secret"
+	consumer_key       = "cons_key"
+	service            = "vps"
+}
+
+discovery.ovhcloud "prometheus2" {
+	endpoint           = "ovh-us"
+	application_key    = "app_key_2"
+	application_secret = "app_secret_2"
+	consumer_key       = "cons_key_2"
+	refresh_interval   = "14m0s"
+	service            = "dedicated_server"
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.ovhcloud.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.ovhcloud.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

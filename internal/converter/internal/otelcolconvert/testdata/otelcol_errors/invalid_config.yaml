@@ -1,0 +1,9 @@
+# A config is invalid if it doesn't at least have one receiver and
+# exporter in every pipeline.
+service:
+  pipelines:
+    metrics:
+      receivers: []
+      processors: []
+      exporters: []
+

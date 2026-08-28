@@ -1,0 +1,84 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: pull_pipeline
+    pipeline_stages:
+      - json:
+          expressions:
+            face: smiley
+            hand: thumbs-up
+          source: video
+          drop_malformed: true
+    gcplog:
+      project_id: my-project
+      subscription: my-subscription
+      labels:
+        variety: chardonnay
+        region: chablis
+      use_incoming_timestamp: true
+      use_full_line: true
+
+    relabel_configs:
+      - source_labels:
+          - host
+        target_label: hostname
+
+  - job_name: push_pipeline
+    pipeline_stages:
+      - json:
+          expressions:
+            face: smiley
+            hand: thumbs-up
+          source: video
+          drop_malformed: true
+    gcplog:
+      project_id: my-project
+      subscription: my-subscription
+      subscription_type: push
+      labels:
+        variety: chardonnay
+        region: chablis
+      use_incoming_timestamp: true
+      use_full_line: true
+      push_timeout: 10s
+      server:
+        http_listen_address: localhost
+        http_listen_port: 9094
+        http_listen_conn_limit: 100
+        http_server_read_timeout: 10s
+        http_server_write_timeout: 10s
+        http_server_idle_timeout: 10s
+        http_tls_config:
+          cert_file: /var/cert
+          key_file: /var/key
+          client_ca_file: /var/ca
+          client_auth_type: RequireAndVerifyClientCert
+          cert: my_cert
+          client_ca: my_ca
+
+        grpc_listen_address: 127.0.0.1
+        grpc_listen_port: 9095
+        grpc_listen_conn_limit: 100
+        grpc_server_max_connection_age: 10s
+        grpc_server_max_connection_age_grace: 10s
+        grpc_server_max_connection_idle: 1m
+        grpc_server_max_recv_msg_size: 1000
+        grpc_server_max_send_msg_size: 1000
+        grpc_server_max_concurrent_streams: 100
+        grpc_tls_config:
+          cert_file: /var/cert
+          key_file: /var/key
+          client_ca_file: /var/ca
+          client_auth_type: RequireAndVerifyClientCert
+          cert: my_cert
+          client_ca: my_ca
+
+    relabel_configs:
+      - source_labels:
+          - host2
+        target_label: hostname2
+
+
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

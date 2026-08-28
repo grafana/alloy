@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: fun
+    serverset_sd_configs:
+      - servers: ['localhost:8500']
+        paths: ['/v1/catalog/services']
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

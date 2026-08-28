@@ -1,0 +1,38 @@
+discovery.consulagent "fun" {
+	token            = "token"
+	datacenter       = "bigdata"
+	tag_separator    = ";"
+	scheme           = "sketchy"
+	username         = "toby"
+	password         = "this_password_is_safe_innit?"
+	refresh_interval = "10m0s"
+	services         = ["myapp"]
+	tags             = ["better", "faster", "stronger"]
+
+	tls_config {
+		ca_file              = "/home/robin/.ca"
+		cert_file            = "/home/robin/.cert"
+		key_file             = "/home/robin/.key"
+		server_name          = "example.local"
+		insecure_skip_verify = true
+	}
+}
+
+discovery.relabel "fun" {
+	targets = discovery.consulagent.fun.targets
+
+	rule {
+		source_labels = ["host"]
+		target_label  = "hostname"
+	}
+}
+
+loki.source.file "fun" {
+	targets    = discovery.relabel.fun.output
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

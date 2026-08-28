@@ -1,0 +1,12 @@
+# Specify the namespaces for Roles and RoleBindings
+rbac:
+  create: true
+  rules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "nodes", "nodes/proxy", "nodes/metrics", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    # Rules for the `prometheus.operator.*` components.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
+      verbs: ["get", "list", "watch"]

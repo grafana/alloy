@@ -1,0 +1,13 @@
+receivers:
+  zipkin:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [zipkin]
+      processors: []
+      exporters: [otlp]

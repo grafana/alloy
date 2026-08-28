@@ -1,0 +1,33 @@
+package cloudwatch_exporter
+
+import (
+	"testing"
+	"time"
+
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
+)
+
+func TestDecoupledCloudwatchExporterIntegrationProperSetup(t *testing.T) {
+	givenName := "test_exporter"
+	givenLogger := util.TestAlloyLogger(t).Slog()
+	givenConfig := yaceModel.JobsConfig{
+		StsRegion:           "us-east-1",
+		DiscoveryJobs:       []yaceModel.DiscoveryJob{},
+		StaticJobs:          []yaceModel.StaticJob{},
+		CustomNamespaceJobs: []yaceModel.CustomNamespaceJob{},
+	}
+	givenFipsEnabled := false
+	givenLabelsSnakeCase := true
+	givenScrapeInterval := 30 * time.Second
+
+	e, err := NewDecoupledCloudwatchExporter(givenName, givenLogger, givenConfig, givenScrapeInterval, givenFipsEnabled, givenLabelsSnakeCase)
+	require.NoError(t, err, "failed to construct cloudwatch exporter")
+
+	require.Equal(t, givenName, e.name, "exporter name should be set correctly")
+	require.Equal(t, givenLabelsSnakeCase, e.labelsSnakeCase, "labelsSnakeCase should be set correctly")
+	require.NotNil(t, e.logger, "logger should be initialized")
+	require.NotNil(t, e.cachingClientFactory, "cachingClientFactory should be initialized")
+}

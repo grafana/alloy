@@ -1,0 +1,74 @@
+receivers:
+  filelog:
+    include:
+      - /var/log/*.log
+    exclude:
+      - /var/log/excluded.log
+    start_at: beginning
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>[^ ]+) (?P<severity>[^ ]+) (?P<message>.*)$'
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+    header:
+      pattern: '^HEADER .*$'
+      metadata_operators:
+        - type: regex_parser
+          regex: 'env="(?P<env>[^ ]+)"'
+    poll_interval: 10s
+    max_concurrent_files: 10
+    max_batches: 100
+    fingerprint_size: 10KiB
+    max_log_size: 10MiB
+    encoding: "utf-16"
+    force_flush_period: 5s
+    delete_after_read: true
+    include_file_record_number: true
+    include_file_name: true
+    include_file_path: true
+    include_file_name_resolved: true
+    include_file_path_resolved: true
+    include_file_owner_name: true
+    include_file_owner_group_name: true
+    compression: "gzip"
+    acquire_fs_lock: true
+    multiline:
+      line_start_pattern: "\\d{4}-\\d{2}-\\d{2}"
+      omit_pattern: true
+    preserve_leading_whitespaces: true
+    preserve_trailing_whitespaces: true
+    exclude_older_than: 24h
+    ordering_criteria:
+      regex: '^(?P<timestamp>\d{8})_(?P<severity>\d+)_'
+      top_n: 12
+      group_by: 'severity'
+      sort_by:
+        - regex_key: 'timestamp'
+          sort_type: 'timestamp'
+          ascending: true
+          layout: '%Y%m%d'
+          location: 'UTC'
+        - regex_key: 'severity'
+          sort_type: 'numeric'
+          ascending: true
+    storage: file_storage
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+extensions:
+  file_storage:
+    directory: /var/lib/otelcol/file_storage
+    compaction:
+      directory: /var/lib/otelcol/file_storage
+    fsync: true
+    
+service:
+  extensions: [ file_storage ]
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: []
+      exporters: [otlp]

@@ -1,0 +1,36 @@
+loki.write "default" {
+	endpoint {
+		url            = "http://localhost/loki/api/v1/push"
+		batch_wait     = "10s"
+		batch_size     = "1KiB"
+		remote_timeout = "30s"
+		headers        = {
+			bird = "house",
+			fat  = "ball",
+		}
+		min_backoff_period  = "100ms"
+		max_backoff_period  = "10s"
+		max_backoff_retries = 20
+		tenant_id           = "sparrow"
+
+		basic_auth {
+			username = "robin"
+			password = "Worms123"
+		}
+		proxy_url = "http://proxy.example.com"
+
+		tls_config {
+			ca_file              = "/home/robin/.ca"
+			cert_file            = "/home/robin/.cert"
+			key_file             = "/home/robin/.key"
+			server_name          = "example.local"
+			insecure_skip_verify = true
+		}
+		follow_redirects = false
+		enable_http2     = false
+	}
+	external_labels = {
+		cluster = "backyard-pine-treehouse-1",
+		host    = "strawberry-pi",
+	}
+}

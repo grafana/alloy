@@ -1,0 +1,2 @@
+(Warning) the service/telemetry/logs/sampling configuration is not supported
+(Warning) the service/telemetry/metrics/readers configuration is not supported - to gather Alloy's own telemetry refer to: https://grafana.com/docs/alloy/latest/collect/metamonitoring/

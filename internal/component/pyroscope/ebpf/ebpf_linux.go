@@ -1,0 +1,450 @@
+//go:build linux && (arm64 || amd64)
+
+package ebpf
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
+	"github.com/grafana/pyroscope/lidia"
+	"github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
+
+	"go.opentelemetry.io/ebpf-profiler/interpreter/interpreterconfig"
+	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
+	"go.opentelemetry.io/ebpf-profiler/libpf"
+	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
+	"go.opentelemetry.io/ebpf-profiler/process"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
+	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
+
+	reporter2 "go.opentelemetry.io/ebpf-profiler/reporter"
+	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/pyroscope"
+	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/featuregate"
+)
+
+func init() {
+	component.Register(component.Registration{
+		Name:      "pyroscope.ebpf",
+		Stability: featuregate.StabilityGenerallyAvailable,
+		Args:      Arguments{},
+
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			arguments := args.(Arguments)
+
+			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
+		},
+	})
+	python.NoContinueWithNextUnwinder.Store(true)
+}
+
+var (
+	ebpfMetricsOnce     sync.Once
+	ebpfMetricsRegistry *prometheus.Registry // reused by all instances
+	ebpfMetricsErr      error                // stored for all instances to check
+)
+
+func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
+	// ebpfmetrics.Start writes to package-level globals in the upstream library,
+	// so it must only be called once. All instances share the same OTel registry.
+	ebpfMetricsOnce.Do(func() {
+		ebpfMetricsRegistry = prometheus.NewRegistry()
+		promExporter, err := sdkprometheus.New(
+			sdkprometheus.WithRegisterer(ebpfMetricsRegistry),
+			sdkprometheus.WithoutTargetInfo(),
+		)
+		if err != nil {
+			ebpfMetricsErr = fmt.Errorf("creating OTel prometheus exporter: %w", err)
+			return
+		}
+		mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(promExporter))
+		ebpfmetrics.Start(mp.Meter("pyroscope.ebpf"))
+	})
+	if ebpfMetricsErr != nil {
+		return nil, ebpfMetricsErr
+	}
+	if reg != nil {
+		reg.MustRegister(ebpfMetricsRegistry)
+	}
+
+	cfg, err := args.Convert()
+	if err != nil {
+		return nil, err
+	}
+	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
+	discovery := alloydiscovery.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
+
+	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
+
+	var nfs *irsymcache.Resolver
+	if args.DebugInfoArguments.OnTargetSymbolizationEnabled {
+		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
+			Options: []lidia.Option{
+				lidia.WithFiles(),
+				lidia.WithLines(),
+			},
+		}, irsymcache.Options{
+			SizeEntries: uint32(args.SymbCacheSizeEntries),
+			Path:        args.SymbCachePath,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if dynamicProfilingPolicy {
+		cfg.Policy = &alloydiscovery.ServiceDiscoveryTargetsOnlyPolicy{Discovery: discovery}
+	} else {
+		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
+	}
+
+	ms := newMetrics(reg)
+
+	res := &Component{
+		cfg:                    cfg,
+		logger:                 logger,
+		metrics:                ms,
+		appendable:             appendable,
+		args:                   args,
+		targetFinder:           discovery,
+		dynamicProfilingPolicy: dynamicProfilingPolicy,
+		argsUpdate:             make(chan Arguments, 4),
+		symbols:                nfs,
+	}
+
+	var symbols irsymcache.NativeSymbolResolver
+	if nfs != nil {
+		symbols = nfs
+	}
+	r := reporter.NewPPROF(logger, &reporter.Config{
+		ReportInterval:            cfg.ReporterInterval,
+		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
+		Demangle:                  args.Demangle,
+		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
+		PIDLabel:                  args.PIDLabel,
+		CommMode:                  rargs.CommMode(args.Comm),
+		KernelFrames:              args.KernelFrames,
+	}, discovery,
+		symbols,
+		func(ctx context.Context, ps []reporter.PPROF) {
+			res.sendProfiles(ctx, ps)
+		})
+
+	cfg.Reporter = r
+	cfg.ExecutableReporter = res
+
+	if cfg.VerboseMode {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	return res, nil
+}
+
+type Component struct {
+	logger                 *slog.Logger
+	args                   Arguments
+	dynamicProfilingPolicy bool
+	argsUpdate             chan Arguments
+	appendable             *pyroscope.Fanout
+	targetFinder           alloydiscovery.TargetProducer
+
+	metrics *metrics
+	cfg     *controller.Config
+
+	healthMut sync.RWMutex
+	health    component.Health
+	symbols   *irsymcache.Resolver
+}
+
+func (c *Component) Run(ctx context.Context) error {
+	c.checkTraceFS()
+
+	if c.args.LazyMode && len(c.args.Targets) == 0 {
+		c.logger.Info("lazy mode enabled, waiting for targets to profile")
+		if err := c.waitForTargets(ctx); err != nil {
+			return err
+		}
+	}
+
+	ctlr := controller.New(c.cfg)
+	const sessionMaxErrors = 3
+	var err error
+	for i := 0; i < sessionMaxErrors; i++ {
+		err = ctlr.Start(ctx)
+		if err != nil {
+			c.reportUnhealthy(err)
+			c.metrics.profilingSessionsFailingTotal.Inc()
+			time.Sleep(c.cfg.ReporterInterval)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return err
+	}
+	c.reportHealthy()
+	c.metrics.profilingSessionsTotal.Inc()
+	defer func() {
+		ctlr.Shutdown()
+		if c.cfg.ExecutableReporter != nil {
+			if nfs, ok := c.cfg.ExecutableReporter.(*irsymcache.Resolver); ok {
+				nfs.Cleanup()
+			}
+		}
+	}()
+
+	var g run.Group
+
+	g.Add(func() error {
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case newArgs := <-c.argsUpdate:
+				c.updateArgs(newArgs)
+			}
+		}
+	}, func(error) {})
+	return g.Run()
+}
+
+func (c *Component) updateArgs(newArgs Arguments) {
+	c.args = newArgs
+	c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
+	c.appendable.UpdateChildren(newArgs.ForwardTo)
+	c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
+}
+
+func (c *Component) waitForTargets(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case newArgs := <-c.argsUpdate:
+			c.updateArgs(newArgs)
+			if len(c.args.Targets) > 0 {
+				return nil
+			}
+		}
+	}
+}
+
+func (c *Component) Update(args component.Arguments) error {
+	newArgs := args.(Arguments)
+	select {
+	case c.argsUpdate <- newArgs:
+	default:
+		c.logger.Debug("dropped args update")
+	}
+	return nil
+}
+
+func (c *Component) reportUnhealthy(err error) {
+	c.logger.Error("unhealthy", "err", err)
+
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeUnhealthy,
+		Message:    err.Error(),
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) reportHealthy() {
+	c.healthMut.Lock()
+	defer c.healthMut.Unlock()
+	c.health = component.Health{
+		Health:     component.HealthTypeHealthy,
+		UpdateTime: time.Now(),
+	}
+}
+
+func (c *Component) CurrentHealth() component.Health {
+	c.healthMut.RLock()
+	defer c.healthMut.RUnlock()
+	return c.health
+}
+
+func (c *Component) checkTraceFS() {
+	candidates := []string{
+		"/sys/kernel/tracing",
+		"/sys/kernel/debug/tracing",
+	}
+	for _, p := range candidates {
+		_, err := os.Stat(filepath.Join(p, "events"))
+		if err != nil {
+			continue
+		}
+		c.logger.Debug("found tracefs at " + p)
+		return
+	}
+	mountPath := candidates[0]
+	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
+	if err != nil {
+		c.logger.Error("failed to mount tracefs at "+mountPath, "err", err)
+	} else {
+		c.logger.Debug("mounted tracefs at " + mountPath)
+	}
+}
+
+func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
+	if md.MappingFile == (libpf.FrameMappingFile{}) {
+		return
+	}
+	if c.symbols != nil {
+		c.symbols.ReportExecutable(md)
+	}
+	if c.args.DebugInfoArguments.UploadEnabled {
+		c.reportExecutableForDebugInfoUpload(md)
+	}
+}
+
+func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
+	extractAsFile := func(pid libpf.PID, file string) string {
+		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file)
+	}
+	mf := args.MappingFile.Value()
+	open := func() (process.ReadAtCloser, error) {
+		fallback := func() (process.ReadAtCloser, error) {
+			return args.Process.OpenMappingFile(args.Mapping)
+		}
+		if args.DebuglinkFileName == "" {
+			return fallback()
+		}
+		file := extractAsFile(args.Process.PID(), args.DebuglinkFileName)
+		if f, err := os.Open(file); err != nil {
+			return fallback()
+		} else {
+			return f, nil
+		}
+	}
+	c.appendable.Upload(debuginfo.UploadJob{
+		FrameMappingFileData: mf,
+		Open:                 open,
+		InitArguments:        c.args.DebugInfoArguments,
+	})
+}
+
+// NewDefaultArguments create the default settings for a scrape job.
+func NewDefaultArguments() Arguments {
+	return Arguments{
+		CollectInterval:          15 * time.Second,
+		SampleRate:               19,
+		Demangle:                 "none",
+		PythonEnabled:            true,
+		PerlEnabled:              true,
+		PHPEnabled:               true,
+		HotspotEnabled:           true,
+		RubyEnabled:              true,
+		V8Enabled:                true,
+		DotNetEnabled:            true,
+		OffCPUThreshold:          0,
+		BPFFSRoot:                "/sys/fs/bpf/",
+		OBIProcessContextEnabled: true,
+		GoEnabled:                true,
+		LoadProbe:                false,
+		ProbeLinks:               []string{},
+		VerboseMode:              false,
+		LazyMode:                 false,
+		NoKernelVersionCheck:     false,
+
+		Comm:         string(rargs.CommModeNone),
+		KernelFrames: true,
+
+		// undocumented
+		PyroscopeDynamicProfilingPolicy: true,
+		SymbCachePath:                   "/tmp/symb-cache",
+		SymbCacheSizeEntries:            2048,
+		DebugInfoArguments: debuginfo.Arguments{
+			UploadEnabled:                false,
+			OnTargetSymbolizationEnabled: true,
+			CacheSize:                    262144,
+			QueueSize:                    256,
+			WorkerNum:                    16,
+		},
+	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	*args = NewDefaultArguments()
+}
+
+func (args *Arguments) Convert() (*controller.Config, error) {
+	cfgProtoType, err := controller.ParseArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfgProtoType.Validate(); err != nil {
+		return nil, err
+	}
+
+	cfg := &controller.Config{Config: cfgProtoType}
+	cfg.SendErrorFrames = true
+	cfg.ReporterInterval = args.CollectInterval
+	cfg.SamplesPerSecond = args.SampleRate
+	interpreters := interpreterconfig.AllInterpreters()
+	interpreters.Python.Disabled = !args.PythonEnabled
+	interpreters.Perl.Disabled = !args.PerlEnabled
+	interpreters.PHP.Disabled = !args.PHPEnabled
+	interpreters.Hotspot.Disabled = !args.HotspotEnabled
+	interpreters.Ruby.Disabled = !args.RubyEnabled
+	interpreters.V8.Disabled = !args.V8Enabled
+	interpreters.Dotnet.Disabled = !args.DotNetEnabled
+	interpreters.Go.Disabled = !args.GoEnabled
+	cfg.Interpreters = interpreters
+	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.BPFFSRoot = args.BPFFSRoot
+	cfg.OBIProcessCtx = args.OBIProcessContextEnabled
+	cfg.LoadProbe = args.LoadProbe
+	cfg.ProbeLinks = args.probeLinks()
+	cfg.VerboseMode = args.VerboseMode
+	cfg.NoKernelVersionCheck = args.NoKernelVersionCheck
+	return cfg, nil
+}
+
+func (args *Arguments) probeLinks() []string {
+	if len(args.ProbeLinks) > 0 {
+		return args.ProbeLinks
+	}
+
+	probeLinks := make([]string, len(args.DeprecatedArguments.UProbeLinks))
+	for i, link := range args.DeprecatedArguments.UProbeLinks {
+		probeLinks[i] = "uprobe:" + link
+	}
+	return probeLinks
+}
+
+func (args *Arguments) targetsOptions(dynamicProfilingPolicy bool) alloydiscovery.TargetsOptions {
+	targets := make([]alloydiscovery.DiscoveredTarget, 0, len(args.Targets))
+	for _, t := range args.Targets {
+		targets = append(targets, t.AsMap())
+	}
+	return alloydiscovery.TargetsOptions{
+		Targets:     targets,
+		TargetsOnly: dynamicProfilingPolicy,
+		DefaultTarget: alloydiscovery.DiscoveredTarget{
+			"service_name": "ebpf/unspecified",
+		},
+	}
+}

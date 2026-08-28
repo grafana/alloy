@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: fun
+    digitalocean_sd_configs:
+      - refresh_interval: 10m
+        port: 1234
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

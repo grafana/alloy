@@ -1,0 +1,18 @@
+receivers:
+  jaeger:
+    protocols:
+      grpc:
+      thrift_binary:
+      thrift_compact:
+      thrift_http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [jaeger]
+      processors: []
+      exporters: [otlp]

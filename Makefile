@@ -1,0 +1,538 @@
+## Build, test, and generate code for various parts of Alloy.
+##
+## At least Go 1.22, git, and a moderately recent version of Docker is required
+## to be able to use the Makefile. This list isn't exhaustive and there are other
+## dependencies for the generate-* targets. If you do not have the full list of
+## build dependencies, you may set USE_CONTAINER=1 to proxy build commands to a
+## build container.
+##
+## Other environment variables can be used to tweak behaviors of targets.
+## See the bottom of this help section for the full list of supported
+## environment variables.
+##
+## Usage:
+##   make <target>
+##
+## Targets for running tests:
+##
+##   test                  Run tests
+##   lint                  Lint code
+##   govulncheck           Run govulncheck across all Go modules
+##   integration-test      Run integration tests
+##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
+##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
+##
+## Targets for building binaries:
+##
+##   binaries        Compiles all binaries.
+##   alloy           Compiles Alloy to $(ALLOY_BINARY) (auto-downloads Beyla if needed)
+##   alloy-service   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
+##   download-beyla  Download Beyla binaries for embedding
+##
+## Targets for building Docker images:
+##
+##   images               Builds all (Linux) Docker images.
+##   images-windows       Builds all (Windows) Docker images.
+##   alloy-image          Builds alloy Docker image.
+##   alloy-image-windows  Builds alloy Docker image for Windows.
+##
+## Targets for packaging:
+##
+##   dist                 Produce release assets for everything.
+##   dist-alloy-binaries  Produce release-ready Alloy binaries.
+##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
+##   dist-alloy-installer Produce a Windows installer for Alloy.
+##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
+##
+## Targets for generating assets:
+##
+##   generate                  Generate everything.
+##   generate-helm-docs        Generate Helm chart documentation.
+##   generate-helm-tests       Generate Helm chart tests.
+##   generate-ui               Generate the UI assets.
+##   generate-graphql          Generate the GraphQL assets.
+##   generate-winmanifest      Generate the Windows application manifest.
+##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-source-code      Wrapper for collector distro codegen (skips when CI=true or SKIP_CODE_GENERATION=1).
+##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
+##
+## Other targets:
+##
+##   build-container-cache  Create a cache for the build container to speed up
+##                          subsequent proxied builds
+##   clean                  Clean caches and built binaries
+##   help                   Displays this message
+##   info                   Print Makefile-specific environment variables
+##   update-go-version-pr-1 Update Go version in build images (use VERSION=1.25.8)
+##   update-go-version-pr-2 Update Go version in go.mod and Dockerfiles (use VERSION=1.25.8)
+##
+## Environment variables:
+##
+##   USE_CONTAINER        Set to 1 to enable proxying commands to build container
+##   ALLOY_IMAGE          Image name:tag built by `make alloy-image`
+##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
+##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
+##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
+##   SERVICE_BINARY       Output path of `make alloy-service` (default build/alloy-service)
+##   GOOS                 Override OS to build binaries for
+##   GOARCH               Override target architecture to build binaries for
+##   GOARM                Override ARM version (6 or 7) when GOARCH=arm
+##   CGO_ENABLED          Set to 0 to disable Cgo for binaries.
+##   CGO_LDFLAGS          Extra flags passed to the external C linker for Cgo binaries.
+##   RELEASE_BUILD        Set to 1 to build release binaries.
+##   VERSION              Version to inject into built binaries.
+##   GO_TAGS              Extra tags to use when building.
+##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
+##   GOEXPERIMENT         Used to enable Go features behind feature flags.
+##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
+##   BEYLA_VERSION        Version of Beyla to download and embed.
+
+include build-tools/make/*.mk
+
+ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
+ALLOY_BINARY         		?= build/alloy
+SERVICE_BINARY       		?= build/alloy-service
+ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_USER         		?= $(shell whoami)
+BUILDER_HOST         		?= $(shell hostname)
+# OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
+# Collector core version in collector/builder-config.yaml.
+BUILDER_VERSION      		?= v0.158.0
+JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+# GO_TAGS converted to govulncheck's comma form so tag-gated code paths are
+# analysed (the underlying govulncheck version is pinned in tools/govulncheck).
+GOVULNCHECK_TAGS    		?= $(shell echo "$(GO_TAGS)" | tr ' ' ',')
+GOOS                 		?= $(shell go env GOOS)
+GOARCH               		?= $(shell go env GOARCH)
+GOARM                		?= $(shell go env GOARM)
+CGO_ENABLED          		?= 1
+CGO_LDFLAGS          		?=
+RELEASE_BUILD        		?= 0
+GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
+
+# Beyla embedding configuration
+BEYLA_BINARY_DIR     := internal/component/beyla/ebpf
+BEYLA_CONFIG_DIR     := $(BEYLA_BINARY_DIR)/internal/config
+BEYLA_SCHEMA_DIR     := $(BEYLA_CONFIG_DIR)/gen
+BEYLA_ARTIFACTS_DIR  := $(BEYLA_SCHEMA_DIR)/beyla
+BEYLA_VERSION_FILE   := $(BEYLA_ARTIFACTS_DIR)/beyla_version.yaml
+BEYLA_VERSION        := $(shell awk '$$1=="version:"{print $$2}' $(BEYLA_VERSION_FILE) 2>/dev/null)
+BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla
+BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla
+BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
+BEYLA_SCHEMA         := $(BEYLA_ARTIFACTS_DIR)/schema.json
+
+# Determine the golangci-lint binary path using Make functions where possible.
+# Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
+# Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
+# $(wildcard ...) checks for existence. PATH check still uses shell for practicality.
+# Allows override via environment/command line using ?=
+GOLANGCI_LINT_BINARY ?= $(or \
+    $(if $(shell go env GOBIN),$(wildcard $(shell go env GOBIN)/golangci-lint)), \
+    $(wildcard $(shell go env GOPATH)/bin/golangci-lint), \
+    $(shell command -v golangci-lint 2>/dev/null), \
+    golangci-lint \
+)
+
+# List of all environment variables which will propagate to the build
+# container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
+PROPAGATE_VARS := \
+    ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
+    BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED CGO_LDFLAGS RELEASE_BUILD \
+    ALLOY_BINARY \
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    SKIP_CODE_GENERATION \
+
+#
+# Constants for targets
+#
+
+# If GO_TAGS does not already contain gore2regex, prepend it.
+# This makes loki.secretfilter use the go-re2 library, which provides
+# a substantial performance improvement over stdlib's regex.
+ifeq ($(filter gore2regex,$(GO_TAGS)),)
+override GO_TAGS := $(strip gore2regex $(GO_TAGS))
+endif
+
+GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED) CGO_LDFLAGS="$(CGO_LDFLAGS)"
+
+# Clears cross-compile settings, to be set in any build-time generation steps that run "go run" under the hood
+GO_HOST_ENV := env -u GOOS -u GOARCH CGO_ENABLED=0
+
+VERSION      ?= $(shell bash ./scripts/image-tag)
+GIT_REVISION := $(shell git rev-parse --short HEAD)
+GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
+VPREFIX      := github.com/grafana/alloy/internal/build
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+# Allow the Go build cache to be used except when doing a release build or when
+# an epoch is explicitly set. BuildDate otherwise changes on every invocation,
+# which busts the cache and forces a relink on every local build.
+ifdef SOURCE_DATE_EPOCH
+    BUILD_DATE = $(shell date -u -d@$(SOURCE_DATE_EPOCH) +"%Y-%m-%dT%H:%M:%SZ")
+else ifeq ($(RELEASE_BUILD),1)
+    BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+endif
+GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
+                -X $(VPREFIX).Version=$(VERSION)                          \
+		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
+                -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
+                -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
+                -X $(VPREFIX).BuildDate=$(BUILD_DATE)
+
+DEFAULT_FLAGS    := $(GO_FLAGS)
+DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
+RELEASE_GO_FLAGS := -ldflags "-s -w $(GO_LDFLAGS)" -tags "$(GO_TAGS)"
+
+ifeq ($(RELEASE_BUILD),1)
+GO_FLAGS := $(DEFAULT_FLAGS) $(RELEASE_GO_FLAGS)
+else
+GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
+endif
+
+.PHONY: lint
+lint: lint-go run-alloylint lint-shell
+
+.PHONY: lint-go
+lint-go:
+	mise exec -- task lint:go
+
+.PHONY: lint-shell
+lint-shell:
+	mise exec -- task lint:shellcheck
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	mise exec -- task lint:alloylint
+
+#
+# Targets for running tests
+#
+# These targets currently don't support proxying to a build container.
+#
+
+.PHONY: test
+# We have to run test twice: once for all packages with -race and then once
+# more for packages that exclude tests via //go:build !race due to known race detection issues. The
+# final command runs tests for syntax module.
+test:
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
+
+.PHONY: govulncheck
+# Thin Go wrapper around govulncheck: streams the tool's native text output
+# unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
+# applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
+govulncheck:
+	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
+
+test-packages:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	docker pull $(BUILD_IMAGE)
+	go test -tags="gore2regex packaging" -race ./internal/tools/packaging_test
+endif
+
+.PHONY: integration-test-docker
+integration-test-docker:
+	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
+
+.PHONY: integration-test-k8s
+integration-test-k8s:
+	$(GO_ENV) go run ./integration-tests/k8s/runner --test-tags='$(GO_TAGS)' $(RUN_ARGS)
+
+# Interactive mode for local development: pick reuse-cluster, skip-image-builds,
+# and shard/packages from a TUI menu before tests run.
+.PHONY: integration-test-k8s-local-dev
+integration-test-k8s-local-dev:
+	$(GO_ENV) go run ./integration-tests/k8s/runner --interactive --test-tags='$(GO_TAGS)' $(RUN_ARGS)
+
+# Windows service integration test. Runs only on Windows with Administrator privileges.
+# Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
+.PHONY: integration-test-windows-service
+integration-test-windows-service: dist-alloy-installer-windows
+	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
+		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
+
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
+
+#
+# Targets for building binaries
+#
+
+.PHONY: binaries alloy
+binaries: alloy
+
+.PHONY: beyla
+beyla: download-beyla
+
+.PHONY: sync-beyla-docs-version
+sync-beyla-docs-version:
+	@for f in docs/sources/_index.md.t docs/sources/_index.md; do \
+	    sed -i.bak "s/BEYLA_VERSION: .*/BEYLA_VERSION: $(BEYLA_VERSION)/" $$f; \
+	    rm -f $$f.bak; \
+	done
+
+.PHONY: download-beyla
+download-beyla:
+	@env -u GOOS -u GOARCH -u GOARM CGO_ENABLED=0 go run ./$(BEYLA_SCHEMA_DIR)/download.go \
+	    $(BEYLA_BINARY_AMD64) \
+	    $(BEYLA_BINARY_ARM64) \
+	    $(BEYLA_BINARY_STAMP) \
+	    $(BEYLA_VERSION_FILE)
+
+.PHONY: update-beyla
+update-beyla:
+	@[ -n "$(TAG)" ] || { echo "usage: make update-beyla TAG=<beyla-version>  (e.g. TAG=v3.29.0)"; exit 1; }
+	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
+	    --update-checksums $(TAG) $(BEYLA_VERSION_FILE)
+	@$(MAKE) download-beyla download-beyla-schema sync-beyla-docs-version
+
+.PHONY: download-beyla-schema
+download-beyla-schema:
+	@echo "  Downloading schema for Beyla $(BEYLA_VERSION)..."
+	@mkdir -p $(BEYLA_ARTIFACTS_DIR)
+	@curl -fsSL -o $(BEYLA_SCHEMA) \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
+	@echo "  ✓ Done"
+
+$(BEYLA_BINARY_AMD64) $(BEYLA_BINARY_ARM64):
+	@$(MAKE) download-beyla
+
+$(BEYLA_SCHEMA):
+	@mkdir -p $(BEYLA_ARTIFACTS_DIR)
+	curl -fsSL -o $@ \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
+
+alloy: generate-ui generate-source-code beyla
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
+endif
+
+# alloy-service is not included in binaries since it's Windows-only.
+alloy-service:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./internal/cmd/alloy-service
+endif
+
+alloylint:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./internal/cmd/alloylint && $(GO_ENV) go build $(GO_FLAGS) -o ../../../$(ALLOYLINT_BINARY) .
+endif
+
+#
+# Targets for building Docker images
+#
+
+DOCKER_FLAGS := --build-arg RELEASE_BUILD=$(RELEASE_BUILD) --build-arg VERSION=$(VERSION)
+
+ifneq ($(DOCKER_PLATFORM),)
+DOCKER_FLAGS += --platform=$(DOCKER_PLATFORM)
+endif
+
+.PHONY: images alloy-image
+images: alloy-image
+
+alloy-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+
+# Test fixture image used by the k8s integration tests as a Prometheus scrape
+# target. The runner builds this alongside alloy-image so the tests don't have
+# to call `docker build` themselves.
+.PHONY: prom-gen-image
+prom-gen-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
+
+.PHONY: images-windows alloy-image-windows
+images: alloy-image-windows
+
+alloy-image-windows:
+	docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_WINDOWS) -f Dockerfile.windows .
+
+#
+# Targets for generating assets
+#
+
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+
+generate-graphql:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+endif
+
+generate-helm-docs:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./operations/helm/charts/alloy && helm-docs
+endif
+
+generate-helm-tests:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	bash ./operations/helm/scripts/rebuild-tests.sh
+endif
+
+generate-source-code:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_CODE_GENERATION),1)
+	@echo "Skipping code generation (SKIP_CODE_GENERATION=1)"
+else
+	@$(MAKE) generate-otel-collector-distro
+endif
+
+generate-otel-collector-distro:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	# These are host tools, so GO_HOST_ENV clears the cross-compile settings to
+	# avoid accidentally building them for the target platform within generate
+	$(GO_HOST_ENV) go run -C tools ./cmd sync-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
+	# This tidy propagates any root module changes to the collector module
+	cd ./collector && $(GO_HOST_ENV) go mod tidy
+	cd ./collector && $(GO_HOST_ENV) BUILDER_VERSION=$(BUILDER_VERSION) go generate
+endif
+
+generate-ui:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_UI_BUILD),1)
+	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
+else
+	cd ./internal/web/ui && npm ci --no-audit --no-fund && npm run build
+endif
+
+generate-docs:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	go generate ./internal/tools/docs_generator/
+endif
+
+generate-winmanifest:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	go generate ./internal/winmanifest
+endif
+
+.PHONY: generate-rendered-mixin
+generate-rendered-mixin:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	rm -rf operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	cd operations/alloy-mixin && $(JB) install
+	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
+	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
+endif
+
+.PHONY: test-mixin
+test-mixin: generate-rendered-mixin
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@echo "Running Jsonnet tests..."
+	@for test in operations/alloy-mixin/test/*_test.jsonnet; do \
+		echo "Testing $$test..."; \
+		$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor "$$test" || exit 1; \
+		echo ""; \
+	done
+	@echo "✅ All Jsonnet tests passed!"
+	@echo "Validating dashboards with Grizzly..."
+	@for dashboard in operations/alloy-mixin/rendered/dashboards/*.json; do \
+		echo "  Validating $$dashboard..."; \
+		$(GRIZZLY) show "$$dashboard" > /dev/null || exit 1; \
+	done
+	@echo "Grizzly validation passed!"
+	@echo "All mixin tests passed!"
+endif
+
+generate-snmp:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
+	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
+	sed -i '' "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	go generate ./internal/static/integrations/snmp_exporter/common; \
+	sed -i '' "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
+endif
+
+#
+# Other targets
+#
+# build-container-cache and clean-build-container-cache are defined in
+# Makefile.build-container.
+
+.PHONY: update-go-version-pr-1
+update-go-version-pr-1:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-1 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-1 $(VERSION)
+
+.PHONY: update-go-version-pr-2
+update-go-version-pr-2:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-2 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-2 $(VERSION)
+
+.PHONY: clean
+clean: clean-dist clean-build-container-cache clean-beyla
+	rm -rf ./build/*
+
+.PHONY: clean-beyla
+clean-beyla:
+	@echo "Cleaning Beyla binaries..."
+	@rm -f $(BEYLA_BINARY_AMD64) $(BEYLA_BINARY_ARM64)
+
+.PHONY: info
+info:
+	@printf "USE_CONTAINER       = $(USE_CONTAINER)\n"
+	@printf "ALLOY_IMAGE         = $(ALLOY_IMAGE)\n"
+	@printf "ALLOY_IMAGE_WINDOWS = $(ALLOY_IMAGE_WINDOWS)\n"
+	@printf "BUILD_IMAGE         = $(BUILD_IMAGE)\n"
+	@printf "ALLOY_BINARY        = $(ALLOY_BINARY)\n"
+	@printf "GOOS                = $(GOOS)\n"
+	@printf "GOARCH              = $(GOARCH)\n"
+	@printf "GOARM               = $(GOARM)\n"
+	@printf "CGO_ENABLED         = $(CGO_ENABLED)\n"
+	@printf "RELEASE_BUILD       = $(RELEASE_BUILD)\n"
+	@printf "VERSION             = $(VERSION)\n"
+	@printf "GO_TAGS             = $(GO_TAGS)\n"
+	@printf "GOEXPERIMENT        = $(GOEXPERIMENT)\n"
+	@printf "BEYLA_VERSION       = $(BEYLA_VERSION)\n"
+
+# awk magic to print out the comment block at the top of this file.
+.PHONY: help
+help:
+	@awk 'BEGIN {FS="## "} /^##\s*(.*)/ { print $$2 }' $(MAKEFILE_LIST)

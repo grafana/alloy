@@ -1,0 +1,945 @@
+// Package convert implements conversion utilities to convert between
+// OpenTelemetry Collector data and Prometheus data.
+//
+// It follows the [OpenTelemetry Metrics Data Model] for implementing the
+// conversion.
+//
+// [OpenTelemetry Metrics Data Model]: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md
+package convert
+
+import (
+	"context"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"log/slog"
+	"math"
+	"sort"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/timestamp"
+	"github.com/prometheus/prometheus/model/value"
+	"github.com/prometheus/prometheus/storage"
+	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.6.1"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
+)
+
+var (
+	scopeNameLabel    = "otel_scope_name"
+	scopeVersionLabel = "otel_scope_version"
+)
+
+// Converter implements consumer.Metrics and converts received metrics
+// into Prometheus-compatible metrics.
+type Converter struct {
+	log *slog.Logger
+
+	optsMut sync.RWMutex
+	opts    Options
+
+	seriesCache   sync.Map // Cache of active series.
+	metadataCache sync.Map // Cache of active metadata entries.
+
+	next storage.Appendable // Location to write converted metrics.
+}
+
+// Options configure a Converter.
+type Options struct {
+	// IncludeTargetInfo includes the target_info metric.
+	IncludeTargetInfo bool
+	// IncludeScopeInfo includes the otel_scope_info metric and adds
+	// otel_scope_name and otel_scope_version labels to data points.
+	IncludeScopeInfo bool
+	// IncludeScopeLabels includes the otel_scope_name and otel_scope_version
+	// labels from the scope in the metrics.
+	IncludeScopeLabels bool
+	// AddMetricSuffixes controls whether suffixes are added to metric names. Defaults to true.
+	AddMetricSuffixes bool
+	// ResourceToTelemetryConversion controls whether to convert resource attributes to Prometheus-compatible datapoint attributes
+	ResourceToTelemetryConversion bool
+	HonorMetadata                 bool
+	// ConvertClassicHistogramsToNHCB controls whether OTel classic (explicit
+	// bounds) histograms are converted to Prometheus Native Histograms with
+	// Custom Buckets instead of being written as N+2 classic series.
+	ConvertClassicHistogramsToNHCB bool
+	// KeepIdentifyingResourceAttributes preserves service.name,
+	// service.namespace, and service.instance.id as labels on target_info
+	// in addition to mapping them to job and instance, keeping target_info
+	// compliant with the OpenTelemetry service resource semantic conventions
+	// (https://opentelemetry.io/docs/specs/semconv/resource/service/).
+	// Only affects target_info; regular metric series are unchanged.
+	KeepIdentifyingResourceAttributes bool
+	// EnableStartTimestampZeroIngestion controls whether a synthetic zero
+	// sample is injected at the OTLP start timestamp ahead of each cumulative
+	// (counter, histogram, summary) sample, marking the point at which the
+	// series started or was reset. This mirrors Prometheus' scrape-time
+	// start-timestamp-zero-ingestion feature.
+	EnableStartTimestampZeroIngestion bool
+}
+
+var _ consumer.Metrics = (*Converter)(nil)
+
+// New returns a new Converter. Converted metrics are passed to the provided
+// storage.Appendable implementation.
+func New(l *slog.Logger, next storage.Appendable, opts Options) *Converter {
+	if l == nil {
+		l = logging.NewSlogNop()
+	}
+	return &Converter{log: l, next: next, opts: opts}
+}
+
+// UpdateOptions updates the options for the Converter.
+func (conv *Converter) UpdateOptions(opts Options) {
+	conv.optsMut.Lock()
+	defer conv.optsMut.Unlock()
+	conv.opts = opts
+}
+
+// getOpts gets a copy of the current options for the Converter.
+func (conv *Converter) getOpts() Options {
+	conv.optsMut.RLock()
+	defer conv.optsMut.RUnlock()
+	return conv.opts
+}
+
+// Capabilities implements consumer.Metrics.
+func (conv *Converter) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{
+		MutatesData: false,
+	}
+}
+
+// ConsumeMetrics converts the provided OpenTelemetry Collector-formatted
+// metrics into Prometheus-compatible metrics. Each call to ConsumeMetrics
+// requests a storage.Appender and will commit generated metrics to it at the
+// end of the call.
+//
+// Metrics are tracked in memory over time. Call [*Converter.GC] to clean up
+// stale metrics.
+func (conv *Converter) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	// NOTE(rfratto): OpenTelemetry Collector doesn't have any equivalent concept
+	// of storage.SeriesRef from Prometheus. This adds some extra CPU overhead in
+	// converting pmetric.Metrics to Prometheus data, since we'll always have to
+	// build a key to uniquely represent each data point.
+	//
+	// To reduce CPU and allocations as much as possible, each datapoint is
+	// tracked as an "active series." See memorySeries for information on what is
+	// cached.
+
+	app := conv.next.Appender(ctx)
+
+	for rcount := 0; rcount < md.ResourceMetrics().Len(); rcount++ {
+		rm := md.ResourceMetrics().At(rcount)
+		conv.consumeResourceMetrics(app, rm)
+	}
+
+	return app.Commit()
+}
+
+func (conv *Converter) consumeResourceMetrics(app storage.Appender, rm pmetric.ResourceMetrics) {
+	resourceMD := conv.createOrUpdateMetadata("target_info", metadata.Metadata{
+		Type: model.MetricTypeGauge,
+		Help: "Target metadata",
+	})
+	resAttrs := rm.Resource().Attributes()
+	memResource := conv.getOrCreateResource(rm.Resource())
+
+	opts := conv.getOpts()
+	if opts.IncludeTargetInfo {
+		// Write series data first, so the series exists before we write metadata.
+		if err := memResource.WriteTo(app, time.Now()); err != nil {
+			conv.log.Error("failed to write target_info metric", "err", err)
+		}
+		// Write metadata after series data, so the series exists in the appender.
+		if opts.HonorMetadata {
+			if err := resourceMD.WriteTo(app, time.Now()); err != nil {
+				conv.log.Warn("failed to write target_info metadata", "err", err)
+			}
+		}
+	}
+
+	for smcount := 0; smcount < rm.ScopeMetrics().Len(); smcount++ {
+		sm := rm.ScopeMetrics().At(smcount)
+		conv.consumeScopeMetrics(app, memResource, sm, resAttrs)
+	}
+}
+
+func (conv *Converter) createOrUpdateMetadata(name string, md metadata.Metadata) *memoryMetadata {
+	entry := &memoryMetadata{
+		Name: name,
+	}
+	if actual, loaded := conv.metadataCache.LoadOrStore(name, entry); loaded {
+		entry = actual.(*memoryMetadata)
+	}
+
+	entry.Update(md)
+	return entry
+}
+
+// getOrCreateResource gets or creates a [*memorySeries] from the provided
+// res. The LastSeen field of the *memorySeries is updated before returning.
+func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
+	targetInfoLabels := labels.FromStrings(model.MetricNameLabel, "target_info")
+
+	var (
+		// There is no need to sort the attributes here.
+		// The call to lb.Labels below will sort them.
+		attrs = res.Attributes()
+
+		jobLabel      string
+		instanceLabel string
+	)
+
+	if serviceName, ok := attrs.Get(string(semconv.ServiceNameKey)); ok {
+		if serviceNamespace, ok := attrs.Get(string(semconv.ServiceNamespaceKey)); ok {
+			jobLabel = fmt.Sprintf("%s/%s", serviceNamespace.AsString(), serviceName.AsString())
+		} else {
+			jobLabel = serviceName.AsString()
+		}
+	}
+
+	if instanceID, ok := attrs.Get(string(semconv.ServiceInstanceIDKey)); ok {
+		instanceLabel = instanceID.AsString()
+	}
+
+	lb := labels.NewBuilder(targetInfoLabels)
+	lb.Set(model.JobLabel, jobLabel)
+	lb.Set(model.InstanceLabel, instanceLabel)
+
+	keepIdentifying := conv.getOpts().KeepIdentifyingResourceAttributes
+
+	attrs.Range(func(k string, v pcommon.Value) bool {
+		// Skip service.name/namespace/instance.id unless
+		// KeepIdentifyingResourceAttributes is set; they are already
+		// represented as the job/instance labels.
+		if !keepIdentifying &&
+			(k == string(semconv.ServiceNameKey) ||
+				k == string(semconv.ServiceNamespaceKey) ||
+				k == string(semconv.ServiceInstanceIDKey)) {
+
+			return true
+		}
+
+		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		return true
+	})
+
+	labels := lb.Labels()
+
+	entry := newMemorySeries(map[string]string{
+		model.JobLabel:      jobLabel,
+		model.InstanceLabel: instanceLabel,
+	}, labels)
+	if actual, loaded := conv.seriesCache.LoadOrStore(labels.String(), entry); loaded {
+		entry = actual.(*memorySeries)
+	}
+
+	entry.SetValue(1)
+	entry.Ping()
+	return entry
+}
+
+func (conv *Converter) consumeScopeMetrics(app storage.Appender, memResource *memorySeries, sm pmetric.ScopeMetrics, resAttrs pcommon.Map) {
+	scopeMD := conv.createOrUpdateMetadata("otel_scope_info", metadata.Metadata{
+		Type: model.MetricTypeGauge,
+	})
+	memScope := conv.getOrCreateScope(memResource, sm.Scope())
+
+	opts := conv.getOpts()
+	if opts.IncludeScopeInfo {
+		// Write series data first, so the series exists before we write metadata.
+		if err := memScope.WriteTo(app, time.Now()); err != nil {
+			conv.log.Error("failed to write otel_scope_info metric", "err", err)
+		}
+		// Write metadata after series data, so the series exists in the appender.
+		if opts.HonorMetadata {
+			if err := scopeMD.WriteTo(app, time.Now()); err != nil {
+				conv.log.Warn("failed to write otel_scope_info metadata", "err", err)
+			}
+		}
+	}
+
+	for mcount := 0; mcount < sm.Metrics().Len(); mcount++ {
+		m := sm.Metrics().At(mcount)
+		conv.consumeMetric(app, memResource, memScope, m, resAttrs)
+	}
+}
+
+// getOrCreateScope gets or creates a [*memorySeries] from the provided scope.
+// The LastSeen field of the *memorySeries is updated before returning.
+func (conv *Converter) getOrCreateScope(res *memorySeries, scope pcommon.InstrumentationScope) *memorySeries {
+	scopeInfoLabels := labels.FromStrings(
+		model.MetricNameLabel, "otel_scope_info",
+		model.JobLabel, res.metadata[model.JobLabel],
+		model.InstanceLabel, res.metadata[model.InstanceLabel],
+		scopeNameLabel, scope.Name(),
+		scopeVersionLabel, scope.Version(),
+	)
+
+	lb := labels.NewBuilder(scopeInfoLabels)
+	// There is no need to sort the attributes here.
+	// The call to lb.Labels below will sort them.
+	scope.Attributes().Range(func(k string, v pcommon.Value) bool {
+		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		return true
+	})
+
+	labels := lb.Labels()
+
+	entry := newMemorySeries(map[string]string{
+		scopeNameLabel:    scope.Name(),
+		scopeVersionLabel: scope.Version(),
+	}, labels)
+	if actual, loaded := conv.seriesCache.LoadOrStore(labels.String(), entry); loaded {
+		entry = actual.(*memorySeries)
+	}
+
+	entry.SetValue(1)
+	entry.Ping()
+	return entry
+}
+
+func (conv *Converter) consumeMetric(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	switch m.Type() {
+	case pmetric.MetricTypeGauge:
+		conv.consumeGauge(app, memResource, memScope, m, resAttrs)
+	case pmetric.MetricTypeSum:
+		conv.consumeSum(app, memResource, memScope, m, resAttrs)
+	case pmetric.MetricTypeHistogram:
+		conv.consumeHistogram(app, memResource, memScope, m, resAttrs)
+	case pmetric.MetricTypeSummary:
+		conv.consumeSummary(app, memResource, memScope, m, resAttrs)
+	case pmetric.MetricTypeExponentialHistogram:
+		conv.consumeExponentialHistogram(app, memResource, memScope, m, resAttrs)
+	}
+}
+
+func joinAttributeMaps(from, to pcommon.Map) {
+	from.Range(func(k string, v pcommon.Value) bool {
+		v.CopyTo(to.PutEmpty(k))
+		return true
+	})
+}
+
+func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
+
+	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
+		Type: model.MetricTypeGauge,
+		Unit: m.Unit(),
+		Help: m.Description(),
+	})
+
+	// Write series data first, so the series exists before we write metadata.
+	for dpcount := 0; dpcount < m.Gauge().DataPoints().Len(); dpcount++ {
+		dp := m.Gauge().DataPoints().At(dpcount)
+
+		if conv.getOpts().ResourceToTelemetryConversion {
+			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+		if err := writeSeries(app, memSeries, dp, getNumberDataPointValue(dp)); err != nil {
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+type otelcolDataPoint interface {
+	Timestamp() pcommon.Timestamp
+	StartTimestamp() pcommon.Timestamp
+	Flags() pmetric.DataPointFlags
+}
+
+// writeStartTimestampZeroSample injects a synthetic zero sample at the data
+// point's start timestamp ahead of the real sample, marking the point at which
+// the cumulative series started or reset. It is a no-op unless the feature is
+// enabled and the data point carries a start timestamp. The appender rejects
+// start timestamps that are not strictly older than the sample
+// (ErrSTNewerThanSample) or that would be out of order (ErrOutOfOrderST); both
+// are expected - the latter is the steady-state case for long-lived counters -
+// and are not logged.
+func (conv *Converter) writeStartTimestampZeroSample(app storage.Appender, series *memorySeries, dp otelcolDataPoint) {
+	if !conv.getOpts().EnableStartTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	err := series.WriteSTZeroSampleTo(app, t, st)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject start-timestamp zero sample", "series", series.labels.String(), "err", err)
+	}
+}
+
+// writeStartTimestampZeroHistogram is the native-histogram counterpart of
+// writeStartTimestampZeroSample. h carries the shape (schema, zero threshold,
+// custom values) that the synthetic empty histogram replicates.
+func (conv *Converter) writeStartTimestampZeroHistogram(app storage.Appender, series *memorySeries, dp otelcolDataPoint, h *histogram.Histogram, fh *histogram.FloatHistogram) {
+	if !conv.getOpts().EnableStartTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	err := series.WriteHistogramSTZeroSampleTo(app, t, st, h, fh)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject start-timestamp zero histogram", "series", series.labels.String(), "err", err)
+	}
+}
+
+func writeSeries(app storage.Appender, series *memorySeries, dp otelcolDataPoint, val float64) error {
+	ts := dp.Timestamp().AsTime()
+	if ts.Before(series.Timestamp()) {
+		// Out-of-order; skip.
+		return nil
+	}
+	series.SetTimestamp(ts)
+
+	if dp.Flags().NoRecordedValue() {
+		val = math.Float64frombits(value.StaleNaN)
+	}
+	series.SetValue(val)
+
+	return series.WriteTo(app, ts)
+}
+
+func (conv *Converter) writeExemplar(app storage.Appender, series *memorySeries, otelExemplar pmetric.Exemplar) error {
+	ts := otelExemplar.Timestamp().AsTime()
+	if ts.Before(series.ExemplarTimestamp()) {
+		// Out-of-order; skip.
+		return nil
+	}
+	series.SetExemplarTimestamp(ts)
+
+	promExemplar := conv.convertExemplar(otelExemplar, ts)
+	return series.WriteExemplarsTo(app, promExemplar)
+}
+
+// getOrCreateSeries gets or creates a [*memorySeries] from the provided
+// resource, scope, metric, and attributes. The LastSeen field of the
+// *memorySeries is updated before returning.
+func (conv *Converter) getOrCreateSeries(res *memorySeries, scope *memorySeries, name string, attrs pcommon.Map, extraLabels ...labels.Label) *memorySeries {
+	seriesBaseLabels := labels.FromStrings(
+		model.MetricNameLabel, name,
+		model.JobLabel, res.metadata[model.JobLabel],
+		model.InstanceLabel, res.metadata[model.InstanceLabel],
+	)
+
+	lb := labels.NewBuilder(seriesBaseLabels)
+	for _, extraLabel := range extraLabels {
+		lb.Set(extraLabel.Name, extraLabel.Value)
+	}
+
+	if conv.getOpts().IncludeScopeLabels {
+		lb.Set(scopeNameLabel, scope.metadata[scopeNameLabel])
+		lb.Set(scopeVersionLabel, scope.metadata[scopeVersionLabel])
+	}
+
+	// There is no need to sort the attributes here.
+	// The call to lb.Labels below will sort them.
+	attrs.Range(func(k string, v pcommon.Value) bool {
+		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		return true
+	})
+
+	labels := lb.Labels()
+
+	entry := newMemorySeries(nil, labels)
+	if actual, loaded := conv.seriesCache.LoadOrStore(labels.String(), entry); loaded {
+		entry = actual.(*memorySeries)
+	}
+
+	entry.Ping()
+	return entry
+}
+
+func getNumberDataPointValue(dp pmetric.NumberDataPoint) float64 {
+	switch dp.ValueType() {
+	case pmetric.NumberDataPointValueTypeDouble:
+		return dp.DoubleValue()
+	case pmetric.NumberDataPointValueTypeInt:
+		return float64(dp.IntValue())
+	}
+
+	return 0
+}
+
+func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
+
+	// Excerpt from the spec:
+	//
+	// * If the aggregation temporarlity is cumulative and sum is monotonic, it
+	//   MUST be converted to a Prometheus Counter.
+	// * If the aggregation temporarlity is cumulative and sum is non-monotonic,
+	//   it MUST be converted to a Prometheus Gauge.
+	// * If the aggregation temporarlity is delta and the sum is monotonic, it
+	//   SHOULD be converted to a cumulative temporarlity and become a Prometheus
+	//   Sum.
+	// * Otherwise, it MUST be dropped.
+	var convType model.MetricType
+	switch {
+	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && m.Sum().IsMonotonic():
+		convType = model.MetricTypeCounter
+	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityCumulative && !m.Sum().IsMonotonic():
+		convType = model.MetricTypeGauge
+	case m.Sum().AggregationTemporality() == pmetric.AggregationTemporalityDelta && m.Sum().IsMonotonic():
+		conv.log.Debug("dropped unsupported delta sum")
+		// Drop non-cumulative summaries for now, which is permitted by the spec.
+		//
+		// TODO(rfratto): implement delta-to-cumulative for sums.
+		return
+	default:
+		// Drop the metric.
+		return
+	}
+
+	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
+		Type: convType,
+		Unit: m.Unit(),
+		Help: m.Description(),
+	})
+
+	// Write series data first, so the series exists before we write metadata.
+	for dpcount := 0; dpcount < m.Sum().DataPoints().Len(); dpcount++ {
+		dp := m.Sum().DataPoints().At(dpcount)
+
+		if conv.getOpts().ResourceToTelemetryConversion {
+			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+
+		// Only counters carry counter-reset semantics; non-monotonic sums become
+		// gauges, for which a start timestamp is meaningless.
+		if convType == model.MetricTypeCounter {
+			conv.writeStartTimestampZeroSample(app, memSeries, dp)
+		}
+
+		val := getNumberDataPointValue(dp)
+		if err := writeSeries(app, memSeries, dp, val); err != nil {
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
+		}
+
+		if convType == model.MetricTypeCounter {
+			for i := 0; i < dp.Exemplars().Len(); i++ {
+				if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
+					conv.log.Error("failed to write exemplar for metric sample", "metric_name", metricName, "err", err)
+				}
+			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
+
+	if m.Histogram().AggregationTemporality() != pmetric.AggregationTemporalityCumulative {
+		// Drop non-cumulative histograms for now, which is permitted by the spec.
+		//
+		// TODO(rfratto): implement delta-to-cumulative for histograms.
+		return
+	}
+
+	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
+		Type: model.MetricTypeHistogram,
+		Unit: m.Unit(),
+		Help: m.Description(),
+	})
+
+	convertToNHCB := conv.getOpts().ConvertClassicHistogramsToNHCB
+
+	// Write series data first, so the series exists before we write metadata.
+	for dpcount := 0; dpcount < m.Histogram().DataPoints().Len(); dpcount++ {
+		dp := m.Histogram().DataPoints().At(dpcount)
+
+		if conv.getOpts().ResourceToTelemetryConversion {
+			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		if convertToNHCB {
+			conv.writeClassicHistogramAsNHCB(app, memResource, memScope, metricName, dp)
+			continue
+		}
+
+		// Sum metric
+		if dp.HasSum() {
+			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
+			sumMetricVal := dp.Sum()
+
+			conv.writeStartTimestampZeroSample(app, sumMetric, dp)
+			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
+				conv.log.Error("failed to write histogram sum sample", "metric_name", metricName, "err", err)
+			}
+		}
+
+		// Count metric
+		{
+			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
+			countMetricVal := float64(dp.Count())
+
+			conv.writeStartTimestampZeroSample(app, countMetric, dp)
+			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
+			}
+		}
+
+		// Sort the histogram by bounds ascending
+		bSize := int(math.Min(float64(dp.ExplicitBounds().Len()), float64(dp.BucketCounts().Len())))
+		buckets := make(map[float64]uint64, bSize)
+		bounds := make([]float64, 0, bSize)
+		for i := 0; i < dp.ExplicitBounds().Len() && i < dp.BucketCounts().Len(); i++ {
+			bound := dp.ExplicitBounds().At(i)
+			buckets[bound] = dp.BucketCounts().At(i)
+			bounds = append(bounds, bound)
+		}
+
+		sort.Float64s(bounds)
+
+		// Calculate cumulative count values. Prometheus expects cummulative bucket counts for histograms.
+		// This has nothing to do with temporality, it doesn't affect cummulative vs delta histograms, it
+		// simply matches the format of bucket counts expected by Prometheus.
+		var c uint64 = 0
+		for i := 0; i < len(bounds); i++ {
+			bound := bounds[i]
+			c += buckets[bound]
+			buckets[bound] = c
+		}
+
+		// Sort the exemplars by value.
+		exemplars := make([]pmetric.Exemplar, dp.Exemplars().Len())
+		for i := 0; i < dp.Exemplars().Len(); i++ {
+			exemplars[i] = dp.Exemplars().At(i)
+		}
+		sort.Slice(exemplars, func(i, j int) bool {
+			return exemplars[i].DoubleValue() < exemplars[j].DoubleValue()
+		})
+
+		exemplarInd := 0
+
+		// Process the boundaries. The number of buckets = number of explicit
+		// bounds + 1.
+		for i := 0; i < dp.ExplicitBounds().Len() && i < dp.BucketCounts().Len(); i++ {
+			bound := dp.ExplicitBounds().At(i)
+			count, ok := buckets[bound]
+			if !ok {
+				count = dp.BucketCounts().At(i)
+			}
+
+			bucketLabel := labels.Label{
+				Name:  model.BucketLabel,
+				Value: strconv.FormatFloat(bound, 'f', -1, 64),
+			}
+
+			bucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
+			bucketVal := float64(count)
+
+			conv.writeStartTimestampZeroSample(app, bucket, dp)
+			if err := writeSeries(app, bucket, dp, bucketVal); err != nil {
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
+			}
+
+			for ; exemplarInd < len(exemplars); exemplarInd++ {
+				if exemplars[exemplarInd].DoubleValue() < bound {
+					if err := conv.writeExemplar(app, bucket, exemplars[exemplarInd]); err != nil {
+						conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
+					}
+				} else {
+					break
+				}
+			}
+		}
+
+		// Add le=+Inf bucket. All values are <= +Inf, so the value is the same as
+		// the count of the datapoint.
+		{
+			bucketLabel := labels.Label{
+				Name:  model.BucketLabel,
+				Value: "+Inf",
+			}
+
+			infBucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
+			infBucketVal := float64(dp.Count())
+
+			conv.writeStartTimestampZeroSample(app, infBucket, dp)
+			if err := writeSeries(app, infBucket, dp, infBucketVal); err != nil {
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
+			}
+
+			// Add remaining exemplars.
+			for ; exemplarInd < len(exemplars); exemplarInd++ {
+				if err := conv.writeExemplar(app, infBucket, exemplars[exemplarInd]); err != nil {
+					conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
+				}
+			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+// writeClassicHistogramAsNHCB writes a single classic histogram data point as
+// a Prometheus Native Histogram with Custom Buckets, instead of the N+2
+// classic _bucket/_sum/_count series.
+func (conv *Converter) writeClassicHistogramAsNHCB(app storage.Appender, memResource *memorySeries, memScope *memorySeries, metricName string, dp pmetric.HistogramDataPoint) {
+	memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+
+	ts := dp.Timestamp().AsTime()
+	if ts.Before(memSeries.Timestamp()) {
+		// Out-of-order; skip.
+		return
+	}
+	memSeries.SetTimestamp(ts)
+
+	h, err := explicitToCustomBucketsHistogram(dp)
+	if err != nil {
+		conv.log.Error("failed to convert classic histogram to native histogram with custom buckets", "metric_name", metricName, "err", err)
+		return
+	}
+
+	conv.writeStartTimestampZeroHistogram(app, memSeries, dp, &h, nil)
+	if err := memSeries.WriteNativeHistogramTo(app, ts, &h, nil); err != nil {
+		conv.log.Error("failed to write native histogram with custom buckets", "metric_name", metricName, "err", err)
+		return
+	}
+
+	for i := 0; i < dp.Exemplars().Len(); i++ {
+		if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
+			conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
+
+	if m.ExponentialHistogram().AggregationTemporality() != pmetric.AggregationTemporalityCumulative {
+		// Drop non-cumulative histograms for now, which is permitted by the spec.
+		return
+	}
+
+	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
+		Type: model.MetricTypeHistogram,
+		Unit: m.Unit(),
+		Help: m.Description(),
+	})
+
+	// Write series data first, so the series exists before we write metadata.
+	for dpcount := 0; dpcount < m.ExponentialHistogram().DataPoints().Len(); dpcount++ {
+		dp := m.ExponentialHistogram().DataPoints().At(dpcount)
+
+		if conv.getOpts().ResourceToTelemetryConversion {
+			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+
+		ts := dp.Timestamp().AsTime()
+		if ts.Before(memSeries.Timestamp()) {
+			// Out-of-order; skip.
+			continue
+		}
+		memSeries.SetTimestamp(ts)
+
+		promHistogram, err := exponentialToNativeHistogram(dp)
+
+		if err != nil {
+			conv.log.Error("failed to convert exponential histogram to native histogram", "metric_name", metricName, "err", err)
+			continue
+		}
+
+		conv.writeStartTimestampZeroHistogram(app, memSeries, dp, &promHistogram, nil)
+		if err := memSeries.WriteNativeHistogramTo(app, ts, &promHistogram, nil); err != nil {
+			conv.log.Error("failed to write native histogram", "metric_name", metricName, "err", err)
+			continue
+		}
+
+		for i := 0; i < dp.Exemplars().Len(); i++ {
+			if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
+				conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
+			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+// Convert Otel Exemplar to Prometheus Exemplar.
+func (conv *Converter) convertExemplar(otelExemplar pmetric.Exemplar, ts time.Time) exemplar.Exemplar {
+	exemplarLabels := labels.NewScratchBuilder(0)
+
+	if traceID := otelExemplar.TraceID(); !traceID.IsEmpty() {
+		exemplarLabels.Add("trace_id", hex.EncodeToString(traceID[:]))
+	}
+
+	if spanID := otelExemplar.SpanID(); !spanID.IsEmpty() {
+		exemplarLabels.Add("span_id", hex.EncodeToString(spanID[:]))
+	}
+
+	var value float64
+	switch otelExemplar.ValueType() {
+	case pmetric.ExemplarValueTypeDouble:
+		value = otelExemplar.DoubleValue()
+	case pmetric.ExemplarValueTypeInt:
+		value = float64(otelExemplar.IntValue())
+	}
+
+	exemplarLabels.Sort()
+	return exemplar.Exemplar{
+		Value:  value,
+		Labels: exemplarLabels.Labels(),
+		Ts:     timestamp.FromTime(ts),
+	}
+}
+
+func (conv *Converter) consumeSummary(app storage.Appender, memResource *memorySeries, memScope *memorySeries, m pmetric.Metric, resAttrs pcommon.Map) {
+	metricName := prometheus.BuildCompliantName(m, "", conv.opts.AddMetricSuffixes)
+
+	metricMD := conv.createOrUpdateMetadata(metricName, metadata.Metadata{
+		Type: model.MetricTypeSummary,
+		Unit: m.Unit(),
+		Help: m.Description(),
+	})
+
+	// Write series data first, so the series exists before we write metadata.
+	for dpcount := 0; dpcount < m.Summary().DataPoints().Len(); dpcount++ {
+		dp := m.Summary().DataPoints().At(dpcount)
+
+		if conv.getOpts().ResourceToTelemetryConversion {
+			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		// Sum metric
+		{
+			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
+			sumMetricVal := dp.Sum()
+
+			conv.writeStartTimestampZeroSample(app, sumMetric, dp)
+			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
+				conv.log.Error("failed to write summary sum sample", "metric_name", metricName, "err", err)
+			}
+		}
+
+		// Count metric
+		{
+			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
+			countMetricVal := float64(dp.Count())
+
+			conv.writeStartTimestampZeroSample(app, countMetric, dp)
+			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
+			}
+		}
+
+		// Quantiles
+		for i := 0; i < dp.QuantileValues().Len(); i++ {
+			qp := dp.QuantileValues().At(i)
+
+			quantileLabel := labels.Label{
+				Name:  model.QuantileLabel,
+				Value: strconv.FormatFloat(qp.Quantile(), 'f', -1, 64),
+			}
+
+			quantile := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes(), quantileLabel)
+			quantileVal := qp.Value()
+
+			if err := writeSeries(app, quantile, dp, quantileVal); err != nil {
+				conv.log.Error("failed to write histogram quantile sample", "metric_name", metricName, "quantile", quantileLabel.Value, "err", err)
+			}
+		}
+	}
+
+	// Write metadata after series data, so the series exists in the appender.
+	if conv.getOpts().HonorMetadata {
+		if err := metricMD.WriteTo(app, time.Now()); err != nil {
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
+		}
+	}
+}
+
+// GC cleans up stale metrics which have not been updated in the time specified
+// by staleTime.
+func (conv *Converter) GC(staleTime time.Duration) {
+	now := time.Now()
+
+	// In the code below, we use TryLock as a small performance optimization.
+	//
+	// The garbage collector doesn't bother to wait for locks for anything in the
+	// cache; the lock being unavailable implies that the cached resource is
+	// still active.
+
+	conv.seriesCache.Range(func(key, value any) bool {
+		series := value.(*memorySeries)
+		if !series.TryLock() {
+			return true
+		}
+		defer series.Unlock()
+
+		if now.Sub(series.lastSeen) > staleTime {
+			conv.seriesCache.Delete(key)
+		}
+		return true
+	})
+
+	conv.metadataCache.Range(func(key, value any) bool {
+		series := value.(*memoryMetadata)
+		if !series.TryLock() {
+			return true
+		}
+		defer series.Unlock()
+
+		if now.Sub(series.lastSeen) > staleTime {
+			conv.seriesCache.Delete(key)
+		}
+		return true
+	})
+}
+
+// FlushMetadata empties out the metadata cache, forcing metadata to get
+// rewritten.
+func (conv *Converter) FlushMetadata() {
+	// TODO(rfratto): this is fairly inefficient since it'll require rebuilding
+	// all of the metadata for every active series. However, it's the easiest
+	// thing to do for now.
+	conv.metadataCache.Range(func(key, _ any) bool {
+		conv.metadataCache.Delete(key)
+		return true
+	})
+}

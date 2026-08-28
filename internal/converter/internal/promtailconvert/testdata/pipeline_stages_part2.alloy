@@ -1,0 +1,117 @@
+discovery.kubernetes "example" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.docker { }
+
+	stage.cri {
+		max_partial_lines              = 223
+		max_partial_line_size          = 26214
+		max_partial_line_size_truncate = true
+	}
+
+	stage.label_drop {
+		values = ["foo", "bar", "baz"]
+	}
+
+	stage.timestamp {
+		source            = "time"
+		format            = "2006-01-02T15:04:05.000Z07:00"
+		fallback_formats  = ["2006-01-02T15:04:05.000Z07.00", "2006-01-02T15:04:05.000Z07:0000"]
+		location          = "Europe/Berlin"
+		action_on_failure = "fudge"
+	}
+
+	stage.output {
+		source = "foo"
+	}
+
+	stage.template {
+		source   = "foo"
+		template = "foo_template"
+	}
+
+	stage.tenant {
+		label  = "sofa"
+		source = "party"
+		value  = "brad"
+	}
+
+	stage.limit {
+		rate                = 100.3
+		burst               = 1000
+		drop                = true
+		by_label_name       = "foobar"
+		max_distinct_labels = 10
+	}
+
+	stage.multiline {
+		firstline     = ".*\n"
+		max_lines     = 100000
+		max_wait_time = "1s"
+	}
+
+	stage.pack {
+		labels = ["foo", "bar"]
+	}
+
+	stage.label_keep {
+		values = ["one", "two", "three"]
+	}
+
+	stage.static_labels {
+		values = {
+			dont = "label",
+			who  = "me",
+		}
+	}
+
+	stage.geoip {
+		db      = "/usr/share/GeoIP/GeoLite2-City.mmdb"
+		source  = "internet"
+		db_type = "mmdb"
+	}
+
+	stage.decolorize { }
+
+	stage.sampling {
+		rate = 100
+	}
+
+	stage.sampling {
+		drop_counter_reason = "womp womp!"
+		rate                = 0
+	}
+
+	stage.eventlogmessage {
+		source              = "something"
+		drop_invalid_labels = true
+		overwrite_existing  = true
+	}
+}
+
+loki.source.file "example" {
+	targets    = discovery.kubernetes.example.targets
+	forward_to = [loki.process.example.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

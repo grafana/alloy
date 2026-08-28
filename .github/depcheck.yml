@@ -1,0 +1,32 @@
+# List of go modules to check for outdated-ness. The current version is
+# obtained from the listing in go.mod.
+go_modules:
+  - github.com/cortexproject/cortex
+  - github.com/drone/envsubst/v2
+  - github.com/grafana/loki
+  - github.com/oliver006/redis_exporter
+  - github.com/prometheus-community/elasticsearch_exporter
+  - github.com/prometheus/consul_exporter
+  - github.com/prometheus/memcached_exporter
+  - github.com/prometheus/node_exporter
+  - github.com/prometheus/statsd_exporter
+  - go.opentelemetry.io/collector
+  - sigs.k8s.io/controller-runtime
+
+# List of GitHub repos to check for newer tags. Only repos that are not listed
+# explicitly in go.mod *OR* are in go.mod but replaced with a fork should be
+# added here.
+#
+# The "current" version being used in Alloy must be provided explicitly as you
+# can see below.
+github_repos:
+  - github.com/google/dnsmasq_exporter v0.2.0
+  - github.com/ncabatoff/process-exporter v0.7.5
+  - github.com/prometheus/mysqld_exporter v0.13.0
+  - github.com/prometheus-community/postgres_exporter v0.15.0
+  - github.com/prometheus-community/windows_exporter v0.16.0
+  - github.com/percona/mongodb_exporter v0.47.2
+  - project: github.com/prometheus/prometheus
+    version: v2.42.0
+    # Ignore release candidates
+    ignore_version_pattern: '-rc\.\d+$'

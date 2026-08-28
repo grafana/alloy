@@ -1,0 +1,18 @@
+apiVersion: monitoring.grafana.com/v1alpha2
+kind: PodLogs
+metadata:
+  name: pod-logs-bc
+spec:
+  selector:
+    matchLabels:
+      alloy-logs-test: "true"
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: In
+        values: [podlogs-producer-b, podlogs-producer-c]
+  relabelings:
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod

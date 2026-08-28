@@ -1,0 +1,233 @@
+server:
+  log_level: ${SOME_ENVIRONMENT_VARIABLE:='debug'}
+  log_format: json
+
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+  configs:
+    - name: default
+
+logs:
+  positions_directory: /path
+  configs:
+    - name: log_config
+      clients:
+        - url: http://localhost/loki/api/v1/push
+
+integrations:
+  agent:
+    autoscrape:
+      metrics_instance: "default"
+    extra_labels:
+      test_label: test_label_value
+      test_label_2: test_label_value_2
+  apache_http_configs:
+    - instance: "apache1"
+      insecure: true
+    - instance: "apache2"
+      extra_labels:
+        test_label: test_label_value
+        test_label_2: test_label_value_2
+  app_agent_receiver_configs:
+    - instance: "default"
+      logs_instance: "log_config"
+      server:
+        host: "localhost"
+        port: 55678
+  azure_configs:
+    - instance: "azure1"
+      subscriptions:
+        - "subId"
+      resource_type: "Microsoft.Dashboard/grafana"
+      metrics:
+        - "HttpRequestCount"
+    - instance: "azure2"
+      subscriptions:
+        - "subId"
+      resource_type: "Microsoft.Dashboard/grafana"
+      metrics:
+        - "HttpRequestCount"
+  blackbox:
+    blackbox_targets:
+      - name: example
+        address: http://example.com
+        module: http_2xx
+    blackbox_config:
+      modules:
+        http_2xx:
+          prober: http
+          timeout: 5s
+          http:
+            method: POST
+            headers:
+              Content-Type: application/json
+            body: '{}'
+            preferred_ip_protocol: "ip4"
+  cadvisor:
+    store_container_labels: false
+  cloudwatch_configs:
+    - sts_region: us-east-2
+      aws_sdk_version_v2: true
+      discovery:
+        jobs:
+          - type: AWS/EC2
+            regions:
+              - us-east-2
+            nil_to_zero: true
+            metrics:
+              - name: CPUUtilization
+                period: 5m
+                statistics:
+                  - Average
+                nil_to_zero: false
+              - name: NetworkPacketsIn
+                period: 5m
+                statistics:
+                  - Average
+      static:
+        - name: single_ec2_instance
+          regions:
+            - us-east-2
+          namespace: AWS/EC2
+          dimensions:
+            - name: InstanceId
+              value: i-0e43cee369aa44b52
+          nil_to_zero: true
+          metrics:
+            - name: CPUUtilization
+              period: 5m
+              statistics:
+                - Average
+              nil_to_zero: false
+            - name: NetworkPacketsIn
+              period: 5m
+              statistics:
+                - Average
+  consul_configs:
+    - autoscrape:
+        metrics_instance: "default"
+  dnsmasq_configs:
+    - dnsmasq_address: dnsmasq-a:53
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+          replacement: dnsmasq-a
+  elasticsearch_configs:
+    - autoscrape:
+        metrics_instance: "default"
+  eventhandler:
+    cache_path: "./.eventcache/eventhandler.cache"
+    logs_instance: "log_config"
+    extra_labels:
+      test_label: test_label_value
+      test_label_2: test_label_value_2
+  gcp_configs:
+    - project_ids:
+        - <project_id>
+      metrics_prefixes:
+        - loadbalancing.googleapis.com/https/request_bytes_count
+        - loadbalancing.googleapis.com/https/total_latencies
+      extra_filters:
+        - loadbalancing.googleapis.com:resource.labels.backend_target_name="sample-value"
+  github_configs:
+    - api_token: ABCDEFGH-1234-ABCD-1234-ABCDEFGHIJKL
+      repositories:
+        - grafana/agent
+        - grafana/agent-modules
+  kafka_configs:
+    - autoscrape:
+        metrics_instance: "default"
+  memcached_configs:
+    - memcached_address: memcached-a:53
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+          replacement: memcached-a
+  mongodb_configs:
+    - mongodb_uri: mongodb://mongodb-a:27017
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: service_name
+          replacement: 'replicaset1-node1'
+        - source_labels: [__address__]
+          target_label: mongodb_cluster
+          replacement: 'prod-cluster'
+  mssql_configs:
+    - connection_string: sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>
+  mysql_configs:
+    - data_source_name: root@(server-a:3306)/
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+          replacement: server-a
+  node_exporter:
+    autoscrape:
+      relabel_configs:
+        - source_labels: [__address__]
+          target_label: __param_id
+        - source_labels: [__param_id]
+          target_label: thermostat
+        - target_label: __address__
+          replacement: localhost:8099
+      metric_relabel_configs:
+        - source_labels: [__metric_address1__]
+          target_label: __metric_param_target1
+        - source_labels: [__metric_address2__]
+          target_label: __metric_param_target2
+  oracledb_configs:
+    - connection_string: oracle://user:password@localhost:1521/orcl.localnet
+  postgres_configs:
+    - data_source_names:
+      - postgres://postgres:password@localhost:5432/postgres?sslmode=disable
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+          replacement: postgres-a
+  process:
+    process_names:
+    - name: "{{.Comm}}"
+      cmdline:
+      - '.+'
+  redis_configs:
+    - redis_addr: "redis-2:6379"
+      export_key_values: false
+      autoscrape:
+        relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+          replacement: redis-2
+  snmp:
+    snmp_targets:
+      - name: network_switch.1
+        address: 192.168.1.2
+        module: if_mib
+        walk_params: public
+        auth: public
+        snmp_context: dummyContext
+      - name: network_router_2
+        address: 192.168.1.3
+        module: system,mikrotik
+        walk_params: private
+        auth: private
+        snmp_context: dummyContext
+  snowflake_configs:
+    - account_name: XXXXXXX-YYYYYYY
+      username: snowflake-user
+      password: snowflake-pass
+      warehouse: SNOWFLAKE_WAREHOUSE
+      role: ACCOUNTADMIN
+  squid_configs:
+    - address: localhost:3128
+      autoscrape:
+        scrape_interval: 1m
+        scrape_timeout: 1m
+  statsd:
+    autoscrape:
+      metrics_instance: "default"

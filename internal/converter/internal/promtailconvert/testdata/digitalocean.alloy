@@ -1,0 +1,14 @@
+discovery.digitalocean "fun" {
+	refresh_interval = "10m0s"
+	port             = 1234
+}
+
+loki.source.file "fun" {
+	targets    = discovery.digitalocean.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

@@ -1,0 +1,61 @@
+server:
+  log_level: ${SOME_ENVIRONMENT_VARIABLE:='debug'}
+  log_format: json
+  http_tls_config:
+    client_ca_file: "./testdata/example-cert.pem"
+    cert_file: "./testdata/example-cert.pem"
+    key_file: "./testdata/example-key.pem"
+    client_auth_type: "VerifyClientCertIfGiven"
+
+metrics:
+  wal_directory: /home/pi/Projects/agent/agentwal
+  global:
+    scrape_interval:     1m
+    evaluation_interval: 30s
+    scrape_timeout:      45s
+    remote_write:
+    - url: https://prometheus-us-central1.grafana.net/api/prom/push
+      queue_config:
+        batch_send_deadline: 3m
+        max_shards: 10
+        max_backoff: 10s
+        sample_age_limit: 50s
+      basic_auth:
+        username: 11111
+        password: my-secret-password-here
+ 
+  configs:
+    - name: agent
+      host_filter: false
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9099','localhost:9101']
+        - job_name: "promobee"
+          metrics_path: /thermostat
+          static_configs:
+            - targets:
+              - "localhost:9090"
+          azure_sd_configs:
+            - subscription_id: "subscription1"
+              tenant_id: "tenant"
+              client_id: "client"
+              client_secret: "secret"
+              proxy_url: "proxy"
+            - subscription_id: "subscription2"
+              tenant_id: "tenant"
+              client_id: "client"
+              client_secret: "secret"
+              proxy_url: "proxy"
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_id
+            - source_labels: [__param_id]
+              target_label: thermostat
+            - target_label: __address__
+              replacement: localhost:8099
+          metric_relabel_configs:
+            - source_labels: [__metric_address1__]
+              target_label: __metric_param_target1
+            - source_labels: [__metric_address2__]
+              target_label: __metric_param_target2

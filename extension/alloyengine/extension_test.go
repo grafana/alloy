@@ -1,0 +1,405 @@
+package alloyengine
+
+import (
+	"context"
+	"errors"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
+
+	alloycomponent "github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
+	"github.com/grafana/alloy/internal/readyctx"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
+)
+
+func shutdownExtensionWithTestTimeout(e *alloyEngineExtension) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return e.Shutdown(ctx)
+}
+
+func requireRunExited(t *testing.T, e *alloyEngineExtension, wait, tick time.Duration) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, wait, tick, "run command did not exit in time")
+}
+
+func requireShutdownAndTerminated(t *testing.T, e *alloyEngineExtension) {
+	t.Helper()
+	require.NoError(t, shutdownExtensionWithTestTimeout(e))
+	requireRunExited(t, e, time.Second, 25*time.Millisecond)
+	require.Equal(t, stateTerminated, e.getState())
+}
+
+// defaultTestConfig returns a default test configuration.
+func defaultTestConfig() *Config {
+	return &Config{
+		AlloyConfig: AlloyConfig{
+			Inline: InlineAlloyConfig{
+				Content: "logging { level = \"debug\" }",
+			},
+		},
+		Flags: map[string]string{},
+	}
+}
+
+// newTestExtension creates an extension with injectable runCommandFactory and a nop logger.
+func newTestExtension(t *testing.T, factory func(modulePath string, configs map[string][]byte, onImportContent importsource.ImportContentHook) *cobra.Command, config *Config) *alloyEngineExtension {
+	t.Helper()
+	e := newAlloyEngineExtension(config, component.TelemetrySettings{Logger: zap.NewNop()})
+	e.runCommandFactory = factory
+	t.Cleanup(func() { _ = shutdownExtensionWithTestTimeout(e) })
+	return e
+}
+
+// blockingCommand returns a cobra command that blocks until the context is cancelled, then returns nil.
+func blockingCommand(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
+	return &cobra.Command{
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
+				fn()
+			}
+			<-cmd.Context().Done()
+			return nil
+		},
+	}
+}
+
+// blockingCommandWithoutReady blocks until context cancellation but never calls the ready callback.
+func blockingCommandWithoutReady(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
+	return &cobra.Command{
+		RunE: func(cmd *cobra.Command, args []string) error {
+			<-cmd.Context().Done()
+			return nil
+		},
+	}
+}
+
+// shutdownErrorCommand blocks until context cancellation, then returns the provided error.
+func shutdownErrorCommand(err error) *cobra.Command {
+	return &cobra.Command{
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
+				fn()
+			}
+			<-cmd.Context().Done()
+			return err
+		},
+	}
+}
+
+// retryTrackingState holds state for tracking retry attempts across command instances.
+type retryTrackingState struct {
+	attempts    int
+	succeededAt int
+	failCount   int
+	err         error
+}
+
+func newRetryTrackingCommand(failCount int, err error) (func(string, map[string][]byte, importsource.ImportContentHook) *cobra.Command, *retryTrackingState) {
+	state := &retryTrackingState{
+		failCount: failCount,
+		err:       err,
+	}
+	factory := func(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
+		return &cobra.Command{
+			RunE: func(cmd *cobra.Command, args []string) error {
+				state.attempts++
+				if state.attempts <= state.failCount {
+					return state.err
+				}
+
+				state.succeededAt = state.attempts
+				return nil
+			},
+		}
+	}
+	return factory, state
+}
+
+func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
+	const content = "logging { level = \"debug\" }"
+
+	var (
+		gotModulePath string
+		gotConfigs    map[string][]byte
+	)
+	factory := func(modulePath string, configs map[string][]byte, v importsource.ImportContentHook) *cobra.Command {
+		gotModulePath = modulePath
+		gotConfigs = configs
+		return blockingCommand(modulePath, configs, v)
+	}
+	e := newTestExtension(t, factory, &Config{
+		AlloyConfig: AlloyConfig{
+			Inline: InlineAlloyConfig{
+				Content: content,
+			},
+		},
+		Flags: map[string]string{},
+	})
+
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.Equal(t, cwd, gotModulePath)
+	require.Equal(t, content, string(gotConfigs["config.alloy"]))
+
+	requireShutdownAndTerminated(t, e)
+}
+
+func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
+
+	host := componenttest.NewNopHost()
+
+	require.NoError(t, e.Start(t.Context(), host))
+	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
+	require.NoError(t, e.Ready())
+	require.NoError(t, e.NotReady())
+
+	requireShutdownAndTerminated(t, e)
+}
+
+func TestLifecycle_StartTwiceFails(t *testing.T) {
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+	err := e.Start(t.Context(), componenttest.NewNopHost())
+	require.Error(t, err)
+	requireShutdownAndTerminated(t, e)
+}
+
+func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
+	ext1 := newTestExtension(t, blockingCommand, defaultTestConfig())
+	ext2 := newTestExtension(t, blockingCommand, defaultTestConfig())
+
+	require.NoError(t, ext1.Start(t.Context(), componenttest.NewNopHost()))
+	require.Eventually(t, func() bool { return ext1.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "first extension did not reach stateRunning")
+
+	err := ext2.Start(t.Context(), componenttest.NewNopHost())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "only one alloyengine extension can be active per process")
+}
+
+func TestLifecycle_NotReadyWhenNotStarted(t *testing.T) {
+	e := newTestExtension(t, blockingCommand, defaultTestConfig())
+	require.Error(t, e.Ready())
+	require.Error(t, e.NotReady())
+}
+
+func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
+	e := newTestExtension(t, blockingCommandWithoutReady, defaultTestConfig())
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+
+	// Give the run goroutine time to start and block (without calling ready).
+	time.Sleep(50 * time.Millisecond)
+
+	// We should still be in stateStarting since the ready callback was never invoked.
+	require.Equal(t, stateStarting, e.getState())
+
+	requireShutdownAndTerminated(t, e)
+}
+
+func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
+	expected := errors.New("shutdown error")
+	e := newTestExtension(t, func(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
+		return shutdownErrorCommand(expected)
+	}, defaultTestConfig())
+
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
+
+	requireShutdownAndTerminated(t, e)
+}
+
+func TestBuildAlloyConfig_RemoteCfgValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         AlloyConfig
+		errContains string
+	}{
+		{
+			name:        "inline with remotecfg block is rejected",
+			cfg:         AlloyConfig{Inline: InlineAlloyConfig{Content: `remotecfg { }`}},
+			errContains: "remotecfg",
+		},
+		{
+			name:        "file with remotecfg block is rejected",
+			cfg:         AlloyConfig{Path: "testdata/remotecfg.alloy"},
+			errContains: "remotecfg",
+		},
+		{
+			name: "valid inline config is accepted",
+			cfg:  AlloyConfig{Inline: InlineAlloyConfig{Content: `logging { level = "debug" }`}},
+		},
+		{
+			name: "valid file config is accepted",
+			cfg:  AlloyConfig{Path: "testdata/valid.alloy"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := buildAlloyConfig(zap.NewNop(), tc.cfg)
+			if tc.errContains != "" {
+				require.ErrorContains(t, err, tc.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestUsesModulePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    bool
+	}{
+		{
+			name:    "no module_path reference",
+			content: `logging { level = "debug" }`,
+			want:    false,
+		},
+		{
+			name: "module_path used in import.file filename",
+			content: `import.file "node_collector" {
+				filename = file.path_join(module_path, "modules/node_collector.alloy")
+			}`,
+			want: true,
+		},
+		{
+			name: "module_path used in component attribute",
+			content: `prometheus.exporter.blackbox "federation" {
+				config_file = file.path_join(module_path, "blackbox_federation.yaml")
+			}`,
+			want: true,
+		},
+		{
+			name:    "module_path as a bare attribute value",
+			content: `foo { bar = module_path }`,
+			want:    true,
+		},
+		{
+			name:    "attribute literally named module_path is not a reference",
+			content: `foo { module_path = "x" }`,
+			want:    false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tree, err := parser.ParseFile("test.alloy", []byte(tc.content))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, usesModulePath(tree))
+		})
+	}
+}
+
+// fakeImportSource is a minimal importsource.ImportSource for exercising the import hook.
+type fakeImportSource struct {
+	modulePath string
+	inherits   bool
+}
+
+func (f fakeImportSource) Evaluate(*vm.Scope) error             { return nil }
+func (f fakeImportSource) Run(context.Context) error            { return nil }
+func (f fakeImportSource) CurrentHealth() alloycomponent.Health { return alloycomponent.Health{} }
+func (f fakeImportSource) SetEval(*vm.Evaluator)                {}
+func (f fakeImportSource) ModulePath() string                   { return f.modulePath }
+func (f fakeImportSource) InheritsModulePath() bool             { return f.inherits }
+
+func mustParse(t *testing.T, src string) *ast.File {
+	t.Helper()
+	f, err := parser.ParseFile("test.alloy", []byte(src))
+	require.NoError(t, err)
+	return f
+}
+
+func TestNewImportContentHook(t *testing.T) {
+	usesMP := `declare "x" { export "v" { value = module_path } }`
+	noMP := `declare "x" { export "v" { value = "static" } }`
+
+	tests := []struct {
+		name      string
+		content   string
+		source    fakeImportSource
+		wantWarns int
+	}{
+		{
+			name:      "import.string inheriting defaulted cwd and using module_path warns",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: true},
+			wantWarns: 1,
+		},
+		{
+			name:      "import.file defines its own module_path, no warning",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: false},
+			wantWarns: 0,
+		},
+		{
+			name:      "inherited module_path not the default, no warning",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/other", inherits: true},
+			wantWarns: 0,
+		},
+		{
+			name:      "inherits default but does not reference module_path, no warning",
+			content:   noMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: true},
+			wantWarns: 0,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			core, logs := observer.New(zapcore.WarnLevel)
+			hook := newImportContentHook(zap.New(core), "/cwd")
+
+			hook("mod", mustParse(t, tc.content), tc.source)
+			require.Equal(t, tc.wantWarns, logs.Len())
+			if tc.wantWarns > 0 {
+				rec := logs.All()[0]
+				require.Contains(t, rec.Message, "module_path")
+				require.Equal(t, "mod", rec.ContextMap()["file"])
+			}
+		})
+	}
+}
+
+func TestCheckUnsupportedBlocks(t *testing.T) {
+	require.NoError(t, checkUnsupportedBlocks(mustParse(t, `logging { level = "debug" }`)))
+	require.NoError(t, checkUnsupportedBlocks(mustParse(t, `import.string "x" { content = "" }`)))
+	require.ErrorContains(t, checkUnsupportedBlocks(mustParse(t, `remotecfg { }`)), "remotecfg")
+}
+
+func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
+	testErr := errors.New("temporary failure")
+	factory, state := newRetryTrackingCommand(2, testErr) // Fail 2 times, succeed on 3rd attempt
+	cfg := defaultTestConfig()
+	e := newTestExtension(t, factory, cfg)
+
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+
+	requireRunExited(t, e, 10*time.Second, 100*time.Millisecond)
+
+	// Verify it succeeded after 3 attempts (2 failures + 1 success)
+	require.Equal(t, 3, state.attempts)
+	require.Equal(t, 3, state.succeededAt)
+	require.Equal(t, stateTerminated, e.getState())
+}

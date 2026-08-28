@@ -1,0 +1,43 @@
+discovery.file "fun" {
+	files = ["/etc/prometheus/targets/*.json"]
+}
+
+discovery.file "fun_2" {
+	files            = ["/etc/agent/targets/*.json"]
+	refresh_interval = "30m0s"
+}
+
+loki.source.file "fun" {
+	targets = array.concat(
+		discovery.file.fun.targets,
+		discovery.file.fun_2.targets,
+	)
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/good/positions.yml"
+}
+
+discovery.file "fun2" {
+	files = ["/etc/prometheus/targets2/*.json"]
+}
+
+discovery.file "fun2_2" {
+	files            = ["/etc/agent/targets2/*.json"]
+	refresh_interval = "30m0s"
+}
+
+loki.source.file "fun2" {
+	targets = array.concat(
+		discovery.file.fun2.targets,
+		discovery.file.fun2_2.targets,
+	)
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/good/positions.yml"
+}

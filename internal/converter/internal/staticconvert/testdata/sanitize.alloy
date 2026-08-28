@@ -1,0 +1,148 @@
+prometheus.remote_write "metrics_integrations" {
+	endpoint {
+		name = "integrations-e1e0c0"
+		url  = "https://region.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = "id"
+			password = "token"
+		}
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}
+
+loki.process "logs_integrations_integrations_windows_exporter_application" {
+	forward_to = [loki.write.logs_integrations.receiver]
+
+	stage.json {
+		expressions = {
+			source = "source",
+		}
+	}
+
+	stage.labels {
+		values = {
+			source = null,
+		}
+	}
+}
+
+loki.relabel "logs_integrations_integrations_windows_exporter_application" {
+	forward_to = [loki.process.logs_integrations_integrations_windows_exporter_application.receiver]
+
+	rule {
+		source_labels = ["computer"]
+		target_label  = "agent_hostname"
+	}
+}
+
+loki.source.windowsevent "logs_integrations_integrations_windows_exporter_application" {
+	eventlog_name          = "Application"
+	xpath_query            = ""
+	poll_interval          = "0s"
+	use_incoming_timestamp = true
+	forward_to             = [loki.relabel.logs_integrations_integrations_windows_exporter_application.receiver]
+	labels                 = {
+		job = "integrations/windows_exporter",
+	}
+	legacy_bookmark_path = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
+}
+
+loki.process "logs_integrations_integrations_windows_exporter_system" {
+	forward_to = [loki.write.logs_integrations.receiver]
+
+	stage.json {
+		expressions = {
+			source = "source",
+		}
+	}
+
+	stage.labels {
+		values = {
+			source = null,
+		}
+	}
+}
+
+loki.relabel "logs_integrations_integrations_windows_exporter_system" {
+	forward_to = [loki.process.logs_integrations_integrations_windows_exporter_system.receiver]
+
+	rule {
+		source_labels = ["computer"]
+		target_label  = "agent_hostname"
+	}
+}
+
+loki.source.windowsevent "logs_integrations_integrations_windows_exporter_system" {
+	eventlog_name          = "System"
+	xpath_query            = ""
+	poll_interval          = "0s"
+	use_incoming_timestamp = true
+	forward_to             = [loki.relabel.logs_integrations_integrations_windows_exporter_system.receiver]
+	labels                 = {
+		job = "integrations/windows_exporter",
+	}
+	legacy_bookmark_path = "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
+}
+
+loki.write "logs_integrations" {
+	endpoint {
+		url = "https://region.grafana.net/loki/api/v1/push"
+
+		basic_auth {
+			username = "id"
+			password = "token"
+		}
+	}
+	external_labels = {}
+}
+
+prometheus.exporter.self "integrations_agent" { }
+
+discovery.relabel "integrations_agent" {
+	targets = prometheus.exporter.self.integrations_agent.targets
+
+	rule {
+		source_labels = ["agent_hostname"]
+		target_label  = "instance"
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/agent-check"
+	}
+}
+
+prometheus.scrape "integrations_agent" {
+	targets    = discovery.relabel.integrations_agent.output
+	forward_to = [prometheus.relabel.integrations_agent.receiver]
+	job_name   = "integrations/agent"
+}
+
+prometheus.relabel "integrations_agent" {
+	forward_to = [prometheus.remote_write.integrations.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "(prometheus_target_.*|prometheus_sd_discovered_targets|agent_build.*|agent_wal_samples_appended_total|process_start_time_seconds)"
+		action        = "keep"
+	}
+}
+
+prometheus.remote_write "integrations" {
+	endpoint {
+		url = "https://region.grafana.net/api/prom/push"
+
+		basic_auth {
+			username = "id"
+			password = "token"
+		}
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

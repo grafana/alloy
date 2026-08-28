@@ -1,0 +1,85 @@
+name: Integration test (Windows service)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'integration-tests/windows-service/**'
+      - 'packaging/**'
+      - 'internal/cmd/alloy-service/**'
+      - 'internal/runtime/logging/**'
+      - '.github/workflows/integration-test-windows-service.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  integration_test_windows_service:
+    name: Windows service integration test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: v2026.5.18
+          sha256: 62aad5146848c6fb278eff90558940bd5685bb3ba7e34d64fd4e6ec9ed431f0d
+          install_args: go
+
+      # TODO: Align the way we create the installer here, with the way it's created in for the official GitHub release.
+      # Here we build it on Windows and install nsis explicitly, whereas there it's built on Linux on a container created with nsis beforehand.
+      - name: Install NSIS
+        run: choco install nsis -y
+        shell: pwsh
+
+      - name: Cache NSIS AccessControl plugin
+        id: cache-accesscontrol
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ runner.temp }}\AccessControl.zip
+          key: nsis-accesscontrol-zip-v1
+
+      - name: Download NSIS AccessControl plugin
+        if: steps.cache-accesscontrol.outputs.cache-hit != 'true'
+        run: |
+          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        shell: pwsh
+
+      # Guard against supply chain attacks.
+      # Runs unconditionally so a poisoned cache entry is caught too, not just a fresh download.
+      # NOTE: This same hash is also pinned in build-tools/build-image/Dockerfile; update both.
+      - name: Verify NSIS AccessControl plugin checksum
+        run: |
+          $expected = "9aa60f9c5c023fda2808af216514d8913d2673bc522d944ee771da032a1bdc10"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          $actual = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "AccessControl.zip checksum mismatch: expected=$expected actual=$actual"
+            exit 1
+          }
+          Write-Host "AccessControl.zip checksum verified ($actual)"
+        shell: pwsh
+
+      - name: Install NSIS AccessControl plugin
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          Expand-Archive -Path $zipPath -DestinationPath $env:TEMP\AccessControl -Force
+          Copy-Item -Path "$env:TEMP\AccessControl\Plugins\*" -Destination "$nsisPath\Plugins\" -Recurse -Force
+          New-Item -ItemType Directory -Path "$nsisPath\Plugins\x86-unicode" -Force
+          Copy-Item -Path "$nsisPath\Plugins\i386-unicode\AccessControl.dll" -Destination "$nsisPath\Plugins\x86-unicode\"
+        shell: pwsh
+
+      - name: Add NSIS to PATH
+        run: Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\NSIS"
+        shell: pwsh
+
+      - name: Build installer and run Windows service integration test
+        run: '& "C:/Program Files/git/bin/bash.exe" -c ''make integration-test-windows-service'''

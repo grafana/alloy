@@ -1,0 +1,133 @@
+package otelcolconvert
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configcompression"
+)
+
+func init() {
+	converters = append(converters, kafkaExporterConverter{})
+}
+
+type kafkaExporterConverter struct{}
+
+func (kafkaExporterConverter) Factory() component.Factory { return kafkaexporter.NewFactory() }
+
+func (kafkaExporterConverter) InputComponentName() string {
+	return "otelcol.exporter.kafka"
+}
+
+func (kafkaExporterConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	label := state.AlloyComponentLabel()
+	overrideHook := func(val any) any {
+		switch val.(type) {
+		case extension.ExtensionHandler:
+			queue := cfg.(*kafkaexporter.Config).QueueBatchConfig.GetOrInsertDefault()
+			ext := state.LookupExtension(*queue.StorageID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
+
+	args := toKafkaExporter(cfg.(*kafkaexporter.Config))
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "exporter", "kafka"}, label, args, overrideHook)
+
+	diags.Add(
+		diag.SeverityLevelInfo,
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
+	)
+
+	state.Body().AppendBlock(block)
+	return diags
+}
+
+func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
+	var tlsCfgPtr *otelcol.TLSClientArguments
+	if cfg.ClientConfig.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.ClientConfig.TLS)
+		tlsCfgPtr = &tlsCfg
+	}
+
+	return &kafka.Arguments{
+		Brokers:                              cfg.ClientConfig.Brokers,
+		ProtocolVersion:                      cfg.ClientConfig.ProtocolVersion,
+		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		ClientID:                             cfg.ClientConfig.ClientID,
+		TopicFromAttribute:                   cfg.TopicFromAttribute,
+		PartitionTracesByID:                  cfg.PartitionTracesByID,
+		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
+		PartitionLogsByResourceAttributes:    cfg.PartitionLogsByResourceAttributes,
+		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
+		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
+		Timeout:                              cfg.TimeoutSettings.Timeout,
+		ConnIdleTimeout:                      cfg.ClientConfig.ConnIdleTimeout,
+		Logs:                                 toKafkaSignalConfig(cfg.Logs),
+		Metrics:                              toKafkaSignalConfig(cfg.Metrics),
+		Traces:                               toKafkaSignalConfig(cfg.Traces),
+
+		Authentication:    toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:          toKafkaMetadata(cfg.ClientConfig.Metadata),
+		Retry:             toRetryArguments(cfg.BackOffConfig),
+		Queue:             toQueueArguments(cfg.QueueBatchConfig),
+		Producer:          toKafkaProducer(cfg.Producer),
+		RecordPartitioner: toKafkaRecordPartitioner(cfg.RecordPartitioner),
+
+		TLS: tlsCfgPtr,
+
+		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
+	}
+}
+
+func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
+	return kafka.Producer{
+		MaxMessageBytes:        cfg.MaxMessageBytes,
+		MaxBrokerWriteBytes:    cfg.MaxBrokerWriteBytes,
+		Compression:            cfg.Compression,
+		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
+		RequiredAcks:           int(cfg.RequiredAcks),
+		FlushMaxMessages:       cfg.FlushMaxMessages,
+		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
+		Linger:                 cfg.Linger,
+	}
+}
+
+func toKafkaCompressionParams(cfg configcompression.CompressionParams) kafka.CompressionParams {
+	return kafka.CompressionParams{
+		Level: int(cfg.Level),
+	}
+}
+
+func toKafkaRecordPartitioner(cfg kafkaexporter.RecordPartitionerConfig) *kafka.RecordPartitionerConfig {
+	r := &kafka.RecordPartitionerConfig{}
+	if cfg.StickyKey != nil {
+		r.StickyKey = &kafka.StickyKeyPartitionerConfig{Hasher: cfg.StickyKey.Hasher}
+	}
+	if cfg.RoundRobin != nil {
+		r.RoundRobin = true
+	}
+	if cfg.LeastBackup != nil {
+		r.LeastBackup = true
+	}
+	return r
+}
+
+func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) *kafka.KafkaExporterSignalConfig {
+	return &kafka.KafkaExporterSignalConfig{
+		Topic:                cfg.Topic,
+		TopicFromMetadataKey: cfg.TopicFromMetadataKey,
+		Encoding:             cfg.Encoding,
+	}
+}

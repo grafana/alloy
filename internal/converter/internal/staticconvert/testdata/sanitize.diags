@@ -1,0 +1,2 @@
+(Warning) Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.
+(Warning) The converter does not support converting the provided metrics wal_directory config: Use the run command flag --storage.path instead.

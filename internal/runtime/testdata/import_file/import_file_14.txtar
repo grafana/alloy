@@ -1,0 +1,38 @@
+Import module with an unused component that has too low stability level
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}
+
+-- module.alloy --
+
+declare "unused" {
+  testcomponents.experimental "unused" {}
+}
+
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}

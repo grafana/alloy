@@ -1,0 +1,22 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: fun
+    relabel_configs:
+      - source_labels:
+          - __trail__
+        target_label: __path__
+    azure_event_hubs:
+      labels:
+        job: fun
+        quality: excellent
+      use_incoming_timestamp: true
+      event_hubs:
+        - hub0
+        - hub1
+      connection_string: Endpoint=sb://<NamespaceName>.servicebus.windows.net/;SharedAccessKeyName=<KeyName>;SharedAccessKey=<KeyValue>
+      fully_qualified_namespace: robin.servicebus.windows.net
+      group_id: my_consumer_group
+      disallow_custom_messages: true
+tracing: {enabled: false}
+server: {register_instrumentation: false}

@@ -1,0 +1,43 @@
+name: Create Release Branch
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.0'
+
+permissions:
+  id-token: write
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Go 🏗️
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+          cache: false
+
+      - name: Run create-release-branch tool 🌿
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: go run -C tools ./cmd release create-release-branch --tag "${RELEASE_TAG}"

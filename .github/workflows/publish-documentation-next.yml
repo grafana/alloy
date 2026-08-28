@@ -1,0 +1,29 @@
+name: publish-technical-documentation-next
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/sources/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: github.repository == 'grafana/alloy'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: grafana/writers-toolkit/publish-technical-documentation@9aed4f7c5b3caa1b58d72ee39232333407d4acbf # publish-technical-documentation/v1
+        # This internal action's version is left as a tag instead of a pinned hash because renovate
+        # does not support this type of tag/version format without custom configuration.
+        with:
+          website_directory: content/docs/alloy/next

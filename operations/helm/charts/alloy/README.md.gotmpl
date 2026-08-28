@@ -1,0 +1,207 @@
+# Grafana Alloy Helm chart
+
+{{ template "chart.typeBadge" . }}{{ template "chart.versionBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+Helm chart for deploying [Grafana Alloy][] to Kubernetes.
+
+[Grafana Alloy]: https://grafana.com/docs/alloy/latest/
+
+## Usage
+
+### Setup Grafana chart repository
+
+```
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+```
+
+### Install chart
+
+To install the chart with the release name my-release:
+
+`helm install my-release grafana/alloy`
+
+This chart installs one instance of Grafana Alloy into your Kubernetes cluster
+using a specific Kubernetes controller. By default, DaemonSet is used. The
+`controller.type` value can be used to change the controller to either a
+StatefulSet or Deployment.
+
+Creating multiple installations of the Helm chart with different controllers is
+useful if just using the default DaemonSet isn't sufficient.
+
+{{ template "chart.valuesSection" . }}
+
+#### Migrate from `grafana/grafana-agent` chart to `grafana/alloy`
+
+The `values.yaml` file for the `grafana/grafana-agent` chart is compatible with
+the chart for `grafana/alloy`, with two exceptions:
+
+* The `agent` field in `values.yaml` is deprecated in favor of `alloy`. Support
+  for the `agent` field will be removed in a future release.
+
+* The default value for `alloy.listenPort` is `12345` to align with the default
+  listen port in other installations. To retain the previous default, set
+  `alloy.listenPort` to `80` when installing.
+
+### alloy.stabilityLevel
+
+`alloy.stabilityLevel` controls the minimum level of stability for what
+components can be created (directly or through imported modules). Note that
+setting this field to a lower stability may also enable internal behaviour of a
+lower stability, such as experimental memory optimizations.
+
+Valid settings are `experimental`, `public-preview`, and `generally-available`.
+
+### alloy.extraArgs
+
+`alloy.extraArgs` allows for passing extra arguments to the Grafana Alloy
+container. The list of available arguments is documented on [alloy run][].
+
+> **WARNING**: Using `alloy.extraArgs` does not have a stable API. Things may
+> break between Chart upgrade if an argument gets added to the template.
+
+[alloy run]: https://grafana.com/docs/alloy/latest/reference/cli/run/
+
+### alloy.extraPorts
+
+`alloy.extraPorts` allows for configuring specific open ports.
+
+Detailed specification of ports can be found at the [Kubernetes Pod documents](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#ports).
+
+Port numbers specified must be 0 < x < 65535.
+
+| ChartPort | KubePort | Description |
+|-----------|----------|-------------|
+| targetPort | containerPort | Number of port to expose on the pod's IP address. |
+| hostPort | hostPort | (Optional) Number of port to expose on the host. Daemonsets taking traffic might find this useful. |
+| name | name | If specified, this must be an `IANA_SVC_NAME` and unique within the pod. Each named port in a pod must have a unique name. Name for the port that can be referred to by services.
+| protocol | protocol | Must be UDP, TCP, or SCTP. Defaults to "TCP". |
+| appProtocol | appProtocol | Hint on application protocol. This is used to expose Alloy externally on OpenShift clusters using "h2c". Optional. No default value. |
+
+### alloy.listenAddr
+
+`alloy.listenAddr` allows for restricting which address Alloy listens on
+for network traffic on its HTTP server. By default, this is `0.0.0.0` to allow
+its UI to be exposed when port-forwarding and to expose its metrics to other
+Alloy instances in the cluster.
+
+### alloy.configMap.config
+
+`alloy.configMap.content` holds the Grafana Alloy configuration to use.
+
+If `alloy.configMap.content` is not provided, a [default configuration file][default-config] is
+used. When provided, `alloy.configMap.content` must hold a valid Alloy configuration file.
+
+[default-config]: ./config/example.alloy
+
+### alloy.securityContext
+
+`alloy.securityContext` sets the securityContext passed to the Grafana
+Alloy container.
+
+By default, Grafana Alloy containers are not able to collect telemetry from the
+host node or other specific types of privileged telemetry data. See [Collecting
+logs from other containers][#collecting-logs-from-other-containers] and
+[Collecting host node telemetry][#collecting-host-node-telemetry] below for
+more information on how to enable these capabilities.
+
+### rbac.create
+
+`rbac.create` enables the creation of ClusterRole and ClusterRoleBindings for
+the Grafana Alloy containers to use. The default permission set allows
+components like [discovery.kubernetes][] to work properly.
+
+[discovery.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/discovery.kubernetes/
+
+### controller.autoscaling
+
+`controller.autoscaling.enabled` enables the creation of a HorizontalPodAutoscaler. It is only used when `controller.type` is set to `deployment` or `statefulset`.
+
+`controller.autoscaling` is intended to be used with [clustered][] mode.
+
+> **WARNING**: Using `controller.autoscaling` for any other Grafana Alloy
+> configuration could lead to redundant or double telemetry collection.
+
+[clustered]: https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode
+
+When using autoscaling with a StatefulSet controller and have enabled
+volumeClaimTemplates to be created alongside the StatefulSet, it is possible to
+leak up to `maxReplicas` PVCs when the HPA is scaling down. If you're on
+Kubernetes version `>=1.23-0` and your cluster has the
+`StatefulSetAutoDeletePVC` feature gate enabled, you can set
+`enableStatefulSetAutoDeletePVC` to true to automatically delete stale PVCs.
+
+Using `controller.autoscaling` requires the target metric (cpu/memory) to have
+its resource requests set up for both the Alloy and config-reloader containers
+so that the HPA can use them to calculate the replica count from the actual
+resource utilization.
+
+## Collecting logs from other containers
+
+There are two ways to collect logs from other containers within the cluster
+Alloy is deployed in.
+
+### loki.source.kubernetes
+
+The [loki.source.kubernetes][] component may be used to collect logs from
+containers using the Kubernetes API. This component does not require mounting
+the hosts filesystem into Alloy, nor requires additional security contexts to
+work correctly.
+
+[loki.source.kubernetes]: https://grafana.com/docs/alloy/latest/reference/components/loki.source.kubernetes/
+
+### File-based collection
+
+Logs may also be collected by mounting the host's filesystem into the Alloy
+container, bypassing the need to communicate with the Kubrnetes API.
+
+To mount logs from other containers to Grafana Alloy directly:
+
+* Set `alloy.mounts.dockercontainers` to `true`.
+* Set `alloy.securityContext` to:
+  ```yaml
+  privileged: true
+  runAsUser: 0
+  ```
+
+## Collecting host node telemetry
+
+Telemetry from the host, such as host-specific log files (from `/var/logs`) or
+metrics from `/proc` and `/sys` are not accessible to Grafana Alloy containers.
+
+To expose this information to Grafana Alloy for telemetry collection:
+
+* Set `alloy.mounts.dockercontainers` to `true`.
+* Mount `/proc` and `/sys` from the host into the container.
+* Set `alloy.securityContext` to:
+  ```yaml
+  privileged: true
+  runAsUser: 0
+  ```
+
+## Expose Alloy externally on OpenShift clusters
+
+If you want to send telemetry from an Alloy instance outside of the OpenShift clusters over gRPC towards the Alloy instance on the OpenShift clusters, you need to:
+
+* Set the optional `appProtocol` on `alloy.extraPorts` to `h2c`
+* Expose the service via Ingress or Route within the OpenShift cluster. Example of a Route in OpenShift:
+```yaml
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: route-otlp-alloy-h2c
+spec:
+  to:
+    kind: Service
+    name: test-grpc-h2c
+    weight: 100
+  port:
+    targetPort: otlp-grpc
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+```
+
+
+Once this Ingress/Route is exposed it would then allow gRPC communication for (for example) traces. This allow an Alloy instance on a VM or another Kubernetes/OpenShift cluster to be able to communicate over gRPC via the exposed Ingress or Route.

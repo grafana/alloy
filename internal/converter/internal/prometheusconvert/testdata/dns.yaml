@@ -1,0 +1,19 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    dns_sd_configs:
+      - names:
+          - 'myapp.service.consul'
+        type: 'SRV'
+        port: 8080
+  - job_name: "prometheus2"
+    dns_sd_configs:
+      - names:
+          - 'myapp.service.consul'
+        type: 'AAAA'
+        port: 8080
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

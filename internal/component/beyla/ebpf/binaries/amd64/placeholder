@@ -1,0 +1,2 @@
+Placeholder so the go:embed pattern matches before `make download-beyla`
+writes the real (gitignored) `beyla` binary into this directory.

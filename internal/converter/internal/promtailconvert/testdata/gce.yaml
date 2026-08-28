@@ -1,0 +1,9 @@
+scrape_configs:
+  - job_name: fun
+    gce_sd_configs:
+      - project: 'your-project-id'
+        zone: 'us-central1-a'
+        port: 8080
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

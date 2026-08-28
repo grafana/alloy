@@ -1,0 +1,39 @@
+loki.process "fun" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.journal "fun" {
+	format_as_json = true
+	max_age        = "20h0m0s"
+	relabel_rules  = discovery.relabel.fun.rules
+	forward_to     = [loki.process.fun.receiver]
+	labels         = {
+		region  = "chablis",
+		variety = "chardonnay",
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

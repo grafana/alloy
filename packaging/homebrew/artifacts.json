@@ -1,0 +1,18 @@
+{
+  "darwin": {
+    "arm64": {
+      "package": "alloy-darwin-arm64.zip"
+    },
+    "amd64": {
+      "package": "alloy-darwin-amd64.zip"
+    }
+  },
+  "linux": {
+    "arm64": {
+      "package": "alloy-linux-arm64.zip"
+    },
+    "amd64": {
+      "package": "alloy-linux-amd64.zip"
+    }
+  }
+}

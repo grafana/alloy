@@ -1,0 +1,43 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	output {
+		logs   = [otelcol.exporter.otlp.default.input]
+		traces = [otelcol.connector.spanmetrics.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.connector.spanmetrics "default" {
+	dimension {
+		glob = "http.*"
+	}
+
+	histogram {
+		explicit { }
+	}
+
+	events {
+		dimension {
+			glob = "http.*"
+		}
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}

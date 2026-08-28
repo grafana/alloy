@@ -1,0 +1,95 @@
+discovery.kubernetes "example" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "example" {
+	targets = array.concat(
+		discovery.kubernetes.example.targets,
+		[{
+			__address__       = "this",
+			__path__          = "/var/log/captain_scott_last_expedition.log",
+			__path__exclude__ = "/var/log/sensational_news.log",
+			category          = "fun",
+		}, {
+			__address__       = "is",
+			__path__          = "/var/log/captain_scott_last_expedition.log",
+			__path__exclude__ = "/var/log/sensational_news.log",
+			category          = "fun",
+		}, {
+			__address__       = "actually",
+			__path__          = "/var/log/captain_scott_last_expedition.log",
+			__path__exclude__ = "/var/log/sensational_news.log",
+			category          = "fun",
+		}, {
+			__address__       = "used",
+			__path__          = "/var/log/captain_scott_last_expedition.log",
+			__path__exclude__ = "/var/log/sensational_news.log",
+			category          = "fun",
+		}, {
+			__address__       = "one_more",
+			__path__          = "/shelf/books/star_trek*",
+			__path__exclude__ = "/shelf/books/star_wars*",
+			category          = "sf",
+			quality           = "high",
+		}, {
+			__address__ = "localhost",
+			__path__    = "/var/log/this_is_used.log",
+			category    = "important",
+		}, {
+			__address__ = "localhost",
+		}],
+	)
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+
+	rule {
+		source_labels = ["__name__"]
+		action        = "drop"
+	}
+}
+
+loki.source.file "example" {
+	targets    = discovery.relabel.example.output
+	forward_to = [loki.process.example.receiver]
+	encoding   = "UTF-16"
+
+	decompression {
+		enabled       = true
+		initial_delay = "30s"
+		format        = "z"
+	}
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

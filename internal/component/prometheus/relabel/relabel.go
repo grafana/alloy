@@ -1,0 +1,372 @@
+package relabel
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"time"
+
+	prometheus_client "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/relabel"
+	"github.com/prometheus/prometheus/model/value"
+	"github.com/prometheus/prometheus/storage"
+	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+)
+
+const name = "prometheus.relabel"
+
+func init() {
+	component.Register(component.Registration{
+		Name:      name,
+		Stability: featuregate.StabilityGenerallyAvailable,
+		Args:      Arguments{},
+		Exports:   Exports{},
+
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			return New(opts, args.(Arguments))
+		},
+	})
+}
+
+// Arguments holds values which are used to configure the prometheus.relabel
+// component.
+type Arguments struct {
+	// Where the relabelled metrics should be forwarded to.
+	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+
+	// The relabelling rules to apply to each metric before it's forwarded.
+	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
+
+	// CacheSize is the bounded LRU cache size. Mutually exclusive with
+	// CacheTTL: when CacheTTL is set, CacheSize must be 0.
+	CacheSize int `alloy:"max_cache_size,attr,optional"`
+
+	// CacheTTL opts in to a time-bounded cache that sizes itself to the
+	// working set of series flowing through the component. When set,
+	// CacheSize must be 0.
+	CacheTTL time.Duration `alloy:"cache_ttl,attr,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (arg *Arguments) SetToDefault() {
+	*arg = Arguments{
+		CacheSize: 100_000,
+	}
+}
+
+// minCacheTTL keeps the scan cadence (TTL/4) from dominating real work.
+const minCacheTTL = 1 * time.Minute
+
+// Validate implements syntax.Validator.
+func (arg *Arguments) Validate() error {
+	if arg.CacheSize < 0 {
+		return fmt.Errorf("max_cache_size must be >= 0; got %d", arg.CacheSize)
+	}
+	if arg.CacheTTL < 0 {
+		return fmt.Errorf("cache_ttl must be >= 0; got %s", arg.CacheTTL)
+	}
+	if arg.CacheSize > 0 && arg.CacheTTL > 0 {
+		return fmt.Errorf("max_cache_size and cache_ttl are mutually exclusive: set max_cache_size = 0 to use cache_ttl, or unset cache_ttl to keep the bounded LRU cache")
+	}
+	if arg.CacheSize == 0 && arg.CacheTTL == 0 {
+		return fmt.Errorf("one of max_cache_size or cache_ttl must be set")
+	}
+	if arg.CacheTTL > 0 && arg.CacheTTL < minCacheTTL {
+		return fmt.Errorf("cache_ttl must be at least %s when set; got %s", minCacheTTL, arg.CacheTTL)
+	}
+	return nil
+}
+
+// Exports holds values which are exported by the prometheus.relabel component.
+type Exports struct {
+	Receiver storage.Appendable  `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
+}
+
+// Component implements the prometheus.relabel component.
+type Component struct {
+	mut               sync.RWMutex
+	opts              component.Options
+	mrc               []*relabel.Config
+	receiver          *prometheus.Interceptor
+	metricsProcessed  prometheus_client.Counter
+	metricsOutgoing   prometheus_client.Counter
+	cacheHits         prometheus_client.Counter
+	cacheMisses       prometheus_client.Counter
+	cacheDeletes      prometheus_client.Counter
+	cacheTTLEvictions prometheus_client.Counter
+	fanout            *prometheus.Fanout
+	exited            atomic.Bool
+
+	debugDataPublisher livedebugging.DebugDataPublisher
+
+	cache relabelCache
+}
+
+var (
+	_ component.Component     = (*Component)(nil)
+	_ component.LiveDebugging = (*Component)(nil)
+)
+
+// New creates a new prometheus.relabel component.
+func New(o component.Options, args Arguments) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := o.GetServiceData(labelstore.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+	ls := data.(labelstore.LabelStore)
+	c := &Component{
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
+	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_metrics_processed",
+		Help: "Total number of metrics processed",
+	})
+	c.metricsOutgoing = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_metrics_written",
+		Help: "Total number of metrics written",
+	})
+	c.cacheMisses = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_cache_misses",
+		Help: "Total number of cache misses",
+	})
+	c.cacheHits = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_cache_hits",
+		Help: "Total number of cache hits",
+	})
+	c.cacheDeletes = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_cache_deletes",
+		Help: "Total number of cache deletes",
+	})
+	c.cacheTTLEvictions = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_cache_ttl_evictions",
+		Help: "Number of relabel cache entries removed by the periodic TTL scan. Always 0 when cache_ttl is unset.",
+	})
+	c.cache, err = newRelabelCache(args, c.cacheTTLEvictions)
+	if err != nil {
+		return nil, err
+	}
+
+	cacheSizeGauge := prometheus_client.NewGaugeFunc(prometheus_client.GaugeOpts{
+		Name: "alloy_prometheus_relabel_cache_size",
+		Help: "Total size of relabel cache.",
+	}, func() float64 {
+		c.mut.RLock()
+		cache := c.cache
+		c.mut.RUnlock()
+		return float64(cache.len())
+	})
+
+	collectors := []prometheus_client.Collector{
+		c.metricsProcessed, c.metricsOutgoing, c.cacheMisses, c.cacheHits, c.cacheDeletes,
+		c.cacheTTLEvictions, cacheSizeGauge,
+	}
+	for _, metric := range collectors {
+		err = o.Registerer.Register(metric)
+		if err != nil {
+			c.cache.close()
+			return nil, err
+		}
+	}
+
+	c.fanout = prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
+	c.receiver = prometheus.NewInterceptor(
+		c.fanout,
+		prometheus.WithComponentID(c.opts.ID),
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(v, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+			c.metricsOutgoing.Inc()
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.Append(0, newLbl, t, v)
+		}),
+		prometheus.WithExemplarHook(func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendExemplar(0, newLbl, e)
+		}),
+		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.UpdateMetadata(0, newLbl, m)
+		}),
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendHistogram(0, newLbl, t, h, fh)
+		}),
+	)
+
+	// Immediately export the receiver which remains the same for the component
+	// lifetime.
+	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.MetricRelabelConfigs})
+
+	// Call to Update() to set the relabelling rules once at the start.
+	if err = c.Update(args); err != nil {
+		c.cache.close()
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// Run implements component.Component.
+func (c *Component) Run(ctx context.Context) error {
+	defer c.exited.Store(true)
+	defer c.fanout.Clear()
+	defer func() {
+		c.mut.RLock()
+		c.cache.close()
+		c.mut.RUnlock()
+	}()
+
+	<-ctx.Done()
+	return nil
+}
+
+// Update implements component.Component.
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	newArgs := args.(Arguments)
+	cache, err := newRelabelCache(newArgs, c.cacheTTLEvictions)
+	if err != nil {
+		return err
+	}
+	if c.cache != nil {
+		c.cache.close()
+	}
+	c.cache = cache
+	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.MetricRelabelConfigs})
+
+	return nil
+}
+
+func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	c.metricsProcessed.Inc()
+
+	var (
+		relabelled labels.Labels
+		keep       bool
+	)
+	newLbls, found := c.getFromCache(lbls)
+	if found {
+		c.cacheHits.Inc()
+		// If newLbls is empty but cache entry was found then we want to keep the value empty, if it's not we want to reuse the labels
+		if !newLbls.IsEmpty() {
+			relabelled = newLbls
+		}
+	} else {
+		// Relabel against a copy of the labels to prevent modifying the original
+		// slice.
+		lb := labels.NewBuilder(lbls)
+		if keep = relabel.ProcessBuilder(lb, c.mrc...); keep {
+			relabelled = lb.Labels()
+		} else {
+			relabelled = labels.EmptyLabels()
+		}
+		c.cacheMisses.Inc()
+		c.addToCache(lbls, relabelled, keep)
+	}
+
+	// If stale remove from the cache, the reason we don't exit early is so the stale value can propagate.
+	if value.IsStaleNaN(val) {
+		c.deleteFromCache(lbls)
+	}
+
+	count := uint64(1)
+	if relabelled.Len() == 0 {
+		count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
+	}
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	if c.debugDataPublisher.IsActive(componentID) {
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.PrometheusMetric,
+			count,
+			func() string {
+				return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
+			},
+		))
+	}
+
+	return relabelled
+}
+
+func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
+	hash := lbls.Hash()
+	return c.cache.get(hash)
+}
+
+func (c *Component) deleteFromCache(lbls labels.Labels) {
+	c.cacheDeletes.Inc()
+
+	hash := lbls.Hash()
+	c.cache.remove(hash)
+}
+
+func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {
+	hash := lbls.Hash()
+	if !keep {
+		c.cache.add(hash, labels.EmptyLabels())
+		return
+	}
+	c.cache.add(hash, relabeled)
+}
+
+func (c *Component) LiveDebugging() {}

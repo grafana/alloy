@@ -1,0 +1,21 @@
+positions:
+  filename: /good/positions.yml
+scrape_configs:
+  - job_name: fun
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/*.json
+        refresh_interval: 5m
+      - files:
+          - /etc/agent/targets/*.json
+        refresh_interval: 30m
+  - job_name: fun2
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets2/*.json
+        refresh_interval: 5m
+      - files:
+          - /etc/agent/targets2/*.json
+        refresh_interval: 30m
+tracing: {enabled: false}
+server: {register_instrumentation: false}

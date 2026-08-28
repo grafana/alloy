@@ -1,0 +1,44 @@
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+  configs:
+    - name: "test1"
+    - name: "test2"
+      remote_write:
+        - url: http://localhost:9010/api/prom/push
+          send_exemplars: false
+          queue_config:
+            retry_on_http_429: true
+    - name: "test3"
+      remote_write:
+        - url: http://localhost:9011/api/prom/push
+        - url: http://localhost:9012/api/prom/push
+          queue_config:
+            retry_on_http_429: false
+    - name: "test4_sigv4_defaults"
+      remote_write:
+        - url: http://localhost:9012/api/prom/push
+          sigv4: {}
+    - name: "test5_sigv4_explicit"
+      remote_write:
+        - url: http://localhost:9012/api/prom/push
+          sigv4:
+            region: us-east-1
+            access_key: fake_access_key
+            secret_key: fake_secret_key
+            profile: fake_profile
+            role_arn: fake_role_arn
+    - name: "test6_azuread_defaults"
+      remote_write:
+        - url: http://localhost:9012/api/prom/push
+          azuread:
+            managed_identity:
+              client_id: 00000000-0000-0000-0000-000000000000
+    - name: "test7_azuread_explicit"
+      remote_write:
+        - url: http://localhost:9012/api/prom/push
+          azuread:
+            cloud: AzureGovernment
+            managed_identity:
+              client_id: 00000000-0000-0000-0000-000000000000

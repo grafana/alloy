@@ -1,0 +1,101 @@
+name: Lint
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint_go:
+    name: Lint Go
+    runs-on: ubuntu-latest-8-cores
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go task golangci-lint
+
+    - name: Lint Go
+      run: task lint:go
+
+    - name: Run Alloy Lint
+      run: task lint:alloylint 
+
+  govulncheck:
+    name: Govulncheck
+    # xlarge (64 GB): govulncheck's SSA call graph on the
+    # alloy/collector/alloyengine modules exceeds smaller runners.
+    runs-on: ubuntu-x64-xlarge
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go govulncheck task
+
+    - name: Run govulncheck
+      run: task lint:govulncheck
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: shellcheck task go
+
+    - name: Run shellcheck
+      run: task lint:shellcheck
+
+  lint_ui:
+    name: Lint UI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: internal/web/ui
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: node
+
+    - name: Install dependencies
+      run: npm ci --no-audit --no-fund
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Format
+      run: npm run format

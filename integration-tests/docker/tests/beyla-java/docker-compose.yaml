@@ -1,0 +1,48 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    environment:
+      OTEL_EBPF_JAVAAGENT_ATTACH_TIMEOUT: "30s"
+    command:
+      [
+        "run",
+        "/etc/alloy/config.alloy",
+        "--server.http.listen-addr",
+        "0.0.0.0:12345",
+        "--stability.level",
+        "experimental"
+      ]
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+    privileged: true
+    cap_add:
+      - "SYS_ADMIN"
+      - "SYS_PTRACE"
+      - "SYS_RESOURCE"
+    security_opt:
+      - "apparmor:unconfined"
+    pid: "host"
+    depends_on:
+      java-app:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/12345"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+  java-app:
+    image: springcommunity/spring-framework-petclinic:latest
+    environment:
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+    ports:
+      - "18080:8080"
+    networks:
+      - default
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true

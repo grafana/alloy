@@ -1,0 +1,48 @@
+name: Check CloudWatch documentation
+
+on:
+  pull_request:
+    paths:
+      - "docs/sources/reference/components/prometheus/prometheus.exporter.cloudwatch.md"
+      - "docs/sources/shared/reference/components/prometheus-exporter-cloudwatch-supported-services.md"
+      - "internal/static/integrations/**/*"
+      - "go.mod"
+      - "internal/component/prometheus/exporter/cloudwatch/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check-cloudwatch-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Set up tools
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          install_args: go task
+
+      - name: Sync CloudWatch documentation
+        run: task docs:cloudwatch-sync
+
+      - name: Check shared content import
+        run: |
+          expected_import='{{< docs/shared lookup="reference/components/prometheus-exporter-cloudwatch-supported-services.md" source="alloy" version="<ALLOY_VERSION>" >}}'
+          if ! grep -Fqx "$expected_import" docs/sources/reference/components/prometheus/prometheus.exporter.cloudwatch.md; then
+            echo "CloudWatch exporter documentation must import the generated supported-services file." >&2
+            exit 1
+          fi
+
+      - name: Check for changes
+        run: |
+          generated_doc="docs/sources/shared/reference/components/prometheus-exporter-cloudwatch-supported-services.md"
+          if [ -n "$(git status --porcelain -- "$generated_doc")" ]; then
+            echo "CloudWatch documentation is out of date. Run 'task docs:cloudwatch-sync' and commit the result." >&2
+            git status --short -- "$generated_doc"
+            git diff -- "$generated_doc"
+            exit 1
+          fi

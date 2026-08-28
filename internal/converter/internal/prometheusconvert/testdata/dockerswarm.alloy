@@ -1,0 +1,54 @@
+discovery.dockerswarm "prometheus1" {
+	host = "http://localhost:8081"
+	role = "nodes"
+	port = 81
+
+	filter {
+		name   = "n1"
+		values = ["v1", "v2"]
+	}
+
+	filter {
+		name   = "n2"
+		values = ["v3"]
+	}
+	refresh_interval = "5m0s"
+
+	basic_auth {
+		username = "username"
+		password = "password"
+	}
+}
+
+discovery.dockerswarm "prometheus2" {
+	host = "http://localhost:8080"
+	role = "services"
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.dockerswarm.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.dockerswarm.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

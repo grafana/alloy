@@ -1,0 +1,17 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if $values.configMap.create }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alloy.config-map.name" . }}
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  {{- if $values.configMap.content }}
+  {{ include "alloy.config-map.key" . }}: |- {{- (tpl  $values.configMap.content .) | nindent 4 }}
+  {{- else }}
+  {{ include "alloy.config-map.key" . }}: |- {{- .Files.Get "config/example.alloy" | trim | nindent 4 }}
+  {{- end }}
+{{- end }}

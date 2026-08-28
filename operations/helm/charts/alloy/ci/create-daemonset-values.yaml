@@ -1,0 +1,3 @@
+# Test rendering of the chart with the controller explicitly set to DaemonSet.
+controller:
+  type: daemonset

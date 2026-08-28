@@ -1,0 +1,19 @@
+logs:
+  positions_directory: /path
+  configs:
+    - name: config
+      clients:
+        - url: http://localhost/loki/api/v1/push
+      scrape_configs:
+        - job_name: with_metrics
+          kubernetes_sd_configs:
+            - role: "pod"
+          pipeline_stages:
+            - metrics:
+                byte_count_total:
+                  config:
+                    action: "add"
+                    count_entry_bytes: true
+                    match_all: true
+                  description: "A running counter of all bytes per stream with their corresponding labels"
+                  type: "Counter"

@@ -1,0 +1,6 @@
+oauth2:
+  client_id: "myclient"
+  client_certificate_key: "mysecret"
+  client_certificate_key_file: "mysecret"
+  grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer"
+  token_url: "http://auth"

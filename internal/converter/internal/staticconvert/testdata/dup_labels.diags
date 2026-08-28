@@ -1,0 +1,3 @@
+(Warning) Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.
+(Critical) duplicate label after conversion "discovery.consul.metrics_name_job_test". this is due to how valid Alloy labels are assembled and can be avoided by updating named properties in the source config.
+(Critical) duplicate label after conversion "prometheus.scrape.metrics_name_job_test". this is due to how valid Alloy labels are assembled and can be avoided by updating named properties in the source config.

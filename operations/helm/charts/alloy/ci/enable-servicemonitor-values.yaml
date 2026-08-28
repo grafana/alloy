@@ -1,0 +1,5 @@
+# Test rendering of the chart with the service monitor enabled
+service:
+  enabled: true
+serviceMonitor:
+  enabled: true

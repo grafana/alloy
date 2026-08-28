@@ -1,0 +1,9 @@
+alloy:
+  extraPorts:
+    - name: "faro"
+      port: 12347
+      targetPort: 12347
+      protocol: "TCP"
+
+ingress:
+  enabled: true

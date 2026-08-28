@@ -1,0 +1,76 @@
+name: Announce Release to Slack
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.13.0)'
+        required: true
+        default: ''
+        type: string
+      release_url:
+        description: 'Release URL'
+        required: true
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  announce-release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      RELEASE_URL: ${{ inputs.release_url || github.event.release.html_url }}
+    steps:
+      - name: Get secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            SLACK_CHANNEL_ID_ALLOY=slack:channel_id_alloy
+
+      - name: Check for a final Alloy release 🏷️
+        id: release-type
+        run: |
+          # Announce only final Alloy releases (vX.Y.Z) — not RCs (vX.Y.Z-rc.N) or
+          # component releases (e.g. syntax/v0.2.0).
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_alloy_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_alloy_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify internal alloy channel 📢
+        if: steps.release-type.outputs.is_alloy_release == 'true'
+        uses: grafana/shared-workflows/actions/send-slack-message@551bc8d50017d3e95d5da3f8a4826e733a208dc0 # send-slack-message/v3.0.2
+        env:
+          SLACK_MESSAGE: |
+            :alloy: :alloy: :alloy:
+            *Grafana Alloy ${{ env.RELEASE_TAG }} is now available!*
+
+            *Release:* <${{ env.RELEASE_URL }}|${{ env.RELEASE_TAG }}>
+            *Full changelog:* <https://github.com/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md|CHANGELOG.md>
+            :alloy: :alloy: :alloy:
+        with:
+          method: chat.postMessage
+          payload-templated: false
+          payload: |
+            {
+              "channel": "${{ fromJSON(steps.get-secrets.outputs.secrets).SLACK_CHANNEL_ID_ALLOY }}",
+              "text": ${{ toJSON(env.SLACK_MESSAGE) }},
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ${{ toJSON(env.SLACK_MESSAGE) }}
+                  }
+                }
+              ]
+            }

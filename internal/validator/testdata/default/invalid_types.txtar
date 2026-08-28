@@ -1,0 +1,14 @@
+invalid types
+-- main.alloy --
+loki.source.file "test" {
+	forward_to = "wrong"
+	targets = [10]
+	encoding = true
+}
+
+otelcol.auth.headers "headers" {
+	header {
+		key = "test"
+		action = "random"
+	}
+}

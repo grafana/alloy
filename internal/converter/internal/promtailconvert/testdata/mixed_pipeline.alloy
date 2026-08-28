@@ -1,0 +1,82 @@
+discovery.kubernetes "uber_pipeline" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+discovery.consulagent "uber_pipeline" {
+	datacenter = "bigdata"
+}
+
+loki.process "uber_pipeline" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "uber_pipeline" {
+	targets = array.concat(
+		discovery.kubernetes.uber_pipeline.targets,
+		discovery.consulagent.uber_pipeline.targets,
+	)
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.file "uber_pipeline" {
+	targets    = discovery.relabel.uber_pipeline.output
+	forward_to = [loki.process.uber_pipeline.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/tmp/positions.yaml"
+}
+
+loki.source.api "uber_pipeline" {
+	http { }
+
+	grpc { }
+	graceful_shutdown_timeout = "0s"
+	forward_to                = [loki.process.uber_pipeline.receiver]
+	labels                    = {
+		identity    = "unidentified",
+		object_type = "flying",
+	}
+	relabel_rules          = discovery.relabel.uber_pipeline.rules
+	use_incoming_timestamp = true
+	max_send_message_size  = "0B"
+}
+
+discovery.docker "uber_pipeline" {
+	host = "unix:///var/run/second_docker_why_not.sock"
+}
+
+loki.source.docker "uber_pipeline" {
+	host          = "unix:///var/run/second_docker_why_not.sock"
+	targets       = discovery.docker.uber_pipeline.targets
+	forward_to    = [loki.process.uber_pipeline.receiver]
+	relabel_rules = discovery.relabel.uber_pipeline.rules
+}
+
+loki.write "default" {
+	endpoint {
+		url       = "http://gateway:3100/loki/api/v1/push"
+		tenant_id = "tenant1"
+	}
+	external_labels = {}
+}

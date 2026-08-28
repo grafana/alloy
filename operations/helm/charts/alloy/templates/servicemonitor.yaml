@@ -1,0 +1,37 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if and .Values.service.enabled .Values.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+    {{- with .Values.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+  - port: http-metrics
+    scheme: {{ $values.listenScheme | lower }}
+    honorLabels: true
+    {{- if .Values.serviceMonitor.interval }}
+    interval: {{ .Values.serviceMonitor.interval }}
+    {{- end }}
+    {{- if .Values.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+    {{ tpl (toYaml .Values.serviceMonitor.metricRelabelings | nindent 6) . }}
+    {{- end }}
+    {{- if .Values.serviceMonitor.relabelings }}
+    relabelings:
+    {{ tpl (toYaml .Values.serviceMonitor.relabelings | nindent 6) . }}
+    {{- end }}
+    {{- with .Values.serviceMonitor.tlsConfig }}
+    tlsConfig:
+    {{- toYaml . | nindent 6 }}
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+{{- end }}

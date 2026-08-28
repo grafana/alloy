@@ -1,0 +1,61 @@
+prometheus.scrape "prometheus1" {
+	targets = [{
+		__address__ = "localhost:9090",
+	}]
+	forward_to       = [prometheus.remote_write.default.receiver]
+	job_name         = "prometheus1"
+	honor_timestamps = false
+	scrape_interval  = "10s"
+	scrape_timeout   = "5s"
+
+	basic_auth {
+		username = "user"
+		password = "pass"
+	}
+}
+
+prometheus.scrape "prometheus2" {
+	targets = [{
+		__address__ = "localhost:9091",
+	}]
+	forward_to = [prometheus.relabel.prometheus2.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.relabel "prometheus2" {
+	forward_to = [prometheus.remote_write.default.receiver]
+
+	rule {
+		source_labels = ["__address1__"]
+		target_label  = "__param_target1"
+	}
+
+	rule {
+		source_labels = ["__address2__"]
+		target_label  = "__param_target2"
+	}
+}
+
+prometheus.remote_write "default" {
+	external_labels = {
+		cluster = "prod",
+	}
+
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+
+	endpoint {
+		name = "remote2"
+		url  = "http://remote-write-url2"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

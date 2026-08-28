@@ -1,0 +1,245 @@
+// Package snmp_exporter embeds https://github.com/prometheus/snmp_exporter
+package snmp_exporter
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"maps"
+	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/snmp_exporter/collector"
+	snmp_config "github.com/prometheus/snmp_exporter/config"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/config"
+	snmp_common "github.com/grafana/alloy/internal/static/integrations/snmp_exporter/common"
+)
+
+// DefaultConfig holds the default settings for the snmp_exporter integration.
+var DefaultConfig = Config{
+	WalkParams:              make(map[string]snmp_config.WalkParams),
+	SnmpConfigFile:          "",
+	SnmpConfigMergeStrategy: "replace",
+	SnmpConcurrency:         1,
+	SnmpTargets:             make([]SNMPTarget, 0),
+	SnmpConfig:              snmp_config.Config{},
+}
+
+// SNMPTarget defines a target device to be used by the integration.
+type SNMPTarget struct {
+	Name        string `yaml:"name"`
+	Target      string `yaml:"address"`
+	Module      string `yaml:"module"`
+	Auth        string `yaml:"auth"`
+	WalkParams  string `yaml:"walk_params,omitempty"`
+	SNMPContext string `yaml:"snmp_context,omitempty"`
+	Labels      map[string]string
+}
+
+// Config configures the SNMP integration.
+type Config struct {
+	WalkParams              map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
+	SnmpConfigFile          string                            `yaml:"config_file,omitempty"`
+	SnmpConfigMergeStrategy string                            `yaml:"config_merge_strategy,omitempty"`
+	SnmpConcurrency         int                               `yaml:"concurrency,omitempty"`
+	SnmpTargets             []SNMPTarget                      `yaml:"snmp_targets"`
+	SnmpConfig              snmp_config.Config                `yaml:"snmp_config,omitempty"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler for Config.
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
+	*c = DefaultConfig
+
+	type plain Config
+	return unmarshal((*plain)(c))
+}
+
+// Name returns the name of the integration.
+func (c *Config) Name() string {
+	return "snmp"
+}
+
+func (c *Config) InstanceKey(defaultKey string) (string, error) {
+	return defaultKey, nil
+}
+
+// NewIntegration creates a new SNMP integration.
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
+}
+
+func init() {
+	integrations.RegisterIntegration(&Config{})
+}
+
+// New creates a new snmp_exporter integration
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
+	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
+	if err != nil {
+		return nil, err
+	}
+	// The `name` and `address` fields are mandatory for the SNMP targets are mandatory.
+	// Enforce this check and fail the creation of the integration if they're missing.
+	for _, target := range c.SnmpTargets {
+		if target.Name == "" || target.Target == "" {
+			return nil, fmt.Errorf("failed to load snmp_targets; the `name` and `address` fields are mandatory")
+		}
+	}
+
+	sh := &snmpHandler{
+		cfg:     c,
+		snmpCfg: snmpCfg,
+		log:     log,
+	}
+	integration := &Integration{
+		sh: sh,
+	}
+
+	return integration, nil
+}
+
+// LoadSNMPConfig loads the SNMP configuration from the given file. If the file is empty, it will
+// load the embedded configuration.
+func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, strategy string) (*snmp_config.Config, error) {
+	var err error
+	if snmpConfigFile != "" {
+		customSnmpCfg, err = snmp_config.LoadFile([]string{snmpConfigFile}, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load snmp config from file %v: %w", snmpConfigFile, err)
+		}
+	}
+	switch strategy {
+	case "replace":
+		if len(customSnmpCfg.Modules) == 0 && len(customSnmpCfg.Auths) == 0 { // If the user didn't specify a config, load the embedded config.
+			customSnmpCfg, err = snmp_common.LoadEmbeddedConfig()
+			if err != nil {
+				return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
+			}
+		}
+		return customSnmpCfg, nil
+	case "merge":
+		var finalCfg *snmp_config.Config
+		finalCfg, err = snmp_common.LoadEmbeddedConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
+		}
+
+		if len(customSnmpCfg.Auths) > 0 {
+			maps.Copy(finalCfg.Auths, customSnmpCfg.Auths)
+		}
+		if len(customSnmpCfg.Modules) > 0 {
+			maps.Copy(finalCfg.Modules, customSnmpCfg.Modules)
+		}
+		return finalCfg, nil
+	default:
+		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
+	}
+}
+
+func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
+	buckets := prometheus.ExponentialBuckets(0.0001, 2, 15)
+	return collector.Metrics{
+		SNMPCollectionDuration: promauto.With(reg).NewHistogramVec(
+			prometheus.HistogramOpts{
+				Namespace:                       namespace,
+				Name:                            "collection_duration_seconds",
+				Help:                            "Duration of collections by the SNMP exporter",
+				Buckets:                         prometheus.DefBuckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
+			},
+			[]string{"module"},
+		),
+		SNMPUnexpectedPduType: promauto.With(reg).NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "unexpected_pdu_type_total",
+				Help:      "Unexpected Go types in a PDU.",
+			},
+		),
+		SNMPDuration: promauto.With(reg).NewHistogram(
+			prometheus.HistogramOpts{
+				Namespace:                       namespace,
+				Name:                            "packet_duration_seconds",
+				Help:                            "A histogram of latencies for SNMP packets.",
+				Buckets:                         buckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
+			},
+		),
+		SNMPPackets: promauto.With(reg).NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "packets_total",
+				Help:      "Number of SNMP packet sent, including retries.",
+			},
+		),
+		SNMPRetries: promauto.With(reg).NewCounter(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "packet_retries_total",
+				Help:      "Number of SNMP packet retries.",
+			},
+		),
+		SNMPInflight: promauto.With(reg).NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "request_in_flight",
+				Help:      "Current number of SNMP scrapes being requested.",
+			},
+		),
+	}
+}
+
+// Integration is the SNMP integration. The integration scrapes metrics
+// from the host Linux-based system.
+type Integration struct {
+	sh *snmpHandler
+}
+
+// MetricsHandler implements Integration.
+func (i *Integration) MetricsHandler() (http.Handler, error) {
+	return i.sh, nil
+}
+
+// Run satisfies Integration.Run.
+func (i *Integration) Run(ctx context.Context) error {
+	// We don't need to do anything here, so we can just wait for the context to
+	// finish.
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+// ScrapeConfigs satisfies Integration.ScrapeConfigs.
+func (i *Integration) ScrapeConfigs() []config.ScrapeConfig {
+	var res []config.ScrapeConfig
+	for _, target := range i.sh.cfg.SnmpTargets {
+		queryParams := url.Values{}
+		queryParams.Add("target", target.Target)
+		if target.Module != "" {
+			queryParams.Add("module", target.Module)
+		}
+		if target.Auth != "" {
+			queryParams.Add("auth", target.Auth)
+		}
+		if target.WalkParams != "" {
+			queryParams.Add("walk_params", target.WalkParams)
+		}
+		if target.SNMPContext != "" {
+			queryParams.Add("snmp_context", target.SNMPContext)
+		}
+		res = append(res, config.ScrapeConfig{
+			JobName:     i.sh.cfg.Name() + "/" + target.Name,
+			MetricsPath: "/metrics",
+			QueryParams: queryParams,
+		})
+	}
+	return res
+}

@@ -1,0 +1,53 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: example
+    pipeline_stages:
+      - drop:
+          source: string
+          drop_counter_reason: "nope"
+          value: penny
+          separator: ","
+          expression: ":joy:"
+          older_than: 10m
+          longer_than: 1KB
+      - drop:
+          drop_counter_reason: "nope"
+          value: penny
+          longer_than: 1kB
+      - drop:
+          drop_counter_reason: "nope"
+          value: penny
+          longer_than: 2048
+      - drop:
+          source: [ "string_one" ]
+          drop_counter_reason: "nope"
+          value: penny
+          longer_than: 1MB
+      - drop:
+          source: [ ]
+          drop_counter_reason: "nope"
+          value: penny
+          longer_than: 1KB
+      - drop:
+          source: [ "comma", "separated" ]
+          longer_than: 1KB
+      - drop:
+          source: "invalid_longer_than"
+          longer_than: 1.21GigaWatts
+      - drop:
+          source: "invalid_older_than"
+          older_than: lightyear
+      - drop:
+          source:
+            invalid: object
+      - drop:
+          source:
+            - invalid: object
+
+    kubernetes_sd_configs:
+      - role: pod
+        kubeconfig_file: /home/toby/.kube/config
+
+tracing: { enabled: false }
+server: { register_instrumentation: false }

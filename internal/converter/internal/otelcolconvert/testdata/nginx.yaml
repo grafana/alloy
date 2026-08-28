@@ -1,0 +1,16 @@
+receivers:
+  nginx:
+    endpoint: http://localhost:80/status
+    collection_interval: 30s
+    initial_delay: 5s
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [nginx]
+      processors: []
+      exporters: [otlp]

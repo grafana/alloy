@@ -1,0 +1,4 @@
+# Test rendering of the chart with the controller explicitly set to StatefulSet.
+controller:
+  type: statefulset
+  minReadySeconds: 60

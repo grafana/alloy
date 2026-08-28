@@ -1,0 +1,21 @@
+Import a module that contains an import.git with the same label but that imports a different repository.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.git "testImport" {
+  // Requires repo.git.tar and repo2.git.tar to be extracted
+  repository = "./testdata/repo.git"
+  path = "nested.alloy"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}

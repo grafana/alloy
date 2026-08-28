@@ -1,0 +1,30 @@
+Foreach in a module.
+
+-- main.alloy --
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.a "cc" {
+  receiver = testcomponents.summation_receiver.sum.receiver
+}
+
+testcomponents.summation_receiver "sum" {
+}
+
+-- module.alloy --
+declare "a" {
+  argument "receiver" {}
+  foreach "testForeach" {
+    collection = [5, 5]
+    var = "num"
+
+    template {
+      testcomponents.pulse "pt" {
+        max = num
+        frequency = "10ms"
+        forward_to = [argument.receiver.value]
+      }
+    }
+  }
+}

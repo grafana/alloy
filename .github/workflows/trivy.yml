@@ -1,0 +1,37 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: trivy scan
+
+on:
+  schedule:
+    # triggers the workflow every day at 8:00 and 20:00 UTC:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '15 8,20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    permissions:
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    name: Build
+    runs-on: "ubuntu-latest"
+    steps:
+      # Override the DB source: GHCR rate-limits trivy-db pulls in CI.
+      - name: Run Trivy vulnerability scanner
+        uses: docker://public.ecr.aws/aquasecurity/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:latest
+        with:
+          args: image --format sarif --severity CRITICAL,HIGH,MEDIUM,LOW --output /github/workspace/trivy-results.sarif grafana/alloy-dev:latest
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          sarif_file: trivy-results.sarif

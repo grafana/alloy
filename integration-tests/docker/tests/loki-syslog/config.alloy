@@ -1,0 +1,46 @@
+loki.relabel "syslog" {
+  forward_to = []
+  rule {
+    source_labels = ["__syslog_message_severity"]
+    target_label  = "severity"
+  }
+}
+
+loki.source.syslog "local" {
+  listener {
+    address  = "0.0.0.0:51893"
+    labels   = { protocol = "tcp", format = "rfc5424" }
+  }
+
+  listener {
+    address  = "0.0.0.0:51898"
+    protocol = "udp"
+    labels   = { protocol = "udp", format = "rfc5424" }
+  }
+
+  listener {
+    address       = "0.0.0.0:51894"
+    syslog_format = "rfc3164"
+    labels        = { protocol = "tcp", format = "rfc3164" }
+  }
+
+  listener {
+    address       = "0.0.0.0:51899"
+    protocol      = "udp"
+    syslog_format = "rfc3164"
+    labels        = { protocol = "udp", format = "rfc3164" }
+  }
+
+  relabel_rules = loki.relabel.syslog.rules
+  forward_to    = [loki.write.test.receiver]
+}
+
+loki.write "test" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    test_name = "lokisyslog",
+  }
+}

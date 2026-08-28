@@ -1,0 +1,132 @@
+prometheus.scrape "prometheus_1" {
+	targets = array.concat(
+		[{
+			__address__ = "localhost:9090",
+			app         = "foo",
+		}],
+		[{
+			__address__ = "localhost:9091",
+			app         = "foo",
+		}],
+	)
+	forward_to                 = [prometheus.remote_write.default.receiver]
+	job_name                   = "prometheus-1"
+	honor_timestamps           = false
+	track_timestamps_staleness = true
+	scrape_interval            = "10s"
+	scrape_timeout             = "5s"
+
+	basic_auth {
+		username = "user"
+		password = "pass"
+	}
+}
+
+prometheus.scrape "prometheus2" {
+	targets = array.concat(
+		[{
+			__address__ = "localhost:9091",
+		}],
+		[{
+			__address__ = "localhost:9092",
+		}],
+		[{
+			__address__ = "localhost:9093",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	external_labels = {
+		cluster = "prod",
+	}
+
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+
+		write_relabel_config {
+			source_labels = ["__address1__"]
+			target_label  = "__param_target1"
+		}
+
+		write_relabel_config {
+			source_labels = ["__address2__"]
+			target_label  = "__param_target2"
+		}
+	}
+
+	endpoint {
+		name = "remote2"
+		url  = "http://remote-write-url2"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+
+	endpoint {
+		name = "remote3_sigv4_defaults"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		sigv4 { }
+	}
+
+	endpoint {
+		name = "remote4_sigv4_explicit"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		sigv4 {
+			region     = "us-east-1"
+			access_key = "fake_access_key"
+			secret_key = "fake_secret_key"
+			profile    = "fake_profile"
+			role_arn   = "fake_role_arn"
+		}
+	}
+
+	endpoint {
+		name = "remote5_azuread_defaults"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		azuread {
+			managed_identity {
+				client_id = "00000000-0000-0000-0000-000000000000"
+			}
+		}
+	}
+
+	endpoint {
+		name = "remote6_azuread_explicit"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		azuread {
+			managed_identity {
+				client_id = "00000000-0000-0000-0000-000000000000"
+			}
+			cloud = "AzureGovernment"
+		}
+	}
+}

@@ -1,0 +1,48 @@
+discovery.openstack "prometheus1" {
+	identity_endpoint             = "identity_endpoint"
+	username                      = "username"
+	userid                        = "userid"
+	password                      = "password"
+	project_name                  = "project_name"
+	project_id                    = "project_id"
+	domain_name                   = "domain_name"
+	domain_id                     = "domain_id"
+	application_credential_name   = "application_credential_name"
+	application_credential_id     = "application_credential_id"
+	application_credential_secret = "application_credential_secret"
+	role                          = "instance"
+	region                        = "region"
+	refresh_interval              = "20s"
+	port                          = 81
+	all_tenants                   = true
+
+	tls_config {
+		ca_pem               = "ca"
+		cert_pem             = "cert"
+		key_pem              = "key"
+		server_name          = "example.local"
+		insecure_skip_verify = true
+	}
+	availability = "internal"
+}
+
+discovery.openstack "prometheus1_2" {
+	role   = "hypervisor"
+	region = "region2"
+}
+
+loki.source.file "prometheus1" {
+	targets = array.concat(
+		discovery.openstack.prometheus1.targets,
+		discovery.openstack.prometheus1_2.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

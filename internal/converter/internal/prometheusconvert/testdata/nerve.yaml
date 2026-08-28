@@ -1,0 +1,17 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    nerve_sd_configs:
+      - servers: ["1.2.3.4"]
+        paths: ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
+        timeout: "15s"
+  - job_name: "prometheus2"
+    nerve_sd_configs:
+      - servers: ["127.0.0.1"]
+        paths: ["/nerve/services/your_http_service/services"]
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"
+

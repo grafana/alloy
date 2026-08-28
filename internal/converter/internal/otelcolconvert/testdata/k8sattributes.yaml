@@ -1,0 +1,28 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  k8sattributes:
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [k8sattributes]
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [k8sattributes]
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: [k8sattributes]
+      exporters: [otlp]
+

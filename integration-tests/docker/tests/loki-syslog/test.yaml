@@ -1,0 +1,14 @@
+alloy_container: 
+  ports:
+    - container: 51893
+      host: 51893
+      protocol: "tcp"
+    - container: 51894
+      host: 51894
+      protocol: "tcp"
+    - container: 51898
+      host: 51898
+      protocol: "udp"
+    - container: 51899
+      host: 51899
+      protocol: "udp"

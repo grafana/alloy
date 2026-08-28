@@ -1,0 +1,16 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    kuma_sd_configs:
+      - server: "http://kuma-control-plane.kuma-system.svc:5677"
+        refresh_interval: "1m"
+  - job_name: "prometheus2"
+    kuma_sd_configs:
+      - server: "http://kuma-control-plane.kuma-system.svc:5676"
+        fetch_timeout: "10s"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"
+

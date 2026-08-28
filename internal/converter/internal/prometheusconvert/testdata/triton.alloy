@@ -1,0 +1,39 @@
+discovery.triton "prometheus1" {
+	account    = "TRITON_ACCOUNT"
+	dns_suffix = "triton.example"
+	endpoint   = "0.0.0.0:8080"
+}
+
+discovery.triton "prometheus2" {
+	account    = "TRITON_ACCOUNT"
+	dns_suffix = "triton.example2"
+	endpoint   = "0.0.0.0:8081"
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.triton.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.triton.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

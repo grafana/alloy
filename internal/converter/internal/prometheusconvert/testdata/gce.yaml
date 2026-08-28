@@ -1,0 +1,17 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    gce_sd_configs:
+      - project: 'your-project-id'
+        zone: 'us-central1-a'
+        port: 8080
+  - job_name: "prometheus2"
+    gce_sd_configs:
+      - project: 'your-project-id'
+        zone: 'us-central1-a'
+        port: 8080
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

@@ -1,0 +1,155 @@
+//
+// Renovate config options: https://docs.renovatebot.com/configuration-options/
+//
+// To validate config, run:
+// npx --package renovate -- renovate-config-validator --strict ./.github/renovate.json5
+//
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+  ],
+
+  "commitMessageAction": "Update",
+  "commitMessageLowerCase": "never",
+  "commitMessageTopic": "{{manager}} dependency {{depName}}",
+
+  // Updates must be published for at least 7 to be considered
+  "minimumReleaseAge": "7 days",
+
+  "prConcurrentLimit": 5,
+
+  // Move dependency files forward along with lock files
+  "rangeStrategy": "bump",
+
+  // Allow PR creation between 06:00 and 10:00 UTC on Mondays
+  "schedule": ["* 6-10 * * 1"],
+
+  // Open security-related PRs irrespective of other settings
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      "groupName": "docker-compose dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "groupName": "dockerfile dependencies",
+      "pinDigests": true,
+      "enabled": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions dependencies",
+      "pinDigests": true,
+      "enabled": true
+    },
+    {
+      // Update only direct Go module dependencies automatically. Omit indirect
+      // dependencies.
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require", "tool"],
+      "groupName": "go dependencies",
+      "postUpdateOptions": ["gomodTidy"],
+      "enabled": true
+    },
+    {
+      // These are updated in bulk via the key-deps process instead of Renovate.
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        "github.com/prometheus/prometheus",
+        "github.com/prometheus/prometheus/**",
+        "github.com/open-telemetry/**",
+        "go.opentelemetry.io/**",
+      ],
+      "enabled": false
+    },
+    {
+      // Don't let Renovate propose standalone updates for transitive Go module
+      // requirements.
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "enabled": false
+    },
+    {
+      // Hold unstable direct deps
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "matchPackageNames": [
+        "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector",
+        "github.com/KimMachineGun/automemlimit",
+        "github.com/prometheus-community/elasticsearch_exporter", // Introduces breaking changes in minor versions
+        "github.com/google/cadvisor",
+        "github.com/grafana/beyla/v3",
+        "github.com/grafana/jfr-parser/pprof",
+        "github.com/hashicorp/vault/api/**",
+        "github.com/influxdata/telegraf", // v1.38.3+ require hashicorp/vault/api/auth/** >= v0.12 which is held
+        "github.com/jaegertracing/jaeger-idl",
+        "github.com/mackerelio/go-osstat",
+        "github.com/ncabatoff/process-exporter",
+        "github.com/percona/mongodb_exporter", // v0.48+ pulls in percona-backup-mongodb with platform-incompatible syscall usage
+        "github.com/prometheus-community/yet-another-cloudwatch-exporter", // Introduces breaking changes in minor versions
+        "github.com/prometheus/alertmanager", // v0.31+ requires sigv4 v0.4+ which is held
+        "github.com/prometheus-operator/**",
+        "github.com/prometheus/consul_exporter",
+        "github.com/prometheus/memcached_exporter",
+        "github.com/prometheus/procfs",
+        "github.com/prometheus/common",
+        "github.com/prometheus/sigv4",
+        "github.com/testcontainers/testcontainers-go",
+        "github.com/testcontainers/testcontainers-go/**",
+        "go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux",
+        "go.opentelemetry.io/otel/exporters/prometheus",
+        "google.golang.org/api",
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go",
+        "k8s.io/component-base",
+        "sigs.k8s.io/controller-runtime"
+      ],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each unstable update
+      // having its own PR.
+      "groupName": "{{manager}} unstable dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} unstable dependency {{depName}}"
+    },
+    {
+      "matchManagers": ["helm-values"],
+      "groupName": "helm-values dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["helmv3"],
+      "groupName": "helmv3 dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["jsonnet-bundler"],
+      "groupName": "jsonnet-bundler dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise dependencies",
+      "enabled": true
+    },
+    {
+      // Supersede previous rules to require PR creation approval for major versions
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      // This forces each dep to have a unique group, resulting in each major update
+      // having its own PR.
+      "groupName": "{{manager}} dependency {{depName}}",
+      "commitMessageTopic": "{{manager}} dependency {{depName}}"
+    }
+  ],
+}

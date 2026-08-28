@@ -1,0 +1,138 @@
+// Exercises running multiple prometheus.exporter.oracledb components in the same Alloy process.
+// This tests whether multiple instances will step on each other's toes.
+// For example, there used to be a bug which caused custom metrics to only work for one instance:
+// https://github.com/oracle/oracle-db-appdev-monitoring/issues/508
+
+prometheus.exporter.oracledb "oracledb_a" {
+	connection_string = "oracle://system:testpassword@oracledb1:1521/FREEPDB1"
+	custom_metrics    = ["/etc/alloy/custom-metrics.toml"]
+}
+
+prometheus.exporter.oracledb "oracledb_b" {
+	connection_string = "oracle://system:testpassword@oracledb1:1521/FREEPDB1"
+	custom_metrics    = ["/etc/alloy/custom-metrics.toml"]
+}
+
+prometheus.exporter.oracledb "oracledb_c" {
+	custom_metrics = ["/etc/alloy/custom-metrics.toml"]
+
+	database {
+		name              = "oracledb_c1"
+		connection_string = "oracle://system:testpassword@oracledb1:1521/FREEPDB1"
+	}
+
+	database {
+		name              = "oracledb_c2"
+		connection_string = "oracle://system:testpassword@oracledb2:1521/FREEPDB1"
+	}
+}
+
+prometheus.exporter.oracledb "oracledb_d" {
+	custom_metrics = ["/etc/alloy/custom-metrics.toml"]
+
+	database {
+		name              = "oracledb_d1"
+		connection_string = "oracle://system:testpassword@oracledb1:1521/FREEPDB1"
+	}
+
+	database {
+		name              = "oracledb_d2"
+		connection_string = "oracle://system:testpassword@oracledb2:1521/FREEPDB1"
+	}
+}
+
+prometheus.scrape "oracledb_a" {
+	targets         = prometheus.exporter.oracledb.oracledb_a.targets
+	forward_to      = [prometheus.remote_write.oracledb_a.receiver]
+	scrape_interval = "31s"
+	scrape_timeout  = "30s"
+}
+
+prometheus.scrape "oracledb_b" {
+	targets         = prometheus.exporter.oracledb.oracledb_b.targets
+	forward_to      = [prometheus.remote_write.oracledb_b.receiver]
+	scrape_interval = "31s"
+	scrape_timeout  = "30s"
+}
+
+prometheus.scrape "oracledb_c" {
+	targets         = prometheus.exporter.oracledb.oracledb_c.targets
+	forward_to      = [prometheus.remote_write.oracledb_c.receiver]
+	scrape_interval = "60s"
+	scrape_timeout  = "55s"
+}
+
+prometheus.scrape "oracledb_d" {
+	targets         = prometheus.exporter.oracledb.oracledb_d.targets
+	forward_to      = [prometheus.remote_write.oracledb_d.receiver]
+	scrape_interval = "60s"
+	scrape_timeout  = "55s"
+}
+
+prometheus.remote_write "oracledb_a" {
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+
+		metadata_config {
+			send_interval = "1s"
+		}
+
+		queue_config {
+			max_samples_per_send = 100
+		}
+	}
+	external_labels = {
+		test_name = "oracledb_multi_component_a",
+	}
+}
+
+prometheus.remote_write "oracledb_b" {
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+
+		metadata_config {
+			send_interval = "1s"
+		}
+
+		queue_config {
+			max_samples_per_send = 100
+		}
+	}
+	external_labels = {
+		test_name = "oracledb_multi_component_b",
+	}
+}
+
+prometheus.remote_write "oracledb_c" {
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+
+		metadata_config {
+			send_interval = "1s"
+		}
+
+		queue_config {
+			max_samples_per_send = 100
+		}
+	}
+	external_labels = {
+		test_name = "oracledb_multi_component_c",
+	}
+}
+
+prometheus.remote_write "oracledb_d" {
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+
+		metadata_config {
+			send_interval = "1s"
+		}
+
+		queue_config {
+			max_samples_per_send = 100
+		}
+	}
+	external_labels = {
+		test_name = "oracledb_multi_component_d",
+	}
+}

@@ -1,0 +1,598 @@
+# -- Overrides the chart's name. Used to change the infix in the resource names.
+nameOverride: null
+
+# -- Overrides the chart's namespace.
+namespaceOverride: null
+
+# -- Overrides the chart's computed fullname. Used to change the full prefix of
+# resource names.
+fullnameOverride: null
+
+## Global properties for image pulling override the values defined under `image.registry` and `configReloader.image.registry`.
+## If you want to override only one image registry, use the specific fields but if you want to override them all, use `global.image.registry`
+global:
+  image:
+    # -- Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...)
+    registry: ""
+
+    # -- Optional set of global image pull secrets.
+    pullSecrets: []
+
+    # -- Global image pull policy to apply to all containers. Overrides `image.pullPolicy` and `configReloader.image.pullPolicy`.
+    pullPolicy: ""
+
+  # -- Security context to apply to the Grafana Alloy pod.
+  podSecurityContext: {}
+
+crds:
+  # -- Whether to install CRDs for monitoring.
+  create: true
+
+## Various Alloy settings. For backwards compatibility with the grafana-agent
+## chart, this field may also be called "agent". Naming this field "agent" is
+## deprecated and will be removed in a future release.
+alloy:
+  configMap:
+    # -- Create a new ConfigMap for the config file.
+    create: true
+    # -- Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values.
+    content: ''
+
+    # -- Name of existing ConfigMap to use. Used when create is false.
+    name: null
+    # -- Key in ConfigMap to get config from.
+    key: null
+
+  clustering:
+    # -- Deploy Alloy in a cluster to allow for load distribution.
+    enabled: false
+
+    # -- Name for the Alloy cluster. Used for differentiating between clusters.
+    name: ""
+
+    # -- Name for the port used for clustering, useful if running inside an Istio Mesh
+    portName: http
+
+  # -- Minimum stability level of components and behavior to enable. Must be
+  # one of "experimental", "public-preview", or "generally-available".
+  stabilityLevel: "generally-available"
+
+  # -- Path to where Grafana Alloy stores data (for example, the Write-Ahead Log).
+  # By default, data is lost between reboots.
+  storagePath: /tmp/alloy
+
+  # -- Enables Grafana Alloy container's http server port.
+  enableHttpServerPort: true
+
+  # -- Address to listen for traffic on. 0.0.0.0 exposes the UI to other
+  # containers.
+  listenAddr: 0.0.0.0
+
+  # -- Port to listen for traffic on.
+  listenPort: 12345
+
+  # -- Scheme is needed for readiness probes. If enabling tls in your configs, set to "HTTPS"
+  listenScheme: HTTP
+
+  # -- Initial delay for readiness probe.
+  initialDelaySeconds: 10
+
+  # -- Timeout for readiness probe.
+  timeoutSeconds: 1
+
+  # --  Base path where the UI is exposed.
+  uiPathPrefix: /
+
+  # -- Enables sending Grafana Labs anonymous usage stats to help improve Grafana
+  # Alloy.
+  enableReporting: true
+
+  # -- Extra environment variables to pass to the Alloy container.
+  extraEnv: []
+
+  # -- Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core
+  envFrom: []
+
+  # -- Override the entrypoint command for the Alloy container. When set, this
+  # replaces the image's default entrypoint (the chart-provided `args` are still
+  # passed). Useful on Windows where the binary lives at a different path, for
+  # example `["C:\\Program Files\\GrafanaLabs\\Alloy\\alloy.exe"]`. Leave empty
+  # to use the image's default entrypoint.
+  command: []
+
+  # -- Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/
+  extraArgs: []
+
+  # -- Extra ports to expose on the Alloy container.
+  # If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port.
+  extraPorts: []
+  # - name: "faro"
+  #   nodePort: 31129
+  #   port: 12347
+  #   targetPort: 12347
+  #   protocol: "TCP"
+  #   appProtocol: "h2c"
+
+  # -- Host aliases to add to the Alloy container.
+  hostAliases: []
+  # - ip: "20.21.22.23"
+  #   hostnames:
+  #     - "company.grafana.net"
+
+  mounts:
+    # -- Mount /var/log from the host into the container for log collection.
+    varlog: false
+    # -- Mount /var/lib/docker/containers from the host into the container for log
+    # collection.
+    dockercontainers: false
+
+    # -- Extra volume mounts to add into the Grafana Alloy container. Does not
+    # affect the watch container.
+    extra: []
+
+  # -- Security context to apply to the Grafana Alloy container.
+  securityContext: {}
+
+  # -- Resource requests and limits to apply to the Grafana Alloy container.
+  resources: {}
+
+  # -- Set lifecycle hooks for the Grafana Alloy container.
+  lifecycle: {}
+    # preStop:
+    #   exec:
+    #     command:
+    #     - /bin/sleep
+    #     - "10"
+
+  # -- Set livenessProbe for the Grafana Alloy container.
+  livenessProbe: {}
+
+image:
+  # -- Grafana Alloy image registry (defaults to docker.io)
+  registry: "docker.io"
+  # -- Grafana Alloy image repository.
+  repository: grafana/alloy
+  # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
+  # used.
+  tag: null
+  # -- Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
+  digest: null
+  # -- Grafana Alloy image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Optional set of image pull secrets.
+  pullSecrets: []
+
+rbac:
+  # -- Whether to create RBAC resources for Alloy.
+  create: true
+
+  # -- If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and
+  # ClusterRoleBindings. If not using ClusterRoles, bear in mind that Alloy will not be able to discover cluster-scoped
+  # resources such as Nodes.
+  namespaces: []
+
+  # -- The rules to create for the ClusterRole or Role objects.
+  rules:
+    # -- Rules required for the `discovery.kubernetes` component.
+    - apiGroups: ["", "discovery.k8s.io", "networking.k8s.io"]
+      resources: ["endpoints", "endpointslices", "ingresses", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "namespaces"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.podlogs` component.
+    - apiGroups: ["monitoring.grafana.com"]
+      resources: ["podlogs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `mimir.rules.kubernetes` component.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["prometheusrules"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `mimir.alerts.kubernetes` component.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["alertmanagerconfigs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `prometheus.operator.*` components.
+    - apiGroups: ["monitoring.coreos.com"]
+      resources: ["podmonitors", "servicemonitors", "probes", "scrapeconfigs"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `loki.source.kubernetes_events` component.
+    - apiGroups: [""]
+      resources: ["events"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `remote.kubernetes.*` components.
+    - apiGroups: [""]
+      resources: ["configmaps", "secrets"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `otelcol.processor.k8sattributes` component.
+    - apiGroups: ["apps", "extensions"]
+      resources: ["replicasets"]
+      verbs: ["get", "list", "watch"]
+
+  # -- The rules to create for the ClusterRole objects.
+  clusterRules:
+    # -- Rules required for the Nodes role in the `discovery.kubernetes` component.
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for the `discovery.kubelet` component.
+    - apiGroups: [""]
+      resources: ["nodes/pods"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required accessing metric endpoints on the Node (e.g. Kubelet, cAdvisor, etc...).
+    - apiGroups: [""]
+      resources: ["nodes/metrics"]
+      verbs: ["get", "list", "watch"]
+    # -- Rules required for accessing metrics endpoint.
+    - nonResourceURLs: ["/metrics"]
+      verbs: ["get"]
+
+serviceAccount:
+  # -- Whether to create a service account for the Grafana Alloy deployment.
+  create: true
+  # -- Additional labels to add to the created service account.
+  additionalLabels: {}
+  # -- Annotations to add to the created service account.
+  annotations: {}
+  # -- The name of the existing service account to use when
+  # serviceAccount.create is false.
+  name: null
+  # Whether the Alloy pod should automatically mount the service account token.
+  automountServiceAccountToken: true
+
+# Options for the extra controller used for config reloading.
+configReloader:
+  # -- Enables automatically reloading when the Alloy config changes.
+  enabled: true
+  image:
+    # -- Config reloader image registry (defaults to docker.io)
+    registry: "quay.io"
+    # -- Repository to get config reloader image from.
+    repository: prometheus-operator/prometheus-config-reloader
+    # -- Tag of image to use for config reloading.
+    tag: v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
+    # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
+    digest: ""
+    # -- Config reloader image pull policy.
+    pullPolicy: IfNotPresent
+  # -- Override the args passed to the container.
+  customArgs: []
+  # -- Resource requests and limits to apply to the config reloader container.
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "50Mi"
+  # -- Security context to apply to the Grafana configReloader container.
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+
+controller:
+  # -- Type of controller to use for deploying Grafana Alloy in the cluster.
+  # Must be one of 'daemonset', 'deployment', or 'statefulset'.
+  type: 'daemonset'
+
+  # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
+  replicas: 1
+
+  # -- Extra labels to add to the controller.
+  extraLabels: {}
+
+  # -- Annotations to add to controller.
+  extraAnnotations: {}
+
+  # -- Whether to deploy pods in parallel. Only used when controller.type is
+  # 'statefulset'.
+  parallelRollout: true
+
+  # -- How many additional seconds to wait before considering a pod ready.
+  minReadySeconds: 10
+
+  # -- Configures Pods to use the host network. When set to true, the ports that will be used must be specified.
+  hostNetwork: false
+
+  # -- Configures Pods to use the host PID namespace.
+  hostPID: false
+
+  # -- Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: ClusterFirst
+
+  # -- Termination grace period in seconds for the Grafana Alloy pods.
+  # The default value used by Kubernetes if unspecifed is 30 seconds.
+  terminationGracePeriodSeconds: null
+
+  # -- The maximum number of revisions that will be maintained in the Controllers's revision history. The history consists of all revisions not represented by a currently applied reversion.
+  revisionHistoryLimit: 10
+
+  # -- Update strategy for updating deployed Pods.
+  updateStrategy: {}
+
+  # -- nodeSelector to apply to Grafana Alloy pods.
+  nodeSelector: {}
+
+  # -- Tolerations to apply to Grafana Alloy pods.
+  tolerations: []
+
+  # -- Topology Spread Constraints to apply to Grafana Alloy pods.
+  topologySpreadConstraints: []
+
+  # -- priorityClassName to apply to Grafana Alloy pods.
+  priorityClassName: ''
+
+  # -- Extra pod annotations to add.
+  podAnnotations: {}
+
+  # -- Extra pod labels to add.
+  podLabels: {}
+
+  # -- PodDisruptionBudget configuration.
+  podDisruptionBudget:
+    # -- Whether to create a PodDisruptionBudget for the controller.
+    enabled: false
+    # -- Minimum number of pods that must be available during a disruption.
+    # Note: Only one of minAvailable or maxUnavailable should be set.
+    minAvailable: null
+    # -- Maximum number of pods that can be unavailable during a disruption.
+    # Note: Only one of minAvailable or maxUnavailable should be set.
+    maxUnavailable: null
+
+  # -- Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'.
+  enableStatefulSetAutoDeletePVC: false
+
+  autoscaling:
+    # -- Creates a HorizontalPodAutoscaler for controller type deployment.
+    # Deprecated: Please use controller.autoscaling.horizontal instead
+    enabled: false
+    # -- The lower limit for the number of replicas to which the autoscaler can scale down.
+    minReplicas: 1
+    # -- The upper limit for the number of replicas to which the autoscaler can scale up.
+    maxReplicas: 5
+    # -- Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling.
+    targetCPUUtilizationPercentage: 0
+    # -- Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling.
+    targetMemoryUtilizationPercentage: 80
+
+    scaleDown:
+      # -- List of policies to determine the scale-down behavior.
+      policies: []
+        # - type: Pods
+        #   value: 4
+        #   periodSeconds: 60
+      # -- Determines which of the provided scaling-down policies to apply if multiple are specified.
+      selectPolicy: Max
+      # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling down.
+      stabilizationWindowSeconds: 300
+
+    scaleUp:
+      # -- List of policies to determine the scale-up behavior.
+      policies: []
+        # - type: Pods
+        #   value: 4
+        #   periodSeconds: 60
+      # -- Determines which of the provided scaling-up policies to apply if multiple are specified.
+      selectPolicy: Max
+      # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling up.
+      stabilizationWindowSeconds: 0
+
+    # -- Configures the Horizontal Pod Autoscaler for the controller.
+    horizontal:
+      # -- Enables the Horizontal Pod Autoscaler for the controller.
+      enabled: false
+      # -- When true, the chart omits `spec.replicas` from the workload AND does NOT
+      # render its own HorizontalPodAutoscaler. Use this when an external controller
+      # (e.g. KEDA, a hand-written HPA, or another scaler) owns replicas for the Alloy
+      # workload. Mutually exclusive with `horizontal.enabled`. When set, all other
+      # `controller.autoscaling.horizontal.*` fields are ignored.
+      #
+      # Upgrade note: switching this from `false` to `true` on an existing release
+      # triggers a one-time single-cycle dip to 1 replica on the next `helm upgrade`
+      # (Helm removes the `replicas` field via `{"spec":{"replicas":null}}`, which
+      # Kubernetes interprets as "reset to default"). The external HPA corrects this
+      # within its next polling interval; users with `minReplicaCount > 1` are
+      # restored within ~30s under KEDA defaults. Plan upgrades accordingly.
+      externalHPA: false
+
+      # -- The lower limit for the number of replicas to which the autoscaler can scale down.
+      minReplicas: 1
+      # -- The upper limit for the number of replicas to which the autoscaler can scale up.
+      maxReplicas: 5
+      # -- Average CPU utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetCPUUtilizationPercentage` to 0 will disable CPU scaling.
+      targetCPUUtilizationPercentage: 0
+      # -- Average Memory utilization across all relevant pods, a percentage of the requested value of the resource for the pods. Setting `targetMemoryUtilizationPercentage` to 0 will disable Memory scaling.
+      targetMemoryUtilizationPercentage: 80
+
+      scaleDown:
+        # -- List of policies to determine the scale-down behavior.
+        policies: []
+          # - type: Pods
+          #   value: 4
+          #   periodSeconds: 60
+        # -- Determines which of the provided scaling-down policies to apply if multiple are specified.
+        selectPolicy: Max
+        # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling down.
+        stabilizationWindowSeconds: 300
+
+      scaleUp:
+        # -- List of policies to determine the scale-up behavior.
+        policies: []
+          # - type: Pods
+          #   value: 4
+          #   periodSeconds: 60
+        # -- Determines which of the provided scaling-up policies to apply if multiple are specified.
+        selectPolicy: Max
+        # -- The duration that the autoscaling mechanism should look back on to make decisions about scaling up.
+        stabilizationWindowSeconds: 0
+    # -- Configures the Vertical Pod Autoscaler for the controller.
+    vertical:
+      # -- Enables the Vertical Pod Autoscaler for the controller.
+      enabled: false
+
+      # -- List of recommenders to use for the Vertical Pod Autoscaler.
+      # Recommenders are responsible for generating recommendation for the object.
+      # List should be empty (then the default recommender will generate the recommendation)
+      # or contain exactly one recommender.
+      recommenders: []
+      # recommenders:
+      # - name: custom-recommender-performance
+
+      # -- Configures the resource policy for the Vertical Pod Autoscaler.
+      resourcePolicy:
+        # -- Configures the container policies for the Vertical Pod Autoscaler.
+        containerPolicies:
+        - containerName: alloy
+          # -- The controlled resources for the Vertical Pod Autoscaler.
+          controlledResources:
+          - cpu
+          - memory
+          # -- The controlled values for the Vertical Pod Autoscaler. Needs to be either RequestsOnly or RequestsAndLimits.
+          controlledValues: "RequestsAndLimits"
+          # -- The maximum allowed values for the pods.
+          maxAllowed: {}
+          # cpu: 200m
+          # memory: 100Mi
+          # -- Defines the min allowed resources for the pod
+          minAllowed: {}
+          # cpu: 200m
+          # memory: 100Mi
+
+      # -- Configures the update policy for the Vertical Pod Autoscaler.
+      updatePolicy:
+        # -- Specifies minimal number of replicas which need to be alive for VPA Updater to attempt pod eviction
+        # minReplicas: 1
+        # -- Specifies whether recommended updates are applied when a Pod is started and whether recommended updates
+        # are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
+        # updateMode: Auto
+
+  # -- Affinity configuration for pods.
+  affinity: {}
+
+  volumes:
+    # -- Extra volumes to add to the Grafana Alloy pod.
+    extra: []
+
+  # -- volumeClaimTemplates to add when controller.type is 'statefulset'.
+  volumeClaimTemplates: []
+
+  ## -- Additional init containers to run.
+  ## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+  ##
+  initContainers: []
+
+  # -- Additional containers to run alongside the Alloy container and initContainers.
+  extraContainers: []
+
+networkPolicy:
+  enabled: false
+  flavor: kubernetes
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Default allow all traffic because Alloy is so configurable
+  # It is recommended to change this before deploying to production
+  # To disable each policyType, set value to `null`
+  ingress:
+    - {}
+  egress:
+    - {}
+
+service:
+  # -- Creates a Service for the controller's pods.
+  enabled: true
+  # -- Service type
+  type: ClusterIP
+  # -- NodePort port. Only takes effect when `service.type: NodePort`
+  nodePort: 31128
+  # -- Cluster IP, can be set to None, empty "" or an IP address
+  clusterIP: ''
+  # -- Value for internal traffic policy. 'Cluster' or 'Local'
+  internalTrafficPolicy: Cluster
+  # -- Value for external traffic policy. 'Cluster' or 'Local'
+  externalTrafficPolicy: Cluster
+  annotations: {}
+    # cloud.google.com/load-balancer-type: Internal
+
+serviceMonitor:
+  enabled: false
+  # -- Additional labels for the service monitor.
+  additionalLabels: {}
+  # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
+  interval: ""
+  # -- MetricRelabelConfigs to apply to samples after scraping, but before ingestion.
+  # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
+  metricRelabelings: []
+  # - action: keep
+  #   regex: 'kube_(daemonset|deployment|pod|namespace|node|statefulset).+'
+  #   sourceLabels: [__name__]
+
+  # -- Customize tls parameters for the service monitor
+  tlsConfig: {}
+
+  # -- RelabelConfigs to apply to samples before scraping
+  # ref: https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#relabelconfig
+  relabelings: []
+  # - sourceLabels: [__meta_kubernetes_pod_node_name]
+  #   separator: ;
+  #   regex: ^(.*)$
+  #   targetLabel: nodename
+  #   replacement: $1
+  #   action: replace
+ingress:
+  # -- Enables ingress for Alloy (Faro port)
+  enabled: false
+  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+  # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
+  # ingressClassName: nginx
+  # Values can be templated
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  labels: {}
+  path: /
+  faroPort: 12347
+
+  # pathType is only for k8s >= 1.1=
+  pathType: Prefix
+
+  hosts:
+    - chart-example.local
+  ## Extra paths to prepend to every host configuration. This is useful when working with annotation based services.
+  extraPaths: []
+  # - path: /*
+  #   backend:
+  #     serviceName: ssl-redirect
+  #     servicePort: use-annotation
+  ## Or for k8s > 1.19
+  # - path: /*
+  #   pathType: Prefix
+  #   backend:
+  #     service:
+  #       name: ssl-redirect
+  #       port:
+  #         name: use-annotation
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+# -- Extra k8s manifests to deploy
+extraObjects: []
+# - apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: grafana-cloud
+#   stringData:
+#     PROMETHEUS_HOST: 'https://prometheus-us-central1.grafana.net/api/prom/push'
+#     PROMETHEUS_USERNAME: '123456'

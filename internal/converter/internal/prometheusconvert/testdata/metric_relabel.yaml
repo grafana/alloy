@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 60s
+  external_labels:
+    cluster: prod
+
+scrape_configs:
+  - job_name: "prometheus1"
+    honor_timestamps: false
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    static_configs:
+      - targets: ["localhost:9090"]
+    basic_auth:
+      username: 'user'
+      password: 'pass'
+  - job_name: "prometheus2"
+    static_configs:
+      - targets: ["localhost:9091"]
+    metric_relabel_configs:
+      - source_labels: [__address1__]
+        target_label: __param_target1
+      - source_labels: [__address2__]
+        target_label: __param_target2
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"
+  - name: "remote2"
+    url: "http://remote-write-url2"

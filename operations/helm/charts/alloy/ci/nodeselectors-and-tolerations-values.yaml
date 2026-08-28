@@ -1,0 +1,11 @@
+controller:
+  nodeSelector:
+    key1: "value1"
+  tolerations:
+    - key: "key1"
+      operator: "Equal"
+      value: "value1"
+      effect: "NoSchedule"
+    - key: "key2"
+      operator: "Exists"
+      effect: "NoSchedule"

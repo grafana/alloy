@@ -1,0 +1,46 @@
+prometheus.remote_write "metrics_default" {
+	endpoint {
+		name = "default-04b53d"
+		url  = "http://localhost:9009/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}
+
+loki.write "logs_log_config" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}
+
+faro.receiver "integrations_app_agent_receiver" {
+	extra_log_labels = {}
+	log_format       = ""
+
+	server {
+		listen_address           = "localhost"
+		listen_port              = 55678
+		max_allowed_payload_size = "4MiB786KiB832B"
+
+		rate_limiting {
+			rate       = 100
+			burst_size = 50
+		}
+	}
+
+	sourcemaps {
+		download = false
+	}
+
+	output {
+		logs   = []
+		traces = []
+	}
+}
+
+loki.source.kubernetes_events "integrations_eventhandler" {
+	forward_to = [loki.write.logs_log_config.receiver]
+}

@@ -1,0 +1,19 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    ionos_sd_configs:
+      - refresh_interval: 5m
+        datacenter_id: "datacenter_id"
+        port: 81
+  - job_name: "prometheus2"
+    ionos_sd_configs:
+      - refresh_interval: 1m
+        datacenter_id: "datacenter_id2"
+        basic_auth:
+          username: username
+          password: password
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

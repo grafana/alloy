@@ -1,0 +1,169 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT 
+    d.dept_name,
+    e.first_name,
+    e.last_name,
+    s.salary,
+    RANK() OVER (PARTITION BY d.dept_no ORDER BY s.salary DESC) as salary_rank_in_dept
+FROM employees e
+JOIN dept_emp de ON e.emp_no = de.emp_no
+JOIN departments d ON de.dept_no = d.dept_no
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE de.to_date = '9999-01-01'
+AND s.to_date = '9999-01-01'\G
+```
+
+-- window_functions_with_partitioning.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "198049.09"
+    },
+    "windowing": {
+      "windows": [
+        {
+          "name": "<unnamed window>",
+          "using_filesort": true,
+          "filesort_key": [
+            "`dept_no`",
+            "`salary` desc"
+          ],
+          "functions": [
+            "rank"
+          ]
+        }
+      ],
+      "cost_info": {
+        "sort_cost": "31146.86"
+      },
+      "buffer_result": {
+        "using_temporary_table": true,
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "de",
+              "access_type": "ALL",
+              "possible_keys": [
+                "PRIMARY",
+                "dept_no"
+              ],
+              "rows_examined_per_scan": 331143,
+              "rows_produced_per_join": 33114,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "30539.87",
+                "eval_cost": "3311.43",
+                "prefix_cost": "33851.30",
+                "data_read_per_join": "1M"
+              },
+              "used_columns": [
+                "emp_no",
+                "dept_no",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`de`.`to_date` = DATE'9999-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "s",
+              "access_type": "ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.de.emp_no"
+              ],
+              "rows_examined_per_scan": 9,
+              "rows_produced_per_join": 31146,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "33407.36",
+                "eval_cost": "3114.69",
+                "prefix_cost": "98405.51",
+                "data_read_per_join": "486K"
+              },
+              "used_columns": [
+                "emp_no",
+                "salary",
+                "from_date",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "d",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "dept_no"
+              ],
+              "key_length": "16",
+              "ref": [
+                "employees.de.dept_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 31146,
+              "filtered": "100.00",
+              "cost_info": {
+                "read_cost": "31146.86",
+                "eval_cost": "3114.69",
+                "prefix_cost": "132667.05",
+                "data_read_per_join": "5M"
+              },
+              "used_columns": [
+                "dept_no",
+                "dept_name"
+              ]
+            }
+          },
+          {
+            "table": {
+              "table_name": "e",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.de.emp_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 31146,
+              "filtered": "100.00",
+              "cost_info": {
+                "read_cost": "31120.49",
+                "eval_cost": "3114.69",
+                "prefix_cost": "166902.23",
+                "data_read_per_join": "4M"
+              },
+              "used_columns": [
+                "emp_no",
+                "first_name",
+                "last_name"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

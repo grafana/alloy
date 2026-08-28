@@ -1,0 +1,14 @@
+discovery.serverset "fun" {
+	servers = ["localhost:8500"]
+	paths   = ["/v1/catalog/services"]
+}
+
+loki.source.file "fun" {
+	targets    = discovery.serverset.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

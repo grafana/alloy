@@ -1,0 +1,16 @@
+## Path:
+## Description: Grafana Alloy settings
+## Type:        string
+## Default:     ""
+## ServiceRestart: alloy
+#
+# Command line options for Alloy.
+#
+# The configuration file holding the Alloy config.
+CONFIG_FILE="/etc/alloy/config.alloy"
+
+# User-defined arguments to pass to the run command.
+CUSTOM_ARGS=""
+
+# Restart on system upgrade. Defaults to true.
+RESTART_ON_UPGRADE=true

@@ -1,0 +1,60 @@
+loki.process "fun" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+}
+
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.kafka "fun" {
+	brokers  = ["localhost:9092", "localhost:9093"]
+	topics   = ["memes", "music", "humour"]
+	group_id = "my_consumer_group"
+	assignor = "roundrobin"
+	version  = "2.2.2"
+
+	authentication {
+		type = "sasl"
+
+		sasl_config {
+			mechanism = "PLAIN"
+			user      = "robin"
+			password  = "i_AM_better_THAN_batman"
+			use_tls   = true
+
+			tls_config {
+				ca_file   = "/var/lib/ca-certificates/ca.pem"
+				cert_file = "/var/lib/ca-certificates/client.pem"
+				key_pem   = "/var/lib/ca-certificates/client-key.pem"
+			}
+		}
+	}
+	use_incoming_timestamp = true
+	labels                 = {
+		job     = "fun",
+		quality = "excellent",
+	}
+	forward_to    = [loki.process.fun.receiver]
+	relabel_rules = discovery.relabel.fun.rules
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

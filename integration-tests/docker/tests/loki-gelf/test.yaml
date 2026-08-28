@@ -1,0 +1,5 @@
+alloy_container:
+  ports:
+    - container: 12201
+      host: 12201
+      protocol: "udp"

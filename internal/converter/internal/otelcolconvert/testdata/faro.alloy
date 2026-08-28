@@ -1,0 +1,34 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint            = "localhost:4318"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	output {
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
+	}
+}
+
+otelcol.receiver.faro "default" {
+	idle_timeout        = "0s"
+	write_timeout       = "0s"
+	read_header_timeout = "0s"
+
+	output {
+		logs   = [otelcol.exporter.faro.default.input]
+		traces = [otelcol.exporter.faro.default.input]
+	}
+}
+
+otelcol.exporter.faro "default" {
+	client {
+		endpoint = "https://faro.example.com/collect"
+	}
+}

@@ -1,0 +1,7 @@
+mixed_object = {
+	key_1 = true,
+	key_2 = [0, true, {
+		inner_1 = true,
+		inner_2 = true,
+	}],
+}

@@ -1,0 +1,37 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+prometheus.exporter.mssql "test" {
+  connection_string = "sqlserver://sa:Alloy_Integration_Test_1@mssql." + sys.env("POD_NAMESPACE") + ".svc:1433"
+}
+
+prometheus.scrape "mssql" {
+  targets         = prometheus.exporter.mssql.test.targets
+  forward_to      = [prometheus.relabel.mssql.receiver]
+  scrape_interval = "5s"
+  scrape_timeout  = "3s"
+  honor_labels    = true
+  // honor_metadata forwards TYPE/HELP; asserted in k8s_test via QueryMetadata.
+  honor_metadata  = true
+}
+
+prometheus.relabel "mssql" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "mssql"
+  }
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url              = "http://mimir:9009/api/v1/push"
+    protobuf_message = "io.prometheus.write.v2.Request"
+  }
+}

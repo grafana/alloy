@@ -1,0 +1,17 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    triton_sd_configs:
+      - account: "TRITON_ACCOUNT"
+        dns_suffix: "triton.example"
+        endpoint: "0.0.0.0:8080"
+  - job_name: "prometheus2"
+    triton_sd_configs:
+      - account: "TRITON_ACCOUNT"
+        dns_suffix: "triton.example2"
+        endpoint: "0.0.0.0:8081"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

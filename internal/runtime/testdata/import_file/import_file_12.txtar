@@ -1,0 +1,82 @@
+Import passthrough module and instantiate it in a declare. The imported module has a nested declare that uses an imported passthrough.
+
+-- main.alloy --
+declare "b" {
+  testcomponents.count "inc" {
+    frequency = "10ms"
+    max = 10
+  }
+
+  import.file "testImport" {
+    filename = "module.alloy"
+  }
+
+  testImport.a "cc" {
+    input = testcomponents.count.inc.count
+  }
+
+  export "output" {
+    value = testImport.a.cc.output
+  }
+}
+
+b "cc" {}
+
+testcomponents.summation "sum" {
+  input = b.cc.output
+}
+
+-- module.alloy --
+import.file "testImport" {
+  filename = "nested_module.alloy"
+}
+declare "a" {
+  argument "input" {}
+
+  declare "b" {
+    argument "input" {}
+
+    testImport.a "cc" {
+      input = argument.input.value
+    }
+
+    export "output" {
+      value = testImport.a.cc.output
+    }
+  }
+
+  b "cc" {
+    input = argument.input.value
+  }
+
+  export "output" {
+    value = b.cc.output
+  }
+}
+
+-- nested_module.alloy --
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}
+
+-- reload_config.alloy --
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+testImport.a "cc" {
+  input = -10
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}

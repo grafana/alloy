@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: fun
+    nerve_sd_configs:
+      - servers: ["1.2.3.4"]
+        paths: ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
+        timeout: "15s"
+tracing: {enabled: false}
+server: {register_instrumentation: false}

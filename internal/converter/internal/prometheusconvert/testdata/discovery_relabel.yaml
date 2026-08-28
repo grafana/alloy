@@ -1,0 +1,32 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    relabel_configs:
+      - source_labels: [__address1__]
+        target_label: __param_target1
+      - source_labels: ['__address2__']
+        target_label: 'instance'
+        regex: "\""
+        replacement: '${1}'
+      - source_labels: ['__address3__']
+        target_label: 'instance'
+        regex: '"'
+        replacement: '${1}'
+  - job_name: "prometheus2"
+    static_configs:
+      - targets: ["localhost:9091"]
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        tenant_id: "tenant"
+        client_id: "client"
+        client_secret: "secret"
+    relabel_configs:
+      - source_labels: [__address1__]
+        target_label: __param_target1
+      - source_labels: [__address2__]
+        target_label: __param_target2
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

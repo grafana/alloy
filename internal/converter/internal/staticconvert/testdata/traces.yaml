@@ -1,0 +1,76 @@
+traces:
+  configs:
+    - name: trace_config
+      attributes:
+        actions:
+          - key: db.table
+            action: delete
+      batch:
+        timeout: 5s
+        send_batch_size: 2048
+        send_batch_max_size: 4096
+      remote_write:
+        - endpoint: tempo.example.com:14250
+          insecure: true
+      automatic_logging:
+        backend: "stdout"
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      scrape_configs:
+        - job_name: "prometheus1"
+          azure_sd_configs:
+            - subscription_id: "subscription1"
+              tenant_id: "tenant1"
+              client_id: "client1"
+              client_secret: "secret1"
+          lightsail_sd_configs:
+            - region: 'us-east-1'
+              access_key: 'YOUR_ACCESS_KEY'
+              secret_key: 'YOUR_SECRET_KEY'
+              port: 8080
+          relabel_configs:
+            - source_labels: [__address1__]
+              target_label: __param_target1
+            - source_labels: [__address2__]
+              target_label: __param_target2
+      prom_sd_operation_type: "insert"
+      prom_sd_pod_associations:
+        - ip
+        - net.host.ip
+      spanmetrics:
+        metrics_instance: remote_write_name
+        namespace: metrics_prefix
+        const_labels:
+          foo: bar
+          fizz: buzz 
+      tail_sampling:
+        policies:
+          [
+            {
+              name: test-policy-1,
+              type: always_sample
+            },
+          ]
+      load_balancing:
+        resolver:
+          static:
+            hostnames:
+              - tempo1.example.com
+              - tempo2.example.com
+      jaeger_remote_sampling:
+        - source:
+            reload_interval: 30s
+            remote:
+              endpoint: jaeger-collector:14250
+
+# This metrics config is needed when we enable spanmetrics for traces
+# 
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+  configs:
+    - name: remote_write_name

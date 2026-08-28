@@ -1,0 +1,21 @@
+Import a module that contains an import.file with a relative import path.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.git "testImport" {
+  // Requires repo.git.tar to be extracted
+  repository = "./testdata/repo.git"
+  path = "module_import_file.alloy"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}

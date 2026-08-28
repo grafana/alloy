@@ -1,0 +1,33 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  batch:
+
+connectors:
+  spanmetrics:
+    dimensions:
+      - glob: http.*
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [spanmetrics]
+    metrics:
+      receivers: [spanmetrics]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+

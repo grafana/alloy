@@ -1,0 +1,39 @@
+discovery.dockerswarm "fun" {
+	host = "http://localhost:8081"
+	role = "nodes"
+	port = 81
+
+	filter {
+		name   = "n1"
+		values = ["v1", "v2"]
+	}
+
+	filter {
+		name   = "n2"
+		values = ["v3"]
+	}
+	refresh_interval = "5m0s"
+
+	basic_auth {
+		username = "username"
+		password = "password"
+	}
+}
+
+discovery.dockerswarm "fun_2" {
+	host = "http://localhost:8080"
+	role = "services"
+}
+
+loki.source.file "fun" {
+	targets = array.concat(
+		discovery.dockerswarm.fun.targets,
+		discovery.dockerswarm.fun_2.targets,
+	)
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

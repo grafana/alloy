@@ -1,0 +1,32 @@
+---
+# Source: alloy/templates/cluster_service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy-cluster
+  namespace: default
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: networking
+spec:
+  type: ClusterIP
+  clusterIP: 'None'
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+  ports:
+    # Do not include the -metrics suffix in the port name, otherwise metrics
+    # can be double-collected with the non-headless Service if it's also
+    # enabled.
+    #
+    # This service should only be used for clustering, and not metric
+    # collection.
+    - name: http
+      port: 12345
+      targetPort: 12345
+      protocol: "TCP"

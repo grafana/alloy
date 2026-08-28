@@ -1,0 +1,25 @@
+server:
+  log_level: debug
+  http_tls_config:
+    client_auth_type: RequireAndVerifyClientCert
+    windows_certificate_filter:
+      client_store: My
+      client_system_store: CurrentUser
+      client_issuer_common_names: [test-WINDOWS-VM-AGEN-CA]
+      server_store: My
+      server_system_store: CurrentUser
+      server_template_id: "1.3.6.1.4.1.311.21.8.2114893.1300005.13648014.4673963.7606721.204.5968300.2521631"
+metrics:
+  wal_directory: c:\programdata\agent
+  global:
+    scrape_interval: 60s
+    remote_write:
+      - url: https://prometheus-us-central1.grafana.net/api/prom/push
+        basic_auth:
+          username: <user>>
+          password: <password>
+integrations:
+  windows_exporter:
+    enabled: true
+  agent:
+    enabled: true

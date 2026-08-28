@@ -1,0 +1,10 @@
+!macro VerifyUserIsAdmin
+UserInfo::GetAccountType
+Pop $0
+${If} $0 != "admin" # Require admin rights on NT4+
+        MessageBox MB_ICONSTOP "Administrator rights required!"
+        SetErrorLevel 740 # ERROR_ELEVATION_REQUIRED
+        Quit
+${EndIf}
+!macroend
+

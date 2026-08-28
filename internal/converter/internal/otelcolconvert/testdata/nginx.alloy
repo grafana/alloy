@@ -1,0 +1,15 @@
+otelcol.receiver.nginx "default" {
+	endpoint            = "http://localhost:80/status"
+	collection_interval = "30s"
+	initial_delay       = "5s"
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

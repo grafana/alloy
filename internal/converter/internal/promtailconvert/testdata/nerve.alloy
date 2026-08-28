@@ -1,0 +1,15 @@
+discovery.nerve "fun" {
+	servers = ["1.2.3.4"]
+	paths   = ["/nerve/services/your_http_service/services", "/nerve/services/your_tcp_service/services"]
+	timeout = "15s"
+}
+
+loki.source.file "fun" {
+	targets    = discovery.nerve.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

@@ -1,0 +1,17 @@
+(Error) http_listen_network is not supported in server config
+(Error) grpc_listen_network is not supported in server config
+(Error) tls_cipher_suites is not supported in server config
+(Error) tls_min_version is not supported in server config
+(Error) register_instrumentation is not supported in server config
+(Error) graceful_shutdown_timeout is not supported in server config
+(Error) grpc_server_keepalive_time is not supported in server config
+(Error) grpc_server_keepalive_timeout is not supported in server config
+(Error) grpc_server_min_time_between_pings is not supported in server config
+(Error) grpc_server_ping_without_stream_allowed is not supported in server config
+(Error) log_format is not supported in server config
+(Error) log_level is not supported in server config
+(Error) log_source_ips_enabled is not supported in server config
+(Error) log_source_ips_header is not supported in server config
+(Error) log_source_ips_regex is not supported in server config
+(Error) log_request_at_info_level_enabled is not supported in server config
+(Error) http_path_prefix is not supported in server config

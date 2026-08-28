@@ -1,0 +1,35 @@
+.list {
+  border: 1px solid #e4e5e6;
+  border-radius: 3px;
+
+  box-sizing: border-box;
+  color: rgba(36, 41, 46, 0.75);
+}
+
+.list .viewButton {
+  background: none;
+  background-color: rgb(56, 133, 220);
+  color: #ffffff;
+  margin-left: auto;
+
+  border: 1px solid rgb(56, 133, 220);
+  border-radius: 3px;
+
+  text-decoration: none;
+
+  padding: 0px 15px;
+  line-height: 24px;
+  font-size: 0.8em;
+}
+
+.idColumn {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.idName {
+  width: 80%;
+  word-wrap: break-word;
+  display: inline-block;
+}

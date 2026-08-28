@@ -1,0 +1,26 @@
+loki.write "default" {
+	endpoint {
+		url            = "http://localhost/loki/api/v1/push"
+		batch_wait     = "10s"
+		batch_size     = "1KiB"
+		remote_timeout = "30s"
+		headers        = {
+			bird = "house",
+			fat  = "ball",
+		}
+		min_backoff_period  = "100ms"
+		max_backoff_period  = "10s"
+		max_backoff_retries = 20
+		tenant_id           = "sparrow"
+		retry_on_http_429   = false
+		proxy_url           = "http://proxy.example.com"
+	}
+	external_labels = {}
+}
+
+loki.write "default_2" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

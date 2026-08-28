@@ -1,0 +1,14 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    serverset_sd_configs:
+      - servers: [ "zk1", "zk2", "zk3" ]
+        paths: [ "/path/to/znode1", "/path/to/znode2" ]
+        timeout: 30s
+  - job_name: "prometheus2"
+    serverset_sd_configs:
+      - servers: [ "zk1" ]
+        paths: [ "/path/to/znode1" ]
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

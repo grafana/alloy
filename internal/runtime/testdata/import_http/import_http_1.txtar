@@ -1,0 +1,19 @@
+Import passthrough module.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.http "testImport" {
+  url = "https://raw.githubusercontent.com/wildum/module/master/module_passthrough.river"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}

@@ -1,0 +1,12 @@
+controller:
+  volumes:
+    extra:
+      - name: cache-volume
+        emptyDir:
+          sizeLimit: 500Mi
+
+alloy:
+  mounts:
+    extra:
+      - mountPath: /cache
+        name: cache-volume

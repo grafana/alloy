@@ -1,0 +1,22 @@
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.gelf "fun" {
+	listen_address         = "localhost:12201"
+	use_incoming_timestamp = true
+	relabel_rules          = discovery.relabel.fun.rules
+	forward_to             = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

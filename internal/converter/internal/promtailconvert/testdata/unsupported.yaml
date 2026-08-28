@@ -1,0 +1,25 @@
+global:
+  file_watch_config:
+    min_poll_frequency: 1s
+    max_poll_frequency: 5s
+clients:
+  - url: http://localhost/loki/api/v1/push
+    drop_rate_limited_batches: true
+positions:
+  filename: /dev/urandom
+wal:
+  enabled: true
+limits_config:
+  readline_rate_enabled: true
+target_config:
+  stdin: true
+server:
+  profiling_enabled: true
+  register_instrumentation: true
+  log_level: error
+  http_path_prefix: /cgi/bin
+  health_check_target: false
+
+scrape_configs:
+  - job_name: unsupported
+    encoding: utf-16

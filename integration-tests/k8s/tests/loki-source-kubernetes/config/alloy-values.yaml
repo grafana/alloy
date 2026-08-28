@@ -1,0 +1,12 @@
+controller:
+  type: daemonset
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  extraEnv:
+    - name: TARGET_NAMESPACE_A
+      value: "log-producer-a"
+    - name: TARGET_NAMESPACE_B
+      value: "log-producer-b"
+    - name: TARGET_NAMESPACE_C
+      value: "log-producer-c"

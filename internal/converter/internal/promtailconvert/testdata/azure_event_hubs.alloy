@@ -1,0 +1,35 @@
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.azure_event_hubs "fun" {
+	fully_qualified_namespace = "robin.servicebus.windows.net"
+	event_hubs                = ["hub0", "hub1"]
+
+	authentication {
+		mechanism         = ""
+		connection_string = "Endpoint=sb://<NamespaceName>.servicebus.windows.net/;SharedAccessKeyName=<KeyName>;SharedAccessKey=<KeyValue>"
+	}
+	group_id                 = "my_consumer_group"
+	use_incoming_timestamp   = true
+	disallow_custom_messages = true
+	relabel_rules            = discovery.relabel.fun.rules
+	labels                   = {
+		job     = "fun",
+		quality = "excellent",
+	}
+	assignor   = ""
+	forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

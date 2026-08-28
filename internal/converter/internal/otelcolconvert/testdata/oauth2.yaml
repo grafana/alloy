@@ -1,0 +1,54 @@
+extensions:
+  oauth2client/noop: # this extension is not defined in services and shouldn't be converted
+    client_id: dummyclientid
+    client_secret: dummyclientsecret
+    token_url: https://example.com/oauth2/default/v1/token
+  oauth2client:
+    client_id: someclientid
+    client_secret: someclientsecret
+    endpoint_params:
+      audience: someaudience
+    token_url: https://example.com/oauth2/default/v1/token
+    scopes: ["api.metrics"]
+    # tls settings for the token client
+    tls:
+      insecure: true
+      ca_file: /var/lib/mycert.pem
+      cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
+      include_insecure_cipher_suites: true
+      cert_file: certfile
+      key_file: keyfile
+    # timeout for the token client
+    timeout: 2s
+    
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  otlphttp/noauth:
+    endpoint: database:4318
+      
+  otlp/withauth:
+    tls:
+      ca_file: /tmp/certs/ca.pem
+    auth:
+      authenticator: oauth2client
+    endpoint: database:4317
+
+service:
+  extensions: [oauth2client]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/withauth, otlphttp/noauth]

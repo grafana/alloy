@@ -1,0 +1,22 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  interval:
+    pass_through:
+      gauge: true
+      summary: true
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [interval]
+      exporters: [otlp]

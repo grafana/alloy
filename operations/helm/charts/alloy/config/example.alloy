@@ -1,0 +1,28 @@
+logging {
+	level  = "info"
+	format = "logfmt"
+}
+
+discovery.kubernetes "pods" {
+	role = "pod"
+}
+
+discovery.kubernetes "nodes" {
+	role = "node"
+}
+
+discovery.kubernetes "services" {
+	role = "service"
+}
+
+discovery.kubernetes "endpoints" {
+	role = "endpoints"
+}
+
+discovery.kubernetes "endpointslices" {
+	role = "endpointslice"
+}
+
+discovery.kubernetes "ingresses" {
+	role = "ingress"
+}

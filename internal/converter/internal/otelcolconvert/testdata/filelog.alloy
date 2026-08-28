@@ -1,0 +1,75 @@
+otelcol.storage.file "default" {
+	directory = "/var/lib/otelcol/file_storage"
+
+	compaction {
+		directory                     = "/var/lib/otelcol/file_storage"
+		rebound_needed_threshold_mib  = 100
+		rebound_trigger_threshold_mib = 10
+		max_transaction_size          = 65536
+		check_interval                = "5s"
+	}
+	fsync            = true
+	create_directory = false
+}
+
+otelcol.receiver.filelog "default" {
+	include            = ["/var/log/*.log"]
+	exclude            = ["/var/log/excluded.log"]
+	exclude_older_than = "24h0m0s"
+
+	ordering_criteria {
+		regex = "^(?P<timestamp>\\d{8})_(?P<severity>\\d+)_"
+		top_n = 12
+
+		sort_by {
+			sort_type = "timestamp"
+			regex_key = "timestamp"
+			ascending = true
+			layout    = "%Y%m%d"
+			location  = "UTC"
+		}
+
+		sort_by {
+			sort_type = "numeric"
+			regex_key = "severity"
+			ascending = true
+		}
+		group_by = "severity"
+	}
+	poll_interval              = "10s"
+	max_concurrent_files       = 10
+	max_batches                = 100
+	start_at                   = "beginning"
+	fingerprint_size           = "10KiB"
+	max_log_size               = "10MiB"
+	encoding                   = "utf-16"
+	force_flush_period         = "5s"
+	delete_after_read          = true
+	include_file_record_number = true
+	compression                = "gzip"
+	acquire_fs_lock            = true
+
+	multiline {
+		line_start_pattern = "\\d{4}-\\d{2}-\\d{2}"
+		omit_pattern       = true
+	}
+	preserve_leading_whitespaces  = true
+	preserve_trailing_whitespaces = true
+
+	header {
+		pattern            = "^HEADER .*$"
+		metadata_operators = []
+	}
+	include_file_path             = true
+	include_file_name_resolved    = true
+	include_file_path_resolved    = true
+	include_file_owner_name       = true
+	include_file_owner_group_name = true
+	storage                       = otelcol.storage.file.default.handler
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

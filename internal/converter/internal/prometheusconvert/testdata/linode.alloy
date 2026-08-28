@@ -1,0 +1,34 @@
+discovery.linode "prometheus1" {
+	refresh_interval = "1m40s"
+	port             = 8080
+}
+
+discovery.linode "prometheus2" { }
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.linode.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.linode.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

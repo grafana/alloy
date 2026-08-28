@@ -1,0 +1,35 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        tenant_id: "tenant"
+        client_id: "client"
+        client_secret: "secret"
+  - job_name: "prometheus2"
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        tenant_id: "tenant"
+        client_id: "client"
+        client_secret: "secret"
+        proxy_url: "proxy"
+        follow_redirects: false
+  - job_name: "managed_identity"
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        authentication_method: "ManagedIdentity"
+        client_id: "client"
+  - job_name: "sdk"
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        authentication_method: "SDK"
+        tenant_id: "tenant"
+  - job_name: "workload_identity"
+    azure_sd_configs:
+      - subscription_id: "subscription"
+        authentication_method: "WorkloadIdentity"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

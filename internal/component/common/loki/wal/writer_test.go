@@ -1,0 +1,369 @@
+package wal
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	autil "github.com/grafana/alloy/internal/util"
+)
+
+func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
+	dir := t.TempDir()
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	require.NoError(t, err)
+	defer func() {
+		writer.Stop()
+	}()
+	// write entries to wal and sync
+	writer.Start(time.Minute)
+
+	var testLabels = model.LabelSet{
+		"testing": "log",
+	}
+	var lines = []string{
+		"some line",
+		"some other line",
+		"some other other line",
+	}
+
+	for _, line := range lines {
+		writer.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      line,
+			},
+		}
+	}
+
+	// accessing the WAL inside, just for testing!
+	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+
+	// assert over WAL entries
+	readEntries := eventuallyReadWAL(t, len(lines), dir)
+	require.NotNil(t, readEntries)
+	require.Equal(t, testLabels, readEntries[0].Labels)
+}
+
+type notifySegmentsCleanedFunc func(num int)
+
+func (n notifySegmentsCleanedFunc) NotifyWrite() {
+}
+
+func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
+	n(segmentNum)
+}
+
+func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
+	dir := t.TempDir()
+
+	maxSegmentAge := time.Second * 2
+
+	subscriber1 := []int{}
+	subscriber2 := []int{}
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: maxSegmentAge,
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
+	defer func() {
+		writer.Stop()
+	}()
+
+	notificationMutex := sync.Mutex{}
+	// add writer events subscriber. Add multiple to test fanout
+	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
+		subscriber1 = append(subscriber1, num)
+	}))
+	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		notificationMutex.Lock()
+		defer notificationMutex.Unlock()
+		subscriber2 = append(subscriber2, num)
+	}))
+
+	// write entries to wal and sync
+	var testLabels = model.LabelSet{
+		"testing": "log",
+	}
+	var lines = []string{
+		"some line",
+		"some other line",
+		"some other other line",
+	}
+
+	for _, line := range lines {
+		writer.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      line,
+			},
+		}
+	}
+
+	// accessing the WAL inside, just for testing!
+	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+
+	// assert over WAL entries
+	readEntries := eventuallyReadWAL(t, len(lines), dir)
+	require.NotNil(t, readEntries)
+	require.Equal(t, testLabels, readEntries[0].Labels)
+
+	watchAndLogDirEntries(t, dir)
+
+	// check segment is there
+	fileInfo, err := os.Stat(filepath.Join(dir, "00000000"))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, fileInfo.Size(), int64(0), "first segment size should be >= 0")
+
+	// force close segment, so that one is eventually cleaned up
+	_, err = writer.wal.NextSegment()
+	require.NoError(t, err, "error closing current segment")
+
+	// wait for segment to be cleaned
+	time.Sleep(maxSegmentAge * 2)
+
+	watchAndLogDirEntries(t, dir)
+
+	_, err = os.Stat(filepath.Join(dir, "00000000"))
+	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist, "expected file not exists error")
+
+	notificationMutex.Lock()
+	// assert all subscribers were notified
+	require.Len(t, subscriber1, 1, "expected one segment reclaimed notification in subscriber1")
+	require.Equal(t, 0, subscriber1[0])
+
+	require.Len(t, subscriber2, 1, "expected one segment reclaimed notification in subscriber2")
+	require.Equal(t, 0, subscriber2[0])
+	notificationMutex.Unlock()
+
+	// Expect last, or "head" segment to still be alive
+	_, err = os.Stat(filepath.Join(dir, "00000001"))
+	require.NoError(t, err)
+}
+
+func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
+	dir := t.TempDir()
+
+	maxSegmentAge := time.Second * 2
+
+	segmentsReclaimedNotificationsReceived := []int{}
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: maxSegmentAge,
+	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	require.NoError(t, err)
+	writer.Start(maxSegmentAge)
+	defer func() {
+		writer.Stop()
+	}()
+
+	// add writer events subscriber
+	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		segmentsReclaimedNotificationsReceived = append(segmentsReclaimedNotificationsReceived, num)
+	}))
+
+	// write entries to wal and sync
+	var testLabels = model.LabelSet{
+		"testing": "log",
+	}
+	var lines = []string{
+		"some line",
+	}
+
+	for _, line := range lines {
+		writer.Chan() <- loki.Entry{
+			Labels: testLabels,
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      line,
+			},
+		}
+	}
+
+	// accessing the WAL inside, just for testing!
+	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+
+	// assert over WAL entries
+	readEntries := eventuallyReadWAL(t, len(lines), dir)
+	require.NotNil(t, readEntries)
+	require.Equal(t, testLabels, readEntries[0].Labels)
+
+	watchAndLogDirEntries(t, dir)
+
+	// check segment is there
+	fileInfo, err := os.Stat(filepath.Join(dir, "00000000"))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, fileInfo.Size(), int64(0), "first segment size should be >= 0")
+
+	// wait for segment to be cleaned
+	time.Sleep(maxSegmentAge * 2)
+
+	watchAndLogDirEntries(t, dir)
+
+	_, err = os.Stat(filepath.Join(dir, "00000000"))
+	require.NoError(t, err)
+	require.Len(t, segmentsReclaimedNotificationsReceived, 0, "expected no notification")
+}
+
+func watchAndLogDirEntries(t *testing.T, path string) {
+	dirs, err := os.ReadDir(path)
+	if len(dirs) == 0 {
+		t.Log("no dirs found")
+		return
+	}
+	require.NoError(t, err)
+	for _, dir := range dirs {
+		t.Logf("dir entry found: %s", dir.Name())
+	}
+}
+
+// eventuallyReadWAL reads the WAL several times until the expected number of entries is found, or times out.
+func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) []loki.Entry {
+	var err error
+	var readEntries []loki.Entry
+	require.Eventually(t, func() bool {
+		// read WAL and assert over read entries
+		readEntries, err = readWAL(dir)
+		if err != nil {
+			return false
+		}
+		return len(readEntries) == expectedEntries
+	}, time.Second*5, time.Second, "timed out waiting for WAL")
+	return readEntries
+}
+
+// readWAL will read all entries in the WAL located under dir.
+func readWAL(dir string) ([]loki.Entry, error) {
+	reader, closeFn, err := newWalReader(dir, -1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { closeFn.Close() }()
+
+	seenSeries := make(map[uint64]model.LabelSet)
+	seenEntries := []loki.Entry{}
+
+	for reader.Next() {
+		var walRec = Record{}
+		bytes := reader.Record()
+		err = DecodeRecord(bytes, &walRec)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding wal record: %w", err)
+		}
+
+		// first read series
+		for _, series := range walRec.Series {
+			if _, ok := seenSeries[uint64(series.Ref)]; !ok {
+				seenSeries[uint64(series.Ref)] = util.MapToModelLabelSet(series.Labels.Map())
+			}
+		}
+
+		for _, entries := range walRec.RefEntries {
+			for _, entry := range entries.Entries {
+				labels, ok := seenSeries[uint64(entries.Ref)]
+				if !ok {
+					return nil, fmt.Errorf("found entry without matching series")
+				}
+				seenEntries = append(seenEntries, loki.Entry{
+					Labels: labels,
+					Entry:  entry,
+				})
+			}
+		}
+	}
+
+	return seenEntries, nil
+}
+
+func BenchmarkWriter_WriteEntries(b *testing.B) {
+	type testCase struct {
+		lines          int
+		labelSetsCount int
+	}
+	var cases = []testCase{
+		{
+			lines:          1000,
+			labelSetsCount: 1,
+		},
+		{
+			lines:          1000,
+			labelSetsCount: 4,
+		},
+		{
+			lines:          1e6,
+			labelSetsCount: 1,
+		},
+		{
+			lines:          1e6,
+			labelSetsCount: 100,
+		},
+		{
+			lines:          1e7,
+			labelSetsCount: 1,
+		},
+		{
+			lines:          1e7,
+			labelSetsCount: 1e3,
+		},
+	}
+	for _, testCase := range cases {
+		b.Run(fmt.Sprintf("%d lines, %d different label sets", testCase.lines, testCase.labelSetsCount), func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				benchWriteEntries(b, testCase.lines, testCase.labelSetsCount)
+			}
+		})
+	}
+}
+
+func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
+	dir := b.TempDir()
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), prometheus.NewRegistry())
+	require.NoError(b, err)
+	writer.Start(time.Minute)
+	defer func() {
+		writer.Stop()
+	}()
+
+	for i := 0; i < lines; i++ {
+		writer.Chan() <- loki.Entry{
+			Labels: model.LabelSet{
+				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
+			},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      fmt.Sprintf("some line being written %d", i),
+			},
+		}
+	}
+}

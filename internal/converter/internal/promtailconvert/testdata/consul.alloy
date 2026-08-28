@@ -1,0 +1,39 @@
+discovery.consul "fun" {
+	datacenter    = "bigdata"
+	tag_separator = ";"
+	scheme        = "sketchy"
+	username      = "toby"
+	password      = "this_password_is_safe_innit?"
+	allow_stale   = false
+	services      = ["myapp"]
+	tags          = ["better", "faster", "stronger"]
+	node_meta     = {
+		what  = "this",
+		where = "here",
+	}
+	refresh_interval = "10m0s"
+
+	basic_auth {
+		username = "toby"
+		password = "this_password_is_safe_innit?"
+	}
+}
+
+discovery.relabel "fun" {
+	targets = discovery.consul.fun.targets
+
+	rule {
+		source_labels = ["host"]
+		target_label  = "hostname"
+	}
+}
+
+loki.source.file "fun" {
+	targets    = discovery.relabel.fun.output
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

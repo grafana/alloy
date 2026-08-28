@@ -1,0 +1,35 @@
+extensions:
+  sigv4auth:
+    region: "ap-southeast-1"
+    service: "s3"
+    assume_role:
+      arn: "arn:aws:iam::123456789012:role/aws-service-role/access"
+      sts_region: "us-east-1"
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    auth:
+      authenticator: sigv4auth
+    endpoint: database:4317
+
+service:
+  extensions: [sigv4auth]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp] 

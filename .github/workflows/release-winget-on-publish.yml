@@ -1,0 +1,20 @@
+name: Submit WinGet manifest on release publish
+
+on:
+  release:
+    types: [released]
+
+permissions: {}
+
+jobs:
+  submit_winget_manifest:
+    name: Submit WinGet Manifest
+    # Only the Alloy binary (vX.Y.Z tags) has a WinGet package; skip component
+    # releases like syntax/v0.2.0.
+    if: ${{ startsWith(github.event.release.tag_name, 'v') }}
+    uses: ./.github/workflows/release-submit-winget-manifest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      release-tag: ${{ github.event.release.tag_name }}

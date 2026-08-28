@@ -1,0 +1,11 @@
+(Error) The converter does not support converting the provided global evaluation_interval config.
+(Error) The converter does not support converting the provided global query_log_file config.
+(Error) The converter does not support converting the provided alerting config.
+(Error) The converter does not support converting the provided rule_files config.
+(Error) The converter does not support converting the provided nomad service discovery.
+(Error) The converter does not support converting the provided scrape_configs native_histogram_bucket_limit config.
+(Error) The converter does not support converting the provided scrape_configs keep_dropped_targets config.
+(Error) The converter does not support converting the provided storage config.
+(Error) The converter does not support converting the provided tracing config.
+(Error) The converter does not support converting the provided HTTP Client max_version config.
+(Error) The converter does not support converting the provided remote_read config.

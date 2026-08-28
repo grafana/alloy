@@ -1,0 +1,91 @@
+ARG BASE_IMAGE_GO=golang:1.26.7-windowsservercore-ltsc2022@sha256:2a3365ef5cb38e4ebaafe073a68a97989322fda2a582ee067ef9fd59a0551692
+ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:3680dad0bb773da8efcd9d928eaf4e33817875ab71a43792640ab1bcc0b3c074
+
+FROM ${BASE_IMAGE_GO} AS builder
+
+ARG VERSION
+ARG RELEASE_BUILD=1
+ARG GO_TAGS
+
+####################
+# The snippet below was taken from build-tools/build-image/windows/Dockerfile.
+# This is so that we don't have to run the CI step inside a build image container.
+#
+# TODO: Build Alloy outside of the Dockerfile?
+# Then we don't need to install all those dependencies.
+# However, the versions of Windows may not match.
+# GitHub Actions may use one version of Windows to build Alloy,
+# and Docker may put it into a container with a different version.
+####################
+SHELL ["powershell", "-command"]
+
+# Use a fixed version of chocolatey to avoid dependency on .net framework install
+# See https://stackoverflow.com/questions/76470752/chocolatey-installation-in-docker-started-to-fail-restart-due-to-net-framework
+ENV chocolateyVersion=1.4.0
+# Install chocolatey for package management
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+#
+# Go Build Dependencies
+#
+# golang - building go code
+# mingw  - gcc compiler (mingw-w64) for compiling C dependencies (CGO)
+# make - building with a Makefile
+# docker - building images
+# git - bash for windows
+
+# mingw-w64 (packaged from the WinLibs build) provides a modern gcc that links
+# CGO dependencies compiled with -fstack-protector correctly.
+RUN choco install mingw --version 14.2.0 -y
+
+RUN choco install make --version 4.3 -y
+RUN choco install docker-cli --version 20.10.22 -y
+RUN choco install git --version 2.39.0 -y
+
+#
+# React App Dependencies
+#
+# nodejs - node server
+RUN choco install nodejs.install --version 24.4.0 -y
+
+# Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
+# care about this for build containers, where it's expected that the repository
+# will be accessed by other users (the root user of the build container).
+#
+# Disable that safety check.
+RUN git config --global --add safe.directory \*
+
+####################
+# End of snippet from build-tools/build-image/windows/Dockerfile.
+####################
+
+COPY . /src/alloy
+WORKDIR /src/alloy
+
+SHELL ["cmd", "/S", "/C"]
+
+# Creating new layers can be really slow on Windows so we clean up any caches
+# we can before moving on to the next step.
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"embedalloyui ${GO_TAGS}\" CGO_LDFLAGS=\"-static\" make alloy && rm -rf internal/web/ui/node_modules""
+
+# In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
+# files is denied immediately after make alloy, for example:
+# "go: remove C:\go\pkg\mod\golang.org\toolchain@v0.0.1-go1.22.3.windows-amd64\bin\go.exe: Access is denied."
+RUN ""C:\Program Files\git\bin\bash.exe" -c "go clean -cache -modcache""
+
+# Use the smallest container possible for the final image
+FROM ${BASE_IMAGE_WINDOWS}
+
+COPY --from=builder ["/src/alloy/build/alloy", "C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
+COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/GrafanaLabs/Alloy/config.alloy"]
+
+# Provide otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor.
+COPY ["packaging/docker/otel-supervisor.cmd", "C:/Program Files/GrafanaLabs/Alloy/otel-supervisor.cmd"]
+
+ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
+ENV ALLOY_DEPLOY_MODE=docker
+CMD ["run", "C:/Program Files/GrafanaLabs/Alloy/config.alloy", "--storage.path=C:/ProgramData/GrafanaLabs/Alloy/data"]

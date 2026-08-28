@@ -1,0 +1,65 @@
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["__trail__"]
+		target_label  = "__path__"
+	}
+}
+
+loki.source.api "fun" {
+	http {
+		listen_address       = "localhost"
+		listen_port          = 9094
+		conn_limit           = 100
+		server_read_timeout  = "10s"
+		server_write_timeout = "10s"
+		server_idle_timeout  = "10s"
+
+		tls {
+			cert_pem         = "my_cert"
+			cert_file        = "/var/cert"
+			key_file         = "/var/key"
+			client_auth_type = "RequireAndVerifyClientCert"
+			client_ca_file   = "/var/ca"
+			client_ca        = "my_ca"
+		}
+	}
+
+	grpc {
+		listen_address                = "127.0.0.1"
+		listen_port                   = 9095
+		conn_limit                    = 100
+		max_connection_age            = "10s"
+		max_connection_age_grace      = "10s"
+		max_connection_idle           = "1m0s"
+		server_max_recv_msg_size      = 1000
+		server_max_send_msg_size      = 1000
+		server_max_concurrent_streams = 100
+
+		tls {
+			cert_pem         = "my_cert"
+			cert_file        = "/var/cert"
+			key_file         = "/var/key"
+			client_auth_type = "RequireAndVerifyClientCert"
+			client_ca_file   = "/var/ca"
+			client_ca        = "my_ca"
+		}
+	}
+	graceful_shutdown_timeout = "0s"
+	forward_to                = [loki.write.default.receiver]
+	labels                    = {
+		identity    = "unidentified",
+		object_type = "flying",
+	}
+	relabel_rules          = discovery.relabel.fun.rules
+	use_incoming_timestamp = true
+	max_send_message_size  = "0B"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

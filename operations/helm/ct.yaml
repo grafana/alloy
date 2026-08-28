@@ -1,0 +1,6 @@
+remote: origin
+target-branch: main
+chart-dirs:
+  - operations/helm/charts
+validate-maintainers: false
+check-version-increment: false  # Don't require every change to be released

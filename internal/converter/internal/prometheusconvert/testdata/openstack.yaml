@@ -1,0 +1,37 @@
+scrape_configs:
+  - job_name: "prometheus1"
+    static_configs:
+      - targets: ["localhost:9090"]
+    openstack_sd_configs:
+      - identity_endpoint: "identity_endpoint"
+        username: "username"
+        userid: "userid"
+        password: "password"
+        project_name: "project_name"
+        project_id: "project_id"
+        domain_name: "domain_name"
+        domain_id: "domain_id"
+        application_credential_name: "application_credential_name"
+        application_credential_id: "application_credential_id"
+        application_credential_secret: "application_credential_secret"
+        role: "instance"
+        region: "region"
+        port: 81
+        all_tenants: true
+        availability: "internal"
+        refresh_interval: 20s
+        tls_config:
+          key: "key"
+          cert: "cert"
+          ca: "ca"
+          server_name: example.local
+          insecure_skip_verify: true
+          
+  - job_name: "prometheus2"
+    openstack_sd_configs:
+      - role: "hypervisor"
+        region: "region2"
+
+remote_write:
+  - name: "remote1"
+    url: "http://remote-write-url1"

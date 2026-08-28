@@ -1,0 +1,44 @@
+extensions:
+  basicauth:
+    client_auth:
+      username: username
+      password: password
+  basicauth/client:
+    client_auth:
+      username: username2
+      password: password2
+  basicauth/server: # this extension is not defined in services and shouldn't be converted
+    htpasswd:
+      file: .htpasswd
+      inline: |
+        ${BASIC_AUTH_USERNAME}:${BASIC_AUTH_PASSWORD}
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+
+exporters:
+  otlp:
+    auth:
+      authenticator: basicauth
+    endpoint: database:4317
+
+service:
+  extensions: [basicauth, basicauth/client]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]

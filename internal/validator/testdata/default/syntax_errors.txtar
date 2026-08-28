@@ -1,0 +1,12 @@
+syntaxt errors across multiple files
+-- main.alloy --
+// Missing string termination.
+local.file_match "applogs {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+}
+
+-- secondary.alloy --
+// Missing right bracket
+local.file_match "applogs" {
+    path_targets = [{"__path__" = "/tmp/app-logs/app.log"}
+}

@@ -1,0 +1,50 @@
+Import passthrough module; instantiate imported declare in a declare.
+
+-- main.alloy --
+import.file "testImport" {
+  filename = "module.alloy"
+}
+
+declare "b" {
+  testcomponents.count "inc" {
+    frequency = "10ms"
+    max = 10
+  }
+
+  testImport.a "cc" {
+    input = testcomponents.count.inc.count
+  }
+
+  export "output" {
+    value = testImport.a.cc.output
+  }
+}
+
+b "cc" {}
+
+testcomponents.summation "sum" {
+  input = b.cc.output
+}
+
+-- module.alloy --
+declare "a" {
+  argument "input" {}
+
+  testcomponents.passthrough "pt" {
+    input = argument.input.value
+    lag = "1ms"
+  }
+
+  export "output" {
+    value = testcomponents.passthrough.pt.output
+  }
+}
+
+-- update/module.alloy --
+declare "a" {
+  argument "input" {}
+
+  export "output" {
+    value = -argument.input.value
+  }
+}

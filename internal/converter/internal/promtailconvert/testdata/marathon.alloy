@@ -1,0 +1,27 @@
+discovery.marathon "fun" {
+	servers          = ["serv1", "serv2"]
+	refresh_interval = "5m0s"
+
+	basic_auth {
+		username = "username"
+		password = "password"
+	}
+}
+
+discovery.marathon "fun_2" {
+	servers    = ["serv3"]
+	auth_token = "auth_token"
+}
+
+loki.source.file "fun" {
+	targets = array.concat(
+		discovery.marathon.fun.targets,
+		discovery.marathon.fun_2.targets,
+	)
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

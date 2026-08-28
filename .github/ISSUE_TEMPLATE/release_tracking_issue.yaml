@@ -1,0 +1,37 @@
+name: Release tracking issue
+description: Create a new release tracking issue
+title: "[Tracking Issue] Release X.Y"
+labels: []
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The version number for this release (e.g., 1.15).
+      placeholder: "1.15"
+    validations:
+      required: true
+  - type: input
+    id: rc-date
+    attributes:
+      label: Release Candidate Date
+      description: The target date for the release candidate (YYYY-MM-DD).
+      placeholder: "2026-03-25"
+    validations:
+      required: true
+  - type: input
+    id: stable-date
+    attributes:
+      label: Stable Release Date
+      description: The target date for the stable release (YYYY-MM-DD).
+      placeholder: "2026-03-27"
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: "Optional: reference to the release-please PR or other related issue (e.g., #5170)."
+      placeholder: "#5170"
+    validations:
+      required: false

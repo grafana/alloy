@@ -1,0 +1,12 @@
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+  configs:
+    - name: default
+
+integrations:
+  agent:
+    instance: "default"
+    autoscrape:
+      metrics_instance: "not_default"

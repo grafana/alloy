@@ -1,0 +1,56 @@
+name: Release Semantics - Branch Versions
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/v*'
+
+concurrency:
+  group: "${{ github.ref_name }}-${{ github.head_ref }}-wrong-version-on-branch-guard"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: No patch releases on main
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'release-please--branches--main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check for patch release on main 🔎
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          MANIFEST=".release-please-manifest.json"
+          BASE_VERSION=$(git show "${BASE_SHA}:${MANIFEST}" | jq -er '.["."]')
+          VERSION=$(git show "${HEAD_SHA}:${MANIFEST}" | jq -er '.["."]')
+
+          if [[ "$BASE_VERSION" == "$VERSION" ]]; then
+            echo "✅ Release PR does not update the root package. Skipping."
+            exit 0
+          fi
+
+          echo "Detected root release version: $VERSION"
+
+          # Check if it's a patch release (doesn't end in .0)
+          if echo "$VERSION" | grep -qE '\.[1-9][0-9]*$'; then
+            echo "❌ ERROR: Patch release v$VERSION cannot be merged to main."
+            echo ""
+            echo "Patch releases must be created from a release branch."
+            echo "Use the release/v$(echo "$VERSION" | grep -oE '^[0-9]+\.[0-9]+') branch instead."
+            echo ""
+            exit 1
+          fi
+
+          echo "✅ Minor release v$VERSION is allowed on main."

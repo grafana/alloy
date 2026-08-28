@@ -1,0 +1,17 @@
+one_line = some_func(1, 2, 3, 4)
+
+multi_line = some_func(1,
+	2, 3,
+	4)
+
+multi_line_pretty = some_func(
+	1,
+	2,
+	3,
+	4,
+)
+
+func_with_obj = some_func({
+	key1 = "value1",
+	key2 = "value2",
+})

@@ -1,0 +1,27 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: example
+    pipeline_stages:
+      - match:
+          pipeline_name: one
+          selector: foobar
+          action: drop
+          drop_counter_reason: "nope"
+          stages:
+            - docker: {}
+            - match:
+                pipeline_name: two
+                selector: foobar_two
+                action: drop
+                drop_counter_reason: "nope_two"
+                stages:
+                  - cri: { }
+
+
+    kubernetes_sd_configs:
+      - role: pod
+        kubeconfig_file: /home/toby/.kube/config
+
+tracing: { enabled: false }
+server: { register_instrumentation: false }

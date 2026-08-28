@@ -1,0 +1,4 @@
+(Error) invalid pipeline_stages.drop.longer_than field: strconv.UnmarshalText: parsing "1.21GIGAWATTS": invalid syntax
+(Error) invalid pipeline_stages.drop.older_than field: time: invalid duration "lightyear"
+(Error) invalid pipeline_stages.drop.source field type 'map[interface {}]interface {}': map[invalid:object]
+(Error) invalid pipeline_stages.drop.source[0] field type 'map[interface {}]interface {}': map[invalid:object]

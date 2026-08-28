@@ -1,0 +1,49 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if .Values.service.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: networking
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if .Values.service.clusterIP }}
+  clusterIP: {{ .Values.service.clusterIP }}
+  {{- end }}
+  selector:
+    {{- include "alloy.selectorLabels" . | nindent 4 }}
+  {{- if semverCompare ">=1.26-0" .Capabilities.KubeVersion.Version }}
+  internalTrafficPolicy: {{.Values.service.internalTrafficPolicy}}
+  {{- if or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort") }}
+  externalTrafficPolicy: {{.Values.service.externalTrafficPolicy}}
+  {{- end }}
+  {{- end }}
+  ports:
+    - name: http-metrics
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+      port: {{ $values.listenPort }}
+      targetPort: {{ $values.listenPort }}
+      protocol: "TCP"
+{{- range $portMap := $values.extraPorts }}
+    - name: {{ $portMap.name }}
+      {{- if eq $.Values.service.type "NodePort" }}
+      nodePort: {{ $portMap.nodePort }}
+      {{- end }}
+      port: {{ $portMap.port }}
+      targetPort: {{ $portMap.targetPort }}
+      protocol: {{ coalesce $portMap.protocol "TCP" }}
+      {{- if not (empty $portMap.appProtocol) }}
+      # Useful for OpenShift clusters that want to expose Alloy ports externally
+      appProtocol: {{ $portMap.appProtocol }}
+      {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,81 @@
+version: "2"
+linters:
+  enable:
+    - depguard    # Allow/denylist specific imports
+    - errcheck    # Report unchecked errors
+    - ineffassign # Detect when assignment to variable is never used
+    - goconst     # Find repeated strings that could be replaced by constant
+    - govet       # `go vet`
+    - makezero    # Detect misuse of make with non-zero length and append
+    - misspell    # Report on commonly misspelled English words
+    - revive      # Broad set of rules; replaces deprecated golint
+    - staticcheck # staticcheck, gosimple, stylecheck merged into staticcheck
+    - unconvert   # Remove unnecessary type conversions
+    - unparam     # Detect unused function parameters
+    - unused      # Detect unused constants/variables/functions/types
+    - usetesting  # Use testing.(*T).Setenv instead of os.Setenv
+    - whitespace  # Report unnecessary blank lines
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: sync/atomic
+              desc: Use go.uber.org/atomic instead of sync/atomic
+            - pkg: github.com/pkg/errors
+              desc: Use errors instead of github.com/pkg/errors
+            - pkg: github.com/go-kit/kit/log
+              desc: Use github.com/go-kit/log instead of github.com/go-kit/kit/log
+            - pkg: golang.org/x/sync/errgroup
+              desc: Use github.com/oklog/run instead of golang.org/x/sync/errgroup
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+    staticcheck:
+      # default is ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022"]
+      checks: ["all", "-ST1000", "-ST1003", "-ST1016", "-ST1020", "-ST1021", "-ST1022", "-QF1001", "-QF1007",  "-QF1008"]
+    whitespace:
+      multi-if: true
+      multi-func: true
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - errcheck
+        path: _test.go
+      - path: (.+)\.go$
+        text: Error return value of `(.*\.Close|.*\.Log|os.Remove)` is not checked
+      - path: (.+)\.go$
+        text: 'var-naming: don''t use an underscore in package name'
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      - component/pyroscope/scrape/internal/fastdelta
+      - component/pyroscope/scrape/internal/pproflite
+      - third_party$
+      - builtin$
+      - examples$
+      - component/otelcol/extension/jaeger_remote_sampling/internal # Copied with attribution from OTel Collector
+      - component/otelcol/receiver/prometheus/internal # Copied with attribution from OTel Collector
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt     # Check whether code was gofmt-ed
+    - goimports # Check imports were formatted with gofmt
+  settings:
+    gofmt:
+      rewrite-rules:
+        - pattern: 'interface{}'
+          replacement: 'any'
+  exclusions:
+    generated: lax
+    paths:
+      - component/pyroscope/scrape/internal/fastdelta
+      - component/pyroscope/scrape/internal/pproflite
+      - third_party$
+      - builtin$
+      - examples$

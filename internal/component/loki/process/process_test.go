@@ -1,0 +1,1737 @@
+package process
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"reflect"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+	"go.uber.org/goleak"
+	"k8s.io/utils/ptr"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
+	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testlivedebugging"
+	"github.com/grafana/alloy/syntax"
+)
+
+func TestComponent(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	type testCase struct {
+		name          string
+		cfg           string
+		inputs        []loki.Entry
+		expected      []loki.Entry
+		unorderedFrom *int
+	}
+
+	var (
+		// Use entryTs for push.Entry.Timestamp values set directly on test inputs
+		// and for expected outputs from stages that do not rewrite timestamps.
+		entryTs    = time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
+		getEntryTS = func(pos int) time.Time { return entryTs.Add(time.Duration(pos) * time.Second) }
+
+		// Use ts for timestamps encoded into log lines and later parsed back out
+		// by stages such as cri, docker, and multiline.
+		ts       = time.Date(2025, time.February, 3, 4, 5, 6, 0, time.UTC)
+		getTS    = func(pos int) time.Time { return ts.Add(time.Duration(pos) * time.Second) }
+		formatTs = func(pos int, layout string) string { return getTS(pos).Format(layout) }
+	)
+
+	tests := []testCase{
+		{
+			name: "cri pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.cri {}
+
+			stage.structured_metadata {
+					values = {
+						filename = "",
+						stream = "",
+					}
+				}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      formatTs(0, time.RFC3339Nano) + " stdout P partial for file 1 stdout",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      formatTs(0, time.RFC3339Nano) + " stderr P partial for file 1 stderr",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      formatTs(0, time.RFC3339Nano) + " stdout P partial for file2",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      formatTs(1, time.RFC3339Nano) + " stderr F full file 1 stderr",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
+					Timestamp: getEntryTS(4),
+					Line:      formatTs(1, time.RFC3339Nano) + " stderr F full file 2",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: getEntryTS(5),
+					Line:      formatTs(1, time.RFC3339Nano) + " stderr F full file 1 stdout",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file3"}, 0, push.Entry{
+					Timestamp: getEntryTS(6),
+					Line:      "not a cri line",
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(1),
+					Line:      "partial for file 1 stderrfull file 1 stderr",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file1"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(1),
+					Line:      "full file 2",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file2"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(1),
+					Line:      "full file 1 stdout",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file1"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(6),
+					Line:      "not a cri line",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file3"},
+					},
+				}),
+			},
+		},
+		{
+			name: "docker pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.docker {}
+
+			stage.structured_metadata {
+					values = {
+						filename = "",
+						stream = "",
+					}
+				}
+
+			stage.structured_metadata_drop {
+				values = ["stream"]
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line: mustMarshalJSON(t, map[string]string{
+						"log":    "docker stdout line\n",
+						"stream": "stdout",
+						"time":   formatTs(0, time.RFC3339Nano),
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line: mustMarshalJSON(t, map[string]string{
+						"log":    "docker stderr line\n",
+						"stream": "stderr",
+						"time":   formatTs(1, time.RFC3339Nano),
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `{"msg":"not docker format"}`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(0),
+					Line:      "docker stdout line\n",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(1),
+					Line:      "docker stderr line\n",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `{"msg":"not docker format"}`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
+					},
+				}),
+			},
+		},
+		{
+			name: "json pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.json {
+				expressions = {
+					msg = "",
+					app = "",
+					service_name = "",
+				}
+				drop_malformed = true
+			}
+
+			stage.labels {
+				values = {
+					service_name = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					app = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line: mustMarshalJSON(t, map[string]string{
+						"msg":          "json line 1",
+						"app":          "api",
+						"service_name": "service-a",
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not json`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-a"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "json line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "json.log"},
+						{Name: "app", Value: "api"},
+					},
+				}),
+			},
+		},
+		{
+			name: "template pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.json {
+				expressions = {
+					app = "",
+					level = "",
+					msg = "",
+				}
+			}
+
+			stage.template {
+				source   = "app"
+				template = "{{ .Value | ToUpper }} doki"
+			}
+
+			stage.template {
+				source   = "level"
+				template = "{{ if eq .Value \"WARN\" }}{{ Replace .Value \"WARN\" \"OK\" -1 }}{{ else }}{{ .Value }}{{ end }}"
+			}
+
+			stage.template {
+				source   = "type"
+				template = "{{ .app }}-{{ .level }}"
+			}
+
+			stage.labels {
+				values = {
+					app = "",
+					level = "",
+					type = "",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "template.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line: mustMarshalJSON(t, map[string]string{
+						"app":   "loki",
+						"level": "WARN",
+						"msg":   "template line",
+					}),
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{
+					"filename": "template.log",
+					"app":      "LOKI doki",
+					"level":    "OK",
+					"type":     "LOKI doki-OK",
+				}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "template line",
+				}),
+			},
+		},
+		{
+			name: "match pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.match {
+				selector = "{filename=\"match-1.log\"}"
+
+				stage.static_labels {
+					values = {
+						match = "one",
+					}
+				}
+			}
+
+			stage.match {
+				selector = "{filename=\"match-2.log\"} |= \"svc=\""
+
+				stage.logfmt {
+					mapping = {
+						msg = "",
+						svc = "",
+					}
+				}
+
+				stage.labels {
+					values = {
+						svc = "",
+					}
+				}
+
+				stage.output {
+					source = "msg"
+				}
+			}
+
+			stage.match {
+				selector = "{filename=\"match-3.log\"} |= \"prefix: \""
+
+				stage.regex {
+					expression = "^prefix: (?P<body>.*)$"
+				}
+
+				stage.structured_metadata {
+					values = {
+						body = "",
+					}
+				}
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-1.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `first`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-2.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `msg="second" svc=api`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `prefix: third`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `no match`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-1.log", "match": "one"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `first`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-2.log", "svc": "api"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `second`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `prefix: third`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "body", Value: "third"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `no match`,
+				}),
+			},
+			// NOTE: we cannot guarantee ordering between different sub-pipelines.
+			unorderedFrom: ptr.To(0),
+		},
+		{
+			name: "logfmt pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.logfmt {
+				mapping = {
+					msg = "",
+					app = "",
+					service_name = "",
+				}
+			}
+
+			stage.labels {
+				values = {
+					service_name = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					app = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `msg="logfmt line 1" app=api service_name=service-b`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not logfmt`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-b"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "logfmt line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "logfmt.log"},
+						{Name: "app", Value: "api"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not logfmt`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "logfmt.log"},
+					},
+				}),
+			},
+		},
+		{
+			name: "label_drop and label_keep pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.static_labels {
+				values = { "foo" = "fooval", "bar" = "barval", "baz" = "bazval", "qux" = "quxval" }
+			}
+
+			stage.label_drop {
+				values = [ "foo", "bar" ]
+			}
+
+			stage.label_keep {
+				values = [ "foo", "baz", "filename" ]
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "env": "dev"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "line",
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "baz": "bazval"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "line",
+				}),
+			},
+		},
+		{
+			name: "regex pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.regex {
+				expression = "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<content>.*)$"
+			}
+
+			stage.timestamp {
+				source = "time"
+				format = "RFC3339"
+			}
+
+			stage.output {
+				source = "content"
+			}
+
+			stage.labels {
+				values = { src = "stream" }
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      formatTs(0, time.RFC3339) + ` stderr somewhere, somehow, an error occurred`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/2.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not matching`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar", "src": "stderr"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, time.RFC3339, formatTs(0, time.RFC3339)),
+					Line:      `somewhere, somehow, an error occurred`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/2.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not matching`,
+				}),
+			},
+		},
+		{
+			name: "drop pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.drop {
+				expression = "drop"
+			}
+
+			stage.match {
+				selector = "{filename=\"drop.log\"} |= \"match me\""
+				action   = "drop"
+			}
+
+			stage.limit {
+				rate  = 1
+				burst = 1
+				drop  = true
+			}
+
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `drop me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `match me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `keep me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `limit me`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `keep me`,
+				}),
+			},
+		},
+		{
+			name: "multiline pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.multiline {
+				firstline     = "^\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]"
+				max_wait_time = "2s"
+			}
+
+			stage.regex {
+				expression = "^\\[(?P<time>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\] (?P<msg>(?s:.*))$"
+			}
+
+			stage.timestamp {
+				source = "time"
+				format = "2006-01-02 15:04:05"
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `not a multiline start`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      "[" + formatTs(1, "2006-01-02 15:04:05") + `] "GET /one HTTP/1.1" 200 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      "[" + formatTs(2, "2006-01-02 15:04:05") + `] "POST /two HTTP/1.1" 201 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `line 1`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "other-multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(4),
+					Line:      "[" + formatTs(4, "2006-01-02 15:04:05") + `] "PATCH /other HTTP/1.1" 204 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(5),
+					Line:      `line 2`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(6),
+					Line:      "[" + formatTs(6, "2006-01-02 15:04:05") + `] "PUT /three HTTP/1.1" 202 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "other-multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(7),
+					Line:      `other line 1`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(8),
+					Line:      `line 1`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `not a multiline start`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(1).Truncate(time.Second),
+					Line:      `"GET /one HTTP/1.1" 200 -`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(2).Truncate(time.Second),
+					Line:      "\"POST /two HTTP/1.1\" 201 -\nline 1\nline 2",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(4).Truncate(time.Second),
+					Line:      "\"PATCH /other HTTP/1.1\" 204 -\nother line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "other-multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: getTS(6).Truncate(time.Second),
+					Line:      "\"PUT /three HTTP/1.1\" 202 -\nline 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+			},
+			unorderedFrom: ptr.To(3),
+		},
+		{
+			name: "pattern pipeline parsing nginx",
+			cfg: `
+			forward_to = []
+
+			stage.pattern {
+				pattern = "<_> <_> <user> [<timestamp>] \"<method> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
+			}
+
+			stage.timestamp {
+				source = "timestamp"
+				format = "02/Jan/2006:15:04:05 -0700"
+			}
+
+			stage.labels {
+				values = {
+					method = "",
+					status = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					path = "",
+					user = "",
+				}
+			}
+
+			stage.output {
+				source = "path"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `11.11.11.11 - frank [` + formatTs(0, "02/Jan/2006:15:04:05 -0700") + `] "GET /index.html HTTP/1.1" 200 932 "-" "test-agent"`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `22.22.22.22 - mary [` + formatTs(1, "02/Jan/2006:15:04:05 -0700") + `] "POST /api/users HTTP/1.1" 201 128 "-" "api-client"`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `33.33.33.33 - jane [` + formatTs(2, "02/Jan/2006:15:04:05 -0700") + `] "DELETE /api/users/42 HTTP/2.0" 204 0 "-" "cleanup-bot"`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "GET", "status": "200"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(0, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/index.html",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/index.html"},
+						{Name: "user", Value: "frank"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "POST", "status": "201"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(1, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/api/users",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/api/users"},
+						{Name: "user", Value: "mary"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "DELETE", "status": "204"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(2, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/api/users/42",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/api/users/42"},
+						{Name: "user", Value: "jane"},
+					},
+				}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			collector1, collector2 := loki.NewCollectingHandler(), loki.NewCollectingHandler()
+			defer collector1.Stop()
+			defer collector2.Stop()
+
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
+			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
+
+			opts := component.Options{
+				Logger:         logging.NewSlogNop(),
+				Registerer:     prometheus.NewRegistry(),
+				OnStateChange:  func(component.Exports) {},
+				GetServiceData: getServiceData,
+			}
+
+			c, err := New(opts, args)
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(t.Context())
+
+			runErr := make(chan error, 1)
+			go func() { runErr <- c.Run(ctx) }()
+
+			for _, input := range tt.inputs {
+				c.receiver.Chan() <- input
+			}
+
+			require.Eventually(t, func() bool {
+				return len(collector1.Received()) == len(tt.expected) && len(collector2.Received()) == len(tt.expected)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			if tt.unorderedFrom == nil {
+				tt.unorderedFrom = ptr.To(len(tt.expected))
+			}
+
+			assert := func(t *testing.T, unorderedFrom int, expected, got []loki.Entry) {
+				for i := range unorderedFrom {
+					assertEntry(t, expected[i], got[i])
+				}
+				assertEntriesUnordered(t, expected[unorderedFrom:], got[unorderedFrom:])
+			}
+
+			assert(t, *tt.unorderedFrom, tt.expected, collector1.Received())
+			assert(t, *tt.unorderedFrom, tt.expected, collector2.Received())
+
+			cancel()
+			require.NoError(t, <-runErr)
+		})
+	}
+}
+
+func mustMarshalJSON(t *testing.T, v any) string {
+	t.Helper()
+
+	data, err := json.Marshal(v)
+	require.NoError(t, err)
+
+	return string(data)
+}
+
+func mustParseTime(t *testing.T, layout, value string) time.Time {
+	t.Helper()
+
+	parsed, err := time.Parse(layout, value)
+	require.NoError(t, err)
+
+	return parsed
+}
+
+func assertEntry(t *testing.T, expected, actual loki.Entry) {
+	t.Helper()
+
+	require.Equal(t, expected.Line, actual.Line)
+	require.True(t, expected.Timestamp.Equal(actual.Timestamp))
+	require.EqualValues(t, expected.Labels, actual.Labels)
+	require.ElementsMatch(t, expected.StructuredMetadata, actual.StructuredMetadata)
+}
+
+func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
+	t.Helper()
+
+	require.Len(t, actual, len(expected))
+
+	entriesEqual := func(expected, actual loki.Entry) bool {
+		if expected.Line != actual.Line {
+			return false
+		}
+		if !expected.Timestamp.Equal(actual.Timestamp) {
+			return false
+		}
+		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
+			return false
+		}
+
+		var (
+			actualStructured   = slices.Clone(actual.StructuredMetadata)
+			expectedStructured = slices.Clone(expected.StructuredMetadata)
+		)
+
+		slices.SortFunc(expectedStructured, func(a, b push.LabelAdapter) int {
+			if a.Name != b.Name {
+				return strings.Compare(a.Name, b.Name)
+			}
+			return strings.Compare(a.Value, b.Value)
+		})
+
+		slices.SortFunc(actualStructured, func(a, b push.LabelAdapter) int {
+			if a.Name != b.Name {
+				return strings.Compare(a.Name, b.Name)
+			}
+			return strings.Compare(a.Value, b.Value)
+		})
+
+		return reflect.DeepEqual(expectedStructured, actualStructured)
+	}
+
+	remaining := append([]loki.Entry(nil), actual...)
+	for _, exp := range expected {
+		found := -1
+		for i, got := range remaining {
+			if entriesEqual(exp, got) {
+				found = i
+				break
+			}
+		}
+
+		require.NotEqual(t, -1, found)
+		remaining = append(remaining[:found], remaining[found+1:]...)
+	}
+}
+
+func TestComponent_UpdateInvalidConfig(t *testing.T) {
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
+	require.NoError(t, err)
+
+	collector := loki.NewCollectingHandler()
+	defer collector.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
+	})
+	require.NoError(t, ctrl.WaitExports(time.Minute))
+
+	recv := ctrl.Exports().(Exports).Receiver
+	fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+
+	wg.Go(func() {
+		for {
+			// We get error if context is canceled
+			if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+				return
+			}
+		}
+	})
+
+	err = ctrl.Update(Arguments{
+		ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+		Stages: []stages.StageConfig{
+			{
+				MatchConfig: &stages.MatchConfig{
+					// {} is not a valid selector.
+					Selector: "{}",
+				},
+			},
+		},
+	})
+	require.Error(t, err)
+
+	// Keep sending for a while after update have failed.
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+	wg.Wait()
+}
+
+const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
+
+func TestJSONLabelsStage(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	// The following stages will attempt to parse input lines as JSON.
+	// The first stage _extract_ any fields found with the correct names:
+	// Since 'source' is empty, it implies that we want to parse the log line
+	// itself.
+	//    log    --> output
+	//    stream --> stream
+	//    time   --> timestamp
+	//    extra  --> extra
+	//
+	// The second stage will parse the 'extra' field as JSON, and extract the
+	// 'user' field from the 'extra' field. If the expression value field is
+	// empty, it is inferred we want to use the same name as the key.
+	//    user   --> extra.user
+	//
+	// The third stage will set some labels from the extracted values above.
+	// Again, if the value is empty, it is inferred that we want to use the
+	// populate the label with extracted value of the same name.
+	stg := `stage.json {
+			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
+				drop_malformed = true
+		    }
+			stage.json {
+			    expressions = { "user" = "" }
+				source      = "extra"
+			}
+			stage.labels {
+			    values = {
+				  stream = "",
+				  user   = "",
+				  ts     = "timestamp",
+			    }
+			}
+			stage.timestamp {
+				source = "timestamp"
+				format = "RFC3339Nano"
+			}`
+
+	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
+	// an easy way to refer to a loki.LogsReceiver value for the forward_to
+	// argument.
+	type cfg struct {
+		Stages []stages.StageConfig `alloy:"stage,enum"`
+	}
+	var stagesCfg cfg
+	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
+	require.NoError(t, err)
+
+	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+
+	liveDebuggingLog := testlivedebugging.NewLog()
+
+	// Create and run the component, so that it can process and forwards logs.
+	logger := util.TestAlloyLogger(t)
+	opts := component.Options{
+		Logger:         logger.Slog(),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
+	}
+	args := Arguments{
+		ForwardTo: []loki.LogsReceiver{ch1, ch2},
+		Stages:    stagesCfg.Stages,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(t.Context())
+	wgRun := sync.WaitGroup{}
+
+	wgRun.Add(1)
+	go func() {
+		c.Run(ctx)
+		wgRun.Done()
+	}()
+
+	// Choose a timestamp which is different from the one in the json log line that is being sent.
+	ingestionTs, err := time.Parse(time.RFC3339, "2020-11-15T02:08:41-07:00")
+	require.NoError(t, err)
+
+	// Send a log entry to the component's receiver.
+	logEntry := loki.Entry{
+		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+		Entry: push.Entry{
+			Timestamp: ingestionTs,
+			Line:      logline,
+		},
+	}
+
+	c.receiver.Chan() <- logEntry
+
+	// This is the timestamp from the json body of the log line that is being sent.
+	expectedTsLabel := "2019-04-30T02:12:41.8443515Z"
+	expectedTs, err := time.Parse(time.RFC3339Nano, expectedTsLabel)
+	require.NoError(t, err)
+
+	wantLabelSet := model.LabelSet{
+		"filename": "/var/log/pods/agent/agent/1.log",
+		"foo":      "bar",
+		"stream":   "stderr",
+		"ts":       model.LabelValue(expectedTsLabel),
+		"user":     "smith",
+	}
+
+	// The log entry should be received in both channels, with the processing
+	// stages correctly applied.
+	for i := 0; i < 2; i++ {
+		select {
+		case logEntry := <-ch1.Chan():
+			require.Equal(t, expectedTs, logEntry.Timestamp)
+			require.Equal(t, logline, logEntry.Line)
+			require.Equal(t, wantLabelSet, logEntry.Labels)
+		case logEntry := <-ch2.Chan():
+			require.Equal(t, expectedTs, logEntry.Timestamp)
+			require.Equal(t, logline, logEntry.Line)
+			require.Equal(t, wantLabelSet, logEntry.Labels)
+		case <-time.After(5 * time.Second):
+			require.FailNow(t, "failed waiting for log line")
+		}
+	}
+
+	cancel()
+	wgRun.Wait()
+
+	// The timestamp in "IN" is different from the one in "OUT".
+	// Even though there are two downstream components, we expect only one "OUT" line to be printed.
+	expectedLiveDebuggingLog := []string{
+		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}, structured_metadata: {}",
+		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
+	}
+	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
+}
+
+func TestEntrySentToTwoProcessComponents(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	// Set up two different loki.process components.
+	stg1 := `
+forward_to = []
+stage.static_labels {
+    values = { "lbl" = "foo" }
+}
+`
+	stg2 := `
+forward_to = []
+stage.static_labels {
+    values = { "lbl" = "bar" }
+}
+`
+
+	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	var args1, args2 Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
+	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
+	args1.ForwardTo = []loki.LogsReceiver{ch1}
+	args2.ForwardTo = []loki.LogsReceiver{ch2}
+
+	ctx, ctxCancel := context.WithCancel(t.Context())
+	var (
+		runWG  sync.WaitGroup
+		runErr = make(chan error, 3)
+	)
+	runComponent := func(runFn func() error) {
+		runWG.Add(1)
+		go func() {
+			defer runWG.Done()
+			runErr <- runFn()
+		}()
+	}
+	defer func() {
+		ctxCancel()
+		runWG.Wait()
+		close(runErr)
+		for err := range runErr {
+			require.NoError(t, err)
+		}
+	}()
+
+	// Start the loki.process components.
+	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
+	require.NoError(t, err)
+	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
+	require.NoError(t, err)
+	runComponent(func() error { return tc1.Run(ctx, args1) })
+	runComponent(func() error { return tc2.Run(ctx, args2) })
+	require.NoError(t, tc1.WaitExports(time.Second))
+	require.NoError(t, tc2.WaitExports(time.Second))
+
+	// Create a file to log to.
+	f, err := os.CreateTemp(t.TempDir(), "example")
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Create and start a component that will read from that file and fan out to both components.
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
+	require.NoError(t, err)
+
+	runComponent(func() error {
+		return ctrl.Run(ctx, lsf.Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
+			ForwardTo: []loki.LogsReceiver{
+				tc1.Exports().(Exports).Receiver,
+				tc2.Exports().(Exports).Receiver,
+			},
+			FileMatch: lsf.FileMatch{
+				Enabled:    false,
+				SyncPeriod: 10 * time.Second,
+			},
+		})
+	})
+	require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+	// Write a line to the file.
+	_, err = f.Write([]byte("writing some text\n"))
+	require.NoError(t, err)
+
+	wantLabelSet := model.LabelSet{
+		"filename": model.LabelValue(f.Name()),
+		"somelbl":  "somevalue",
+	}
+
+	// The lines were received after processing by each component, with no
+	// race condition between them.
+	seenCh1 := false
+	seenCh2 := false
+	for i := 0; i < 2; i++ {
+		select {
+		case logEntry := <-ch1.Chan():
+			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+			require.Equal(t, "writing some text", logEntry.Line)
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
+			seenCh1 = true
+		case logEntry := <-ch2.Chan():
+			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
+			require.Equal(t, "writing some text", logEntry.Line)
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
+			seenCh2 = true
+		case <-time.After(5 * time.Second):
+			require.FailNow(t, "failed waiting for log line")
+		}
+	}
+	require.True(t, seenCh1, "expected log line from first receiver")
+	require.True(t, seenCh2, "expected log line from second receiver")
+}
+
+type testFrequentUpdate struct {
+	t *testing.T
+	c *Component
+
+	receiver1 loki.LogsReceiver
+	receiver2 loki.LogsReceiver
+
+	keepSending   atomic.Bool
+	stopReceiving chan struct{}
+	keepUpdating  atomic.Bool
+
+	wgSend    sync.WaitGroup
+	wgReceive sync.WaitGroup
+	wgRun     sync.WaitGroup
+	wgUpdate  sync.WaitGroup
+
+	lastSend atomic.Value
+
+	stop func()
+}
+
+func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
+	res := testFrequentUpdate{
+		t:             t,
+		receiver1:     loki.NewLogsReceiver(),
+		receiver2:     loki.NewLogsReceiver(),
+		stopReceiving: make(chan struct{}),
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	res.keepSending.Store(true)
+	res.keepUpdating.Store(true)
+
+	res.stop = func() {
+		res.keepUpdating.Store(false)
+		res.wgUpdate.Wait()
+
+		res.keepSending.Store(false)
+		res.wgSend.Wait()
+
+		cancel()
+		res.wgRun.Wait()
+
+		close(res.stopReceiving)
+		res.wgReceive.Wait()
+
+		close(res.receiver1.Chan())
+		close(res.receiver2.Chan())
+	}
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(cfg), &args)
+	require.NoError(t, err)
+
+	args.ForwardTo = []loki.LogsReceiver{res.receiver1, res.receiver2}
+
+	logger := util.TestAlloyLogger(t)
+	opts := component.Options{
+		Logger:         logger.Slog(),
+		Registerer:     prometheus.NewRegistry(),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	res.c, err = New(opts, args)
+	require.NoError(t, err)
+
+	res.wgRun.Add(1)
+	go func() {
+		res.c.Run(ctx)
+		res.wgRun.Done()
+	}()
+
+	return &res
+}
+
+// Continuously receive the logs from both channels
+func (r *testFrequentUpdate) drainLogs() {
+	drainLogs := func() {
+		r.lastSend.Store(time.Now())
+	}
+
+	r.wgReceive.Add(1)
+	go func() {
+		for {
+			select {
+			case <-r.stopReceiving:
+				r.wgReceive.Done()
+				return
+			case <-r.receiver1.Chan():
+				drainLogs()
+			case <-r.receiver2.Chan():
+				drainLogs()
+			}
+		}
+	}()
+}
+
+// Continuously send entries to both channels
+func (r *testFrequentUpdate) sendLogs() {
+	r.wgSend.Add(1)
+	go func() {
+		for r.keepSending.Load() {
+			ts := time.Now()
+			logEntry := loki.Entry{
+				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+				Entry: push.Entry{
+					Timestamp: ts,
+					Line:      logline,
+				},
+			}
+			select {
+			case r.c.receiver.Chan() <- logEntry:
+			default:
+				// continue
+			}
+		}
+		r.wgSend.Done()
+	}()
+}
+
+func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
+	var args1 Arguments
+	err := syntax.Unmarshal([]byte(cfg1), &args1)
+	require.NoError(r.t, err)
+	args1.ForwardTo = []loki.LogsReceiver{r.receiver1}
+
+	var args2 Arguments
+	err = syntax.Unmarshal([]byte(cfg2), &args2)
+	require.NoError(r.t, err)
+	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
+
+	r.wgUpdate.Add(1)
+	go func() {
+		for r.keepUpdating.Load() {
+			r.c.Update(args1)
+			r.c.Update(args2)
+		}
+		r.wgUpdate.Done()
+	}()
+}
+
+func TestDeadlockWithFrequentUpdates(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	cfg1 := `stage.json {
+			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
+				drop_malformed = true
+		    }
+			stage.json {
+			    expressions = { "user" = "" }
+				source      = "extra"
+			}
+			stage.labels {
+			    values = {
+				  stream = "",
+				  user   = "",
+				  ts     = "timestamp",
+			    }
+			}
+			forward_to = []`
+
+	cfg2 := `stage.json {
+			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
+				drop_malformed = true
+		    }
+			stage.labels {
+			    values = {
+				  stream = "",
+				  ts     = "timestamp",
+			    }
+			}
+			forward_to = []`
+
+	r := startTestFrequentUpdate(t, `forward_to = []`)
+
+	// Continuously send entries to both channels
+	r.sendLogs()
+
+	// Continuously receive entries on both channels
+	r.drainLogs()
+
+	// Call Updates
+	r.updateContinuously(cfg1, cfg2)
+
+	// Run everything for a while
+	time.Sleep(1 * time.Second)
+	require.WithinDuration(t, time.Now(), r.lastSend.Load().(time.Time), 300*time.Millisecond)
+
+	// Clean up
+	r.stop()
+}
+
+func getServiceData(name string) (any, error) {
+	switch name {
+	case livedebugging.ServiceName:
+		return livedebugging.NewLiveDebugging(), nil
+	default:
+		return nil, fmt.Errorf("service not found %s", name)
+	}
+}
+
+func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (any, error) {
+	ld := livedebugging.NewLiveDebugging()
+	host := &testlivedebugging.FakeServiceHost{
+		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
+			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
+		},
+	}
+	ld.SetEnabled(true)
+	ld.AddCallback(
+		host,
+		"callback1",
+		"",
+		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
+	)
+
+	return func(name string) (any, error) {
+		switch name {
+		case livedebugging.ServiceName:
+			return ld, nil
+		default:
+			return nil, fmt.Errorf("service not found %s", name)
+		}
+	}
+}
+
+// Make sure there are no goroutine leaks when the config is updated.
+// Goroutine leaks often cause memory leaks.
+func TestLeakyUpdate(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	tester := newTester(t)
+	defer tester.stop()
+
+	forwardArgs := `
+	// This will be filled later
+	forward_to = []`
+
+	numLogsToSend := 1
+
+	cfg1 := `
+	stage.metrics {
+        metric.counter {
+          name = "paulin_test1"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	cfg2 := `
+	stage.metrics {
+        metric.counter {
+          name = "paulin_test2"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	metricsTemplate1 := `
+	# HELP loki_process_custom_paulin_test1
+	# TYPE loki_process_custom_paulin_test1 counter
+	loki_process_custom_paulin_test1{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	metricsTemplate2 := `
+	# HELP loki_process_custom_paulin_test2
+	# TYPE loki_process_custom_paulin_test2 counter
+	loki_process_custom_paulin_test2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	metrics1 := fmt.Sprintf(metricsTemplate1, numLogsToSend)
+	metrics2 := fmt.Sprintf(metricsTemplate2, numLogsToSend)
+
+	tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
+	tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+
+	for i := 0; i < 100; i++ {
+		tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
+		tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+	}
+}
+
+func TestMetricsStageRefresh(t *testing.T) {
+	tester := newTester(t)
+	defer tester.stop()
+
+	forwardArgs := `
+	// This will be filled later
+	forward_to = []`
+
+	numLogsToSend := 3
+
+	cfg := `
+	stage.match {
+		selector = "{ test = \"\" }"
+
+		stage.metrics {
+			metric.counter {
+			  name = "inner_counter"
+			  action = "inc"
+			  match_all = true
+			}
+		}
+	}
+
+	stage.metrics {
+        metric.counter {
+          name = "outer_counter"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	expectedMetrics := `
+	# HELP loki_process_custom_inner_counter
+	# TYPE loki_process_custom_inner_counter counter
+	loki_process_custom_inner_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter
+	# TYPE loki_process_custom_outer_counter counter
+	loki_process_custom_outer_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	// The component will be reconfigured so that it has a metric.
+	t.Run("config with a metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfg,
+			"",
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
+	})
+
+	// The component will be "updated" with the same config.
+	// We expect the metric to stay the same before logs are sent - the component should be smart enough to
+	// know that the new config is the same as the old one and it should just keep running as it is.
+	// If it resets the metric, this could cause issues with some users who have a sidecar "autoreloader"
+	// which reloads the collector config every X seconds.
+	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
+	t.Run("config with the same metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfg,
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
+			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
+	})
+
+	// Use a config which has no metrics stage.
+	// This should cause the metric to disappear.
+	cfgWithNoStages := forwardArgs
+	t.Run("config with no metrics stage", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, cfgWithNoStages, "", "")
+	})
+
+	// Use a config which has a metric with a different name,
+	// as well as a metric with the same name as the one in the previous config.
+	// We try having a metric with the same name as before so that we can see if there
+	// is some sort of double registration error for that metric.
+	updatedCfg := `
+	stage.match {
+		selector = "{ test = \"\" }"
+
+		stage.metrics {
+			metric.counter {
+			  name = "inner_counter"
+			  action = "inc"
+			  match_all = true
+			}
+		}
+	}
+
+	stage.metrics {
+		metric.counter {
+		  name = "outer_counter"
+		  action = "inc"
+		  match_all = true
+		}
+
+        metric.counter {
+          name = "outer_counter_2"
+          action = "inc"
+          match_all = true
+        }
+	}` + forwardArgs
+
+	expectedMetrics3 := `
+	# HELP loki_process_custom_inner_counter
+	# TYPE loki_process_custom_inner_counter counter
+	loki_process_custom_inner_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter
+	# TYPE loki_process_custom_outer_counter counter
+	loki_process_custom_outer_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	# HELP loki_process_custom_outer_counter_2
+	# TYPE loki_process_custom_outer_counter_2 counter
+	loki_process_custom_outer_counter_2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
+	`
+
+	t.Run("config with a new and old metric", func(t *testing.T) {
+		tester.updateAndTest(numLogsToSend, updatedCfg,
+			"",
+			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
+	})
+}
+
+type tester struct {
+	t            *testing.T
+	component    *Component
+	registry     *prometheus.Registry
+	cancelFunc   context.CancelFunc
+	logReceiver  loki.LogsReceiver
+	logTimestamp time.Time
+	logEntry     loki.Entry
+	wantLabelSet model.LabelSet
+}
+
+// Create the component, so that it can process and forward logs.
+func newTester(t *testing.T) *tester {
+	reg := prometheus.NewRegistry()
+
+	logger := util.TestAlloyLogger(t)
+	opts := component.Options{
+		Logger:         logger.Slog(),
+		Registerer:     reg,
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: getServiceData,
+	}
+
+	initialCfg := `forward_to = []`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(initialCfg), &args)
+	require.NoError(t, err)
+
+	logReceiver := loki.NewLogsReceiver()
+	args.ForwardTo = []loki.LogsReceiver{logReceiver}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	go c.Run(ctx)
+
+	logTimestamp := time.Now()
+
+	return &tester{
+		t:            t,
+		component:    c,
+		registry:     reg,
+		cancelFunc:   cancel,
+		logReceiver:  logReceiver,
+		logTimestamp: logTimestamp,
+		logEntry: loki.Entry{
+			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+			Entry: push.Entry{
+				Timestamp: logTimestamp,
+				Line:      logline,
+			},
+		},
+		wantLabelSet: model.LabelSet{
+			"filename": "/var/log/pods/agent/agent/1.log",
+			"foo":      "bar",
+		},
+	}
+}
+
+func (t *tester) stop() {
+	t.cancelFunc()
+}
+
+func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSendingLogs, expectedMetricsAfterSendingLogs string) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(cfg), &args)
+	require.NoError(t.t, err)
+
+	args.ForwardTo = []loki.LogsReceiver{t.logReceiver}
+
+	t.component.Update(args)
+
+	// Check the component metrics.
+	if err := testutil.GatherAndCompare(t.registry,
+		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
+		require.NoError(t.t, err)
+	}
+
+	// Send logs.
+	for i := 0; i < numLogsToSend; i++ {
+		t.component.receiver.Chan() <- t.logEntry
+	}
+
+	// Receive logs.
+	for i := 0; i < numLogsToSend; i++ {
+		select {
+		case logEntry := <-t.logReceiver.Chan():
+			require.True(t.t, t.logTimestamp.Equal(logEntry.Timestamp))
+			require.Equal(t.t, logline, logEntry.Line)
+			require.Equal(t.t, t.wantLabelSet, logEntry.Labels)
+		case <-time.After(5 * time.Second):
+			require.FailNow(t.t, "failed waiting for log line")
+		}
+	}
+
+	// Check the component metrics.
+	if err := testutil.GatherAndCompare(t.registry,
+		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
+		require.NoError(t.t, err)
+	}
+}

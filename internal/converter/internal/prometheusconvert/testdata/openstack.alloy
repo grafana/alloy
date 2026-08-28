@@ -1,0 +1,60 @@
+discovery.openstack "prometheus1" {
+	identity_endpoint             = "identity_endpoint"
+	username                      = "username"
+	userid                        = "userid"
+	password                      = "password"
+	project_name                  = "project_name"
+	project_id                    = "project_id"
+	domain_name                   = "domain_name"
+	domain_id                     = "domain_id"
+	application_credential_name   = "application_credential_name"
+	application_credential_id     = "application_credential_id"
+	application_credential_secret = "application_credential_secret"
+	role                          = "instance"
+	region                        = "region"
+	refresh_interval              = "20s"
+	port                          = 81
+	all_tenants                   = true
+
+	tls_config {
+		ca_pem               = "ca"
+		cert_pem             = "cert"
+		key_pem              = "key"
+		server_name          = "example.local"
+		insecure_skip_verify = true
+	}
+	availability = "internal"
+}
+
+discovery.openstack "prometheus2" {
+	role   = "hypervisor"
+	region = "region2"
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.openstack.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.openstack.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

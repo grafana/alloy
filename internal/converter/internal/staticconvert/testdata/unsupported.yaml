@@ -1,0 +1,73 @@
+server:
+  log_level: debug
+  log_format: json
+  http_tls_config:
+    prefer_server_cipher_suites: true
+  grpc_tls_config:
+    client_ca_file: "/something4.cert"
+    cert_file: "/something5.cert"
+    key_file: "/something6.cert"
+
+metrics:
+  wal_directory: /tmp/agent
+  global:
+    remote_write:
+    - url: https://prometheus-us-central1.grafana.net/api/prom/push
+  configs:
+    - name: agent
+      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9099']
+
+integrations:
+  mssql:
+    enabled: true
+    scrape_integration: false
+  node_exporter:
+    enabled: false
+  statsd_exporter:
+    enabled: true
+    mapping_config:
+      mappings:
+      - match: "test.dispatcher.*.*.*"
+        name: "dispatcher_events_total"
+        labels:
+          processor: "$1"
+          action: "$2"
+          outcome: "$3"
+          job: "test_dispatcher"
+      - match: "*.signup.*.*"
+        name: "signup_events_total"
+        labels:
+          provider: "$2"
+          outcome: "$3"
+          job: "${1}_server"
+
+logs:
+  positions_directory: /path
+  global:
+    file_watch_config:
+      min_poll_frequency: 250ms
+  configs:
+    - name: log_config
+
+traces:
+  configs:
+    - name: trace_config
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+            http:
+      remote_write:
+        - endpoint: http://localhost:1234
+      automatic_logging:
+        backend: "something else"
+      spanmetrics:
+        handler_endpoint: http://localhost:1234
+      service_graphs:
+        enabled: true
+
+agent_management:
+  host: host_name

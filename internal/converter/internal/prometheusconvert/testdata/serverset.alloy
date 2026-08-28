@@ -1,0 +1,33 @@
+discovery.serverset "prometheus1" {
+	servers = ["zk1", "zk2", "zk3"]
+	paths   = ["/path/to/znode1", "/path/to/znode2"]
+	timeout = "30s"
+}
+
+discovery.serverset "prometheus2" {
+	servers = ["zk1"]
+	paths   = ["/path/to/znode1"]
+}
+
+prometheus.scrape "prometheus1" {
+	targets    = discovery.serverset.prometheus1.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.serverset.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

@@ -1,0 +1,38 @@
+otelcol.receiver.otlp "metrics" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.attributes.metrics.input]
+  }
+}
+
+otelcol.processor.attributes "metrics" {
+  action {
+    key    = "test_name"
+    value  = "otel_metrics_otel_engine_using_alloyengine_extension"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.metrics.input]
+  }
+}
+
+otelcol.processor.batch "metrics" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.metrics.input]
+  }
+}
+
+otelcol.exporter.otlphttp "metrics" {
+  metrics_endpoint = "http://mimir:9009/otlp/v1/metrics"
+  client {
+    endpoint = "ignore"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}

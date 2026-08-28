@@ -1,0 +1,15 @@
+name: Run Go fuzz tests (scheduled)
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    uses: ./.github/workflows/fuzz-go.yml
+    with:
+      fuzz-time: 30m
+      create-issue: true

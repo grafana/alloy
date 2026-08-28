@@ -1,0 +1,27 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  probabilistic_sampler:
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [probabilistic_sampler]
+      exporters: [otlp]
+    traces:
+      receivers: [otlp]
+      processors: [probabilistic_sampler]
+      exporters: [otlp]

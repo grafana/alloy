@@ -1,0 +1,17 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:NORMAL_FORMAT:-https://www.example.com/some/file-path?query={using brackets, spaces,+'and'%20"quotes"}}
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp]

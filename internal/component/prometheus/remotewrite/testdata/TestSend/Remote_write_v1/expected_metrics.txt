@@ -1,0 +1,36 @@
+# HELP prometheus_remote_storage_histograms_failed_total Total number of histograms which failed on send to remote storage, non-recoverable errors.
+# TYPE prometheus_remote_storage_histograms_failed_total counter
+prometheus_remote_storage_histograms_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_histograms_pending The number of histograms pending in the queues shards to be sent to the remote storage.
+# TYPE prometheus_remote_storage_histograms_pending gauge
+prometheus_remote_storage_histograms_pending{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_histograms_total Total number of histograms sent to remote storage.
+# TYPE prometheus_remote_storage_histograms_total counter
+prometheus_remote_storage_histograms_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_metadata_failed_total Total number of metadata entries which failed on send to remote storage, non-recoverable errors.
+# TYPE prometheus_remote_storage_metadata_failed_total counter
+prometheus_remote_storage_metadata_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_metadata_retried_total Total number of metadata entries which failed on send to remote storage but were retried because the send error was recoverable.
+# TYPE prometheus_remote_storage_metadata_retried_total counter
+prometheus_remote_storage_metadata_retried_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_metadata_total Total number of metadata entries sent to remote storage.
+# TYPE prometheus_remote_storage_metadata_total counter
+prometheus_remote_storage_metadata_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_samples_failed_total Total number of samples which failed on send to remote storage, non-recoverable errors.
+# TYPE prometheus_remote_storage_samples_failed_total counter
+prometheus_remote_storage_samples_failed_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_samples_pending The number of samples pending in the queues shards to be sent to the remote storage.
+# TYPE prometheus_remote_storage_samples_pending gauge
+prometheus_remote_storage_samples_pending{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_samples_retried_total Total number of samples which failed on send to remote storage but were retried because the send error was recoverable.
+# TYPE prometheus_remote_storage_samples_retried_total counter
+prometheus_remote_storage_samples_retried_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 0
+# HELP prometheus_remote_storage_samples_total Total number of samples sent to remote storage.
+# TYPE prometheus_remote_storage_samples_total counter
+prometheus_remote_storage_samples_total{remote_name="test-url",url="__MIMIR_RW_URL__/api/v1/write"} 2
+# HELP prometheus_remote_write_wal_metadata_updates_total Total number of metadata updates sent through the WAL
+# TYPE prometheus_remote_write_wal_metadata_updates_total counter
+prometheus_remote_write_wal_metadata_updates_total 0
+# HELP prometheus_remote_write_wal_samples_appended_total Total number of samples appended to the WAL
+# TYPE prometheus_remote_write_wal_samples_appended_total counter
+prometheus_remote_write_wal_samples_appended_total 2

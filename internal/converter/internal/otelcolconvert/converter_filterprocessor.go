@@ -1,0 +1,107 @@
+package otelcolconvert
+
+import (
+	"fmt"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/filter"
+	"github.com/grafana/alloy/internal/converter/diag"
+	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
+)
+
+func init() {
+	converters = append(converters, filterProcessorConverter{})
+}
+
+type filterProcessorConverter struct{}
+
+func (filterProcessorConverter) Factory() component.Factory {
+	return filterprocessor.NewFactory()
+}
+
+func (filterProcessorConverter) InputComponentName() string {
+	return "otelcol.processor.filter"
+}
+
+func (filterProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	label := state.AlloyComponentLabel()
+
+	args := toFilterProcessor(state, id, cfg.(*filterprocessor.Config))
+	block := common.NewBlockWithOverride([]string{"otelcol", "processor", "filter"}, label, args)
+
+	diags.Add(
+		diag.SeverityLevelInfo,
+		fmt.Sprintf("Converted %s into %s", StringifyInstanceID(id), StringifyBlock(block)),
+	)
+
+	state.Body().AppendBlock(block)
+	return diags
+}
+
+func toFilterProcessor(state *State, id componentstatus.InstanceID, cfg *filterprocessor.Config) *filter.Arguments {
+	var (
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
+	)
+
+	var (
+		logConditions    = make(filter.ContextConditionsSlice, 0, len(cfg.LogConditions))
+		traceConditions  = make(filter.ContextConditionsSlice, 0, len(cfg.TraceConditions))
+		metricConditions = make(filter.ContextConditionsSlice, 0, len(cfg.MetricConditions))
+	)
+
+	for _, c := range cfg.LogConditions {
+		logConditions = append(logConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
+	for _, c := range cfg.TraceConditions {
+		traceConditions = append(traceConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
+	for _, c := range cfg.MetricConditions {
+		metricConditions = append(metricConditions, filter.ContextConditions{
+			Context:    string(c.Context),
+			Conditions: c.Conditions,
+		})
+	}
+
+	return &filter.Arguments{
+		ErrorMode: cfg.ErrorMode,
+		//nolint:staticcheck
+		Traces: filter.TraceConfig{
+			Span:      cfg.Traces.SpanConditions,
+			SpanEvent: cfg.Traces.SpanEventConditions,
+		},
+		//nolint:staticcheck
+		Metrics: filter.MetricConfig{
+			Metric:    cfg.Metrics.MetricConditions,
+			Datapoint: cfg.Metrics.DataPointConditions,
+		},
+		//nolint:staticcheck
+		Logs: filter.LogConfig{
+			LogRecord: cfg.Logs.LogConditions,
+		},
+		LogConditions:    logConditions,
+		TraceConditions:  traceConditions,
+		MetricConditions: metricConditions,
+		Output: &otelcol.ConsumerArguments{
+			Metrics: ToTokenizedConsumers(nextMetrics),
+			Logs:    ToTokenizedConsumers(nextLogs),
+			Traces:  ToTokenizedConsumers(nextTraces),
+		},
+		DebugMetrics: common.DefaultValue[filter.Arguments]().DebugMetrics,
+	}
+}

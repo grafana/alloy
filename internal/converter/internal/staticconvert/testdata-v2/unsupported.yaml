@@ -1,0 +1,38 @@
+
+metrics:
+  global:
+    remote_write:
+      - url: http://localhost:9009/api/prom/push
+  configs:
+    - name: default
+
+logs:
+  positions_directory: /path
+  configs:
+    - name: log_config
+      clients:
+        - url: http://localhost/loki/api/v1/push
+
+integrations:
+  app_agent_receiver_configs:
+    - instance: "default"
+      traces_instance: "not_supported"
+      server:
+        host: "localhost"
+        port: 55678
+  eventhandler:
+    cache_path: "/etc/eventhandler/not_default.cache"
+    logs_instance: "log_config"
+    send_timeout: 30
+    informer_resync: 30
+    flush_interval: 30
+  vsphere_configs:
+    - vsphere_url: https://127.0.0.1:8989/sdk
+      vsphere_user: user
+      vsphere_password: pass
+      request_chunk_size: 256
+      collect_concurrency: 8
+      instance: vsphere
+      autoscrape:
+        enable: true
+        metrics_instance: default

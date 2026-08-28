@@ -1,0 +1,158 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, e.last_name, t.title
+FROM employees e
+JOIN titles t ON e.emp_no = t.emp_no
+WHERE t.to_date = '9999-01-01'
+AND t.title IN (
+    SELECT title FROM titles 
+    WHERE emp_no IN (
+        SELECT emp_no FROM salaries 
+        WHERE salary > 100000 
+        AND to_date = '9999-01-01'
+    )
+)\G
+```
+
+-- correlated_subquery.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "868450.61"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "e",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "rows_examined_per_scan": 299556,
+          "rows_produced_per_join": 299556,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "929.00",
+            "eval_cost": "29955.60",
+            "prefix_cost": "30884.60",
+            "data_read_per_join": "38M"
+          },
+          "used_columns": [
+            "emp_no",
+            "first_name",
+            "last_name"
+          ]
+        }
+      },
+      {
+        "table": {
+          "table_name": "t",
+          "access_type": "ref",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "key": "PRIMARY",
+          "used_key_parts": [
+            "emp_no"
+          ],
+          "key_length": "4",
+          "ref": [
+            "employees.e.emp_no"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 44514,
+          "filtered": "10.00",
+          "cost_info": {
+            "read_cost": "299556.00",
+            "eval_cost": "4451.49",
+            "prefix_cost": "374955.51",
+            "data_read_per_join": "9M"
+          },
+          "used_columns": [
+            "emp_no",
+            "title",
+            "to_date"
+          ],
+          "attached_condition": "(`employees`.`t`.`to_date` = DATE'9999-01-01')"
+        }
+      },
+      {
+        "table": {
+          "table_name": "<subquery2>",
+          "access_type": "eq_ref",
+          "key": "<auto_distinct_key>",
+          "key_length": "202",
+          "ref": [
+            "employees.t.title"
+          ],
+          "rows_examined_per_scan": 1,
+          "materialized_from_subquery": {
+            "using_temporary_table": true,
+            "query_block": {
+              "nested_loop": [
+                {
+                  "table": {
+                    "table_name": "salaries",
+                    "access_type": "ALL",
+                    "possible_keys": [
+                      "PRIMARY"
+                    ],
+                    "rows_examined_per_scan": 2838426,
+                    "rows_produced_per_join": 94604,
+                    "filtered": "3.33",
+                    "cost_info": {
+                      "read_cost": "280502.13",
+                      "eval_cost": "9460.47",
+                      "prefix_cost": "289962.60",
+                      "data_read_per_join": "1M"
+                    },
+                    "used_columns": [
+                      "emp_no",
+                      "salary",
+                      "to_date"
+                    ],
+                    "attached_condition": "((`employees`.`salaries`.`to_date` = DATE'9999-01-01') and (`employees`.`salaries`.`salary` > 100000))"
+                  }
+                },
+                {
+                  "table": {
+                    "table_name": "titles",
+                    "access_type": "ref",
+                    "possible_keys": [
+                      "PRIMARY"
+                    ],
+                    "key": "PRIMARY",
+                    "used_key_parts": [
+                      "emp_no"
+                    ],
+                    "key_length": "4",
+                    "ref": [
+                      "employees.salaries.emp_no"
+                    ],
+                    "rows_examined_per_scan": 1,
+                    "rows_produced_per_join": 140585,
+                    "filtered": "100.00",
+                    "using_index": true,
+                    "cost_info": {
+                      "read_cost": "96903.78",
+                      "eval_cost": "14058.54",
+                      "prefix_cost": "400924.92",
+                      "data_read_per_join": "28M"
+                    },
+                    "used_columns": [
+                      "emp_no",
+                      "title"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

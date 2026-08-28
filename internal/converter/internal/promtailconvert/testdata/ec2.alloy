@@ -1,0 +1,16 @@
+discovery.ec2 "fun" {
+	region     = "us-east-1"
+	access_key = "YOUR_ACCESS_KEY"
+	secret_key = "YOUR_SECRET_KEY"
+	port       = 8080
+}
+
+loki.source.file "fun" {
+	targets    = discovery.ec2.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

@@ -1,0 +1,7 @@
+# Test rendering of the chart with the individual image registries explicitly set to another value.
+image:
+  registry: quay.io
+
+configReloader:
+  image:
+    registry: quay.io

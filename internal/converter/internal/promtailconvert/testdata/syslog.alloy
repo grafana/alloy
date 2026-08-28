@@ -1,0 +1,93 @@
+discovery.relabel "fun" {
+	targets = []
+
+	rule {
+		source_labels = ["host"]
+		target_label  = "hostname"
+	}
+}
+
+loki.source.syslog "fun" {
+	listener {
+		address               = "localhost:4000"
+		protocol              = "udp"
+		idle_timeout          = "1m0s"
+		label_structured_data = true
+		labels                = {
+			region  = "chablis",
+			variety = "chardonnay",
+		}
+		use_incoming_timestamp = true
+		use_rfc5424_message    = true
+		max_message_length     = 1024
+
+		tls_config {
+			ca_file   = "/etc/ssl/certs/ca-certificates.crt"
+			cert_file = "/etc/promtail/certs/promtail.crt"
+			key_file  = "/etc/promtail/certs/promtail.key"
+		}
+		udp_queue_size      = 0
+		udp_host_cache_size = 0
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = discovery.relabel.fun.rules
+}
+
+loki.source.syslog "test_rfc3164" {
+	listener {
+		address                = "localhost:4000"
+		protocol               = "udp"
+		idle_timeout           = "1m0s"
+		label_structured_data  = true
+		labels                 = {}
+		use_incoming_timestamp = true
+		max_message_length     = 0
+		syslog_format          = "rfc3164"
+		udp_queue_size         = 0
+		udp_host_cache_size    = 0
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = null
+}
+
+loki.source.syslog "test_rfc5424" {
+	listener {
+		address                = "localhost:4000"
+		protocol               = "udp"
+		idle_timeout           = "1m0s"
+		label_structured_data  = true
+		labels                 = {}
+		use_incoming_timestamp = true
+		max_message_length     = 0
+		udp_queue_size         = 0
+		udp_host_cache_size    = 0
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = null
+}
+
+loki.source.syslog "test_raw" {
+	listener {
+		address            = "localhost:4000"
+		protocol           = "udp"
+		idle_timeout       = "1m0s"
+		labels             = {}
+		max_message_length = 0
+		syslog_format      = "raw"
+
+		raw_format_options {
+			use_null_terminator_delimiter = true
+		}
+		udp_queue_size      = 0
+		udp_host_cache_size = 0
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = null
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

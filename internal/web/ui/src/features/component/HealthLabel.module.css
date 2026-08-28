@@ -1,0 +1,32 @@
+span.health {
+  display: inline-block;
+  font-size: 12px;
+  padding: 4px 8px;
+  min-width: 64px;
+  color: #ffffff;
+  background-color: #595c60;
+  border: 1px solid #595c60;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: capitalize;
+  text-align: center;
+  line-height: 1.2em;
+}
+
+span.health.state-ok {
+  color: #ffffff;
+  background-color: #3b8160;
+  border-color: #3b8160;
+}
+
+span.health.state-error {
+  color: #ffffff;
+  background-color: #d2476d;
+  border-color: #d2476d;
+}
+
+span.health.state-warn {
+  color: #000000;
+  background-color: #f5d65b;
+  border-color: #f5d65b;
+}

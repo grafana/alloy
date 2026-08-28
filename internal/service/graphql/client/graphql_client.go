@@ -1,0 +1,98 @@
+package client
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+)
+
+//
+// This package allows alloy to execute GraphQL queries against the Alloy GraphQL API.
+//
+
+const maxResponseBodySize = 5 * 1024 * 1024
+
+// GraphQLClient represents a simple GraphQL client
+type GraphQLClient struct {
+	endpoint   string
+	httpClient *http.Client
+	headers    http.Header
+}
+
+// GraphQLRequest represents a GraphQL request
+type GraphQLRequest struct {
+	Query string `json:"query"`
+}
+
+// GraphQLResponse represents a GraphQL response
+type GraphQLResponse struct {
+	Data   any   `json:"data,omitempty"`
+	Errors []any `json:"errors,omitempty"`
+}
+
+// NewGraphQLClient creates a new GraphQL client
+func NewGraphQLClient(endpoint string) *GraphQLClient {
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+
+	return &GraphQLClient{
+		endpoint: endpoint,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+		headers: headers,
+	}
+}
+
+// Execute sends a GraphQL query and returns the parsed response.
+func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
+	reqBody := GraphQLRequest{Query: query}
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header = c.headers.Clone()
+	resp, err := c.httpClient.Do(req)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize+1))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if len(data) > maxResponseBodySize {
+		return nil, fmt.Errorf("response body exceeds %d bytes", maxResponseBodySize)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if body := strings.TrimSpace(string(data)); body != "" {
+			return nil, fmt.Errorf("failed to execute request: %s: %s", resp.Status, body)
+		}
+		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
+	}
+
+	return c.parseResponse(data)
+}
+
+// parseResponse converts raw GraphQL response bytes into a basic GraphQLResponse struct
+func (c *GraphQLClient) parseResponse(data []byte) (*GraphQLResponse, error) {
+	var resp GraphQLResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse GraphQL response: %w", err)
+	}
+	return &resp, nil
+}

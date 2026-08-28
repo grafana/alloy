@@ -1,0 +1,39 @@
+discovery.digitalocean "prometheus1" {
+	proxy_from_environment = true
+	proxy_connect_header   = {
+		Authorization = ["something", "something else"],
+		Host          = ["localhost"],
+	}
+}
+
+discovery.digitalocean "prometheus2" {
+	proxy_from_environment = true
+}
+
+prometheus.scrape "prometheus1" {
+	targets = array.concat(
+		discovery.digitalocean.prometheus1.targets,
+		[{
+			__address__ = "localhost:9090",
+		}],
+	)
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus1"
+}
+
+prometheus.scrape "prometheus2" {
+	targets    = discovery.digitalocean.prometheus2.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "prometheus2"
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name = "remote1"
+		url  = "http://remote-write-url1"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

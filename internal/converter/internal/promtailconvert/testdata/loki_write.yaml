@@ -1,0 +1,19 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+    headers:
+      fat: ball
+      bird: house
+    tenant_id: sparrow
+    batchwait: 10s
+    batchsize: 1024
+    proxy_url: http://proxy.example.com
+    backoff_config:
+      min_period: 100ms
+      max_period: 10s
+      max_retries: 20
+    drop_rate_limited_batches: true
+    timeout: 30s
+  - url: http://localhost/loki/api/v1/push
+    drop_rate_limited_batches: false
+tracing: {enabled: false}
+server: {register_instrumentation: false}

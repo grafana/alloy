@@ -1,0 +1,38 @@
+{{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
+{{- if $values.clustering.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "alloy.fullname" . }}-cluster
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: networking
+spec:
+  type: ClusterIP
+  clusterIP: 'None'
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "alloy.selectorLabels" . | nindent 4 }}
+  ports:
+    # Do not include the -metrics suffix in the port name, otherwise metrics
+    # can be double-collected with the non-headless Service if it's also
+    # enabled.
+    #
+    # This service should only be used for clustering, and not metric
+    # collection.
+    - name: {{ $values.clustering.portName }}
+      port: {{ $values.listenPort }}
+      targetPort: {{ $values.listenPort }}
+      protocol: "TCP"
+  {{- range $portMap := $values.extraPorts }}
+    - name: {{ $portMap.name }}
+      port: {{ $portMap.port }}
+      targetPort: {{ $portMap.targetPort }}
+      protocol: {{ coalesce $portMap.protocol "TCP" }}
+      {{- if not (empty $portMap.appProtocol) }}
+      # Useful for OpenShift clusters that want to expose Alloy ports externally
+      appProtocol: {{ $portMap.appProtocol }}
+      {{- end }}
+  {{- end }}
+{{- end }}

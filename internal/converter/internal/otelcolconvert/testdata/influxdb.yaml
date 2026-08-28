@@ -1,0 +1,13 @@
+receivers:
+  influxdb:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    metrics:
+      receivers: [influxdb]
+      processors: []
+      exporters: [otlp]

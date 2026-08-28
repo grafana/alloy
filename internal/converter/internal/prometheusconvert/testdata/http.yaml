@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 60s
+
+scrape_configs:
+  - job_name: netbox_snmp
+    metrics_path: /snmp
+    proxy_url: "localhost:1000"
+    no_proxy: "localhost:1001"
+    proxy_connect_header:
+      Authorization: ["something", "something else"]
+      Host: ["localhost"]
+    http_sd_configs:
+      - url: http://netbox:8080/api/plugins/prometheus-sd/devices?status=active&cf_prometheus_job=netbox_snmp
+        refresh_interval: 15s
+        authorization:
+          type: Token
+          credentials_file: /run/secrets/netbox_token
+    relabel_configs:
+      - source_labels: [__meta_netbox_primary_ip]
+        target_label: instance
+      - source_labels: [__meta_netbox_site]
+        target_label: site
+      - source_labels: [__meta_netbox_location]
+        target_label: room
+      - source_labels: [__meta_netbox_name]
+        target_label: name
+      - source_labels: [instance]
+        target_label: __param_target
+      - source_labels: [__meta_netbox_custom_field_prometheus_snmp_module]
+        target_label: __param_module
+      - source_labels: [__meta_netbox_custom_field_prometheus_snmp_auth]
+        target_label: __param_auth
+      # replaces "address" with SNMP exporter's real hostname:port
+      - target_label: __address__
+        replacement: snmp-exporter:9116
+
+remote_write:
+  - name: "remote1"
+    proxy_from_environment: true
+    url: "http://remote-write-url1"

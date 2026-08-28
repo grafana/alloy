@@ -1,0 +1,51 @@
+otelcol.extension.jaeger_remote_sampling "default" {
+	grpc { }
+
+	http {
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	source {
+		remote {
+			endpoint = "jaeger-collector:14250"
+		}
+		reload_interval = "30s"
+	}
+}
+
+otelcol.receiver.jaeger "default" {
+	protocols {
+		grpc {
+			endpoint = "localhost:14250"
+		}
+
+		thrift_http {
+			endpoint            = "localhost:14268"
+			idle_timeout        = "0s"
+			write_timeout       = "0s"
+			read_header_timeout = "0s"
+		}
+
+		thrift_binary {
+			endpoint        = "localhost:6832"
+			max_packet_size = "63KiB488B"
+		}
+
+		thrift_compact {
+			endpoint        = "localhost:6831"
+			max_packet_size = "63KiB488B"
+		}
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

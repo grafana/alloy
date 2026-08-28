@@ -1,0 +1,27 @@
+prometheus.remote_write "metrics_default" {
+	endpoint {
+		name = "default-04b53d"
+		url  = "http://localhost:9009/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}
+
+prometheus.exporter.windows "integrations_windows_exporter" { }
+
+discovery.relabel "integrations_windows" {
+	targets = prometheus.exporter.windows.integrations_windows_exporter.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/windows"
+	}
+}
+
+prometheus.scrape "integrations_windows" {
+	targets    = discovery.relabel.integrations_windows.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/windows"
+}

@@ -1,0 +1,108 @@
+name: Build
+on:
+  pull_request:
+concurrency:
+  # Cancel any running workflow for the same branch when new commits are pushed.
+  # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
+  # and head_ref (available when CI is triggered by a PR).
+  group: "${{ github.ref_name }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build_linux:
+    name: Build on Linux
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    strategy:
+      matrix:
+        os: [linux]
+        arch: [amd64, arm64, ppc64le, s390x]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
+
+  build_linux_boringcrypto:
+    name: Build on Linux (boringcrypto)
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    strategy:
+      matrix:
+        os: [linux]
+        arch: [amd64, arm64]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
+
+  build_mac:
+    name: Build on MacOS
+    runs-on: macos-15-xlarge
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      with:
+        go-version-file: go.mod
+        cache: false
+    - name: Build native arm64
+      run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="embedalloyui" GOOS=darwin GOARCH=arm64 GOARM= make alloy
+    - name: Cross-compile amd64
+      run: GO_TAGS="embedalloyui" GOOS=darwin GOARCH=amd64 GOARM= SKIP_UI_BUILD=1 make alloy
+
+  build_windows:
+    name: Build on Windows (AMD64)
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        persist-credentials: false
+    - name: Set up Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      with:
+        go-version-file: go.mod
+        # cache: true is only net-positive on Windows (~9 min savings on warm runs).
+        # Other runners either suffer cache restore overhead exceeding savings, or
+        # are subject to LRU eviction in the repo's contested cache storage.
+        cache: true
+    - run: echo "GO_TAGS=embedalloyui" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
+    - run: make alloy
+
+  build_freebsd:
+    name: Build on FreeBSD (AMD64)
+    runs-on: github-hosted-ubuntu-x64-large
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+          persist-credentials: false
+    - name: Set ownership
+      # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
+      run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+    - run: GO_TAGS="embedalloyui" GOOS=freebsd GOARCH=amd64 GOARM= make alloy

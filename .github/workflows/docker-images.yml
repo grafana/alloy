@@ -1,0 +1,48 @@
+name: Check Docker images
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - Dockerfile.windows
+      - Makefile
+      - 'build-tools/make/*'
+
+permissions:
+  contents: read
+
+jobs:
+  # NOTE(rfratto): We only test building the Docker images for the host
+  # platform, but we're really only looking for issues that are
+  # architecture-independent.
+  linux:
+    # We use a large runner for the additional disk space.
+    runs-on: github-hosted-ubuntu-x64-large
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: |
+          docker build -t alloy-test:latest -f Dockerfile .
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - name: Ensure Docker is running (Docker issue workaround)
+        id: docker-workaround
+        run: |
+          $dockerState = Get-Service -Name "docker"
+          if ($dockerState.Status -ne "Running") {
+            Start-Service -Name "docker"
+          }
+
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: |
+          docker build -t alloy-test:latest -f Dockerfile.windows .

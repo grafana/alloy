@@ -1,0 +1,23 @@
+loki.source.windowsevent "fun" {
+	locale                 = 1033
+	eventlog_name          = "Application"
+	xpath_query            = "Event/System[EventID=1000]"
+	poll_interval          = "10s"
+	exclude_event_data     = true
+	exclude_user_data      = true
+	exclude_event_message  = true
+	use_incoming_timestamp = true
+	forward_to             = [loki.write.default.receiver]
+	labels                 = {
+		host = "localhost",
+		job  = "windows",
+	}
+	legacy_bookmark_path = "C:/Users/username/Desktop/bookmark.txt"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

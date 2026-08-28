@@ -1,0 +1,75 @@
+integrations:
+  prometheus_remote_write:
+  - basic_auth:
+      password: token
+      username: id
+    url: https://region.grafana.net/api/prom/push
+  agent:
+    enabled: true
+    relabel_configs:
+    - action: replace
+      source_labels:
+      - agent_hostname
+      target_label: instance
+    - action: replace
+      target_label: job
+      replacement: "integrations/agent-check"
+    metric_relabel_configs:
+    - action: keep
+      regex: (prometheus_target_.*|prometheus_sd_discovered_targets|agent_build.*|agent_wal_samples_appended_total|process_start_time_seconds)
+      source_labels:
+      - __name__
+logs:
+  configs:
+  - clients:
+    - basic_auth:
+        password: token
+        username: id
+      url: https://region.grafana.net/loki/api/v1/push
+    name: integrations
+    positions:
+      filename: /tmp/positions.yaml
+    scrape_configs:
+    - job_name: integrations/windows-exporter-application
+      windows_events:
+        use_incoming_timestamp: true
+        bookmark_path: "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
+        eventlog_name: "Application"
+        labels:
+          job: integrations/windows_exporter
+      relabel_configs:
+        - source_labels: ['computer']
+          target_label: 'agent_hostname'
+      pipeline_stages:
+        - json:
+            expressions:
+              source: source
+        - labels:
+            source:
+    - job_name: integrations/windows-exporter-system
+      windows_events:
+        use_incoming_timestamp: true
+        bookmark_path: "C:\\grafana_test\\Grafana Agent\\bookmarks.xml"
+        eventlog_name: "System"
+        labels:
+          job: integrations/windows_exporter
+      relabel_configs:
+        - source_labels: ['computer']
+          target_label: 'agent_hostname'
+      pipeline_stages:
+        - json:
+            expressions:
+              source: source
+        - labels:
+            source:
+metrics:
+  configs:
+  - name: integrations
+    remote_write:
+    - basic_auth:
+        password: token
+        username: id
+      url: https://region.grafana.net/api/prom/push
+  global:
+    scrape_interval: 60s
+  wal_directory: /tmp/grafana-agent-wal

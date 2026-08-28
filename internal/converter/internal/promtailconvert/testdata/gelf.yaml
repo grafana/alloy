@@ -1,0 +1,16 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: fun
+    relabel_configs:
+      - source_labels:
+          - __trail__
+        target_label: __path__
+    gelf:
+      listen_address: localhost:12201
+      labels:
+        job: fun
+        quality: excellent
+      use_incoming_timestamp: true
+tracing: {enabled: false}
+server: {register_instrumentation: false}

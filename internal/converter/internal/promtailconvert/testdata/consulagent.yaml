@@ -1,0 +1,35 @@
+scrape_configs:
+  - job_name: fun
+    consulagent_sd_configs:
+      - server: 'localhost:8500'
+        datacenter: bigdata
+        scheme: sketchy
+        username: toby
+        password: this_password_is_safe_innit?
+        token: token
+        tags:
+          - better
+          - faster
+          - stronger
+        services: [ 'myapp' ]
+        node_meta:
+          where: here
+          what: this
+        tag_separator: ";"
+        allow_stale: false
+        refresh_interval: 10m
+
+        tls_config:
+          ca_file: /home/robin/.ca
+          cert_file: /home/robin/.cert
+          key_file: /home/robin/.key
+          server_name: example.local
+          insecure_skip_verify: true
+
+    relabel_configs:
+      - source_labels:
+          - host
+        target_label: hostname
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

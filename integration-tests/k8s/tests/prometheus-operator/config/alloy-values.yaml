@@ -1,0 +1,12 @@
+controller:
+  type: daemonset
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  # POD_NAMESPACE is consumed by config.alloy via sys.env so the test
+  # namespace name lives in exactly one place: the Go test (deps.NewNamespace).
+  extraEnv:
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace

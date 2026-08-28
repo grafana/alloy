@@ -1,0 +1,545 @@
+package k8sattributes_test
+
+import (
+	"testing"
+	"time"
+
+	"github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"
+	"github.com/grafana/alloy/syntax"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
+	"github.com/stretchr/testify/require"
+)
+
+func Test_Extract(t *testing.T) {
+	cfg := `
+		auth_type = "kubeConfig"
+
+		extract {
+			label {
+				from      = "pod"
+				key_regex = "(.*)/(.*)"
+				tag_name  = "$1.$2"
+			}
+	
+			metadata = [
+				"k8s.namespace.name",
+				"k8s.job.name",
+				"k8s.node.name",
+			]
+
+			deployment_name_from_replicaset = true
+		}
+	
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	authType := &otelObj.APIConfig.AuthType
+	require.Equal(t, string(*authType), "kubeConfig")
+
+	extract := &otelObj.Extract
+	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
+
+	require.True(t, extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+}
+
+func Test_DeploymentNameFromReplicaSet(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	t.Run("default", func(t *testing.T) {
+		otelObj := convert(t, `
+			output {}
+		`)
+		require.True(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				deployment_name_from_replicaset = false
+			}
+			output {}
+		`)
+		require.False(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
+	})
+}
+
+func Test_ExtractAnnotations(t *testing.T) {
+	cfg := `
+		extract {
+			annotation {
+				key_regex = "opentel.*"
+				from      = "pod"
+			}
+
+			label {
+				key_regex = "opentel.*"
+				from      = "pod"
+			}
+	
+			metadata = [
+				"k8s.namespace.name",
+				"k8s.job.name",
+				"k8s.node.name",
+			]
+
+			otel_annotations = true
+		}
+	
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	extract := &otelObj.Extract
+	require.Len(t, extract.Annotations, 1)
+	require.Equal(t, extract.Annotations[0].KeyRegex, "opentel.*")
+	require.Equal(t, extract.Annotations[0].From, "pod")
+
+	require.Len(t, extract.Labels, 1)
+	require.Equal(t, extract.Labels[0].KeyRegex, "opentel.*")
+	require.Equal(t, extract.Labels[0].From, "pod")
+
+	require.Equal(t, extract.OtelAnnotations, true)
+}
+
+func Test_FilterNodeEnvironmentVariable(t *testing.T) {
+	cfg := `
+		filter {
+			node = sys.env("K8S_ATTRIBUTES_TEST_HOSTNAME")
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	testHostname := "test-hostname"
+	t.Setenv("K8S_ATTRIBUTES_TEST_HOSTNAME", testHostname)
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	filter := &otelObj.Filter
+	require.Equal(t, testHostname, filter.Node)
+}
+
+func Test_FilterNamespace(t *testing.T) {
+	cfg := `
+		filter {
+			namespace = "mynamespace"
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	filter := &otelObj.Filter
+	require.Equal(t, "mynamespace", filter.Namespace)
+}
+
+func Test_FilterOps(t *testing.T) {
+	cfg := `
+		filter {
+			label {
+				key = "key1"
+				value = "value1"
+			}
+			label {
+				key = "key2"
+				value = "value2"
+				op = "not-equals"
+			}
+			field {
+				key = "key1"
+				value = "value1"
+			}
+			field {
+				key = "key2"
+				value = "value2"
+				op = "not-equals"
+			}
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	filter := &otelObj.Filter
+
+	labels := &filter.Labels
+	require.Len(t, *labels, 2)
+	require.Equal(t, (*labels)[0].Key, "key1")
+	require.Equal(t, (*labels)[0].Value, "value1")
+	require.Equal(t, (*labels)[1].Key, "key2")
+	require.Equal(t, (*labels)[1].Value, "value2")
+	require.Equal(t, (*labels)[1].Op, "not-equals")
+
+	fields := &filter.Fields
+	require.Len(t, *fields, 2)
+	require.Equal(t, (*fields)[0].Key, "key1")
+	require.Equal(t, (*fields)[0].Value, "value1")
+	require.Equal(t, (*fields)[1].Key, "key2")
+	require.Equal(t, (*fields)[1].Value, "value2")
+	require.Equal(t, (*fields)[1].Op, "not-equals")
+}
+
+func Test_DefaultToServiceAccountAuth(t *testing.T) {
+	cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	authType := &otelObj.APIConfig.AuthType
+	require.True(t, *authType == "serviceAccount") // Default value
+}
+
+func Test_PodAssociation(t *testing.T) {
+	cfg := `
+		pod_association {
+			source {
+				from = "resource_attribute"
+				name = "k8s.pod.ip"
+			}
+		}
+		pod_association {
+			source {
+				from = "resource_attribute"
+				name = "k8s.pod.uid"
+			}
+		}
+		pod_association {
+			source {
+				from = "connection"
+			}
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	associations := &otelObj.Association
+	require.Len(t, *associations, 3)
+
+	association := (*associations)[0]
+	require.Len(t, association.Sources, 1)
+	require.Equal(t, "resource_attribute", association.Sources[0].From)
+	require.Equal(t, "k8s.pod.ip", association.Sources[0].Name)
+
+	association = (*associations)[1]
+	require.Len(t, association.Sources, 1)
+	require.Equal(t, "resource_attribute", association.Sources[0].From)
+	require.Equal(t, "k8s.pod.uid", association.Sources[0].Name)
+
+	association = (*associations)[2]
+	require.Len(t, association.Sources, 1)
+	require.Equal(t, "connection", association.Sources[0].From)
+}
+
+func Test_PodAssociationPair(t *testing.T) {
+	cfg := `
+		pod_association {
+			source {
+				from = "resource_attribute"
+				name = "k8s.pod.ip"
+			}
+		}
+		pod_association {	
+			source {
+				from = "resource_attribute"
+				name = "k8s.pod.uid"
+			}
+			source {
+				from = "connection"	
+			}
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	associations := &otelObj.Association
+	require.Len(t, *associations, 2)
+
+	association := (*associations)[0]
+	require.Len(t, association.Sources, 1)
+	require.Equal(t, "resource_attribute", association.Sources[0].From)
+	require.Equal(t, "k8s.pod.ip", association.Sources[0].Name)
+
+	association = (*associations)[1]
+	require.Len(t, association.Sources, 2)
+	require.Equal(t, "resource_attribute", association.Sources[0].From)
+	require.Equal(t, "k8s.pod.uid", association.Sources[0].Name)
+
+	require.Equal(t, "connection", association.Sources[1].From)
+}
+
+func Test_Passthrough(t *testing.T) {
+	cfg := `
+		passthrough = true
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	var args k8sattributes.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	convertedArgs, err := args.Convert()
+	require.NoError(t, err)
+	otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+	require.True(t, otelObj.Passthrough)
+}
+
+func Test_Exclude(t *testing.T) {
+	t.Run("default excludes", func(t *testing.T) {
+		cfg := `
+			exclude { }
+			output {
+				// no-op: will be overridden by test code.
+			}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		exclude := &otelObj.Exclude
+		require.Len(t, exclude.Pods, 2)
+		require.Equal(t, "jaeger-agent", exclude.Pods[0].Name)
+		require.Equal(t, "jaeger-collector", exclude.Pods[1].Name)
+	})
+	t.Run("custom excludes", func(t *testing.T) {
+		cfg := `
+		exclude {
+			pod {
+				name = "alloy"
+			}
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		exclude := &otelObj.Exclude
+		require.Len(t, exclude.Pods, 1)
+		require.Equal(t, "alloy", exclude.Pods[0].Name)
+	})
+}
+
+func Test_WaitForMetadata(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.False(t, otelObj.WaitForMetadata)
+		require.Equal(t, 10*time.Second, otelObj.WaitForMetadataTimeout)
+	})
+
+	t.Run("non_default", func(t *testing.T) {
+		cfg := `
+		wait_for_metadata = true
+		wait_for_metadata_timeout = "14s"
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.True(t, otelObj.WaitForMetadata)
+		require.Equal(t, 14*time.Second, otelObj.WaitForMetadataTimeout)
+	})
+}
+
+func Test_WatchSyncPeriod(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 5*time.Minute, otelObj.WatchSyncPeriod)
+	})
+
+	t.Run("non_default", func(t *testing.T) {
+		cfg := `
+		watch_sync_period = "30s"
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 30*time.Second, otelObj.WatchSyncPeriod)
+	})
+}
+
+func Test_ExtractMetadata(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	upstreamDefaults := []string{
+		"container.image.name",
+		"container.image.tag",
+		"k8s.deployment.name",
+		"k8s.namespace.name",
+		"k8s.node.name",
+		"k8s.pod.name",
+		"k8s.pod.start_time",
+		"k8s.pod.uid",
+	}
+
+	t.Run("no extract block uses the upstream defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			output {}
+		`)
+		require.ElementsMatch(t, upstreamDefaults, otelObj.Extract.Metadata)
+	})
+
+	t.Run("omitted metadata inside an extract block uses the upstream defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				deployment_name_from_replicaset = true
+			}
+			output {}
+		`)
+		require.ElementsMatch(t, upstreamDefaults, otelObj.Extract.Metadata)
+	})
+
+	t.Run("configured metadata overrides the defaults", func(t *testing.T) {
+		otelObj := convert(t, `
+			extract {
+				metadata = ["k8s.pod.name"]
+			}
+			output {}
+		`)
+		require.Equal(t, []string{"k8s.pod.name"}, otelObj.Extract.Metadata)
+	})
+}
+
+func Test_PodDeleteGracePeriod(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		return convertedArgs.(*k8sattributesprocessor.Config)
+	}
+
+	t.Run("default matches the upstream factory", func(t *testing.T) {
+		upstream := k8sattributesprocessor.NewFactory().
+			CreateDefaultConfig().(*k8sattributesprocessor.Config)
+
+		otelObj := convert(t, `output {}`)
+
+		require.Equal(t, upstream.PodDeleteGracePeriod, otelObj.PodDeleteGracePeriod)
+	})
+
+	t.Run("configured value is passed through", func(t *testing.T) {
+		otelObj := convert(t, `
+			pod_delete_grace_period = "30s"
+			output {}
+		`)
+
+		require.Equal(t, 30*time.Second, otelObj.PodDeleteGracePeriod)
+	})
+}

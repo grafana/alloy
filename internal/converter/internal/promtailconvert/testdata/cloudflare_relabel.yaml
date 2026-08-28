@@ -1,0 +1,19 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: fun
+    cloudflare:
+      api_token: dont_look_at_me_please
+      zone_id: area51
+      labels:
+        identity: unidentified
+        object_type: flying
+      workers: 42
+      pull_range: 1h
+      fields_type: all
+    relabel_configs:
+      - source_labels:
+          - __trail__
+        target_label: __path__
+tracing: {enabled: false}
+server: {register_instrumentation: false}

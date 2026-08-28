@@ -1,0 +1,11 @@
+block {
+	some_object = {
+		key_1 = 5,
+		long_key = 10,
+		longer_key = {
+			inner_key = true,
+			inner_key_2 = false,
+		},
+		other_key = [0, 1, 2],
+	}
+}

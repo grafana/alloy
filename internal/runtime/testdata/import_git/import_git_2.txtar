@@ -1,0 +1,21 @@
+Import passthrough module from a directory stored in a git repository.
+
+-- main.alloy --
+testcomponents.count "inc" {
+  frequency = "10ms"
+  max = 10
+}
+
+import.git "testImport" {
+  // Requires repo.git.tar to be extracted
+  repository = "./testdata/repo.git"
+  path = "passthrough"
+}
+
+testImport.a "cc" {
+  input = testcomponents.count.inc.count
+}
+
+testcomponents.summation "sum" {
+  input = testImport.a.cc.output
+}

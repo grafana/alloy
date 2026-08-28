@@ -1,0 +1,15 @@
+discovery.triton "fun" {
+	account    = "TRITON_ACCOUNT"
+	dns_suffix = "triton.example"
+	endpoint   = "0.0.0.0:8080"
+}
+
+loki.source.file "fun" {
+	targets    = discovery.triton.fun.targets
+	forward_to = []
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}

@@ -1,0 +1,108 @@
+discovery.kubernetes "example" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.json {
+		expressions = {
+			face = "smiley",
+			hand = "thumbs-up",
+		}
+		source         = "video"
+		drop_malformed = true
+	}
+
+	stage.logfmt {
+		mapping = {
+			buzz = "bar",
+			key  = "value",
+		}
+		source = "foo"
+	}
+
+	stage.regex {
+		expression = ".*"
+		source     = "bar"
+	}
+
+	stage.replace {
+		expression = "foo"
+		source     = "bar"
+		replace    = "foobar"
+	}
+
+	stage.metrics {
+		metric.counter {
+			name              = "test_counter_1"
+			description       = "A test counter"
+			source            = "bar"
+			prefix            = "test_prefix_"
+			max_idle_duration = "10m0s"
+			value             = "abcd"
+			action            = "inc"
+		}
+
+		metric.counter {
+			name              = "test_counter_2"
+			description       = "A test counter"
+			source            = "bar"
+			prefix            = "test_prefix_"
+			max_idle_duration = "10m0s"
+			action            = "add"
+			match_all         = true
+			count_entry_bytes = true
+		}
+
+		metric.gauge {
+			name              = "test_gauge"
+			description       = "A test gauge"
+			source            = "bar"
+			prefix            = "test_prefix_"
+			max_idle_duration = "10m0s"
+			value             = "something"
+			action            = "set"
+		}
+
+		metric.histogram {
+			name              = "test_histogram"
+			description       = "A test histogram"
+			source            = "bar"
+			prefix            = "test_prefix_"
+			max_idle_duration = "10m0s"
+			value             = "something"
+			buckets           = [0.1, 0.2, 0.3]
+		}
+	}
+
+	stage.labels {
+		values = {
+			foo    = "destination",
+			source = "bar",
+		}
+	}
+}
+
+loki.source.file "example" {
+	targets    = discovery.kubernetes.example.targets
+	forward_to = [loki.process.example.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}

@@ -1,0 +1,71 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: example
+    pipeline_stages:
+      - json:
+          expressions:
+            face: smiley
+            hand: thumbs-up
+          source: video
+          drop_malformed: true
+      - logfmt:
+          source: foo
+          mapping:
+            key: value
+            buzz: bar
+      - regex:
+          expression: .*
+          source: bar
+      - replace:
+          expression: "foo"
+          source: bar
+          replace: foobar
+      - metrics:
+          test_counter_1:
+            type: counter
+            description: "A test counter"
+            source: bar
+            prefix: test_prefix_
+            max_idle_duration: 10m
+            config:
+              value: abcd
+              action: inc
+          test_counter_2:
+            type: counter
+            description: "A test counter"
+            source: bar
+            prefix: test_prefix_
+            max_idle_duration: 10m
+            config:
+              match_all: true
+              count_entry_bytes: true
+              action: add
+          test_gauge:
+            type: gauge
+            description: "A test gauge"
+            source: bar
+            prefix: test_prefix_
+            max_idle_duration: 10m
+            config:
+              value: something
+              action: set
+          test_histogram:
+            type: histogram
+            description: "A test histogram"
+            source: bar
+            prefix: test_prefix_
+            max_idle_duration: 10m
+            config:
+              value: something
+              buckets: [0.1, 0.2, 0.3]
+      - labels:
+          source: bar
+          foo: destination
+
+    kubernetes_sd_configs:
+      - role: pod
+        kubeconfig_file: /home/toby/.kube/config
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

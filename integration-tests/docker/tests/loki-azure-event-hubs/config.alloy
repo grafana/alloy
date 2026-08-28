@@ -1,0 +1,36 @@
+loki.relabel "eh" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__azure_event_hubs_category"]
+		target_label  = "service_name"
+	}
+}
+
+loki.source.azure_event_hubs "eh" {
+	fully_qualified_namespace = "kafka-eh:9093"
+	event_hubs                = ["test1", "test2", "test3"]
+	forward_to                = [loki.process.test.receiver]
+	relabel_rules             = loki.relabel.eh.rules
+
+	authentication {
+		mechanism         = "connection_string"
+		connection_string = "fake-connection-string"
+	}
+}
+
+loki.process "test" {
+	forward_to = [loki.write.test.receiver]
+
+	stage.static_labels {
+		values = {
+			test_name = "lokiazureeventhubs",
+		}
+	}
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

@@ -1,0 +1,10 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app main {
+  flex-grow: 1;
+  overflow-y: hidden;
+}

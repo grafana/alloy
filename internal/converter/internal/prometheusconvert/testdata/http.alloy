@@ -1,0 +1,79 @@
+discovery.http "netbox_snmp" {
+	authorization {
+		type             = "Token"
+		credentials_file = "/run/secrets/netbox_token"
+	}
+	follow_redirects = true
+	enable_http2     = true
+	refresh_interval = "15s"
+	url              = "http://netbox:8080/api/plugins/prometheus-sd/devices?status=active&cf_prometheus_job=netbox_snmp"
+}
+
+discovery.relabel "netbox_snmp" {
+	targets = discovery.http.netbox_snmp.targets
+
+	rule {
+		source_labels = ["__meta_netbox_primary_ip"]
+		target_label  = "instance"
+	}
+
+	rule {
+		source_labels = ["__meta_netbox_site"]
+		target_label  = "site"
+	}
+
+	rule {
+		source_labels = ["__meta_netbox_location"]
+		target_label  = "room"
+	}
+
+	rule {
+		source_labels = ["__meta_netbox_name"]
+		target_label  = "name"
+	}
+
+	rule {
+		source_labels = ["instance"]
+		target_label  = "__param_target"
+	}
+
+	rule {
+		source_labels = ["__meta_netbox_custom_field_prometheus_snmp_module"]
+		target_label  = "__param_module"
+	}
+
+	rule {
+		source_labels = ["__meta_netbox_custom_field_prometheus_snmp_auth"]
+		target_label  = "__param_auth"
+	}
+
+	rule {
+		target_label = "__address__"
+		replacement  = "snmp-exporter:9116"
+	}
+}
+
+prometheus.scrape "netbox_snmp" {
+	targets              = discovery.relabel.netbox_snmp.output
+	forward_to           = [prometheus.remote_write.default.receiver]
+	job_name             = "netbox_snmp"
+	metrics_path         = "/snmp"
+	proxy_url            = "localhost:1000"
+	no_proxy             = "localhost:1001"
+	proxy_connect_header = {
+		Authorization = ["something", "something else"],
+		Host          = ["localhost"],
+	}
+}
+
+prometheus.remote_write "default" {
+	endpoint {
+		name                   = "remote1"
+		url                    = "http://remote-write-url1"
+		proxy_from_environment = true
+
+		queue_config { }
+
+		metadata_config { }
+	}
+}

@@ -1,0 +1,4 @@
+basic_auth:
+  username: user
+  username_file: basic-auth-username
+  password: foo

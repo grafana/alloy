@@ -1,0 +1,27 @@
+A collection containing capsules.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [testcomponents.string_receiver.log.receiver, testcomponents.string_receiver.log2.receiver]
+  var = "item"
+
+  template {
+    testcomponents.stringer "st" {
+      input_string = "gragent"
+      forward_to = [item]
+    }
+  }
+}
+
+// Receive strings and append them to a log,
+// separated by a new line.
+testcomponents.string_receiver "log" {
+}
+
+testcomponents.string_receiver "log2" {
+}
+
+-- expected_debug_info.txt --
+"gragent"
+-- expected_debug_info2.txt --
+"gragent"
