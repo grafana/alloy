@@ -91,7 +91,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 	cloned := cloneEntries(entries)
 
-	t.Run("Stage", func(t *testing.T) {
+	t.Run("Pipeline", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		}
 	})
 
-	t.Run("New Stage", func(t *testing.T) {
+	t.Run("New Pipeline", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
 		var collected []Entry
 		next := func(_ context.Context, entries []Entry) error {
@@ -140,7 +140,7 @@ var (
 // runPipelineBenchmark benchmarks a pipeline built for cfgs against batch.
 // It will run one benchmark for new stage implementation and one for old implementation.
 func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
-	b.Run("Stage", func(b *testing.B) {
+	b.Run("Pipeline", func(b *testing.B) {
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
 		require.NoError(b, err)
 
@@ -168,7 +168,7 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		}
 	})
 
-	b.Run("New Stage", func(b *testing.B) {
+	b.Run("New Pipeline", func(b *testing.B) {
 		collcetor := loki.NewCollectingConsumer()
 		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, collcetor)
 		require.NoError(b, err)
