@@ -37,10 +37,20 @@ func discoverDatabases(ctx context.Context, conn *sql.DB, excludeDatabases []str
 }
 
 // connectToDatabase opens a connection to dbName by rewriting the database
-// name in dsn, using factory. The returned closeFn closes the connection
-// unless it is the same connection as initial (in which case closing it is
-// the caller's responsibility elsewhere).
+// name in dsn, using factory. If dbName is the database dsn (and so initial)
+// already points to, initial is reused directly instead of opening a
+// redundant connection: with the real sql.Open-based factory, a freshly
+// opened *sql.DB is never pointer-equal to initial even for an identical
+// DSN, so skipping the redundant open/close has to happen here, up front.
+// The returned closeFn closes the connection unless it is initial (in which
+// case closing it is the caller's responsibility elsewhere).
 func connectToDatabase(dsn, dbName string, factory databaseConnectionFactory, initial *sql.DB) (conn *sql.DB, closeFn func(), err error) {
+	noopClose := func() {}
+
+	if currentDBName, err := databaseNameFromDSN(dsn); err == nil && currentDBName == dbName {
+		return initial, noopClose, nil
+	}
+
 	databaseDSN, err := replaceDatabaseNameInDSN(dsn, dbName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create DSN for database %s: %w", dbName, err)
