@@ -60,11 +60,13 @@ jobs:
           TARGET_BRANCH: ${{ github.ref_name }}
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
-        # Release branches only manage the root Alloy module. Component modules
-        # (e.g. syntax) release from main and should not open PRs on release/v*.
+        # Release branches manage Alloy and its Helm chart. Other component
+        # modules (e.g. syntax) release from main.
         run: |
           if [[ "${TARGET_BRANCH}" == release/v* ]]; then
-            node index.js --root-only
+            node index.js \
+              --include . \
+              --include operations/helm/charts/alloy
           else
             node index.js
           fi
@@ -99,7 +101,7 @@ jobs:
         with:
           version: v2026.5.18
           sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-          install_args: go
+          install_args: go helm helm-docs
 
       - name: Find release-please branch 🔎
         id: release-branch
@@ -135,6 +137,10 @@ jobs:
       - name: Regenerate collector distro 🏗️
         if: steps.release-branch.outputs.exists == 'true'
         run: make generate-otel-collector-distro
+
+      - name: Regenerate Helm documentation and tests 🏗️
+        if: steps.release-branch.outputs.exists == 'true'
+        run: make generate-helm-docs generate-helm-tests
 
       - name: Write release-please pull request body 📝
         if: steps.release-branch.outputs.exists == 'true'
