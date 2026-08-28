@@ -166,8 +166,8 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 	})
 
 	b.Run("New Pipeline", func(b *testing.B) {
-		collcetor := loki.NewCollectingConsumer()
-		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, collcetor)
+		consumer := loki.NewNopConsumer()
+		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, consumer)
 		require.NoError(b, err)
 		defer pc.Stop()
 
