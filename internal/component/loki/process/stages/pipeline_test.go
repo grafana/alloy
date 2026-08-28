@@ -132,10 +132,7 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 // benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
 // results so the compiler can't optimize the calls being measured away.
-var (
-	benchResultEntries   []Entry
-	benchResultLokiEntry loki.Entry
-)
+var benchResultLokiEntry loki.Entry
 
 // runPipelineBenchmark benchmarks a pipeline built for cfgs against batch.
 // It will run one benchmark for new stage implementation and one for old implementation.
