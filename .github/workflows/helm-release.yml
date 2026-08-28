@@ -1,12 +1,16 @@
 name: Release Helm chart
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: {}
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable Alloy release tag for which to publish a Helm chart
+        required: true
+        type: string
 env:
   ALLOYBOT_APP_NAME: grafana-alloybot
   CR_CONFIGFILE: "${{ github.workspace }}/source/operations/helm/cr.yaml"
-  CT_CONFIGFILE: "${{ github.workspace }}/source/operations/helm/ct.yaml"
   CR_INDEX_PATH: "${{ github.workspace }}/.cr-index"
   CR_PACKAGE_PATH: "${{ github.workspace }}/.cr-release-packages"
   CR_TOOL_PATH: "${{ github.workspace }}/.cr-tool"
@@ -14,57 +18,49 @@ env:
 permissions:
   contents: read
 
+concurrency:
+  group: helm-release
+  cancel-in-progress: false
+
 jobs:
   setup:
+    if: github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'v') && github.event.release.prerelease == false)
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.list-changed.outputs.changed }}
-      chartpath: ${{ steps.list-changed.outputs.chartpath }}
+      changed: ${{ steps.prepare.outputs.changed }}
+      chartpath: ${{ steps.prepare.outputs.chartpath }}
+      desc: ${{ steps.prepare.outputs.desc }}
+      tagname: ${{ steps.prepare.outputs.tagname }}
+      packagename: ${{ steps.prepare.outputs.packagename }}
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
     steps:
-      - name: Checkout
+      - name: Checkout tools
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.repository.default_branch || github.ref }}
+          persist-credentials: false
+
+      - name: Checkout Alloy tag
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
           path: source
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           persist-credentials: false
 
-      - name: Install chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: tools/go.mod
+          cache-dependency-path: tools/go.sum
+          cache: false
 
-      - name: List changed charts
-        id: list-changed
-        run: |
-          cd source
-
-          latest_tag=$( if ! git describe --tags --abbrev=0 --match='helm-chart/*' 2> /dev/null ; then git rev-list --max-parents=0 --first-parent HEAD; fi )
-
-          echo "Running: ct list-changed --config ${CT_CONFIGFILE} --since ${latest_tag} --target-branch ${GH_REF_NAME}"
-          changed=$(ct list-changed --config "${CT_CONFIGFILE}" --since "${latest_tag}" --target-branch "${GH_REF_NAME}")
-          echo "${changed}"
-
-          num_changed=$(wc -l <<< ${changed})
-          if [[ "${num_changed}" -gt "1" ]] ; then
-            echo "More than one chart changed, exiting"
-            exit 1
-          fi
-          if [[ -n "${changed}" ]]; then
-            name=$(yq ".name" < ${changed}/Chart.yaml)
-            version=$(yq ".version" < ${changed}/Chart.yaml)
-
-            if [ $(git tag -l "helm-chart/${version}") ]; then
-              echo "Tag helm-chart/${tagname} already exists, skipping release"
-              echo "changed=false" >> $GITHUB_OUTPUT
-            else
-              echo "Releasing ${changed}"
-              echo "changed=true" >> $GITHUB_OUTPUT
-              echo "chartpath=${changed}" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "No charts have changed, skipping release"
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Prepare Helm release
+        id: prepare
         env:
-          GH_REF_NAME: ${{ github.ref_name }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: go run -C tools ./cmd release prepare-helm --tag "${RELEASE_TAG}" --repo-root "${GITHUB_WORKSPACE}/source"
 
   release:
     needs: [setup]
@@ -92,35 +88,15 @@ jobs:
         with:
           fetch-depth: 0
           path: source
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
           token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: true # Needed for `git push origin tag_name`
-
-      - name: Configure Git
-        run: |
-          cd source
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          persist-credentials: false
 
       - name: Set up Helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           # renovate: datasource=github-releases packageName=helm/helm
           version: v3.21.1
-
-      - name: Parse Chart.yaml
-        id: parse-chart
-        run: |
-          cd source
-          changed="${CHART_PATH}"
-          description=$(yq ".description" < ${changed}/Chart.yaml)
-          name=$(yq ".name" < ${changed}/Chart.yaml)
-          version=$(yq ".version" < ${changed}/Chart.yaml)
-          echo "chartpath=${changed}" >> $GITHUB_OUTPUT
-          echo "desc=${description}" >> $GITHUB_OUTPUT
-          echo "tagname=helm-chart/${version}" >> $GITHUB_OUTPUT
-          echo "packagename=${name}-${version}" >> $GITHUB_OUTPUT
-        env:
-          CHART_PATH: ${{ needs.setup.outputs.chartpath }}
 
       - name: Install CR tool
         run: |
@@ -138,42 +114,26 @@ jobs:
           echo "Result of chart package:"
           ls -l "${CR_PACKAGE_PATH}"
         env:
-          CHART_PATH: ${{ steps.parse-chart.outputs.chartpath }}
-
-      - name: Create tag and check if exists on origin
-        run: |
-          cd source
-          echo "Making tag ${TAG_NAME}"
-          git tag "${TAG_NAME}"
-        env:
-          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
+          CHART_PATH: ${{ needs.setup.outputs.chartpath }}
 
       # Note that this creates a release in grafana/helm-charts with a new tag.
       # The tag name in grafana/helm-charts is <package>-<version>, while the
-      # tag name for grafana/alloy is helm-chart/<version>.
+      # helm-chart/<version> source tag is created by Release-Please.
       - name: Make github release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
-          name: ${{ steps.parse-chart.outputs.packagename }}
+          name: ${{ needs.setup.outputs.packagename }}
           repository: grafana/helm-charts
-          tag_name: ${{ steps.parse-chart.outputs.packagename }}
+          tag_name: ${{ needs.setup.outputs.packagename }}
           token: ${{ steps.app-token.outputs.token }}
           body: |
-            ${{ steps.parse-chart.outputs.desc }}
+            ${{ needs.setup.outputs.desc }}
 
-            Source commit: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+            Source commit: https://github.com/${{ github.repository }}/commit/${{ needs.setup.outputs.source_sha }}
 
-            Tag on source: https://github.com/${{ github.repository }}/releases/tag/${{ steps.parse-chart.outputs.tagname }}
+            Tag on source: https://github.com/${{ github.repository }}/releases/tag/${{ needs.setup.outputs.tagname }}
           files: |
-            ${{ env.CR_PACKAGE_PATH }}/${{ steps.parse-chart.outputs.packagename }}.tgz
-
-      - name: Push release tag on origin
-        run: |
-          cd source
-          echo "Pushing tag ${TAG_NAME}"
-          git push origin "${TAG_NAME}"
-        env:
-          TAG_NAME: ${{ steps.parse-chart.outputs.tagname }}
+            ${{ env.CR_PACKAGE_PATH }}/${{ needs.setup.outputs.packagename }}.tgz
 
       - name: Update helm-charts index.yaml
         run: |
@@ -185,7 +145,7 @@ jobs:
       - name: Publish index.yaml to gh-pages
         uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
         with:
-          commit_message: "Update index.yaml for ${{ steps.parse-chart.outputs.tagname }}"
+          commit_message: "Update index.yaml for ${{ needs.setup.outputs.tagname }}"
           repo: grafana/helm-charts
           branch: gh-pages
           file_pattern: index.yaml

@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/v57/github"
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy/tools/release/internal/gha"
 	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 )
@@ -74,7 +75,7 @@ func run(ctx context.Context, flags flags) (retErr error) {
 		return err
 	}
 	if info == nil {
-		return setGitHubOutput("skipped", "true")
+		return gha.SetOutput("skipped", "true")
 	}
 
 	if flags.dryRun {
@@ -212,7 +213,7 @@ func writeBackportOutputs(info *backportInfo, commitMessage string) error {
 	}
 
 	for name, value := range outputs {
-		if err := setGitHubOutput(name, value); err != nil {
+		if err := gha.SetOutput(name, value); err != nil {
 			return err
 		}
 	}
@@ -270,29 +271,6 @@ func appendOriginalAuthorTrailer(message string, author git.CommitAuthor) string
 	}
 
 	return strings.TrimRight(message, "\n") + "\n\n" + trailer
-}
-
-func setGitHubOutput(name, value string) error {
-	outputPath := os.Getenv("GITHUB_OUTPUT")
-	if outputPath == "" {
-		return nil
-	}
-
-	outputFile, err := os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("opening GITHUB_OUTPUT: %w", err)
-	}
-	defer outputFile.Close()
-
-	delimiter := "EOF"
-	for strings.Contains(value, delimiter) {
-		delimiter += "_EOF"
-	}
-
-	if _, err := fmt.Fprintf(outputFile, "%s<<%s\n%s\n%s\n", name, delimiter, value, delimiter); err != nil {
-		return fmt.Errorf("writing GITHUB_OUTPUT %s: %w", name, err)
-	}
-	return nil
 }
 
 func commentOnBackportFailure(ctx context.Context, client *gh.Client, info *backportInfo, backportErr error) {

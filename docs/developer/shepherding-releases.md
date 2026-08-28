@@ -97,12 +97,14 @@ cut a new RC and repeat step 3.
 4. This will automatically create the corresponding `release/vX.Y` branch (and `backport/vX.Y` label
    if it wasn't already created during the RC phase).
 
-### 6. Update Helm Chart
+### 6. Verify the Helm chart release
 
-1. Create a PR against `main` to update the helm chart code.
-2. Update `Chart.yaml` with the new helm version and app version.
-3. Update `CHANGELOG.md` with a new section for the helm version.
-4. Run `make docs rebuild-tests` from the `operations/helm` directory.
+The release-please PR automatically updates the Helm chart version, sets `appVersion` to the Alloy
+version, updates the Helm changelog, and regenerates Helm documentation and tests. Publishing the
+stable Alloy release then publishes the chart from the same tag.
+
+Confirm that the `Release Helm chart` workflow completes successfully. If it needs to be recovered,
+run that workflow manually with the existing stable Alloy release tag.
 
 ### 7. Update Homebrew
 
@@ -150,6 +152,8 @@ The process for this is exactly the same as a minor release with a few notable e
    truly goofed and backported a feature instead of a fix, revert it and update changelog entries as
    necessary.
 4. Patch releases typically do not have RCs.
+5. Helm automation applies only to release branches created after this process was introduced.
+   Older release branches retain their existing chart state.
 
 ## Publishing fails with a tag rule violation
 

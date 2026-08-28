@@ -51,8 +51,8 @@ other AI-review bots on the same PR. See
 
 ### `release`
 
-Four subcommands that automate the release flow. Each is driven by a GitHub
-Actions workflow and supports `--dry-run` so you can verify what would happen
+Subcommands that automate the release flow. Each is driven by a GitHub
+Actions workflow. Most support `--dry-run` so you can verify what would happen
 without making changes.
 
 **`release create-release-branch --tag=<v1.X.0>`**
@@ -84,6 +84,15 @@ published release's body, and optionally appends a footer template (with
 `${RELEASE_DOC_TAG}` substituted to `vX.Y`). Component release tags (those
 with a `/` like `syntax/v0.1.2`) skip the footer. Driven by
 `release-enrich-release-notes.yml` (fires on release publish).
+
+**`release prepare-helm --tag=<v1.X.Y>`**
+
+Decides whether the Alloy Helm chart should be published for a stable Alloy
+release. It skips non-stable tags, draft/prerelease GitHub releases, and charts
+that already exist on `grafana/helm-charts`. It fails when `Chart.yaml`
+`appVersion` does not match the Alloy tag or when the `helm-chart/<version>`
+source tag is missing. Writes GitHub Actions outputs consumed by
+`helm-release.yml`.
 
 ### `sync-replaces`
 

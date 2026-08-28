@@ -123,11 +123,7 @@ func (c *Client) Repo() string {
 func (c *Client) BranchExists(ctx context.Context, branch string) (bool, error) {
 	_, resp, err := c.api.Repositories.GetBranch(ctx, c.owner, c.repo, branch, 0)
 	if err != nil {
-		if resp != nil && resp.StatusCode == http.StatusNotFound {
-			return false, nil
-		}
-		var errResp *github.ErrorResponse
-		if errors.As(err, &errResp) && errResp.Response.StatusCode == http.StatusNotFound {
+		if isNotFound(resp, err) {
 			return false, nil
 		}
 		return false, err
@@ -314,6 +310,38 @@ func (c *Client) GetReleaseByTag(ctx context.Context, tag string) (*github.Repos
 		return nil, fmt.Errorf("getting release for tag %s: %w", tag, err)
 	}
 	return release, nil
+}
+
+// HasRelease reports whether a GitHub Release exists for the given tag.
+func (c *Client) HasRelease(ctx context.Context, tag string) (bool, error) {
+	_, resp, err := c.api.Repositories.GetReleaseByTag(ctx, c.owner, c.repo, tag)
+	if err != nil {
+		if isNotFound(resp, err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("checking release %s: %w", tag, err)
+	}
+	return true, nil
+}
+
+// HasTag reports whether a git tag exists in the repository.
+func (c *Client) HasTag(ctx context.Context, tag string) (bool, error) {
+	_, resp, err := c.api.Git.GetRef(ctx, c.owner, c.repo, "tags/"+tag)
+	if err != nil {
+		if isNotFound(resp, err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("checking tag %s: %w", tag, err)
+	}
+	return true, nil
+}
+
+func isNotFound(resp *github.Response, err error) bool {
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return true
+	}
+	var errResp *github.ErrorResponse
+	return errors.As(err, &errResp) && errResp.Response != nil && errResp.Response.StatusCode == http.StatusNotFound
 }
 
 // UpdateReleaseBody updates only the body of a release.
