@@ -91,6 +91,7 @@ func (p *PipelineConsumer) Stop() {
 }
 
 func (p *PipelineConsumer) collect(ctx context.Context, entries []Entry) error {
+	// FIXME(kallep): Currently this would set time.Now as creation time for a batch.
 	batch := loki.NewBatch()
 	for _, e := range entries {
 		batch.AddEntry(e.Labels, e.Entry.Entry)
