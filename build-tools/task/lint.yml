@@ -9,6 +9,7 @@ tasks:
       - task: alloylint
       - task: shellcheck
       - task: govulncheck
+      - task: stabilitycheck
 
   go:
     desc: Run golangci-lint.
@@ -36,6 +37,11 @@ tasks:
         {{- end -}}
     cmds:
       - mise exec -- go run ./cmd govulncheck --tags='{{.GOVULNCHECK_TAGS}}'
+
+  stabilitycheck:
+    desc: Check non-GA component tracking in .stability.yaml.
+    cmds:
+      - go run ./internal/cmd/stabilitycheck
 
   alloylint:
     desc: Run the alloylint linter.

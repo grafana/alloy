@@ -1,0 +1,153 @@
+# Tracking list for non-GA (experimental and public-preview) components.
+#
+# Every experimental or public-preview component MUST have an entry here. Each
+# entry needs a `reason` explaining why the component is not yet generally
+# available, and an `expires` date that forces periodic re-review. When `expires`
+# passes, CI fails on that entry until it is renewed or the component graduates.
+# See internal/cmd/stabilitycheck/ for the tool that consumes this file.
+#
+# Community components are NOT tracked here.
+#
+# Keep entries sorted alphabetically by `name`. The check fails if they are not.
+
+components:
+  - name: database_observability.sql_server
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: loki.enrich
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: loki.secretfilter
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: mimir.alerts.kubernetes
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.auth.google
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.connector.count
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.connector.signaltometrics
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.exporter.awss3
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.exporter.debug
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.exporter.faro
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.exporter.file
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.exporter.syslog
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.processor.cumulativetodelta
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.processor.deltatocumulative
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.processor.interval
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.processor.redaction
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.awscloudwatch
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.awsecscontainermetrics
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.awss3
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.cloudflare
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.datadog
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.faro
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.filelog
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.fluentforward
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.nginx
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.splunkhec
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.syslog
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.tcplog
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.receiver.vcenter
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: otelcol.storage.file
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: prometheus.enrich
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: prometheus.exporter.catchpoint
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: prometheus.exporter.static
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: prometheus.operator.scrapeconfigs
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: pyroscope.enrich
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
