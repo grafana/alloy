@@ -27,14 +27,19 @@ func TestClassify(t *testing.T) {
 		{Name: "community.comp", Stability: "experimental", Reason: "ok", Expires: future},
 		{Name: "now.ga", Stability: "experimental", Reason: "ok", Expires: future},
 		{Name: "gone.comp", Stability: "experimental", Reason: "ok", Expires: future},
+	}, Features: []Entry{
+		{Name: "current.feature", Stability: "experimental", Reason: "ok", Expires: future},
+		{Name: "expired.feature", Stability: "public-preview", Reason: "ok", Expires: past},
 	}}
 
 	findings := classify(comps, cfg, now)
 
 	// Index findings by name+kind for assertions.
 	got := make(map[string]findingKind)
+	gotSection := make(map[string]string)
 	for _, f := range findings {
 		got[f.name] = f.kind
+		gotSection[f.name] = f.section
 	}
 
 	want := map[string]findingKind{
@@ -44,6 +49,7 @@ func TestClassify(t *testing.T) {
 		"community.comp":  staleCommunity,
 		"now.ga":          staleGA,
 		"gone.comp":       staleMissing,
+		"expired.feature": expired,
 	}
 
 	if len(findings) != len(want) {
@@ -62,5 +68,16 @@ func TestClassify(t *testing.T) {
 	// GA components without entries must not be flagged.
 	if _, ok := got["ga.comp"]; ok {
 		t.Errorf("ga.comp should not be flagged")
+	}
+	// A current feature entry must not be flagged.
+	if _, ok := got["current.feature"]; ok {
+		t.Errorf("current.feature should not be flagged")
+	}
+	// Feature findings carry the feature section label.
+	if gotSection["expired.feature"] != sectionFeature {
+		t.Errorf("expired.feature section = %q, want %q", gotSection["expired.feature"], sectionFeature)
+	}
+	if gotSection["exp.untracked"] != sectionComponent {
+		t.Errorf("exp.untracked section = %q, want %q", gotSection["exp.untracked"], sectionComponent)
 	}
 }

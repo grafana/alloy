@@ -25,6 +25,10 @@ const placeholderReason = "TODO"
 // Config is the parsed .stability.yaml file.
 type Config struct {
 	Components []Entry `yaml:"components"`
+	// Features tracks non-GA behavior that is not a component (config blocks,
+	// stdlib functions, CLI features). This list is hand-maintained: there is no
+	// registry to enumerate, so the tool cannot detect an untracked feature.
+	Features []Entry `yaml:"features"`
 }
 
 // Entry justifies why one component is not yet generally available.
@@ -63,30 +67,40 @@ func parseConfig(data []byte) (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	seen := make(map[string]bool, len(c.Components))
-	for i, e := range c.Components {
+	if err := validateEntries(c.Components, "components"); err != nil {
+		return err
+	}
+	return validateEntries(c.Features, "features")
+}
+
+// validateEntries checks one entry list. Names must be unique and sorted within
+// the list, and every entry needs a valid non-GA stability, a real reason, and
+// an expiry date.
+func validateEntries(entries []Entry, section string) error {
+	seen := make(map[string]bool, len(entries))
+	for i, e := range entries {
 		if e.Name == "" {
-			return fmt.Errorf("components[%d]: name is required", i)
+			return fmt.Errorf("%s[%d]: name is required", section, i)
 		}
 		if seen[e.Name] {
-			return fmt.Errorf("components[%d]: duplicate name %q", i, e.Name)
+			return fmt.Errorf("%s[%d]: duplicate name %q", section, i, e.Name)
 		}
 		seen[e.Name] = true
 		// Entries must stay sorted by name so the file is easy to scan and edit.
-		if i > 0 && e.Name < c.Components[i-1].Name {
-			return fmt.Errorf("components[%d] (%s): entries must be sorted by name; %q must come before %q", i, e.Name, e.Name, c.Components[i-1].Name)
+		if i > 0 && e.Name < entries[i-1].Name {
+			return fmt.Errorf("%s[%d] (%s): entries must be sorted by name; %q must come before %q", section, i, e.Name, e.Name, entries[i-1].Name)
 		}
 		if !validStability[e.Stability] {
-			return fmt.Errorf("components[%d] (%s): stability must be one of experimental or public-preview, got %q", i, e.Name, e.Stability)
+			return fmt.Errorf("%s[%d] (%s): stability must be one of experimental or public-preview, got %q", section, i, e.Name, e.Stability)
 		}
 		if e.Reason == "" {
-			return fmt.Errorf("components[%d] (%s): reason is required", i, e.Name)
+			return fmt.Errorf("%s[%d] (%s): reason is required", section, i, e.Name)
 		}
 		if e.Reason == placeholderReason {
-			return fmt.Errorf("components[%d] (%s): reason is still the %q placeholder — write a real justification", i, e.Name, placeholderReason)
+			return fmt.Errorf("%s[%d] (%s): reason is still the %q placeholder — write a real justification", section, i, e.Name, placeholderReason)
 		}
 		if e.Expires.IsZero() {
-			return fmt.Errorf("components[%d] (%s): expires is required (YYYY-MM-DD)", i, e.Name)
+			return fmt.Errorf("%s[%d] (%s): expires is required (YYYY-MM-DD)", section, i, e.Name)
 		}
 	}
 	return nil

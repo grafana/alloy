@@ -67,11 +67,11 @@ func enumerate() []registeredComponent {
 // wrapper report style.
 func report(w io.Writer, findings []finding) {
 	if len(findings) == 0 {
-		_, _ = fmt.Fprintln(w, "stabilitycheck: all non-GA components are tracked and current")
+		_, _ = fmt.Fprintln(w, "stabilitycheck: all non-GA components and features are tracked and current")
 		return
 	}
 	for _, f := range findings {
-		_, _ = fmt.Fprintf(w, "  [FAIL] %s: %s\n", f.name, f.message)
+		_, _ = fmt.Fprintf(w, "  [FAIL] (%s) %s: %s\n", f.section, f.name, f.message)
 	}
 	_, _ = fmt.Fprintf(w, "  → %d problem(s) found\n", len(findings))
 }

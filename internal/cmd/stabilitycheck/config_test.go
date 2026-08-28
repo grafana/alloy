@@ -17,6 +17,11 @@ components:
     stability: public-preview
     reason: "needs load testing before GA"
     expires: 2027-01-01
+features:
+  - name: foreach block
+    stability: experimental
+    reason: "iteration semantics still changing"
+    expires: 2026-10-01
 `
 	cfg, err := parseConfig([]byte(yaml))
 	if err != nil {
@@ -24,6 +29,9 @@ components:
 	}
 	if got, want := len(cfg.Components), 2; got != want {
 		t.Fatalf("component count = %d, want %d", got, want)
+	}
+	if got, want := len(cfg.Features), 1; got != want {
+		t.Fatalf("feature count = %d, want %d", got, want)
 	}
 	wantExp := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	if !cfg.Components[0].Expires.Equal(wantExp) {
@@ -76,6 +84,16 @@ func TestParseConfig_Errors(t *testing.T) {
 			name:       "unknown field rejected",
 			yaml:       "components:\n  - name: a.b\n    stability: experimental\n    reason: x\n    expires: 2026-10-01\n    severity: high\n",
 			wantSubstr: "field severity not found",
+		},
+		{
+			name:       "feature missing reason",
+			yaml:       "features:\n  - name: foreach block\n    stability: experimental\n    expires: 2026-10-01\n",
+			wantSubstr: "features[0] (foreach block): reason is required",
+		},
+		{
+			name:       "features not sorted by name",
+			yaml:       "features:\n  - name: foreach block\n    stability: experimental\n    reason: x\n    expires: 2026-10-01\n  - name: Windows process priority\n    stability: public-preview\n    reason: y\n    expires: 2026-10-01\n",
+			wantSubstr: "features[1] (Windows process priority): entries must be sorted by name",
 		},
 	}
 	for _, tc := range tests {

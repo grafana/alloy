@@ -1,14 +1,21 @@
-# Tracking list for non-GA (experimental and public-preview) components.
+# Tracking list for non-GA (experimental and public-preview) behavior.
 #
-# Every experimental or public-preview component MUST have an entry here. Each
-# entry needs a `reason` explaining why the component is not yet generally
+# Every entry needs a `reason` explaining why the item is not yet generally
 # available, and an `expires` date that forces periodic re-review. When `expires`
-# passes, CI fails on that entry until it is renewed or the component graduates.
+# passes, CI fails on that entry until it is renewed or the item graduates.
 # See internal/cmd/stabilitycheck/ for the tool that consumes this file.
 #
-# Community components are NOT tracked here.
+# Two sections:
+#   components: Every non-GA component MUST have an entry. The tool enumerates
+#     the component registry, so an untracked non-GA component fails CI.
+#     Community components are NOT tracked here.
+#   features:   Non-GA behavior that is not a component (config blocks, stdlib
+#     functions, CLI features). This list is HAND-MAINTAINED and NOT guaranteed
+#     complete — there is no registry to enumerate, so the tool cannot detect an
+#     untracked feature. Add an entry when you add a non-GA feature.
 #
-# Keep entries sorted alphabetically by `name`. The check fails if they are not.
+# Keep entries in each section sorted alphabetically by `name`. The check fails
+# if they are not.
 
 components:
   - name: database_observability.sql_server
@@ -148,6 +155,24 @@ components:
     reason: TODO
     expires: 2026-10-01
   - name: pyroscope.enrich
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+
+features:
+  - name: Windows process priority
+    stability: public-preview
+    reason: TODO
+    expires: 2026-10-01
+  - name: foreach block
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: stdlib array.combine_maps
+    stability: experimental
+    reason: TODO
+    expires: 2026-10-01
+  - name: stdlib array.group_by
     stability: experimental
     reason: TODO
     expires: 2026-10-01

@@ -37,9 +37,16 @@ const (
 	staleCommunity
 )
 
+// Section names distinguish component findings from feature findings in output.
+const (
+	sectionComponent = "component"
+	sectionFeature   = "feature"
+)
+
 // finding is one failure to report.
 type finding struct {
 	kind    findingKind
+	section string
 	name    string
 	message string
 }
@@ -65,6 +72,7 @@ func classify(comps []registeredComponent, cfg *Config, now time.Time) []finding
 		if !ok {
 			findings = append(findings, finding{
 				kind:    missingEntry,
+				section: sectionComponent,
 				name:    c.Name,
 				message: missingEntrySnippet(c),
 			})
@@ -73,6 +81,7 @@ func classify(comps []registeredComponent, cfg *Config, now time.Time) []finding
 		if e.Stability != c.Stability {
 			findings = append(findings, finding{
 				kind:    levelMismatch,
+				section: sectionComponent,
 				name:    c.Name,
 				message: fmt.Sprintf("entry says stability %q but code says %q — update and re-justify", e.Stability, c.Stability),
 			})
@@ -80,6 +89,7 @@ func classify(comps []registeredComponent, cfg *Config, now time.Time) []finding
 		if now.After(e.Expires) {
 			findings = append(findings, finding{
 				kind:    expired,
+				section: sectionComponent,
 				name:    c.Name,
 				message: fmt.Sprintf("review expired on %s — renew or remove the entry", e.Expires.Format("2006-01-02")),
 			})
@@ -93,25 +103,44 @@ func classify(comps []registeredComponent, cfg *Config, now time.Time) []finding
 		case !ok:
 			findings = append(findings, finding{
 				kind:    staleMissing,
+				section: sectionComponent,
 				name:    e.Name,
 				message: "component no longer exists — remove the entry",
 			})
 		case c.Community:
 			findings = append(findings, finding{
 				kind:    staleCommunity,
+				section: sectionComponent,
 				name:    e.Name,
 				message: "component is a community component and must not be tracked — remove the entry",
 			})
 		case c.Stability == gaStability:
 			findings = append(findings, finding{
 				kind:    staleGA,
+				section: sectionComponent,
 				name:    e.Name,
 				message: "component is now generally available — remove the entry",
 			})
 		}
 	}
 
+	// Features are hand-maintained and not enumerable, so the only runtime check
+	// is expiry. Everything else is enforced when the config is parsed.
+	for _, e := range cfg.Features {
+		if now.After(e.Expires) {
+			findings = append(findings, finding{
+				kind:    expired,
+				section: sectionFeature,
+				name:    e.Name,
+				message: fmt.Sprintf("review expired on %s — renew or remove the entry", e.Expires.Format("2006-01-02")),
+			})
+		}
+	}
+
 	sort.SliceStable(findings, func(i, j int) bool {
+		if findings[i].section != findings[j].section {
+			return findings[i].section < findings[j].section
+		}
 		if findings[i].name != findings[j].name {
 			return findings[i].name < findings[j].name
 		}
