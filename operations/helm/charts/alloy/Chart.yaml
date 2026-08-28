@@ -3,7 +3,9 @@ name: alloy
 description: "Grafana Alloy"
 type: application
 version: 1.12.1
-appVersion: "v1.19.2"  # x-release-please-version
+# x-release-please-start-version
+appVersion: "v1.19.2"
+# x-release-please-end
 icon: https://raw.githubusercontent.com/grafana/alloy/main/docs/sources/assets/alloy_icon_orange.svg
 
 dependencies:
