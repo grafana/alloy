@@ -283,6 +283,16 @@ Function InitializeRegistry
     Pop $0 # Ignore return result
   ${EndIf}
 
+  # Define the OTelArguments key, which holds extra flags for the OTel
+  # engine only, mirroring Arguments for the default engine. Empty by
+  # default; edited by hand after install, the same way Arguments is.
+  nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v OTelArguments'
+  Pop $0
+  ${If} $0 == 1
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v OTelArguments /t REG_MULTI_SZ /d ""'
+    Pop $0 # Ignore return result
+  ${EndIf}
+
   Return
 FunctionEnd
 

@@ -27,13 +27,22 @@ func isOtelMode(value string) bool {
 //     install-time config path. The caller builds this path before
 //     calling in, since path joining is platform-specific and this
 //     function must stay OS-agnostic.
+//   - otelArguments is the raw OTelArguments registry value: extra flags
+//     for the OTel engine only, mirroring CUSTOM_OTEL_ARGS on systemd and
+//     otel-extra-args.txt on Homebrew. Placed before --config= so a
+//     repeated --config flag still resolves to the last one, matching
+//     upstream otelcol's own flag semantics.
 //   - defaultEngineArgs is Args exactly as read from the registry
 //     Arguments value (e.g. ["run", "<config>", "--storage.path=...", ...]).
 //     It is returned unmodified whenever otelMode is not truthy, so
 //     existing installs are byte-for-byte unaffected.
-func resolveEngineArgs(otelMode, otelConfigDefault string, defaultEngineArgs []string) []string {
+func resolveEngineArgs(otelMode, otelConfigDefault string, otelArguments, defaultEngineArgs []string) []string {
 	if !isOtelMode(otelMode) {
 		return defaultEngineArgs
 	}
-	return []string{"otel", "--config=" + otelConfigDefault}
+	args := make([]string, 0, len(otelArguments)+2)
+	args = append(args, "otel")
+	args = append(args, otelArguments...)
+	args = append(args, "--config="+otelConfigDefault)
+	return args
 }

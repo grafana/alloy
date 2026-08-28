@@ -26,3 +26,14 @@ func RegistryStringValue(registryPath, name string) (string, error) {
 	v, _, err := k.GetStringValue(name)
 	return v, err
 }
+
+// RegistryStringsValue reads a REG_MULTI_SZ value under HKLM at registryPath.
+func RegistryStringsValue(registryPath, name string) ([]string, error) {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, registryPath, registry.READ)
+	if err != nil {
+		return nil, err
+	}
+	defer k.Close()
+	v, _, err := k.GetStringsValue(name)
+	return v, err
+}

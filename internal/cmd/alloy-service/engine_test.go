@@ -25,6 +25,7 @@ func TestResolveEngineArgs(t *testing.T) {
 		name              string
 		otelMode          string
 		otelConfigDefault string
+		otelArguments     []string
 		defaultEngineArgs []string
 		want              []string
 	}{
@@ -52,6 +53,12 @@ func TestResolveEngineArgs(t *testing.T) {
 			want:              defaultArgs,
 		},
 		{
+			name:              "default engine ignores OTelArguments, the OTel engine's flags",
+			otelArguments:     []string{"--set=processors.batch.timeout=2s"},
+			defaultEngineArgs: defaultArgs,
+			want:              defaultArgs,
+		},
+		{
 			name:              "otel mode, config path",
 			otelMode:          "1",
 			otelConfigDefault: `C:\ProgramData\GrafanaLabs\Alloy\config.yaml`,
@@ -65,11 +72,19 @@ func TestResolveEngineArgs(t *testing.T) {
 			defaultEngineArgs: defaultArgs,
 			want:              []string{"otel", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`},
 		},
+		{
+			name:              "otel mode, OTelArguments applies before --config",
+			otelMode:          "1",
+			otelConfigDefault: `C:\ProgramData\GrafanaLabs\Alloy\config.yaml`,
+			otelArguments:     []string{"--set=processors.batch.timeout=2s"},
+			defaultEngineArgs: defaultArgs,
+			want:              []string{"otel", "--set=processors.batch.timeout=2s", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`},
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			got := resolveEngineArgs(tc.otelMode, tc.otelConfigDefault, tc.defaultEngineArgs)
+			got := resolveEngineArgs(tc.otelMode, tc.otelConfigDefault, tc.otelArguments, tc.defaultEngineArgs)
 			if len(got) != len(tc.want) {
 				t.Fatalf("got %v, want %v", got, tc.want)
 			}
