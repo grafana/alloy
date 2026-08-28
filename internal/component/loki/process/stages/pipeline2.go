@@ -58,7 +58,6 @@ type PipelineConsumer struct {
 
 // Consume implements loki.Consumer.
 func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error {
-	// FIXME(kalleep): pool of entry slices?
 	entries := make([]Entry, 0, batch.EntryLen())
 	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
 		entries = slices.Grow(entries[:0], len(stream.Entries))
@@ -77,7 +76,8 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 			} else {
 				entries = append(entries, Entry{
 					Extracted: maps.Clone(extracted),
-					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
+					//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e),
 				})
 			}
 		}
@@ -91,7 +91,6 @@ func (p *PipelineConsumer) Stop() {
 }
 
 func (p *PipelineConsumer) collect(ctx context.Context, entries []Entry) error {
-	// FIXME(kalleep): restore batch creation time?
 	batch := loki.NewBatch()
 	for _, e := range entries {
 		batch.AddEntry(e.Labels, e.Entry.Entry)

@@ -80,10 +80,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 		)
 
 		for _, e := range stream.Entries {
-			// FIXME(kalleep): This clone protects stream.Labels from in-place mutation
-			// through Entry.Labels, which is a map. Most FilterMap callbacks do not change
-			// labels, so once the new batched pipeline owns this path, consider replacing
-			// direct label access with copy-on-write label mutation methods.
+			//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
 			if !fn(&entry) {
 				continue
@@ -143,8 +140,7 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// and may merge into an existing stream.
 	for i := range b.streams {
 		stream := Stream{
-			// FIXME(kalleep): Once the new batched pipeline owns this path, consider
-			// copy-on-write label mutation methods so unchanged streams skip the copy.
+			//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
 		}
