@@ -3,8 +3,11 @@ package enrich
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"sync"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -30,11 +33,15 @@ type Arguments struct {
 	// The targets to use for enrichment
 	Targets []discovery.Target `alloy:"targets,attr"`
 
-	// Which label from targets to use for matching (e.g. "hostname", "ip")
-	TargetMatchLabel string `alloy:"target_match_label,attr"`
+	// Multi-label matching: a map of target_label -> log_label.
+	// Takes precedence over target_match_label / logs_match_label.
+	TargetToLogMatch map[string]string `alloy:"target_to_log_match,attr,optional"`
 
-	// Which label from logs to match against (e.g. "hostname", "ip")
-	// If not specified, TargetMatchLabel will be used
+	// Legacy: which label from targets to use for matching (e.g. "hostname", "ip").
+	TargetMatchLabel string `alloy:"target_match_label,attr,optional"`
+
+	// Legacy: which label from logs to match against (e.g. "hostname", "ip").
+	// If not specified, TargetMatchLabel will be used.
 	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
 
 	// List of labels to copy from discovered targets to logs. If empty, all labels will be copied.
@@ -44,8 +51,51 @@ type Arguments struct {
 	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
 }
 
+// Validate implements syntax.Validator.
+func (a Arguments) Validate() error {
+	hasLegacy := a.TargetMatchLabel != "" || a.LogsMatchLabel != ""
+	hasNew := len(a.TargetToLogMatch) > 0
+
+	if !hasLegacy && !hasNew {
+		return fmt.Errorf("at least one match mechanism must be specified: set target_match_label or target_to_log_match")
+	}
+	// target_to_log_match takes precedence when set; legacy fields are ignored.
+	if hasLegacy && !hasNew && a.TargetMatchLabel == "" {
+		return fmt.Errorf("target_match_label must be set when using legacy match fields")
+	}
+	return nil
+}
+
 type Exports struct {
 	Receiver loki.LogsReceiver `alloy:"receiver,attr,optional"`
+}
+
+var sep = []byte{0xff} // separator to prevent hash collisions across value boundaries
+
+// hashValuesFromLabelSet hashes the values of the given label names (in order)
+// from a model.LabelSet. Returns (0, false) if names is empty or any label is
+// missing or empty.
+func hashValuesFromLabelSet(ls model.LabelSet, names []string) (uint64, bool) {
+	if len(names) == 0 {
+		return 0, false
+	}
+	h := xxhash.New()
+	for _, name := range names {
+		v := string(ls[model.LabelName(name)])
+		if v == "" {
+			return 0, false
+		}
+		_, _ = h.WriteString(v)
+		_, _ = h.Write(sep)
+	}
+	return h.Sum64(), true
+}
+
+// matchCache holds the hash-based lookup for a match strategy.
+type matchCache struct {
+	sortedLogLabels []string                  // log label names to hash, sorted by corresponding target label name
+	cache           map[uint64]model.LabelSet // hash of values -> target label set
+	labelsToCopy    []string                  // snapshot of which target labels to copy (empty means copy all)
 }
 
 type Component struct {
@@ -55,19 +105,16 @@ type Component struct {
 	fanout      *loki.Fanout
 	interceptor *loki.InterceptorConsumer
 
-	mut          sync.RWMutex
-	stopped      bool
-	args         Arguments
-	targetsCache map[string]model.LabelSet
+	mut     sync.RWMutex
+	stopped bool
+	mc      *matchCache
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:         opts,
-		args:         args,
-		targetsCache: make(map[string]model.LabelSet),
-		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
-		fanout:       loki.NewFanout(args.ForwardTo),
+		opts:     opts,
+		receiver: loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
+		fanout:   loki.NewFanout(args.ForwardTo),
 	}
 
 	c.interceptor = loki.NewInterceptorConsumer(
@@ -121,11 +168,10 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.args = newArgs
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// Update the targets cache with new targets
-	c.refreshCacheFromTargets(newArgs.Targets)
+	c.refreshCacheFromTargets(newArgs)
 
 	return nil
 }
@@ -133,23 +179,16 @@ func (c *Component) Update(args component.Arguments) error {
 // process returns lset enriched with labels from a matching target. Set
 // needsClone when the caller does not own lset.
 func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet {
-	// Determine which label to use for matching
-	matchLabel := c.args.LogsMatchLabel
-	if matchLabel == "" {
-		matchLabel = c.args.TargetMatchLabel
-	}
-
-	// Get the source value to match against discovered targets
-	sourceValue := string(lset[model.LabelName(matchLabel)])
-	if sourceValue == "" {
-		// No match label, forward as-is
+	if c.mc == nil {
 		return lset
 	}
 
-	// Look up matching target
-	targetLabels, found := c.targetsCache[sourceValue]
+	h, ok := hashValuesFromLabelSet(lset, c.mc.sortedLogLabels)
+	if !ok {
+		return lset
+	}
+	targetLabels, found := c.mc.cache[h]
 	if !found {
-		// No matching target, forward as-is
 		return lset
 	}
 
@@ -157,14 +196,14 @@ func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet
 		lset = lset.Clone()
 	}
 
-	if len(c.args.LabelsToCopy) == 0 {
+	if len(c.mc.labelsToCopy) == 0 {
 		// If no specific labels are requested, copy all labels
 		for k, v := range targetLabels {
 			lset[k] = v
 		}
 	} else {
 		// Copy only requested labels
-		for _, label := range c.args.LabelsToCopy {
+		for _, label := range c.mc.labelsToCopy {
 			if value := targetLabels[model.LabelName(label)]; value != "" {
 				lset[model.LabelName(label)] = value
 			}
@@ -173,13 +212,45 @@ func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet
 	return lset
 }
 
-func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
-	newCache := make(map[string]model.LabelSet)
-	for _, target := range targets {
-		lset := target.LabelSet()
-		if matchValue := string(lset[model.LabelName(c.args.TargetMatchLabel)]); matchValue != "" {
-			newCache[matchValue] = lset
-		}
+// sortStrategyMap converts a target_label->log_label map into sorted parallel
+// slices for deterministic hashing.
+func sortStrategyMap(m map[string]string) (targetLabels, logLabels []string) {
+	targetLabels = make([]string, 0, len(m))
+	for k := range m {
+		targetLabels = append(targetLabels, k)
 	}
-	c.targetsCache = newCache
+	sort.Strings(targetLabels)
+
+	logLabels = make([]string, 0, len(targetLabels))
+	for _, k := range targetLabels {
+		logLabels = append(logLabels, m[k])
+	}
+	return targetLabels, logLabels
+}
+
+func (c *Component) refreshCacheFromTargets(args Arguments) {
+	strategyMap := args.TargetToLogMatch
+	if len(strategyMap) == 0 && args.TargetMatchLabel != "" {
+		logsLabel := args.LogsMatchLabel
+		if logsLabel == "" {
+			logsLabel = args.TargetMatchLabel
+		}
+		strategyMap = map[string]string{args.TargetMatchLabel: logsLabel}
+	}
+
+	sortedTargetLabels, sortedLogLabels := sortStrategyMap(strategyMap)
+	cache := make(map[uint64]model.LabelSet)
+	for _, target := range args.Targets {
+		lset := target.LabelSet()
+		h, ok := hashValuesFromLabelSet(lset, sortedTargetLabels)
+		if !ok {
+			continue
+		}
+		cache[h] = lset
+	}
+	c.mc = &matchCache{
+		sortedLogLabels: sortedLogLabels,
+		cache:           cache,
+		labelsToCopy:    args.LabelsToCopy,
+	}
 }
