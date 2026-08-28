@@ -100,7 +100,9 @@ func TestReadChartParsesAppVersionComment(t *testing.T) {
 name: alloy
 description: Grafana Alloy
 version: 1.12.1
-appVersion: "v1.19.2"  # x-release-please-version
+# x-release-please-start-version
+appVersion: "v1.19.2"
+# x-release-please-end
 `), 0o600))
 
 	got, err := readChart(path)
