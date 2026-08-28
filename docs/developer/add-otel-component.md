@@ -62,7 +62,7 @@ Bundled components follow the upstream OpenTelemetry Collector [component lifecy
 * If a component is marked **deprecated** upstream, it's also marked deprecated in the Alloy distribution and kept for at least two more minor releases before removal.
 * If a component becomes **unmaintained** upstream, the same process applies and it's removed after it has been unmaintained for three months.
 
-In either case, notice is provided, and users can [create a custom build using OCB][ocb] to include a deprecated component.
+In either case, maintainers provide notice, and users can [create a custom build using OCB][ocb] to include a deprecated component.
 
 ## Before you begin
 
