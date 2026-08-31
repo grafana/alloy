@@ -1,4 +1,5 @@
 {
   ".": "1.19.0",
-  "syntax": "0.1.2"
+  "syntax": "0.1.2",
+  "operations/helm/charts/alloy": "1.12.1"
 }

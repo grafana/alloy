@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/tools/release/createrc"
 	"github.com/grafana/alloy/tools/release/createreleasebranch"
 	"github.com/grafana/alloy/tools/release/enrichreleasenotes"
+	"github.com/grafana/alloy/tools/release/preparehelm"
 )
 
 func Command() *cobra.Command {
@@ -25,6 +26,7 @@ func Command() *cobra.Command {
 		createrc.Command(),
 		createreleasebranch.Command(),
 		enrichreleasenotes.Command(),
+		preparehelm.Command(),
 	)
 
 	return cmd
