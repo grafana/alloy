@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {
@@ -78,8 +79,8 @@ func (c *Component) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case entry := <-c.receiver.Chan():
-			_ = c.ConsumeEntry(ctx, entry)
+		case e := <-c.receiver.Chan():
+			c.printEntry(e.Labels.String(), e.Entry)
 		}
 	}
 }
@@ -97,28 +98,21 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
-		logger := c.opts.Logger.With("labels", stream.Labels.String())
+		lbls := stream.Labels.String()
 		for _, e := range stream.Entries {
-			sm, err := e.StructuredMetadata.MarshalJSON()
-			if err != nil {
-				logger.Error("failed to marshal structured metadata", "error", err)
-				sm = []byte("{}")
-			}
-			logger.Info("received log entry", "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
+			c.printEntry(lbls, e)
 		}
 		return nil
 	})
 }
 
-// TODO: Remove this when we have moved over to batching.
-func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
-	structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+func (c *Component) printEntry(lbls string, e push.Entry) {
+	sm, err := e.StructuredMetadata.MarshalJSON()
 	if err != nil {
 		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
-		structured_metadata = []byte("{}")
+		sm = []byte("{}")
 	}
-	c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
-	return nil
+	c.opts.Logger.Info("received log entry", "labels", lbls, "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
 }
 
 func (c *Component) String() string {

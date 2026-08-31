@@ -29,8 +29,8 @@ PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOAR
 # own. It has no standalone libssp.a to link against. Passing -lssp there
 # fails the link with "cannot find -lssp".
 #
-# Add -lssp only when the build does not run natively on Windows.
-WINDOWS_CGO_LDFLAGS := $(if $(filter windows,$(shell go env GOHOSTOS)),,-lssp)
+# Add -static -lssp only when the build does not run natively on Windows.
+WINDOWS_CGO_LDFLAGS := $(if $(filter windows,$(shell go env GOHOSTOS)),,-static -lssp)
 
 .PHONY: dist-alloy-mixin-zip
 dist-alloy-mixin-zip:
