@@ -109,7 +109,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// FIXME(kalleep): Forward entries through consumer interface once we have migrated at pipeline level.
 		// See https://github.com/grafana/alloy/issues/4953
 		loki.NewNopConsumer(),
-		loki.WithConsumeHook(func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+		func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
 			c.mut.RLock()
 			defer c.mut.RUnlock()
 
@@ -145,43 +145,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			c.metrics.entriesOutgoing.Add(float64(batch.EntryLen()))
 			return batch, nil
-		}),
-		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
-			c.mut.RLock()
-			defer c.mut.RUnlock()
-
-			if c.stopped {
-				return loki.Entry{}, false, loki.ErrConsumerStopped
-			}
-
-			c.metrics.entriesProcessed.Inc()
-
-			relabeled, ok := c.relabel(entry.Labels)
-			count := uint64(1)
-			if !ok {
-				count = 0
-			}
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				livedebugging.ComponentID(c.opts.ID),
-				livedebugging.LokiLog,
-				count,
-				func() string {
-					if !ok {
-						return fmt.Sprintf("entry: %s, labels: %s => <dropped>", entry.Line, entry.Labels.String())
-					}
-					return fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), relabeled.String())
-				},
-			))
-
-			if !ok {
-				c.opts.Logger.Debug("dropping entry after relabeling", "labels", entry.Labels.String())
-				return loki.Entry{}, false, nil
-			}
-
-			c.metrics.entriesOutgoing.Inc()
-			entry.Labels = relabeled
-			return entry, true, nil
-		}),
+		},
 	)
 
 	// Call to Update() to set the relabelling rules once at the start and export rules and receiver.
