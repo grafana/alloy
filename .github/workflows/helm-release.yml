@@ -22,7 +22,7 @@ jobs:
       chartpath: ${{ steps.list-changed.outputs.chartpath }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           path: source
@@ -79,7 +79,7 @@ jobs:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout helm-charts
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           repository: grafana/helm-charts
@@ -88,7 +88,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout Alloy
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
           path: source
@@ -102,10 +102,10 @@ jobs:
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
       - name: Set up Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # renovate: datasource=github-releases packageName=helm/helm
-          version: v3.21.1
+          version: v3.21.4
 
       - name: Parse Chart.yaml
         id: parse-chart
@@ -152,7 +152,7 @@ jobs:
       # The tag name in grafana/helm-charts is <package>-<version>, while the
       # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           name: ${{ steps.parse-chart.outputs.packagename }}
           repository: grafana/helm-charts
@@ -183,7 +183,7 @@ jobs:
           TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Publish index.yaml to gh-pages
-        uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # v0.2.22
         with:
           commit_message: "Update index.yaml for ${{ steps.parse-chart.outputs.tagname }}"
           repo: grafana/helm-charts

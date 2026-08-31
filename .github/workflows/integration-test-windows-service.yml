@@ -20,15 +20,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
       - name: Setup tools
-        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.5.18
-          sha256: 62aad5146848c6fb278eff90558940bd5685bb3ba7e34d64fd4e6ec9ed431f0d
+          version: v2026.8.14
+          sha256: e16cd48db29107388d60558a2389bf246c6c77ea1a78e9af48a5f4994d706659
           install_args: go
 
       # TODO: Align the way we create the installer here, with the way it's created in for the official GitHub release.
@@ -39,7 +39,7 @@ jobs:
 
       - name: Cache NSIS AccessControl plugin
         id: cache-accesscontrol
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ runner.temp }}\AccessControl.zip
           key: nsis-accesscontrol-zip-v1

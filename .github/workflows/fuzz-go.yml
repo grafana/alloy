@@ -28,7 +28,7 @@ jobs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
       - name: Find fuzz tests
@@ -79,12 +79,12 @@ jobs:
         include: ${{ fromJson(needs.find-tests.outputs.tests) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
           cache: false
@@ -93,7 +93,7 @@ jobs:
         run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
