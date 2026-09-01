@@ -35,6 +35,11 @@ func TestCRIStage(t *testing.T) {
 		cfg                         CRIConfig
 		expectedPartialLinesFlushed int
 		expectedLinesTruncated      int
+
+		// Set these when the new pipeline is expected to differ, because it
+		// checks max_partial_lines once per batch rather than per entry.
+		expectedNew                    []Entry
+		expectedNewPartialLinesFlushed int
 	}
 
 	tests := []testCase{
@@ -257,6 +262,37 @@ func TestCRIStage(t *testing.T) {
 				),
 			},
 			expectedPartialLinesFlushed: 3,
+			// process appends every partial first and only then checks the
+			// limit, so the three streams that get a full line in this batch
+			// merge normally and nothing is flushed early. The one stream left
+			// buffered is emitted by stop.
+			expectedNew: []Entry{
+				newEntry(
+					map[string]any{"label1": "val1", "label2": "val2", "flags": "F", "stream": "stdout", "content": "log finished", "time": tagFTime2Str},
+					model.LabelSet{"label1": "val1", "label2": "val2", "stream": "stdout"},
+					"partial line 1 partial line 3 log finished",
+					tagFTime2,
+				),
+				newEntry(
+					map[string]any{"label1": "val3", "flags": "F", "stream": "stdout", "content": "another full log", "time": tagFTime2Str},
+					model.LabelSet{"label1": "val3", "stream": "stdout"},
+					"partial line 4 another full log",
+					tagFTime2,
+				),
+				newEntry(
+					map[string]any{"label1": "val4", "flags": "F", "stream": "stdout", "content": "yet an another full log", "time": tagFTime2Str},
+					model.LabelSet{"label1": "val4", "stream": "stdout"},
+					"partial line 5 yet an another full log",
+					tagFTime2,
+				),
+				newEntry(
+					map[string]any{"label1": "val1", "flags": "P", "stream": "stdout", "content": "partial line 2 ", "time": tagFTime1Str},
+					model.LabelSet{"label1": "val1", "stream": "stdout"},
+					"partial line 2 ",
+					tagFTime1,
+				),
+			},
+			expectedNewPartialLinesFlushed: 0,
 		},
 	}
 
@@ -264,16 +300,30 @@ func TestCRIStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			expectedMetrics := fmt.Sprintf(`
+			metricsFor := func(flushed int) string {
+				return fmt.Sprintf(`
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total %d
 # HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total %d
-`, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
+`, tt.expectedLinesTruncated, flushed)
+			}
 
-			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, expectedMetrics)
+			wantOld := pipelineExpectation{
+				entries: tt.expected,
+				metrics: metricsFor(tt.expectedPartialLinesFlushed),
+			}
+			wantNew := wantOld
+			if tt.expectedNew != nil {
+				wantNew = pipelineExpectation{
+					entries: tt.expectedNew,
+					metrics: metricsFor(tt.expectedNewPartialLinesFlushed),
+				}
+			}
+
+			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, wantOld, wantNew)
 		})
 	}
 }
