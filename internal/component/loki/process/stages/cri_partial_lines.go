@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"slices"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -9,21 +8,39 @@ import (
 	"go.uber.org/atomic"
 )
 
-type partialLineStore struct {
+const partialLineStripeCount = 16
+
+type partialLineStripe struct {
 	mut   sync.Mutex
 	lines map[model.Fingerprint]Entry
-	size  atomic.Int64
+}
+
+type partialLineStore struct {
+	// size is only exact while every stripe lock is held. Other readers treat it
+	// as a hint. flushing keeps concurrent callers from all queueing on lockAll.
+	size     atomic.Int64
+	flushing atomic.Bool
+
+	stripes [partialLineStripeCount]partialLineStripe
 
 	cfg            CRIConfig
 	linesTruncated prometheus.Counter
 }
 
 func newPartialLineStore(cfg CRIConfig, linesTruncated prometheus.Counter) *partialLineStore {
-	return &partialLineStore{
-		lines:          make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+	s := &partialLineStore{
 		cfg:            cfg,
 		linesTruncated: linesTruncated,
 	}
+	perStripe := cfg.MaxPartialLines/partialLineStripeCount + 1
+	for i := range s.stripes {
+		s.stripes[i].lines = make(map[model.Fingerprint]Entry, perStripe)
+	}
+	return s
+}
+
+func (s *partialLineStore) stripe(fp model.Fingerprint) *partialLineStripe {
+	return &s.stripes[uint64(fp)&(partialLineStripeCount-1)]
 }
 
 func (s *partialLineStore) Size() int {
@@ -31,65 +48,91 @@ func (s *partialLineStore) Size() int {
 }
 
 func (s *partialLineStore) Append(fp model.Fingerprint, e Entry) {
-	s.mut.Lock()
-	defer s.mut.Unlock()
+	st := s.stripe(fp)
+	st.mut.Lock()
+	defer st.mut.Unlock()
 
-	if prev, ok := s.lines[fp]; ok {
+	prev, existed := st.lines[fp]
+	if existed {
 		e.Line = prev.Line + e.Line
 	}
 	truncatePartialLine(&e, s.cfg, s.linesTruncated)
-	s.lines[fp] = e
-	s.size.Store(int64(len(s.lines)))
+	st.lines[fp] = e
+	if !existed {
+		s.size.Add(1)
+	}
 }
 
 func (s *partialLineStore) Take(fp model.Fingerprint) (Entry, bool) {
-	s.mut.Lock()
-	defer s.mut.Unlock()
+	st := s.stripe(fp)
+	st.mut.Lock()
+	defer st.mut.Unlock()
 
-	e, ok := s.lines[fp]
+	e, ok := st.lines[fp]
 	if !ok {
 		return Entry{}, false
 	}
-	delete(s.lines, fp)
-	s.size.Store(int64(len(s.lines)))
+	delete(st.lines, fp)
+	s.size.Add(-1)
 	return e, true
 }
 
-func (s *partialLineStore) DrainIfAtLeast(n int, buf []Entry) []Entry {
+func (s *partialLineStore) DrainIfAtLeast(n int) []Entry {
 	if s.Size() < n {
-		return buf
+		return nil
 	}
-
-	s.mut.Lock()
-	defer s.mut.Unlock()
-
-	if len(s.lines) < n {
-		return buf
+	if !s.flushing.CompareAndSwap(false, true) {
+		return nil
 	}
-	return s.drainLocked(buf)
+	defer s.flushing.Store(false)
+
+	s.lockAll()
+	defer s.unlockAll()
+
+	// Another caller may already have drained the store while this one waited.
+	if int(s.size.Load()) < n {
+		return nil
+	}
+	return s.drainLocked()
 }
 
-func (s *partialLineStore) DrainAll(buf []Entry) []Entry {
-	s.mut.Lock()
-	defer s.mut.Unlock()
+func (s *partialLineStore) DrainAll() []Entry {
+	s.lockAll()
+	defer s.unlockAll()
 
-	return s.drainLocked(buf)
+	return s.drainLocked()
 }
 
 func (s *partialLineStore) Reset() {
-	s.mut.Lock()
-	defer s.mut.Unlock()
+	s.lockAll()
+	defer s.unlockAll()
 
-	clear(s.lines)
+	for i := range s.stripes {
+		clear(s.stripes[i].lines)
+	}
 	s.size.Store(0)
 }
 
-func (s *partialLineStore) drainLocked(buf []Entry) []Entry {
-	buf = slices.Grow(buf, len(s.lines))
-	for _, e := range s.lines {
-		buf = append(buf, e)
+func (s *partialLineStore) lockAll() {
+	for i := range s.stripes {
+		s.stripes[i].mut.Lock()
 	}
-	clear(s.lines)
+}
+
+func (s *partialLineStore) unlockAll() {
+	for i := len(s.stripes) - 1; i >= 0; i-- {
+		s.stripes[i].mut.Unlock()
+	}
+}
+
+func (s *partialLineStore) drainLocked() []Entry {
+	buf := make([]Entry, 0, s.size.Load())
+	for i := range s.stripes {
+		for _, e := range s.stripes[i].lines {
+			buf = append(buf, e)
+		}
+		clear(s.stripes[i].lines)
+	}
 	s.size.Store(0)
 	return buf
 }

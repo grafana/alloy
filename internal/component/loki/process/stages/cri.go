@@ -111,8 +111,7 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// flush any partial lines if we have buffered too many.
-			entries := make([]Entry, 0, c.partialLines.Size())
-			entries = c.flushPartialLinesIfExceeded(entries)
+			entries := c.flushPartialLinesIfExceeded()
 			// it's a partial-line buffer it and move on.
 			c.partialLines.Append(fingerprint, e)
 			return entries, len(entries) == 0
@@ -125,19 +124,13 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements entryProcessor and is only used by our new pipeline.
-// flushPartialLinesIfExceeded can sweep up and forward a stream owned by a
-// different, concurrently-running caller through this caller's next() call,
-// causing OOO for that stream. For now this is an acceptable tradeoff and we
-// consider this a failure case. We can revisit this in the future.
+// process implements entryProcessor and is only used by our new pipeline. A
+// flush can forward a stream owned by a different, concurrently-running caller
+// through this caller's next() call, causing OOO for that stream. We accept
+// that tradeoff for now.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
-	// dst compacts entries in place, extra only grows when the
-	// MaxPartialLines branch below flushes held partial lines. So in
-	// the common case this call never allocates a new slice.
-	var (
-		dst   int
-		extra []Entry
-	)
+	// dst compacts entries in place.
+	var dst int
 	for _, e := range entries {
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
@@ -149,26 +142,26 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		setCRIProperties(&e, parsed)
 
 		fingerprint := e.Labels.Fingerprint()
-		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			// flush any partial lines if we have buffered too many.
-			extra = c.flushPartialLinesIfExceeded(extra)
-			// it's a partial-line buffer it and move on.
 			c.partialLines.Append(fingerprint, e)
 			continue
 		}
 
-		// We got full-line 'F'.
-		// If any old partial lines matches with this full-line stream, merge it,
-		// else just return the full line.
 		entries[dst] = c.completeFullLine(fingerprint, e)
 		dst++
 	}
 
 	out := entries[:dst]
+
+	// Checking once per batch lets the store overshoot by up to one batch, which
+	// is acceptable because those entries already fit in memory as part of it.
+	// In the future a background goroutine could own this check, so that batches
+	// do not pay the cost of calling this at all.
+	extra := c.flushPartialLinesIfExceeded()
 	if len(extra) > 0 {
-		// NOTE: We append to extra to make sure buffered entries are
-		// ordered before passed in entries.
+		// Buffered entries go out before the entries passed in. We are assuming that
+		// these are older entries, but this can still lead to some out-of-order results,
+		// which we consider acceptable for this safety mechanism.
 		out = append(extra, out...)
 	}
 
@@ -188,21 +181,18 @@ func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
 	return e
 }
 
-func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
-	before := len(buf)
-	buf = c.partialLines.DrainIfAtLeast(c.cfg.MaxPartialLines, buf)
-
-	flushed := len(buf) - before
-	if flushed == 0 {
-		return buf
+func (c *criStage) flushPartialLinesIfExceeded() []Entry {
+	flushed := c.partialLines.DrainIfAtLeast(c.cfg.MaxPartialLines)
+	if len(flushed) == 0 {
+		return nil
 	}
 
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
 	if c.partialLinesFlushedMetric != nil {
-		c.partialLinesFlushedMetric.Add(float64(flushed))
+		c.partialLinesFlushedMetric.Add(float64(len(flushed)))
 	}
 
-	return buf
+	return flushed
 }
 
 // stop implements stopper and is only used by our new pipeline.
@@ -211,7 +201,7 @@ func (c *criStage) stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	out := c.partialLines.DrainAll(nil)
+	out := c.partialLines.DrainAll()
 	if len(out) == 0 {
 		return
 	}
