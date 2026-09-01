@@ -47,13 +47,15 @@ type crdManagerInterface interface {
 }
 
 type crdManagerFactory interface {
-	New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface
+	New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface
 }
 
 type realCrdManagerFactory struct{}
 
-func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
-	return newCrdManager(opts, cluster, logger, args, kind, ls)
+func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface {
+	m := newCrdManager(opts, cluster, logger, args, kind, ls)
+	m.serviceMonitorSettings = serviceMonitorSettings
+	return m
 }
 
 // CacheFactory creates controller-runtime caches with the given options.
@@ -123,7 +125,9 @@ type crdManager struct {
 	client     kubernetes.Interface
 	k8sFactory K8sFactory
 
-	kind string
+	kind                                      string
+	serviceMonitorSettings                    *ServiceMonitorSettings
+	serviceMonitorArbitraryFileAccessWarnings map[string]string
 }
 
 const (
@@ -139,20 +143,28 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 	default:
 		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
 	}
+	defaultServiceMonitorSettings := (*ServiceMonitorSettings)(nil)
+	if kind == KindServiceMonitor {
+		settings := DefaultServiceMonitorSettings
+		defaultServiceMonitorSettings = &settings
+	}
+
 	return &crdManager{
-		opts:              opts,
-		logger:            logger.With("kind", kind),
-		args:              args,
-		cluster:           cluster,
-		discoveryConfigs:  map[string]discovery.Configs{},
-		scrapeConfigs:     map[string]*config.ScrapeConfig{},
-		crdsToMapKeys:     map[string][]string{},
-		debugInfo:         map[string]*operator.DiscoveredResource{},
-		kind:              kind,
-		clusteringUpdated: make(chan struct{}, 1),
-		ls:                ls,
-		k8sFactory:        defaultK8sFactory,
-		scrapeClasses:     operator.NewScrapeClassIndex(args.ScrapeClasses),
+		opts:                   opts,
+		logger:                 logger.With("kind", kind),
+		args:                   args,
+		cluster:                cluster,
+		discoveryConfigs:       map[string]discovery.Configs{},
+		scrapeConfigs:          map[string]*config.ScrapeConfig{},
+		crdsToMapKeys:          map[string][]string{},
+		debugInfo:              map[string]*operator.DiscoveredResource{},
+		kind:                   kind,
+		clusteringUpdated:      make(chan struct{}, 1),
+		ls:                     ls,
+		k8sFactory:             defaultK8sFactory,
+		scrapeClasses:          operator.NewScrapeClassIndex(args.ScrapeClasses),
+		serviceMonitorSettings: defaultServiceMonitorSettings,
+		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
 	}
 }
 
@@ -584,15 +596,27 @@ func (c *crdManager) onDeletePodMonitor(obj any) {
 
 func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	var err error
+	serviceMonitorSettings := DefaultServiceMonitorSettings
+	if c.serviceMonitorSettings != nil {
+		serviceMonitorSettings = *c.serviceMonitorSettings
+	}
+
 	gen := configgen.ConfigGenerator{
 		Secrets:                  configgen.NewSecretManager(c.client),
 		Client:                   &c.args.Client,
+		AllowArbitraryFileAccess: serviceMonitorSettings.AllowArbitraryFileAccess,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
 		ScrapeClasses:            c.scrapeClasses,
 	}
 
+	for i, ep := range sm.Spec.Endpoints {
+		c.observeServiceMonitorArbitraryFileAccess(sm, i, ep)
+	}
+
 	mapKeys := []string{}
+	discoveryConfigs := map[string]discovery.Configs{}
+	scrapeConfigs := map[string]*config.ScrapeConfig{}
 	for i, ep := range sm.Spec.Endpoints {
 		var scrapeConfig *config.ScrapeConfig
 		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
@@ -602,22 +626,58 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 			break
 		}
 		mapKeys = append(mapKeys, scrapeConfig.JobName)
-		c.mut.Lock()
-		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
-		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
-		c.mut.Unlock()
+		discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
 	}
 	if err != nil {
 		c.addDebugInfo(sm.Namespace, sm.Name, err)
 		return
 	}
 	c.mut.Lock()
+	for k, v := range discoveryConfigs {
+		c.discoveryConfigs[k] = v
+	}
+	for k, v := range scrapeConfigs {
+		c.scrapeConfigs[k] = v
+	}
 	c.crdsToMapKeys[fmt.Sprintf("%s/%s", sm.Namespace, sm.Name)] = mapKeys
 	c.mut.Unlock()
 	if err = c.apply(); err != nil {
 		c.logger.Error("error applying scrape configs", "name", sm.Name, "err", err)
 	}
 	c.addDebugInfo(sm.Namespace, sm.Name, err)
+}
+
+func (c *crdManager) observeServiceMonitorArbitraryFileAccess(sm *promopv1.ServiceMonitor, endpointIndex int, ep promopv1.Endpoint) {
+	field := configgen.ServiceMonitorEndpointArbitraryFileField(ep)
+	if field == "" {
+		return
+	}
+
+	if !c.recordServiceMonitorArbitraryFileAccessWarning(sm, endpointIndex, field) {
+		return
+	}
+
+	c.logger.Warn(
+		"serviceMonitor endpoint references an arbitrary file from Alloy's filesystem",
+		"namespace", sm.Namespace,
+		"name", sm.Name,
+		"endpoint", endpointIndex,
+		"field", field,
+		"mitigation", "remove the file reference or set allow_arbitrary_file_access to true to opt out",
+	)
+}
+
+func (c *crdManager) recordServiceMonitorArbitraryFileAccessWarning(sm *promopv1.ServiceMonitor, endpointIndex int, field string) bool {
+	key := fmt.Sprintf("%s/%s/%d/%s", sm.Namespace, sm.Name, endpointIndex, field)
+
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	if lastResourceVersion, ok := c.serviceMonitorArbitraryFileAccessWarnings[key]; ok && lastResourceVersion == sm.ResourceVersion {
+		return false
+	}
+	c.serviceMonitorArbitraryFileAccessWarnings[key] = sm.ResourceVersion
+	return true
 }
 
 func (c *crdManager) onAddServiceMonitor(obj any) {
@@ -635,8 +695,21 @@ func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 func (c *crdManager) onDeleteServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
+	c.clearServiceMonitorArbitraryFileAccessWarnings(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
+	}
+}
+
+func (c *crdManager) clearServiceMonitorArbitraryFileAccessWarnings(namespace, name string) {
+	prefix := fmt.Sprintf("%s/%s/", namespace, name)
+
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	for key := range c.serviceMonitorArbitraryFileAccessWarnings {
+		if strings.HasPrefix(key, prefix) {
+			delete(c.serviceMonitorArbitraryFileAccessWarnings, key)
+		}
 	}
 }
 

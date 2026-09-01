@@ -62,12 +62,12 @@ func TestArguments(t *testing.T) {
 	// NOTE(rfratto): we don't check for defaults being applied; we're primarily
 	// only interested in ensuring the conversion works.
 	assert.Equal(t, "/var/log/*", out.Include)
-	assert.Equal(t, true, out.Metrics.FileAtime.Enabled)
-	assert.Equal(t, true, out.Metrics.FileCount.Enabled)
-	assert.Equal(t, true, out.ResourceAttributes.FileName.Enabled)
-	assert.Equal(t, "foobar", out.ResourceAttributes.FileName.MetricsInclude[0].Strict)
-	assert.Equal(t, "foobar2", out.ResourceAttributes.FileName.MetricsInclude[1].Strict)
-	assert.Equal(t, "fizz.*", out.ResourceAttributes.FileName.MetricsExclude[0].Regex)
+	assert.Equal(t, true, out.MetricsBuilderConfig.Metrics.FileAtime.Enabled)
+	assert.Equal(t, true, out.MetricsBuilderConfig.Metrics.FileCount.Enabled)
+	assert.Equal(t, true, out.MetricsBuilderConfig.ResourceAttributes.FileName.Enabled)
+	assert.Equal(t, "foobar", out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsInclude[0].Strict)
+	assert.Equal(t, "foobar2", out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsInclude[1].Strict)
+	assert.Equal(t, "fizz.*", out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsExclude[0].Regex)
 }
 
 func TestArguments_NoFilters(t *testing.T) {
@@ -107,10 +107,10 @@ func TestArguments_NoFilters(t *testing.T) {
 	// and MetricsExclude are non-nil, even if they are completely empty; this
 	// means we _must_ set them to nil if they are empty otherwise everything
 	// will be filtered out.
-	if assert.Len(t, out.ResourceAttributes.FileName.MetricsInclude, 0, "Expected MetricsInclude to be len 0") {
-		assert.Nil(t, out.ResourceAttributes.FileName.MetricsInclude, "MetricsInclude must be nil when empty")
+	if assert.Len(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsInclude, 0, "Expected MetricsInclude to be len 0") {
+		assert.Nil(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsInclude, "MetricsInclude must be nil when empty")
 	}
-	if assert.Len(t, out.ResourceAttributes.FileName.MetricsExclude, 0, "Expected MetricsExclude to be len 0") {
-		assert.Nil(t, out.ResourceAttributes.FileName.MetricsExclude, "MetricsExclude must be nil when empty")
+	if assert.Len(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsExclude, 0, "Expected MetricsExclude to be len 0") {
+		assert.Nil(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsExclude, "MetricsExclude must be nil when empty")
 	}
 }

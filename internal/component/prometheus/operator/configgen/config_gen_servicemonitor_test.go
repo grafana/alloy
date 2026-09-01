@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -390,6 +391,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
+					BodySizeLimit:         ptr.To(promopv1.ByteSize("15MiB")),
 				},
 			},
 			ep: promopv1.Endpoint{
@@ -536,6 +538,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
+				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
 				ScrapeNativeHistograms:         falsePtr,
 				AlwaysScrapeClassicHistograms:  falsePtr,
@@ -720,4 +723,122 @@ func TestGenerateServiceMonitorConfigScrapeClassNotDefined(t *testing.T) {
 
 	_, err := cg.GenerateServiceMonitorConfig(m, promopv1.Endpoint{}, 0, promk8s.RoleEndpoint)
 	require.Error(t, err)
+}
+
+func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
+	serviceMonitor := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "operator",
+			Name:      "svcmonitor",
+		},
+	}
+
+	tests := []struct {
+		name                     string
+		allowArbitraryFileAccess bool
+		ep                       promopv1.Endpoint
+		expectedBearerTokenFile  string
+		expectedTLSConfig        commonConfig.TLSConfig
+		expectedErr              string
+	}{
+		{
+			name:                     "flag on honors bearer token file",
+			allowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
+			},
+			expectedBearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+		},
+		{
+			name:                     "flag on honors tls file fields",
+			allowArbitraryFileAccess: true,
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{
+								CAFile:   "/etc/prometheus/ca.crt",
+								CertFile: "/etc/prometheus/client.crt",
+								KeyFile:  "/etc/prometheus/client.key",
+							},
+						},
+					},
+				},
+			},
+			expectedTLSConfig: commonConfig.TLSConfig{
+				CAFile:   "/etc/prometheus/ca.crt",
+				CertFile: "/etc/prometheus/client.crt",
+				KeyFile:  "/etc/prometheus/client.key",
+			},
+		},
+		{
+			name: "flag off rejects bearer token file",
+			ep: promopv1.Endpoint{
+				BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", //nolint:staticcheck
+			},
+			expectedErr: "bearerTokenFile, which is disallowed because allow_arbitrary_file_access is false; use bearerTokenSecret or authorization instead",
+		},
+		{
+			name: "flag off rejects tls ca file",
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/etc/prometheus/ca.crt"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.caFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.ca instead",
+		},
+		{
+			name: "flag off rejects tls cert file",
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{CertFile: "/etc/prometheus/client.crt"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.certFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.cert instead",
+		},
+		{
+			name: "flag off rejects tls key file",
+			ep: promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+						TLSConfig: &promopv1.TLSConfig{
+							TLSFilesConfig: promopv1.TLSFilesConfig{KeyFile: "/etc/prometheus/client.key"},
+						},
+					},
+				},
+			},
+			expectedErr: "tlsConfig.keyFile, which is disallowed because allow_arbitrary_file_access is false; use tlsConfig.keySecret instead",
+		},
+		{
+			name: "flag off allows endpoints without file fields",
+			ep:   promopv1.Endpoint{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cg := &ConfigGenerator{
+				Client:                   &kubernetes.ClientArguments{},
+				AllowArbitraryFileAccess: tc.allowArbitraryFileAccess,
+			}
+
+			cfg, err := cg.GenerateServiceMonitorConfig(serviceMonitor, tc.ep, 0, promk8s.RoleEndpoint)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedBearerTokenFile, cfg.HTTPClientConfig.BearerTokenFile)
+			require.Equal(t, tc.expectedTLSConfig, cfg.HTTPClientConfig.TLSConfig)
+		})
+	}
 }

@@ -10,9 +10,28 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.12.1 (2026-08-26)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.19.2 (@dehaansa)
+
+1.12.0 (2026-08-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.19.0 (@dehaansa)
+
+1.11.1 (2026-08-06)
+----------
+
 ### Enhancements
 
 - Harden the default `securityContext` for the config reloader sidecar: disable privilege escalation, use a read-only root filesystem, drop all capabilities, run as non-root, and set the `RuntimeDefault` seccomp profile. (@petewall)
+
+- Update to Grafana Alloy v1.18.1 (@blewis12)
 
 1.11.0 (2026-07-20)
 ----------

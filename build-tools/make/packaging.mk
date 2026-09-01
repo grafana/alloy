@@ -17,7 +17,20 @@ clean-dist:
 # reference time. Earlier iterations of this file had each target explicitly
 # list these, but it's too easy to forget to set on so this is used to ensure
 # everything needed is always passed through.
-PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) GOEXPERIMENT=$(GOEXPERIMENT)
+PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) GOEXPERIMENT=$(GOEXPERIMENT) CGO_LDFLAGS="$(CGO_LDFLAGS)"
+
+# The alloy-build-image container cross-compiles Windows binaries on Linux.
+# It uses an older mingw-w64 toolchain through viceroy. That toolchain needs
+# -lssp to resolve the __stack_chk_fail symbol.
+#
+# Native Windows runners use a different, newer mingw64 toolchain. For
+# example, the Windows service integration test job builds natively on a
+# windows-latest runner. That toolchain resolves __stack_chk_fail on its
+# own. It has no standalone libssp.a to link against. Passing -lssp there
+# fails the link with "cannot find -lssp".
+#
+# Add -static -lssp only when the build does not run natively on Windows.
+WINDOWS_CGO_LDFLAGS := $(if $(filter windows,$(shell go env GOHOSTOS)),,-static -lssp)
 
 .PHONY: dist-alloy-mixin-zip
 dist-alloy-mixin-zip:
@@ -78,9 +91,10 @@ dist/alloy-darwin-arm64: generate-ui
 #
 # TODO(rfratto): add netgo back to Windows builds if a version of Go is
 # released which natively supports resolving DNS short names on Windows.
-dist/alloy-windows-amd64.exe: GO_TAGS += embedalloyui
-dist/alloy-windows-amd64.exe: GOOS    := windows
-dist/alloy-windows-amd64.exe: GOARCH  := amd64
+dist/alloy-windows-amd64.exe: GO_TAGS    += embedalloyui
+dist/alloy-windows-amd64.exe: GOOS       := windows
+dist/alloy-windows-amd64.exe: GOARCH     := amd64
+dist/alloy-windows-amd64.exe: CGO_LDFLAGS := $(WINDOWS_CGO_LDFLAGS)
 dist/alloy-windows-amd64.exe: generate-ui generate-winmanifest
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
@@ -128,9 +142,10 @@ dist/alloy-boringcrypto-linux-arm64: generate-ui
 
 dist-alloy-service-binaries: dist.temp/alloy-service-windows-amd64.exe
 
-dist.temp/alloy-service-windows-amd64.exe: GO_TAGS += embedalloyui
-dist.temp/alloy-service-windows-amd64.exe: GOOS    := windows
-dist.temp/alloy-service-windows-amd64.exe: GOARCH  := amd64
+dist.temp/alloy-service-windows-amd64.exe: GO_TAGS    += embedalloyui
+dist.temp/alloy-service-windows-amd64.exe: GOOS       := windows
+dist.temp/alloy-service-windows-amd64.exe: GOARCH     := amd64
+dist.temp/alloy-service-windows-amd64.exe: CGO_LDFLAGS := $(WINDOWS_CGO_LDFLAGS)
 dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
 	$(PACKAGING_VARS) SERVICE_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy-service
 

@@ -290,7 +290,7 @@ func startServiceMonitorComponent(t *testing.T, args operator.Arguments) (*commo
 		},
 	}
 
-	comp, err := common.New(opts, args, common.KindServiceMonitor)
+	comp, err := common.New(opts, args, common.ServiceMonitorOptions(common.DefaultServiceMonitorSettings))
 	require.NoError(t, err)
 
 	testFactory := &common.TestCrdManagerFactory{

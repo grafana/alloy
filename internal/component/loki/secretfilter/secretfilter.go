@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -59,6 +60,8 @@ type Exports struct {
 	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
 }
 
+var errProcessingTimeout = errors.New("processing timeout exceeded")
+
 // defaultRate is the default sampling rate (1.0 = process all entries).
 const defaultRate = 1.0
 
@@ -96,10 +99,13 @@ type Component struct {
 	opts component.Options
 	log  *slog.Logger
 
+	receiver    loki.LogsReceiver
+	fanout      *loki.Fanout
+	interceptor *loki.InterceptorConsumer
+
 	mut      sync.RWMutex
+	stopped  bool
 	args     Arguments
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
 	detector secretDetector
 
 	// redactPercent is the effective percentage (1-100) for gitleaks-style redaction when redact_with is not set. Set at build/update.
@@ -271,6 +277,50 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		"label_timed_out", args.LabelTimedOut,
 	)
 
+	c.interceptor = loki.NewInterceptorConsumer(
+		o.ID,
+		loki.NewNopConsumer(),
+		func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+			c.mut.RLock()
+			defer c.mut.RUnlock()
+
+			if c.stopped {
+				return loki.Batch{}, loki.ErrConsumerStopped
+			}
+
+			var terminalErr error
+
+			batch.FilterMap(func(entry *loki.Entry) (keep bool) {
+				if terminalErr != nil {
+					return false
+				}
+
+				newEntry, err := c.processEntry(ctx, *entry)
+				if err != nil {
+					if errors.Is(err, errProcessingTimeout) {
+						return false
+					}
+
+					terminalErr = err
+					return false
+				}
+
+				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					livedebugging.ComponentID(c.opts.ID),
+					livedebugging.LokiLog,
+					1,
+					func() string {
+						return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+					},
+				))
+				*entry = newEntry
+				return true
+			})
+
+			return batch, terminalErr
+		},
+	)
+
 	// Immediately export the receiver which remains the same for the component
 	// lifetime.
 	o.OnStateChange(Exports{Receiver: c.receiver})
@@ -280,32 +330,32 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	componentID := livedebugging.ComponentID(c.opts.ID)
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
 	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
 		c.mut.RLock()
 		defer c.mut.RUnlock()
 
-		if c.shouldProcessEntry() {
-			newEntry, dropped := c.processEntry(ctx, entry)
-			if dropped {
-				c.log.Debug("entry dropped", "reason", "processing_timeout")
-				return loki.Entry{}, false
-			}
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.LokiLog,
-				1,
-				func() string {
-					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
-				},
-			))
-			return newEntry, true
+		newEntry, err := c.processEntry(ctx, entry)
+		if err != nil {
+			return loki.Entry{}, false
 		}
 
-		c.metrics.entriesBypassedTotal.Inc()
-		c.log.Debug("entry bypassed by sampling", "rate", c.args.Rate)
-		return entry, true
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			livedebugging.ComponentID(c.opts.ID),
+			livedebugging.LokiLog,
+			1,
+			func() string {
+				return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+			},
+		))
+		return newEntry, true
 	})
+
 	return nil
 }
 
@@ -317,50 +367,57 @@ func (c *Component) shouldProcessEntry() bool {
 	return c.sampler.ShouldSample()
 }
 
-// processEntry scans the log entry for secrets and redacts them. Returns the
-// processed entry and a boolean indicating whether the entry should be dropped.
-// If processing_timeout is exceeded and drop_on_timeout is false (default),
-// the original unredacted entry is forwarded. If processing_timeout is
-// exceeded and drop_on_timeout is true, the entry is dropped.
-func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.Entry, bool) {
+// processEntry scans the log entry for secrets and redacts any it finds.
+//
+// A nil error means the returned entry should be forwarded. errProcessingTimeout
+// means processing_timeout was exceeded with drop_on_timeout set and the entry
+// should be dropped, without drop_on_timeout the entry is returned with any
+// partial findings redacted. Any other error means the caller's context was
+// cancelled and the entry was never fully scanned.
+func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.Entry, error) {
+	if !c.shouldProcessEntry() {
+		c.metrics.entriesBypassedTotal.Inc()
+		c.log.Debug("entry bypassed by sampling", "rate", c.args.Rate)
+		return entry, nil
+	}
+
 	start := time.Now()
 	defer func() {
 		c.metrics.processingDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	if timeout := c.args.ProcessingTimeout; timeout > 0 {
+	if c.args.ProcessingTimeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		ctx, cancel = context.WithTimeoutCause(ctx, c.args.ProcessingTimeout, errProcessingTimeout)
 		defer cancel()
 	}
 
 	//nolint:staticcheck // DetectContext still requires detect.Fragment in v8
 	findings := c.detector.DetectContext(ctx, detect.Fragment{Raw: entry.Line})
 
-	if ctx.Err() != nil {
+	if err := context.Cause(ctx); err != nil {
+		if !errors.Is(err, errProcessingTimeout) {
+			return loki.Entry{}, err
+		}
+
 		c.metrics.linesTimedOutTotal.Inc()
 		c.log.Debug("processing timeout exceeded", "drop_on_timeout", c.args.DropOnTimeout, "partial_findings", len(findings))
 		if c.args.DropOnTimeout {
+			c.log.Debug("entry dropped", "reason", "processing_timeout")
 			c.metrics.linesDroppedTotal.Inc()
-			return loki.Entry{}, true
+			return loki.Entry{}, err
 		}
 
 		if c.args.LabelTimedOut {
 			entry = withLabel(entry, "secretfilter", "timed-out")
 		}
-
-		// Redact any partial findings before forwarding, even if the timeout was hit.
-		if len(findings) > 0 {
-			return c.redactLine(entry, findings), false
-		}
-		return entry, false
 	}
 
 	if len(findings) == 0 {
-		return entry, false
+		return entry, nil
 	}
 	c.log.Debug("secrets detected in line", "findings", len(findings))
-	return c.redactLine(entry, findings), false
+	return c.redactLine(entry, findings), nil
 }
 
 // redactLine redacts each finding in the log line and records metrics.

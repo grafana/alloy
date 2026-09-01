@@ -97,7 +97,6 @@ You can use the following arguments with `prometheus.scrape`:
 >
 > * `otelcol.receiver.prometheus`
 > * `prometheus.remote_write` only when configured for Remote Write v2.
-> * `prometheus.write_queue`
 >
 > **EXPERIMENTAL**: The `enable_type_and_unit_labels` argument is an [experimental][] feature.
 > When enabled and available from the scrape, the metric type and unit are added as labels to each scraped sample.
@@ -297,8 +296,9 @@ prometheus.scrape "prometheus" {
   scrape_protocols = ["PrometheusProto", "OpenMetricsText1.0.0", "OpenMetricsText0.0.1", "PrometheusText0.0.4"]
 }
 ```
+For a full scrape-and-forward example, refer to [Collect Prometheus native histograms](../../../collect/prometheus-native-histograms/).
 
-The`scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present. It's an equivalent to the `always_scrape_classic_histograms` argument in Prometheus v3.
+The `scrape_classic_histograms` argument controls whether the component should also scrape the 'classic' histogram equivalent of a native histogram, if it's present. It's an equivalent to the `always_scrape_classic_histograms` argument in Prometheus v3.
 
 [in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
 [run command]: ../../../cli/run/
