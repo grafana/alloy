@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,14 +46,15 @@ func (args *CRIConfig) Validate() error {
 }
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
-	return &criStage{
+	c := &criStage{
 		next:                      opts.next,
 		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
-		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
 		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
 		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
+	c.partialLines = newPartialLineStore(cfg, c.linesTruncatedMetric)
+	return c
 }
 
 func getPartialLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
@@ -86,8 +85,7 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	mut          sync.Mutex
-	partialLines map[model.Fingerprint]Entry
+	partialLines *partialLineStore
 
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter
@@ -113,10 +111,10 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// flush any partial lines if we have buffered too many.
-			entries := make([]Entry, 0, len(c.partialLines))
+			entries := make([]Entry, 0, c.partialLines.Size())
 			entries = c.flushPartialLinesIfExceeded(entries)
 			// it's a partial-line buffer it and move on.
-			c.addPartialLine(fingerprint, e)
+			c.partialLines.Append(fingerprint, e)
 			return entries, len(entries) == 0
 		}
 
@@ -128,14 +126,11 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 }
 
 // process implements entryProcessor and is only used by our new pipeline.
-// c.mut is released before calling next(), so flushPartialLinesIfExceeded
-// can sweep up and forward a stream owned by a different, concurrently-
-// running caller through this caller's next() call, causing OOO for that
-// stream. For now this is an acceptable tradeoff and we consider this a
-// failure case. We can revisit this in the future.
+// flushPartialLinesIfExceeded can sweep up and forward a stream owned by a
+// different, concurrently-running caller through this caller's next() call,
+// causing OOO for that stream. For now this is an acceptable tradeoff and we
+// consider this a failure case. We can revisit this in the future.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
-	c.mut.Lock()
-
 	// dst compacts entries in place, extra only grows when the
 	// MaxPartialLines branch below flushes held partial lines. So in
 	// the common case this call never allocates a new slice.
@@ -159,7 +154,7 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 			// flush any partial lines if we have buffered too many.
 			extra = c.flushPartialLinesIfExceeded(extra)
 			// it's a partial-line buffer it and move on.
-			c.addPartialLine(fingerprint, e)
+			c.partialLines.Append(fingerprint, e)
 			continue
 		}
 
@@ -169,8 +164,6 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		entries[dst] = c.completeFullLine(fingerprint, e)
 		dst++
 	}
-
-	c.mut.Unlock()
 
 	out := entries[:dst]
 	if len(extra) > 0 {
@@ -186,42 +179,28 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
-func (c *criStage) addPartialLine(fp model.Fingerprint, e Entry) {
-	prev, ok := c.partialLines[fp]
-	if ok {
-		e.Line = prev.Line + e.Line
-	}
-	c.ensureTruncateIfRequired(&e)
-	c.partialLines[fp] = e
-}
-
 func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
-	prev, ok := c.partialLines[fp]
+	prev, ok := c.partialLines.Take(fp)
 	if ok {
 		e.Line = prev.Line + e.Line
-		c.ensureTruncateIfRequired(&e)
-		delete(c.partialLines, fp)
+		truncatePartialLine(&e, c.cfg, c.linesTruncatedMetric)
 	}
 	return e
 }
 
 func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
-	if len(c.partialLines) < c.cfg.MaxPartialLines {
+	before := len(buf)
+	buf = c.partialLines.DrainIfAtLeast(c.cfg.MaxPartialLines, buf)
+
+	flushed := len(buf) - before
+	if flushed == 0 {
 		return buf
 	}
 
-	buf = slices.Grow(buf, len(c.partialLines))
-
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
 	if c.partialLinesFlushedMetric != nil {
-		c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+		c.partialLinesFlushedMetric.Add(float64(flushed))
 	}
-
-	for _, v := range c.partialLines {
-		buf = append(buf, v)
-	}
-
-	c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
 
 	return buf
 }
@@ -232,29 +211,21 @@ func (c *criStage) stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	if len(c.partialLines) == 0 {
+	out := c.partialLines.DrainAll(nil)
+	if len(out) == 0 {
 		return
 	}
-
-	out := make([]Entry, 0, len(c.partialLines))
-	for _, e := range c.partialLines {
-		out = append(out, e)
-	}
-	c.partialLines = make(map[model.Fingerprint]Entry)
 
 	if err := c.next(ctx, out); err != nil {
 		c.logger.Error("failed to flush held partial lines on stop", "err", err)
 	}
 }
 
-func (c *criStage) ensureTruncateIfRequired(e *Entry) {
-	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
-		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
-		if c.linesTruncatedMetric != nil {
-			c.linesTruncatedMetric.Inc()
+func truncatePartialLine(e *Entry, cfg CRIConfig, linesTruncated prometheus.Counter) {
+	if cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(cfg.MaxPartialLineSize) {
+		e.Line = e.Line[:cfg.MaxPartialLineSize]
+		if linesTruncated != nil {
+			linesTruncated.Inc()
 		}
 	}
 }
