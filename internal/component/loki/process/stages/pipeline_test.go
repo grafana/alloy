@@ -62,12 +62,21 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 	return NewPipeline(logging.NewSlogNop(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 }
 
+// pipelineExpectation is what one pipeline implementation should produce.
+// metrics is optional: pass "" to skip checking metrics, or a Prometheus
+// exposition-format string (as consumed by testutil.GatherAndCompare) to assert
+// against that run's own registry.
+type pipelineExpectation struct {
+	entries []Entry
+	metrics string
+}
+
 // runPipelineTest builds a pipeline for cfgs using both the old and new
-// pipeline implementations, runs entries through each, and asserts the
-// result matches expected. expectedMetrics is optional: pass "" to skip
-// checking metrics, or a Prometheus exposition-format string (as consumed
-// by testutil.GatherAndCompare) to assert against each run's own registry.
-func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string) {
+// pipeline implementations, runs entries through each, and asserts each result
+// matches its own expectation. The two differ when a stage batches work, for
+// example the cri stage checks max_partial_lines per entry in Run but once per
+// batch in process.
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, wantOld, wantNew pipelineExpectation) {
 	// Pipeline.Run seeds the extracted map with each entry's initial labels
 	// before running any stage. process (called directly below, bypassing
 	// ProcessBatch/ProcessEntry) does not. Seed it here once so both
@@ -101,9 +110,9 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 			collected = append(collected, e)
 		}
 
-		assertEntriesUnordered(t, expected, collected)
-		if expectedMetrics != "" {
-			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+		assertEntriesUnordered(t, wantOld.entries, collected)
+		if wantOld.metrics != "" {
+			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(wantOld.metrics)))
 		}
 	})
 
@@ -122,9 +131,9 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p.stop()
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected)
-			if expectedMetrics != "" {
-				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+			assertEntriesUnordered(c, wantNew.entries, collected)
+			if wantNew.metrics != "" {
+				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(wantNew.metrics)))
 			}
 		}, 2*time.Second, 100*time.Millisecond)
 	})
