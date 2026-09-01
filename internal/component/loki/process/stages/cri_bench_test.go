@@ -161,8 +161,7 @@ func BenchmarkCRIStageProcessMaxPartialLinesFlush(b *testing.B) {
 	}
 
 	b.StopTimer()
-	flushesPerIteration := (streams - 1) / maxPartialLines
-	require.Equal(b, flushesPerIteration*maxPartialLines*b.N, flushedEntries)
+	require.Equal(b, streams*b.N, flushedEntries)
 }
 
 func BenchmarkCRIStageProcessConcurrent(b *testing.B) {

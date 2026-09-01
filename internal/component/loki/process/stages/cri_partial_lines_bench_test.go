@@ -75,15 +75,13 @@ func newPLBenchStore(maxPartialLines int) *partialLineStore {
 }
 
 func runPLBenchWorker(s *partialLineStore, w plBenchWorker, maxPartialLines int) {
-	var buf []Entry
 	for _, op := range w.partials {
-		buf = s.DrainIfAtLeast(maxPartialLines, buf)
 		s.Append(op.fp, op.e)
 	}
 	for _, op := range w.fulls {
 		s.Take(op.fp)
 	}
-	benchPLDrained.Add(int64(len(buf)))
+	benchPLDrained.Add(int64(len(s.DrainIfAtLeast(maxPartialLines))))
 }
 
 func benchmarkPLStoreConcurrent(b *testing.B, maxPartialLines int) {
