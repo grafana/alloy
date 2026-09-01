@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.3](https://github.com/grafana/alloy/compare/v1.19.2...v1.19.3) (2026-09-01)
+
+
+### Bug Fixes 🐛
+
+* **loki.source.journal:** Dont override configured job label [backport] ([#6998](https://github.com/grafana/alloy/issues/6998)) ([bd72411](https://github.com/grafana/alloy/commit/bd72411ebf67433bfc7180380785c166b70d3e57))
+
 ## [1.19.2](https://github.com/grafana/alloy/compare/v1.19.1...v1.19.2) (2026-08-26)
 
 
