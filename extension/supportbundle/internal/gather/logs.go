@@ -1,10 +1,8 @@
 package gather
 
 import (
-	"bytes"
 	"context"
 	"net/url"
-	"sync"
 
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -15,8 +13,8 @@ import (
 // service::telemetry::logs::output_paths.
 const sinkScheme = "supportbundle"
 
-// truncationNotice marks a captured log that reached the buffer limit.
-const truncationNotice = "\n[support bundle: log capture truncated at buffer limit]\n"
+// evictionNotice heads a snapshot whose oldest bytes were evicted.
+const evictionNotice = "# [support bundle: older logs evicted; showing the most recent bytes]\n"
 
 // LogCapture holds the process-wide log capture. zap registers sinks per
 // process, and the collector builds its logger once, so this state must be
@@ -39,48 +37,19 @@ func newLogCapture() *LogCaptureState {
 	return lc
 }
 
-// LogSink is a zap sink that captures logs while a support bundle runs.
-// The collector writes every log line to this sink. The sink keeps the lines
-// only while a capture window is open. It discards them otherwise, so the cost
-// is low when no bundle runs.
+// LogSink is a zap sink that keeps the most recent collector logs in a ring
+// buffer. The collector writes every log line to this sink when supportbundle://
+// is in output_paths. The ring is created only when the operator sets a buffer
+// size; until then Write is a lock-free no-op, so logging pays nothing.
 type LogSink struct {
-	// capturing is a lock-free fast path. It is true only while a bundle runs.
-	// The collector logs every line to this sink when supportbundle:// is in
-	// output_paths, so the idle path must not take the lock.
-	capturing atomic.Bool
-
-	mu        sync.Mutex
-	buf       *bytes.Buffer // non-nil only while capturing
-	limit     int           // maximum bytes to keep; 0 disables the limit
-	truncated bool
+	ring atomic.Pointer[logRing]
 }
 
 func (s *LogSink) Write(p []byte) (int, error) {
-	// Fast path: no bundle is capturing. Skip the lock entirely.
-	if !s.capturing.Load() {
-		return len(p), nil
+	if r := s.ring.Load(); r != nil {
+		return r.Write(p)
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.buf == nil {
-		return len(p), nil
-	}
-
-	if s.limit > 0 {
-		remaining := s.limit - s.buf.Len()
-		if remaining <= 0 {
-			s.truncated = true
-			return len(p), nil
-		}
-		if len(p) > remaining {
-			s.buf.Write(p[:remaining])
-			s.truncated = true
-			return len(p), nil
-		}
-	}
-
-	s.buf.Write(p)
+	// Capture is disabled. Skip the lock entirely.
 	return len(p), nil
 }
 
@@ -90,56 +59,37 @@ func (s *LogSink) Sync() error { return nil }
 // Close does nothing. The sink lives for the whole process.
 func (s *LogSink) Close() error { return nil }
 
-// start opens a capture window with a fresh buffer and the given byte limit.
-func (s *LogSink) start(limit int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.buf = &bytes.Buffer{}
-	s.limit = limit
-	s.truncated = false
-	// Set the fast-path flag last, so writers only take the lock once the
-	// buffer is ready.
-	s.capturing.Store(true)
-}
-
-// stop closes the capture window. It returns a copy of the captured logs and
-// reports whether the buffer reached its limit.
-func (s *LogSink) stop() (data []byte, truncated bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	// Clear the fast-path flag first, so new writes skip the lock immediately.
-	s.capturing.Store(false)
-	if s.buf == nil {
-		return nil, false
+// Enable turns on capture with a ring of the given size in bytes. A size of 0
+// leaves capture disabled. The extension calls this at startup.
+func (s *LogSink) Enable(size int) {
+	if size > 0 {
+		s.ring.Store(newLogRing(size))
 	}
-	out := append([]byte(nil), s.buf.Bytes()...)
-	truncated = s.truncated
-	s.buf = nil
-	return out, truncated
 }
 
-// Logs captures collector logs over the collection window.
+// snapshot returns the retained bytes, or nil when capture is disabled.
+func (s *LogSink) snapshot() (data []byte, evicted bool) {
+	if r := s.ring.Load(); r != nil {
+		return r.snapshot()
+	}
+	return nil, false
+}
+
+// Logs writes the most recent collector logs to the bundle.
 type Logs struct {
-	Sink  *LogSink
-	Limit int
+	Sink *LogSink
 }
 
 func (Logs) Name() string { return "logs" }
 
-func (g Logs) Start(_ context.Context, _ Options) (FinishFunc, error) {
-	g.Sink.start(g.Limit)
-
-	finish := func(_ context.Context) ([]File, error) {
-		data, truncated := g.Sink.stop()
-		if len(data) == 0 {
-			// No logs were captured. The user may not route logs to the sink.
-			return nil, nil
-		}
-		if truncated {
-			data = append(data, truncationNotice...)
-		}
-		return []File{{Path: "logs.txt", Content: data}}, nil
+func (g Logs) Gather(_ context.Context, _ Options) ([]File, error) {
+	data, evicted := g.Sink.snapshot()
+	if len(data) == 0 {
+		// Capture is off, or the user does not route logs to the sink.
+		return nil, nil
 	}
-
-	return finish, nil
+	if evicted {
+		data = append([]byte(evictionNotice), data...)
+	}
+	return []File{{Path: "logs.txt", Content: data}}, nil
 }

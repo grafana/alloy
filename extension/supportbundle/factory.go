@@ -41,7 +41,8 @@ func createDefaultConfig() component.Config {
 		Path:                      "/support",
 		DefaultCollectionDuration: 30 * time.Second,
 		MaxCollectionDuration:     60 * time.Second,
-		LogBufferLimit:            defaultLogBufferLimit,
+		// LogBufferSize defaults to 0: log capture is off unless the operator
+		// sets a size, because it is always on and adds a per-line logging cost.
 	}
 }
 

@@ -74,6 +74,8 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 		e.statusGatherer,
 		gather.Environment{Extra: e.cfg.EnvironmentVariables},
 		gather.FeatureGates{},
+		// Logs snapshots the always-on ring; it is a point-in-time read.
+		gather.Logs{Sink: gather.LogCapture.Sink},
 	}
 	e.asyncGatherers = []gather.AsyncGatherer{
 		// metrics is first so its start sample is taken before CPU profiling begins.
@@ -87,8 +89,11 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 			Client: &http.Client{Timeout: 5 * time.Second},
 		},
 		gather.PprofWindow{},
-		gather.Logs{Sink: gather.LogCapture.Sink, Limit: e.cfg.LogBufferLimit},
 	}
+
+	// Turn on the log ring if the operator configured a size. Capture stays a
+	// lock-free no-op until this is called with a positive size.
+	gather.LogCapture.Sink.Enable(e.cfg.LogBufferSize)
 
 	// Log capture needs the zap sink. Warn if registration failed so the
 	// operator knows logs.txt will be empty.

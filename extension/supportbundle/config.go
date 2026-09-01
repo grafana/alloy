@@ -8,9 +8,6 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 )
 
-// defaultLogBufferLimit is the default cap for the captured log buffer, in bytes.
-const defaultLogBufferLimit = 1 << 20 // 1 MiB
-
 type Config struct {
 	confighttp.ServerConfig `mapstructure:",squash"`
 
@@ -29,9 +26,11 @@ type Config struct {
 	// add names, so a caller cannot read arbitrary environment variables.
 	EnvironmentVariables []string `mapstructure:"environment_variables"`
 
-	// LogBufferLimit is the maximum size of the captured log buffer, in bytes.
-	// A zero value disables the limit.
-	LogBufferLimit int `mapstructure:"log_buffer_limit"`
+	// LogBufferSize is the size, in bytes, of the ring buffer that retains the
+	// most recent collector logs for the bundle. A zero value disables log
+	// capture. Capture is always on when enabled, so it adds a small per-line
+	// cost to logging; keep it disabled unless you need recent logs in bundles.
+	LogBufferSize int `mapstructure:"log_buffer_size"`
 }
 
 var (
@@ -40,7 +39,7 @@ var (
 	errDurationPositive = errors.New("default_collection_duration must be positive")
 	errMaxPositive      = errors.New("max_collection_duration must be positive")
 	errDurationOverMax  = errors.New("default_collection_duration must not exceed max_collection_duration")
-	errNegativeBuffer   = errors.New("log_buffer_limit must not be negative")
+	errNegativeBuffer   = errors.New("log_buffer_size must not be negative")
 	errWriteTimeout     = errors.New("write_timeout must be 0 (no limit) or greater than max_collection_duration, or the bundle download will be cut off")
 )
 
@@ -62,7 +61,7 @@ func (cfg *Config) Validate() error {
 	if cfg.DefaultCollectionDuration > cfg.MaxCollectionDuration {
 		return errDurationOverMax
 	}
-	if cfg.LogBufferLimit < 0 {
+	if cfg.LogBufferSize < 0 {
 		return errNegativeBuffer
 	}
 	// The handler writes the zip only after the collection window. A positive

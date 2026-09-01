@@ -38,9 +38,9 @@ func TestConfigValidate(t *testing.T) {
 		require.Error(t, cfg.Validate())
 	})
 
-	t.Run("rejects negative log_buffer_limit", func(t *testing.T) {
+	t.Run("rejects negative log_buffer_size", func(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
-		cfg.LogBufferLimit = -1
+		cfg.LogBufferSize = -1
 		require.Error(t, cfg.Validate())
 	})
 
