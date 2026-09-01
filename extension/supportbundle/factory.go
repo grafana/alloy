@@ -37,11 +37,11 @@ func createDefaultConfig() component.Config {
 	serverConfig.WriteTimeout = 0
 
 	return &Config{
-		ServerConfig:          serverConfig,
-		Path:                  "/support",
-		CollectionDuration:    30 * time.Second,
-		MaxCollectionDuration: 60 * time.Second,
-		LogBufferLimit:        defaultLogBufferLimit,
+		ServerConfig:              serverConfig,
+		Path:                      "/support",
+		DefaultCollectionDuration: 30 * time.Second,
+		MaxCollectionDuration:     60 * time.Second,
+		LogBufferLimit:            defaultLogBufferLimit,
 	}
 }
 

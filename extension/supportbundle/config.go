@@ -17,9 +17,9 @@ type Config struct {
 	// Path is the HTTP path that serves the support bundle.
 	Path string `mapstructure:"path"`
 
-	// CollectionDuration is the default window for windowed collectors, such as
-	// the CPU profile.
-	CollectionDuration time.Duration `mapstructure:"collection_duration"`
+	// DefaultCollectionDuration is the default window for windowed collectors,
+	// such as the CPU profile, when a request does not set ?duration=.
+	DefaultCollectionDuration time.Duration `mapstructure:"default_collection_duration"`
 
 	// MaxCollectionDuration is the upper bound for a requested collection window.
 	MaxCollectionDuration time.Duration `mapstructure:"max_collection_duration"`
@@ -37,9 +37,9 @@ type Config struct {
 var (
 	errPathPrefix       = errors.New(`path must start with "/"`)
 	errPathPattern      = errors.New(`path must not contain whitespace, "{", or "}"`)
-	errDurationPositive = errors.New("collection_duration must be positive")
+	errDurationPositive = errors.New("default_collection_duration must be positive")
 	errMaxPositive      = errors.New("max_collection_duration must be positive")
-	errDurationOverMax  = errors.New("collection_duration must not exceed max_collection_duration")
+	errDurationOverMax  = errors.New("default_collection_duration must not exceed max_collection_duration")
 	errNegativeBuffer   = errors.New("log_buffer_limit must not be negative")
 	errWriteTimeout     = errors.New("write_timeout must be 0 (no limit) or greater than max_collection_duration, or the bundle download will be cut off")
 )
@@ -53,13 +53,13 @@ func (cfg *Config) Validate() error {
 	if strings.ContainsAny(cfg.Path, "{} \t\n") {
 		return errPathPattern
 	}
-	if cfg.CollectionDuration <= 0 {
+	if cfg.DefaultCollectionDuration <= 0 {
 		return errDurationPositive
 	}
 	if cfg.MaxCollectionDuration <= 0 {
 		return errMaxPositive
 	}
-	if cfg.CollectionDuration > cfg.MaxCollectionDuration {
+	if cfg.DefaultCollectionDuration > cfg.MaxCollectionDuration {
 		return errDurationOverMax
 	}
 	if cfg.LogBufferLimit < 0 {

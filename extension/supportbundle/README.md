@@ -28,7 +28,7 @@ The extension adds the following fields:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `path` | string | `/support` | The HTTP path that serves the bundle. It must start with `/`. |
-| `collection_duration` | duration | `30s` | The default collection window for windowed collectors, such as the CPU profile. It must be positive and must not exceed `max_collection_duration`. |
+| `default_collection_duration` | duration | `30s` | The default collection window for windowed collectors, such as the CPU profile, used when a request does not set `duration`. It must be positive and must not exceed `max_collection_duration`. |
 | `max_collection_duration` | duration | `60s` | The upper bound for a requested collection window. It must be positive. |
 | `environment_variables` | list of strings | `[]` | Extra environment variable names to capture, beyond the built-in allowlist. See [Environment variables](#environment-variables). |
 | `log_buffer_limit` | int | `1048576` | The maximum size of the captured log buffer, in bytes. A value of `0` disables the limit. |
@@ -78,7 +78,7 @@ extensions:
   supportbundle:
     endpoint: 0.0.0.0:8089
     path: /support
-    collection_duration: 5s
+    default_collection_duration: 5s
     max_collection_duration: 60s
     tls:
       cert_file: /path/to/cert.pem
@@ -121,13 +121,13 @@ curl -o bundle.zip 'localhost:8089/support?duration=2'
 
 ### Duration query parameter
 
-The `duration` query parameter sets the collection window for the request. It overrides the `collection_duration` default. The window applies to the profiles that sample over time: the CPU, mutex, and block profiles.
+The `duration` query parameter sets the collection window for the request. It overrides the `default_collection_duration` default. The window applies to the profiles that sample over time: the CPU, mutex, and block profiles.
 
 - A bare number is a value in seconds. For example, `duration=2` means 2 seconds.
 - A value with a Go duration unit suffix uses Go duration syntax. For example, `duration=500ms`.
 - The extension clamps the value to the range `[0, max_collection_duration]`.
 - A value of `0` skips the CPU profile. The mutex and block profiles are still emitted, but they hold little data without a window.
-- An invalid value falls back to the `collection_duration` default.
+- An invalid value falls back to the `default_collection_duration` default.
 
 The extension serves one bundle at a time. The pprof profiles use process-wide state, so requests do not run in parallel.
 

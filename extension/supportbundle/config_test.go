@@ -19,9 +19,9 @@ func TestConfigValidate(t *testing.T) {
 		require.Error(t, cfg.Validate())
 	})
 
-	t.Run("rejects zero collection_duration", func(t *testing.T) {
+	t.Run("rejects zero default_collection_duration", func(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
-		cfg.CollectionDuration = 0
+		cfg.DefaultCollectionDuration = 0
 		require.Error(t, cfg.Validate())
 	})
 
@@ -33,7 +33,7 @@ func TestConfigValidate(t *testing.T) {
 
 	t.Run("rejects default above max", func(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
-		cfg.CollectionDuration = 90 * time.Second
+		cfg.DefaultCollectionDuration = 90 * time.Second
 		cfg.MaxCollectionDuration = 60 * time.Second
 		require.Error(t, cfg.Validate())
 	})

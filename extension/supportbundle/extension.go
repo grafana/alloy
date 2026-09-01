@@ -306,7 +306,7 @@ func (e *supportBundleExtension) runSyncGatherers(ctx context.Context, opts gath
 // resolveDuration reads the duration query param and clamps it to the allowed range.
 // The value is treated as seconds unless it carries a Go duration unit suffix.
 func (e *supportBundleExtension) resolveDuration(r *http.Request) time.Duration {
-	duration := e.cfg.CollectionDuration
+	duration := e.cfg.DefaultCollectionDuration
 
 	if raw := r.URL.Query().Get("duration"); raw != "" {
 		if parsed, ok := parseDuration(raw); ok {
