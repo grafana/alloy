@@ -34,10 +34,13 @@ func TestPrometheusOperator(t *testing.T) {
 		t.Parallel()
 		// Check that Mimir received metrics from the ServiceMonitor target.
 		// All metrics are prefixed with test_servicemonitors_ via relabeling.
-		mimir.QueryMetrics(t, "servicemonitor", []string{
+		// The ServiceMonitor references scrape_class "test-class" by name, whose
+		// relabel rule sets scrape_class on the target, so the series must carry
+		// that label.
+		mimir.QueryMetricsWithLabelMatch(t, "servicemonitor", []string{
 			"test_servicemonitors_golang_counter",
 			"test_servicemonitors_golang_gauge",
-		})
+		}, map[string]string{"scrape_class": "test-class"})
 		mimir.QueryMetadata(t, map[string]deps.ExpectedMetadata{
 			"test_servicemonitors_golang_counter": {Type: "counter", Help: "The counter description string"},
 			"test_servicemonitors_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},

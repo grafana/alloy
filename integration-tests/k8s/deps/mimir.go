@@ -4,8 +4,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -105,13 +107,27 @@ func (m *Mimir) Cleanup() {
 // and asserts every expected metric name is present.
 func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []string) {
 	t.Helper()
+	m.QueryMetricsWithLabelMatch(t, testName, expectedMetrics, nil)
+}
+
+// QueryMetricsWithLabelMatch behaves like QueryMetrics, but additionally
+// requires the matched series to carry every label in matchLabels. Use it to
+// assert that a label was applied to the target, not just that the metric
+// arrived.
+func (m *Mimir) QueryMetricsWithLabelMatch(t *testing.T, testName string, expectedMetrics []string, matchLabels map[string]string) {
+	t.Helper()
 	mimirURL := m.endpoint("/prometheus/api/v1/")
+
+	selector := testNameLabel + "=\"" + testName + "\""
+	for _, name := range slices.Sorted(maps.Keys(matchLabels)) {
+		selector += "," + name + "=\"" + matchLabels[name] + "\""
+	}
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		queryURL, err := url.Parse(mimirURL + "series")
 		require.NoError(c, err)
 		values := queryURL.Query()
-		values.Add("match[]", "{"+testNameLabel+"=\""+testName+"\"}")
+		values.Add("match[]", "{"+selector+"}")
 		queryURL.RawQuery = values.Encode()
 		resp := curl(c, queryURL.String(), nil)
 
@@ -132,7 +148,7 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 			}
 		}
 
-		require.Emptyf(c, missingMetrics, "missing expected metrics for %s=%s: %v found=%v", testNameLabel, testName, missingMetrics, actualMetrics)
+		require.Emptyf(c, missingMetrics, "missing expected metrics for {%s}: %v found=%v", selector, missingMetrics, actualMetrics)
 	}, timeout, retryInterval)
 }
 
