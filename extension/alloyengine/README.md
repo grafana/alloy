@@ -185,15 +185,7 @@ OCB writes the binary into the `dist.output_path` directory, named after `dist.n
    make generate-ui
    ```
 
-1. Point these two local module replaces at your local copy of the Alloy source:
-
-   ```yaml
-   replaces:
-     - github.com/grafana/alloy => ../              # <- Change this to your checkout path
-     - github.com/grafana/alloy/syntax => ../syntax # <- Change this to your checkout path + /syntax
-   ```
-
-   Change both to absolute paths to your local copy of the Alloy source. For example, if you cloned Alloy into `/path/to/alloy`, use:
+1. Point the local module replaces at your local copy of the Alloy source. Find the `replaces` block you copied earlier in your builder config. Change the `github.com/grafana/alloy` and `github.com/grafana/alloy/syntax` paths to point to your local copy. For example, if you cloned Alloy into `/path/to/alloy`, use:
 
    ```yaml
    replaces:
