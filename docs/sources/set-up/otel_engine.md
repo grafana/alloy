@@ -100,7 +100,7 @@ This extension accepts a path to the {{< param "DEFAULT_ENGINE" >}} configuratio
 It starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
 
 You can also embed the `alloyengine` extension into any other OpenTelemetry Collector distribution using the OpenTelemetry Collector Builder (OCB).
-See the extension's [README](https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md#include-alloyengine-extension-in-an-ocb-distribution) for the instructions how to do this.
+Refer to the `alloyengine` extension [README](https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md#include-alloyengine-extension-in-an-ocb-distribution) for the instructions how to do this.
 
 The following example uses `config.path` to load the {{< param "DEFAULT_ENGINE" >}} configuration from a file or directory:
 
