@@ -76,11 +76,16 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		leveler slog.LevelVar
 		format  formatVar
 	)
-	// innerWriter is stable for the life of the Logger; destinations that
-	// want to suppress it (windows_event_log) lazily open an event log via
-	// the writer's own opener instead of swapping the writer.
 	writer := &writerVar{
-		innerWriter:    w,
+		// Default to stderr: unlike the event log it always works, and logs are buffered
+		// until Update is called anyway, so this destination isn't reached before then.
+		activeDestination: LogDestinationStderr,
+
+		// Stable for the life of the Logger
+		innerWriter: w,
+
+		// Used to suppress innerWriter by lazily opening an event log writer
+		// that's separate from innerWriter.
 		eventLogOpener: eventlog.GetEventLogOpener(),
 	}
 	bh := newHandler(writer, &leveler, &format, replace, nil)
@@ -109,10 +114,8 @@ func (l *Logger) Slog() *slog.Logger { return slog.New(l.deferredSlog) }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
-	switch o.Format {
-	case FormatLogfmt, FormatJSON:
-	default:
-		return fmt.Errorf("unrecognized log format %q", o.Format)
+	if err := o.Validate(); err != nil {
+		return err
 	}
 
 	l.bufferMut.Lock()
@@ -225,6 +228,8 @@ func (f *formatVar) Set(format Format) {
 type writerVar struct {
 	mut sync.RWMutex
 
+	activeDestination LogDestination
+
 	// Inner writer is stderr on the production path.
 	// Tests may set it to something else.
 	innerWriter io.Writer
@@ -270,7 +275,18 @@ func (w *writerVar) SetDestination(d LogDestination) error {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 
-	if d == LogDestinationWindowsEventLog {
+	w.activeDestination = d
+
+	err := w.configureEventLog(d == LogDestinationWindowsEventLog)
+	if err != nil && w.activeDestination == LogDestinationWindowsEventLog {
+		// Fallback to stderr in case the event log configuration fails
+		w.activeDestination = LogDestinationStderr
+	}
+	return err
+}
+
+func (w *writerVar) configureEventLog(useEventLog bool) error {
+	if useEventLog {
 		if w.eventLog != nil {
 			return nil // already open; reuse the handle
 		}
@@ -293,16 +309,11 @@ func (w *writerVar) SetDestination(d LogDestination) error {
 // Dispatch is the canonical write entry point. It fans p out to every
 // active sink: innerWriter (unless suppressed), lokiWriter, tmpWriter,
 // and, when attached, the event log.
-//
-// SetDestination holds the write lock across the swap it makes, so any
-// Dispatch RLock observes one of two states:
-// 1. eventLog=nil — stderr mode.
-// 2. eventLog!=nil — event_log mode.
 func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	if w.eventLog == nil && w.innerWriter != nil {
+	if w.activeDestination == LogDestinationStderr {
 		if _, err := w.innerWriter.Write(p); err != nil {
 			return err
 		}
@@ -317,35 +328,36 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 			return err
 		}
 	}
-	if w.eventLog == nil {
-		return nil
-	}
 
-	// The trailing newline added by slog's TextHandler/JSONHandler is trimmed
-	// before handing the message to the event log API, which renders cleaner
-	// in Event Viewer.
-	msg := p
-	if n := len(msg); n > 0 && msg[n-1] == '\n' {
-		msg = msg[:n-1]
-	}
-
-	// Loss-prevention property: in event_log mode, a fast-path Write call
-	// (eventLogLevel=nil) can still occur if a destination switch happened
-	// between handler.Handle's FastPathFlags read and the slog handler's
-	// Write. Rather than dropping the record or misrouting it to stderr,
-	// Dispatch defaults to Info and delivers it to the event log — the
-	// operator's configured destination. The level may be slightly off
-	// (the original record's level is embedded in the formatted text), but
-	// the message reaches Event Viewer.
-	if eventLogLevel != nil {
-		switch *eventLogLevel {
-		case slog.LevelWarn:
-			return w.eventLog.Warning(1, string(msg))
-		case slog.LevelError:
-			return w.eventLog.Error(1, string(msg))
+	if w.activeDestination == LogDestinationWindowsEventLog {
+		// The trailing newline added by slog's TextHandler/JSONHandler is trimmed
+		// before handing the message to the event log API, which renders cleaner
+		// in Event Viewer.
+		msg := p
+		if n := len(msg); n > 0 && msg[n-1] == '\n' {
+			msg = msg[:n-1]
 		}
+
+		// Loss-prevention property: in event_log mode, a fast-path Write call
+		// (eventLogLevel=nil) can still occur if a destination switch happened
+		// between handler.Handle's FastPathFlags read and the slog handler's
+		// Write. Rather than dropping the record or misrouting it to stderr,
+		// Dispatch defaults to Info and delivers it to the event log — the
+		// operator's configured destination. The level may be slightly off
+		// (the original record's level is embedded in the formatted text), but
+		// the message reaches Event Viewer.
+		if eventLogLevel != nil {
+			switch *eventLogLevel {
+			case slog.LevelWarn:
+				return w.eventLog.Warning(1, string(msg))
+			case slog.LevelError:
+				return w.eventLog.Error(1, string(msg))
+			}
+		}
+		return w.eventLog.Info(1, string(msg))
 	}
-	return w.eventLog.Info(1, string(msg))
+
+	return nil
 }
 
 // Write is the io.Writer adapter used by the fast-path slog handler.
