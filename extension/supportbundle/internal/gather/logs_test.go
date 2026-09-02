@@ -2,60 +2,106 @@ package gather
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
-func TestLogSinkDisabledIsNoOp(t *testing.T) {
-	s := &LogSink{} // no ring configured
-	n, err := s.Write([]byte("hello"))
+// runLogs runs the async Logs gatherer. Anything written to the sink before the
+// call lands in the prior history (if the ring is enabled); anything the writeFn
+// writes lands in the during-window capture.
+func runLogs(t *testing.T, sink *LogSink, writeDuring func()) ([]File, error) {
+	t.Helper()
+	finish, err := Logs{Sink: sink}.Start(context.Background(), Options{})
 	require.NoError(t, err)
-	require.Equal(t, 5, n)
+	require.NotNil(t, finish)
+	if writeDuring != nil {
+		writeDuring()
+	}
+	return finish(context.Background())
+}
 
-	data, evicted := s.snapshot()
-	require.Nil(t, data)
-	require.False(t, evicted)
-
-	files, err := Logs{Sink: s}.Gather(context.Background(), Options{})
+func TestLogsNothingCaptured(t *testing.T) {
+	// Not routed / nothing written: no logs.txt.
+	files, err := runLogs(t, &LogSink{}, nil)
 	require.NoError(t, err)
 	require.Empty(t, files)
 }
 
-func TestLogSinkCaptures(t *testing.T) {
+func TestLogsPriorHistoryFromRing(t *testing.T) {
 	s := &LogSink{}
 	s.Enable(1024)
-	_, _ = s.Write([]byte("line one\n"))
-	_, _ = s.Write([]byte("line two\n"))
+	_, _ = s.Write([]byte("before-bundle\n")) // prior -> ring
 
-	files, err := Logs{Sink: s}.Gather(context.Background(), Options{})
-	require.NoError(t, err)
-
-	m := gatherToMap(t, files)
-	require.Contains(t, m, "logs.txt")
-	got := string(m["logs.txt"])
-	require.Contains(t, got, "line one")
-	require.Contains(t, got, "line two")
-	require.NotContains(t, got, evictionNotice) // fits, nothing evicted
-}
-
-func TestLogSinkEvictsOldest(t *testing.T) {
-	s := &LogSink{}
-	s.Enable(16) // tiny ring, forces wrap
-	for i := 0; i < 100; i++ {
-		_, _ = s.Write([]byte("0123456789\n")) // 11 bytes each
-	}
-
-	files, err := Logs{Sink: s}.Gather(context.Background(), Options{})
+	files, err := runLogs(t, s, nil)
 	require.NoError(t, err)
 
 	got := string(gatherToMap(t, files)["logs.txt"])
-	require.Contains(t, got, evictionNotice)                 // wrapped -> notice
-	require.LessOrEqual(t, len(got)-len(evictionNotice), 16) // retained <= ring size
+	require.Contains(t, got, "before-bundle")
 }
 
-func TestLogSinkViaZapLogger(t *testing.T) {
+func TestLogsDuringWindowWithoutRing(t *testing.T) {
+	// Even with the ring disabled, logs written during the bundle are captured.
+	s := &LogSink{} // ring off
+	files, err := runLogs(t, s, func() {
+		_, _ = s.Write([]byte("during-bundle\n"))
+	})
+	require.NoError(t, err)
+
+	got := string(gatherToMap(t, files)["logs.txt"])
+	require.Contains(t, got, "during-bundle")
+}
+
+func TestLogsHistoryThenDuring(t *testing.T) {
+	s := &LogSink{}
+	s.Enable(1024)
+	_, _ = s.Write([]byte("prior-line\n"))
+
+	files, err := runLogs(t, s, func() {
+		_, _ = s.Write([]byte("window-line\n"))
+	})
+	require.NoError(t, err)
+
+	got := string(gatherToMap(t, files)["logs.txt"])
+	require.Contains(t, got, "prior-line")
+	require.Contains(t, got, "window-line")
+	// Prior history comes before the during-window logs.
+	require.Less(t, strings.Index(got, "prior-line"), strings.Index(got, "window-line"))
+}
+
+func TestLogsDuringWindowIsUnbounded(t *testing.T) {
+	// A tiny ring caps the prior history, but the during-window capture keeps
+	// every line regardless of the ring size.
+	s := &LogSink{}
+	s.Enable(16)
+
+	files, err := runLogs(t, s, func() {
+		for i := 0; i < 100; i++ {
+			_, _ = s.Write([]byte("0123456789\n")) // 11 bytes each, 1100 total
+		}
+	})
+	require.NoError(t, err)
+
+	got := gatherToMap(t, files)["logs.txt"]
+	require.Greater(t, len(got), 16*4) // far more than the 16-byte ring
+}
+
+func TestLogsPriorEvictionNotice(t *testing.T) {
+	s := &LogSink{}
+	s.Enable(16) // tiny ring, forces wrap on the prior history
+	for i := 0; i < 100; i++ {
+		_, _ = s.Write([]byte("0123456789\n"))
+	}
+
+	files, err := runLogs(t, s, nil)
+	require.NoError(t, err)
+
+	require.Contains(t, string(gatherToMap(t, files)["logs.txt"]), evictionNotice)
+}
+
+func TestLogsViaZapLogger(t *testing.T) {
 	require.NoError(t, LogCapture.Err)
 	LogCapture.Sink.Enable(1 << 16)
 
@@ -64,11 +110,16 @@ func TestLogSinkViaZapLogger(t *testing.T) {
 	logger, err := cfg.Build()
 	require.NoError(t, err)
 
-	logger.Info("via-zap-marker")
+	logger.Info("before-window") // prior -> ring
 	_ = logger.Sync()
 
-	files, err := Logs{Sink: LogCapture.Sink}.Gather(context.Background(), Options{})
+	files, err := runLogs(t, LogCapture.Sink, func() {
+		logger.Info("inside-window") // during -> window
+		_ = logger.Sync()
+	})
 	require.NoError(t, err)
 
-	require.Contains(t, string(gatherToMap(t, files)["logs.txt"]), "via-zap-marker")
+	got := string(gatherToMap(t, files)["logs.txt"])
+	require.Contains(t, got, "before-window")
+	require.Contains(t, got, "inside-window")
 }

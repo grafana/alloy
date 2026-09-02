@@ -31,7 +31,7 @@ The extension adds the following fields:
 | `default_collection_duration` | duration | `30s` | The default collection window for windowed collectors, such as the CPU profile, used when a request does not set `duration`. It must be positive and must not exceed `max_collection_duration`. |
 | `max_collection_duration` | duration | `60s` | The upper bound for a requested collection window. It must be positive. |
 | `environment_variables` | list of strings | `[]` | Extra environment variable names to capture, beyond the built-in allowlist. See [Environment variables](#environment-variables). |
-| `log_buffer_size` | int | `0` | The size, in bytes, of the ring buffer that retains the most recent collector logs for the bundle. `0` disables log capture. When enabled, capture is always on and adds a small per-line cost to logging. See [Log capture](#log-capture). |
+| `log_buffer_size` | int | `0` | The size, in bytes, of the ring buffer that retains the collector logs from *before* a bundle request (the prior history). `0` disables the prior-history ring; logs written *during* a bundle are still captured whenever logs are routed to the sink. When the ring is enabled, capture is always on and adds a small per-line cost to logging. See [Log capture](#log-capture). |
 | `trace_buffer_size` | int | `0` | The number of most recent collector spans to keep for the bundle. `0` disables trace capture. When enabled, capture is always on and adds a small per-span cost. See [Trace capture](#trace-capture). |
 
 The default endpoint is `localhost:8089`.
@@ -100,15 +100,12 @@ See the [`confighttp`][confighttp] documentation for every available server fiel
 
 ### Log capture
 
-The extension can keep the most recent collector logs in an in-memory ring buffer and attach them to the bundle. Two things turn it on:
-
-1. Set `log_buffer_size` to a positive number of bytes. This creates the ring buffer.
-2. Add `supportbundle://` to `service::telemetry::logs::output_paths` so the collector sends logs to the sink named `supportbundle`. Keep the existing output paths so logs still reach their normal destination.
+To capture collector logs in the bundle, add `supportbundle://` to `service::telemetry::logs::output_paths` so the collector sends logs to the sink named `supportbundle`. Keep the existing output paths so logs still reach their normal destination.
 
 ```yaml
 extensions:
   supportbundle:
-    log_buffer_size: 1048576 # keep the most recent 1 MiB of logs
+    log_buffer_size: 1048576 # optional: keep the most recent 1 MiB of logs from before a bundle
 
 service:
   telemetry:
@@ -117,7 +114,12 @@ service:
   extensions: [supportbundle]
 ```
 
-The bundle then holds the last `log_buffer_size` bytes of logs, up to the time of the request. Capture is **always on** when enabled, so it adds a small per-line cost to logging; it is a lock-free no-op when `log_buffer_size` is `0`. Without a positive `log_buffer_size` and the output path, the bundle has no `logs.txt`. When the buffer wraps, the oldest logs are evicted and `logs.txt` starts with a notice.
+`logs.txt` has two parts:
+
+- **During the bundle:** every log line the collector writes while the bundle is being built is captured in full, regardless of `log_buffer_size`. This part is always captured when logs are routed to the sink.
+- **Before the bundle (prior history):** if `log_buffer_size` is greater than `0`, the extension also keeps a ring buffer of the most recent bytes logged *before* the request and prepends them. The ring is always on, so it adds a small per-line cost to logging (a lock-free no-op when `log_buffer_size` is `0`). When it wraps, the oldest bytes are evicted and the history section starts with a notice.
+
+Without the output path, the bundle has no `logs.txt`.
 
 ### Trace capture
 
@@ -171,7 +173,7 @@ otelcol-support-bundle/
 │   ├── mutex.pprof        # always present (sampled over the window)
 │   ├── block.pprof        # always present (reflects the operator's block profiling config)
 │   └── cpu.pprof          # only present when duration > 0
-├── logs.txt               # only present when log_buffer_size > 0 and logs are routed to the sink
+├── logs.txt               # only present when logs are routed to the supportbundle:// sink
 ├── traces.json            # only present when trace_buffer_size > 0
 └── errors.txt             # only present when a gatherer fails
 ```
@@ -183,7 +185,7 @@ otelcol-support-bundle/
 - `feature-gates.txt` lists every feature gate and whether it is enabled, one `id=bool` per line.
 - `metrics-start.txt` / `metrics-end.txt` / `metrics.txt` hold the collector's own telemetry metrics, scraped from the metrics endpoint in the configuration. When the duration is greater than `0`, the extension takes a sample at the start of the window (`metrics-start.txt`) and another at the end (`metrics-end.txt`) so you can compute counter deltas; when the duration is `0`, it takes a single sample (`metrics.txt`). This is best effort: it works only when the collector exposes a pull (Prometheus) metrics reader and the endpoint is reachable. When no such endpoint is configured, the files are absent.
 - `pprof/` holds the runtime profiles. The extension always collects the heap and goroutine profiles (point-in-time snapshots), the mutex profile, and the block profile. It collects the CPU profile only when the resolved duration is greater than `0`. The extension enables mutex sampling for the collection window and restores the previous rate afterward, so the mutex profile holds the most data when the duration is greater than `0`. The extension does **not** change the block profile rate (the Go runtime cannot report the current rate, so it cannot be restored). The block profile therefore reflects whatever block profiling the operator has configured, for example through the `pprof` extension; it is empty when block profiling is off.
-- `logs.txt` holds the most recent collector logs. It is present only when log capture is configured (see [Log capture](#log-capture)). The extension keeps the last `log_buffer_size` bytes in a ring buffer, so the file shows the logs leading up to the request. When the buffer has wrapped, the file starts with an eviction notice and its first line may be partial.
+- `logs.txt` holds collector logs (see [Log capture](#log-capture)). It has the prior history (the most recent `log_buffer_size` bytes logged before the request, present only when `log_buffer_size > 0`) followed by every line the collector wrote during the bundle. It is present only when logs are routed to the `supportbundle://` sink. When the prior-history ring has wrapped, that section starts with an eviction notice and its first line may be partial.
 - `traces.json` holds the most recent collector spans as a JSON array (name, IDs, kind, timings, status, and attributes). It is present only when trace capture is configured (see [Trace capture](#trace-capture)). These are the collector's own internal spans, not pipeline data.
 - `errors.txt` is present only when one or more gatherers fail. It lists each failure. The extension still returns the files that it did collect.
 

@@ -103,13 +103,16 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 		e.statusGatherer,
 		gather.Environment{Extra: e.cfg.EnvironmentVariables},
 		gather.FeatureGates{},
-		// Logs snapshots the always-on ring; it is a point-in-time read.
-		gather.Logs{Sink: gather.LogCapture.Sink},
 		// Traces snapshots the span ring; it is a point-in-time read.
 		gather.Traces{Processor: e.traceProcessor},
 	}
 	e.asyncGatherers = []gather.AsyncGatherer{
-		// metrics is first so its start sample is taken before CPU profiling begins.
+		// Logs is first: it opens the log window before the other collectors run
+		// and, finishing in reverse, closes it last, so it captures every line
+		// written during the bundle.
+		gather.Logs{Sink: gather.LogCapture.Sink},
+		// metrics runs before pprof so its start sample is taken before CPU
+		// profiling begins.
 		gather.Metrics{
 			// Read the effective (expanded) config live through the configGatherer
 			// so ${env:...} endpoints resolve and config reloads are picked up. The
