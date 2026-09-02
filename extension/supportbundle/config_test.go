@@ -44,6 +44,12 @@ func TestConfigValidate(t *testing.T) {
 		require.Error(t, cfg.Validate())
 	})
 
+	t.Run("rejects negative trace_buffer_size", func(t *testing.T) {
+		cfg := createDefaultConfig().(*Config)
+		cfg.TraceBufferSize = -1
+		require.Error(t, cfg.Validate())
+	})
+
 	t.Run("rejects path with mux pattern characters", func(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
 		cfg.Path = "/{id}"

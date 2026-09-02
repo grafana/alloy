@@ -17,10 +17,32 @@ import (
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensioncapabilities"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/extension/supportbundle/internal/gather"
 )
+
+// registerableTracerProvider is the SDK tracer provider's span-processor API.
+// The extension attaches its span processor through this, the way the zpages
+// extension does.
+type registerableTracerProvider interface {
+	RegisterSpanProcessor(sp sdktrace.SpanProcessor)
+	UnregisterSpanProcessor(sp sdktrace.SpanProcessor)
+}
+
+// registerableTP unwraps a possibly-wrapped tracer provider and returns it as a
+// registerableTracerProvider, or nil if it does not support span processors.
+func registerableTP(tp oteltrace.TracerProvider) registerableTracerProvider {
+	if w, ok := tp.(interface {
+		Unwrap() oteltrace.TracerProvider
+	}); ok {
+		tp = w.Unwrap()
+	}
+	reg, _ := tp.(registerableTracerProvider)
+	return reg
+}
 
 var (
 	_ extension.Extension                         = (*supportBundleExtension)(nil)
@@ -47,6 +69,12 @@ type supportBundleExtension struct {
 	// statusGatherer owns the recorded component statuses. It is also a sync gatherer.
 	statusGatherer *gather.Status
 
+	// traceProcessor captures collector spans. It is also a sync gatherer.
+	traceProcessor *gather.TraceProcessor
+	// traceProvider is set when the processor is registered, so Shutdown can
+	// unregister it.
+	traceProvider registerableTracerProvider
+
 	syncGatherers  []gather.Gatherer
 	asyncGatherers []gather.AsyncGatherer
 
@@ -62,6 +90,7 @@ func newSupportBundleExtension(cfg *Config, settings extension.Settings) *suppor
 		settings:       settings,
 		configGatherer: &gather.Config{},
 		statusGatherer: gather.NewStatus(),
+		traceProcessor: gather.NewTraceProcessor(),
 	}
 }
 
@@ -76,6 +105,8 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 		gather.FeatureGates{},
 		// Logs snapshots the always-on ring; it is a point-in-time read.
 		gather.Logs{Sink: gather.LogCapture.Sink},
+		// Traces snapshots the span ring; it is a point-in-time read.
+		gather.Traces{Processor: e.traceProcessor},
 	}
 	e.asyncGatherers = []gather.AsyncGatherer{
 		// metrics is first so its start sample is taken before CPU profiling begins.
@@ -94,6 +125,19 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 	// Turn on the log ring if the operator configured a size. Capture stays a
 	// lock-free no-op until this is called with a positive size.
 	gather.LogCapture.Sink.Enable(e.cfg.LogBufferSize)
+
+	// Turn on trace capture if configured. Register the span processor on the
+	// collector's tracer provider, the way the zpages extension does.
+	e.traceProcessor.Enable(e.cfg.TraceBufferSize)
+	if e.cfg.TraceBufferSize > 0 {
+		if tp := registerableTP(e.settings.TracerProvider); tp != nil {
+			tp.RegisterSpanProcessor(e.traceProcessor)
+			e.traceProvider = tp
+		} else {
+			e.settings.Logger.Warn("support bundle trace capture is unavailable: " +
+				"the tracer provider does not support span processors")
+		}
+	}
 
 	// Log capture needs the zap sink. Warn if registration failed so the
 	// operator knows logs.txt will be empty.
@@ -145,6 +189,11 @@ func (e *supportBundleExtension) ComponentStatusChanged(source *componentstatus.
 }
 
 func (e *supportBundleExtension) Shutdown(ctx context.Context) error {
+	// Detach the span processor from the collector's tracer provider.
+	if e.traceProvider != nil {
+		e.traceProvider.UnregisterSpanProcessor(e.traceProcessor)
+		e.traceProvider = nil
+	}
 	if e.server == nil {
 		return nil
 	}
