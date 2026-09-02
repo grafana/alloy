@@ -1,7 +1,7 @@
 otelcol.receiver.splunkhec "default" {
 	idle_timeout        = "0s"
-	write_timeout       = "0s"
-	read_header_timeout = "0s"
+	write_timeout       = "20s"
+	read_header_timeout = "20s"
 	raw_path            = "/raw"
 
 	hec_metadata_to_otel_attrs {

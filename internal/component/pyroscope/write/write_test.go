@@ -3,6 +3,7 @@ package write
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -575,6 +576,181 @@ func (s *AppendIngestTestSuite) TestInvalidLabels() {
 
 func Test_Write_AppendIngest(t *testing.T) {
 	suite.Run(t, new(AppendIngestTestSuite))
+}
+
+func Test_shouldRetry_On429(t *testing.T) {
+	err := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusTooManyRequests})
+
+	// With retry_on_http_429 enabled, a 429 is retried.
+	require.True(t, shouldRetry(err, true))
+	// With retry_on_http_429 disabled, a 429 is not retried.
+	require.False(t, shouldRetry(err, false))
+
+	// A 408 Request Timeout is always retried regardless of the flag.
+	timeoutErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusRequestTimeout})
+	require.True(t, shouldRetry(timeoutErr, true))
+	require.True(t, shouldRetry(timeoutErr, false))
+
+	// A 5xx is always retried regardless of the flag.
+	serverErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusServiceUnavailable})
+	require.True(t, shouldRetry(serverErr, true))
+	require.True(t, shouldRetry(serverErr, false))
+
+	// A 400 is never retried.
+	badReqErr := fmt.Errorf("remote error: %w", &PyroscopeWriteError{StatusCode: http.StatusBadRequest})
+	require.False(t, shouldRetry(badReqErr, true))
+	require.False(t, shouldRetry(badReqErr, false))
+
+	// Connect CodeResourceExhausted mirrors HTTP 429 and is gated by the flag.
+	resourceExhaustedErr := connect.NewError(connect.CodeResourceExhausted, errors.New("rate limited"))
+	require.True(t, shouldRetry(resourceExhaustedErr, true))
+	require.False(t, shouldRetry(resourceExhaustedErr, false))
+}
+
+func Test_Write_Append_RetryOnResourceExhausted(t *testing.T) {
+	// Covers the push v1 / connect API path (fanOutClient.Append -> pushClient.Push),
+	// where a rate-limited backend responds with connect.CodeResourceExhausted rather
+	// than an HTTP 429 status code. shouldRetry treats the two the same way, gated by
+	// RetryOnHTTP429.
+	newServer := func(t *testing.T, requestCount *atomic.Int32) *httptest.Server {
+		t.Helper()
+		_, handler := pushv1connect.NewPusherServiceHandler(PushFunc(
+			func(_ context.Context, _ *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+				requestCount.Inc()
+				return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("rate limited"))
+			},
+		))
+		return httptest.NewServer(handler)
+	}
+
+	newComponent := func(t *testing.T, endpoint *EndpointOptions) pyroscope.Appendable {
+		t.Helper()
+		var export Exports
+		var wg sync.WaitGroup
+		wg.Add(1)
+		c, err := New(
+			pyrotestlogger.TestLogger(t),
+			noop.Tracer{},
+			prometheus.NewRegistry(),
+			func(e Exports) {
+				defer wg.Done()
+				export = e
+			},
+			"Alloy/239",
+			"",
+			t.TempDir(),
+			Arguments{Endpoints: []*EndpointOptions{endpoint}},
+		)
+		require.NoError(t, err)
+		ctx, cancel := context.WithCancel(t.Context())
+		t.Cleanup(cancel)
+		go c.Run(ctx)
+		wg.Wait()
+		require.NotNil(t, export.Receiver)
+		return export.Receiver
+	}
+
+	appendProfile := func(t *testing.T, appendable pyroscope.Appendable) error {
+		t.Helper()
+		return appendable.Appender().Append(t.Context(), labels.FromMap(map[string]string{
+			"__name__": "test.profile",
+		}), []*pyroscope.RawSample{
+			{ID: "test-request-id", RawProfile: []byte("pprofraw")},
+		})
+	}
+
+	t.Run("disabled", func(t *testing.T) {
+		requestCount := atomic.NewInt32(0)
+		server := newServer(t, requestCount)
+		t.Cleanup(server.Close)
+
+		endpoint := &EndpointOptions{
+			URL:               server.URL,
+			RemoteTimeout:     GetDefaultEndpointOptions().RemoteTimeout,
+			MinBackoff:        1 * time.Millisecond,
+			MaxBackoff:        1 * time.Millisecond,
+			MaxBackoffRetries: 3,
+			RetryOnHTTP429:    false,
+		}
+
+		err := appendProfile(t, newComponent(t, endpoint))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resource_exhausted")
+		// With retries disabled for 429/ResourceExhausted, the request is attempted exactly once.
+		require.Equal(t, int32(1), requestCount.Load())
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		requestCount := atomic.NewInt32(0)
+		server := newServer(t, requestCount)
+		t.Cleanup(server.Close)
+
+		endpoint := &EndpointOptions{
+			URL:               server.URL,
+			RemoteTimeout:     GetDefaultEndpointOptions().RemoteTimeout,
+			MinBackoff:        1 * time.Millisecond,
+			MaxBackoff:        1 * time.Millisecond,
+			MaxBackoffRetries: 3,
+			RetryOnHTTP429:    true,
+		}
+
+		err := appendProfile(t, newComponent(t, endpoint))
+		require.Error(t, err)
+		require.ErrorContains(t, err, "resource_exhausted")
+		// With retries enabled, the request is retried up to MaxBackoffRetries times.
+		require.Equal(t, int32(endpoint.MaxBackoffRetries), requestCount.Load())
+	})
+}
+
+func (s *AppendIngestTestSuite) TestRetryOnHTTP429Disabled() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("too many requests"))
+	})
+
+	endpoint := s.newEndpoint(server, nil)
+	endpoint.RetryOnHTTP429 = false
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{endpoint},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.Error(err)
+	s.Contains(err.Error(), "pyroscope write error: status=429")
+	// With retries disabled for 429, the request is attempted exactly once.
+	s.Equal(int32(1), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestRetryOnHTTP429Enabled() {
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("too many requests"))
+	})
+
+	endpoint := s.newEndpoint(server, nil)
+	endpoint.RetryOnHTTP429 = true
+
+	s.newComponent(Arguments{
+		Endpoints: []*EndpointOptions{endpoint},
+	})
+
+	profile := s.newProfile(map[string]string{
+		"__name__": "test.profile",
+		"service":  "test-service",
+	})
+
+	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
+	s.Error(err)
+	s.Contains(err.Error(), "pyroscope write error: status=429")
+	// With retries enabled for 429, the request is retried up to MaxBackoffRetries times.
+	s.Positive(endpoint.MaxBackoffRetries)
+	s.Equal(int32(endpoint.MaxBackoffRetries), s.requestCount.Load())
 }
 
 func Test_Write_FanOut_ValidateLabels(t *testing.T) {

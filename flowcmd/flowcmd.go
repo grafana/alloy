@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy"
 	"github.com/grafana/alloy/internal/alloycli"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 
 	// Register Prometheus SD components
 	_ "github.com/prometheus/prometheus/discovery/install"
@@ -40,9 +41,12 @@ func RootCommand() *cobra.Command {
 }
 
 // RunAsExtensionCommand returns a standalone cobra command to run Alloy inside Otel collector.
-func RunAsExtensionCommand(modulePath string, configs map[string][]byte) *cobra.Command {
+//
+// configImportHook is a hook that called when `import.*` component loads additional config files.
+func RunAsExtensionCommand(modulePath string, configs map[string][]byte, configImportHook importsource.ImportContentHook) *cobra.Command {
 	return alloycli.NewRunAsExtensionCommand(alloycli.ExtensionModeParams{
-		Configs:    configs,
-		ModulePath: modulePath,
+		Configs:        configs,
+		ModulePath:     modulePath,
+		OnConfigImport: configImportHook,
 	})
 }

@@ -4,7 +4,7 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
@@ -38,25 +38,27 @@ func main() {
 			},
 		},
 		ProviderModules: map[string]string{
-			envprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/envprovider v1.59.0",
-			fileprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/fileprovider v1.59.0",
-			httpprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/httpprovider v1.59.0",
-			httpsprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.59.0",
-			yamlprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.59.0",
-    	},
+			envprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/envprovider v1.64.0",
+			fileprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/fileprovider v1.64.0",
+			httpprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/httpprovider v1.64.0",
+			httpsprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.64.0",
+			yamlprovider.NewFactory().Create(confmap.ProviderSettings{}).Scheme(): "go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.64.0",
+		},
 		ConverterModules: []string{
 		},
 	}
 
 	if err := run(set); err != nil {
-		log.Fatal(err)
+		// The error message is logged by cobra, so we intentionally
+		// avoid logging it again here to prevent duplicate output.
+		os.Exit(1)
 	}
 }
 
 func runInteractive(params otelcol.CollectorSettings) error {
 	cmd := newAlloyCommand(params)
 	if err := cmd.Execute(); err != nil {
-		log.Fatalf("collector server run finished with error: %v", err)
+		return err
 	}
 
 	return nil

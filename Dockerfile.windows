@@ -1,4 +1,4 @@
-ARG BASE_IMAGE_GO=golang:1.26.5-windowsservercore-ltsc2022@sha256:4e7754f6cc0f11bea333132cfcd406422ceaf5bd219336dd74dde71c90ef1fc7
+ARG BASE_IMAGE_GO=golang:1.26.7-windowsservercore-ltsc2022@sha256:2a3365ef5cb38e4ebaafe073a68a97989322fda2a582ee067ef9fd59a0551692
 ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:3680dad0bb773da8efcd9d928eaf4e33817875ab71a43792640ab1bcc0b3c074
 
 FROM ${BASE_IMAGE_GO} AS builder
@@ -29,23 +29,14 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointMa
 # Go Build Dependencies
 #
 # golang - building go code
-# 7zip - unzipping stuff during TDM GCC install
-# TDM GCC - gcc compiler in windows
+# mingw  - gcc compiler (mingw-w64) for compiling C dependencies (CGO)
 # make - building with a Makefile
 # docker - building images
 # git - bash for windows
 
-RUN choco install 7zip --version 22.1 -y
-
-# TDM GCC doesn't currently have a way to silently install
-ADD https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe C:\\Windows\\temp\\TDM-GCC-64.exe
-RUN mkdir C:\\TDM-GCC-64; \
-    Start-Process 7z -ArgumentList 'e C:\\Windows\\temp\\TDM-GCC-64.exe -oC:\\TDM-GCC-64 -y' -Wait; \
-    Start-Process 7z -ArgumentList 'e C:\\TDM-GCC-64\\*.tar.xz -oC:\\TDM-GCC-64 -y' -Wait; \
-    Start-Process 7z -ArgumentList 'x C:\\TDM-GCC-64\\*.tar -oC:\\TDM-GCC-64 -y' -Wait; \
-    Remove-Item "C:\\TDM-GCC-64\\*" -Include *.tar.xz, *.tar -Force; \
-    setx /M PATH $('C:\TDM-GCC-64\bin;' + $Env:PATH); \
-    Remove-Item -Path C:\\Windows\\temp\\TDM-GCC-64.exe -Force
+# mingw-w64 (packaged from the WinLibs build) provides a modern gcc that links
+# CGO dependencies compiled with -fstack-protector correctly.
+RUN choco install mingw --version 14.2.0 -y
 
 RUN choco install make --version 4.3 -y
 RUN choco install docker-cli --version 20.10.22 -y
@@ -75,7 +66,7 @@ SHELL ["cmd", "/S", "/C"]
 
 # Creating new layers can be really slow on Windows so we clean up any caches
 # we can before moving on to the next step.
-RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"embedalloyui ${GO_TAGS}\" make alloy && rm -rf internal/web/ui/node_modules""
+RUN ""C:\Program Files\git\bin\bash.exe" -c "RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} GO_TAGS=\"embedalloyui ${GO_TAGS}\" CGO_LDFLAGS=\"-static\" make alloy && rm -rf internal/web/ui/node_modules""
 
 # In this case, we're separating the clean command from make alloy to avoid an issue where access to some mod cache
 # files is denied immediately after make alloy, for example:
@@ -91,6 +82,9 @@ COPY --from=builder ["/src/alloy/example-config.alloy", "C:/Program Files/Grafan
 # Provide otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
 # OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
 COPY ["packaging/docker/otelcol.cmd", "C:/Program Files/GrafanaLabs/Alloy/otelcol.cmd"]
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor.
+COPY ["packaging/docker/otel-supervisor.cmd", "C:/Program Files/GrafanaLabs/Alloy/otel-supervisor.cmd"]
 
 ENTRYPOINT ["C:/Program Files/GrafanaLabs/Alloy/alloy.exe"]
 ENV ALLOY_DEPLOY_MODE=docker

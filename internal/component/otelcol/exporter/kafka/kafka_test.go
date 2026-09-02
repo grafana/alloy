@@ -79,14 +79,16 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 			Producer: configkafka.ProducerConfig{
-				MaxMessageBytes: 1000000,
-				RequiredAcks:    1,
-				Compression:     "none",
+				MaxMessageBytes:     1000000,
+				MaxBrokerWriteBytes: 104857600,
+				RequiredAcks:        1,
+				Compression:         "none",
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
 				FlushMaxMessages:       10000,
 				AllowAutoTopicCreation: true,
+				Linger:                 10 * time.Millisecond,
 			},
 		}
 	}
@@ -344,14 +346,16 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				},
 				Producer: configkafka.ProducerConfig{
-					MaxMessageBytes: 2000001,
-					RequiredAcks:    0,
-					Compression:     "gzip",
+					MaxMessageBytes:     2000001,
+					MaxBrokerWriteBytes: 104857600,
+					RequiredAcks:        0,
+					Compression:         "gzip",
 					CompressionParams: configcompression.CompressionParams{
 						Level: 9,
 					},
 					FlushMaxMessages:       101,
 					AllowAutoTopicCreation: true,
+					Linger:                 10 * time.Millisecond,
 				},
 				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
@@ -537,4 +541,61 @@ func TestGetSignalType(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestProducerNewFields(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *kafkaexporter.Config {
+		var args kafka.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		converted, err := args.Convert()
+		require.NoError(t, err)
+		return converted.(*kafkaexporter.Config)
+	}
+
+	base := `
+		protocol_version = "2.0.0"
+	`
+
+	t.Run("defaults match the upstream factory", func(t *testing.T) {
+		upstream := configkafka.NewDefaultProducerConfig()
+		otelObj := convert(t, base)
+
+		require.Equal(t, upstream.MaxBrokerWriteBytes, otelObj.Producer.MaxBrokerWriteBytes)
+		require.Equal(t, upstream.Linger, otelObj.Producer.Linger)
+	})
+
+	t.Run("configured values are passed through", func(t *testing.T) {
+		otelObj := convert(t, base+`
+			producer {
+				max_broker_write_bytes = 209715200
+				linger                 = "0s"
+			}
+		`)
+
+		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+		require.Equal(t, time.Duration(0), otelObj.Producer.Linger)
+	})
+
+	t.Run("max_message_bytes above the default max_broker_write_bytes is rejected", func(t *testing.T) {
+		var args kafka.Arguments
+		err := syntax.Unmarshal([]byte(base+`
+			producer {
+				max_message_bytes = 209715200
+			}
+		`), &args)
+
+		require.ErrorContains(t, err, "max_message_bytes (209715200) cannot be greater than max_broker_write_bytes (104857600)")
+	})
+
+	t.Run("raising max_broker_write_bytes allows a larger max_message_bytes", func(t *testing.T) {
+		otelObj := convert(t, base+`
+			producer {
+				max_message_bytes      = 209715200
+				max_broker_write_bytes = 209715200
+			}
+		`)
+
+		require.Equal(t, 209715200, otelObj.Producer.MaxMessageBytes)
+		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+	})
 }

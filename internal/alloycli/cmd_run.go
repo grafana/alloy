@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -46,6 +47,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
@@ -124,6 +126,9 @@ type ExtensionModeParams struct {
 
 	// ModulePath is a value that will be used as "module_path" keyword value in Alloy config.
 	ModulePath string
+
+	// OnConfigImport is a hook that is called when config files are imported using `import.*` components.
+	OnConfigImport importsource.ImportContentHook
 }
 
 // NewRunAsExtensionCommand returns a standalone cobra command to run Alloy inside OTel collector as an extension.
@@ -140,6 +145,7 @@ func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 		Args:         cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			rp := runParams{
+				onConfigImport: params.OnConfigImport,
 				newReloadSignal: func() chan os.Signal {
 					// SIGHUP is reserved by otel collector. Thus, use nop.
 					return nil
@@ -354,22 +360,20 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 	return fr.run(cmd.Context(), cmd.Flags(), rp)
 }
 
-// getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
-	return func() map[string]any {
-		components := component.GetAllComponents(f, component.InfoOptions{})
-		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
-			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
-		}
-		componentNames := map[string]struct{}{}
-		for _, c := range components {
-			if c.Type != component.TypeBuiltin {
-				continue
-			}
-			componentNames[c.ComponentName] = struct{}{}
-		}
-		return map[string]any{"enabled-components": maps.Keys(componentNames)}
+// getEnabledComponents returns the names of the currently enabled builtin components.
+func getEnabledComponents(f *alloy_runtime.Runtime) []string {
+	components := component.GetAllComponents(f, component.InfoOptions{})
+	if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+		components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
 	}
+	componentNames := map[string]struct{}{}
+	for _, c := range components {
+		if c.Type != component.TypeBuiltin {
+			continue
+		}
+		componentNames[c.ComponentName] = struct{}{}
+	}
+	return maps.Keys(componentNames)
 }
 
 type runParams struct {
@@ -384,6 +388,9 @@ type runParams struct {
 
 	// getConfig callback provides initial alloy config.
 	getConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
+
+	// onConfigImport is a hook that called when extra configs are loaded using `import.*` components.
+	onConfigImport importsource.ImportContentHook
 }
 
 func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runParams) error {
@@ -417,7 +424,8 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		if err := featuregate.CheckAllowed(
 			featuregate.StabilityPublicPreview,
 			fr.minStability,
-			"Windows process priority"); err != nil {
+			"Windows process priority",
+		); err != nil {
 			return err
 		}
 
@@ -571,6 +579,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 			uiService,
 		},
 		TaskShutdownDeadline: fr.taskShutdownDeadline,
+		OnImportContent:      params.onConfigImport,
 	})
 	if err != nil {
 		return err
@@ -586,18 +595,21 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		f.Run(ctx)
 	})
 
-	// Report usage of enabled components
-	if !fr.disableReporting {
-		reporter, err := usagestats.NewReporter(slogger)
-		if err != nil {
-			return fmt.Errorf("failed to create reporter: %w", err)
-		}
-		go func() {
-			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
-			if err != nil && !errors.Is(err, context.Canceled) {
-				slogger.Error("failed to start reporter", "err", err)
-			}
-		}()
+	// Report usage of enabled components.
+	if useragent.GetEngineMode() == useragent.EngineOTel {
+		// Running embedded in the OTel Collector via the alloyengine extension (the
+		// only way run() executes under `alloy otel`): feed the Default Engine
+		// components to the process-wide tracker instead of starting a second
+		// reporter, so the single `alloy otel` report lists them under
+		// "alloyengine-components".
+		usagestats.GlobalTracker.SetAlloyEngineComponentsFunc(func() []string {
+			return getEnabledComponents(f)
+		})
+	} else if !fr.disableReporting {
+		usagestats.GlobalTracker.SetEnabledComponentsFunc(func() []string {
+			return getEnabledComponents(f)
+		})
+		usagestats.StartReporter(ctx, slogger, fr.storagePath, usagestats.GlobalTracker)
 	}
 
 	// Perform the initial load. This is done after starting the HTTP server so

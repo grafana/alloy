@@ -40,9 +40,12 @@ You can use the following arguments with `database_observability.sql_server`:
 
 The following collectors are configurable:
 
-| Name              | Description                                                  | Enabled by default |
-|-------------------|--------------------------------------------------------------|--------------------|
-| `schema_details`  | Collect schemas and tables from `information_schema`. | yes                |
+| Name              | Description                                                                   | Enabled by default |
+|-------------------|-------------------------------------------------------------------------------|--------------------|
+| `explain_plans`   | Collect and parse query execution plans already captured by Query Store.      | yes                |
+| `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
+| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 
 ## Blocks
 
@@ -50,13 +53,107 @@ You can use the following blocks with `database_observability.sql_server`:
 
 {{< docs/alloy-config >}}
 
-| Block                              | Description                                       | Required |
-|------------------------------------|---------------------------------------------------|----------|
-| [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
+| Block                                | Description                                       | Required |
+|--------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
+| [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
+| [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
+| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 
+[cloud_provider]: #cloud_provider
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
+[explain_plans]: #explain_plans
+[query_details]: #query_details
+[query_metrics]: #query_metrics
 [schema_details]: #schema_details
 
 {{< /docs/alloy-config >}}
+
+### `cloud_provider`
+
+The `cloud_provider` block has no attributes.
+It contains zero or one of the [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
+This information is appended as labels to the collected metrics.
+The labels make it easier for you to filter and group your metrics.
+
+When you don't configure a `cloud_provider` block, {{< param "PRODUCT_NAME" >}} attempts to detect AWS RDS and Azure SQL hosts from the `data_source_name`.
+
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
+
+### `aws`
+
+The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
+
+| Name  | Type     | Description                                             | Default | Required |
+|-------|----------|---------------------------------------------------------|---------|----------|
+| `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
+
+### `azure`
+
+The `azure` block supplies the identifying information for the database being monitored.
+
+| Name              | Type     | Description                                          | Default | Required |
+|-------------------|----------|------------------------------------------------------|---------|----------|
+| `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
+| `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
+| `server_name`     | `string` | The database server name, for example `orders-db` for the host `orders-db.database.windows.net`. |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
+
+### `explain_plans`
+
+| Name               | Type       | Description                                    | Default | Required |
+|--------------------|------------|-------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to check for a changed execution plan. | `"1m"`  | no       |
+
+The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector.
+It doesn't compile or run a fresh plan.
+Only queries that `query_metrics` is currently tracking are eligible.
+When `query_metrics` is disabled, `explain_plans` produces no output.
+
+The collector checks for a changed plan every `collect_interval`.
+It forwards a log entry only when the plan's shape has changed since the last entry.
+It also forwards a log entry when 30 minutes have passed since the last entry.
+This keeps log volume low and ensures a fresh entry at least every 30 minutes.
+
+### `query_details`
+
+| Name               | Type       | Description                                            | Default | Required |
+|--------------------|------------|--------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+
+The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
+
+### `query_metrics`
+
+| Name                  | Type       | Description                                                        | Default | Required |
+|-----------------------|------------|-------------------------------------------------------------------|---------|----------|
+| `collect_interval`    | `duration` | How frequently to collect metrics from Query Store.               | `"1m"`  | no       |
+| `statements_limit`    | `int`      | Maximum number of queries to track, ranked by recent duration.    | `50`   | no       |
+| `statements_lookback` | `duration` | Only queries executed within this window are eligible for tracking.| `"1h"`  | no       |
+
+The `query_metrics` collector reads [Query Store][query_store] for the database selected in the `data_source_name`, not every database on the instance.
+Configure the `data_source_name` to select a user database that has Query Store enabled.
+When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection and remains healthy.
+
+The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
+
+[query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
 
 ### `schema_details`
 

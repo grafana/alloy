@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: docker.io/grafana/alloy:v1.17.1
+          image: docker.io/grafana/alloy:v1.19.2
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -84,6 +84,17 @@ spec:
             requests:
               cpu: 10m
               memory: 50Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
       dnsPolicy: ClusterFirst
       volumes:
         - name: config

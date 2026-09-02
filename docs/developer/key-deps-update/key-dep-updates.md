@@ -20,7 +20,6 @@ Key dependencies are Go module dependencies of the Alloy project that are known 
     - `github.com/prometheus/client_model`
 - Beyla dependencies (Beyla)
   - `github.com/grafana/beyla/v2`
-  - `go.opentelemetry.io/obi`
   - `go.opentelemetry.io/ebpf-profiler`
 - Loki dependencies (Loki)
 
@@ -116,7 +115,6 @@ Here is a summary of the relationships between the key dependencies of Alloy.
 5. **Beyla** (grafana/beyla/v2)
    - Depends on: Prometheus client libraries (client_golang, client_model, common)
    - Depends on: OpenTelemetry Collector Core (component, pdata, exporter packages)
-   - Depends on: OBI (go.opentelemetry.io/obi)
    - Does NOT depend on: Prometheus (full) or Loki
 
 6. **Loki** (grafana/loki/v3)
@@ -125,6 +123,113 @@ Here is a summary of the relationships between the key dependencies of Alloy.
    - Depends on: OpenTelemetry Collector Core (pdata, component packages)
    - Depends on: OpenTelemetry Collector Contrib (internal/exp/metrics, pkg/pdatautil, processor/deltatocumulativeprocessor)
    - Does NOT depend on: Beyla
+
+## Common traps and hard-won lessons
+
+The bullets here are judgment calls the "Steps to update key dependencies" section does not spell out. They are recurring failure modes that cost time to relearn on every run. Each subsection names which step they apply to.
+
+### Versions and relationships (Step 2)
+
+- **Compatibility cliffs: sometimes no released version works.**
+  - Problem: cross-dependency API coupling can leave no *released* version of one key dependency compiling against any single release of another.
+  - Fix: pin a pre-release tag or a `main`-branch snapshot to bridge them. Prefer a tagged RC over a raw snapshot.
+  - Example: otel-contrib v0.147 to v0.149 calls the old 5-arg `scrape.NewManager` while v0.150+ needs the new `AppendableV2` signature (prom #17872), so no released prom v0.311.x fit either. Bridged with `prometheus v0.312.0-rc.0`.
+
+- **A GA release can re-couple the stack.**
+  - Problem: a GA cut often runs a blanket CVE-driven `go get -u` that floats the whole OTel stack to a newer minor.
+  - Fix: the last RC before GA can be the cleaner pin.
+  - Example: prom GA `v0.312.0` pulled deltatocumulative to v0.153 and collector core to v1.59 via a 46-dependency refresh (prometheus#18812); `v0.312.0-rc.0` stayed v0.151-aligned.
+
+- **Forced minimum bumps carry their own breaking changes.**
+  - Problem: an older version of a key dependency may import a package a newer transitive dependency removed, forcing a minimum bump that carries an unrelated user-facing breaking change.
+  - Fix: check the release you're forced onto for unrelated breaks, not just the API you came for.
+  - Example: Loki v3.6.x imports the removed `tsdb/errors` package, forcing a bump to v3.7.1. That release also brings loki#19991 (`fix!`: parsed labels should not override structured metadata).
+
+### Forks (Step 3)
+
+- **A minimal one-commit fork can be lower-risk than upstream main.**
+  - Problem: the reflex "drop the fork, point at upstream main" frequently breaks the build, because main has moved an unrelated transitive dependency the rest of the graph isn't ready for.
+  - Fix: keep a single-patch fork on the graph's version line. Remove it on a coordinated graph-wide uplift, not because upstream tagged a release.
+  - Example: prom-operator main has the slog `rulefmt.Parse` fix but also bumped `client-go` to v0.36.2 (`HasSyncedChecker`), breaking pinned `controller-runtime v0.20.4` and otel-contrib's `k8sattributesprocessor` (still client-go v0.35.4 through otel v0.154). Kept a 1-line `v0.91.0`+slog fork instead.
+
+### Modules and conflict resolution (Step 4)
+
+- **Don't let `tidy` downgrade main.**
+  - Problem: after a rebase or merge, `go mod tidy` can silently select versions *below* what main already requires (renovate bumps), and it won't raise a direct dependency back up on its own.
+  - Fix: take the higher version per module, reconcile, and check explicitly for downgrades before you continue.
+  - Example: one rebase surfaced 16 such traps (secretsmanager, pgx/v5, go-git, zerolog, …).
+
+- **Hold the OTel stack uniform.**
+  - Problem: when main introduced a new OTel component since your branch diverged, `tidy` can float the whole stack to a newer minor.
+  - Fix: pin the new component to your target version in `collector/builder-config.yaml`. After regenerating, grep for any otel module off the uniform version and bump the stragglers.
+  - Example: `nginxreceiver`, `signaltometricsconnector`, and a few collector-core modules came in at the old minor and had to be pinned to v0.151.0.
+
+- **Bump dependencies at their source of truth, not the generated file.**
+  - Problem: if you force a version straggler in `go.mod` when `collector/builder-config.yaml` owns it, the next regenerate reverts it and it surfaces as `make generate` drift.
+  - Fix: bump it in the builder-config.
+  - Example: the lone `httpsprovider` straggler was raised in builder-config, not go.mod, to keep the stable stack uniform without drift.
+
+- **The opamp supervisor pin lives outside the component list regeneration syncs — bump it separately.**
+  - Problem: `collector/builder-config.yaml` pins `github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor` via a `replace`, because OCB doesn't treat it as a component and `go mod tidy` would otherwise resolve it to `@latest`. Every other OTel dependency's target version lives in the `components:` list, so setting it there once and running `make generate-otel-collector-distro` propagates it everywhere. This pin isn't in that list, so regeneration never touches it, and it can silently lag behind.
+  - Fix: whenever the OTel version bumps, also bump this replace line to the same target version, then regenerate.
+
+- **The OCB version in `BUILDER_VERSION` in the root `Makefile` needs to be updated whenever the OTel Collector dependency version changes.**
+  - Problem: this is the OCB version we use to build the Alloy collector. Nothing derives it from `collector/builder-config.yaml`, so it can lag silently and generate stale code.
+  - Fix: set it to the new OTel Collector dependency version, then regenerate using `make generate-otel-collector-distro`.
+  
+- **Verify the commit, not just the working tree.**
+  - Problem: `go build`, `test`, and `lint` run against the working tree, so they stay green even when a merge or amend captured pre-regeneration files.
+  - Fix: regenerate the files first, then stage the updated files, and check `git status` before you push.
+  - Example: a merge commit once captured a stale `components.go` (missing a connector) while every local check passed against the regenerated tree.
+
+### Compilation (Step 6)
+
+- **Build the upstream Config from `CreateDefaultConfig()`, not a zero-value struct.**
+  - Problem: when upstream adds a new *required* field with a non-zero factory default, a fresh struct ships a zero value that breaks at runtime. Roughly 39 of 50 otelcol components build from a fresh struct, so this recurs.
+  - Fix: build the Config from `CreateDefaultConfig()` so factory defaults are present.
+  - Example: googlecloudpubsub `flow_control` shipped zeros, so `StreamAckDeadline=0` was rejected by the API and `TriggerAckBatchDuration=0` caused a hot-loop.
+
+### Tests, docs, and change notes (Steps 7, 9, and 10)
+
+- **Newly-required upstream config: expose it, don't hardcode. Everything else waits.**
+  - Problem: if upstream makes a field required, hardcoding its default hides it from users. But it's just as tempting to expose every *other* new field you notice while already touching a component's code, which turns a version-bump PR into a feature PR and bloats its review surface.
+  - Fix: in the bump PR, expose only fields upstream now requires, defaulting to the upstream factory value (zero behavior change unless set). Defer every purely optional new field, however trivial, to a follow-up, even if it means parking the commit at a throwaway tag.
+  - Example: exposed kafka `record_partitioner` and googlecloudpubsub `flow_control` (required) in the bump PR; parked kafka `record_headers` and half a dozen other optional fields at a `parked-otel-new-fields` tag. The `tail_sampling` processor's `sampling_strategy` couldn't be exposed at all because upstream keeps the type unexported through v0.154, so it needs a reflection shim.
+
+- **Find the deferred optional fields with a per-component subagent sweep, not by eyeballing the diff.**
+  - Problem: manually scanning a multi-hundred-component version diff for new optional fields misses things and doesn't scale.
+  - Fix: once the bump PR is in, fan out parallel subagents by component category (receivers, exporters, processors/connectors/extensions/auth, shared wrappers, plus any native, non-otelcol components), each diffing the old and new upstream versions for that category. Consolidate the results into a backlog doc, then bundle the small fields into one follow-up PR per theme; file a design proposal instead when a field needs a feature Alloy doesn't have yet.
+  - Example: a 5-subagent sweep across the v0.151 to v0.153 delta plus a native `prometheus.*` audit surfaced a `prometheus.remote_write` auth-fields PR, a bundle of 8 small otelcol fields, and a middleware-extension design proposal (#6638) for a field with no Alloy-side component to plug into yet.
+
+- **A major bump can regress runtime *defaults*, not just APIs.**
+  - Problem: even when everything compiles, default behaviors can quietly change from the prior major.
+  - Fix: check that defaults still match, and build config via `Load` on empty input so populated defaults (like the scrape fallback protocol) survive.
+  - Example: after the Prometheus v3 bump, `prometheus.operator.*` scraping silently stopped for ServiceMonitors with no explicit protocol (#4291).
+
+- **Accept upstream default flips unless accepting would harm users.**
+  - Problem: when upstream changes a default, the test golden moves, and silently updating the fixture hides a user-facing change.
+  - Fix: accept the new default and document it in the release notes. Keep Alloy's old default only when accepting would harm users, and then document the divergence and the reason in the component docs.
+  - Examples: v0.153 accepted the k8sattributes `deployment_name_from_replicaset` (`true`) and filter/transform `error_mode` (`ignore`) flips with release notes. It kept Alloy's exclusion of the spanmetrics `collector.instance.id` dimension because accepting it stamps an unstable id on every series and multiplies active series on each restart, recorded as a divergence in the component doc.
+
+- **Dropping a fork whose patch landed upstream is not a user-facing change.**
+  - Problem: retiring a fork because its fix is now in the target version can look like a behavior change, but behavior is continuous across the swap.
+  - Fix: verify continuity before calling something a breaking change, and don't flag this in the release notes.
+  - Example: dropping the `grafana/prometheus` fork looked like a `sent_batch_duration` change but wasn't. Both the fork and the target rc.0 carried the same fix.
+
+- **Flag no-op-upstream fields as deprecations.**
+  - Problem: a field that still parses but does nothing upstream now is misleading if left as-is or silently removed.
+  - Fix: add a deprecation note rather than removing it silently.
+  - Example: kafka `resolve_canonical_bootstrap_servers_only` became a no-op after the franz-go migration.
+
+- **Scope release notes to components actually in the released distro.**
+  - Problem: a change to a component that doesn't ship yet isn't user-facing, so a release note for it is noise.
+  - Fix: check that the component ships in the latest release before noting it, and skip notes for ones not yet exposed.
+  - Example: the `otelcol.receiver.awss3` change was left out of the changelog because the component wasn't in the latest release (#5128).
+
+- **Link component docs to the `OTEL_VERSION` variable, not a hardcoded tag.**
+  - Problem: a hardcoded upstream-source tag in component docs rots on every bump.
+  - Fix: use `{{< param "OTEL_VERSION" >}}` so the link tracks each bump.
+  - Example: raised in review on `otelcol.processor.filter.md` (#5784), the templated form is the repo convention, though the stale `<OTEL_VERSION>` angle-bracket form still lingers in shared links.
 
 ## Steps to update key dependencies
 
@@ -160,7 +265,7 @@ Determine what is the status of the fork:
 
 - If the fork is no longer needed, quote the issues or PRs that resolve it. Denote with ✅
 - If a new, updated tag or branch exists, write clearly that an updated fork of the new version exists and we can continue. Denote with ✅
-- In the case of `go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation` and `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replaces, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
+- In the case of `go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler` replace, we want to pick the latest version from the grafana fork as it is the most up to date. Determine that version and denote with ✅
 - If it doesn't exist, write clearly that we need to update the fork before we can continue. State what upstream version should be used as the base. Denote with 🛑
 
 Only continue to the next step if all the key dependenies have a fork ready, don't need one, or you're told to continue. If there are forks that are not ready but not for the key dependencies, we can continue and keep them unchanged.
@@ -168,6 +273,8 @@ Only continue to the next step if all the key dependenies have a fork ready, don
 ### Step 4: Update Go modules to desired versions
 
 The shared replace block in `collector/builder-config.yaml` is canonical. Do not edit shared remote replaces in `go.mod` directly. Update `collector/builder-config.yaml`, then run `make generate-otel-collector-distro` to sync the root go.mod and generated OTel distro files.
+
+Also set `BUILDER_VERSION` in the root `Makefile` to the new OTel Collector dependency version. See the "Common traps and hard-won lessons" section above.
 
 Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 
@@ -300,7 +407,6 @@ Fetch the changelog using curl
 For otel we are interested in these repos
 * github.com/open-telemetry/opentelemetry-collector
 * github.com/open-telemetry/opentelemetry-go-build-tools
-* github.com/grafana/opentelemetry-ebpf-instrumentation
 * github.com/grafana/opentelemetry-ebpf-profiler
 
 Run curl to get changelog for release

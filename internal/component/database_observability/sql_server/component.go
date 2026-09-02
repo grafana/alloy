@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"math"
 	"net/http"
 	"path"
 	"strings"
@@ -68,10 +69,48 @@ type Arguments struct {
 	ExcludeSchemas    []string            `alloy:"exclude_schemas,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 
+	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
+	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
+	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
+}
+
+type CloudProvider struct {
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type SchemaDetailsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type QueryMetricsArguments struct {
+	CollectInterval    time.Duration `alloy:"collect_interval,attr,optional"`
+	StatementsLimit    int           `alloy:"statements_limit,attr,optional"`
+	StatementsLookback time.Duration `alloy:"statements_lookback,attr,optional"`
+}
+
+type QueryDetailsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
@@ -81,6 +120,20 @@ func defaultArguments() Arguments {
 		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+		},
+
+		QueryMetricsArguments: QueryMetricsArguments{
+			CollectInterval:    1 * time.Minute,
+			StatementsLimit:    50,
+			StatementsLookback: 1 * time.Hour,
+		},
+
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+		},
+
+		ExplainPlansArguments: ExplainPlansArguments{
 			CollectInterval: 1 * time.Minute,
 		},
 	}
@@ -94,6 +147,47 @@ func (a *Arguments) Validate() error {
 	_, err := msdsn.Parse(string(a.DataSourceName))
 	if err != nil {
 		return err
+	}
+
+	if enableOrDisableCollectors(*a)[collector.QueryMetricsCollector] {
+		if a.QueryMetricsArguments.CollectInterval <= 0 {
+			return fmt.Errorf("query_metrics.collect_interval must be greater than zero")
+		}
+		if a.QueryMetricsArguments.StatementsLimit <= 0 {
+			return fmt.Errorf("query_metrics.statements_limit must be greater than zero")
+		}
+		lookback := a.QueryMetricsArguments.StatementsLookback
+		if lookback < time.Second || lookback > math.MaxInt32*time.Second {
+			return fmt.Errorf("query_metrics.statements_lookback must be between 1s and %ds", math.MaxInt32)
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.QueryDetailsCollector] {
+		if a.QueryDetailsArguments.CollectInterval <= 0 {
+			return fmt.Errorf("query_details.collect_interval must be greater than zero")
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.ExplainPlansCollector] {
+		if a.ExplainPlansArguments.CollectInterval <= 0 {
+			return fmt.Errorf("explain_plans.collect_interval must be greater than zero")
+		}
+	}
+
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
@@ -302,11 +396,26 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverName.String, machineName.String))))
 
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
+		}
+		cp = cloudProvider
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, nil)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -320,7 +429,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedServerID, engineVersion.String); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion.String, cp); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -330,6 +439,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.SchemaDetailsCollector: true,
+		collector.QueryMetricsCollector:  true,
+		collector.QueryDetailsCollector:  true,
+		collector.ExplainPlansCollector:  true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -347,7 +459,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
-func (c *Component) startCollectors(serverID string, engineVersion string) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -378,11 +490,85 @@ func (c *Component) startCollectors(serverID string, engineVersion string) error
 		}
 	}
 
+	var queryMetricsCollector *collector.QueryMetrics
+	if collectors[collector.QueryMetricsCollector] {
+		qmCollector, err := collector.NewQueryMetrics(collector.QueryMetricsArguments{
+			DB:              c.dbConnection,
+			Registry:        c.registry,
+			CollectInterval: c.args.QueryMetricsArguments.CollectInterval,
+			Limit:           c.args.QueryMetricsArguments.StatementsLimit,
+			Lookback:        c.args.QueryMetricsArguments.StatementsLookback,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.QueryMetricsCollector, "create", err)
+		} else {
+			queryMetricsCollector = qmCollector
+			if err := qmCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryMetricsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qmCollector)
+		}
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qdArgs := collector.QueryDetailsArguments{
+			DB:              c.dbConnection,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		}
+
+		// NOTE: this might change in the future, but for now query_details has
+		// an hard dependency on query_metrics to determine which query_hashes to log.
+		if queryMetricsCollector != nil {
+			qdArgs.Tracker = queryMetricsCollector.Tracker()
+		}
+
+		qdCollector, err := collector.NewQueryDetails(qdArgs)
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qdCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qdCollector)
+		}
+	}
+
+	if collectors[collector.ExplainPlansCollector] {
+		epArgs := collector.ExplainPlansArguments{
+			DB:              c.dbConnection,
+			CollectInterval: c.args.ExplainPlansArguments.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		}
+
+		// explain_plans has the same hard dependency on query_metrics's tracked
+		// query_hash set as query_details does, so its candidate set stays
+		// bounded by query_metrics.statements_limit rather than being an
+		// independent, unbounded discovery query.
+		if queryMetricsCollector != nil {
+			epArgs.Tracker = queryMetricsCollector.Tracker()
+		}
+
+		epCollector, err := collector.NewExplainPlans(epArgs)
+		if err != nil {
+			logStartError(collector.ExplainPlansCollector, "create", err)
+		} else {
+			if err := epCollector.Start(context.Background()); err != nil {
+				logStartError(collector.ExplainPlansCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, epCollector)
+		}
+	}
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
 		DB:            c.dbConnection,
 	})
 	if err != nil {
@@ -466,6 +652,7 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
+		"engine":    model.LabelValue(collector.EngineName),
 	}).Wrap(entryHandler)
 
 	return entryHandler

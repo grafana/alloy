@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -12,6 +13,11 @@ import (
 )
 
 const ConnectionInfoName = "connection_info"
+
+// EngineName is the value the sql_server component uses to identify itself
+// wherever an engine identifier is needed, e.g. the connection_info metric's
+// "engine" label and the "engine" Loki label added to every log line.
+const EngineName = "sql_server"
 
 type ConnectionInfoArguments struct {
 	DSN           string
@@ -63,7 +69,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		providerAccount      = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = "sql_server"
+		engine               = EngineName
 	)
 
 	if c.CloudProvider != nil {
@@ -87,6 +93,28 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			providerRegion = c.CloudProvider.GCP.Region
 			providerAccount = c.CloudProvider.GCP.ProjectID
 			dbInstanceIdentifier = c.CloudProvider.GCP.InstanceID
+		}
+	} else {
+		cfg, err := msdsn.Parse(c.DSN)
+		if err != nil {
+			return err
+		}
+
+		if host := cfg.Host; host != "" {
+			if strings.HasSuffix(host, "rds.amazonaws.com") {
+				providerName = "aws"
+				matches := database_observability.RdsRegex.FindStringSubmatch(host)
+				if len(matches) > 3 {
+					dbInstanceIdentifier = matches[1]
+					providerRegion = matches[3]
+				}
+			} else if strings.HasSuffix(host, "database.windows.net") {
+				providerName = "azure"
+				matches := database_observability.AzureSQLServerRegex.FindStringSubmatch(host)
+				if len(matches) > 1 {
+					dbInstanceIdentifier = matches[1]
+				}
+			}
 		}
 	}
 	c.running.Store(true)

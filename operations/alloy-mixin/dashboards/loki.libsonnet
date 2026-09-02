@@ -83,15 +83,15 @@ local filename = 'alloy-loki.json';
         panel.newQuery(
           expr=|||
             (
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
-              or ignoring(le)
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, status_code=~"2..", host=~"$url"}[$__rate_interval]))
             )
             /
             (
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
-              or ignoring(le)
-              sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+              sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{%(instanceSelector)s, host=~"$url"}[$__rate_interval])))
+              or
+              sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
             ) * 100
           ||| % $._config,
         ),
@@ -172,7 +172,7 @@ local filename = 'alloy-loki.json';
       |||) +
       panel.withStacked() +
       panel.withUnit('Bps') +
-      panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withPosition({ x: 0, y: 11 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr=|||
@@ -190,7 +190,7 @@ local filename = 'alloy-loki.json';
       |||) +
       panel.withUnit('Bps') +
       panel.withStacked(stackingMode='off') +
-      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withPosition({ x: 12, y: 11 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr=|||
@@ -207,7 +207,7 @@ local filename = 'alloy-loki.json';
       panel.withDescription(|||
         Shows distribution of write request sizes over time.
       |||) +
-      panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withPosition({ x: 0, y: 21 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
 		panel.newQuery(
             expr= |||
@@ -228,7 +228,7 @@ local filename = 'alloy-loki.json';
         p99 and p50 of entry propagation latency. Prefers native histogram, falls back to classic histogram when native is unavailable.
       |||) +
       panel.withUnit('s') +
-      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withPosition({ x: 12, y: 21 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr=|||

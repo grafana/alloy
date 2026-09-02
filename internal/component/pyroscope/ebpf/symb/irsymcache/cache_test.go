@@ -210,14 +210,14 @@ func testElfRef(filepath string) (md *reporter.ExecutableMetadata) {
 			mappings:      nil,
 			mappingsError: nil,
 		},
-		Mapping: &process.Mapping{
+		Mapping: &process.RawMapping{
 			Vaddr:      0,
 			Length:     0,
 			Flags:      0,
 			FileOffset: 0,
 			Device:     0,
 			Inode:      0,
-			Path:       libpf.Intern(filepath),
+			Path:       filepath,
 		},
 		DebuglinkFileName: "",
 	}

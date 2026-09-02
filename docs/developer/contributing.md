@@ -117,8 +117,7 @@ Compiling Alloy on Linux requires extra dependencies:
 
 Compiling Alloy on Windows requires extra dependencies:
 
-- [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) full 64-bit install for compiling C
-  dependencies.
+- A 64-bit [mingw-w64](https://www.mingw-w64.org/) gcc toolchain for compiling C dependencies. The [WinLibs](https://winlibs.com/) build is recommended (it is also what CI uses, installed via `choco install mingw`).
 
 ## Pull Request Checklist
 
@@ -143,7 +142,7 @@ Slack channel [#alloy](https://slack.grafana.com).
 #### PR titles (and by extension CHANGELOG entries) should:
 
 1. Adhere to [Conventional Commit](https://www.conventionalcommits.org/en/v1.0.0/) style and use one
-   of the ["types" defined in our linting workflow](../../.github/workflows/lint-pr-title.yml#L43).
+   of the ["types" defined in our linting workflow](../../.github/workflows/release-lint-pr-title.yml).
 2. Read as a complete sentence in the imperative, present tense (e.g. "Change", not "Changes" or
    "Changed").
 3. Have a "description" which starts with an uppercase letter.
@@ -191,7 +190,7 @@ When a maintainer goes to merge your PR, the prompt they get will contain the PR
 commit's title and all of the individual commit details as the squashed commit's body.
 
 You can find the list of all Conventional Commit "types" we allow
-[here](../../.github/workflows/lint-pr-title.yml#L43).
+[here](../../.github/workflows/release-lint-pr-title.yml).
 
 ## (Maintainers) Merging a PR
 
@@ -275,7 +274,7 @@ If upstream is unresponsive, consider choosing a different dependency or making 
 creating a new Go module with the same source).
 
 [new-issue]: https://github.com/grafana/alloy/issues/new
-[code-review-comments]: https://code.google.com/p/go-wiki/wiki/CodeReviewComments
+[code-review-comments]: https://go.dev/wiki/CodeReviewComments
 [best-practices]: https://peter.bourgon.org/go-in-production/#formatting-and-style
 [uber-style-guide]: https://github.com/uber-go/guide/blob/master/style.md
 [CLA]: https://cla-assistant.io/grafana/alloy

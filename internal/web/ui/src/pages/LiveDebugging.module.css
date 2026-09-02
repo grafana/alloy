@@ -90,6 +90,30 @@
   border-color: rgb(44, 90, 176);
 }
 
+.debugLink .toggleButton {
+  width: auto;
+  min-width: 120px;
+  background-color: #ffffff;
+  color: #1f2937;
+  border-color: #c7d0d9;
+}
+
+.debugLink .toggleButton:hover {
+  background-color: #f4f5f7;
+  border-color: #9aa7b3;
+}
+
+.debugLink .toggleButtonActive {
+  background-color: #3871dc;
+  color: #ffffff;
+  border-color: #3871dc;
+}
+
+.debugLink .toggleButtonActive:hover {
+  background-color: rgb(44, 90, 176);
+  border-color: rgb(44, 90, 176);
+}
+
 .logLine {
   white-space: pre-wrap;
   color: #24292e;

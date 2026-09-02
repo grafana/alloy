@@ -1,0 +1,61 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+processors:
+  redaction:
+    allow_all_keys: true
+    allowed_keys:
+      - description
+      - group
+    ignored_keys:
+      - safe_attribute
+    blocked_key_patterns:
+      - ".*token.*"
+    ignored_key_patterns:
+      - ".*safe.*"
+    blocked_values:
+      - "4[0-9]{12}(?:[0-9]{3})?"
+    allowed_values:
+      - "^https?://.*"
+    hash_function: hmac-sha256
+    hmac_key: "0123456789abcdef0123456789abcdef"
+    redact_all_types: true
+    summary: debug
+    url_sanitizer:
+      enabled: true
+      attributes:
+        - http.url
+        - url.full
+      sanitize_span_name: true
+    db_sanitizer:
+      sanitize_span_name: true
+      sql:
+        enabled: true
+        attributes:
+          - db.statement
+      redis:
+        enabled: true
+      valkey:
+        enabled: true
+      memcached:
+        enabled: true
+      mongo:
+        enabled: true
+      opensearch:
+        enabled: true
+      es:
+        enabled: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [redaction]
+      exporters: [otlp]

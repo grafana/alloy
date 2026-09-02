@@ -181,7 +181,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "(\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n  or ignoring(le)\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n)\n/\n(\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n  or ignoring(le)\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n) * 100\n",
+               "expr": "(\n  sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval])))\n  or\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n)\n/\n(\n  sum by(${groupby}) (histogram_count(rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])))\n  or\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_count{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n) * 100\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -249,7 +249,7 @@
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 23
+            "y": 33
          },
          "targets": [
             {
@@ -282,7 +282,7 @@
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 23
+            "y": 33
          },
          "targets": [
             {
@@ -303,7 +303,7 @@
             "h": 10,
             "w": 12,
             "x": 0,
-            "y": 23
+            "y": 43
          },
          "maxDataPoints": 30,
          "options": {
@@ -352,7 +352,7 @@
             "h": 10,
             "w": 12,
             "x": 12,
-            "y": 23
+            "y": 43
          },
          "targets": [
             {

@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,9 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func TestSchemaDetails(t *testing.T) {
@@ -525,7 +528,7 @@ func TestSchemaDetails(t *testing.T) {
 				AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"))
 
 		// Second scrape: only the tables list. The scrape is throttled (still
-		// within emitInterval) so it must not trigger any create-statement
+		// within EmitInterval) so it must not trigger any create-statement
 		// related queries.
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -537,7 +540,7 @@ func TestSchemaDetails(t *testing.T) {
 			))
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(time.Minute) // well within emitInterval
+		fakeNow = fakeNow.Add(time.Minute) // well within EmitInterval
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		// First scrape emits OP_TABLE_DETECTION + OP_CREATE_STATEMENT; second
@@ -617,7 +620,7 @@ func TestSchemaDetails(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(database_observability.EmitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		require.Eventually(t, func() bool {
@@ -710,7 +713,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than emitInterval ago, no further fetch queries are expected.
+		// less than EmitInterval ago, no further fetch queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -969,11 +972,20 @@ func TestSchemaDetails(t *testing.T) {
 
 		lokiClient := loki.NewCollectingHandler()
 
+		// No loki-side sync point here, so sync on the collector's log via a
+		// thread-safe buffer and inspect the mock only after Stop().
+		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          util.TestAlloyLogger(t).Slog(),
+			Logger:          logger.Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -992,16 +1004,17 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
+			return strings.Contains(logBuffer.String(), `msg="no tables detected from information_schema.tables"`)
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
-		lokiClient.Stop()
-
 		require.Eventually(t, func() bool {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiClient.Stop()
 		require.Empty(t, lokiClient.Received())
 	})
 	t.Run("empty tables list clears throttle map", func(t *testing.T) {
