@@ -131,8 +131,8 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 
 	// Turn on trace capture if configured. Register the span processor on the
 	// collector's tracer provider, the way the zpages extension does.
-	e.traceProcessor.Enable(e.cfg.TraceBufferSize)
-	if e.cfg.TraceBufferSize > 0 {
+	if e.cfg.Tracing.Enabled {
+		e.traceProcessor.Enable(e.cfg.Tracing.SamplesPerSpan)
 		if tp := registerableTP(e.settings.TracerProvider); tp != nil {
 			tp.RegisterSpanProcessor(e.traceProcessor)
 			e.traceProvider = tp

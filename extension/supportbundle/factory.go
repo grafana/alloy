@@ -43,6 +43,10 @@ func createDefaultConfig() component.Config {
 		MaxCollectionDuration:     60 * time.Second,
 		// LogBufferSize defaults to 0: log capture is off unless the operator
 		// sets a size, because it is always on and adds a per-line logging cost.
+		//
+		// Tracing is off by default. The sample count defaults to 10 (the zpages
+		// default) so that enabling tracing alone works without setting it.
+		Tracing: TracingConfig{SamplesPerSpan: 10},
 	}
 }
 

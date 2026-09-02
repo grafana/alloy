@@ -3,69 +3,116 @@ package gather
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
-// emitSpans records n spans through a tracer that has the processor attached.
-func emitSpans(p *TraceProcessor, n int) {
+func newTracer(p *TraceProcessor) trace.Tracer {
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithSpanProcessor(p),
 	)
-	tr := tp.Tracer("test")
-	for i := 0; i < n; i++ {
-		_, span := tr.Start(context.Background(), "op-"+strconv.Itoa(i))
-		span.SetAttributes(attribute.String("k", "v"))
-		span.End()
+	return tp.Tracer("test")
+}
+
+func emitSpan(tr trace.Tracer, name string, isErr bool) {
+	_, span := tr.Start(context.Background(), name)
+	span.SetAttributes(attribute.String("k", "v"))
+	span.AddEvent("evt", trace.WithAttributes(attribute.Int("n", 1)))
+	if isErr {
+		span.SetStatus(codes.Error, "boom")
 	}
+	span.End()
+}
+
+func gatherReports(t *testing.T, p *TraceProcessor) []traceReport {
+	t.Helper()
+	files, err := Traces{Processor: p}.Gather(context.Background(), Options{})
+	require.NoError(t, err)
+	if len(files) == 0 {
+		return nil
+	}
+	var reports []traceReport
+	require.NoError(t, json.Unmarshal(gatherToMap(t, files)["traces.json"], &reports))
+	return reports
+}
+
+func totalSamples(r traceReport) int {
+	n := len(r.ErrorSamples)
+	for _, recs := range r.LatencySamples {
+		n += len(recs)
+	}
+	return n
 }
 
 func TestTraceProcessorDisabledIsNoOp(t *testing.T) {
 	p := NewTraceProcessor() // not enabled
-	emitSpans(p, 3)
-
-	files, err := Traces{Processor: p}.Gather(context.Background(), Options{})
-	require.NoError(t, err)
-	require.Empty(t, files)
+	emitSpan(newTracer(p), "op", false)
+	require.Nil(t, gatherReports(t, p))
 }
 
-func TestTraceProcessorCaptures(t *testing.T) {
+func TestTraceProcessorAggregatesByName(t *testing.T) {
 	p := NewTraceProcessor()
-	p.Enable(8)
-	emitSpans(p, 3)
+	p.Enable(10)
+	tr := newTracer(p)
+	emitSpan(tr, "op", false)
+	emitSpan(tr, "op", false)
+	emitSpan(tr, "op", true) // error
 
-	files, err := Traces{Processor: p}.Gather(context.Background(), Options{})
-	require.NoError(t, err)
+	reports := gatherReports(t, p)
+	require.Len(t, reports, 1)
+	r := reports[0]
+	require.Equal(t, "op", r.Name)
+	require.Equal(t, 3, r.Count)      // exact total
+	require.Equal(t, 1, r.ErrorCount) // exact total
+	require.NotEmpty(t, r.LatencySamples)
+	require.Len(t, r.ErrorSamples, 1)
+	require.Equal(t, "Error", r.ErrorSamples[0].StatusCode)
 
-	m := gatherToMap(t, files)
-	require.Contains(t, m, "traces.json")
-
-	var recs []spanRecord
-	require.NoError(t, json.Unmarshal(m["traces.json"], &recs))
-	require.Len(t, recs, 3)
-	require.Equal(t, "op-0", recs[0].Name) // oldest first
-	require.Equal(t, "op-2", recs[2].Name) // newest last
-	require.Equal(t, "v", recs[0].Attributes["k"])
-	require.NotEmpty(t, recs[0].TraceID)
-	require.NotEmpty(t, recs[0].SpanID)
+	// A latency sample carries the rich record (attributes + events).
+	var sample spanRecord
+	for _, recs := range r.LatencySamples {
+		if len(recs) > 0 {
+			sample = recs[0]
+			break
+		}
+	}
+	require.NotEmpty(t, sample.TraceID)
+	require.Equal(t, "v", sample.Attributes["k"])
+	require.Len(t, sample.Events, 1)
+	require.Equal(t, "evt", sample.Events[0].Name)
+	require.Equal(t, "1", sample.Events[0].Attributes["n"])
 }
 
-func TestTraceProcessorEvictsOldest(t *testing.T) {
+func TestTraceProcessorNamesAreUnbounded(t *testing.T) {
 	p := NewTraceProcessor()
-	p.Enable(2) // keep only the last 2
-	emitSpans(p, 5)
+	p.Enable(10)
+	tr := newTracer(p)
+	for _, name := range []string{"a", "b", "c", "d", "e"} {
+		emitSpan(tr, name, false)
+	}
+	// No name cap: every distinct name is tracked.
+	require.Len(t, gatherReports(t, p), 5)
+}
 
-	files, err := Traces{Processor: p}.Gather(context.Background(), Options{})
-	require.NoError(t, err)
+func TestTraceProcessorThrottlesSamples(t *testing.T) {
+	p := NewTraceProcessor()
+	p.Enable(10)
+	tr := newTracer(p)
+	const n = 50
+	for i := 0; i < n; i++ {
+		emitSpan(tr, "op", false) // rapid, same name -> same latency bucket
+	}
 
-	var recs []spanRecord
-	require.NoError(t, json.Unmarshal(gatherToMap(t, files)["traces.json"], &recs))
-	require.Len(t, recs, 2)
-	require.Equal(t, "op-3", recs[0].Name)
-	require.Equal(t, "op-4", recs[1].Name)
+	reports := gatherReports(t, p)
+	require.Len(t, reports, 1)
+	require.Equal(t, n, reports[0].Count) // count is exact
+	// The 1s per-bucket throttle keeps samples far below the raw count.
+	require.LessOrEqual(t, totalSamples(reports[0]), 10)
+	require.Positive(t, totalSamples(reports[0]))
 }

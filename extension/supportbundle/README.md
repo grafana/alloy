@@ -32,7 +32,9 @@ The extension adds the following fields:
 | `max_collection_duration` | duration | `60s` | The upper bound for a requested collection window. It must be positive. |
 | `environment_variables` | list of strings | `[]` | Extra environment variable names to capture, beyond the built-in allowlist. See [Environment variables](#environment-variables). |
 | `log_buffer_size` | int | `0` | The size, in bytes, of the ring buffer that retains the collector logs from *before* a bundle request (the prior history). `0` disables the prior-history ring; logs written *during* a bundle are still captured whenever logs are routed to the sink. When the ring is enabled, capture is always on and adds a small per-line cost to logging. See [Log capture](#log-capture). |
-| `trace_buffer_size` | int | `0` | The number of most recent collector spans to keep for the bundle. `0` disables trace capture. When enabled, capture is always on and adds a small per-span cost. See [Trace capture](#trace-capture). |
+| `tracing` | block | disabled | Configures capture of the collector's own internal spans (like `zpages`). See [Trace capture](#trace-capture). |
+| `tracing.enabled` | bool | `false` | Turns on trace capture. When on, capture is always running and adds a small per-span cost. |
+| `tracing.samples_per_span` | int | `10` | The number of span samples to keep per latency bucket and per error bucket, for each span name. The set of tracked span names is unbounded, so memory grows with span-name cardinality. Must be positive when `tracing.enabled` is `true`. |
 
 The default endpoint is `localhost:8089`.
 
@@ -123,15 +125,21 @@ Without the output path, the bundle has no `logs.txt`.
 
 ### Trace capture
 
-The extension can keep the most recent collector spans in a ring buffer and attach them to the bundle as `traces.json`. Set `trace_buffer_size` to a positive number of spans to turn it on:
+The extension can keep a sample of the collector's spans and attach them to the bundle as `traces.json`, in the style of the `zpages` extension. Set `tracing.enabled` to turn it on:
 
 ```yaml
 extensions:
   supportbundle:
-    trace_buffer_size: 4096 # keep the most recent 4096 spans
+    tracing:
+      enabled: true
+      samples_per_span: 10 # samples kept per bucket per span name
 ```
 
-These are the collector's **own internal spans** (its self-observability traces, the same spans the `zpages` extension shows at `/debug/tracez`), **not** the traces flowing through its pipelines. The extension attaches a span processor to the collector's tracer provider, so it captures whatever internal spans the collector emits, independent of whether traces are exported. If the tracer provider does not support span processors, the extension logs a warning and `traces.json` is absent. Capture is always on when enabled, so it adds a small per-span cost; it is a lock-free no-op when `trace_buffer_size` is `0`.
+`traces.json` is a JSON array of per-name reports. Each report has the span name, the total count, the error count, a sample of spans per latency bucket (`latency_samples`), and a sample of error spans (`error_samples`). Each sampled span carries its trace and span IDs, parent, kind, scope, timings, status, attributes, events, and links.
+
+Per name, the extension keeps exact `count` and `error_count`, plus a throttled sample of spans in each latency bucket (`latency_samples`) and a sample of errors (`error_samples`). The sampling matches `zpages`: at most one span per bucket per second, so a burst does not crowd out earlier samples. The set of tracked span names is **unbounded** (like `zpages`), so memory grows with span-name cardinality; this is fine for the low-cardinality internal span names the collector emits.
+
+These are the collector's **own internal spans** (its self-observability traces, the same spans the `zpages` extension shows at `/debug/tracez`), **not** the traces flowing through its pipelines. The extension attaches a span processor to the collector's tracer provider, so it captures whatever internal spans the collector emits, independent of whether traces are exported. If the tracer provider does not support span processors, the extension logs a warning and `traces.json` is absent. Capture is always on when enabled, so it adds a small per-span cost; it is a lock-free no-op when `tracing.enabled` is `false`.
 
 ## Usage
 
@@ -174,7 +182,7 @@ otelcol-support-bundle/
 │   ├── block.pprof        # always present (reflects the operator's block profiling config)
 │   └── cpu.pprof          # only present when duration > 0
 ├── logs.txt               # only present when logs are routed to the supportbundle:// sink
-├── traces.json            # only present when trace_buffer_size > 0
+├── traces.json            # only present when tracing.enabled is true
 └── errors.txt             # only present when a gatherer fails
 ```
 
@@ -186,7 +194,7 @@ otelcol-support-bundle/
 - `metrics-start.txt` / `metrics-end.txt` / `metrics.txt` hold the collector's own telemetry metrics, scraped from the metrics endpoint in the configuration. When the duration is greater than `0`, the extension takes a sample at the start of the window (`metrics-start.txt`) and another at the end (`metrics-end.txt`) so you can compute counter deltas; when the duration is `0`, it takes a single sample (`metrics.txt`). This is best effort: it works only when the collector exposes a pull (Prometheus) metrics reader and the endpoint is reachable. When no such endpoint is configured, the files are absent.
 - `pprof/` holds the runtime profiles. The extension always collects the heap and goroutine profiles (point-in-time snapshots), the mutex profile, and the block profile. It collects the CPU profile only when the resolved duration is greater than `0`. The extension enables mutex sampling for the collection window and restores the previous rate afterward, so the mutex profile holds the most data when the duration is greater than `0`. The extension does **not** change the block profile rate (the Go runtime cannot report the current rate, so it cannot be restored). The block profile therefore reflects whatever block profiling the operator has configured, for example through the `pprof` extension; it is empty when block profiling is off.
 - `logs.txt` holds collector logs (see [Log capture](#log-capture)). It has the prior history (the most recent `log_buffer_size` bytes logged before the request, present only when `log_buffer_size > 0`) followed by every line the collector wrote during the bundle. It is present only when logs are routed to the `supportbundle://` sink. When the prior-history ring has wrapped, that section starts with an eviction notice and its first line may be partial.
-- `traces.json` holds the most recent collector spans as a JSON array (name, IDs, kind, timings, status, and attributes). It is present only when trace capture is configured (see [Trace capture](#trace-capture)). These are the collector's own internal spans, not pipeline data.
+- `traces.json` holds a per-name aggregation of the collector's spans: for each span name, the count, error count, a sample of spans per latency bucket, and a sample of errors (with IDs, timings, status, attributes, events, and links). It is present only when trace capture is configured (see [Trace capture](#trace-capture)). These are the collector's own internal spans, not pipeline data.
 - `errors.txt` is present only when one or more gatherers fail. It lists each failure. The extension still returns the files that it did collect.
 
 [confighttp]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confighttp/README.md
