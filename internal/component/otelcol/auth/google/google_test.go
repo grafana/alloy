@@ -12,13 +12,87 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/google"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
+	collectorgoogleauth "github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/oauth2"
 )
+
+func TestArguments_UnmarshalAlloy(t *testing.T) {
+	tests := []struct {
+		name                string
+		config              string
+		expectedTokenType   string
+		expectedAudience    string
+		expectedTokenHeader string
+		expectedError       string
+	}{
+		{
+			name: "ID token with audience",
+			config: `
+				audience   = "https://example.com"
+				token_type = "id_token"
+			`,
+			expectedTokenType:   "id_token",
+			expectedAudience:    "https://example.com",
+			expectedTokenHeader: "authorization",
+		},
+		{
+			name: "access token",
+			config: `
+				token_type = "access_token"
+			`,
+			expectedTokenType:   "access_token",
+			expectedTokenHeader: "authorization",
+		},
+		{
+			name:                "defaults",
+			config:              "",
+			expectedTokenType:   "access_token",
+			expectedTokenHeader: "authorization",
+		},
+		{
+			name: "proxy authorization",
+			config: `
+				token_header = "proxy-authorization"
+			`,
+			expectedTokenType:   "access_token",
+			expectedTokenHeader: "proxy-authorization",
+		},
+		{
+			name: "invalid token header",
+			config: `
+				token_header = "invalid"
+			`,
+			expectedError: "invalid token_header",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var args google.Arguments
+			err := syntax.Unmarshal([]byte(tc.config), &args)
+			if tc.expectedError != "" {
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+
+			converted, err := args.ConvertClient()
+			require.NoError(t, err)
+			cfg := converted.(*collectorgoogleauth.Config)
+			require.NoError(t, cfg.Validate())
+			require.Equal(t, tc.expectedTokenType, cfg.Config.TokenType)
+			require.Equal(t, tc.expectedAudience, cfg.Config.Audience)
+			require.Equal(t, tc.expectedTokenHeader, cfg.Config.TokenHeader)
+		})
+	}
+}
 
 func init() {
 	// Make sure metadata.OnGCE always returns true, since the result is
@@ -80,6 +154,14 @@ func TestRoundTripper(t *testing.T) {
 	ext, err := exports.Handler.GetExtension(auth.Client)
 	require.NoError(t, err)
 	require.NotNil(t, ext.Extension, "handler extension is nil")
+
+	// Verify the exported handler can be consumed by the OTLP gRPC exporter.
+	otlpArgs := otlp.Arguments{}
+	otlpArgs.SetToDefault()
+	otlpArgs.Client.Endpoint = "example.com:443"
+	otlpArgs.Client.Authentication = exports.Handler
+	_, err = otlpArgs.Convert()
+	require.NoError(t, err)
 
 	clientAuth, ok := ext.Extension.(extauth.HTTPClient)
 	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
