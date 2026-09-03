@@ -188,7 +188,7 @@ otelcol-support-bundle/
 └── errors.txt             # only present when a gatherer fails
 ```
 
-- `metadata.yaml` holds build and runtime information. This includes the command, description, version, `GOOS`, `GOARCH`, CPU count, `GOMAXPROCS`, Go version, uptime, start time, hostname, and the collector's telemetry resource attributes (such as `service.name` and `service.instance.id`).
+- `metadata.yaml` holds build and runtime information. This includes the command, description, version, `GOOS`, `GOARCH`, CPU count, `GOMAXPROCS`, Go version, uptime, start time, hostname, the time the bundle was collected (`collected_at`) and the collection window used (`collection_duration`), and the collector's telemetry resource attributes (such as `service.name` and `service.instance.id`).
 - `config.yaml` holds the collector's running configuration. The collector sends this to the extension through the `ConfigSnapshotWatcher` interface, so no extra setup is needed. The extension keeps the unexpanded form: environment references such as `${env:FOO}` stay intact, and sensitive fields are redacted. The extension never writes the expanded configuration, so it does not leak secrets.
 - `build-info.txt` holds the Go build information: the main module and its version, the build settings (including the VCS revision), and every dependency with its version. Use it to find the exact version of a component compiled into the distribution.
 - `runtime-flags.txt` holds the process command line (one argument per line), which shows how the collector was started, such as the config paths and any flags.

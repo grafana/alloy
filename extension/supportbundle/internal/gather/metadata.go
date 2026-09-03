@@ -28,6 +28,11 @@ type metadata struct {
 	StartTime   time.Time `yaml:"start_time"`
 	Hostname    string    `yaml:"hostname"`
 
+	// CollectedAt is the time this bundle was collected. CollectionDuration is
+	// the collection window used for this bundle.
+	CollectedAt        time.Time `yaml:"collected_at"`
+	CollectionDuration string    `yaml:"collection_duration"`
+
 	ResourceAttributes map[string]string `yaml:"resource_attributes,omitempty"`
 }
 
@@ -38,6 +43,7 @@ func (Metadata) Gather(_ context.Context, opts Options) ([]File, error) {
 		hostname = "unknown"
 	}
 
+	now := time.Now()
 	m := metadata{
 		Command:     opts.BuildInfo.Command,
 		Description: opts.BuildInfo.Description,
@@ -47,9 +53,12 @@ func (Metadata) Gather(_ context.Context, opts Options) ([]File, error) {
 		NumCPU:      runtime.NumCPU(),
 		GOMAXPROCS:  runtime.GOMAXPROCS(0),
 		GoVersion:   runtime.Version(),
-		Uptime:      time.Since(opts.StartTime).String(),
+		Uptime:      now.Sub(opts.StartTime).String(),
 		StartTime:   opts.StartTime,
 		Hostname:    hostname,
+
+		CollectedAt:        now,
+		CollectionDuration: opts.Duration.String(),
 
 		ResourceAttributes: opts.ResourceAttributes,
 	}

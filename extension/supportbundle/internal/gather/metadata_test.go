@@ -12,13 +12,15 @@ import (
 )
 
 func TestMetadataGatherer(t *testing.T) {
+	start := time.Now().Add(-5 * time.Minute)
 	opts := Options{
 		BuildInfo: component.BuildInfo{
 			Command:     "otelcol-test",
 			Description: "Test Collector",
 			Version:     "1.2.3",
 		},
-		StartTime: time.Now().Add(-5 * time.Minute),
+		StartTime: start,
+		Duration:  30 * time.Second,
 	}
 
 	files, err := Metadata{}.Gather(context.Background(), opts)
@@ -31,6 +33,9 @@ func TestMetadataGatherer(t *testing.T) {
 	require.Equal(t, "1.2.3", m.Version)
 	require.Equal(t, runtime.GOOS, m.GOOS)
 	require.NotEmpty(t, m.Uptime)
+	require.Equal(t, "30s", m.CollectionDuration)
+	// The bundle is collected after the collector started.
+	require.True(t, m.CollectedAt.After(start))
 }
 
 func TestMetadataResourceAttributes(t *testing.T) {
