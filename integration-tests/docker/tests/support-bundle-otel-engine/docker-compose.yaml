@@ -1,0 +1,22 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    command: ["otel", "--config=/etc/alloy/config.yaml"]
+    volumes:
+      - ./config.yaml:/etc/alloy/config.yaml:ro
+    ports:
+      - "8089:8089"   # support bundle endpoint
+      - "4318:4318"   # OTLP HTTP receiver, used to generate internal spans
+      - "13133:13133" # health check
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true
