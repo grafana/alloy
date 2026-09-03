@@ -42,6 +42,8 @@ const otlpTrace = `{
 // baseEntries are present in every bundle, regardless of the collection window.
 var baseEntries = []string{
 	"otelcol-support-bundle/metadata.yaml",
+	"otelcol-support-bundle/build-info.txt",
+	"otelcol-support-bundle/runtime-flags.txt",
 	"otelcol-support-bundle/pprof/heap.pprof",
 	"otelcol-support-bundle/pprof/goroutine.pprof",
 	"otelcol-support-bundle/traces.json",

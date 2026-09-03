@@ -168,6 +168,8 @@ The response is a zip archive. All entries live under a single root directory, `
 ```
 otelcol-support-bundle/
 ├── metadata.yaml
+├── build-info.txt         # Go build info: main module, settings, dependency versions
+├── runtime-flags.txt      # the process command line
 ├── config.yaml            # present once the collector sends a config snapshot
 ├── component-status.yaml  # health of each pipeline component
 ├── environment.txt        # allowlisted environment variables that are set
@@ -188,6 +190,8 @@ otelcol-support-bundle/
 
 - `metadata.yaml` holds build and runtime information. This includes the command, description, version, `GOOS`, `GOARCH`, CPU count, `GOMAXPROCS`, Go version, uptime, start time, hostname, and the collector's telemetry resource attributes (such as `service.name` and `service.instance.id`).
 - `config.yaml` holds the collector's running configuration. The collector sends this to the extension through the `ConfigSnapshotWatcher` interface, so no extra setup is needed. The extension keeps the unexpanded form: environment references such as `${env:FOO}` stay intact, and sensitive fields are redacted. The extension never writes the expanded configuration, so it does not leak secrets.
+- `build-info.txt` holds the Go build information: the main module and its version, the build settings (including the VCS revision), and every dependency with its version. Use it to find the exact version of a component compiled into the distribution.
+- `runtime-flags.txt` holds the process command line (one argument per line), which shows how the collector was started, such as the config paths and any flags.
 - `component-status.yaml` holds the latest status of each pipeline component. The collector reports status through the `componentstatus.Watcher` interface. Each entry has the component ID, kind, pipelines, status (such as `StatusOK` or `StatusPermanentError`), the last error, and a timestamp.
 - `environment.txt` holds the allowlisted environment variables that are set, one `NAME=value` per line. See [Environment variables](#environment-variables).
 - `feature-gates.txt` lists every feature gate and whether it is enabled, one `id=bool` per line.

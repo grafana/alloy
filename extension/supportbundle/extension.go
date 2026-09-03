@@ -103,6 +103,8 @@ func (e *supportBundleExtension) Start(ctx context.Context, host component.Host)
 		e.statusGatherer,
 		gather.Environment{Extra: e.cfg.EnvironmentVariables},
 		gather.FeatureGates{},
+		gather.BuildInfo{},
+		gather.RuntimeFlags{},
 		// Traces snapshots the span ring; it is a point-in-time read.
 		gather.Traces{Processor: e.traceProcessor},
 	}
