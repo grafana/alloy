@@ -149,6 +149,15 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.MetricsTables.Summary.Name = args.MetricsTables.Summary.Name
 	cfg.MetricsTables.Histogram.Name = args.MetricsTables.Histogram.Name
 	cfg.MetricsTables.ExponentialHistogram.Name = args.MetricsTables.ExponentialHistogram.Name
+
+	// cfg.Validate() backfills any per-metric-type table name left empty
+	// (e.g. "gauge") with clickhouseexporter's own defaults (e.g.
+	// "otel_metrics_gauge") via its internal buildMetricTableNames(). Without
+	// this call, an Arguments value that never set metrics_tables explicitly
+	// would reach the exporter with empty table names and fail at runtime.
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
 

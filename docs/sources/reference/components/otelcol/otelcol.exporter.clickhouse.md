@@ -59,6 +59,17 @@ You can use the following arguments with `otelcol.exporter.clickhouse`:
 If `username` is set, it overrides any username in `endpoint`.
 If `password` is set, it overrides any password in `endpoint`.
 
+{{< admonition type="note" >}}
+Combining `create_schema = true` with `cluster_name` runs a `CREATE TABLE
+... ON CLUSTER` DDL statement. As of `clickhouse-go/v2` v2.47.0, the driver
+can fail to parse ClickHouse's multi-host status response to this kind of
+distributed DDL, causing schema creation to fail with an `unexpected EOF`
+error even though the tables are actually created successfully. If you hit
+this, create the schema once manually (for example with `clickhouse-client`)
+and set `create_schema = false` — the exporter only runs `INSERT`s at
+runtime, which aren't affected.
+{{< /admonition >}}
+
 ## Blocks
 
 You can use the following blocks with `otelcol.exporter.clickhouse`:

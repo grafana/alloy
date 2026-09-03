@@ -35,6 +35,29 @@ func TestValidate(t *testing.T) {
 	require.NoError(t, args.Validate())
 }
 
+// TestConvert_MetricsTableNamesDefaulted guards against a regression where
+// Convert() never backfilled per-metric-type table names: without an
+// explicit metrics_tables block, they used to reach the exporter as empty
+// strings and fail at runtime (found via a real ClickHouse deployment,
+// see bugs.md Bug 3).
+func TestConvert_MetricsTableNamesDefaulted(t *testing.T) {
+	var args clickhouse.Arguments
+	args.SetToDefault()
+	args.Endpoint = "tcp://localhost:9000"
+
+	converted, err := args.Convert()
+	require.NoError(t, err)
+
+	cfg, ok := converted.(*clickhouseexporter.Config)
+	require.True(t, ok)
+
+	require.Equal(t, "otel_metrics_gauge", cfg.MetricsTables.Gauge.Name)
+	require.Equal(t, "otel_metrics_sum", cfg.MetricsTables.Sum.Name)
+	require.Equal(t, "otel_metrics_summary", cfg.MetricsTables.Summary.Name)
+	require.Equal(t, "otel_metrics_histogram", cfg.MetricsTables.Histogram.Name)
+	require.Equal(t, "otel_metrics_exponential_histogram", cfg.MetricsTables.ExponentialHistogram.Name)
+}
+
 func TestConvert(t *testing.T) {
 	cfgStr := `
 		endpoint = "tcp://localhost:9000"
