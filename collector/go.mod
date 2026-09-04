@@ -23,6 +23,8 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.158.0
@@ -752,6 +754,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.158.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver v0.158.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

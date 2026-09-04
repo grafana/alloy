@@ -1,0 +1,24 @@
+otelcol.encoding.text "default_custom" {
+	encoding               = "iso-8859-1"
+	marshaling_separator   = " | "
+	unmarshaling_separator = "\\s*\\|\\s*"
+}
+
+otelcol.encoding.jsonlog "default_custom" {
+	array_mode = false
+	mode       = "body_with_inline_attributes"
+}
+
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		logs = [otelcol.exporter.debug.default.input]
+	}
+}
+
+otelcol.exporter.debug "default" {
+	verbosity = "Basic"
+}
