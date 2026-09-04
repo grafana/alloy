@@ -968,8 +968,8 @@ require (
 
 require (
 	cloud.google.com/go/secretmanager v1.20.0 // indirect
-	github.com/ClickHouse/ch-go v0.73.0 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.47.0
+	github.com/ClickHouse/ch-go v0.74.0 // indirect
+	github.com/ClickHouse/clickhouse-go/v2 v2.48.0
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/jackc/pgx/v5 v5.9.2 // indirect
