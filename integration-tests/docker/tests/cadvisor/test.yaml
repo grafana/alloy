@@ -1,0 +1,5 @@
+# cAdvisor reads /sys/fs/cgroup through its raw driver. A privileged container
+# gives it access. The harness already runs Alloy privileged, but we set it here
+# so the requirement is visible at the test.
+alloy_container:
+  privileged: true

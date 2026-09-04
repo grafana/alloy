@@ -1,0 +1,25 @@
+// No container runtime sockets are configured. cAdvisor uses its raw cgroup
+// driver, which reads /sys/fs/cgroup. This needs a privileged container but no
+// docker or containerd runtime. See test.yaml.
+prometheus.exporter.cadvisor "example" {
+  storage_duration = "1m"
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.example.targets
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "cadvisor_metrics",
+  }
+}
