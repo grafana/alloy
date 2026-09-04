@@ -177,11 +177,27 @@ func (t *tailer) stop() {
 		t.wg.Wait()
 		t.logger.Debug("stopped Docker target", "container", t.containerID)
 
-		// If the component is not stopping, then it means that the target for this component is gone and that
-		// we should clear the entry from the positions file.
-		if !t.componentStopping() {
-			t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
-		}
+		t.removePositionIfContainerDeleted()
+	}
+}
+
+func (t *tailer) removePositionIfContainerDeleted() {
+	if t.componentStopping() || t.client == nil {
+		return
+	}
+
+	_, err := t.client.ContainerInspect(context.Background(), t.containerID, client.ContainerInspectOptions{})
+	switch {
+	case err == nil:
+		// The target may have disappeared because the container stopped. Keep its
+		// position so a later restart resumes where the tailer left off.
+		return
+	case cerrdefs.IsNotFound(err):
+		t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
+	default:
+		// Preserve the position when the container's state cannot be determined.
+		// Re-reading logs is more harmful than retaining a stale cursor.
+		t.logger.Warn("could not determine whether to remove Docker container position", "id", t.containerID, "error", err)
 	}
 }
 
