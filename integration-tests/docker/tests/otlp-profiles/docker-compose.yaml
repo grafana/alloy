@@ -1,0 +1,43 @@
+services:
+  sink:
+    build:
+      context: ../../../..
+      dockerfile: integration-tests/docker/tests/otlp-profiles/Dockerfile
+    ports:
+      - "14319:8080"
+    healthcheck:
+      test: ["CMD", "/otlp-profiles-sink", "-healthcheck"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  alloy:
+    image: alloy-integration-tests
+    depends_on:
+      sink:
+        condition: service_healthy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr
+      - 0.0.0.0:12345
+      - --stability.level
+      - experimental
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "14317:4317"
+      - "14318:4318"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/12345"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true
