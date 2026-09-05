@@ -31,6 +31,7 @@ func TestAlloyLinuxPackages(t *testing.T) {
 		{"install package", (*AlloyEnvironment).TestInstall},
 		{"ensure existing config doesn't get overridden", (*AlloyEnvironment).TestConfigPersistence},
 		{"test data folder permissions", (*AlloyEnvironment).TestDataFolderPermissions},
+		{"test engine toggle", (*AlloyEnvironment).TestEngineToggle},
 
 		// TODO: a test to verify that the systemd service works would be nice, but not
 		// required.
@@ -103,11 +104,84 @@ func (env *AlloyEnvironment) TestConfigPersistence(t *testing.T) {
 	res = env.ExecScript(`echo -n "keepalive" > /etc/alloy/config.alloy`)
 	require.Equal(t, 0, res.ExitCode, "failed to write config file")
 
+	res = env.ExecScript(`echo -n "keepalive-otel" > /etc/alloy/config.yaml`)
+	require.Equal(t, 0, res.ExitCode, "failed to write otel config file")
+
 	res = env.Install()
 	require.Equal(t, 0, res.ExitCode, "installation failed")
 
 	res = env.ExecScript(`cat /etc/alloy/config.alloy`)
 	require.Equal(t, "keepalive", res.Stdout, "Expected existing file to not be overridden")
+
+	res = env.ExecScript(`cat /etc/alloy/config.yaml`)
+	require.Equal(t, "keepalive-otel", res.Stdout, "Expected existing OTel config to not be overridden")
+}
+
+func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
+	res := env.Install()
+	require.Equal(t, 0, res.ExitCode, "installation failed")
+
+	res = env.ExecScript(`grep -q 'ExecStart=/usr/lib/alloy/alloy-wrapper' /usr/lib/systemd/system/alloy.service`)
+	require.Equal(t, 0, res.ExitCode, "expected the unit file to exec the wrapper script")
+
+	res = env.ExecScript(`[ -x /usr/lib/alloy/alloy-wrapper ]`)
+	require.Equal(t, 0, res.ExitCode, "expected the wrapper script to be installed and executable")
+
+	res = env.ExecScript(`[ -f /etc/alloy/config.yaml ]`)
+	require.Equal(t, 0, res.ExitCode, "expected the default OTel engine config to be installed")
+
+	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'ALLOY_OTEL_MODE=""' "$f"`)
+	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare ALLOY_OTEL_MODE as empty by default")
+
+	tt := []struct {
+		name     string
+		env      string
+		expected string
+	}{
+		{
+			name:     "default engine, unset toggle",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy`,
+			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+		},
+		{
+			name:     "default engine, custom CONFIG_FILE",
+			env:      `CONFIG_FILE=/custom/config.alloy`,
+			expected: "run --storage.path=/var/lib/alloy/data /custom/config.alloy\n",
+		},
+		{
+			name:     "otel engine, default config",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine ignores a custom CONFIG_FILE, always uses the installed config.yaml",
+			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, CUSTOM_OTEL_ARGS applies",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
+			expected: "otel --set=processors.batch.timeout=2s --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine ignores CUSTOM_ARGS, the default engine's flags",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_ARGS="--storage.path=/should/not/appear"`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "default engine ignores CUSTOM_OTEL_ARGS, the OTel engine's flags",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
+			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			res := env.ExecScript(fmt.Sprintf(`ALLOY_BIN=/bin/echo %s /usr/lib/alloy/alloy-wrapper`, tc.env))
+			require.Equal(t, 0, res.ExitCode, "wrapper script exited non-zero")
+			require.Equal(t, tc.expected, res.Stdout)
+		})
+	}
 }
 
 func (env *AlloyEnvironment) TestDataFolderPermissions(t *testing.T) {
