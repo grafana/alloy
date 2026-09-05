@@ -28,5 +28,6 @@ func toAzureExporter(config *azure_exporter.Config) *azure.Arguments {
 		AzureCloudEnvironment:    config.AzureCloudEnvironment,
 		ValidateDimensions:       config.ValidateDimensions,
 		Regions:                  config.Regions,
+		UseBatchAPI:              config.UseBatchAPI,
 	}
 }
