@@ -130,6 +130,35 @@ func newTestCustomArgumentsLoop(_ *testing.T, profiler *mockProfiler, appendable
 	return newProfilingLoop(os.Getpid(), target, logger, profiler, output, cfg)
 }
 
+func TestThreadInfo_Disabled(t *testing.T) {
+	_, ok := threadInfo(ThreadConfig{})
+	require.False(t, ok)
+}
+
+func TestThreadInfo_FrameAndLabel(t *testing.T) {
+	info, ok := threadInfo(ThreadConfig{Frame: true, LabelName: "thread_pool"})
+	require.True(t, ok)
+	require.True(t, info.Frame)
+	require.Equal(t, "thread_pool", info.LabelKey)
+	require.Nil(t, info.Transform)
+}
+
+func TestThreadInfo_RegexTransform(t *testing.T) {
+	info, ok := threadInfo(ThreadConfig{LabelName: "thread_pool", Regex: `^(.*?)-\d`})
+	require.True(t, ok)
+	require.NotNil(t, info.Transform)
+	require.Equal(t, "http-nio-auto", info.Transform("http-nio-auto-1-exec-9"))
+	// No match falls back to the original name.
+	require.Equal(t, "GC task thread", info.Transform("GC task thread"))
+}
+
+func TestThreadInfo_InvalidRegexDropsTransform(t *testing.T) {
+	// A bad regex disables the transform rather than failing the parse.
+	info, ok := threadInfo(ThreadConfig{Frame: true, Regex: `(`})
+	require.True(t, ok)
+	require.Nil(t, info.Transform)
+}
+
 func TestProfilingLoop_StartStop(t *testing.T) {
 	profiler := &mockProfiler{}
 	appendable := &mockAppendable{}

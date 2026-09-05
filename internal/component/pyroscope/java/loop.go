@@ -164,10 +164,11 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		StartTime:  startTime,
 		EndTime:    endTime,
 		SampleRate: sampleRate,
-	}, new(jfrpprof.LabelsSnapshot))
+	}, new(jfrpprof.LabelsSnapshot), p.threadParseOptions()...)
 	if err != nil {
 		return fmt.Errorf("failed to parse jfr: %w", err)
 	}
+
 	target := p.getTarget()
 	var totalSamples, totalBytes int64
 
@@ -207,6 +208,36 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		p.mutex.Unlock()
 	}
 	return nil
+}
+
+// threadParseOptions builds the jfr-parser thread option from the profiling
+// config. The regex is validated at config time (Arguments.Validate), so
+// building the transform here is expected to succeed; an error drops the
+// transform rather than failing the parse.
+func (p *profilingLoop) threadParseOptions() []jfrpprof.Option {
+	info, ok := threadInfo(p.getConfig().Thread)
+	if !ok {
+		return nil
+	}
+	return []jfrpprof.Option{jfrpprof.WithThreadInfo(info)}
+}
+
+// threadInfo maps the thread config to jfr-parser options, reporting false when
+// nothing is configured. A bad regex drops the transform rather than failing.
+func threadInfo(t ThreadConfig) (jfrpprof.ThreadInfoOptions, bool) {
+	if !t.Frame && t.LabelName == "" {
+		return jfrpprof.ThreadInfoOptions{}, false
+	}
+	info := jfrpprof.ThreadInfoOptions{
+		Frame:    t.Frame,
+		LabelKey: t.LabelName,
+	}
+	if t.Regex != "" {
+		if fn, err := jfrpprof.RegexThreadTransform(t.Regex); err == nil {
+			info.Transform = fn
+		}
+	}
+	return info, true
 }
 
 func labelsForProfile(target discovery.Target, jfrEvent, metric string) labels.Labels {
