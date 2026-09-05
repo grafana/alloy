@@ -13,6 +13,16 @@ prometheus.operator.servicemonitors "default" {
   scrape {
     honor_metadata = true
   }
+  // Referenced by name from the ServiceMonitor's scrapeClass field rather than
+  // marked default, so the named lookup is what gets exercised. The relabel
+  // rule makes the class observable on the resulting series.
+  scrape_class "test-class" {
+    relabel_rule {
+      action       = "replace"
+      target_label = "scrape_class"
+      replacement  = "test-class"
+    }
+  }
   selector {
     match_labels = {
       "alloy-integration-test" = "true",
