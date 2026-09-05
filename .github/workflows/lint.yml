@@ -27,7 +27,10 @@ jobs:
       run: task lint:go
 
     - name: Run Alloy Lint
-      run: task lint:alloylint 
+      run: task lint:alloylint
+
+    - name: Check non-GA component tracking
+      run: task lint:stabilitycheck
 
   govulncheck:
     name: Govulncheck

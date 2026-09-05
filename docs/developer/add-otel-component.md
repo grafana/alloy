@@ -75,6 +75,12 @@ You can modify the stability level of the component based on maturity, stability
 When you add your component, you must pick a stability level, **Experimental**, **Public Preview**, or **Generally Available**, and provide it in the component registration.
 If the stability of a component isn't set to **Generally Available**, you must [run Alloy](https://grafana.com/docs/alloy/latest/reference/cli/run/#the-run-command) with the `--stability.level` flag to enable the relevant stability level.
 
+If you set a non-GA stability level, you must also add an entry for the component to `.stability.yaml` at the repository root.
+Each entry needs a `reason` that explains why the component is not yet **Generally Available**, and an `expires` date that forces a periodic review.
+CI fails until you add the entry.
+When an entry is missing, the `stabilitycheck` tool prints the exact YAML block to add.
+For details, see [`internal/cmd/stabilitycheck/`](../../internal/cmd/stabilitycheck).
+
 You'll need to select a unique identifier for your component.
 Most Alloy components fall into one of several [categories](https://grafana.com/docs/alloy/latest/reference/components/).
 For this example, you can assume you're adding a fictional OpenTelemetry processor named `exampleprocessor`.
