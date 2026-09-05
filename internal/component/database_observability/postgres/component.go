@@ -520,6 +520,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:  true,
 		collector.SchemaDetailsCollector: true,
 		collector.ExplainPlanCollector:   true,
+		collector.TableStatsCollector:    false,
+		collector.IndexStatsCollector:    false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -669,6 +671,42 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.instance.collectors = append(c.instance.collectors, epCollector)
+	}
+
+	if collectors[collector.TableStatsCollector] {
+		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
+			DB:               c.instance.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Registry:         c.instance.registry,
+			Logger:           c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.TableStatsCollector, "create", err)
+		} else {
+			if err := tsCollector.Start(context.Background()); err != nil {
+				logStartError(collector.TableStatsCollector, "start", err)
+			}
+			c.instance.collectors = append(c.instance.collectors, tsCollector)
+		}
+	}
+
+	if collectors[collector.IndexStatsCollector] {
+		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
+			DB:               c.instance.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Registry:         c.instance.registry,
+			Logger:           c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.IndexStatsCollector, "create", err)
+		} else {
+			if err := isCollector.Start(context.Background()); err != nil {
+				logStartError(collector.IndexStatsCollector, "start", err)
+			}
+			c.instance.collectors = append(c.instance.collectors, isCollector)
+		}
 	}
 
 	// HealthCheck collector is always enabled

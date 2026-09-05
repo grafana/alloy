@@ -48,6 +48,8 @@ The following collectors are configurable:
 | `setup_actors`    | Check and update `performance_schema.setup_actors` settings. | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries.     | no                 |
 | `explain_plans`   | Collect explain plans information.                           | yes                |
+| `table_stats`     | Collect the no-index (`INDEX_NAME` is `NULL`) fetch count per table from `performance_schema.table_io_waits_summary_by_index_usage`, for missing-index detection. | no |
+| `index_stats`     | Collect the per-index fetch count from `performance_schema.table_io_waits_summary_by_index_usage`, and (MySQL 5.6.6+) per-index size from `mysql.innodb_index_stats`, for unused-index detection. | no |
 
 ## Blocks
 
