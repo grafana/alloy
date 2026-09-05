@@ -960,6 +960,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nginxreceiver v0.158.0
+	github.com/puzpuzpuz/xsync/v4 v4.5.0
 	github.com/spf13/viper v1.21.0
 	github.com/vektah/gqlparser/v2 v2.5.36
 	github.com/zricethezav/gitleaks/v8 v8.30.1
@@ -1069,7 +1070,6 @@ require (
 	github.com/opencontainers/cgroups v0.0.4 // indirect
 	github.com/outscale/osc-sdk-go/v2 v2.34.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sijms/go-ora/v2 v2.9.0 // indirect
