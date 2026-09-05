@@ -10,11 +10,50 @@ import (
 	"os"
 	"path/filepath"
 
-	renameio "github.com/google/renameio/v2"
 	yaml "gopkg.in/yaml.v2"
 )
 
 const positionFileMode = 0600
+
+// atomicWriteFile writes buf to filename using a deterministic temp file
+// (<target>.tmp), fsyncs, renames over the target, then fsyncs the directory.
+// This reuses the same dentry on every write instead of allocating a new one
+// (as renameio.WriteFile does), which prevents unbounded kernel dentry slab
+// growth under cgroup v2.
+func atomicWriteFile(filename string, buf []byte) error {
+	target := filepath.Clean(filename)
+	tmp := target + ".tmp"
+
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(positionFileMode))
+	if err != nil {
+		return err
+	}
+
+	if _, err := f.Write(buf); err != nil {
+		f.Close()
+		return err
+	}
+
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tmp, target); err != nil {
+		return err
+	}
+
+	dir, err := os.Open(filepath.Dir(target))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
+}
 
 func writePositionFile(filename string, positions map[Entry]string) error {
 	buf, err := yaml.Marshal(File{
@@ -24,7 +63,5 @@ func writePositionFile(filename string, positions map[Entry]string) error {
 		return err
 	}
 
-	target := filepath.Clean(filename)
-
-	return renameio.WriteFile(target, buf, os.FileMode(positionFileMode))
+	return atomicWriteFile(filename, buf)
 }
