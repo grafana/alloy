@@ -522,6 +522,8 @@ service:
   internalTrafficPolicy: Cluster
   # -- Value for external traffic policy. 'Cluster' or 'Local'
   externalTrafficPolicy: Cluster
+  # -- Value for traffic distribution. 'PreferSameNode' or 'PreferSameZone' (k8s >= 1.34)
+  trafficDistribution: ""
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 
