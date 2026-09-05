@@ -246,6 +246,10 @@ If a given metric matches all the `metrics_include` blocks and none of the `metr
 
 `otelcol.receiver.file_stats` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.file_stats` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards file stats of files and folders with the `.log` extension in `/var/log` through a batch processor before finally sending it to an OTLP-capable endpoint:

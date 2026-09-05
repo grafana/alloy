@@ -625,6 +625,10 @@ As such, it aims to preserve the resource attributes of spans.
 
 `otelcol.connector.spanmetrics` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.spanmetrics` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Explicit histogram and extra dimensions

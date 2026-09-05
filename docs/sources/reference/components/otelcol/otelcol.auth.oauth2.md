@@ -125,6 +125,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.auth.oauth2` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.auth.oauth2` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example configures [`otelcol.exporter.otlp`][otelcol.exporter.otlp] to use OAuth 2.0 for authentication:

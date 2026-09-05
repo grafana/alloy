@@ -236,6 +236,10 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 
 `otelcol.receiver.vcenter` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.vcenter` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards received telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:

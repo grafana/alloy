@@ -84,6 +84,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.auth.bearer` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.auth.bearer` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Default scheme via gRPC transport

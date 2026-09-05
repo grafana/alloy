@@ -100,6 +100,10 @@ The `tls` block configures TLS for the HTTP and gRPC servers.
 
 `loki.source.api` is only reported as unhealthy if given an invalid configuration.
 
+## Debug information
+
+`loki.source.api` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 The following are some of the metrics that are exposed when this component is used.

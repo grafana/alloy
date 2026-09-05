@@ -264,6 +264,10 @@ The following arguments are supported:
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+## Exported fields
+
+The `otelcol.extension.jaeger_remote_sampling` component doesn't export any values.
+
 ## Component health
 
 `otelcol.extension.jaeger_remote_sampling` is only reported as unhealthy if given an invalid configuration.
@@ -271,6 +275,10 @@ The following arguments are supported:
 ## Debug information
 
 `otelcol.extension.jaeger_remote_sampling` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`otelcol.extension.jaeger_remote_sampling` doesn't expose any component-specific debug metrics.
 
 ## Examples
 

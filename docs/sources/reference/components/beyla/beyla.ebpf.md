@@ -1005,14 +1005,6 @@ For example, the `targets` can either be passed to a `discovery.relabel` compone
 
 The exported targets use the configured [in-memory traffic][] address specified by the [run command][].
 
-## Component health
-
-`beyla.ebpf` is only reported as unhealthy if given an invalid configuration.
-
-## Debug information
-
-`beyla.ebpf` doesn't expose any component-specific debug information.
-
 ## Observability considerations
 
 `beyla.ebpf` runs Beyla as a separate child process.
@@ -1056,6 +1048,18 @@ If you define multiple instances, such as `beyla.ebpf.foo` and `beyla.ebpf.bar`,
 
 To capture Beyla profile data in continuous-profiling pipelines, scrape the component's proxied pprof URL in addition to the {{< param "PRODUCT_NAME" >}} pprof endpoints.
 A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints captures only the {{< param "PRODUCT_NAME" >}} profile.
+
+## Component health
+
+`beyla.ebpf` is only reported as unhealthy if given an invalid configuration.
+
+## Debug information
+
+`beyla.ebpf` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`beyla.ebpf` doesn't expose any component-specific debug metrics.
 
 ## Examples
 

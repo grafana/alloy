@@ -93,6 +93,10 @@ If the `tls` block isn't provided, TLS won't be used for connections to the serv
 
 `otelcol.receiver.cloudflare` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.cloudflare` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example receives logs from Cloudflare and forwards them through a batch processor:

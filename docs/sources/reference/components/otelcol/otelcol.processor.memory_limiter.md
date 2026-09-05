@@ -112,6 +112,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.processor.memory_limiter` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.memory_limiter` doesn't expose any component-specific debug metrics.
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

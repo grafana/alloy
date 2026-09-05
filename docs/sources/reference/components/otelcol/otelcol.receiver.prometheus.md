@@ -94,6 +94,10 @@ This component exports the following fields that other components can reference:
 
 `otelcol.receiver.prometheus` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.prometheus` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example uses the `otelcol.receiver.prometheus` component as a bridge between the Prometheus and OpenTelemetry ecosystems.

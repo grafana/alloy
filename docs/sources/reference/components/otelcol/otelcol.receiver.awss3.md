@@ -155,6 +155,10 @@ Time-based configuration (`start_time`/`end_time`) and SQS configuration can't b
 
 `otelcol.receiver.awss3` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.awss3` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards received traces through a batch processor before finally sending it to an OTLP-capable endpoint:

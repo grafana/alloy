@@ -135,6 +135,10 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 
 `otelcol.receiver.zipkin` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.zipkin` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards received traces through a batch processor before finally sending it to an OTLP-capable endpoint:

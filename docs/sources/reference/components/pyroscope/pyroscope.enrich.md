@@ -58,7 +58,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug information
 
-`pyroscope.enrich` doesn't expose debug information.
+`pyroscope.enrich` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 

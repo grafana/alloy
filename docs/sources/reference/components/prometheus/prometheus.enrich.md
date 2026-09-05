@@ -56,13 +56,17 @@ You can use the following arguments with `prometheus.enrich`:
 
 The `prometheus.enrich` component doesn't support any blocks. You can configure this component with arguments.
 
-## Exports
+## Exported fields
 
-The following values are exported:
+The following fields are exported and can be referenced by other components:
 
 | Name       | Type              | Description                                               |
-|------------|-------------------|-----------------------------------------------------------|
+| ---------- | ----------------- | --------------------------------------------------------- |
 | `receiver` | `MetricsReceiver` | The input receiver where samples are sent to be enriched. |
+
+## Component health
+
+`prometheus.enrich` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug information
 

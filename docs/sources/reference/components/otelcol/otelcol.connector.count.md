@@ -180,6 +180,10 @@ he component counts all telemetry received through `input` according to the conf
 
 `otelcol.connector.count` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.count` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Default configuration

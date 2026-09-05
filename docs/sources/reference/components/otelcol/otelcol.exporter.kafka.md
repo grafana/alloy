@@ -341,6 +341,10 @@ Available only for logs:
 
 `otelcol.exporter.kafka` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.kafka` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example forwards telemetry data through a batch processor before finally sending it to Kafka:
