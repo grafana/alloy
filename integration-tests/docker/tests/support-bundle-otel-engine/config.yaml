@@ -1,0 +1,42 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  supportbundle:
+    endpoint: 0.0.0.0:8089
+    path: /support
+    log_buffer_size: 1048576 # keep recent logs (1 MiB) from before a bundle request
+    tracing:
+      enabled: true
+      samples_per_span: 10
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: basic
+
+service:
+  # A trace processor must be set for the collector to build a real (SDK) tracer
+  # provider. Without one the provider is a no-op and the support bundle cannot
+  # register its span processor. The console exporter keeps this self-contained.
+  telemetry:
+    # Route logs to the support bundle sink so the ring buffer captures them.
+    # Keep stderr so logs still reach their normal destination.
+    logs:
+      output_paths: [stderr, supportbundle://]
+    traces:
+      processors:
+        - simple:
+            exporter:
+              console: {}
+  extensions: [health_check, supportbundle]
+  pipelines:
+    # Pushing a trace to the OTLP receiver makes the collector emit its own
+    # internal spans, which the support bundle captures into traces.json.
+    traces:
+      receivers: [otlp]
+      exporters: [debug]
