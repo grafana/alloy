@@ -1,23 +1,27 @@
-//go:build windows
+//go:build windows || darwin
 
 package glob
 
-import "github.com/bmatcuk/doublestar/v4"
+import (
+	"strings"
 
-// windowsGlobber implements Globber with case-insensitive matching,
-// appropriate for Windows file systems.
-type windowsGlobber struct{}
+	"github.com/bmatcuk/doublestar/v4"
+)
+
+// caseInsensitiveGlobber implements Globber with case-insensitive matching,
+// appropriate for Windows and macOS file systems.
+type caseInsensitiveGlobber struct{}
 
 // NewGlobber creates a new Globber appropriate for the current platform.
-// On Windows, this returns a case-insensitive globber.
+// On Windows and macOS, this returns a case-insensitive globber.
 func NewGlobber() Globber {
-	return &windowsGlobber{}
+	return &caseInsensitiveGlobber{}
 }
 
-func (g *windowsGlobber) FilepathGlob(pattern string) ([]string, error) {
+func (g *caseInsensitiveGlobber) FilepathGlob(pattern string) ([]string, error) {
 	return doublestar.FilepathGlob(pattern, doublestar.WithCaseInsensitive())
 }
 
-func (g *windowsGlobber) PathMatch(pattern, path string) (bool, error) {
-	return doublestar.PathMatch(pattern, path)
+func (g *caseInsensitiveGlobber) PathMatch(pattern, path string) (bool, error) {
+	return doublestar.PathMatch(strings.ToLower(pattern), strings.ToLower(path))
 }
