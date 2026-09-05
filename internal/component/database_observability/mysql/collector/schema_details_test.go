@@ -1431,3 +1431,279 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 	c.extractSchema(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestSchemaDetails_PopulatesTableRegistry(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"table_schema",
+				"table_name",
+				"table_type",
+				"create_time",
+				"update_time",
+			}).AddRow(
+				"some_schema",
+				"MyTable",
+				"BASE TABLE",
+				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+			),
+		)
+
+	// The registry is populated from information_schema.tables before the per-table
+	// metadata queries run, so it's asserted below without mocking the rest of
+	// extractSchema's round trip; those queries fail against the unmocked driver, which
+	// extractSchema logs and otherwise ignores.
+	require.NoError(t, c.extractSchema(t.Context()))
+
+	resolvedTable, valid := c.GetTableRegistry().IsValid("some_schema", "MYTABLE")
+	require.True(t, valid)
+	require.Equal(t, "MyTable", resolvedTable)
+}
+
+func TestSchemaDetails_SkipsRegistryAndThrottleUpdatesOnPartialScan(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	// Seed state as if a prior, complete tick had already run: the registry knows about a
+	// table that this tick's (partial) scan below won't reach, and its throttle entry is fresh.
+	c.tableRegistry.SetTables([]*tableInfo{
+		{schema: "some_schema", tableName: "previously_known_table"},
+	})
+	previouslyKnownKey := fullyQualifiedName("some_schema", "previously_known_table")
+	c.lastEmittedAt[previouslyKnownKey] = c.now()
+
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
+		sqlmock.NewRows([]string{
+			"table_schema",
+			"table_name",
+			"table_type",
+			"create_time",
+			"update_time",
+		}).AddRow(
+			"some_schema",
+			"some_table",
+			"BASE TABLE",
+			time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+		).AddRow(
+			// A value that can't Scan into the create_time destination fails the second
+			// row's Scan call itself (unlike RowError, which fails iteration and surfaces
+			// via rs.Err() — a case extractSchema already handles by returning early,
+			// before ever reaching the registry/throttle updates below).
+			"some_schema",
+			"another_table",
+			"BASE TABLE",
+			"not-a-valid-time",
+			time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+		),
+	)
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// The registry must retain its prior, complete state rather than being replaced by
+	// this tick's partial list, which never got far enough to see this table again.
+	_, valid := c.tableRegistry.IsValid("some_schema", "previously_known_table")
+	require.True(t, valid)
+
+	// The throttle entry for that same table must survive too: a partial scan doesn't
+	// prove the table is gone, only that this tick didn't get far enough to re-see it.
+	_, throttled := c.lastEmittedAt[previouslyKnownKey]
+	require.True(t, throttled)
+}
+
+func Test_TableRegistry_IsValid(t *testing.T) {
+	t.Run("returns true and the same name for an exact match", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "users"},
+			{schema: "some_schema", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "users")
+		require.True(t, valid)
+		require.Equal(t, "users", resolvedTable)
+	})
+
+	t.Run("returns false and the input name when the table doesn't exist in the schema", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "users"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "nonexistent")
+		require.False(t, valid)
+		require.Equal(t, "nonexistent", resolvedTable)
+	})
+
+	t.Run("returns false given an unknown schema", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "users"},
+		})
+
+		resolvedTable, valid := tr.IsValid("other_schema", "users")
+		require.False(t, valid)
+		require.Equal(t, "users", resolvedTable)
+	})
+
+	t.Run("returns false for an empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+
+		resolvedTable, valid := tr.IsValid("some_schema", "users")
+		require.False(t, valid)
+		require.Equal(t, "users", resolvedTable)
+	})
+
+	t.Run("resolves a differently-cased name to the registry's canonical casing", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			// e.g. information_schema.tables reports this lowercased because the cluster is
+			// configured with lower_case_table_names=1, but a query referenced it mixed-case.
+			{schema: "some_schema", tableName: "emailageconsumer"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "EmailAgeConsumer")
+		require.True(t, valid)
+		require.Equal(t, "emailageconsumer", resolvedTable)
+	})
+
+	t.Run("resolves against a mixed-case canonical name too", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "MyTable"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "mytable")
+		require.True(t, valid)
+		require.Equal(t, "MyTable", resolvedTable)
+	})
+
+	t.Run("prefers an exact match over the case-insensitive fallback", func(t *testing.T) {
+		tr := NewTableRegistry()
+		// Two tables differing only by case can coexist under the MySQL default
+		// (lower_case_table_names=0), where names are genuinely case-sensitive.
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "Orders"},
+			{schema: "some_schema", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "Orders")
+		require.True(t, valid)
+		require.Equal(t, "Orders", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("some_schema", "orders")
+		require.True(t, valid)
+		require.Equal(t, "orders", resolvedTable)
+	})
+
+	t.Run("SetTables replaces prior contents rather than merging", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "old_table"},
+		})
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "new_table"},
+		})
+
+		_, valid := tr.IsValid("some_schema", "old_table")
+		require.False(t, valid)
+
+		resolvedTable, valid := tr.IsValid("some_schema", "new_table")
+		require.True(t, valid)
+		require.Equal(t, "new_table", resolvedTable)
+	})
+
+	t.Run("resolves a schema-qualified name against the qualifier's own schema, not the connection's active schema", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "other_schema", tableName: "orders"},
+		})
+
+		// The active schema ("some_schema") differs from the cross-database reference's
+		// own schema ("other_schema") — the qualifier, not the active schema, must scope
+		// the lookup.
+		resolvedTable, valid := tr.IsValid("some_schema", "other_schema.orders")
+		require.True(t, valid)
+		require.Equal(t, "other_schema.orders", resolvedTable)
+	})
+
+	t.Run("resolves a schema-qualified name whose table casing differs from the registry's", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "other_schema", tableName: "emailageconsumer"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "other_schema.EmailAgeConsumer")
+		require.True(t, valid)
+		require.Equal(t, "other_schema.emailageconsumer", resolvedTable)
+	})
+
+	t.Run("resolves a schema-qualified name whose schema casing differs from the registry's", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "OtherSchema", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "otherschema.orders")
+		require.True(t, valid)
+		require.Equal(t, "OtherSchema.orders", resolvedTable)
+	})
+
+	t.Run("returns false for a schema-qualified name whose schema doesn't exist", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "other_schema", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "nonexistent_schema.orders")
+		require.False(t, valid)
+		require.Equal(t, "nonexistent_schema.orders", resolvedTable)
+	})
+
+	t.Run("returns false for a schema-qualified name whose table doesn't exist in that schema", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "other_schema", tableName: "orders"},
+			{schema: "some_schema", tableName: "customers"},
+		})
+
+		// "customers" exists, but not in "other_schema" — the qualifier must not fall
+		// through to matching a same-named table in a different schema.
+		resolvedTable, valid := tr.IsValid("some_schema", "other_schema.customers")
+		require.False(t, valid)
+		require.Equal(t, "other_schema.customers", resolvedTable)
+	})
+}

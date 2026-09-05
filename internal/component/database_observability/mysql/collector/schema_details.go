@@ -113,6 +113,8 @@ type SchemaDetails struct {
 	// now allows overriding time.Now() in tests
 	now func() time.Time
 
+	tableRegistry *TableRegistry
+
 	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -168,6 +170,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[string]time.Time{},
 		now:             time.Now,
+		tableRegistry:   NewTableRegistry(),
 		logger:          args.Logger.With("collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -177,6 +180,13 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+// GetTableRegistry returns the source-of-truth table registry populated by this
+// collector from information_schema.tables. QueryDetails uses it to resolve a
+// query-parsed table name to its canonical casing.
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -232,11 +242,20 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	now := c.now()
 	tables := []*tableInfo{}
 	seenTables := map[string]struct{}{}
+	// scanComplete tracks whether we scanned every row without bailing out early. If false,
+	// tables is a partial view of information_schema.tables, so we must skip replacing the
+	// table registry and pruning throttle entries below: doing either from a partial list
+	// would incorrectly mark existing-but-unscanned tables as unknown/unvalidated, or evict
+	// their throttle entries as if they no longer existed. The per-table create_statement
+	// processing further down still runs over whatever partial list we did get — those rows
+	// scanned fine and are real tables, just possibly not an exhaustive set this tick.
+	scanComplete := true
 	for rs.Next() {
 		var schema, tableName, tableType string
 		var createTime, updateTime time.Time
 		if err := rs.Scan(&schema, &tableName, &tableType, &createTime, &updateTime); err != nil {
 			c.logger.Error("failed to scan tables", "err", err)
+			scanComplete = false
 			break
 		}
 		tables = append(tables, &tableInfo{
@@ -261,12 +280,16 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		return fmt.Errorf("failed to iterate over tables result set: %w", err)
 	}
 
-	// Cleanup: drop throttle entries for tables that no longer exist (e.g.
-	// tables dropped or renamed). Done before the empty-tables early return so
-	// the map is also pruned when every monitored table disappears.
-	for k := range c.lastEmittedAt {
-		if _, ok := seenTables[k]; !ok {
-			delete(c.lastEmittedAt, k)
+	if scanComplete {
+		c.tableRegistry.SetTables(tables)
+
+		// Cleanup: drop throttle entries for tables that no longer exist (e.g.
+		// tables dropped or renamed). Done before the empty-tables early return so
+		// the map is also pruned when every monitored table disappears.
+		for k := range c.lastEmittedAt {
+			if _, ok := seenTables[k]; !ok {
+				delete(c.lastEmittedAt, k)
+			}
 		}
 	}
 
@@ -544,4 +567,134 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 
 func fullyQualifiedName(schema, table string) string {
 	return fmt.Sprintf("`%s`.`%s`", schema, table)
+}
+
+// TableRegistry is a source-of-truth cache of schemas and their tables, as reported by
+// information_schema.tables.
+type TableRegistry struct {
+	mu sync.RWMutex
+	// exact holds schema -> canonical table name -> presence.
+	exact map[string]map[string]struct{}
+	// byLower holds schema -> lowercased table name -> canonical table name. Used as a
+	// case-insensitive fallback: unlike PostgreSQL, MySQL's identifier folding isn't a fixed
+	// rule. A cluster configured with lower_case_table_names=1 or 2 folds/compares names
+	// case-insensitively regardless of the case used at CREATE TABLE time, so a query can
+	// reference an existing table with a casing that doesn't exact-match what
+	// information_schema reports.
+	byLower map[string]map[string]string
+	// schemaByLower holds lowercased schema name -> canonical schema name. Resolves a
+	// schema-qualified reference's schema part the same way byLower resolves a table name,
+	// since a query's literal schema-qualifier is as susceptible to the same identifier
+	// folding as a table name is (it isn't server-reported the way the *connection's active*
+	// schema is).
+	schemaByLower map[string]string
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		exact:         make(map[string]map[string]struct{}),
+		byLower:       make(map[string]map[string]string),
+		schemaByLower: make(map[string]string),
+	}
+}
+
+// SetTables replaces the registry contents with the given tables, grouped by schema.
+func (tr *TableRegistry) SetTables(tables []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	tr.exact = make(map[string]map[string]struct{}, len(tables))
+	tr.byLower = make(map[string]map[string]string, len(tables))
+	tr.schemaByLower = make(map[string]string, len(tables))
+	for _, t := range tables {
+		if tr.exact[t.schema] == nil {
+			tr.exact[t.schema] = make(map[string]struct{})
+			tr.byLower[t.schema] = make(map[string]string)
+		}
+		tr.exact[t.schema][t.tableName] = struct{}{}
+		tr.byLower[t.schema][strings.ToLower(t.tableName)] = t.tableName
+		tr.schemaByLower[strings.ToLower(t.schema)] = t.schema
+	}
+}
+
+// IsValid resolves a query-parsed table name — optionally schema-qualified as
+// "schema.table" — against the source-of-truth table registry. It returns the resolved
+// name and whether a match was found.
+//
+// For an unqualified name, the given `schema` (typically the connection's active schema,
+// which is server-reported and not subject to the query-text folding problem described
+// below) scopes the lookup. For a schema-qualified name (a cross-database reference), the
+// qualifier is resolved against known schema names instead — it isn't scoped by the
+// connection's active schema, and unlike that active schema, it comes from parsing the
+// query's literal text, so it needs the same resolution as the table name.
+//
+// Both the schema and table parts match exactly first, then fall back to a
+// case-insensitive match: unlike PostgreSQL, MySQL's identifier folding isn't a fixed
+// rule. A cluster configured with lower_case_table_names=1 or 2 folds/compares names
+// case-insensitively regardless of the case used at creation time, so a query can
+// reference an existing schema/table with a casing that doesn't exact-match what
+// information_schema reports. Exact matches take priority over the case-insensitive
+// fallback so that a MySQL cluster with the default lower_case_table_names=0 (where names
+// are genuinely case-sensitive and two objects can differ only by case) isn't resolved to
+// the wrong one.
+func (tr *TableRegistry) IsValid(schema, parsedTableName string) (string, bool) {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	lookupSchema, lookupTable, qualified := schema, parsedTableName, false
+	if s, t, ok := splitSchemaQualified(parsedTableName); ok {
+		qualified = true
+		lookupTable = t
+		lookupSchema = tr.resolveSchemaLocked(s)
+	}
+
+	resolvedTable, ok := tr.resolveTableLocked(lookupSchema, lookupTable)
+	if !ok {
+		return parsedTableName, false
+	}
+
+	if qualified {
+		return lookupSchema + "." + resolvedTable, true
+	}
+	return resolvedTable, true
+}
+
+// resolveSchemaLocked resolves a schema name against known schema names, exact match
+// first, falling back to a case-insensitive match. Returns the input unchanged if neither
+// matches, so a subsequent table lookup against it predictably misses too. Callers must
+// hold tr.mu.
+func (tr *TableRegistry) resolveSchemaLocked(schema string) string {
+	if _, ok := tr.exact[schema]; ok {
+		return schema
+	}
+	if canonical, ok := tr.schemaByLower[strings.ToLower(schema)]; ok {
+		return canonical
+	}
+	return schema
+}
+
+// resolveTableLocked resolves a table name within a schema, exact match first, falling
+// back to a case-insensitive match. Callers must hold tr.mu.
+func (tr *TableRegistry) resolveTableLocked(schema, table string) (string, bool) {
+	if tables, ok := tr.exact[schema]; ok {
+		if _, ok := tables[table]; ok {
+			return table, true
+		}
+	}
+	if byLower, ok := tr.byLower[schema]; ok {
+		if canonical, ok := byLower[strings.ToLower(table)]; ok {
+			return canonical, true
+		}
+	}
+	return table, false
+}
+
+// splitSchemaQualified splits a parsed table name of the form "schema.table" into its two
+// parts. Returns ok=false if the name isn't schema-qualified.
+func splitSchemaQualified(parsedTableName string) (schema, table string, ok bool) {
+	idx := strings.LastIndex(parsedTableName, ".")
+	if idx < 0 {
+		return "", "", false
+	}
+	return parsedTableName[:idx], parsedTableName[idx+1:], true
 }
