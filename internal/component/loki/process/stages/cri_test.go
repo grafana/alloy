@@ -3,11 +3,13 @@ package stages
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -16,18 +18,18 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
+var (
+	criTestTimeStr = "2019-01-01T01:00:00.000000001Z"
+	criTestTime, _ = time.Parse(time.RFC3339Nano, criTestTimeStr)
+	criTestTime2   = time.Now()
+
+	tagFTime1Str = "2019-05-07T18:57:50.904275087+00:00"
+	tagFTime1, _ = time.Parse(time.RFC3339Nano, tagFTime1Str)
+	tagFTime2Str = "2019-05-07T18:57:55.904275087+00:00"
+	tagFTime2, _ = time.Parse(time.RFC3339Nano, tagFTime2Str)
+)
+
 func TestCRIStage(t *testing.T) {
-	var (
-		criTestTimeStr = "2019-01-01T01:00:00.000000001Z"
-		criTestTime, _ = time.Parse(time.RFC3339Nano, criTestTimeStr)
-		criTestTime2   = time.Now()
-
-		tagFTime1Str = "2019-05-07T18:57:50.904275087+00:00"
-		tagFTime1, _ = time.Parse(time.RFC3339Nano, tagFTime1Str)
-		tagFTime2Str = "2019-05-07T18:57:55.904275087+00:00"
-		tagFTime2, _ = time.Parse(time.RFC3339Nano, tagFTime2Str)
-	)
-
 	type testCase struct {
 		name                        string
 		entries                     []Entry
@@ -205,59 +207,6 @@ func TestCRIStage(t *testing.T) {
 			},
 			expectedLinesTruncated: 2,
 		},
-		{
-			name: "tag P multi-stream with maxPartialLines exceeded",
-			cfg:  CRIConfig{MaxPartialLines: 3},
-			entries: []Entry{
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime1Str+" stdout P partial line 1 ", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val1"}, tagFTime1Str+" stdout P partial line 2 ", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime1Str+" stdout P partial line 3 ", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val3"}, tagFTime1Str+" stdout P partial line 4 ", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val4"}, tagFTime1Str+" stdout P partial line 5 ", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime2Str+" stdout F log finished", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val3"}, tagFTime2Str+" stdout F another full log", time.Now()),
-				newEntry(map[string]any{}, model.LabelSet{"label1": "val4"}, tagFTime2Str+" stdout F yet an another full log", time.Now()),
-			},
-			expected: []Entry{
-				newEntry(
-					map[string]any{"label1": "val1", "label2": "val2", "flags": "P", "stream": "stdout", "content": "partial line 3 ", "time": tagFTime1Str},
-					model.LabelSet{"label1": "val1", "label2": "val2", "stream": "stdout"},
-					"partial line 1 partial line 3 ",
-					tagFTime1,
-				),
-				newEntry(
-					map[string]any{"label1": "val1", "flags": "P", "stream": "stdout", "content": "partial line 2 ", "time": tagFTime1Str},
-					model.LabelSet{"label1": "val1", "stream": "stdout"},
-					"partial line 2 ",
-					tagFTime1,
-				),
-				newEntry(
-					map[string]any{"label1": "val3", "flags": "P", "stream": "stdout", "content": "partial line 4 ", "time": tagFTime1Str},
-					model.LabelSet{"label1": "val3", "stream": "stdout"},
-					"partial line 4 ",
-					tagFTime1,
-				),
-				newEntry(
-					map[string]any{"label1": "val1", "label2": "val2", "flags": "F", "stream": "stdout", "content": "log finished", "time": tagFTime2Str},
-					model.LabelSet{"label1": "val1", "label2": "val2", "stream": "stdout"},
-					"log finished",
-					tagFTime2,
-				),
-				newEntry(
-					map[string]any{"label1": "val3", "flags": "F", "stream": "stdout", "content": "another full log", "time": tagFTime2Str},
-					model.LabelSet{"label1": "val3", "stream": "stdout"},
-					"another full log",
-					tagFTime2,
-				),
-				newEntry(
-					map[string]any{"label1": "val4", "flags": "F", "stream": "stdout", "content": "yet an another full log", "time": tagFTime2Str},
-					model.LabelSet{"label1": "val4", "stream": "stdout"},
-					"partial line 5 yet an another full log",
-					tagFTime2,
-				),
-			},
-			expectedPartialLinesFlushed: 3,
-		},
 	}
 
 	for _, tt := range tests {
@@ -276,6 +225,115 @@ loki_process_cri_partial_lines_flushed_total %d
 			runPipelineTest(t, []StageConfig{{CRIConfig: &tt.cfg}}, tt.entries, tt.expected, expectedMetrics)
 		})
 	}
+}
+
+func TestCRIStageMaxPartialLinesExceeded(t *testing.T) {
+	cfg := CRIConfig{MaxPartialLines: 3}
+	cfgs := []StageConfig{{CRIConfig: &cfg}}
+
+	newEntries := func() []Entry {
+		entries := []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime1Str+" stdout P partial line 1 ", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val1"}, tagFTime1Str+" stdout P partial line 2 ", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime1Str+" stdout P partial line 3 ", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val3"}, tagFTime1Str+" stdout P partial line 4 ", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val4"}, tagFTime1Str+" stdout P partial line 5 ", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val1", "label2": "val2"}, tagFTime2Str+" stdout F log finished", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val3"}, tagFTime2Str+" stdout F another full log", time.Now()),
+			newEntry(map[string]any{}, model.LabelSet{"label1": "val4"}, tagFTime2Str+" stdout F yet an another full log", time.Now()),
+		}
+		for i := range entries {
+			for labelName, labelValue := range entries[i].Labels {
+				entries[i].Extracted[string(labelName)] = string(labelValue)
+			}
+		}
+		return entries
+	}
+
+	expectedMetrics := fmt.Sprintf(`
+# HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
+# TYPE loki_process_cri_lines_truncated_total counter
+loki_process_cri_lines_truncated_total 0
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# TYPE loki_process_cri_partial_lines_flushed_total counter
+loki_process_cri_partial_lines_flushed_total 3
+`)
+
+	expected := []Entry{
+		newEntry(
+			map[string]any{"label1": "val1", "label2": "val2", "flags": "P", "stream": "stdout", "content": "partial line 3 ", "time": tagFTime1Str},
+			model.LabelSet{"label1": "val1", "label2": "val2", "stream": "stdout"},
+			"partial line 1 partial line 3 ",
+			tagFTime1,
+		),
+		newEntry(
+			map[string]any{"label1": "val1", "flags": "P", "stream": "stdout", "content": "partial line 2 ", "time": tagFTime1Str},
+			model.LabelSet{"label1": "val1", "stream": "stdout"},
+			"partial line 2 ",
+			tagFTime1,
+		),
+		newEntry(
+			map[string]any{"label1": "val3", "flags": "P", "stream": "stdout", "content": "partial line 4 ", "time": tagFTime1Str},
+			model.LabelSet{"label1": "val3", "stream": "stdout"},
+			"partial line 4 ",
+			tagFTime1,
+		),
+		newEntry(
+			map[string]any{"label1": "val1", "label2": "val2", "flags": "F", "stream": "stdout", "content": "log finished", "time": tagFTime2Str},
+			model.LabelSet{"label1": "val1", "label2": "val2", "stream": "stdout"},
+			"log finished",
+			tagFTime2,
+		),
+		newEntry(
+			map[string]any{"label1": "val3", "flags": "F", "stream": "stdout", "content": "another full log", "time": tagFTime2Str},
+			model.LabelSet{"label1": "val3", "stream": "stdout"},
+			"another full log",
+			tagFTime2,
+		),
+		newEntry(
+			map[string]any{"label1": "val4", "flags": "F", "stream": "stdout", "content": "yet an another full log", "time": tagFTime2Str},
+			model.LabelSet{"label1": "val4", "stream": "stdout"},
+			"partial line 5 yet an another full log",
+			tagFTime2,
+		),
+	}
+
+	t.Run("Pipeline", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		out := p.Run(withInboundEntries(newEntries()...))
+		var collected []Entry
+		for e := range out {
+			collected = append(collected, e)
+		}
+
+		assertEntriesUnordered(t, expected, collected)
+		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+	})
+
+	t.Run("New Pipeline", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+
+		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+
+		// One entry per call, matching how Stage.Run offers entries to the
+		// limit check one at a time off the channel.
+		for _, e := range newEntries() {
+			require.NoError(t, p.process(context.Background(), []Entry{e}))
+		}
+		p.stop()
+
+		assertEntriesUnordered(t, expected, collected)
+		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+	})
 }
 
 // TestCRIStageFlushOnShutdown verifies that buffered entries are flushed when stop is called.

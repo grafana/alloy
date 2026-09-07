@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"slices"
 	"sync"
 	"time"
 
@@ -107,23 +106,28 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 			return []Entry{e}, false
 		}
 
+		var entries []Entry
+
 		setCRIProperties(&e, parsed)
 
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// flush any partial lines if we have buffered too many.
-			entries := make([]Entry, 0, len(c.partialLines))
-			entries = c.flushPartialLinesIfExceeded(entries)
+			entries := c.flushPartialLinesIfExceeded()
 			// it's a partial-line buffer it and move on.
 			c.addPartialLine(fingerprint, e)
 			return entries, len(entries) == 0
+		} else {
+			// We got full-line 'F'.
+			entries = []Entry{c.completeFullLine(fingerprint, e)}
 		}
 
-		// We got full-line 'F'.
-		// If any old partial lines matches with this full-line stream, merge it,
-		// else just return the full line.
-		return []Entry{c.completeFullLine(fingerprint, e)}, false
+		if extra := c.flushPartialLinesIfExceeded(); len(extra) > 0 {
+			entries = append(entries, extra...)
+		}
+
+		return entries, len(entries) == 0
 	})
 }
 
@@ -134,15 +138,11 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 // stream. For now this is an acceptable tradeoff and we consider this a
 // failure case. We can revisit this in the future.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
-	c.mut.Lock()
 
 	// dst compacts entries in place, extra only grows when the
 	// MaxPartialLines branch below flushes held partial lines. So in
 	// the common case this call never allocates a new slice.
-	var (
-		dst   int
-		extra []Entry
-	)
+	var dst int
 	for _, e := range entries {
 		parsed, ok := crip.ParseCRI(e.Line)
 		if !ok {
@@ -156,8 +156,6 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			// flush any partial lines if we have buffered too many.
-			extra = c.flushPartialLinesIfExceeded(extra)
 			// it's a partial-line buffer it and move on.
 			c.addPartialLine(fingerprint, e)
 			continue
@@ -170,13 +168,10 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		dst++
 	}
 
-	c.mut.Unlock()
-
 	out := entries[:dst]
-	if len(extra) > 0 {
-		// NOTE: We append to extra to make sure buffered entries are
-		// ordered before passed in entries.
-		out = append(extra, out...)
+	// flush any partial lines if we have buffered too many.
+	if extra := c.flushPartialLinesIfExceeded(); len(extra) > 0 {
+		out = append(out, extra...)
 	}
 
 	if len(out) == 0 {
@@ -205,12 +200,12 @@ func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
 	return e
 }
 
-func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
+func (c *criStage) flushPartialLinesIfExceeded() []Entry {
 	if len(c.partialLines) < c.cfg.MaxPartialLines {
-		return buf
+		return nil
 	}
 
-	buf = slices.Grow(buf, len(c.partialLines))
+	entries := make([]Entry, 0, len(c.partialLines))
 
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
 	if c.partialLinesFlushedMetric != nil {
@@ -218,12 +213,12 @@ func (c *criStage) flushPartialLinesIfExceeded(buf []Entry) []Entry {
 	}
 
 	for _, v := range c.partialLines {
-		buf = append(buf, v)
+		entries = append(entries, v)
 	}
 
 	c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
 
-	return buf
+	return entries
 }
 
 // stop implements stopper and is only used by our new pipeline.
