@@ -1,0 +1,11 @@
+goos: linux
+goarch: amd64
+pkg: github.com/grafana/alloy/internal/component/loki/process/stages
+cpu: AMD Ryzen 7 8845HS w/ Radeon 780M Graphics
+BenchmarkCRIStage/single_stream/Pipeline-16         	  707313	      1510 ns/op	     888 B/op	      11 allocs/op
+BenchmarkCRIStage/single_stream/New_Pipeline-16     	 1384304	       875.6 ns/op	    1144 B/op	      15 allocs/op
+BenchmarkCRIStage/multiple_streams/Pipeline-16      	   15567	     77049 ns/op	   42720 B/op	     600 allocs/op
+BenchmarkCRIStage/multiple_streams/New_Pipeline-16  	   95131	     12510 ns/op	   55680 B/op	     559 allocs/op
+BenchmarkCRIStage/flush_pressure/Pipeline-16        	   45021	     26267 ns/op	   13713 B/op	     190 allocs/op
+BenchmarkCRIStage/flush_pressure/New_Pipeline-16    	signal: interrupt
+FAIL	github.com/grafana/alloy/internal/component/loki/process/stages	8.361s

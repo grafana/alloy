@@ -66,7 +66,7 @@ func (t SourceType) MarshalText() (text []byte, err error) {
 	return []byte(t), nil
 }
 
-const stripedMapStripeCount = 16
+const stripeCount = 16
 
 // stripedMap is a concurrent map sharded into a fixed number of independently
 // locked stripes.
@@ -76,7 +76,7 @@ type stripedMap[V any] struct {
 	size     atomic.Int64
 	flushing atomic.Bool
 
-	stripes [stripedMapStripeCount]stripe[V]
+	stripes [stripeCount]stripe[V]
 }
 
 type stripe[V any] struct {
@@ -88,7 +88,7 @@ type stripe[V any] struct {
 // of entries across all stripes.
 func newStripedMap[V any](sizeHint int) *stripedMap[V] {
 	m := &stripedMap[V]{}
-	perStripe := sizeHint/stripedMapStripeCount + 1
+	perStripe := sizeHint/stripeCount + 1
 	for i := range m.stripes {
 		m.stripes[i].data = make(map[uint64]V, perStripe)
 	}
@@ -96,7 +96,7 @@ func newStripedMap[V any](sizeHint int) *stripedMap[V] {
 }
 
 func (m *stripedMap[V]) stripe(key uint64) *stripe[V] {
-	return &m.stripes[key&(stripedMapStripeCount-1)]
+	return &m.stripes[key&(stripeCount-1)]
 }
 
 // Update runs fn under key's stripe lock with the current value stored at
