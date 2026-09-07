@@ -250,14 +250,14 @@ func TestCRIStageMaxPartialLinesExceeded(t *testing.T) {
 		return entries
 	}
 
-	expectedMetrics := fmt.Sprintf(`
+	expectedMetrics := `
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total 0
 # HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total 3
-`)
+`
 
 	expected := []Entry{
 		newEntry(
