@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,7 +50,7 @@ func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 		next:                      opts.next,
 		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
-		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+		partialLines:              newStripedMap[Entry](cfg.MaxPartialLines),
 		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
 		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
@@ -85,8 +84,7 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	mut          sync.Mutex
-	partialLines map[model.Fingerprint]Entry
+	partialLines *stripedMap[Entry]
 
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter
@@ -182,41 +180,28 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 }
 
 func (c *criStage) addPartialLine(fp model.Fingerprint, e Entry) {
-	prev, ok := c.partialLines[fp]
-	if ok {
-		e.Line = prev.Line + e.Line
-	}
-	c.ensureTruncateIfRequired(&e)
-	c.partialLines[fp] = e
+	c.partialLines.Update(uint64(fp), func(prev Entry) Entry {
+		e.Line = c.ensureTruncateIfRequired(prev.Line, e.Line)
+		return e
+	})
 }
 
 func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
-	prev, ok := c.partialLines[fp]
+	prev, ok := c.partialLines.Take(uint64(fp))
 	if ok {
-		e.Line = prev.Line + e.Line
-		c.ensureTruncateIfRequired(&e)
-		delete(c.partialLines, fp)
+		e.Line = c.ensureTruncateIfRequired(prev.Line, e.Line)
 	}
 	return e
 }
 
 func (c *criStage) flushPartialLinesIfExceeded() []Entry {
-	if len(c.partialLines) < c.cfg.MaxPartialLines {
+	entries := c.partialLines.DrainIfAtLeast(c.cfg.MaxPartialLines)
+	if len(entries) == 0 {
 		return nil
 	}
 
-	entries := make([]Entry, 0, len(c.partialLines))
-
 	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-	if c.partialLinesFlushedMetric != nil {
-		c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
-	}
-
-	for _, v := range c.partialLines {
-		entries = append(entries, v)
-	}
-
-	c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
+	c.partialLinesFlushedMetric.Add(float64(len(entries)))
 
 	return entries
 }
@@ -227,31 +212,39 @@ func (c *criStage) stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	if len(c.partialLines) == 0 {
+	entries := c.partialLines.DrainAll()
+	if len(entries) == 0 {
 		return
 	}
 
-	out := make([]Entry, 0, len(c.partialLines))
-	for _, e := range c.partialLines {
-		out = append(out, e)
-	}
-	c.partialLines = make(map[model.Fingerprint]Entry)
-
-	if err := c.next(ctx, out); err != nil {
+	if err := c.next(ctx, entries); err != nil {
 		c.logger.Error("failed to flush held partial lines on stop", "err", err)
 	}
 }
 
-func (c *criStage) ensureTruncateIfRequired(e *Entry) {
-	if c.cfg.MaxPartialLineSizeTruncate && len(e.Line) > int(c.cfg.MaxPartialLineSize) {
-		e.Line = e.Line[:c.cfg.MaxPartialLineSize]
+func (c *criStage) ensureTruncateIfRequired(prevLine, newLine string) string {
+	if !c.cfg.MaxPartialLineSizeTruncate {
+		return prevLine + newLine
+	}
+
+	// If prev line is already at max size we don't have to concatinate new line.
+	if len(prevLine) == int(c.cfg.MaxPartialLineSize) {
+		if c.linesTruncatedMetric != nil {
+			c.linesTruncatedMetric.Inc()
+		}
+		return prevLine
+	}
+
+	line := prevLine + newLine
+
+	if len(line) > int(c.cfg.MaxPartialLineSize) {
+		line = line[:c.cfg.MaxPartialLineSize]
 		if c.linesTruncatedMetric != nil {
 			c.linesTruncatedMetric.Inc()
 		}
 	}
+
+	return line
 }
 
 func (c *criStage) Cleanup() {}
