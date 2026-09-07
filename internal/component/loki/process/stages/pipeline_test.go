@@ -156,6 +156,8 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 		in := make(chan loki.Entry)
 		out := make(chan loki.Entry)
 		handler := p.Start(in, out)
+
+		defer close(out)
 		defer handler.Stop()
 
 		go func() {
