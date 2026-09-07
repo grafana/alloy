@@ -111,11 +111,8 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			// flush any partial lines if we have buffered too many.
-			entries := c.flushPartialLinesIfExceeded()
 			// it's a partial-line buffer it and move on.
 			c.addPartialLine(fingerprint, e)
-			return entries, len(entries) == 0
 		} else {
 			// We got full-line 'F'.
 			entries = []Entry{c.completeFullLine(fingerprint, e)}
