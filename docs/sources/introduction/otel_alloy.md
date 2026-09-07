@@ -118,7 +118,7 @@ Push-based OTLP gateways and pull-based Prometheus scrapers have different load 
 
 ## Manage the {{% param "OTEL_ENGINE" %}} with Fleet Management
 
-The {{< param "OTEL_ENGINE" >}} works with the OpenTelemetry Collector support in Grafana Fleet Management, which lets you monitor and remotely configure your deployment over the Open Agent Management Protocol (OpAMP).
+The {{< param "OTEL_ENGINE" >}} supports the OpenTelemetry Collector integration in Grafana Fleet Management so you can monitor and configure your deployment over the Open Agent Management Protocol (OpAMP).
 You can set this up in two ways:
 
 - **Built-in supervisor**: Run the [`otel-supervisor`](../../reference/cli/otel-supervisor/) command to connect the {{< param "OTEL_ENGINE" >}} directly to Fleet Management over OpAMP, completely out of the box.
