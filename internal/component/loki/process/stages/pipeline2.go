@@ -131,13 +131,13 @@ func newPipeline(
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
-		newStage, ok := s.(entryProcessor)
+		ep, ok := s.(entryProcessor)
 		if !ok {
 			return nil, errors.New("stage has not been migrated to new interface")
 		}
 
-		stages = append(stages, newStage)
-		next = newStage.process
+		stages = append(stages, ep)
+		next = ep.process
 	}
 
 	return &pipeline{next: next, stages: stages}, nil
