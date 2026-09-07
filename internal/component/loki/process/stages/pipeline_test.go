@@ -130,13 +130,25 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 	})
 }
 
-// benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
-// results so the compiler can't optimize the calls being measured away.
-var benchResultLokiEntry loki.Entry
+func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch) {
+	distribute := func(n int, batches []loki.Batch, work func(worker, iters int)) {
+		var (
+			wg         sync.WaitGroup
+			numWorkers = len(batches)
+		)
+		itersPerWorker, remainder := n/numWorkers, n%numWorkers
+		for w := 0; w < numWorkers; w++ {
+			iters := itersPerWorker
+			if w < remainder {
+				iters++
+			}
+			wg.Go(func() {
+				work(w, iters)
+			})
+		}
+		wg.Wait()
+	}
 
-// runPipelineBenchmark benchmarks a pipeline built for cfgs against batch.
-// It will run one benchmark for new stage implementation and one for old implementation.
-func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 	b.Run("Pipeline", func(b *testing.B) {
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
 		require.NoError(b, err)
@@ -146,23 +158,35 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		handler := p.Start(in, out)
 		defer handler.Stop()
 
-		clone := batch.Clone()
-		entries := make([]loki.Entry, 0, clone.EntryLen())
-		_ = clone.ConsumeStreams(func(stream loki.Stream, created int64) error {
-			for _, e := range stream.Entries {
-				entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e))
+		go func() {
+			for range out {
 			}
-			return nil
-		})
+		}()
+
+		workerEntries := make([][]loki.Entry, len(batches))
+		for w, batch := range batches {
+			clone := batch.Clone()
+			entries := make([]loki.Entry, 0, clone.EntryLen())
+			_ = clone.ConsumeStreams(func(stream loki.Stream, created int64) error {
+				for _, e := range stream.Entries {
+					entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e))
+				}
+				return nil
+			})
+			workerEntries[w] = entries
+		}
 
 		b.ResetTimer()
 		b.ReportAllocs()
-		for b.Loop() {
-			for _, e := range entries {
-				handler.Chan() <- e.Clone()
-				benchResultLokiEntry = <-out
+
+		distribute(b.N, batches, func(worker, iters int) {
+			entries := workerEntries[worker]
+			for i := 0; i < iters; i++ {
+				for _, e := range entries {
+					handler.Chan() <- e.Clone()
+				}
 			}
-		}
+		})
 	})
 
 	b.Run("New Pipeline", func(b *testing.B) {
@@ -174,9 +198,12 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
 		b.ResetTimer()
 		b.ReportAllocs()
 
-		for b.Loop() {
-			_ = pc.Consume(context.Background(), batch.Clone())
-		}
+		distribute(b.N, batches, func(worker, iters int) {
+			batch := batches[worker]
+			for i := 0; i < iters; i++ {
+				_ = pc.Consume(context.Background(), batch.Clone())
+			}
+		})
 	})
 }
 

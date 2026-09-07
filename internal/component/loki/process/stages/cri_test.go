@@ -314,10 +314,79 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 }
 
 func BenchmarkCRIStage(b *testing.B) {
-	batch := loki.NewBatch()
-	batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
-		Timestamp: time.Now(),
-		Line:      "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test",
-	}))
-	runPipelineBenchmark(b, []StageConfig{{CRIConfig: &defaultCRIConfig}}, batch)
+	b.Run("single stream", func(b *testing.B) {
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
+			Timestamp: time.Now(),
+			Line:      "2019-01-01T01:00:00.000000001Z stderr F my cool message yay\n test",
+		}))
+		runPipelineBenchmark(b, []StageConfig{{CRIConfig: &defaultCRIConfig}}, []loki.Batch{batch})
+	})
+
+	b.Run("multiple streams", func(b *testing.B) {
+		const (
+			numBatches      = 10
+			entriesPerBatch = 50
+			partialPerGroup = 4
+		)
+
+		batches := make([]loki.Batch, numBatches)
+		for i := range batches {
+			labels := model.LabelSet{"worker": model.LabelValue(fmt.Sprintf("%d", i))}
+
+			entries := make([]push.Entry, 0, entriesPerBatch)
+			for len(entries) < entriesPerBatch {
+				for p := 0; p < partialPerGroup; p++ {
+					entries = append(entries, push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("2019-01-01T01:00:00.000000001Z stdout P part %d ", p),
+					})
+				}
+				entries = append(entries, push.Entry{
+					Timestamp: time.Now(),
+					Line:      "2019-01-01T01:00:00.000000001Z stdout F end of line",
+				})
+			}
+
+			batch := loki.NewBatch()
+			batch.Add(loki.NewStream(labels, entries...))
+			batches[i] = batch
+		}
+
+		runPipelineBenchmark(b, []StageConfig{{CRIConfig: &defaultCRIConfig}}, batches)
+	})
+
+	b.Run("flush pressure", func(b *testing.B) {
+		const (
+			numWorkers        = 10
+			streamsPerWorker  = 5
+			partialsPerStream = 3
+			maxPartialLines   = 8
+		)
+
+		batches := make([]loki.Batch, numWorkers)
+		for w := range batches {
+			batch := loki.NewBatch()
+			for s := 0; s < streamsPerWorker; s++ {
+				labels := model.LabelSet{
+					"worker": model.LabelValue(fmt.Sprintf("%d", w)),
+					"stream": model.LabelValue(fmt.Sprintf("%d", s)),
+				}
+
+				for i := range partialsPerStream {
+					flag, content := "P", fmt.Sprintf("partial %d ", i)
+					if i == partialsPerStream-1 {
+						flag, content = "F", "final line"
+					}
+					batch.AddEntry(labels, push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("2019-01-01T01:00:00.000000001Z stdout %s %s", flag, content),
+					})
+				}
+			}
+			batches[w] = batch
+		}
+
+		runPipelineBenchmark(b, []StageConfig{{CRIConfig: &CRIConfig{MaxPartialLines: maxPartialLines}}}, batches)
+	})
 }
