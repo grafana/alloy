@@ -283,8 +283,8 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 		if err := m.pipeline2.process(withPending(ctx, &buf), matched); err != nil {
 			return err
 		}
-		dst += len(buf)
 		entries = append(entries[:dst], buf...)
+		dst += len(buf)
 	}
 
 	if dst == 0 {
