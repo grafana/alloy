@@ -130,16 +130,7 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 }
 
 // process implements entryProcessor and is only used by our new pipeline.
-// c.mut is released before calling next(), so flushPartialLinesIfExceeded
-// can sweep up and forward a stream owned by a different, concurrently-
-// running caller through this caller's next() call, causing OOO for that
-// stream. For now this is an acceptable tradeoff and we consider this a
-// failure case. We can revisit this in the future.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
-
-	// dst compacts entries in place, extra only grows when the
-	// MaxPartialLines branch below flushes held partial lines. So in
-	// the common case this call never allocates a new slice.
 	var dst int
 	for _, e := range entries {
 		parsed, ok := crip.ParseCRI(e.Line)
@@ -168,6 +159,9 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 
 	out := entries[:dst]
 	// flush any partial lines if we have buffered too many.
+	// This can cause OOO for entries since we don't serialize the whole
+	// pipeline. This is an acceptable trade-off since this is a failure case
+	// and is something we can revisit in the future.
 	if extra := c.flushPartialLinesIfExceeded(); len(extra) > 0 {
 		out = append(out, extra...)
 	}
