@@ -56,7 +56,6 @@ The following collectors are configurable:
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
-| `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
@@ -77,6 +76,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
+| [`logs`][logs]                     | Configure the logs collector.                     | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
 | [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
@@ -88,6 +88,7 @@ You can use the following blocks with `database_observability.postgres`:
 [query_samples]: #query_samples
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
+[logs]: #logs
 [health_check]: #health_check
 [prometheus_exporter]: #prometheus_exporter
 
@@ -165,6 +166,14 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
 
+### `logs`
+
+| Name                           | Type   | Description                                                              | Default | Required |
+|--------------------------------|--------|--------------------------------------------------------------------------|---------|----------|
+| `enable_error_logs_processing` | `bool` | Emit per-query error telemetry by pairing error and statement log lines. | `false` | no       |
+
+The `logs` collector is always enabled and counts server errors from the PostgreSQL logs forwarded to `logs_receiver`. When `enable_error_logs_processing` is `true`, the collector additionally emits per-query error telemetry that associates each error with the query that caused it.
+
 ### `health_check`
 
 | Name               | Type       | Description                                          | Default | Required |
@@ -180,15 +189,17 @@ Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.p
 
 ## `logs` collector
 
-The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
+The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point. It counts server errors and exposes them as a Prometheus metric on the component's metrics endpoint. When [`enable_error_logs_processing`](#logs) is `true`, it also emits per-query error telemetry as Loki log entries, so each error can be associated with the query that caused it.
 
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
 - `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
 - `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
 
+PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
+
 {{< admonition type="note" >}}
-Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
+Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
 {{< /admonition >}}
 
 ## Example
@@ -199,7 +210,10 @@ database_observability.postgres "orders_db" {
   forward_to       = [loki.relabel.orders_db.receiver]
   targets          = prometheus.exporter.postgres.orders_db.targets
 
-  enable_collectors = ["query_samples", "explain_plans"]
+  // Enable per-query error telemetry from the processed PostgreSQL logs.
+  logs {
+    enable_error_logs_processing = true
+  }
 }
 
 prometheus.exporter.postgres "orders_db" {
