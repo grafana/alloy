@@ -221,7 +221,7 @@ func (c *criStage) ensureTruncateIfRequired(prevLine, newLine string) string {
 		return prevLine + newLine
 	}
 
-	// If prev line is already at max size we don't have to concatinate new line.
+	// If prev line is already at max size we don't have to concatenate new line.
 	if len(prevLine) == int(c.cfg.MaxPartialLineSize) {
 		if c.linesTruncatedMetric != nil {
 			c.linesTruncatedMetric.Inc()
