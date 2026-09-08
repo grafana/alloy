@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 	"github.com/grafana/alloy/internal/util"
@@ -207,6 +207,9 @@ func newPartialLinesMap(cfg CRIConfig, logger *slog.Logger, linesTruncated prome
 	}
 }
 
+// partialLinesMap is an implementation of partialLines that is not safe for concurrent use.
+// It will only be used with the "old" pipeline where entries are passed through channels between
+// each stage.
 type partialLinesMap struct {
 	cfg CRIConfig
 
@@ -260,7 +263,9 @@ const stripeCount = 16
 
 var _ partialLines = (*partialLinesStriped)(nil)
 
-// partialLinesStriped is a concurrent map sharded into a fixed number of independently locked stripes.
+// partialLinesStriped is an implementation of partialLines that is safe for concurrent use.
+// It will only be used with the "new" pipeline where many callers can pass through the stage
+// concurrently.
 type partialLinesStriped struct {
 	// size is only exact while every stripe lock is held. Other readers treat it
 	// as a hint. flushing keeps concurrent callers from all queueing on lockAll.
