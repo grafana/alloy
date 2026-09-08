@@ -104,25 +104,19 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 			return []Entry{e}, false
 		}
 
-		var entries []Entry
-
 		setCRIProperties(&e, parsed)
 
 		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
+			entries := c.flushPartialLinesIfExceeded()
 			// it's a partial-line buffer it and move on.
 			c.addPartialLine(fingerprint, e)
-		} else {
-			// We got full-line 'F'.
-			entries = []Entry{c.completeFullLine(fingerprint, e)}
+			return entries, false
 		}
 
-		if extra := c.flushPartialLinesIfExceeded(); len(extra) > 0 {
-			entries = append(entries, extra...)
-		}
-
-		return entries, len(entries) == 0
+		// We got full-line 'F'.
+		return []Entry{c.completeFullLine(fingerprint, e)}, false
 	})
 }
 
@@ -219,20 +213,16 @@ func (c *criStage) ensureTruncateIfRequired(prevLine, newLine string) string {
 	}
 
 	// If prev line is already at max size we don't have to concatenate new line.
-	if len(prevLine) == int(c.cfg.MaxPartialLineSize) {
-		if c.linesTruncatedMetric != nil {
-			c.linesTruncatedMetric.Inc()
-		}
-		return prevLine
+	if len(prevLine) >= int(c.cfg.MaxPartialLineSize) {
+		c.linesTruncatedMetric.Inc()
+		return prevLine[:c.cfg.MaxPartialLineSize]
 	}
 
 	line := prevLine + newLine
 
 	if len(line) > int(c.cfg.MaxPartialLineSize) {
+		c.linesTruncatedMetric.Inc()
 		line = line[:c.cfg.MaxPartialLineSize]
-		if c.linesTruncatedMetric != nil {
-			c.linesTruncatedMetric.Inc()
-		}
 	}
 
 	return line
