@@ -3,9 +3,13 @@ package kafka_exporter
 import (
 	"fmt"
 	"log/slog"
+	"regexp"
+	"sync"
+	"time"
 
 	"github.com/IBM/sarama"
 	kafka_exporter "github.com/grafana/kafka_exporter/exporter"
+	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/grafana/alloy/internal/slogadapter"
@@ -184,6 +188,22 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	if c.UseZooKeeperLag && (len(c.ZookeeperURIs) == 0 || c.ZookeeperURIs[0] == "") {
 		return nil, fmt.Errorf("zookeeper lag is enabled but no zookeeper uri was provided")
 	}
+	if _, err := sarama.ParseKafkaVersion(c.KafkaVersion); err != nil {
+		return nil, fmt.Errorf("invalid kafka_version: %w", err)
+	}
+	if _, err := time.ParseDuration(c.MetadataRefreshInterval); err != nil {
+		return nil, fmt.Errorf("invalid metadata_refresh_interval: %w", err)
+	}
+	for _, f := range []struct{ name, expr string }{
+		{"topics_filter_regex", c.TopicsFilter},
+		{"topics_exclude_regex", c.TopicsExclude},
+		{"groups_filter_regex", c.GroupFilter},
+		{"groups_exclude_regex", c.GroupExclude},
+	} {
+		if _, err := regexp.Compile(f.expr); err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", f.name, err)
+		}
+	}
 
 	// 30 is the default value
 	if c.PruneIntervalSeconds != 30 {
@@ -221,13 +241,65 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		MaxOffsets:               c.MaxOffsets,
 	}
 
-	newExporter, err := kafka_exporter.New(slogadapter.GoKit(logger.Handler()), options, c.TopicsFilter, c.TopicsExclude, c.GroupFilter, c.GroupExclude)
-	if err != nil {
-		return nil, fmt.Errorf("could not instantiate kafka lag exporter: %w", err)
+	// kafka_exporter.New connects to Kafka (and ZooKeeper) as part of
+	// construction. Defer it to the first scrape so that an unreachable
+	// broker at startup does not fail the whole component and retries
+	// happen on every scrape until the connection succeeds.
+	collector := &lazyCollector{
+		logger: logger,
+		create: func() (*kafka_exporter.Exporter, error) {
+			return kafka_exporter.New(slogadapter.GoKit(logger.Handler()), options, c.TopicsFilter, c.TopicsExclude, c.GroupFilter, c.GroupExclude)
+		},
 	}
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
-		integrations.WithCollectors(newExporter),
+		integrations.WithCollectors(collector),
 	), nil
+}
+
+var kafkaUp = prometheus.NewDesc(
+	"kafka_up",
+	"Whether the exporter could connect to Kafka. 0 until the Kafka client is initialized.",
+	nil, nil,
+)
+
+// lazyCollector creates the wrapped kafka_exporter.Exporter on the first
+// Collect call and retries on subsequent calls until it succeeds.
+type lazyCollector struct {
+	logger *slog.Logger
+	create func() (*kafka_exporter.Exporter, error)
+
+	mut      sync.Mutex
+	exporter *kafka_exporter.Exporter
+}
+
+// Describe implements prometheus.Collector. It intentionally sends no
+// descriptors, which makes this an unchecked collector: the wrapped exporter
+// only initializes its descriptors once it has been created.
+func (l *lazyCollector) Describe(chan<- *prometheus.Desc) {}
+
+// Collect implements prometheus.Collector.
+func (l *lazyCollector) Collect(ch chan<- prometheus.Metric) {
+	exporter, err := l.get()
+	if err != nil {
+		l.logger.Error("could not instantiate kafka lag exporter, will retry on next scrape", "err", err)
+		ch <- prometheus.MustNewConstMetric(kafkaUp, prometheus.GaugeValue, 0)
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(kafkaUp, prometheus.GaugeValue, 1)
+	exporter.Collect(ch)
+}
+
+func (l *lazyCollector) get() (*kafka_exporter.Exporter, error) {
+	l.mut.Lock()
+	defer l.mut.Unlock()
+	if l.exporter == nil {
+		exporter, err := l.create()
+		if err != nil {
+			return nil, err
+		}
+		l.exporter = exporter
+	}
+	return l.exporter, nil
 }
