@@ -580,21 +580,33 @@ type TableRegistry struct {
 	// rule. A cluster configured with lower_case_table_names=1 or 2 folds/compares names
 	// case-insensitively regardless of the case used at CREATE TABLE time, so a query can
 	// reference an existing table with a casing that doesn't exact-match what
-	// information_schema reports.
+	// information_schema reports. Absent an entry here for any lowercased name present in
+	// ambiguousLower.
 	byLower map[string]map[string]string
+	// ambiguousLower holds schema -> lowercased table name -> presence, for a lowercased name
+	// shared by two or more distinct exact-case tables (possible under the MySQL default
+	// lower_case_table_names=0, where two such tables can genuinely coexist). The
+	// case-insensitive fallback exists to bridge identifier folding, not to guess between two
+	// real, different tables, so resolveTableLocked treats an ambiguous name as no match
+	// rather than arbitrarily picking one.
+	ambiguousLower map[string]map[string]struct{}
 	// schemaByLower holds lowercased schema name -> canonical schema name. Resolves a
 	// schema-qualified reference's schema part the same way byLower resolves a table name,
 	// since a query's literal schema-qualifier is as susceptible to the same identifier
 	// folding as a table name is (it isn't server-reported the way the *connection's active*
 	// schema is).
 	schemaByLower map[string]string
+	// ambiguousSchemaLower mirrors ambiguousLower, for schema names instead of table names.
+	ambiguousSchemaLower map[string]struct{}
 }
 
 func NewTableRegistry() *TableRegistry {
 	return &TableRegistry{
-		exact:         make(map[string]map[string]struct{}),
-		byLower:       make(map[string]map[string]string),
-		schemaByLower: make(map[string]string),
+		exact:                make(map[string]map[string]struct{}),
+		byLower:              make(map[string]map[string]string),
+		ambiguousLower:       make(map[string]map[string]struct{}),
+		schemaByLower:        make(map[string]string),
+		ambiguousSchemaLower: make(map[string]struct{}),
 	}
 }
 
@@ -605,15 +617,31 @@ func (tr *TableRegistry) SetTables(tables []*tableInfo) {
 
 	tr.exact = make(map[string]map[string]struct{}, len(tables))
 	tr.byLower = make(map[string]map[string]string, len(tables))
+	tr.ambiguousLower = make(map[string]map[string]struct{})
 	tr.schemaByLower = make(map[string]string, len(tables))
+	tr.ambiguousSchemaLower = make(map[string]struct{})
+
 	for _, t := range tables {
 		if tr.exact[t.schema] == nil {
 			tr.exact[t.schema] = make(map[string]struct{})
 			tr.byLower[t.schema] = make(map[string]string)
+			tr.ambiguousLower[t.schema] = make(map[string]struct{})
 		}
 		tr.exact[t.schema][t.tableName] = struct{}{}
-		tr.byLower[t.schema][strings.ToLower(t.tableName)] = t.tableName
-		tr.schemaByLower[strings.ToLower(t.schema)] = t.schema
+
+		lowerTable := strings.ToLower(t.tableName)
+		if existing, ok := tr.byLower[t.schema][lowerTable]; ok && existing != t.tableName {
+			tr.ambiguousLower[t.schema][lowerTable] = struct{}{}
+		} else {
+			tr.byLower[t.schema][lowerTable] = t.tableName
+		}
+
+		lowerSchema := strings.ToLower(t.schema)
+		if existing, ok := tr.schemaByLower[lowerSchema]; ok && existing != t.schema {
+			tr.ambiguousSchemaLower[lowerSchema] = struct{}{}
+		} else {
+			tr.schemaByLower[lowerSchema] = t.schema
+		}
 	}
 }
 
@@ -661,28 +689,41 @@ func (tr *TableRegistry) IsValid(schema, parsedTableName string) (string, bool) 
 
 // resolveSchemaLocked resolves a schema name against known schema names, exact match
 // first, falling back to a case-insensitive match. Returns the input unchanged if neither
-// matches, so a subsequent table lookup against it predictably misses too. Callers must
+// matches — including when the lowercased name is ambiguous between two or more distinct
+// schemas — so a subsequent table lookup against it predictably misses too. Callers must
 // hold tr.mu.
 func (tr *TableRegistry) resolveSchemaLocked(schema string) string {
 	if _, ok := tr.exact[schema]; ok {
 		return schema
 	}
-	if canonical, ok := tr.schemaByLower[strings.ToLower(schema)]; ok {
+	lowerSchema := strings.ToLower(schema)
+	if _, ambiguous := tr.ambiguousSchemaLower[lowerSchema]; ambiguous {
+		return schema
+	}
+	if canonical, ok := tr.schemaByLower[lowerSchema]; ok {
 		return canonical
 	}
 	return schema
 }
 
 // resolveTableLocked resolves a table name within a schema, exact match first, falling
-// back to a case-insensitive match. Callers must hold tr.mu.
+// back to a case-insensitive match. Returns ok=false if neither matches, including when
+// the lowercased name is ambiguous between two or more distinct tables in the schema.
+// Callers must hold tr.mu.
 func (tr *TableRegistry) resolveTableLocked(schema, table string) (string, bool) {
 	if tables, ok := tr.exact[schema]; ok {
 		if _, ok := tables[table]; ok {
 			return table, true
 		}
 	}
+	lowerTable := strings.ToLower(table)
+	if ambiguous, ok := tr.ambiguousLower[schema]; ok {
+		if _, isAmbiguous := ambiguous[lowerTable]; isAmbiguous {
+			return table, false
+		}
+	}
 	if byLower, ok := tr.byLower[schema]; ok {
-		if canonical, ok := byLower[strings.ToLower(table)]; ok {
+		if canonical, ok := byLower[lowerTable]; ok {
 			return canonical, true
 		}
 	}

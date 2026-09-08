@@ -1706,4 +1706,93 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 		require.False(t, valid)
 		require.Equal(t, "other_schema.customers", resolvedTable)
 	})
+
+	t.Run("treats a case-insensitive table collision as unresolvable rather than guessing", func(t *testing.T) {
+		tr := NewTableRegistry()
+		// Two tables differing only by case, coexisting under lower_case_table_names=0.
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "Orders"},
+			{schema: "some_schema", tableName: "orders"},
+		})
+
+		// Neither exact-cased table is "ORDERS", so this can only resolve via the
+		// case-insensitive fallback — which can't tell which of the two it means.
+		resolvedTable, valid := tr.IsValid("some_schema", "ORDERS")
+		require.False(t, valid)
+		require.Equal(t, "ORDERS", resolvedTable)
+	})
+
+	t.Run("a case-insensitive table collision doesn't affect an exact match against either table", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "Orders"},
+			{schema: "some_schema", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "Orders")
+		require.True(t, valid)
+		require.Equal(t, "Orders", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("some_schema", "orders")
+		require.True(t, valid)
+		require.Equal(t, "orders", resolvedTable)
+	})
+
+	t.Run("a table collision in one schema doesn't make the same lowercased name ambiguous in another", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "schema_a", tableName: "Orders"},
+			{schema: "schema_a", tableName: "orders"},
+			{schema: "schema_b", tableName: "Orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("schema_b", "ORDERS")
+		require.True(t, valid)
+		require.Equal(t, "Orders", resolvedTable)
+	})
+
+	t.Run("a resolved ambiguity from a prior tick doesn't linger after SetTables replaces the registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "Orders"},
+			{schema: "some_schema", tableName: "orders"},
+		})
+		// "orders" was dropped (or renamed) since the last scan.
+		tr.SetTables([]*tableInfo{
+			{schema: "some_schema", tableName: "Orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "ORDERS")
+		require.True(t, valid)
+		require.Equal(t, "Orders", resolvedTable)
+	})
+
+	t.Run("treats a case-insensitive schema collision as unresolvable rather than guessing", func(t *testing.T) {
+		tr := NewTableRegistry()
+		// Two schemas differing only by case, coexisting under lower_case_table_names=0.
+		tr.SetTables([]*tableInfo{
+			{schema: "Sales", tableName: "orders"},
+			{schema: "sales", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "SALES.orders")
+		require.False(t, valid)
+		require.Equal(t, "SALES.orders", resolvedTable)
+	})
+
+	t.Run("a case-insensitive schema collision doesn't affect a schema-qualified exact match", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTables([]*tableInfo{
+			{schema: "Sales", tableName: "orders"},
+			{schema: "sales", tableName: "orders"},
+		})
+
+		resolvedTable, valid := tr.IsValid("some_schema", "Sales.orders")
+		require.True(t, valid)
+		require.Equal(t, "Sales.orders", resolvedTable)
+
+		resolvedTable, valid = tr.IsValid("some_schema", "sales.orders")
+		require.True(t, valid)
+		require.Equal(t, "sales.orders", resolvedTable)
+	})
 }
