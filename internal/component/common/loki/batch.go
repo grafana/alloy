@@ -34,9 +34,6 @@ func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry)
 	b.entryLen += 1
 }
 
-// add appends entries to the stream matching labels, creating it if it does not
-// exist yet. created is the creation timestamp of the entries being added; the
-// resulting stream keeps the oldest created value it has ever seen.
 func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
 	i := slices.IndexFunc(b.streams, func(s Stream) bool {
 		return s.Labels.Equal(labels)
