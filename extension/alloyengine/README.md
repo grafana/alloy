@@ -1,6 +1,6 @@
 # Alloy Engine Extension
 
-The `alloy engine` extension embeds the **Default Engine** (the underlying Alloy runtime used by `alloy run`) within the **OTel Engine** (the OpenTelemetry Collector runtime exposed via the `otel` subcommand).
+The `alloyengine` extension embeds the **Default Engine** (the underlying Alloy runtime used by `alloy run`) within the **OTel Engine** (the OpenTelemetry Collector runtime exposed via the `otel` subcommand).
 
 This extension allows you to run a Default Engine pipeline set up with Alloy configuration alongside the OTel Engine set up with YAML configuration. These two pipelines run in parallel, and can't natively interact with one another.
 
@@ -17,7 +17,7 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source. Exactly one of `path` (or the deprecated `file`) or `inline.content` must be set.
+The `config` object specifies the Alloy configuration source. Exactly one of `path` or `inline.content` must be set.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
@@ -61,7 +61,7 @@ In this example, the extension:
 The extension manages the lifecycle of the embedded default engine:
 
 - **Start**: When the extension starts, it launches the default engine in a separate goroutine and runs the Alloy configuration.
-- **Ready**: The extension reports ready once the default engine has successfully started.
+- **Ready**: The extension reports ready to the OpenTelemetry Collector as soon as it starts. It doesn't wait for the Alloy configuration to load, and it stays ready while it retries a failed load. This stops a broken Alloy configuration from blocking the Collector. For more visibility into the state of the default engine, use the `/-/ready` or `/-/healthy` endpoints of its HTTP server. You set the address of this server with the `server.http.listen-addr` flag.
 - **Shutdown**: When the extension shuts down, it gracefully terminates the default engine and waits for it to exit.
 
 ## Limitations
