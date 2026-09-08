@@ -9,8 +9,6 @@ import (
 )
 
 type Batch struct {
-	// created is a unix timestamp in micro seconds.
-	created  int64
 	entryLen int
 	streams  []Stream
 }
@@ -20,33 +18,42 @@ func NewBatch() Batch {
 	return Batch{}
 }
 
-// NewBatchWithCreatedUnixMicro creates an empty Batch with created.
-func NewBatchWithCreatedUnixMicro(created int64) Batch {
-	return Batch{created: created}
-}
-
 // Add adds a stream to the batch.
 // Ownership of the stream data is transferred to the batch and it must not be
 // mutated or retained after calling Add.
 func (b *Batch) Add(stream Stream) {
-	if b.created == 0 {
-		b.created = time.Now().UnixMicro()
-	}
-	b.add(stream.Labels, stream.Entries...)
+	b.add(stream.Labels, stream.created, stream.Entries...)
 	b.entryLen += len(stream.Entries)
 }
 
-func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
+// AddEntry adds a single entry to the stream matching labels, creating it if it
+// does not exist yet. created is used to update the stream's oldest created
+// timestamp.
+func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	b.add(labels, created, entry)
+	b.entryLen += 1
+}
+
+// add appends entries to the stream matching labels, creating it if it does not
+// exist yet. created is the creation timestamp of the entries being added; the
+// resulting stream keeps the oldest created value it has ever seen.
+func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
 	i := slices.IndexFunc(b.streams, func(s Stream) bool {
 		return s.Labels.Equal(labels)
 	})
 
 	if i >= 0 {
 		b.streams[i].Entries = append(b.streams[i].Entries, entries...)
+
+		if created != 0 && (b.streams[i].created == 0 || created < b.streams[i].created) {
+			b.streams[i].created = created
+		}
 		return
 	}
 
-	b.streams = append(b.streams, NewStream(labels, entries...))
+	stream := NewStreamWithCreatedUnixMicro(labels, created, entries...)
+	stream.created = created
+	b.streams = append(b.streams, stream)
 }
 
 // FilterMap calls fn for each entry in the batch. If fn returns true the
@@ -72,11 +79,9 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 		)
 
 		for _, e := range stream.Entries {
-			// FIXME(kalleep): This clone protects stream.Labels from in-place mutation
-			// through Entry.Labels, which is a map. Most FilterMap callbacks do not change
-			// labels, so once the new batched pipeline owns this path, consider replacing
-			// direct label access with copy-on-write label mutation methods.
-			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
+			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
+			// we no longer need to clone stream labels here.
+			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e)
 			if !fn(&entry) {
 				continue
 			}
@@ -100,7 +105,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 
 	// Reinsert entries whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.Entry)
+		b.add(moved.Labels, moved.Created(), moved.Entry)
 	}
 	b.entryLen = newLen
 
@@ -135,10 +140,11 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// and may merge into an existing stream.
 	for i := range b.streams {
 		stream := Stream{
-			// FIXME(kalleep): Once the new batched pipeline owns this path, consider
-			// copy-on-write label mutation methods so unchanged streams skip the copy.
+			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
+			// we no longer need to clone stream labels here.
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
+			created: b.streams[i].created,
 		}
 
 		keep := fn(&stream)
@@ -163,7 +169,7 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 
 	// Reinsert streams whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.Entries...)
+		b.add(moved.Labels, moved.created, moved.Entries...)
 	}
 
 	b.entryLen = newLen
@@ -179,14 +185,9 @@ func (b *Batch) EntryLen() int {
 	return b.entryLen
 }
 
-func (b *Batch) Created() int64 {
-	return b.created
-}
-
 // Clone returns a clone of the batch.
 func (b *Batch) Clone() Batch {
 	clone := Batch{
-		created:  b.created,
 		streams:  make([]Stream, 0, len(b.streams)),
 		entryLen: b.entryLen,
 	}
@@ -202,10 +203,10 @@ func (b *Batch) Clone() Batch {
 // ConsumeStreams calls fn for each stream in the batch and then resets the batch.
 // The callback receives ownership of the stream.
 // If callback returns errors interation will stop
-func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64) error) error {
+func (b *Batch) ConsumeStreams(fn func(stream Stream) error) error {
 	defer b.Reset()
 	for _, s := range b.streams {
-		if err := fn(s, b.created); err != nil {
+		if err := fn(s); err != nil {
 			return err
 		}
 	}
@@ -214,7 +215,6 @@ func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64) error) erro
 
 // Reset clears the batch so it can be reused.
 func (b *Batch) Reset() {
-	b.created = 0
 	b.entryLen = 0
 	b.streams = b.streams[:0]
 }
@@ -224,6 +224,15 @@ func NewStream(labels model.LabelSet, entries ...push.Entry) Stream {
 	return Stream{
 		Labels:  labels,
 		Entries: entries,
+		created: time.Now().UnixMicro(),
+	}
+}
+
+func NewStreamWithCreatedUnixMicro(labels model.LabelSet, created int64, entries ...push.Entry) Stream {
+	return Stream{
+		Labels:  labels,
+		Entries: entries,
+		created: created,
 	}
 }
 
@@ -231,12 +240,22 @@ func NewStream(labels model.LabelSet, entries ...push.Entry) Stream {
 type Stream struct {
 	Labels  model.LabelSet
 	Entries []push.Entry
+
+	// created is a unix timestamp in micro seconds.
+	// This is used to track how long it takes for a stream
+	// from it's source to being sent over the wire.
+	created int64
+}
+
+func (s Stream) Created() int64 {
+	return s.created
 }
 
 // Clone returns a clone of the stream.
 func (s Stream) Clone() Stream {
 	cloned := Stream{
 		Labels:  s.Labels.Clone(),
+		created: s.created,
 		Entries: make([]push.Entry, 0, len(s.Entries)),
 	}
 	for _, entry := range s.Entries {
