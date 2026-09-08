@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,16 +43,22 @@ func (args *CRIConfig) Validate() error {
 	if args.MaxPartialLines <= 0 {
 		return fmt.Errorf("max_partial_lines must be greater than 0")
 	}
-
 	return nil
 }
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
+	var pl partialLines
+	if opts.next == nil {
+		pl = newPartialLinesMap(cfg, getLinesTruncatedMetric(opts.registerer))
+	} else {
+		pl = newPartialLinesStriped(cfg, getLinesTruncatedMetric(opts.registerer))
+	}
+
 	return &criStage{
 		next:                      opts.next,
 		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
-		partialLines:              newSharedState[Entry](cfg.MaxPartialLines, opts.next != nil),
+		partialLines:              pl,
 		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
 		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
@@ -84,7 +92,7 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	partialLines sharedState[Entry]
+	partialLines partialLines
 
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter
@@ -106,17 +114,18 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 
 		setCRIProperties(&e, parsed)
 
-		fingerprint := e.Labels.Fingerprint()
+		fp := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			entries := c.flushPartialLinesIfExceeded()
 			// it's a partial-line buffer it and move on.
-			c.addPartialLine(fingerprint, e)
+			//c.addPartialLine(fingerprint, e)
+			c.partialLines.Append(fp, e)
 			return entries, false
 		}
 
 		// We got full-line 'F'.
-		return []Entry{c.completeFullLine(fingerprint, e)}, false
+		return []Entry{c.partialLines.Complete(fp, e)}, false
 	})
 }
 
@@ -133,18 +142,19 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 
 		setCRIProperties(&e, parsed)
 
-		fingerprint := e.Labels.Fingerprint()
+		fp := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// it's a partial-line buffer it and move on.
-			c.addPartialLine(fingerprint, e)
+			//
+			c.partialLines.Append(fp, e)
 			continue
 		}
 
 		// We got full-line 'F'.
 		// If any old partial lines matches with this full-line stream, merge it,
 		// else just return the full line.
-		entries[dst] = c.completeFullLine(fingerprint, e)
+		entries[dst] = c.partialLines.Complete(fp, e)
 		dst++
 	}
 
@@ -162,21 +172,6 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	return c.next(ctx, out)
-}
-
-func (c *criStage) addPartialLine(fp model.Fingerprint, e Entry) {
-	c.partialLines.Update(uint64(fp), func(prev Entry) Entry {
-		e.Line = c.ensureTruncateIfRequired(prev.Line, e.Line)
-		return e
-	})
-}
-
-func (c *criStage) completeFullLine(fp model.Fingerprint, e Entry) Entry {
-	prev, ok := c.partialLines.Take(uint64(fp))
-	if ok {
-		e.Line = c.ensureTruncateIfRequired(prev.Line, e.Line)
-	}
-	return e
 }
 
 func (c *criStage) flushPartialLinesIfExceeded() []Entry {
@@ -207,28 +202,202 @@ func (c *criStage) stop() {
 	}
 }
 
-func (c *criStage) ensureTruncateIfRequired(prevLine, newLine string) string {
-	if !c.cfg.MaxPartialLineSizeTruncate {
+func (c *criStage) Cleanup() {}
+
+type partialLines interface {
+	Append(fp model.Fingerprint, e Entry)
+	Complete(fp model.Fingerprint, e Entry) Entry
+
+	DrainAll() []Entry
+	DrainIfAtLeast(n int) []Entry
+}
+
+var _ partialLines = (*partialLinesMap)(nil)
+
+func newPartialLinesMap(cfg CRIConfig, linesTruncated prometheus.Counter) *partialLinesMap {
+	return &partialLinesMap{
+		cfg:            cfg,
+		linesTruncated: linesTruncated,
+		inner:          make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+	}
+}
+
+type partialLinesMap struct {
+	cfg            CRIConfig
+	linesTruncated prometheus.Counter
+
+	inner map[model.Fingerprint]Entry
+}
+
+func (m *partialLinesMap) Append(fp model.Fingerprint, e Entry) {
+	e.Line = ensureTruncateIfRequired(m.inner[fp].Line, e.Line, m.cfg, m.linesTruncated)
+	m.inner[fp] = e
+}
+
+func (m *partialLinesMap) Complete(fp model.Fingerprint, e Entry) Entry {
+	v, ok := m.inner[fp]
+	if ok {
+		delete(m.inner, fp)
+	}
+
+	e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
+	return e
+}
+
+func (m *partialLinesMap) DrainAll() []Entry {
+	buf := make([]Entry, 0, len(m.inner))
+	for _, v := range m.inner {
+		buf = append(buf, v)
+	}
+	clear(m.inner)
+	return buf
+}
+
+func (m *partialLinesMap) DrainIfAtLeast(n int) []Entry {
+	if len(m.inner) < n {
+		return nil
+	}
+	return m.DrainAll()
+}
+
+const stripeCount = 16
+
+var _ partialLines = (*partialLinesStriped)(nil)
+
+// partialLinesStriped is a concurrent map sharded into a fixed number of independently locked stripes.
+type partialLinesStriped struct {
+	// size is only exact while every stripe lock is held. Other readers treat it
+	// as a hint. flushing keeps concurrent callers from all queueing on lockAll.
+	size     atomic.Int64
+	flushing atomic.Bool
+
+	stripes [stripeCount]stripe
+
+	cfg            CRIConfig
+	linesTruncated prometheus.Counter
+}
+
+type stripe struct {
+	mu   sync.Mutex
+	data map[model.Fingerprint]Entry
+}
+
+func newPartialLinesStriped(cfg CRIConfig, linesTruncated prometheus.Counter) *partialLinesStriped {
+	m := &partialLinesStriped{
+		cfg:            cfg,
+		linesTruncated: linesTruncated,
+	}
+	perStripe := m.cfg.MaxPartialLineSize/stripeCount + 1
+	for i := range m.stripes {
+		m.stripes[i].data = make(map[model.Fingerprint]Entry, perStripe)
+	}
+	return m
+}
+
+func (m *partialLinesStriped) Append(fp model.Fingerprint, e Entry) {
+	s := m.stripe(fp)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	prev, existed := s.data[fp]
+	e.Line = ensureTruncateIfRequired(prev.Line, e.Line, m.cfg, m.linesTruncated)
+	s.data[fp] = e
+	if !existed {
+		m.size.Add(1)
+	}
+}
+
+func (m *partialLinesStriped) Complete(fp model.Fingerprint, e Entry) Entry {
+	s := m.stripe(fp)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	v, ok := s.data[fp]
+	if ok {
+		delete(s.data, fp)
+		m.size.Add(-1)
+	}
+
+	e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
+	return e
+}
+
+// DrainAll removes and returns every value in the map.
+func (m *partialLinesStriped) DrainAll() []Entry {
+	m.lockAll()
+	defer m.unlockAll()
+
+	return m.drainLocked()
+}
+
+// DrainIfAtLeast removes and returns every value in the map if it holds at
+// least n entries, otherwise it does nothing and returns nil. If another
+// caller is already draining, this returns nil without waiting for it.
+func (m *partialLinesStriped) DrainIfAtLeast(n int) []Entry {
+	if int(m.size.Load()) < n || !m.flushing.CompareAndSwap(false, true) {
+		return nil
+	}
+	defer m.flushing.Store(false)
+
+	m.lockAll()
+	defer m.unlockAll()
+
+	// Another caller may have drained the map while this one waited for the
+	// stripe locks, so re-check the exact size now that everything is held.
+	if int(m.size.Load()) < n {
+		return nil
+	}
+	return m.drainLocked()
+}
+
+func (m *partialLinesStriped) stripe(fp model.Fingerprint) *stripe {
+	return &m.stripes[fp&(stripeCount-1)]
+}
+
+func (m *partialLinesStriped) lockAll() {
+	for i := range m.stripes {
+		m.stripes[i].mu.Lock()
+	}
+}
+
+func (m *partialLinesStriped) unlockAll() {
+	for i := len(m.stripes) - 1; i >= 0; i-- {
+		m.stripes[i].mu.Unlock()
+	}
+}
+
+func (m *partialLinesStriped) drainLocked() []Entry {
+	buf := make([]Entry, 0, m.size.Load())
+	for i := range m.stripes {
+		for _, v := range m.stripes[i].data {
+			buf = append(buf, v)
+		}
+		clear(m.stripes[i].data)
+	}
+	m.size.Store(0)
+	return buf
+}
+
+func ensureTruncateIfRequired(prevLine, newLine string, cfg CRIConfig, linesTruncated prometheus.Counter) string {
+	if !cfg.MaxPartialLineSizeTruncate {
 		return prevLine + newLine
 	}
 
 	// If prev line is already at max size we don't have to concatenate new line.
-	if len(prevLine) >= int(c.cfg.MaxPartialLineSize) {
-		c.linesTruncatedMetric.Inc()
-		return prevLine[:c.cfg.MaxPartialLineSize]
+	if len(prevLine) >= int(cfg.MaxPartialLineSize) {
+		linesTruncated.Inc()
+		return prevLine[:cfg.MaxPartialLineSize]
 	}
 
 	line := prevLine + newLine
 
-	if len(line) > int(c.cfg.MaxPartialLineSize) {
-		c.linesTruncatedMetric.Inc()
-		line = line[:c.cfg.MaxPartialLineSize]
+	if len(line) > int(cfg.MaxPartialLineSize) {
+		linesTruncated.Inc()
+		line = line[:cfg.MaxPartialLineSize]
 	}
 
 	return line
 }
-
-func (c *criStage) Cleanup() {}
 
 func setCRIProperties(e *Entry, parsed crip.Parsed) {
 	// NOTE: Previous implementation used a "sub-pipeline"
