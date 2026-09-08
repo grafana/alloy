@@ -118,6 +118,10 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
+	// scrapeClasses indexes args.ScrapeClasses. A new manager is created
+	// whenever the arguments change, so it is built once here.
+	scrapeClasses operator.ScrapeClassIndex
+
 	client     kubernetes.Interface
 	k8sFactory K8sFactory
 
@@ -158,6 +162,7 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 		clusteringUpdated:      make(chan struct{}, 1),
 		ls:                     ls,
 		k8sFactory:             defaultK8sFactory,
+		scrapeClasses:          operator.NewScrapeClassIndex(args.ScrapeClasses),
 		serviceMonitorSettings: defaultServiceMonitorSettings,
 		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
 	}
@@ -539,6 +544,7 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	mapKeys := []string{}
 	for i, ep := range pm.Spec.PodMetricsEndpoints {
@@ -601,6 +607,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		AllowArbitraryFileAccess: serviceMonitorSettings.AllowArbitraryFileAccess,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 
 	for i, ep := range sm.Spec.Endpoints {
@@ -713,6 +720,7 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	var pmc *config.ScrapeConfig
 	pmc, err = gen.GenerateProbeConfig(p)
@@ -761,6 +769,7 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	mapKeys := []string{}
 	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)

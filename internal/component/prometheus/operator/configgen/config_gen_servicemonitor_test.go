@@ -673,6 +673,58 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 	}
 }
 
+func TestGenerateServiceMonitorConfigScrapeClassDefaultApplied(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.ServiceMonitor{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"}}
+	ep := promopv1.Endpoint{
+		RelabelConfigs:       []promopv1.RelabelConfig{{TargetLabel: "from_endpoint", Replacement: ptr.To("yes")}},
+		MetricRelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "metric_from_endpoint", Replacement: ptr.To("yes")}},
+	}
+
+	cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
+	require.NoError(t, err)
+
+	assert.True(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify)
+	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
+	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
+
+	sd, ok := cfg.ServiceDiscoveryConfigs[0].(*promk8s.SDConfig)
+	require.True(t, ok)
+	assert.True(t, sd.AttachMetadata.Node)
+
+	requireRuleOrder(t, cfg.RelabelConfigs, "from_class", "from_endpoint")
+	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
+}
+
+func TestGenerateServiceMonitorConfigScrapeClassEndpointOverridesTLS(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.ServiceMonitor{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"}}
+	// The endpoint sets its own (empty) TLS config, so the class TLS must not apply.
+	ep := promopv1.Endpoint{
+		HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+			HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
+				TLSConfig: &promopv1.TLSConfig{},
+			},
+		},
+	}
+
+	cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
+	require.NoError(t, err)
+
+	assert.False(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify, "endpoint TLS should take precedence over the class")
+}
+
+func TestGenerateServiceMonitorConfigScrapeClassNotDefined(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"},
+		Spec:       promopv1.ServiceMonitorSpec{ScrapeClassName: ptr.To("does-not-exist")},
+	}
+
+	_, err := cg.GenerateServiceMonitorConfig(m, promopv1.Endpoint{}, 0, promk8s.RoleEndpoint)
+	require.Error(t, err)
+}
+
 func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {
 	serviceMonitor := &promopv1.ServiceMonitor{
 		ObjectMeta: metav1.ObjectMeta{
