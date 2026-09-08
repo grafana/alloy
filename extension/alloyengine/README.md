@@ -66,15 +66,15 @@ The extension manages the lifecycle of the embedded default engine:
 
 ## Limitations
 
-Only one alloyengine instance can be active per process. The embedded Default Engine uses process-global state (Prometheus registry, controller ID, storage path and so forth), so running multiple instances will cause conflicts. If you configure multiple alloyengine extensions, only the first to start will succeed; subsequent instances will fail at startup with a clear error.
+Only one `alloyengine` instance can be active per process. The embedded Default Engine uses process-global state (Prometheus registry, controller ID, storage path and so forth), so running multiple instances will cause conflicts. If you configure multiple `alloyengine` extensions, only the first to start will succeed; subsequent instances will fail at startup with a clear error.
 
-Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the alloyengine extensions you wish to run.
+Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the `alloyengine` extensions you wish to run.
 
 If `config.inline.module_path` isn't defined, `config.inline` resolves the `module_path` Alloy config keyword to the current working directory of the OpenTelemetry Collector process.
 
 The `remotecfg` Alloy configuration block can't be used with the alloyengine extension. Use OpenTelemetry OpAMP for Collector configuration management instead.
 
-The UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to serve the web UI. See [Build with the UI embedded](#build-with-the-ui-embedded) for details.
+The compiled UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to serve the web UI. See [Build with the UI embedded](#build-with-the-ui-embedded) for details.
 
 ## Stability
 
@@ -141,12 +141,12 @@ Set `dist.cgo_enabled: true` in the OCB builder config. OCB disables CGO by defa
 
 The remaining steps depend on whether you want the Default Engine web UI, by default served on port `12345`.
 
-The UI assets aren't included in the Alloy Go module, so you can only build them from a local Alloy checkout. Without them the UI returns `404 Not Found`, while other endpoints, such as the HTTP API and GraphQL, still work.
+The compiled UI assets aren't included in the Alloy Go module, so you can only build them from a local copy of the Alloy source. Without them the UI returns `404 Not Found`, while other endpoints, such as the HTTP API and GraphQL, still work.
 
 Follow one of these sections:
 
-- [Build without the UI](#build-without-the-ui) uses a released Alloy version and needs no checkout.
-- [Build with the UI embedded](#build-with-the-ui-embedded) needs a local Alloy checkout and Node.js.
+- [Build without the UI](#build-without-the-ui) uses a released Alloy version and does not need a local copy of the Alloy source.
+- [Build with the UI embedded](#build-with-the-ui-embedded) needs a local copy of the Alloy source and Node.js.
 
 ### Build without the UI
 
@@ -185,7 +185,7 @@ OCB writes the binary into the `dist.output_path` directory, named after `dist.n
    make generate-ui
    ```
 
-1. Point these two local module replaces at your local Alloy checkout:
+1. Point these two local module replaces at your local copy of the Alloy source:
 
    ```yaml
    replaces:
@@ -193,7 +193,7 @@ OCB writes the binary into the `dist.output_path` directory, named after `dist.n
      - github.com/grafana/alloy/syntax => ../syntax # <- Change this to your checkout path + /syntax
    ```
 
-   Change both to absolute paths to your checkout. For example, if you cloned Alloy into `/path/to/alloy`, use:
+   Change both to absolute paths to your local copy of the Alloy source. For example, if you cloned Alloy into `/path/to/alloy`, use:
 
    ```yaml
    replaces:
@@ -251,13 +251,13 @@ service:
       exporters: [debug]
 ```
 
-This example uses `otlp` receiver and a `debug` exporter, which may not be included in your distribution. Replace them with your own pipeline if needed.
+This example uses an `otlp` receiver and a `debug` exporter, which may not be included in your distribution. Replace them with your own pipeline if needed.
 
 Check that it's running:
 
 ```shell
-curl localhost:12345/-/ready
+curl 127.0.0.1:12345/-/ready
 # Alloy is ready.
 ```
 
-If you built with the UI, open `http://localhost:12345` in a browser to check that it loads.
+If you built with the UI, open `http://127.0.0.1:12345` in a browser to check that it loads.
