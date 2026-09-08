@@ -46,7 +46,6 @@ func (args *CRIConfig) Validate() error {
 }
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
-
 	return &criStage{
 		next:                      opts.next,
 		logger:                    opts.slogger.With("stage", "cri"),
