@@ -113,6 +113,43 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 	}
 }
 
+func TestLegacyConversionUnreadableFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	// A directory can't be read as a file, so this reliably forces a read
+	// error without relying on chmod/permission bits.
+	legacy := filepath.Join(tmpDir, "legacy")
+	require.NoError(t, os.Mkdir(legacy, 0750))
+
+	positionsPath := filepath.Join(tmpDir, "positions")
+	err := ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not be read")
+	require.Contains(t, err.Error(), "refusing to start")
+	require.Contains(t, err.Error(), legacy)
+
+	// Refusing to convert must not leave a positions file behind either.
+	_, statErr := os.Stat(positionsPath)
+	require.True(t, os.IsNotExist(statErr))
+}
+
+func TestConvertLegacyPositionsFileJournalUnreadableFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	// A directory can't be read as a file, so this reliably forces a read
+	// error without relying on chmod/permission bits.
+	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
+	require.NoError(t, os.Mkdir(legacyFile, 0750))
+
+	newFile := filepath.Join(tmpDir, "new.yaml")
+	err := ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not be read")
+	require.Contains(t, err.Error(), "refusing to start")
+	require.Contains(t, err.Error(), legacyFile)
+
+	_, statErr := os.Stat(newFile)
+	require.True(t, os.IsNotExist(statErr))
+}
+
 func TestConvertLegacyPositionsFileJournal(t *testing.T) {
 	tmpDir := t.TempDir()
 

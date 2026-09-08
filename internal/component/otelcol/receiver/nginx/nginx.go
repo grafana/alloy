@@ -45,9 +45,9 @@ var _ receiver.Arguments = Arguments{}
 func (args *Arguments) SetToDefault() {
 	cfg := nginxreceiver.NewFactory().CreateDefaultConfig().(*nginxreceiver.Config)
 	*args = Arguments{
-		CollectionInterval: cfg.CollectionInterval,
-		Endpoint:           cfg.Endpoint,
-		InitialDelay:       cfg.InitialDelay,
+		CollectionInterval: cfg.ControllerConfig.CollectionInterval,
+		Endpoint:           cfg.ClientConfig.Endpoint,
+		InitialDelay:       cfg.ControllerConfig.InitialDelay,
 	}
 	args.DebugMetrics.SetToDefault()
 }

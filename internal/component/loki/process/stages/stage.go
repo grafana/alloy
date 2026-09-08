@@ -201,6 +201,8 @@ func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer
 		}
 	case cfg.TruncateConfig != nil:
 		s = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
+	case cfg.SplitJSONConfig != nil:
+		s = newSplitJSONStage(slogger, *cfg.SplitJSONConfig)
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}

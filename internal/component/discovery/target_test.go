@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/alloy/syntax/vm"
@@ -216,6 +217,91 @@ func TestDecodeMap(t *testing.T) {
 			eval := vm.New(expr)
 			actual := Target{}
 			require.NoError(t, eval.Evaluate(scope, &actual))
+			require.Equal(t, NewTargetFromMap(tc.expected), actual)
+		})
+	}
+}
+
+func TestDecodeMapWithSecretValues(t *testing.T) {
+	// A non-secret OptionalSecret value (such as local.file.<name>.content with
+	// is_secret = false) used as a target value must decode to its underlying
+	// string, not the Go struct's default formatting. A genuine secret is not
+	// usable as a target value and must be rejected rather than leaked into a
+	// label. See https://github.com/grafana/alloy/issues/6163.
+	type testCase struct {
+		name     string
+		input    string
+		scope    map[string]any
+		expected map[string]string
+		// errContains asserts the rejection came from ConvertFrom rather than
+		// from some unrelated evaluation failure.
+		errContains string
+	}
+
+	secretPtrValue := alloytypes.Secret("10.0.0.1:9090")
+
+	tests := []testCase{
+		{
+			name:     "non-secret OptionalSecret",
+			input:    `{ "__address__" = optional }`,
+			scope:    map[string]any{"optional": alloytypes.OptionalSecret{IsSecret: false, Value: "10.0.0.1:9090"}},
+			expected: map[string]string{"__address__": "10.0.0.1:9090"},
+		},
+		{
+			name:        "secret OptionalSecret",
+			input:       `{ "__address__" = optional }`,
+			scope:       map[string]any{"optional": alloytypes.OptionalSecret{IsSecret: true, Value: "10.0.0.1:9090"}},
+			errContains: "target::ConvertFrom: cannot use a secret as a target value",
+		},
+		{
+			name:        "Secret",
+			input:       `{ "__address__" = secret }`,
+			scope:       map[string]any{"secret": alloytypes.Secret("10.0.0.1:9090")},
+			errContains: "target::ConvertFrom: cannot use a secret as a target value",
+		},
+		{
+			// The syntax layer dereferences pointer capsules before they reach
+			// ConvertFrom, so a pointer must hit the same rejection as a value.
+			name:        "secret OptionalSecret pointer",
+			input:       `{ "__address__" = optional }`,
+			scope:       map[string]any{"optional": &alloytypes.OptionalSecret{IsSecret: true, Value: "10.0.0.1:9090"}},
+			errContains: "target::ConvertFrom: cannot use a secret as a target value",
+		},
+		{
+			name:     "non-secret OptionalSecret pointer",
+			input:    `{ "__address__" = optional }`,
+			scope:    map[string]any{"optional": &alloytypes.OptionalSecret{IsSecret: false, Value: "10.0.0.1:9090"}},
+			expected: map[string]string{"__address__": "10.0.0.1:9090"},
+		},
+		{
+			name:        "Secret pointer",
+			input:       `{ "__address__" = secret }`,
+			scope:       map[string]any{"secret": &secretPtrValue},
+			errContains: "target::ConvertFrom: cannot use a secret as a target value",
+		},
+		{
+			// A typed nil has no value to dereference, so reflection yields a
+			// zero Value. This used to panic before reaching the type switch.
+			name:        "nil OptionalSecret pointer",
+			input:       `{ "__address__" = optional }`,
+			scope:       map[string]any{"optional": (*alloytypes.OptionalSecret)(nil)},
+			errContains: "target::ConvertFrom: cannot convert a nil value to a target value",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scope := vm.NewScope(tc.scope)
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+			eval := vm.New(expr)
+			actual := Target{}
+			err = eval.Evaluate(scope, &actual)
+			if tc.errContains != "" {
+				require.ErrorContains(t, err, tc.errContains)
+				return
+			}
+			require.NoError(t, err)
 			require.Equal(t, NewTargetFromMap(tc.expected), actual)
 		})
 	}

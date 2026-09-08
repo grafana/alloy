@@ -1,0 +1,8 @@
+server:
+  endpoint: https://fleet-management.example.com/v1/opamp
+  # References an extension that isn't declared below, which fails Supervisor.Validate.
+  auth: bearertokenauth
+agent:
+  executable: /path/to/alloy
+storage:
+  directory: /tmp/supervisor

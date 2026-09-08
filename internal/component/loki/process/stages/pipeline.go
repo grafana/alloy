@@ -37,6 +37,7 @@ type StageConfig struct {
 	PatternConfig                *PatternConfig                `alloy:"pattern,block,optional"`
 	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"`
 	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"`
+	SplitJSONConfig              *SplitJSONConfig              `alloy:"split_json,block,optional"`
 	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"`
 	StructuredMetadata           *StructuredMetadataConfig     `alloy:"structured_metadata,block,optional"`
 	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional"`

@@ -4,6 +4,7 @@ receivers:
     region: us-west-1
     logs:
       poll_interval: 5m
+      initial_lookback: 45m
       groups:
         named:
           /aws/eks/dev-0/cluster:

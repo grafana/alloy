@@ -53,7 +53,7 @@ func toAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *att
 
 	return &attributes.Arguments{
 		Match:   toMatchConfig(cfg),
-		Actions: toAttrActionKeyValue(encodeMapslice(cfg.Actions)),
+		Actions: toAttrActionKeyValue(encodeMapslice(cfg.Settings.Actions)),
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 			Logs:    ToTokenizedConsumers(nextLogs),
@@ -64,8 +64,8 @@ func toAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *att
 
 func toMatchConfig(cfg *attributesprocessor.Config) otelcol.MatchConfig {
 	return otelcol.MatchConfig{
-		Include: toMatchProperties(encodeMapstruct(cfg.Include)),
-		Exclude: toMatchProperties(encodeMapstruct(cfg.Exclude)),
+		Include: toMatchProperties(encodeMapstruct(cfg.MatchConfig.Include)),
+		Exclude: toMatchProperties(encodeMapstruct(cfg.MatchConfig.Exclude)),
 	}
 }
 

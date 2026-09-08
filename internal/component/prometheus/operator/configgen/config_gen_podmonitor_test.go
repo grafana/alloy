@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	commonConfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -30,6 +31,7 @@ import (
 func TestGeneratePodMonitorConfig(t *testing.T) {
 	var (
 		falsePtr    = ptr.To(false)
+		truePtr     = ptr.To(true)
 		proxyURL    = "https://proxy:8080"
 		httpsScheme = promopv1.Scheme("https")
 	)
@@ -66,7 +68,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				  target_label: pod
 				- target_label: job
 				  replacement: operator/podmonitor
-				
+
 			`),
 			expected: &config.ScrapeConfig{
 				JobName:                "podMonitor/operator/podmonitor/1",
@@ -373,6 +375,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				Spec: promopv1.PodMonitorSpec{
 					JobLabel:        "abc",
 					PodTargetLabels: []string{"label_a", "label_b"},
+					NativeHistogramConfig: promopv1.NativeHistogramConfig{
+						ScrapeNativeHistograms:  truePtr,
+						ScrapeClassicHistograms: truePtr,
+					},
 					Selector: metav1.LabelSelector{
 						MatchLabels: map[string]string{"foo": "bar"},
 						MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -404,6 +410,7 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 					LabelNameLengthLimit:  ptr.To(uint64(104)),
 					LabelValueLengthLimit: ptr.To(uint64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
+					BodySizeLimit:         ptr.To(promopv1.ByteSize("15MiB")),
 				},
 			},
 			ep: promopv1.PodMetricsEndpoint{
@@ -534,9 +541,10 @@ func TestGeneratePodMonitorConfig(t *testing.T) {
 				LabelLimit:                     103,
 				LabelNameLengthLimit:           104,
 				LabelValueLengthLimit:          105,
+				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
-				ScrapeNativeHistograms:         falsePtr,
-				AlwaysScrapeClassicHistograms:  falsePtr,
+				ScrapeNativeHistograms:         truePtr,
+				AlwaysScrapeClassicHistograms:  truePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),

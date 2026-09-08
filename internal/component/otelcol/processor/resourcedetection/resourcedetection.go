@@ -66,6 +66,11 @@ type Arguments struct {
 	// should be overridden or preserved. Defaults to true.
 	Override bool `alloy:"override,attr,optional"`
 
+	// FailOnMissingMetadata controls whether network-based detectors treat an
+	// unreachable metadata service as a hard failure instead of silently
+	// returning an empty resource. Defaults to false.
+	FailOnMissingMetadata bool `alloy:"fail_on_missing_metadata,attr,optional"`
+
 	// DetectorConfig is a list of settings specific to all detectors
 	DetectorConfig DetectorConfig `alloy:",squash"`
 
@@ -284,6 +289,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["detectors"] = args.ConvertDetectors()
 	input["override"] = args.Override
 	input["timeout"] = args.Timeout
+	input["fail_on_missing_metadata"] = args.FailOnMissingMetadata
 
 	input["ec2"] = args.DetectorConfig.EC2Config.Convert()
 	input["ecs"] = args.DetectorConfig.ECSConfig.Convert()

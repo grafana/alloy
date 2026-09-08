@@ -1,4 +1,4 @@
 basic_auth:
   username: user
   password: foo
-  password_file: testdata/basic-auth-password
+  password_file: basic-auth-password

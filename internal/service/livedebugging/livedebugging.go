@@ -30,6 +30,8 @@ type CallbackManager interface {
 
 // DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
+	// IsActive reports whether a least one consumer is listening for debugging data for the given componentID.
+	IsActive(componentID ComponentID) bool
 	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
 	PublishIfActive(data Data)
 }
@@ -50,6 +52,14 @@ func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
 		callbacks: make(map[ComponentID]map[CallbackID]func(Data)),
 	}
+}
+
+func (s *liveDebugging) IsActive(componentID ComponentID) bool {
+	s.loadMut.RLock()
+	defer s.loadMut.RUnlock()
+
+	callbacks, exist := s.callbacks[componentID]
+	return exist && len(callbacks) > 0
 }
 
 func (s *liveDebugging) PublishIfActive(data Data) {

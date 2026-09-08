@@ -41,15 +41,21 @@ otelcol.auth.google "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.google`:
 
-| Name            | Type           | Description                                                        | Default        | Required |
-| --------------- | -------------- | ------------------------------------------------------------------ | -------------- | -------- |
-| `audience`      | `string`       | The audience claim used for generating an ID token.                |                | no       |
-| `project`       | `string`       | The project telemetry is sent to.                                  |                | no       |
-| `quota_project` | `string`       | A project for quota and billing purposes.                          |                | no       |
-| `scopes`        | `list(string)` | Requested permissions associated with the client.                  | `[]`           | no       |
-| `token_type`    | `string`       | The type of token to generate. One of `access_token` or `id_token` | `access_token` | no       |
+| Name            | Type           | Description                                                        | Default           | Required |
+| --------------- | -------------- | ------------------------------------------------------------------ | ----------------- | -------- |
+| `audience`      | `string`       | The audience claim used for generating an ID token.                |                   | no       |
+| `project`       | `string`       | The project telemetry is sent to.                                  |                   | no       |
+| `quota_project` | `string`       | A project for quota and billing purposes.                          |                   | no       |
+| `scopes`        | `list(string)` | Requested permissions associated with the client.                  | `[]`              | no       |
+| `token_header`  | `string`       | The HTTP header that carries the token.                             | `"authorization"` | no       |
+| `token_type`    | `string`       | The type of token to generate. One of `access_token` or `id_token`. | `"access_token"`  | no       |
 
 If `project` isn't set, {{< param "PRODUCT_NAME" >}} uses the project from the Application Default Credentials.
+
+The `token_header` argument must be `authorization` or `proxy-authorization`.
+If you don't set `token_header`, `otelcol.auth.google` uses the upstream extension default, which is `authorization`.
+Use `proxy-authorization` to send the token in the `Proxy-Authorization` HTTP header, such as when you send data to an endpoint protected by Identity-Aware Proxy (IAP).
+The `token_header` argument doesn't change the authorization metadata used by gRPC exporters.
 
 ## Blocks
 

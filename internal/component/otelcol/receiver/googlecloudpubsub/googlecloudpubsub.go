@@ -33,6 +33,7 @@ type Arguments struct {
 	ProjectID           string            `alloy:"project,attr,optional"`
 	UserAgent           string            `alloy:"user_agent,attr,optional"`
 	Endpoint            string            `alloy:"endpoint,attr,optional"`
+	UniverseDomain      string            `alloy:"universe_domain,attr,optional"`
 	Insecure            bool              `alloy:"insecure,attr,optional"`
 	Subscription        string            `alloy:"subscription,attr"`
 	Encoding            string            `alloy:"encoding,attr,optional"`
@@ -100,6 +101,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ProjectID:           args.ProjectID,
 		UserAgent:           args.UserAgent,
 		Endpoint:            args.Endpoint,
+		UniverseDomain:      args.UniverseDomain,
 		Insecure:            args.Insecure,
 		Subscription:        args.Subscription,
 		Encoding:            args.Encoding,

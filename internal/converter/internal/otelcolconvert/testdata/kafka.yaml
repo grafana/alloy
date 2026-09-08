@@ -71,7 +71,9 @@ exporters:
         service_name: someservice
         realm: myrealm
     producer:
-      max_message_bytes: 1000001
+      max_message_bytes: 209715200
+      max_broker_write_bytes: 209715200
+      linger: 250ms
       compression: gzip
       required_acks: 0
       flush_max_messages: 11

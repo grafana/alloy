@@ -131,7 +131,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			args.Scrape.HonorMetadata = tc.honorMetadata
 
 			// Create the component
-			comp, err := common.New(opts, args, common.KindServiceMonitor)
+			comp, err := common.New(opts, args, common.ServiceMonitorOptions(common.DefaultServiceMonitorSettings))
 			require.NoError(t, err)
 
 			// Create a test factory that provides access to internal components
