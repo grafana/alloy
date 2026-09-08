@@ -403,6 +403,10 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
 	defer batch.reportAsSentData(s.tracker, obs)
 
+	// batch.size is the uncompressed size of the log lines, which is what's
+	// compared against the configured batch_size when filling the batch.
+	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(float64(batch.size))
+
 	r, entriesCount := batch.request()
 
 	size := r.Size()
