@@ -47,24 +47,25 @@ func (args *CRIConfig) Validate() error {
 }
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
-	var pl partialLines
+	var (
+		pl     partialLines
+		logger = opts.slogger.With("stage", "cri")
+	)
+
 	if opts.next == nil {
-		pl = newPartialLinesMap(cfg, getLinesTruncatedMetric(opts.registerer))
+		pl = newPartialLinesMap(cfg, logger, getLinesTruncatedMetric(opts.registerer), getLinesFlushedMetric(opts.registerer))
 	} else {
-		pl = newPartialLinesStriped(cfg, getLinesTruncatedMetric(opts.registerer))
+		pl = newPartialLinesStriped(cfg, logger, getLinesTruncatedMetric(opts.registerer), getLinesFlushedMetric(opts.registerer))
 	}
 
 	return &criStage{
-		next:                      opts.next,
-		logger:                    opts.slogger.With("stage", "cri"),
-		cfg:                       cfg,
-		partialLines:              pl,
-		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
-		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
+		next:         opts.next,
+		logger:       logger,
+		partialLines: pl,
 	}
 }
 
-func getPartialLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
+func getLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
 	metric := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "loki_process_cri_partial_lines_flushed_total",
 		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded",
@@ -89,13 +90,9 @@ var (
 
 type criStage struct {
 	next   nextFn
-	cfg    CRIConfig
 	logger *slog.Logger
 
 	partialLines partialLines
-
-	partialLinesFlushedMetric prometheus.Counter
-	linesTruncatedMetric      prometheus.Counter
 }
 
 const (
@@ -117,9 +114,8 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 		fp := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			entries := c.flushPartialLinesIfExceeded()
+			entries := c.partialLines.FlushIfExceeded()
 			// it's a partial-line buffer it and move on.
-			//c.addPartialLine(fingerprint, e)
 			c.partialLines.Append(fp, e)
 			return entries, false
 		}
@@ -146,7 +142,6 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// it's a partial-line buffer it and move on.
-			//
 			c.partialLines.Append(fp, e)
 			continue
 		}
@@ -163,7 +158,7 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	// This can cause OOO for entries since we don't serialize the whole
 	// pipeline. This is an acceptable trade-off since this is a failure case
 	// and is something we can revisit in the future.
-	if extra := c.flushPartialLinesIfExceeded(); len(extra) > 0 {
+	if extra := c.partialLines.FlushIfExceeded(); len(extra) > 0 {
 		out = append(out, extra...)
 	}
 
@@ -174,25 +169,13 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
-func (c *criStage) flushPartialLinesIfExceeded() []Entry {
-	entries := c.partialLines.DrainIfAtLeast(c.cfg.MaxPartialLines)
-	if len(entries) == 0 {
-		return nil
-	}
-
-	c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-	c.partialLinesFlushedMetric.Add(float64(len(entries)))
-
-	return entries
-}
-
 // stop implements stopper and is only used by our new pipeline.
 func (c *criStage) stop() {
 	const flushTimeout = 5 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	entries := c.partialLines.DrainAll()
+	entries := c.partialLines.FlushAll()
 	if len(entries) == 0 {
 		return
 	}
@@ -208,23 +191,28 @@ type partialLines interface {
 	Append(fp model.Fingerprint, e Entry)
 	Complete(fp model.Fingerprint, e Entry) Entry
 
-	DrainAll() []Entry
-	DrainIfAtLeast(n int) []Entry
+	FlushAll() []Entry
+	FlushIfExceeded() []Entry
 }
 
 var _ partialLines = (*partialLinesMap)(nil)
 
-func newPartialLinesMap(cfg CRIConfig, linesTruncated prometheus.Counter) *partialLinesMap {
+func newPartialLinesMap(cfg CRIConfig, logger *slog.Logger, linesTruncated prometheus.Counter, linesFlushed prometheus.Counter) *partialLinesMap {
 	return &partialLinesMap{
 		cfg:            cfg,
+		logger:         logger,
 		linesTruncated: linesTruncated,
+		linesFlushed:   linesFlushed,
 		inner:          make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
 	}
 }
 
 type partialLinesMap struct {
-	cfg            CRIConfig
+	cfg CRIConfig
+
+	logger         *slog.Logger
 	linesTruncated prometheus.Counter
+	linesFlushed   prometheus.Counter
 
 	inner map[model.Fingerprint]Entry
 }
@@ -238,13 +226,12 @@ func (m *partialLinesMap) Complete(fp model.Fingerprint, e Entry) Entry {
 	v, ok := m.inner[fp]
 	if ok {
 		delete(m.inner, fp)
+		e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
 	}
-
-	e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
 	return e
 }
 
-func (m *partialLinesMap) DrainAll() []Entry {
+func (m *partialLinesMap) FlushAll() []Entry {
 	buf := make([]Entry, 0, len(m.inner))
 	for _, v := range m.inner {
 		buf = append(buf, v)
@@ -253,11 +240,20 @@ func (m *partialLinesMap) DrainAll() []Entry {
 	return buf
 }
 
-func (m *partialLinesMap) DrainIfAtLeast(n int) []Entry {
-	if len(m.inner) < n {
+func (m *partialLinesMap) FlushIfExceeded() []Entry {
+	if len(m.inner) < m.cfg.MaxPartialLines {
 		return nil
 	}
-	return m.DrainAll()
+
+	entries := m.FlushAll()
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	m.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", m.cfg.MaxPartialLines)
+	m.linesFlushed.Add(float64(len(entries)))
+	return entries
 }
 
 const stripeCount = 16
@@ -274,7 +270,9 @@ type partialLinesStriped struct {
 	stripes [stripeCount]stripe
 
 	cfg            CRIConfig
+	logger         *slog.Logger
 	linesTruncated prometheus.Counter
+	linesFlushed   prometheus.Counter
 }
 
 type stripe struct {
@@ -282,12 +280,14 @@ type stripe struct {
 	data map[model.Fingerprint]Entry
 }
 
-func newPartialLinesStriped(cfg CRIConfig, linesTruncated prometheus.Counter) *partialLinesStriped {
+func newPartialLinesStriped(cfg CRIConfig, logger *slog.Logger, linesTruncated prometheus.Counter, linesFlushed prometheus.Counter) *partialLinesStriped {
 	m := &partialLinesStriped{
 		cfg:            cfg,
+		logger:         logger,
+		linesFlushed:   linesFlushed,
 		linesTruncated: linesTruncated,
 	}
-	perStripe := m.cfg.MaxPartialLineSize/stripeCount + 1
+	perStripe := m.cfg.MaxPartialLines/stripeCount + 1
 	for i := range m.stripes {
 		m.stripes[i].data = make(map[model.Fingerprint]Entry, perStripe)
 	}
@@ -316,25 +316,21 @@ func (m *partialLinesStriped) Complete(fp model.Fingerprint, e Entry) Entry {
 	if ok {
 		delete(s.data, fp)
 		m.size.Add(-1)
+		e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
 	}
 
-	e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
 	return e
 }
 
-// DrainAll removes and returns every value in the map.
-func (m *partialLinesStriped) DrainAll() []Entry {
+func (m *partialLinesStriped) FlushAll() []Entry {
 	m.lockAll()
 	defer m.unlockAll()
 
 	return m.drainLocked()
 }
 
-// DrainIfAtLeast removes and returns every value in the map if it holds at
-// least n entries, otherwise it does nothing and returns nil. If another
-// caller is already draining, this returns nil without waiting for it.
-func (m *partialLinesStriped) DrainIfAtLeast(n int) []Entry {
-	if int(m.size.Load()) < n || !m.flushing.CompareAndSwap(false, true) {
+func (m *partialLinesStriped) FlushIfExceeded() []Entry {
+	if int(m.size.Load()) < m.cfg.MaxPartialLines || !m.flushing.CompareAndSwap(false, true) {
 		return nil
 	}
 	defer m.flushing.Store(false)
@@ -344,10 +340,18 @@ func (m *partialLinesStriped) DrainIfAtLeast(n int) []Entry {
 
 	// Another caller may have drained the map while this one waited for the
 	// stripe locks, so re-check the exact size now that everything is held.
-	if int(m.size.Load()) < n {
+	if int(m.size.Load()) < m.cfg.MaxPartialLines {
 		return nil
 	}
-	return m.drainLocked()
+	entries := m.drainLocked()
+
+	if len(entries) == 0 {
+		return nil
+	}
+
+	m.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", m.cfg.MaxPartialLines)
+	m.linesFlushed.Add(float64(len(entries)))
+	return entries
 }
 
 func (m *partialLinesStriped) stripe(fp model.Fingerprint) *stripe {
