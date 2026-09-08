@@ -371,6 +371,135 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 	assertEntriesUnordered(t, expected, collected)
 }
 
+func TestPartialLines(t *testing.T) {
+	t.Run("map", func(t *testing.T) {
+		testPartialLines(t, func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines {
+			return newPartialLinesMap(cfg, logging.NewSlogNop(), truncated, flushed)
+		})
+	})
+	t.Run("striped", func(t *testing.T) {
+		testPartialLines(t, func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines {
+			return newPartialLinesStriped(cfg, logging.NewSlogNop(), truncated, flushed)
+		})
+	})
+}
+
+func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines) {
+	now := time.Now()
+
+	entry := func(line string) Entry {
+		return newEntry(map[string]any{}, model.LabelSet{}, line, now)
+	}
+
+	counters := func() (truncated, flushed prometheus.Counter) {
+		return prometheus.NewCounter(prometheus.CounterOpts{Name: "t"}), prometheus.NewCounter(prometheus.CounterOpts{Name: "f"})
+	}
+
+	t.Run("Complete without a prior Append returns the entry unchanged", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, truncated, flushed)
+
+		got := pl.Complete(1, entry("a full line that never had a partial predecessor"))
+
+		require.Equal(t, "a full line that never had a partial predecessor", got.Line)
+		require.Zero(t, testutil.ToFloat64(truncated))
+	})
+
+	t.Run("Append then Complete merges the accumulated partial lines", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+
+		pl.Append(1, entry("partial one "))
+		pl.Append(1, entry("partial two "))
+		got := pl.Complete(1, entry("full line"))
+
+		require.Equal(t, "partial one partial two full line", got.Line)
+	})
+
+	t.Run("Complete removes the entry so a repeated Complete does not see stale state", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+
+		pl.Append(1, entry("partial "))
+		first := pl.Complete(1, entry("first full"))
+		require.Equal(t, "partial first full", first.Line)
+
+		second := pl.Complete(1, entry("second full"))
+		require.Equal(t, "second full", second.Line)
+	})
+
+	t.Run("Append and Complete keep independent state per fingerprint", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+
+		pl.Append(1, entry("stream one "))
+		pl.Append(2, entry("stream two "))
+
+		gotOne := pl.Complete(1, entry("full one"))
+		gotTwo := pl.Complete(2, entry("full two"))
+
+		require.Equal(t, "stream one full one", gotOne.Line)
+		require.Equal(t, "stream two full two", gotTwo.Line)
+	})
+
+	t.Run("Append does not truncate when MaxPartialLineSizeTruncate is false", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: false}, truncated, flushed)
+
+		pl.Append(1, entry("abcdefg"))
+		got := pl.Complete(1, entry("hij"))
+
+		require.Equal(t, "abcdefghij", got.Line)
+		require.Zero(t, testutil.ToFloat64(truncated))
+	})
+
+	t.Run("Append truncates the accumulated line once it reaches the configured max size", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, truncated, flushed)
+
+		pl.Append(1, entry("abcdefg"))
+		got := pl.Complete(1, entry("hij"))
+
+		require.Equal(t, "abcde", got.Line)
+		require.NotZero(t, testutil.ToFloat64(truncated))
+	})
+
+	t.Run("FlushAll drains every buffered entry and clears the state", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+
+		pl.Append(1, entry("one"))
+		pl.Append(2, entry("two"))
+
+		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushAll())
+		require.Empty(t, pl.FlushAll())
+	})
+
+	t.Run("FlushIfExceeded below the threshold does nothing", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 3}, truncated, flushed)
+
+		pl.Append(1, entry("one"))
+		pl.Append(2, entry("two"))
+
+		require.Nil(t, pl.FlushIfExceeded())
+		require.Zero(t, testutil.ToFloat64(flushed))
+		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushAll())
+	})
+
+	t.Run("FlushIfExceeded at the threshold drains everything", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := build(CRIConfig{MaxPartialLines: 2}, truncated, flushed)
+
+		pl.Append(1, entry("one"))
+		pl.Append(2, entry("two"))
+
+		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushIfExceeded())
+		require.Equal(t, float64(2), testutil.ToFloat64(flushed))
+		require.Empty(t, pl.FlushAll())
+	})
+}
+
 func BenchmarkCRIStage(b *testing.B) {
 	b.Run("single stream", func(b *testing.B) {
 		batch := loki.NewBatch()
