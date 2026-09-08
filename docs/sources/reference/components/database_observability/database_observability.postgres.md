@@ -173,10 +173,10 @@ Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.p
 
 The following fields are exported and can be referenced by other components:
 
-| Name            | Type                | Description                                                                          |
-| --------------- | ------------------- | ------------------------------------------------------------------------------------ |
-| `targets`       | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.              |
-| `logs_receiver` | `LogsReceiver`      | A value that other components can use to send log entries to.                       |
+| Name            | Type                | Description                                                            |
+| --------------- | ------------------- | ---------------------------------------------------------------------- |
+| `targets`       | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.  |
+| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
 
 ## Component health
 
