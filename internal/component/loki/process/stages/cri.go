@@ -46,11 +46,12 @@ func (args *CRIConfig) Validate() error {
 }
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
+
 	return &criStage{
 		next:                      opts.next,
 		logger:                    opts.slogger.With("stage", "cri"),
 		cfg:                       cfg,
-		partialLines:              newStripedMap[Entry](cfg.MaxPartialLines),
+		partialLines:              newSharedState[Entry](cfg.MaxPartialLines, opts.next != nil),
 		partialLinesFlushedMetric: getPartialLinesFlushedMetric(opts.registerer),
 		linesTruncatedMetric:      getLinesTruncatedMetric(opts.registerer),
 	}
@@ -84,7 +85,7 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	partialLines *stripedMap[Entry]
+	partialLines sharedState[Entry]
 
 	partialLinesFlushedMetric prometheus.Counter
 	linesTruncatedMetric      prometheus.Counter

@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStripedMap(t *testing.T) {
+func TestStripedMapState(t *testing.T) {
 	t.Run("Update sees zero value for a fresh key", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 
 		var seen int
 		m.Update(1, func(v int) int {
@@ -25,7 +25,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("Update sees the previous value", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 
 		m.Update(1, func(v int) int { return v + 1 })
 		m.Update(1, func(v int) int { return v + 1 })
@@ -37,7 +37,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("Take on a missing key returns false", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 
 		v, ok := m.Take(1)
 		require.False(t, ok)
@@ -45,7 +45,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("Take removes the key", func(t *testing.T) {
-		m := newStripedMap[string](0)
+		m := newStripedMapState[string](0)
 		m.Update(1, func(string) string { return "a" })
 
 		v, ok := m.Take(1)
@@ -58,7 +58,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("DrainIfAtLeast below threshold does nothing", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 		m.Update(1, func(int) int { return 1 })
 		m.Update(2, func(int) int { return 2 })
 
@@ -73,7 +73,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("DrainIfAtLeast at threshold drains everything", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 		m.Update(1, func(int) int { return 1 })
 		m.Update(2, func(int) int { return 2 })
 
@@ -83,7 +83,7 @@ func TestStripedMap(t *testing.T) {
 	})
 
 	t.Run("DrainAll drains everything and empties the map", func(t *testing.T) {
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 		for k := uint64(0); k < 20; k++ {
 			k := k
 			m.Update(k, func(int) int { return int(k) })
@@ -96,7 +96,7 @@ func TestStripedMap(t *testing.T) {
 
 	t.Run("concurrent Update on the same key merges every call", func(t *testing.T) {
 		const numGoroutines = 10
-		m := newStripedMap[int](0)
+		m := newStripedMapState[int](0)
 
 		var wg sync.WaitGroup
 		for i := 0; i < numGoroutines; i++ {
@@ -116,7 +116,7 @@ func TestStripedMap(t *testing.T) {
 			numKeys   = 500
 			threshold = 10
 		)
-		m := newStripedMap[int](numKeys)
+		m := newStripedMapState[int](numKeys)
 
 		var (
 			wg      sync.WaitGroup
