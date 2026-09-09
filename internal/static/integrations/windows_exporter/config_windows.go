@@ -80,7 +80,9 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.SMTP.ServerExclude, err = regexp.Compile(coalesceString(c.SMTP.Exclude, c.SMTP.BlackList))
 	errs = append(errs, err)
 
-	cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
+	if c.TextFile.TextFileDirectory != "" {
+		cfg.Textfile.TextFileDirectories = strings.Split(c.TextFile.TextFileDirectory, ",")
+	}
 
 	cfg.PhysicalDisk.DiskInclude, err = regexp.Compile(c.PhysicalDisk.Include)
 	errs = append(errs, err)
