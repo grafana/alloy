@@ -6,8 +6,11 @@
 #
 # Command line options for Alloy.
 #
-# The configuration file holding the Alloy config.
+# The configuration file holding the Alloy Default Engine config.
 CONFIG_FILE="/etc/alloy/config.alloy"
+
+# The configuration file holding the Alloy OTel Engine config.
+OTEL_CONFIG_FILE="/etc/alloy/config.yaml"
 
 # User-defined arguments to pass to the default engine (`alloy run`). Has
 # no effect when ALLOY_OTEL_MODE below is enabled; use CUSTOM_OTEL_ARGS
