@@ -133,6 +133,9 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'ALLOY_OTEL_MODE=""' "$f"`)
 	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare ALLOY_OTEL_MODE as empty by default")
 
+	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'OTEL_CONFIG_FILE="/etc/alloy/config.yaml"' "$f"`)
+	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare OTEL_CONFIG_FILE with its default value")
+
 	tt := []struct {
 		name     string
 		env      string
@@ -154,14 +157,24 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 		{
-			name:     "otel engine ignores a custom CONFIG_FILE, always uses the installed config.yaml",
+			name:     "otel engine ignores CONFIG_FILE, the default engine's config path",
 			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 		{
+			name:     "otel engine, custom OTEL_CONFIG_FILE",
+			env:      `ALLOY_OTEL_MODE=1 OTEL_CONFIG_FILE=/custom/config.yaml`,
+			expected: "otel --config=/custom/config.yaml\n",
+		},
+		{
+			name:     "default engine ignores OTEL_CONFIG_FILE, the OTel engine's config path",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy OTEL_CONFIG_FILE=/custom/config.yaml`,
+			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+		},
+		{
 			name:     "otel engine, CUSTOM_OTEL_ARGS applies",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
-			expected: "otel --set=processors.batch.timeout=2s --config=/etc/alloy/config.yaml\n",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--feature-gates=otelcol.printInitialConfig"`,
+			expected: "otel --config=/etc/alloy/config.yaml --feature-gates=otelcol.printInitialConfig\n",
 		},
 		{
 			name:     "otel engine ignores CUSTOM_ARGS, the default engine's flags",
@@ -170,7 +183,7 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 		},
 		{
 			name:     "default engine ignores CUSTOM_OTEL_ARGS, the OTel engine's flags",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--set=processors.batch.timeout=2s"`,
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--feature-gates=otelcol.printInitialConfig"`,
 			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
 		{
@@ -181,7 +194,7 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 		{
 			name:     "otel engine, CUSTOM_OTEL_ARGS containing a glob character is passed through literally",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=/etc/alloy/*"`,
-			expected: "otel --set=/etc/alloy/* --config=/etc/alloy/config.yaml\n",
+			expected: "otel --config=/etc/alloy/config.yaml --set=/etc/alloy/*\n",
 		},
 	}
 
