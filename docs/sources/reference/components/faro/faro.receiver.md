@@ -21,7 +21,7 @@ This component does not work with [Grafana Cloud Frontend Observability][fronten
 For more information, refer to the [Choose a component][frontend-telemetry] guide.
 
 [frontend-telemetry]: ../../../../collect/choose-component/#frontend-telemetry
-[frontend-observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[frontend-observability]: https://grafana.com/products/cloud/frontend-observability/
 {{< /admonition >}}
 
 ## Usage
@@ -108,7 +108,10 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+
+Browser clients can read the `Retry-After` response header when it's present.
+`faro.receiver` doesn't generate this header or deduplicate requests based on `Idempotency-Key`.
 
 The server supports gzip-compressed request bodies.
 When a client sends a request with a `Content-Encoding: gzip` header, the server automatically decompresses the body before processing.

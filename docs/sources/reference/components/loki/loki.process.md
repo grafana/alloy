@@ -1002,7 +1002,45 @@ The supported values are the following:
   * `true` is converted to `1`.
   * `false` is converted to `0`.
 
-The following pipeline creates a counter which increments every time any log line is received by using the `match_all` parameter.
+#### Metric labels
+
+`metric.counter`, `metric.gauge`, and `metric.histogram` blocks don't have a `labels` argument.
+Metric labels are inherited from the log entry label set at the point where `stage.metrics` runs.
+To control metric labels, set labels in earlier stages such as [`stage.labels`](#stagelabels), [`stage.static_labels`](#stagestatic_labels), or [`stage.tenant`](#stagetenant).
+
+If an inherited label name isn't valid for Prometheus, that label is silently dropped and the metric is still exported.
+If no labels are present on the entry, the metric is exported without labels.
+
+The following example adds a static `app` label before `stage.metrics`.
+The generated metric includes the inherited label:
+
+```alloy
+stage.static_labels {
+    values = {
+        app = "payments",
+    }
+}
+
+stage.metrics {
+    metric.counter {
+        name        = "log_lines_total"
+        description = "total number of log lines"
+        match_all   = true
+        action      = "inc"
+    }
+}
+```
+
+If one log line passes through this pipeline, the exposed metric looks like this:
+
+```text
+# HELP loki_process_custom_log_lines_total total number of log lines
+# TYPE loki_process_custom_log_lines_total counter
+loki_process_custom_log_lines_total{app="payments"} 1
+```
+
+This example shows where metric labels come from.
+The following pipeline builds on that behavior to track stream volume by counting total lines with `match_all`.
 The pipeline creates a second counter which adds the byte size of these log lines by using the `count_entry_bytes` parameter.
 
 These two metrics disappear after 24 hours if no new entries are received, to avoid building up metrics which no longer serve any use.

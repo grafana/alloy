@@ -1,3 +1,3 @@
 module github.com/grafana/alloy/packaging/homebrew/formula-gen
 
-go 1.26.6
+go 1.26.7

@@ -14,22 +14,22 @@ review it, and defend it in discussion, regardless of which tools helped you wri
 
 Contribution work has two sides.
 
-- **Factual and mechanical** work (what changed, implementing code or docs from clear intent, a
-  brief PR summary) is where AI is often well suited.
-- **Subjective and human** work (motivations, trade-offs, reviewer notes, and discussion) stays with
-  you. Use AI where it helps; keep human oversight and interaction where judgment and accountability
-  matter.
+- **Factual and mechanical** work (what changed, implementing code or docs from clear intent, and
+  writing a PR title and description sections not marked `HUMAN ONLY`) is where AI is often well
+  suited.
+- **Subjective and human** work (setting intent, PR sections marked `HUMAN ONLY`, and discussion)
+  stays with you. Use AI where it helps; keep human oversight and interaction where judgment and
+  accountability matter.
 
 ## Ownership model
 
-| You own (write yourself)                   | AI may help with                              |
-| ------------------------------------------ | --------------------------------------------- |
-| Intent and design of the change            | Exploring the codebase                        |
-| Pull request details (why, how, decisions) | Writing or refactoring code and tests         |
-| Issue and proposal text you submit         | Editing documentation files in the repo       |
-| Review replies and ongoing discussion      | Brief description of the PR (factual summary) |
-| Code review conclusions                    | Issue(s) fixed (`Fixes #N` when known)        |
-| Conventional Commit PR title               |                                               |
+| You own (write yourself)                         | AI may help with                           |
+| ------------------------------------------------ | ------------------------------------------ |
+| Intent and design of the change                  | Exploring the codebase                     |
+| PR description sections marked `HUMAN ONLY`      | Writing or refactoring code and tests      |
+| Issue and proposal text you submit               | Editing documentation files in the repo    |
+| Review replies and ongoing discussion            | PR title and PR details summaries          |
+| Code review conclusions                          | Issue(s) fixed (after verifying it exists) |
 
 AI-assisted **implementation** is welcome when you review and understand the result. AI-mediated
 **conversation** is not. Reviewers need confidence that you understand the design choices and
@@ -38,14 +38,13 @@ trade-offs of what you're proposing.
 ## Acceptable
 
 - Use AI to implement or refactor code and docs that you then review and refine.
-- Use AI to draft the PR **Brief description** and **Issue(s) fixed** from the actual change.
+- Use AI to write the PR title and sections not marked `HUMAN ONLY` in the PR description.
 - Use AI to learn the codebase before contributing or reviewing.
 - Use AI privately to clarify your own thinking, then post discussion **in your own words**.
 
 ## Not acceptable
 
-- Leave pull request details empty of your own reasoning on non-trivial PRs, or paste AI text there
-  as a stand-in for how/why you built the change.
+- Submit AI-written PR content that you don't understand, haven't reviewed, or can't defend.
 - Paste AI-generated text into review threads or issue discussion as a stand-in for your analysis.
 - Wire an agent to reply to reviewers on your behalf.
 - Use AI as a substitute for your judgment when **reviewing** others' code.
@@ -59,9 +58,6 @@ Approved bots (for example dependency bots) are fine when clearly marked as bot-
 When AI generates the **bulk of the implementation**, check **"This pull request was substantially
 generated with AI assistance"** in the PR template. Minor autocomplete or small edits do not need
 disclosure.
-
-An AI-written Brief description and Issue(s) fixed lines are fine. Disclosure does not excuse
-AI-written pull request details or discussion — those must still be yours.
 
 ## Licensing and provenance
 
@@ -83,11 +79,10 @@ you draft; you own the argument in public discussion.
 
 ## Enforcement
 
-Maintainers may close or request changes on contributions where pull request details or discussion
-look unowned or low-effort AI-generated, using the same [issue triage][issue-triage] process as
-other contributions. When they do, they will explain why and, where appropriate, offer guidance on
-how to improve the contribution. Repeated abuse may lead to stricter review or blocked
-contributions.
+Maintainers may close or request changes on contributions where discussion looks unowned or
+low-effort AI-generated, using the same [issue triage][issue-triage] process as other contributions.
+When they do, they will explain why and, where appropriate, offer guidance on how to improve the
+contribution. Repeated abuse may lead to stricter review or blocked contributions.
 
 [alloy-docs]: https://grafana.com/docs/alloy/latest/
 [issue-triage]: ./issue-triage.md
