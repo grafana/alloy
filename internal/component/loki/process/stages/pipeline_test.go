@@ -1,15 +1,21 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
+	"reflect"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,6 +60,180 @@ func loadConfig(yml string) []StageConfig {
 
 func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 	return NewPipeline(logging.NewSlogNop(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+}
+
+// runPipelineTest builds a pipeline for cfgs using both the old and new
+// pipeline implementations, runs entries through each, and asserts the
+// result matches expected. expectedMetrics is optional: pass "" to skip
+// checking metrics, or a Prometheus exposition-format string (as consumed
+// by testutil.GatherAndCompare) to assert against each run's own registry.
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string) {
+	// Pipeline.Run seeds the extracted map with each entry's initial labels
+	// before running any stage. process (called directly below, bypassing
+	// ProcessBatch/ProcessEntry) does not. Seed it here once so both
+	// pipeline implementations start from the same state.
+	for i := range entries {
+		for labelName, labelValue := range entries[i].Labels {
+			entries[i].Extracted[string(labelName)] = string(labelValue)
+		}
+	}
+
+	cloneEntries := func(entries []Entry) []Entry {
+		out := make([]Entry, len(entries))
+		for i, e := range entries {
+			out[i] = Entry{
+				Extracted: maps.Clone(e.Extracted),
+				Entry:     e.Entry.Clone(),
+			}
+		}
+		return out
+	}
+
+	cloned := cloneEntries(entries)
+
+	t.Run("Stage", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+		out := p.Run(withInboundEntries(cloned...))
+		var collected []Entry
+		for e := range out {
+			collected = append(collected, e)
+		}
+
+		assertEntriesUnordered(t, expected, collected)
+		if expectedMetrics != "" {
+			require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+		}
+	})
+
+	t.Run("New Stage", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+
+		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+
+		p.process(context.Background(), entries)
+		p.stop()
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			assertEntriesUnordered(c, expected, collected)
+			if expectedMetrics != "" {
+				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+			}
+		}, 2*time.Second, 100*time.Millisecond)
+	})
+}
+
+// benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
+// results so the compiler can't optimize the calls being measured away.
+var (
+	benchResultEntries   []Entry
+	benchResultLokiEntry loki.Entry
+)
+
+// runPipelineBenchmark benchmarks a pipeline built for cfgs against batch.
+// It will run one benchmark for new stage implementation and one for old implementation.
+func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batch loki.Batch) {
+	b.Run("Stage", func(b *testing.B) {
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(b, err)
+
+		in := make(chan loki.Entry)
+		out := make(chan loki.Entry)
+		handler := p.Start(in, out)
+		defer handler.Stop()
+
+		clone := batch.Clone()
+		entries := make([]loki.Entry, 0, clone.EntryLen())
+		_ = clone.ConsumeStreams(func(stream loki.Stream, created int64) error {
+			for _, e := range stream.Entries {
+				entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e))
+			}
+			return nil
+		})
+
+		b.ResetTimer()
+		b.ReportAllocs()
+		for b.Loop() {
+			for _, e := range entries {
+				handler.Chan() <- e.Clone()
+				benchResultLokiEntry = <-out
+			}
+		}
+	})
+
+	b.Run("New Stage", func(b *testing.B) {
+		collcetor := loki.NewCollectingConsumer()
+		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, collcetor)
+		require.NoError(b, err)
+		defer pc.Stop()
+
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		for b.Loop() {
+			_ = pc.Consume(context.Background(), batch.Clone())
+		}
+	})
+}
+
+// assertEntriesUnordered asserts that actual contains exactly the entries in
+// expected, ignoring order.
+func assertEntriesUnordered(t require.TestingT, expected, actual []Entry) {
+	require.Len(t, actual, len(expected))
+
+	entriesEqual := func(expected, actual Entry) bool {
+		if expected.Line != actual.Line {
+			return false
+		}
+		if expected.Timestamp.Unix() != actual.Timestamp.Unix() {
+			return false
+		}
+		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
+			return false
+		}
+		if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
+			return false
+		}
+
+		var (
+			expectedStructured = slices.Clone(expected.StructuredMetadata)
+			actualStructured   = slices.Clone(actual.StructuredMetadata)
+		)
+
+		sortLabelAdapters := func(s []push.LabelAdapter) {
+			slices.SortFunc(s, func(a, b push.LabelAdapter) int {
+				if a.Name != b.Name {
+					return strings.Compare(a.Name, b.Name)
+				}
+				return strings.Compare(a.Value, b.Value)
+			})
+		}
+		sortLabelAdapters(expectedStructured)
+		sortLabelAdapters(actualStructured)
+
+		return reflect.DeepEqual(expectedStructured, actualStructured)
+	}
+
+	remaining := append([]Entry(nil), actual...)
+	for _, exp := range expected {
+		found := -1
+		for i, got := range remaining {
+			if entriesEqual(exp, got) {
+				found = i
+				break
+			}
+		}
+
+		require.NotEqual(t, -1, found)
+		remaining = append(remaining[:found], remaining[found+1:]...)
+	}
 }
 
 // TODO(@tpaschalis) Comment these out until we port over the remaining
