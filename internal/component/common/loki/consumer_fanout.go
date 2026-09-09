@@ -58,40 +58,6 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 	return errors.Join(errs...)
 }
 
-// TODO: Remove this when we have moved over to batching.
-func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
-	// NOTE: We snapshot the consumer list under a brief read lock and release it
-	// before delivering, rather than holding the lock for the whole fan-out.
-	//
-	// This is safe because delivery is a plain function call: a consumer that has
-	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
-	// a stale snapshot can never deadlock — a consumer removed concurrently with
-	// delivery simply reports that it has stopped (see isReportableError). The
-	// snapshot stays valid because Update replaces the slice rather than mutating it
-	// in place. Releasing the lock early also keeps a slow consumer from blocking
-	// reconfiguration.
-
-	f.mut.RLock()
-	consumers := f.consumers
-	f.mut.RUnlock()
-
-	var errs []error
-
-	for _, consumer := range consumers {
-		if consumer == nil {
-			continue
-		}
-
-		// ConsumeEntry does not clone entries. Components that mutate an entry must
-		// clone it first, as they already do. Batching will own cloning at the batch/pipeline boundary.
-		if err := consumer.ConsumeEntry(ctx, entry); isReportableError(err) {
-			errs = append(errs, err)
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
 func (f *FanoutConsumer) Update(consumers []Consumer) {
 	f.mut.RLock()
 	if !slices.Equal(f.consumers, consumers) {

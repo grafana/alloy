@@ -1,5 +1,6 @@
 receivers:
   googlecloudpubsub:
+    universe_domain: sovereign.example.com
     project: otel-project
     subscription: projects/otel-project/subscriptions/otlp-logs
     encoding: otlp_proto_trace
@@ -63,6 +64,7 @@ exporters:
       queue_size: 1234
 
   googlecloudpubsub:
+    universe_domain: sovereign.example.com
     project: my-project-id
     user_agent: my-user-agent
     topic: projects/foo-bar/topics/custom-topic

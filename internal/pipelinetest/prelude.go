@@ -22,6 +22,7 @@ func rewritePipelineTestRefs(source string) string {
 	replacer := strings.NewReplacer(
 		"pipelinetest.loki.url", "pipelinetest.sink.out.loki_push_url",
 		"pipelinetest.loki.receiver", "pipelinetest.sink.out.loki_receiver",
+		"pipelinetest.prometheus.receiver", "pipelinetest.sink.out.prometheus_receiver",
 	)
 	return replacer.Replace(source)
 }

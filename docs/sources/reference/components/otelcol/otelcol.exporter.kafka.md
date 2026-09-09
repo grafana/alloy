@@ -215,20 +215,27 @@ The `producer` block configures how to retry retrieving metadata when retrieval 
 
 The following arguments are supported:
 
-| Name                 | Type     | Description                                         | Default   | Required |
-| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `compression`        | `string` | The level of compression to use on messages.        | `"none"`  | no       |
-| `flush_max_messages` | `number` | The maximum number of messages in one request.      | `10000`   | no       |
-| `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
-| `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
+| Name                     | Type       | Description                                                                | Default     | Required |
+| ------------------------ | ---------- | -------------------------------------------------------------------------- | ----------- | -------- |
+| `compression`            | `string`   | The compression algorithm to use on messages.                              | `"none"`    | no       |
+| `flush_max_messages`     | `number`   | The maximum number of messages in one request.                             | `10000`     | no       |
+| `linger`                 | `duration` | How long a topic partition waits for more records before building a request. | `"10ms"`    | no       |
+| `max_broker_write_bytes` | `number`   | The maximum permitted size of a single write to a broker in bytes.         | `104857600` | no       |
+| `max_message_bytes`      | `number`   | The maximum permitted size of a message in bytes.                          | `1000000`   | no       |
+| `required_acks`          | `number`   | Controls when a message is regarded as transmitted.                        | `1`         | no       |
 
-Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
+Refer to the [Kafka producer configuration documentation][RequiredAcks] for more information on `required_acks`.
+
+`max_broker_write_bytes` must be at least `104857600` (100 MiB), and `max_message_bytes` must be less than or equal to `max_broker_write_bytes`.
+Raise `max_broker_write_bytes` if you need a `max_message_bytes` larger than the default.
+
+Set `linger` to `"0s"` to send records as soon as they arrive, at the cost of less effective batching.
 
 `compression` could be set to either `none`, `gzip`, `snappy`, `lz4`, or `zstd`.
-Refer to the [Go sarama documentation][CompressionCodec] for more information.
+Refer to the [franz-go documentation][CompressionCodec] for more information.
 
-[RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
-[CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec
+[RequiredAcks]: https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
+[CompressionCodec]: https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#CompressionCodec
 
 ### `compression_params`
 

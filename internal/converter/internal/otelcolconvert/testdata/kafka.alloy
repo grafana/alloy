@@ -115,13 +115,15 @@ otelcol.exporter.kafka "default" {
 	}
 
 	producer {
-		max_message_bytes = 1000001
-		compression       = "gzip"
+		max_message_bytes      = 209715200
+		max_broker_write_bytes = 209715200
+		compression            = "gzip"
 
 		compression_params {
 			level = 9
 		}
 		flush_max_messages        = 11
 		allow_auto_topic_creation = true
+		linger                    = "250ms"
 	}
 }
