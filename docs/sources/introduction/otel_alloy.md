@@ -122,7 +122,7 @@ The {{< param "OTEL_ENGINE" >}} supports the OpenTelemetry Collector integration
 You can set this up in two ways:
 
 - **Built-in supervisor**: Run the [`otel-supervisor`](../../reference/cli/otel-supervisor/) command to connect the {{< param "OTEL_ENGINE" >}} directly to Fleet Management over OpAMP.
-- **Standard Collector setup**: The {{< param "OTEL_ENGINE" >}} exposes the same API surface as the standard OpenTelemetry Collector. Follow the [Fleet Management setup for the OpenTelemetry Collector](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/get-started/opentelemetry-collector/) and run the {< param "OTEL_ENGINE" >} like you would any other collector.
+- **Standard Collector setup**: The {{< param "OTEL_ENGINE" >}} exposes the same API surface as the standard OpenTelemetry Collector. Follow the [Fleet Management setup for the OpenTelemetry Collector](https://grafana.com/docs/grafana-cloud/send-data/fleet-management/get-started/opentelemetry-collector/) and run the {{< param "OTEL_ENGINE" >}} like you would any other collector.
 
 ## How the engines evolve
 
