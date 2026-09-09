@@ -15,12 +15,12 @@ CONFIG_FILE="/etc/alloy/config.alloy"
 OTEL_CONFIG_FILE="/etc/alloy/config.yaml"
 
 # User-defined arguments to pass to the default engine (`alloy run`). Has
-# when ALLOY_OTEL_MODE=1; use CUSTOM_OTEL_ARGS
+# when ALLOY_OTEL_MODE=1; use OTEL_CUSTOM_ARGS
 CUSTOM_ARGS=""
 
 # User-defined arguments to pass to the OTel engine (`alloy otel`). Only
 # when ALLOY_OTEL_MODE=0; use CUSTOM_ARGS
-CUSTOM_OTEL_ARGS=""
+OTEL_CUSTOM_ARGS=""
 
 # Set to (lowercase) 1, true, yes, or on to run the OTel engine (`alloy otel`)
 # instead of the default engine (`alloy run`). Unset or any other value keeps

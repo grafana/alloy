@@ -172,8 +172,8 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
 		{
-			name:     "otel engine, CUSTOM_OTEL_ARGS applies",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--feature-gates=otelcol.printInitialConfig"`,
+			name:     "otel engine, OTEL_CUSTOM_ARGS applies",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 OTEL_CUSTOM_ARGS="--feature-gates=otelcol.printInitialConfig"`,
 			expected: "otel --config=/etc/alloy/config.yaml --feature-gates=otelcol.printInitialConfig\n",
 		},
 		{
@@ -182,8 +182,8 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 		{
-			name:     "default engine ignores CUSTOM_OTEL_ARGS, the OTel engine's flags",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_OTEL_ARGS="--feature-gates=otelcol.printInitialConfig"`,
+			name:     "default engine ignores OTEL_CUSTOM_ARGS, the OTel engine's flags",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy OTEL_CUSTOM_ARGS="--feature-gates=otelcol.printInitialConfig"`,
 			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
 		{
@@ -192,8 +192,8 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "run --set=/etc/alloy/* --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
 		},
 		{
-			name:     "otel engine, CUSTOM_OTEL_ARGS containing a glob character is passed through literally",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_OTEL_ARGS="--set=/etc/alloy/*"`,
+			name:     "otel engine, OTEL_CUSTOM_ARGS containing a glob character is passed through literally",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 OTEL_CUSTOM_ARGS="--set=/etc/alloy/*"`,
 			expected: "otel --config=/etc/alloy/config.yaml --set=/etc/alloy/*\n",
 		},
 	}

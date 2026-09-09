@@ -12,7 +12,7 @@ esac
 if [ -n "$otel_mode" ]; then
   OTEL_CONFIG_FILE="${OTEL_CONFIG_FILE:-/etc/alloy/config.yaml}"
   # shellcheck disable=SC2086
-  exec "$ALLOY_BIN" otel --config="$OTEL_CONFIG_FILE" ${CUSTOM_OTEL_ARGS:-}
+  exec "$ALLOY_BIN" otel --config="$OTEL_CONFIG_FILE" ${OTEL_CUSTOM_ARGS:-}
 else
   # If operator sets CONFIG_FILE then use this, else use the default /etc/alloy/config.alloy file
   CONFIG_FILE="${CONFIG_FILE:-/etc/alloy/config.alloy}"
