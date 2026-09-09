@@ -39,5 +39,5 @@ func TestBeylaVersion(t *testing.T) {
 		if assert.NotEmpty(c, metricResponse.Data.Result) {
 			assert.NotEqual(c, "unset", metricResponse.Data.Result[0].Metric.Version)
 		}
-	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval)
+	}, common.TestTimeout(t), common.DefaultRetryInterval)
 }

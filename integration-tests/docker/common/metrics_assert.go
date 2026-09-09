@@ -102,7 +102,7 @@ func AssertMetricsAvailable(t *testing.T, metrics []string, histogramMetrics []s
 		missingMetrics = findMissingMetrics(expectedMetrics, actualMetrics)
 
 		assert.Emptyf(c, missingMetrics, "Did not find %v in received metrics %v", missingMetrics, maps.Keys(actualMetrics))
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
+	}, TestTimeout(t), DefaultRetryInterval)
 }
 
 // findMissingMetrics returns the expectedMetrics which are not contained in actualMetrics.
@@ -140,7 +140,7 @@ func AssertHistogramData(t *testing.T, query string, expectedMetric string, test
 			assert.NotEmpty(c, histogram.Data.Buckets)
 			assert.Nil(c, metricResponse.Data.Result[0].Value)
 		}
-	}, TestTimeoutEnv(t), DefaultRetryInterval, "Histogram data did not satisfy the conditions within the time limit")
+	}, TestTimeout(t), DefaultRetryInterval, "Histogram data did not satisfy the conditions within the time limit")
 }
 
 // AssertMetricData performs a Prometheus query and expect the result to eventually contain the expected metric.
@@ -155,5 +155,5 @@ func AssertMetricData(t *testing.T, query, expectedMetric string, testName strin
 			assert.NotEmpty(c, metricResponse.Data.Result[0].Value.Value)
 			assert.Nil(c, metricResponse.Data.Result[0].Histogram)
 		}
-	}, TestTimeoutEnv(t), DefaultRetryInterval, "Data did not satisfy the conditions within the time limit")
+	}, TestTimeout(t), DefaultRetryInterval, "Data did not satisfy the conditions within the time limit")
 }
