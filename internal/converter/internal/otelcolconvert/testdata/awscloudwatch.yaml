@@ -9,6 +9,18 @@ receivers:
         named:
           /aws/eks/dev-0/cluster:
             names: [kube-apiserver-ea9c831555adca1815ae04b87661klasdj]
+    metrics:
+      collection_interval: 5m
+      period: 5m
+      delay: 10m
+      queries:
+        - namespace: AWS/EC2
+          metric_name: CPUUtilization
+          dimensions:
+            InstanceId: i-1234567890abcdef0
+          stats: [Average, p99]
+        - namespace: AWS/DynamoDB
+          metric_name: SuccessfulRequestLatency
 
 exporters:
   otlp:
@@ -17,6 +29,10 @@ exporters:
 service:
   pipelines:
     logs:
+      receivers: [awscloudwatch]
+      processors: []
+      exporters: [otlp]
+    metrics:
       receivers: [awscloudwatch]
       processors: []
       exporters: [otlp]
