@@ -9,6 +9,9 @@ internal API changes are not present.
 
 Unreleased
 ----------
+### Enhancements
+
+- Add Support for `tpl` on affinity & topologySpreadConstraints in agent container (@therealnoob)
 
 ### Enhancements
 
