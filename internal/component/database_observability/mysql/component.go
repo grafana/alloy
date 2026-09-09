@@ -16,6 +16,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
 	"go.uber.org/atomic"
@@ -354,7 +356,9 @@ func (c *Component) loadInstances() []*dbInstance {
 func (c *Component) storeInstances(instances []*dbInstance) {
 	mux := http.NewServeMux()
 	for _, inst := range instances {
-		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{}))
+		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{
+			ErrorLog: util.PromHTTPErrorLogger(c.opts.Logger),
+		}))
 	}
 	c.instances.Store(&instances)
 	c.handlerMux.Store(mux)

@@ -6,6 +6,8 @@ package agent
 import (
 	"log/slog"
 
+	"github.com/grafana/alloy/internal/util"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/grafana/alloy/internal/static/integrations/v2"
@@ -39,8 +41,11 @@ func (c *Config) Identifier(globals integrations.Globals) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(_ *slog.Logger, globals integrations.Globals) (integrations.Integration, error) {
-	return metricsutils.NewMetricsHandlerIntegration(c, c.Common, globals, promhttp.Handler())
+func (c *Config) NewIntegration(l *slog.Logger, globals integrations.Globals) (integrations.Integration, error) {
+	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		ErrorLog: util.PromHTTPErrorLogger(l),
+	})
+	return metricsutils.NewMetricsHandlerIntegration(c, c.Common, globals, handler)
 }
 
 func init() {

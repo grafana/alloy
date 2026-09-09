@@ -222,7 +222,7 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		return ctx.Err()
 	}
 
-	return integrations.NewCollectorIntegration(c.Name(),
+	return integrations.NewCollectorIntegration(c.Name(), integrations.WithLogger(logger),
 		integrations.WithCollectors(collectors...),
 		integrations.WithRunner(start),
 	), nil

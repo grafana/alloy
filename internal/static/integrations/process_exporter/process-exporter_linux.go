@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/grafana/alloy/internal/util"
+
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
@@ -21,10 +23,11 @@ import (
 type Integration struct {
 	c         *Config
 	collector *collector.NamedProcessCollector
+	log       *slog.Logger
 }
 
 // New creates a new instance of the process_exporter integration.
-func New(_ *slog.Logger, c *Config) (*Integration, error) {
+func New(log *slog.Logger, c *Config) (*Integration, error) {
 	cfg, err := c.ProcessExporter.ToConfig()
 	if err != nil {
 		return nil, fmt.Errorf("process_names is invalid: %w", err)
@@ -44,7 +47,7 @@ func New(_ *slog.Logger, c *Config) (*Integration, error) {
 		return nil, err
 	}
 
-	return &Integration{c: c, collector: pc}, nil
+	return &Integration{c: c, collector: pc, log: log}, nil
 }
 
 // MetricsHandler satisfies Integration.RegisterRoutes.
@@ -65,6 +68,7 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		promhttp.HandlerOpts{
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: 0,
+			ErrorLog:            util.PromHTTPErrorLogger(i.log),
 		},
 	), nil
 }

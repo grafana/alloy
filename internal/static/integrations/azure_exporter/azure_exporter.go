@@ -9,6 +9,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	azure_config "github.com/webdevops/azure-metrics-exporter/config"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
 	"github.com/webdevops/go-common/azuresdk/armclient"
@@ -93,7 +95,9 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 			prober.Run()
 		}
 
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(resp, req)
+		promhttp.HandlerFor(reg, promhttp.HandlerOpts{
+			ErrorLog: util.PromHTTPErrorLogger(e.logger),
+		}).ServeHTTP(resp, req)
 	})
 	return h, nil
 }

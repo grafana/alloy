@@ -11,6 +11,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/node_exporter/collector"
 
 	"github.com/grafana/alloy/internal/build"
@@ -20,8 +22,9 @@ import (
 // Integration is the node_exporter integration. The integration scrapes metrics
 // from the host Linux-based system.
 type Integration struct {
-	c  *Config
-	nc *collector.NodeCollector
+	c   *Config
+	nc  *collector.NodeCollector
+	log *slog.Logger
 
 	exporterMetricsRegistry *prometheus.Registry
 }
@@ -45,8 +48,9 @@ func New(log *slog.Logger, c *Config) (*Integration, error) {
 	}
 
 	return &Integration{
-		c:  c,
-		nc: nc,
+		c:   c,
+		nc:  nc,
+		log: log,
 
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 	}, nil
@@ -64,6 +68,7 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: 0,
 			Registry:            i.exporterMetricsRegistry,
+			ErrorLog:            util.PromHTTPErrorLogger(i.log),
 		},
 	)
 

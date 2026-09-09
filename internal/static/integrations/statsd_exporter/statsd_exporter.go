@@ -13,6 +13,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/statsd_exporter/pkg/address"
 	"github.com/prometheus/statsd_exporter/pkg/event"
 	"github.com/prometheus/statsd_exporter/pkg/exporter"
@@ -180,6 +182,7 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 func (e *Exporter) MetricsHandler() (http.Handler, error) {
 	return promhttp.HandlerFor(e.reg, promhttp.HandlerOpts{
 		ErrorHandling: promhttp.ContinueOnError,
+		ErrorLog:      util.PromHTTPErrorLogger(e.log),
 	}), nil
 }
 

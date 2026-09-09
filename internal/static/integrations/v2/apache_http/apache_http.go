@@ -11,6 +11,7 @@ import (
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -94,7 +95,9 @@ func (ah *apacheHandler) createHandler() (http.HandlerFunc, error) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(aeExporter)
-		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
+			ErrorLog: util.PromHTTPErrorLogger(ah.log),
+		})
 		h.ServeHTTP(w, r)
 	}, nil
 }
