@@ -14,6 +14,11 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
+// EngineName is the value the sql_server component uses to identify itself
+// wherever an engine identifier is needed, e.g. the connection_info metric's
+// "engine" label and the "engine" Loki label added to every log line.
+const EngineName = "sql_server"
+
 type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
@@ -64,7 +69,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		providerAccount      = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = "sql_server"
+		engine               = EngineName
 	)
 
 	if c.CloudProvider != nil {

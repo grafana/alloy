@@ -840,24 +840,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryDetailsCollector] {
-		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.QueryDetailsCollector, "create", err)
-		} else {
-			if err := qtCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryDetailsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, qtCollector)
-		}
-	}
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
@@ -880,10 +863,31 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+			DB:              inst.dbConnection,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			EntryHandler:    entryHandler,
+			TableRegistry:   tableRegistry,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qtCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, qtCollector)
 		}
 	}
 

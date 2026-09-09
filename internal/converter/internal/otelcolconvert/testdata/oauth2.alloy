@@ -8,10 +8,12 @@ otelcol.auth.oauth2 "default" {
 	scopes = ["api.metrics"]
 
 	tls {
-		ca_file   = "/var/lib/mycert.pem"
-		cert_file = "certfile"
-		key_file  = "keyfile"
-		insecure  = true
+		ca_file                        = "/var/lib/mycert.pem"
+		cert_file                      = "certfile"
+		key_file                       = "keyfile"
+		cipher_suites                  = ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+		include_insecure_cipher_suites = true
+		insecure                       = true
 	}
 	timeout = "2s"
 }

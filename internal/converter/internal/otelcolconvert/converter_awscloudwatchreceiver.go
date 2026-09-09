@@ -60,6 +60,7 @@ func toAwsCloudWatchReceiver(state *State, id componentstatus.InstanceID, cfg *a
 func toLogsConfig(cfg awscloudwatchreceiver.LogsConfig) awscloudwatch.LogsConfig {
 	return awscloudwatch.LogsConfig{
 		PollInterval:        cfg.PollInterval,
+		InitialLookback:     cfg.InitialLookback,
 		MaxEventsPerRequest: cfg.MaxEventsPerRequest,
 		Groups:              toGroupConfig(cfg.Groups),
 	}

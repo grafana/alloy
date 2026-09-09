@@ -78,6 +78,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		dimensions = append(dimensions, spanmetrics.Dimension{
 			Name:    d.Name,
 			Default: d.Default,
+			Glob:    d.Glob,
 		})
 	}
 
@@ -86,6 +87,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		callsDimensions = append(callsDimensions, spanmetrics.Dimension{
 			Name:    d.Name,
 			Default: d.Default,
+			Glob:    d.Glob,
 		})
 	}
 
@@ -94,6 +96,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		histogramDimensions = append(histogramDimensions, spanmetrics.Dimension{
 			Name:    d.Name,
 			Default: d.Default,
+			Glob:    d.Glob,
 		})
 	}
 
@@ -102,6 +105,7 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		eventDimensions = append(eventDimensions, spanmetrics.Dimension{
 			Name:    d.Name,
 			Default: d.Default,
+			Glob:    d.Glob,
 		})
 	}
 

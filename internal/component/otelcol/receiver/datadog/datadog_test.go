@@ -105,6 +105,32 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Equal(t, time.Minute, otelArgs.IdleSeriesCleanupInterval)
 	})
 
+	t.Run("decode_json_message_default", func(t *testing.T) {
+		in := `
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		ext, err := args.Convert()
+		require.NoError(t, err)
+		otelArgs := ext.(*datadogreceiver.Config)
+		require.True(t, otelArgs.Logs.DecodeJSONMessage)
+	})
+
+	t.Run("decode_json_message_explicit", func(t *testing.T) {
+		in := `
+		decode_json_message = false
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		ext, err := args.Convert()
+		require.NoError(t, err)
+		otelArgs := ext.(*datadogreceiver.Config)
+		require.False(t, otelArgs.Logs.DecodeJSONMessage)
+	})
+
 	t.Run("intake_proxy", func(t *testing.T) {
 		in := `
 		intake {

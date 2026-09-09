@@ -151,6 +151,20 @@ The process for this is exactly the same as a minor release with a few notable e
    necessary.
 4. Patch releases typically do not have RCs.
 
+## Publishing fails with a tag rule violation
+
+Publishing a draft can fail with:
+
+```
+Cannot create ref due to creations being restricted.
+Published releases must have a valid tag
+```
+
+The draft has lost its tag and is trying to publish against its `untagged-<hash>` placeholder. A tag
+ruleset blocks that, so the release stays a draft and nothing has become permanent.
+
+To recover, edit the draft, select the correct tag from the tag dropdown, and publish again.
+
 ## Modifying a PR's CHANGELOG entry post-merge
 
 By default, the semantics of each commit message (derived from PR titles) become the basis for

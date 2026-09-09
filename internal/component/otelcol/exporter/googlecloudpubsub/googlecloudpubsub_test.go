@@ -34,10 +34,11 @@ func TestConfigConversion(t *testing.T) {
 					MaxInterval:         30 * time.Second,
 					MaxElapsedTime:      5 * time.Minute,
 				},
-				ProjectID:   "",
-				UserAgent:   "opentelemetry-collector-contrib {{version}}",
-				Topic:       "projects/foo-bar/topics/custom-topic",
-				Compression: "",
+				ProjectID:      "",
+				UserAgent:      "opentelemetry-collector-contrib {{version}}",
+				Topic:          "projects/foo-bar/topics/custom-topic",
+				Compression:    "",
+				UniverseDomain: "",
 				Watermark: googlecloudpubsubexporter.WatermarkConfig{
 					Behavior:     "",
 					AllowedDrift: time.Duration(0),
@@ -69,6 +70,7 @@ func TestConfigConversion(t *testing.T) {
 				}
 
 				endpoint = "https://www.googleapis.com/"
+				universe_domain = "example-sovereign.example.com"
 				insecure = true
 
 				ordering {
@@ -92,10 +94,11 @@ func TestConfigConversion(t *testing.T) {
 					MaxInterval:         30 * time.Second,
 					MaxElapsedTime:      5 * time.Minute,
 				},
-				ProjectID:   "foo-bar",
-				UserAgent:   "custom-user-agent",
-				Topic:       "projects/foo-bar/topics/custom-topic",
-				Compression: "gzip",
+				ProjectID:      "foo-bar",
+				UserAgent:      "custom-user-agent",
+				Topic:          "projects/foo-bar/topics/custom-topic",
+				Compression:    "gzip",
+				UniverseDomain: "example-sovereign.example.com",
 				Watermark: googlecloudpubsubexporter.WatermarkConfig{
 					Behavior:     "earliest",
 					AllowedDrift: time.Second * 10,
