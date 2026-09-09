@@ -31,10 +31,6 @@ func defaultServices(l *logging.Logger) []service.Service {
 	return []service.Service{
 		livedebugging.New(),
 		labelstore.New(l.Slog(), prometheus.NewRegistry()),
-		// The real HTTP service, not a mock. prometheus.exporter.* components serve
-		// their metrics over the component HTTP path and export a target pointing at
-		// the in-memory listener, so prometheus.scrape can only reach them when the
-		// service actually serves and its DialFunc routes in-memory traffic.
 		httpservice.New(httpservice.Options{
 			Logger:           l,
 			HTTPListenAddr:   httpListenAddr,
