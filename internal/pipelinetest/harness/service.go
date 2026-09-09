@@ -43,11 +43,9 @@ func defaultServices(l *logging.Logger) []service.Service {
 			ReadyFunc:        func() bool { return true },
 			ReloadFunc:       func() error { return nil },
 		}),
-		// The HTTP service declares remotecfg in DependsOn. Pipeline tests never hit
-		// the remotecfg component path, so a stub is enough to satisfy the graph.
-		&mockService{
-			name: remotecfg.ServiceName,
-		},
+		// The HTTP service declares remotecfg in DependsOn. Pipeline tests do no
+		// remote config management, so the no-op stub is enough.
+		remotecfg.NewStub(prometheus.NewRegistry()),
 		&mockService{
 			name: cluster.ServiceName,
 			data: cluster.Mock(),
