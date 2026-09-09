@@ -71,7 +71,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m.batchSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_batch_size_bytes",
 		Help:                            "Number of uncompressed bytes of log lines in a batch when it's sent, to be compared against the configured batch_size.",
-		Buckets:                         []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 20 * MiB},
+		Buckets:                         []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 32 * MiB, 64 * MiB},
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
@@ -79,7 +79,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_request_size_bytes",
 		Help:                            "Number of bytes for requests.",
-		Buckets:                         []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 20 * MiB},
+		Buckets:                         []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 32 * MiB, 64 * MiB},
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
