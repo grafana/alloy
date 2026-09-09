@@ -15,6 +15,13 @@ const (
 	ExplainPlanOutputOperationAttachedSubquery     ExplainPlanOutputOperation = "Attached Subquery"
 	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
 	ExplainPlanOutputOperationUnknown              ExplainPlanOutputOperation = "Unknown"
+
+	// SQL Server showplan-specific operations with no equivalent among the operations above.
+	ExplainPlanOutputOperationComputeScalar ExplainPlanOutputOperation = "Compute Scalar"
+	ExplainPlanOutputOperationFilter        ExplainPlanOutputOperation = "Filter"
+	ExplainPlanOutputOperationTop           ExplainPlanOutputOperation = "Top"
+	ExplainPlanOutputOperationSpool         ExplainPlanOutputOperation = "Spool"
+	ExplainPlanOutputOperationParallelism   ExplainPlanOutputOperation = "Parallelism"
 )
 
 type ExplainPlanAccessType string
@@ -127,8 +134,13 @@ type ExplainPlanOutput struct {
 }
 
 type ExplainPlanMetadataInfo struct {
-	DatabaseEngine  string `json:"databaseEngine"`
-	DatabaseVersion string `json:"databaseVersion"`
+	// DatabaseEngine/DatabaseVersion are omitempty because sql_server no
+	// longer populates them (grafana-dbo11y-app#3471 found no consumer ever
+	// read them, and the engine is now carried as a Loki label instead,
+	// which is queryable, unlike this field). mysql/postgres still set both
+	// unconditionally, so omitempty has no effect on their existing output.
+	DatabaseEngine  string `json:"databaseEngine,omitempty"`
+	DatabaseVersion string `json:"databaseVersion,omitempty"`
 	QueryIdentifier string `json:"queryIdentifier"`
 	GeneratedAt     string `json:"generatedAt"`
 
@@ -154,5 +166,9 @@ type ExplainPlanNodeDetails struct {
 	Condition     *string                   `json:"condition,omitempty"`
 	GroupByKeys   []string                  `json:"groupByKeys,omitempty"`
 	SortKeys      []string                  `json:"sortKeys,omitempty"`
-	Warning       *string                   `json:"warning,omitempty"`
+	// Warnings holds engine-reported plan warnings for this node (for example
+	// SQL Server's missing-statistics or no-join-predicate warnings). Unused by
+	// mysql/postgres today; a node can carry more than one simultaneously, hence
+	// a slice rather than a single string.
+	Warnings []string `json:"warnings,omitempty"`
 }
