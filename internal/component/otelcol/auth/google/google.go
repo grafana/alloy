@@ -42,6 +42,10 @@ type Arguments struct {
 	// default: access_token
 	TokenType string `alloy:"token_type,attr,optional"`
 
+	// TokenHeader controls which HTTP header carries the token. It must be
+	// authorization or proxy-authorization. The default is authorization.
+	TokenHeader string `alloy:"token_header,attr,optional"`
+
 	// Audience specifies the audience claim used for generating ID token.
 	Audience string `alloy:"audience,attr,optional"`
 
@@ -68,6 +72,7 @@ func (args *Arguments) SetToDefault() {
 		"https://www.googleapis.com/auth/trace.append",
 	}
 	args.TokenType = upstreamDefault.TokenType
+	args.TokenHeader = upstreamDefault.TokenHeader
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -85,6 +90,7 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 			QuotaProject: args.QuotaProject,
 			TokenType:    args.TokenType,
 			Audience:     args.Audience,
+			TokenHeader:  args.TokenHeader,
 			Scopes:       args.Scopes,
 		},
 	}, nil
