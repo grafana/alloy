@@ -42,9 +42,13 @@ func (c *Config) Identifier(globals integrations.Globals) (string, error) {
 
 // NewIntegration converts this config into an instance of an integration.
 func (c *Config) NewIntegration(l *slog.Logger, globals integrations.Globals) (integrations.Integration, error) {
+	// This is promhttp.Handler() with an ErrorLog added. Keep the
+	// InstrumentMetricHandler wrapper so promhttp_metric_handler_requests_total
+	// and promhttp_metric_handler_requests_in_flight stay exposed.
 	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
 		ErrorLog: util.PromHTTPErrorLogger(l),
 	})
+	handler = promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, handler)
 	return metricsutils.NewMetricsHandlerIntegration(c, c.Common, globals, handler)
 }
 

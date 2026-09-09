@@ -51,9 +51,13 @@ func New(log *slog.Logger, c *Config) *Integration {
 
 // MetricsHandler satisfies Integration.RegisterRoutes.
 func (i *Integration) MetricsHandler() (http.Handler, error) {
-	return promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+	// This is promhttp.Handler() with an ErrorLog added. Keep the
+	// InstrumentMetricHandler wrapper so promhttp_metric_handler_requests_total
+	// and promhttp_metric_handler_requests_in_flight stay exposed.
+	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
 		ErrorLog: util.PromHTTPErrorLogger(i.log),
-	}), nil
+	})
+	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, handler), nil
 }
 
 // ScrapeConfigs satisfies Integration.ScrapeConfigs.
