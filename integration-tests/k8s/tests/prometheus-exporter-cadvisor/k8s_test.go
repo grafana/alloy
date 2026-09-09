@@ -1,30 +1,37 @@
-//go:build alloyintegrationtests
-
-package main
+package prometheusexportercadvisor
 
 import (
-	"runtime"
 	"testing"
 
-	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/k8s/deps"
+	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
-func TestCadvisorMetrics(t *testing.T) {
-	// cAdvisor only runs on Linux. The test exercises the Grafana cAdvisor fork's
-	// collectors, so it must run against a real Linux cgroup tree.
-	if runtime.GOOS != "linux" {
-		t.Skip("Skipping cAdvisor metrics test on non-Linux platform")
-	}
+func TestPrometheusExporterCadvisor(t *testing.T) {
+	ns := deps.NewNamespace(deps.NamespaceOptions{
+		Name:   "test-prometheus-exporter-cadvisor",
+		Labels: map[string]string{"alloy-integration-test": "true"},
+	})
+	mimir := deps.NewMimir(deps.MimirOptions{Namespace: ns.Name()})
+	alloy := deps.NewAlloy(deps.AlloyOptions{
+		Namespace:  ns.Name(),
+		Release:    "alloy-test-prometheus-exporter-cadvisor",
+		ConfigPath: "./config/config.alloy",
+		ValuesPath: "./config/alloy-values.yaml",
+	})
+	harness.Setup(t, harness.Options{
+		Dependencies: []harness.Dependency{ns, mimir, alloy},
+	})
 
-	// Pinned from a real CI run. This covers every cAdvisor collector family:
-	// build/version, cpu, memory, filesystem, network, and blkio.
+	// Covers the cAdvisor collector families: version, cpu, memory, filesystem,
+	// network, and blkio. cadvisor_build_info comes from the Alloy integration
+	// wrapper, not from cAdvisor.
 	//
 	// Two families are left out on purpose:
-	//   - container_pressure_* (PSI) needs kernel CONFIG_PSI and is not present
-	//     on every host.
-	//   - container_health_state is emitted only for containers with a Docker
-	//     HEALTHCHECK, so it depends on the sibling images, not the exporter.
-	expectedMetrics := []string{
+	//   - container_pressure_* (PSI) needs kernel CONFIG_PSI. Not every host has it.
+	//   - container_health_state needs a container with a Docker HEALTHCHECK. It
+	//     depends on the sibling workloads, not the exporter.
+	mimir.QueryMetrics(t, "cadvisor", []string{
 		"cadvisor_build_info",
 		"cadvisor_version_info",
 		"container_blkio_device_usage_total",
@@ -72,7 +79,5 @@ func TestCadvisorMetrics(t *testing.T) {
 		"container_network_transmit_packets_dropped_total",
 		"container_network_transmit_packets_total",
 		"container_oom_events_total",
-	}
-
-	common.MimirMetricsTest(t, expectedMetrics, []string{}, "cadvisor_metrics")
+	})
 }

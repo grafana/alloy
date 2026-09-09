@@ -1,0 +1,40 @@
+# cAdvisor reads the node's cgroup tree and machine stats. The Alloy pod runs
+# privileged and mounts the host paths read-only. This mirrors the canonical
+# cAdvisor DaemonSet.
+controller:
+  type: daemonset
+  volumes:
+    extra:
+      - name: rootfs
+        hostPath:
+          path: /
+      - name: var-run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: disk
+        hostPath:
+          path: /dev/disk
+
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  # The raw cgroup driver needs a privileged container to read /sys/fs/cgroup.
+  securityContext:
+    privileged: true
+  mounts:
+    extra:
+      - name: rootfs
+        mountPath: /rootfs
+        readOnly: true
+      - name: var-run
+        mountPath: /var/run
+        readOnly: true
+      - name: sys
+        mountPath: /sys
+        readOnly: true
+      - name: disk
+        mountPath: /dev/disk
+        readOnly: true
