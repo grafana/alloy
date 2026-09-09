@@ -2,6 +2,7 @@ package stages
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -234,7 +235,7 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 		}
 	)
 
-	t.Run("Stage", func(t *testing.T) {
+	t.Run("Pipeline", func(t *testing.T) {
 		// Pipeline.Run seeds Extracted from Labels itself, so a plain clone is enough.
 		cloned := cloneEntries(entries)
 
@@ -277,7 +278,7 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
 	})
 
-	t.Run("New Stage", func(t *testing.T) {
+	t.Run("New Pipeline", func(t *testing.T) {
 		cloned := cloneEntries(entries)
 		for i := range cloned {
 			for labelName, labelValue := range cloned[i].Labels {
@@ -552,14 +553,43 @@ func BenchmarkMultilineStage(b *testing.B) {
 	}
 	`)
 
-	entries := make([]push.Entry, 10)
-	entries[0] = push.Entry{Timestamp: time.Now(), Line: "Date: Mon, 01 Jan 2024 00:00:00 +0000 error occurred"}
-	for i := 1; i < len(entries); i++ {
-		entries[i] = push.Entry{Timestamp: time.Now(), Line: "\tat com.example.Foo.bar(Foo.java:42)"}
-	}
+	b.Run("single stream", func(b *testing.B) {
+		entries := make([]push.Entry, 10)
+		entries[0] = push.Entry{Timestamp: time.Now(), Line: "Date: Mon, 01 Jan 2024 00:00:00 +0000 error occurred"}
+		for i := 1; i < len(entries); i++ {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "\tat com.example.Foo.bar(Foo.java:42)"}
+		}
 
-	batch := loki.NewBatch()
-	batch.Add(loki.NewStream(model.LabelSet{"job": "bench"}, entries...))
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"job": "bench"}, entries...))
 
-	runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("multiple streams", func(b *testing.B) {
+		const (
+			numBatches     = 10
+			blocksPerBatch = 5
+			linesPerBlock  = 10
+		)
+
+		batches := make([]loki.Batch, numBatches)
+		for w := range batches {
+			labels := model.LabelSet{"worker": model.LabelValue(fmt.Sprintf("%d", w))}
+
+			entries := make([]push.Entry, 0, blocksPerBatch*linesPerBlock)
+			for i := 0; i < blocksPerBatch; i++ {
+				entries = append(entries, push.Entry{Timestamp: time.Now(), Line: "Date: Mon, 01 Jan 2024 00:00:00 +0000 error occurred"})
+				for l := 1; l < linesPerBlock; l++ {
+					entries = append(entries, push.Entry{Timestamp: time.Now(), Line: "\tat com.example.Foo.bar(Foo.java:42)"})
+				}
+			}
+
+			batch := loki.NewBatch()
+			batch.Add(loki.NewStream(labels, entries...))
+			batches[w] = batch
+		}
+
+		runPipelineBenchmark(b, cfgs, batches)
+	})
 }
