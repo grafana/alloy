@@ -30,3 +30,14 @@ func replaceDatabaseNameInDSN(dsn, newDatabaseName string) (string, error) {
 	newDSN := matches[1] + newDatabaseName + matches[3]
 	return newDSN, nil
 }
+
+// databaseNameFromDSN extracts the database name a DSN already points to, so
+// callers fanning out per-database can tell whether a target database is the
+// one an existing connection already uses.
+func databaseNameFromDSN(dsn string) (string, error) {
+	matches := dsnParseRegex.FindStringSubmatch(dsn)
+	if len(matches) < 4 {
+		return "", errors.New("failed to parse DSN for database name")
+	}
+	return matches[2], nil
+}

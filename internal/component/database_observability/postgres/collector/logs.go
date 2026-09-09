@@ -180,7 +180,7 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
+		[]string{"severity", "sqlstate", "sqlstate_class", labelDatname, "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
