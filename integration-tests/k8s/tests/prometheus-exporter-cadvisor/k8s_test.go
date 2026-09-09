@@ -24,8 +24,7 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 	})
 
 	// Covers the cAdvisor collector families: version, cpu, memory, filesystem,
-	// network, and blkio. cadvisor_build_info comes from the Alloy integration
-	// wrapper, not from cAdvisor.
+	// network, and blkio.
 	//
 	// Two families are left out on purpose:
 	//   - container_pressure_* (PSI) needs kernel CONFIG_PSI. Not every host has it.
