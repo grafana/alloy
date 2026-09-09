@@ -383,3 +383,7 @@ func (f *fakeCluster) Peers() []peer.Peer {
 func (f *fakeCluster) Ready() bool {
 	return true
 }
+
+func (f *fakeCluster) Enabled() bool {
+	return true
+}

@@ -1003,6 +1003,8 @@ func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
 
+func (f *fakeCluster) Enabled() bool { return true }
+
 var (
 	clusterKeyDB1 = shard.StringKey("tcp(127.0.0.1:3306)/db1")
 	clusterKeyDB2 = shard.StringKey("tcp(127.0.0.1:3306)/db2")
