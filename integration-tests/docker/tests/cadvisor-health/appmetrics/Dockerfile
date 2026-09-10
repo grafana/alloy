@@ -9,6 +9,8 @@ COPY metrics /www/metrics
 COPY collector.json /etc/cadvisor/collector.json
 
 LABEL io.cadvisor.metric.prometheus="/etc/cadvisor/collector.json"
+# A plain label to exercise cAdvisor's container_label_* exposure.
+LABEL com.grafana.cadvisor_test="poc"
 
 EXPOSE 8080
 # Use the busybox binary directly; the httpd applet serves /www over HTTP.

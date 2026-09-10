@@ -69,3 +69,19 @@ func TestCadvisorApplicationMetrics(t *testing.T) {
 		common.MetricQuery("test_app_metric", "cadvisor_health"),
 		"test_app_metric", "cadvisor_health")
 }
+
+func TestCadvisorContainerLabels(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Skipping cAdvisor container labels test on non-Linux platform")
+	}
+
+	// cAdvisor attaches Docker container labels as container_label_* on each
+	// container's metrics (store_container_labels defaults to true). The
+	// cadvisor-appmetrics fixture image sets com.grafana.cadvisor_test=poc, so the
+	// series carry container_label_com_grafana_cadvisor_test="poc". This exercises
+	// the Docker metadata path, which the raw cgroup driver cannot provide.
+	common.AssertMetricData(t,
+		common.ContainerLabelQuery("container_last_seen", "cadvisor_health", "cadvisor-appmetrics",
+			"container_label_com_grafana_cadvisor_test", "poc"),
+		"container_last_seen", "cadvisor_health")
+}

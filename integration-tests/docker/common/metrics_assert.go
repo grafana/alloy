@@ -59,6 +59,13 @@ func ContainerMetricQuery(metricName, testName, containerName string) string {
 	return fmt.Sprintf("%squery?query=%s{test_name='%s',name='%s'}", promURL, metricName, testName, containerName)
 }
 
+// ContainerLabelQuery returns an instant query for metricName on a container that
+// also requires labelName to equal labelValue. It is used to assert a cAdvisor
+// container_label_* value is attached to the container's metrics.
+func ContainerLabelQuery(metricName, testName, containerName, labelName, labelValue string) string {
+	return fmt.Sprintf("%squery?query=%s{test_name='%s',name='%s',%s='%s'}", promURL, metricName, testName, containerName, labelName, labelValue)
+}
+
 // MetricsQuery returns the list of available metrics matching the given test_name label.
 func MetricsQuery(testName string) string {
 	// https://prometheus.io/docs/prometheus/latest/querying/api/#finding-series-by-label-matchers
