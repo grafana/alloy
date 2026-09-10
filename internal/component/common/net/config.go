@@ -117,8 +117,9 @@ func (c *HTTP2Config) Server() *http.HTTP2Config {
 	if c == nil || !c.Enabled {
 		return nil
 	}
-	// MaxHandlers has always been a no-op in x/net/http2. Keep accepting it
-	// for configuration compatibility. IdleTimeout is applied to http.Server.
+	// Intentionally omit MaxHandlers: it was a no-op in x/net/http2 and is
+	// still accepted for configuration compatibility. Also omit IdleTimeout:
+	// TargetServer.MountAndRun applies it to http.Server.IdleTimeout instead.
 	return &http.HTTP2Config{
 		MaxConcurrentStreams:          int(c.MaxConcurrentStreams),
 		MaxDecoderHeaderTableSize:     int(c.MaxDecoderHeaderTableSize),
