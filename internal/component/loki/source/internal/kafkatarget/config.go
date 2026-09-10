@@ -39,6 +39,11 @@ type TargetConfig struct {
 	// Rebalancing strategy to use. (e.g. sticky, roundrobin or range)
 	Assignor string `yaml:"assignor"`
 
+	// RackID is the rack identifier for this client. When set and the brokers
+	// use a rack-aware replica selector, the consumer fetches from the closest
+	// replica instead of the partition leader (KIP-392).
+	RackID string `yaml:"rack_id"`
+
 	// Authentication strategy with Kafka brokers
 	Authentication Authentication `yaml:"authentication"`
 
