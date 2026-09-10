@@ -131,16 +131,16 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	return &loadbalancingexporter.Config{
-		Protocol:   *protocol,
-		Resolver:   args.Resolver.Convert(),
-		RoutingKey: args.RoutingKey,
-		TimeoutSettings: exporterhelper.TimeoutConfig{
-			Timeout: args.Timeout,
-		},
-		BackOffConfig: *args.Retry.Convert(),
-		QueueSettings: q,
-	}, nil
+	cfg := loadbalancingexporter.NewFactory().CreateDefaultConfig().(*loadbalancingexporter.Config)
+	cfg.Protocol = *protocol
+	cfg.Resolver = args.Resolver.Convert()
+	cfg.RoutingKey = args.RoutingKey
+	cfg.TimeoutSettings = exporterhelper.TimeoutConfig{
+		Timeout: args.Timeout,
+	}
+	cfg.BackOffConfig = *args.Retry.Convert()
+	cfg.QueueSettings = q
+	return cfg, nil
 }
 
 // Protocol holds the individual protocol-specific settings. Only OTLP is supported at the moment.
@@ -187,14 +187,14 @@ func (oc OtlpConfig) Convert() (*otlpexporter.Config, error) {
 		return nil, err
 	}
 
-	return &otlpexporter.Config{
-		TimeoutConfig: exporterhelper.TimeoutConfig{
-			Timeout: oc.Timeout,
-		},
-		QueueConfig:  q,
-		RetryConfig:  *oc.Retry.Convert(),
-		ClientConfig: *clientConfig,
-	}, nil
+	cfg := otlpexporter.NewFactory().CreateDefaultConfig().(*otlpexporter.Config)
+	cfg.TimeoutConfig = exporterhelper.TimeoutConfig{
+		Timeout: oc.Timeout,
+	}
+	cfg.QueueConfig = q
+	cfg.RetryConfig = *oc.Retry.Convert()
+	cfg.ClientConfig = *clientConfig
+	return cfg, nil
 }
 
 // ResolverSettings defines the configurations for the backend resolver
