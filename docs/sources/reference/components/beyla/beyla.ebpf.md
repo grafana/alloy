@@ -781,6 +781,7 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `application_span_otel` exports OpenTelemetry-compatible span metrics.
 * `application_span_sizes` exports span size metrics for trace analysis.
 * `application_host` exports application-level host metrics for host-based pricing.
+* `application_runtime` exports language-runtime metrics (for example JVM, Go, and Node.js runtime metrics) from instrumented processes.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
 * `stats` exports kernel-level connection statistics per service.
@@ -984,14 +985,17 @@ You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
 
 ### `jvm_runtime_metrics`
 
-The `jvm_runtime_metrics` block configures collection of JVM runtime metrics, such as heap usage, garbage collection, and thread counts, from instrumented Java processes.
+The `jvm_runtime_metrics` block configures collection of JVM runtime metrics, such as heap usage, garbage collection, and thread counts, from instrumented Java processes. You must append `application_runtime` to the `features` list in the `metrics` block to enable JVM runtime metrics.
 
-| Name                | Type       | Description                                | Default | Required |
+| Name                | Type       | Description                               | Default | Required |
 |---------------------|------------|--------------------------------------------|---------|----------|
-| `enabled`           | `bool`     | Enable collection of JVM runtime metrics.  | `false` | no       |
 | `sampling_interval` | `duration` | How often to sample JVM runtime metrics.   | `""`    | no       |
 
 When `sampling_interval` is unset, Beyla uses its own default interval.
+
+{{< admonition type="note" >}}
+The `enabled` attribute is deprecated and has no effect. Add `application_runtime` to `metrics.features` instead.
+{{< /admonition >}}
 
 ## Exported fields
 
