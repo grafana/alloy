@@ -137,7 +137,8 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// and may merge into an existing stream.
 	for i := range b.streams {
 		stream := Stream{
-			//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
+			// we no longer need to clone stream labels here.
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
 			created: b.streams[i].created,
