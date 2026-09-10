@@ -78,7 +78,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 | [`logs`][logs]                     | Configure the logs collector.                     | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
-| [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
+| [`prometheus_exporter`][prometheus_exporter] | Configure the embedded `postgres_exporter`. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
