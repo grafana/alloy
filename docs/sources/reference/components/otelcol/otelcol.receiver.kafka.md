@@ -351,7 +351,7 @@ Available only for logs:
 - `raw`: the payload's bytes are inserted as the body of a log record.
 - `text`: the payload are decoded as text and inserted as the body of a log record. By default, it uses UTF-8 to decode. You can use `text_<ENCODING>`, like `text_utf-8`, `text_shift_jis`, etc., to customize this behavior.
 - `json`: the payload is decoded as JSON and inserted as the body of a log record.
-- `azure_resource_logs`: the payload is converted from Azure Resource Logs format to OTel format.
+- `azure_resource_logs`: Deprecated in {{< param "PRODUCT_NAME" >}} v1.17.
 
 ## Message header propagation
 
