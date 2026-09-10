@@ -62,9 +62,11 @@ You can use the following blocks with `loki.source.heroku`:
 | [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
 | `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
+| `http` > [`http2`][http2] | Configures unencrypted HTTP/2. | no |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
 [http]: #http
+[http2]: #http2
 [grpc]: #grpc
 [tls]: #tls
 
@@ -77,6 +79,10 @@ You can use the following blocks with `loki.source.heroku`:
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `http2`
+
+{{< docs/shared lookup="reference/components/server-http2.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 

@@ -54,10 +54,12 @@ You can use the following blocks with `loki.source.gcplog`:
 | `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
 | `push` > `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
 | `push` > [`http`][http]        | Configures the HTTP server that receives requests when using the `push` mode. | no       |
+| `push` > `http` > [`http2`][http2] | Configures unencrypted HTTP/2. | no |
 | `push` > `http` > [`tls`][tls] | Configures TLS for the HTTP server.                                           | no       |
 
 [grpc]: #grpc
 [http]: #http
+[http2]: #http2
 [limit]: #limit
 [pull]: #pull
 [push]: #push
@@ -133,6 +135,10 @@ The `labels` map is applied to every entry that passes through the component.
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `http2`
+
+{{< docs/shared lookup="reference/components/server-http2.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 
