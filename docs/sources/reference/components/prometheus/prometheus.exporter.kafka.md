@@ -77,9 +77,9 @@ The `prometheus.exporter.kafka` component doesn't support any blocks. You can co
 In those cases, exported fields retain their last healthy values.
 
 The component doesn't connect to Kafka when it starts.
-The first scrape opens the connection.
-Until a connection succeeds, every scrape retries the connection and reports `kafka_up 0`.
-After a connection succeeds, later scrapes reuse it.
+Each scrape attempts to connect.
+If the attempt fails, the scrape reports `kafka_up 0`, and the next scrape tries again.
+Once a scrape connects successfully, later scrapes reuse that connection instead of reconnecting.
 
 ## Debug information
 
