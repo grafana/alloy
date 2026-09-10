@@ -14,7 +14,7 @@ CONFIG_FILE="/etc/alloy/config.alloy"
 # when ALLOY_OTEL_MODE=0; use CONFIG_FILE
 OTEL_CONFIG_FILE="/etc/alloy/config.yaml"
 
-# User-defined arguments to pass to the default engine (`alloy run`). Has
+# User-defined arguments to pass to the default engine (`alloy run`).
 # when ALLOY_OTEL_MODE=1; use OTEL_CUSTOM_ARGS
 CUSTOM_ARGS=""
 
