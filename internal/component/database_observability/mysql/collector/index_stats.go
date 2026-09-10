@@ -11,11 +11,10 @@ import (
 	"go.uber.org/atomic"
 )
 
-// IndexStatsCollector emits the minimal per-index metrics needed for the
-// unused-index KG insight: the fetch count of each named-index row per
-// index, from performance_schema.table_io_waits_summary_by_index_usage, and
-// (MySQL >= 5.6.6 only, see minIndexSizeEngineVersion) its size in bytes,
-// from mysql.innodb_index_stats.
+// IndexStatsCollector emits the fetch count of each named-index row, from
+// performance_schema.table_io_waits_summary_by_index_usage, and (MySQL >=
+// 5.6.6, see minIndexSizeEngineVersion) its size in bytes, from
+// mysql.innodb_index_stats.
 const IndexStatsCollector = "index_stats"
 
 const selectIndexIOWaits = `
@@ -24,19 +23,16 @@ const selectIndexIOWaits = `
 	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN (%s)`
 
 // mysql.innodb_index_stats holds InnoDB's persistent optimizer statistics,
-// refreshed by MySQL itself (never by us) -- introduced in MySQL 5.6.6, its
-// schema (and the "size" stat, in pages) hasn't changed since. Reading it
-// requires the monitoring role to be granted SELECT on this one table, which
-// is not part of today's default grant set (see deployment_tools).
+// refreshed by MySQL itself, never by us. Reading it requires SELECT on this
+// one table, which isn't in today's default grant set.
 const selectIndexSizeBytes = `
 	SELECT database_name, table_name, index_name, stat_value * @@innodb_page_size
 	FROM mysql.innodb_index_stats
 	WHERE stat_name = 'size' AND database_name NOT IN (%s)`
 
-// minIndexSizeEngineVersion is the first MySQL version where
-// mysql.innodb_index_stats exists at all (persistent optimizer statistics,
-// introduced 5.6.6) -- versions older than this have no size source, so the
-// query is skipped entirely below it rather than attempted and failing.
+// minIndexSizeEngineVersion is the first MySQL version with
+// mysql.innodb_index_stats; older versions have no size source, so the
+// query is skipped below it rather than attempted and failing.
 var minIndexSizeEngineVersion = semver.MustParse("5.6.6")
 
 var indexLabels = []string{labelSchema, labelTable, "index"}

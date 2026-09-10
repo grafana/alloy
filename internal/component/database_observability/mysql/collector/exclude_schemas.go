@@ -22,8 +22,8 @@ func buildExcludedSchemasClause(schemas []string) string {
 }
 
 // excludedSchemasArgs returns the combined default + custom excluded schemas
-// as query arguments, for callers that bind them as placeholders (`?`)
-// instead of formatting them into the SQL text.
+// as query arguments, for binding as `?` placeholders instead of formatting
+// them into the SQL text.
 func excludedSchemasArgs(schemas []string) []any {
 	all := make([]string, 0, len(excludedSchemas)+len(schemas))
 	all = append(all, excludedSchemas...)

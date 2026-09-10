@@ -10,8 +10,7 @@ import (
 	"go.uber.org/atomic"
 )
 
-// TableStatsCollector emits the minimal table-level metric needed for the
-// missing-index KG insight: the fetch count of the index="NONE" ("no index
+// TableStatsCollector emits the fetch count of the index="NONE" ("no index
 // used") row per table, from
 // performance_schema.table_io_waits_summary_by_index_usage.
 const TableStatsCollector = "table_stats"

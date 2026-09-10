@@ -11,11 +11,9 @@ import (
 )
 
 // TestTableStatsAndIndexStatsShareRegistry guards against a regression where
-// TableStats and IndexStats fail to both register on the single registry the
-// component actually shares them on (e.g. if a future change makes them
-// declare an identical metric descriptor again). Per-collector tests each use
-// their own fresh registry and can't catch this; only registering both
-// together, as the component does, can.
+// TableStats and IndexStats fail to both register on the registry the
+// component actually shares them on. Per-collector tests each use their own
+// fresh registry and can't catch this.
 func TestTableStatsAndIndexStatsShareRegistry(t *testing.T) {
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
