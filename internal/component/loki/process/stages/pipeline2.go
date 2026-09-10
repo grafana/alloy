@@ -2,7 +2,6 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -116,8 +115,7 @@ func newPipeline(
 	cfgs []StageConfig,
 	next nextFn,
 ) (*pipeline, error) {
-
-	var stages []entryProcessor
+	p := &pipeline{}
 
 	// We build stages from the back so we can pass the correct next function
 	// to the constructor.
@@ -129,26 +127,24 @@ func newPipeline(
 			next:         next,
 		})
 		if err != nil {
+			p.stop()
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
-		ep, ok := s.(entryProcessor)
-		if !ok {
-			return nil, errors.New("stage has not been migrated to new interface")
-		}
-
-		stages = append(stages, ep)
+		ep := s.(entryProcessor)
+		p.stages = append(p.stages, ep)
 		next = ep.process
 	}
 
 	// We start stages after we have sucessfully built them all.
-	for _, s := range slices.Backward(stages) {
+	for _, s := range slices.Backward(p.stages) {
 		if ss, ok := s.(starter); ok {
 			ss.start()
 		}
 	}
 
-	return &pipeline{next: next, stages: stages}, nil
+	p.next = next
+	return p, nil
 }
 
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {
