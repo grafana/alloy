@@ -11,6 +11,14 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
+// expectedConfig returns the upstream factory defaults with override applied,
+// so each case only spells out what it actually overrides.
+func expectedConfig(override func(logs *cloudflarereceiver.LogsConfig)) cloudflarereceiver.Config {
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	override(&cfg.Logs)
+	return *cfg
+}
+
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	cases := []struct {
 		testName string
@@ -23,11 +31,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				endpoint = "localhost:8080/webhook"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Endpoint: "localhost:8080/webhook",
-				},
-			},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Endpoint = "localhost:8080/webhook"
+			}),
 		},
 		{
 			testName: "full configuration without TLS",
@@ -43,19 +49,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				separator = "_"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:   "my-secret",
-					Endpoint: "localhost:8080/cloudflare-webhook",
-					Attributes: map[string]string{
-						"service.name": "cloudflare-logs",
-						"environment":  "production",
-					},
-					TimestampField:  "EdgeStartTimestamp",
-					TimestampFormat: "unix",
-					Separator:       "_",
-				},
-			},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8080/cloudflare-webhook"
+				logs.Attributes = map[string]string{
+					"service.name": "cloudflare-logs",
+					"environment":  "production",
+				}
+				logs.TimestampField = "EdgeStartTimestamp"
+				logs.TimestampFormat = "unix"
+				logs.Separator = "_"
+			}),
 		},
 		{
 			testName: "configuration with TLS",
@@ -69,19 +73,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				timestamp_format = "unixnano"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:   "my-secret",
-					Endpoint: "localhost:8443/secure-webhook",
-					TLS: &configtls.ServerConfig{
-						Config: configtls.Config{
-							CertFile: "/path/to/cert.pem",
-							KeyFile:  "/path/to/key.pem",
-						},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8443/secure-webhook"
+				logs.TLS = &configtls.ServerConfig{
+					Config: configtls.Config{
+						CertFile: "/path/to/cert.pem",
+						KeyFile:  "/path/to/key.pem",
 					},
-					TimestampFormat: "unixnano",
-				},
-			},
+				}
+				logs.TimestampFormat = "unixnano"
+			}),
 		},
 		{
 			testName: "configuration with custom timestamp field",
@@ -92,14 +94,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				timestamp_format = "rfc3339"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:          "my-secret",
-					Endpoint:        "localhost:8080/webhook",
-					TimestampField:  "RequestTimestamp",
-					TimestampFormat: "rfc3339",
-				},
-			},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8080/webhook"
+				logs.TimestampField = "RequestTimestamp"
+				logs.TimestampFormat = "rfc3339"
+			}),
 		},
 	}
 
