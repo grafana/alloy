@@ -16,6 +16,7 @@ import (
 	"github.com/google/cadvisor/lib/fs"
 	"github.com/google/cadvisor/lib/manager"
 	"github.com/google/cadvisor/lib/metrics"
+	"github.com/google/cadvisor/lib/stats"
 	"github.com/google/cadvisor/lib/storage"
 	"github.com/google/cadvisor/lib/utils/sysfs"
 
@@ -42,6 +43,13 @@ import (
 	"github.com/google/cadvisor/lib/fs/tmpfs"
 	"github.com/google/cadvisor/lib/fs/vfs"
 	"github.com/google/cadvisor/lib/fs/zfs"
+
+	// Optional collectors wired into the manager injection seams. The lean library
+	// leaves these nil; set them so perf events, resctrl, and application metrics
+	// keep working like they did before the v0.60 noglobals split.
+	"github.com/google/cadvisor/appmetrics"
+	"github.com/google/cadvisor/perf"
+	"github.com/google/cadvisor/resctrl/intel"
 )
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
@@ -98,6 +106,18 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 	// per host.
 
 	klog.SetLogger(logr.FromSlogHandler(l.Handler()))
+
+	// v0.60 makes these optional collectors instance-injected instead of global.
+	// The lean library leaves them nil; wire the ones this integration supports so
+	// perf events, resctrl, and application metrics keep working.
+	manager.PerfManagerFactory = perf.NewManager
+	manager.ResctrlManagerFactory = func(interval time.Duration, vendorID string, inHostNamespace bool) (stats.ResctrlManager, error) {
+		return intel.NewManager(interval, intel.Setup, vendorID, inHostNamespace, c.DockerOnly)
+	}
+	manager.CollectorManagerFactory = func(handler container.ContainerHandler, readFile func(string) ([]byte, error), httpClient *http.Client) (manager.CollectorManager, error) {
+		return appmetrics.NewManager(handler, readFile, httpClient, manager.ApplicationMetricsCountLimit())
+	}
+
 	plugins := map[string]container.Plugin{
 		"containerd": containerd.NewPluginWithOptions(&containerd.Options{
 			ContainerdEndpoint:  c.Containerd,

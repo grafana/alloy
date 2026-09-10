@@ -753,6 +753,7 @@ require (
 	github.com/opencontainers/cgroups v0.0.6 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
+	github.com/opencontainers/runc v1.4.3 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/selinux v1.13.0 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
@@ -1107,9 +1108,9 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260910192820-51b66e90b2f2
+replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260910193702-34389474b6ec
 
-replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260910192820-51b66e90b2f2
+replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260910193702-34389474b6ec
 
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
