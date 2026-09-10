@@ -1,0 +1,3 @@
+# HELP test_app_metric A static application metric scraped by cAdvisor.
+# TYPE test_app_metric gauge
+test_app_metric 42

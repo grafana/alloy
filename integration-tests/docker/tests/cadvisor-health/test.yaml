@@ -18,3 +18,10 @@ additional_containers:
   - name: cadvisor-health-nohealthcheck
     image: alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
     command: ["sleep", "86400"]
+  # Serves a Prometheus endpoint and declares a cAdvisor collector via an image
+  # label (io.cadvisor.metric.prometheus). Exercises application-metrics collection.
+  - name: cadvisor-appmetrics
+    image: cadvisor-appmetrics:latest
+    build:
+      context: ./appmetrics
+      dockerfile: Dockerfile

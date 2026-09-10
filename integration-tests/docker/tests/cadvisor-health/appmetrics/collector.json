@@ -1,0 +1,10 @@
+{
+  "endpoint": {
+    "protocol": "http",
+    "port": 8080,
+    "path": "/metrics"
+  },
+  "metrics_config": [
+    "test_app_metric"
+  ]
+}
