@@ -48,20 +48,19 @@ func (args *CRIConfig) Validate() error {
 
 func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 	var (
-		pl     partialLines
-		logger = opts.slogger.With("stage", "cri")
+		logger         = opts.slogger.With("stage", "cri")
+		linesTruncated = getLinesTruncatedMetric(opts.registerer)
+		linesFlushed   = getLinesFlushedMetric(opts.registerer)
 	)
 
-	if opts.next == nil {
-		pl = newPartialLinesMap(cfg, logger, getLinesTruncatedMetric(opts.registerer), getLinesFlushedMetric(opts.registerer))
-	} else {
-		pl = newPartialLinesStriped(cfg, logger, getLinesTruncatedMetric(opts.registerer), getLinesFlushedMetric(opts.registerer))
-	}
-
 	return &criStage{
-		next:         opts.next,
-		logger:       logger,
-		partialLines: pl,
+		cfg:                 cfg,
+		next:                opts.next,
+		logger:              logger,
+		partialLines:        make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
+		partialLinesStriped: newPartialLinesStriped(cfg, logger, linesTruncated, linesFlushed),
+		linesFlushed:        linesFlushed,
+		linesTruncated:      linesTruncated,
 	}
 }
 
@@ -84,8 +83,8 @@ func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counte
 var (
 	_ Stage = (*criStage)(nil)
 
-	_ entryProcessor = (*criStage)(nil)
 	_ stopper        = (*criStage)(nil)
+	_ entryProcessor = (*criStage)(nil)
 )
 
 type criStage struct {
@@ -93,10 +92,15 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	partialLines partialLines
+	// partialLines is only used by Run, where a single goroutine passes one
+	// entry at a time through the stage, so no locking is needed.
+	partialLines map[model.Fingerprint]Entry
+	// partialLinesStriped is only used by process, where many callers can pass
+	// batches through the stage concurrently.
+	partialLinesStriped *partialLinesStriped
 
-	linesTruncatedMetric      prometheus.Counter
-	partialLinesFlushedMetric prometheus.Counter
+	linesFlushed   prometheus.Counter
+	linesTruncated prometheus.Counter
 }
 
 const (
@@ -115,21 +119,47 @@ func (c *criStage) Run(in chan Entry) chan Entry {
 
 		setCRIProperties(&e, parsed)
 
-		fp := e.Labels.Fingerprint()
+		fingerprint := e.Labels.Fingerprint()
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
-			entries := c.partialLines.FlushIfExceeded()
-			// it's a partial-line buffer it and move on.
-			c.partialLines.Append(fp, e)
-			return entries, false
+			if len(c.partialLines) >= c.cfg.MaxPartialLines {
+				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
+				c.linesFlushed.Add(float64(len(c.partialLines)))
+
+				// Merge existing partialLines
+				entries := make([]Entry, 0, len(c.partialLines))
+				for _, v := range c.partialLines {
+					entries = append(entries, v)
+				}
+
+				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
+				e.Line = ensureTruncateIfRequired("", e.Line, c.cfg, c.linesTruncated)
+				c.partialLines[fingerprint] = e
+
+				return entries, false
+			}
+
+			prev := c.partialLines[fingerprint]
+			e.Line = ensureTruncateIfRequired(prev.Line, e.Line, c.cfg, c.linesTruncated)
+			c.partialLines[fingerprint] = e
+
+			// it's a partial-line so skip it.
+			return nil, true
 		}
 
 		// We got full-line 'F'.
-		return []Entry{c.partialLines.Complete(fp, e)}, false
+		// If any old partial lines matches with this full-line stream, merge it,
+		// else just return the full line.
+		prev, ok := c.partialLines[fingerprint]
+		if ok {
+			e.Line = ensureTruncateIfRequired(prev.Line, e.Line, c.cfg, c.linesTruncated)
+			delete(c.partialLines, fingerprint)
+		}
+
+		return []Entry{e}, false
 	})
 }
 
-// process implements entryProcessor and is only used by our new pipeline.
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 	for _, e := range entries {
@@ -143,28 +173,20 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 		setCRIProperties(&e, parsed)
 
 		fp := e.Labels.Fingerprint()
-		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			// it's a partial-line buffer it and move on.
-			c.partialLines.Append(fp, e)
+			c.partialLinesStriped.Append(fp, e)
 			continue
 		}
 
-		// We got full-line 'F'.
 		// If any old partial lines matches with this full-line stream, merge it,
 		// else just return the full line.
-		entries[dst] = c.partialLines.Complete(fp, e)
+		entries[dst] = c.partialLinesStriped.Complete(fp, e)
 		dst++
 	}
 
 	out := entries[:dst]
-	// flush any partial lines if we have buffered too many.
-	// This can cause OOO for entries since we don't serialize the whole
-	// pipeline. This is an acceptable trade-off since this is a failure case
-	// and is something we can revisit in the future.
-	if extra := c.partialLines.FlushIfExceeded(); len(extra) > 0 {
-		out = append(out, extra...)
-	}
+	out = append(out, c.partialLinesStriped.FlushIfExceeded()...)
 
 	if len(out) == 0 {
 		return nil
@@ -173,13 +195,12 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	return c.next(ctx, out)
 }
 
-// stop implements stopper and is only used by our new pipeline.
 func (c *criStage) stop() {
 	const flushTimeout = 5 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	entries := c.partialLines.FlushAll()
+	entries := c.partialLinesStriped.FlushAll()
 	if len(entries) == 0 {
 		return
 	}
@@ -191,92 +212,16 @@ func (c *criStage) stop() {
 
 func (c *criStage) Cleanup() {}
 
-type partialLines interface {
-	Append(fp model.Fingerprint, e Entry)
-	Complete(fp model.Fingerprint, e Entry) Entry
-
-	FlushAll() []Entry
-	FlushIfExceeded() []Entry
-}
-
-var _ partialLines = (*partialLinesMap)(nil)
-
-func newPartialLinesMap(cfg CRIConfig, logger *slog.Logger, linesTruncated prometheus.Counter, linesFlushed prometheus.Counter) *partialLinesMap {
-	return &partialLinesMap{
-		cfg:            cfg,
-		logger:         logger,
-		linesTruncated: linesTruncated,
-		linesFlushed:   linesFlushed,
-		inner:          make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
-	}
-}
-
-// partialLinesMap is an implementation of partialLines that is not safe for concurrent use.
-// It will only be used with the "old" pipeline where entries are passed through channels between
-// each stage.
-type partialLinesMap struct {
-	cfg CRIConfig
-
-	logger         *slog.Logger
-	linesTruncated prometheus.Counter
-	linesFlushed   prometheus.Counter
-
-	inner map[model.Fingerprint]Entry
-}
-
-func (m *partialLinesMap) Append(fp model.Fingerprint, e Entry) {
-	e.Line = ensureTruncateIfRequired(m.inner[fp].Line, e.Line, m.cfg, m.linesTruncated)
-	m.inner[fp] = e
-}
-
-func (m *partialLinesMap) Complete(fp model.Fingerprint, e Entry) Entry {
-	v, ok := m.inner[fp]
-	if ok {
-		delete(m.inner, fp)
-		e.Line = ensureTruncateIfRequired(v.Line, e.Line, m.cfg, m.linesTruncated)
-	}
-	return e
-}
-
-func (m *partialLinesMap) FlushAll() []Entry {
-	buf := make([]Entry, 0, len(m.inner))
-	for _, v := range m.inner {
-		buf = append(buf, v)
-	}
-	clear(m.inner)
-	return buf
-}
-
-func (m *partialLinesMap) FlushIfExceeded() []Entry {
-	if len(m.inner) < m.cfg.MaxPartialLines {
-		return nil
-	}
-
-	entries := m.FlushAll()
-
-	if len(entries) == 0 {
-		return nil
-	}
-
-	m.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", m.cfg.MaxPartialLines)
-	m.linesFlushed.Add(float64(len(entries)))
-	return entries
-}
-
 const stripeCount = 16
 
-var _ partialLines = (*partialLinesStriped)(nil)
-
-// partialLinesStriped is an implementation of partialLines that is safe for concurrent use.
-// It will only be used with the "new" pipeline where many callers can pass through the stage
-// concurrently.
+// partialLinesStriped is an concurrency safe
 type partialLinesStriped struct {
-	// size is only exact while every stripe lock is held. Other readers treat it
-	// as a hint. flushing keeps concurrent callers from all queueing on lockAll.
-	size     atomic.Int64
+	// size is only exact while every stripe lock is held. Other readers treat it as a hint.
+	size atomic.Int64
+	// flushing is used to prevent concurrent callers from all queueing on lockAll.
 	flushing atomic.Bool
 
-	stripes [stripeCount]stripe
+	stripes [stripeCount]partialLinesStripe
 
 	cfg            CRIConfig
 	logger         *slog.Logger
@@ -284,7 +229,7 @@ type partialLinesStriped struct {
 	linesFlushed   prometheus.Counter
 }
 
-type stripe struct {
+type partialLinesStripe struct {
 	mu   sync.Mutex
 	data map[model.Fingerprint]Entry
 }
@@ -363,7 +308,7 @@ func (m *partialLinesStriped) FlushIfExceeded() []Entry {
 	return entries
 }
 
-func (m *partialLinesStriped) stripe(fp model.Fingerprint) *stripe {
+func (m *partialLinesStriped) stripe(fp model.Fingerprint) *partialLinesStripe {
 	return &m.stripes[fp&(stripeCount-1)]
 }
 

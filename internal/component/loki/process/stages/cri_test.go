@@ -371,20 +371,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 	assertEntriesUnordered(t, expected, collected)
 }
 
-func TestPartialLines(t *testing.T) {
-	t.Run("map", func(t *testing.T) {
-		testPartialLines(t, func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines {
-			return newPartialLinesMap(cfg, logging.NewSlogNop(), truncated, flushed)
-		})
-	})
-	t.Run("striped", func(t *testing.T) {
-		testPartialLines(t, func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines {
-			return newPartialLinesStriped(cfg, logging.NewSlogNop(), truncated, flushed)
-		})
-	})
-}
-
-func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed prometheus.Counter) partialLines) {
+func TestPartialLinesStriped(t *testing.T) {
 	now := time.Now()
 
 	entry := func(line string) Entry {
@@ -397,7 +384,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Complete without a prior Append returns the entry unchanged", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, logging.NewSlogNop(), truncated, flushed)
 
 		got := pl.Complete(1, entry("a full line that never had a partial predecessor"))
 
@@ -407,7 +394,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Append then Complete merges the accumulated partial lines", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("partial one "))
 		pl.Append(1, entry("partial two "))
@@ -418,7 +405,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Complete removes the entry so a repeated Complete does not see stale state", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("partial "))
 		first := pl.Complete(1, entry("first full"))
@@ -430,7 +417,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Append and Complete keep independent state per fingerprint", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("stream one "))
 		pl.Append(2, entry("stream two "))
@@ -444,7 +431,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Append does not truncate when MaxPartialLineSizeTruncate is false", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: false}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: false}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("abcdefg"))
 		got := pl.Complete(1, entry("hij"))
@@ -455,7 +442,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("Append truncates the accumulated line once it reaches the configured max size", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("abcdefg"))
 		got := pl.Complete(1, entry("hij"))
@@ -466,7 +453,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("FlushAll drains every buffered entry and clears the state", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 10}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("one"))
 		pl.Append(2, entry("two"))
@@ -477,7 +464,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("FlushIfExceeded below the threshold does nothing", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 3}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 3}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("one"))
 		pl.Append(2, entry("two"))
@@ -489,7 +476,7 @@ func testPartialLines(t *testing.T, build func(cfg CRIConfig, truncated, flushed
 
 	t.Run("FlushIfExceeded at the threshold drains everything", func(t *testing.T) {
 		truncated, flushed := counters()
-		pl := build(CRIConfig{MaxPartialLines: 2}, truncated, flushed)
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 2}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("one"))
 		pl.Append(2, entry("two"))
@@ -565,7 +552,7 @@ func BenchmarkCRIStage(b *testing.B) {
 					if i == partialsPerStream-1 {
 						flag, content = "F", "final line"
 					}
-					batch.AddEntry(labels, push.Entry{
+					batch.AddEntry(labels, 0, push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("2019-01-01T01:00:00.000000001Z stdout %s %s", flag, content),
 					})

@@ -169,9 +169,9 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 		for w, batch := range batches {
 			clone := batch.Clone()
 			entries := make([]loki.Entry, 0, clone.EntryLen())
-			_ = clone.ConsumeStreams(func(stream loki.Stream, created int64) error {
+			_ = clone.ConsumeStreams(func(stream loki.Stream) error {
 				for _, e := range stream.Entries {
-					entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), created, e))
+					entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e))
 				}
 				return nil
 			})
