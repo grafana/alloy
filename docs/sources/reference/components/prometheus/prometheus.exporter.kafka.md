@@ -76,8 +76,10 @@ The `prometheus.exporter.kafka` component doesn't support any blocks. You can co
 `prometheus.exporter.kafka` is only reported as unhealthy if given an invalid configuration.
 In those cases, exported fields retain their last healthy values.
 
-The component doesn't connect to Kafka until the first scrape.
-If Kafka is unreachable, the scrape exposes `kafka_up 0` and the connection is retried on the next scrape.
+The component doesn't connect to Kafka when it starts.
+The first scrape opens the connection.
+Until a connection succeeds, every scrape retries the connection and reports `kafka_up 0`.
+After a connection succeeds, later scrapes reuse it.
 
 ## Debug information
 
