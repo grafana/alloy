@@ -90,9 +90,13 @@ var (
 
 type criStage struct {
 	next   nextFn
+	cfg    CRIConfig
 	logger *slog.Logger
 
 	partialLines partialLines
+
+	linesTruncatedMetric      prometheus.Counter
+	partialLinesFlushedMetric prometheus.Counter
 }
 
 const (
