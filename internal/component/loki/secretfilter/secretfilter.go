@@ -32,7 +32,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "loki.secretfilter",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
