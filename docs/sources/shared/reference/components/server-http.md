@@ -16,5 +16,3 @@ You can use the following arguments to configure the `http` block. Any omitted f
 | `server_idle_timeout`  | `duration` | Idle timeout for HTTP server.                                                                                    | `"120s"` | no       |
 | `server_read_timeout`  | `duration` | Read timeout for HTTP server.                                                                                    | `"30s"`  | no       |
 | `server_write_timeout` | `duration` | Write timeout for HTTP server.                                                                                   | `"30s"`  | no       |
-
-For unencrypted HTTP/2, clients must use prior knowledge rather than the legacy `Upgrade: h2c` handshake.
