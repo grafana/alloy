@@ -26,7 +26,7 @@ const (
 )
 
 var tableStatsSeqScanDesc = prometheus.NewDesc(
-	prometheus.BuildFQName("mysql", "table_stats", "seq_scan_total"),
+	prometheus.BuildFQName("database_observability", "mysql_table_stats", "seq_scan_total"),
 	"Number of row fetches against this table that did not use an index",
 	[]string{labelSchema, labelTable}, nil,
 )

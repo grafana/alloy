@@ -50,9 +50,9 @@ func TestTableStats(t *testing.T) {
 		)
 
 	expected := `
-	# HELP mysql_table_stats_seq_scan_total Number of row fetches against this table that did not use an index
-	# TYPE mysql_table_stats_seq_scan_total counter
-	mysql_table_stats_seq_scan_total{schema="books_store",table="books"} 39
+	# HELP database_observability_mysql_table_stats_seq_scan_total Number of row fetches against this table that did not use an index
+	# TYPE database_observability_mysql_table_stats_seq_scan_total counter
+	database_observability_mysql_table_stats_seq_scan_total{schema="books_store",table="books"} 39
 `
 
 	require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))

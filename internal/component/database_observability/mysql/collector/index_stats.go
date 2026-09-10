@@ -39,12 +39,12 @@ var indexLabels = []string{labelSchema, labelTable, "index"}
 
 var (
 	indexStatsIdxScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("mysql", "index_stats", "idx_scan_total"),
+		prometheus.BuildFQName("database_observability", "mysql_index_stats", "idx_scan_total"),
 		"Number of row fetches against this index",
 		indexLabels, nil,
 	)
 	indexStatsSizeBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("mysql", "index_stats", "size_bytes"),
+		prometheus.BuildFQName("database_observability", "mysql_index_stats", "size_bytes"),
 		"Total disk space used by this index, in bytes",
 		indexLabels, nil,
 	)

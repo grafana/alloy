@@ -42,9 +42,9 @@ func TestIndexStats(t *testing.T) {
 			)
 
 		expected := `
-		# HELP mysql_index_stats_idx_scan_total Number of row fetches against this index
-		# TYPE mysql_index_stats_idx_scan_total counter
-		mysql_index_stats_idx_scan_total{index="idx_books_title",schema="books_store",table="books"} 0
+		# HELP database_observability_mysql_index_stats_idx_scan_total Number of row fetches against this index
+		# TYPE database_observability_mysql_index_stats_idx_scan_total counter
+		database_observability_mysql_index_stats_idx_scan_total{index="idx_books_title",schema="books_store",table="books"} 0
 `
 
 		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))
@@ -84,12 +84,12 @@ func TestIndexStats(t *testing.T) {
 			)
 
 		expected := `
-		# HELP mysql_index_stats_idx_scan_total Number of row fetches against this index
-		# TYPE mysql_index_stats_idx_scan_total counter
-		mysql_index_stats_idx_scan_total{index="idx_books_title",schema="books_store",table="books"} 0
-		# HELP mysql_index_stats_size_bytes Total disk space used by this index, in bytes
-		# TYPE mysql_index_stats_size_bytes gauge
-		mysql_index_stats_size_bytes{index="idx_books_title",schema="books_store",table="books"} 1.4196736e+07
+		# HELP database_observability_mysql_index_stats_idx_scan_total Number of row fetches against this index
+		# TYPE database_observability_mysql_index_stats_idx_scan_total counter
+		database_observability_mysql_index_stats_idx_scan_total{index="idx_books_title",schema="books_store",table="books"} 0
+		# HELP database_observability_mysql_index_stats_size_bytes Total disk space used by this index, in bytes
+		# TYPE database_observability_mysql_index_stats_size_bytes gauge
+		database_observability_mysql_index_stats_size_bytes{index="idx_books_title",schema="books_store",table="books"} 1.4196736e+07
 `
 
 		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))
