@@ -44,7 +44,7 @@ You can use the following arguments with `otelcol.receiver.cloudflare`:
 | `endpoint`         | `string`            | The `<HOST:PORT>` endpoint address on which the receiver awaits requests from Cloudflare.                  |                        | yes      |
 | `secret`           | `string`            | If this value is set, the receiver expects to see it in any valid requests under the `X-CF-Secret` header. |                        | no       |
 | `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer, or float fields can be mapped.     |                        | no       |
-| `delimiter`        | `string`            | The separator to join nested fields in the log message when setting attributes.                            | `"."`                  | no       |
+| `separator`        | `string`            | The separator to join nested fields in the log message when setting attributes.                            | `"."`                  | no       |
 | `timestamp_field`  | `string`            | Log field name that contains timestamp.                                                                    | `"EdgeStartTimestamp"` | no       |
 | `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.        | `"rfc3339"`            | no       |
 
