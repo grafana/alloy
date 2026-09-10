@@ -71,6 +71,13 @@ func (c *FanoutConsumer) Chan() chan<- loki.Entry {
 func (c *FanoutConsumer) Stop() {
 	// First stop the receiving channel.
 	c.once.Do(func() { close(c.recv) })
+
+	// run may be blocked enqueueing to an endpoint whose queue is full, so release it before
+	// waiting on it.
+	for _, c := range c.endpoints {
+		c.stopAccepting()
+	}
+
 	c.wg.Wait()
 
 	var stopWG sync.WaitGroup

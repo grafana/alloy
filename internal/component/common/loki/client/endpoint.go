@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/backoff"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
@@ -25,6 +26,9 @@ type endpoint struct {
 
 	shards  *shards
 	backoff *backoff.Backoff
+
+	// drainDeadline is when the shutdown drain budget expires, or nil while not draining.
+	drainDeadline atomic.Pointer[time.Time]
 }
 
 func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
@@ -57,14 +61,14 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 var errQueueIsFull = errors.New("queue is full")
 
 // enqueue tries to enqueue an entry. It returns an error if the entry could not be enqueued.
-// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled when
-// endpoint is stopped.
+// errQueueIsFull when the queue is full and either BlockOnOverflow is false or the drain budget
+// is spent, or context.Canceled when endpoint is stopped.
 func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
 	defer e.backoff.Reset()
 
 	tenantID := getTenantID(e.cfg, entry)
 	for !e.shards.enqueue(tenantID, entry, segmentNum) {
-		if !e.cfg.QueueConfig.BlockOnOverflow {
+		if !e.cfg.QueueConfig.BlockOnOverflow || e.drainExpired() {
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
@@ -79,7 +83,22 @@ func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
 	return nil
 }
 
+// stopAccepting gives enqueue DrainTimeout to place whatever it is still holding, after which it
+// drops on a full queue rather than blocking. Callers must run this before waiting on whichever
+// goroutine feeds enqueue, otherwise that wait deadlocks against the blocked enqueue.
+func (e *endpoint) stopAccepting() {
+	deadline := time.Now().Add(e.cfg.QueueConfig.DrainTimeout)
+	// Keep the deadline set by the first caller; shutdown paths call this more than once.
+	e.drainDeadline.CompareAndSwap(nil, &deadline)
+}
+
+func (e *endpoint) drainExpired() bool {
+	deadline := e.drainDeadline.Load()
+	return deadline != nil && !time.Now().Before(*deadline)
+}
+
 func (e *endpoint) stop() {
+	e.stopAccepting()
 	e.cancel()
 	e.shards.stop()
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -204,4 +205,88 @@ func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequ
 		server.Close()
 		close(receivedReqsChan)
 	}
+}
+
+func TestFanoutConsumer_StopWhileBlockedOnOverflow(t *testing.T) {
+	// An endpoint that never succeeds, combined with infinite retries, means batches are
+	// never drained and the send queue stays full. With BlockOnOverflow the enqueue loop
+	// then blocks, and Stop must still be able to shut the consumer down.
+	//
+	// Queues are per shard and entries are routed by label fingerprint, so a single stream
+	// only ever fills one shard's queue. Cover more than one shard to make sure that still
+	// releases on shutdown.
+	for _, minShards := range []int{1, 3} {
+		t.Run(fmt.Sprintf("min_shards=%d", minShards), func(t *testing.T) {
+			testStopWhileBlockedOnOverflow(t, minShards)
+		})
+	}
+}
+
+func testStopWhileBlockedOnOverflow(t *testing.T, minShards int) {
+	const drainTimeout = time.Second
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	serverURL, _ := url.Parse(server.URL)
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), Config{
+		Name:      "blocked",
+		URL:       flagext.URLValue{URL: serverURL},
+		Timeout:   time.Second,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0, // retry indefinitely, as max_backoff_retries = 0 does
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       minShards,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	})
+	require.NoError(t, err)
+
+	// Push entries until the consumer stops accepting them, which means the enqueue loop
+	// is blocked on a full queue.
+	backpressure := make(chan struct{})
+	go func() {
+		defer close(backpressure)
+		for {
+			select {
+			case consumer.Chan() <- loki.Entry{
+				Labels: model.LabelSet{"test": "backpressure"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: "line"},
+			}:
+			case <-time.After(time.Second):
+				return
+			}
+		}
+	}()
+
+	select {
+	case <-backpressure:
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out waiting for the send queue to fill")
+	}
+
+	stopped := make(chan struct{})
+	start := time.Now()
+	go func() {
+		consumer.Stop()
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(30 * time.Second):
+		t.Fatal("Stop did not return while the enqueue loop was blocked on a full queue")
+	}
+
+	// The queue can never drain here, so shutdown is expected to spend the whole drain budget
+	// waiting for room before giving up on the entries it still holds.
+	require.GreaterOrEqual(t, time.Since(start), 9*drainTimeout/10, "Stop gave up before the drain timeout")
 }

@@ -91,6 +91,10 @@ type endpointWatcherPair struct {
 
 // Stop will proceed to stop, in order, watcher and the endpoint.
 func (p endpointWatcherPair) Stop(drain bool) {
+	// Start the endpoint's drain budget first. The watcher may be blocked enqueueing to a full
+	// queue, in which case draining reads nothing and both waits below stack up behind it.
+	p.endpoint.StopAccepting()
+
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
@@ -236,8 +240,13 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	return nil
 }
 
-// Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
-// limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
+// StopAccepting releases the watcher if it is blocked enqueueing to a full send queue.
+func (c *walEndpointAdapter) StopAccepting() {
+	c.endpoint.stopAccepting()
+}
+
+// Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Each of
+// those is limited by the configured drain timeout.
 func (c *walEndpointAdapter) Stop() {
 	c.endpoint.stop()
 	c.tracker.Stop()
