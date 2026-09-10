@@ -107,7 +107,7 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var result cumulativetodeltaprocessor.Config
+	result := *cumulativetodeltaprocessor.NewFactory().CreateDefaultConfig().(*cumulativetodeltaprocessor.Config)
 
 	result.MaxStaleness = args.MaxStaleness
 
