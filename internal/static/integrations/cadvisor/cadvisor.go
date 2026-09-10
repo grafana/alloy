@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/cadvisor/lib/cache/memory"
 	"github.com/google/cadvisor/lib/container"
+	"github.com/google/cadvisor/lib/fs"
 	"github.com/google/cadvisor/lib/manager"
 	"github.com/google/cadvisor/lib/metrics"
 	"github.com/google/cadvisor/lib/storage"
@@ -24,13 +25,23 @@ import (
 
 	"github.com/grafana/alloy/internal/static/integrations"
 
-	// Register container providers
-
+	// Container providers, built into the plugins map passed to manager.New.
 	"github.com/google/cadvisor/container/docker"
 	"github.com/google/cadvisor/lib/container/containerd"
 	"github.com/google/cadvisor/lib/container/crio"
 	"github.com/google/cadvisor/lib/container/raw"
 	"github.com/google/cadvisor/lib/container/systemd"
+
+	// Filesystem plugins, built into the fsPlugins map passed to manager.New.
+	// cAdvisor v0.60 selects filesystem plugins per instance instead of from a
+	// process-global registry, so pass them explicitly like the container plugins.
+	"github.com/google/cadvisor/fs/devicemapper"
+	"github.com/google/cadvisor/lib/fs/btrfs"
+	"github.com/google/cadvisor/lib/fs/nfs"
+	"github.com/google/cadvisor/lib/fs/overlay"
+	"github.com/google/cadvisor/lib/fs/tmpfs"
+	"github.com/google/cadvisor/lib/fs/vfs"
+	"github.com/google/cadvisor/lib/fs/zfs"
 )
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
@@ -104,6 +115,18 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 		"systemd": systemd.NewPlugin(),
 	}
 
+	// Filesystem plugins select how cAdvisor reads usage for each filesystem type.
+	// This mirrors the default set from the cadvisor binary.
+	fsPlugins := map[string]fs.FsPlugin{
+		"btrfs":        btrfs.NewPlugin(),
+		"devicemapper": devicemapper.NewPlugin(),
+		"nfs":          nfs.NewPlugin(),
+		"overlay":      overlay.NewPlugin(),
+		"tmpfs":        tmpfs.NewPlugin(),
+		"vfs":          vfs.NewPlugin(),
+		"zfs":          zfs.NewPlugin(),
+	}
+
 	// Only using in-memory storage, with no backup storage for cadvisor stats
 	memoryStorage := memory.New(c.StorageDuration, []storage.StorageDriver{})
 
@@ -120,7 +143,7 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 		DockerOnly:             c.DockerOnly,
 		DisableRootCgroupStats: c.DisableRootCgroupStats,
 	}
-	rm, err := manager.New(plugins, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval), rawOpts)
+	rm, err := manager.New(plugins, fsPlugins, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval), rawOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a manager: %w", err)
 	}

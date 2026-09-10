@@ -1107,9 +1107,9 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260909203915-ff310ad28229
+replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260910190942-eac469e42991
 
-replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260909203915-ff310ad28229
+replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260910190942-eac469e42991
 
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
