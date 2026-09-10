@@ -1,9 +1,11 @@
 # cAdvisor reads the node's cgroup tree and machine stats. The Alloy pod runs
-# privileged and mounts the host paths read-only. This follows the canonical
-# cAdvisor DaemonSet, but does not mount /var/run. A read-only /var/run blocks
-# Kubernetes from mounting the service account token and the pod fails to start.
-# The raw driver does not need /var/run; only the docker and containerd plugins
-# use it, and this test does not use them.
+# privileged and mounts the host paths read-only, following the canonical
+# cAdvisor DaemonSet. It also mounts the containerd socket so the containerd
+# plugin resolves pod metadata and attaches container_label_* labels.
+#
+# It does not mount all of /var/run: a read-only /var/run blocks Kubernetes from
+# mounting the service account token and the pod fails to start. Mounting only
+# the containerd socket avoids that.
 controller:
   type: daemonset
   volumes:
@@ -17,6 +19,10 @@ controller:
       - name: disk
         hostPath:
           path: /dev/disk
+      - name: containerd-sock
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket
 
 alloy:
   stabilityLevel: experimental
@@ -35,3 +41,6 @@ alloy:
       - name: disk
         mountPath: /dev/disk
         readOnly: true
+      # Not read-only: cAdvisor connects to the containerd socket.
+      - name: containerd-sock
+        mountPath: /run/containerd/containerd.sock

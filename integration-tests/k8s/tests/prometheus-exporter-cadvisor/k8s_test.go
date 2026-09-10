@@ -79,4 +79,17 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 		"container_network_transmit_packets_total",
 		"container_oom_events_total",
 	})
+
+	// The filesystem metrics must report real data, not just be present. These
+	// come from the root cgroup's machine filesystem, so they are always > 0 and
+	// prove the explicit filesystem-plugin wiring produces values.
+	mimir.QueryPositive(t, "cadvisor", []string{
+		"container_fs_usage_bytes",
+		"container_fs_limit_bytes",
+	})
+
+	// The containerd socket lets cAdvisor resolve pod metadata, so container
+	// labels are attached. Kubernetes sets io.kubernetes.* labels on every
+	// container, so this label is always present when the containerd plugin works.
+	mimir.QueryLabelPresent(t, "cadvisor", "container_label_io_kubernetes_pod_name")
 }
