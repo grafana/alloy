@@ -245,17 +245,17 @@ func (m *matchKeepStage) Cleanup() {
 	m.pipeline.Cleanup()
 }
 
-type pendingKey struct{}
+type matchMergeKey struct{}
 
-// withPending is used to store a pointer to a entry slice so that we can later
+// withMatchMerge is used to store a pointer to a entry slice so that we can later
 // merge it back to the original silce after inner pipeline have finished.
-func withPending(ctx context.Context, ptr *[]Entry) context.Context {
-	return context.WithValue(ctx, pendingKey{}, ptr)
+func withMatchMerge(ctx context.Context, ptr *[]Entry) context.Context {
+	return context.WithValue(ctx, matchMergeKey{}, ptr)
 }
 
-// fromPending retrieves pointer to a entry slice set by withPending.
-func fromPending(ctx context.Context) (*[]Entry, bool) {
-	v := ctx.Value(pendingKey{})
+// fromMatchMerge retrieves pointer to a entry slice set by withMatchMerge.
+func fromMatchMerge(ctx context.Context) (*[]Entry, bool) {
+	v := ctx.Value(matchMergeKey{})
 	ptr, ok := v.(*[]Entry)
 	return ptr, ok
 }
@@ -280,7 +280,7 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 		// We store a pointer to buf in context so that we can later merged it back after
 		// inner pipeline have finished.
 		var buf []Entry
-		if err := m.pipeline2.process(withPending(ctx, &buf), matched); err != nil {
+		if err := m.pipeline2.process(withMatchMerge(ctx, &buf), matched); err != nil {
 			return err
 		}
 		entries = append(entries[:dst], buf...)
@@ -299,7 +299,7 @@ func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 	// If context contains a pointer to a entry slice that means we called it directly.
 	// In this case we should just set it to resulting entries from inner pipeline
 	// so that process can merged it back.
-	if buf, ok := fromPending(ctx); ok {
+	if buf, ok := fromMatchMerge(ctx); ok {
 		*buf = entries
 		return nil
 	}
