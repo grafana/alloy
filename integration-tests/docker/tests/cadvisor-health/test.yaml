@@ -1,0 +1,20 @@
+# cAdvisor reads container health over the Docker socket, so this test mounts it
+# and runs Alloy privileged for cgroup access. It validates the v0.60.5 fix for
+# container_health_state (google/cadvisor#3760): a container with no HEALTHCHECK
+# reports -1, and a healthy container reports a live 1 instead of a frozen 0.
+alloy_container:
+  use_docker_sock: true
+  privileged: true
+
+additional_containers:
+  # Has a Docker HEALTHCHECK. The harness waits until it reports healthy.
+  - name: cadvisor-health-healthy
+    image: alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+    command: ["sleep", "86400"]
+    startup_healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 1s
+  # No HEALTHCHECK configured.
+  - name: cadvisor-health-nohealthcheck
+    image: alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+    command: ["sleep", "86400"]

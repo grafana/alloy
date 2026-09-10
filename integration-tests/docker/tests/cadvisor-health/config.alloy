@@ -1,0 +1,29 @@
+logging {
+  level = "debug"
+}
+
+// The Docker socket is mounted from the host. See test.yaml. cAdvisor reads
+// container health from the Docker API through it.
+prometheus.exporter.cadvisor "test" {
+  docker_host      = "unix:///var/run/docker.sock"
+  storage_duration = "1m"
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.test.targets
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "cadvisor_health",
+  }
+}

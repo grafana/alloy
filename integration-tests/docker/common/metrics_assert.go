@@ -53,6 +53,12 @@ func MetricQuery(metricName string, testName string) string {
 	return fmt.Sprintf("%squery?query=%s{test_name='%s'}", promURL, metricName, testName)
 }
 
+// ContainerMetricQuery returns an instant query for metricName scoped to a
+// test_name and a cAdvisor container name label.
+func ContainerMetricQuery(metricName, testName, containerName string) string {
+	return fmt.Sprintf("%squery?query=%s{test_name='%s',name='%s'}", promURL, metricName, testName, containerName)
+}
+
 // MetricsQuery returns the list of available metrics matching the given test_name label.
 func MetricsQuery(testName string) string {
 	// https://prometheus.io/docs/prometheus/latest/querying/api/#finding-series-by-label-matchers
@@ -144,6 +150,22 @@ func AssertHistogramData(t *testing.T, query string, expectedMetric string, test
 }
 
 // AssertMetricData performs a Prometheus query and expect the result to eventually contain the expected metric.
+// AssertMetricValue polls Mimir and asserts that the metric selected by query
+// eventually reports exactly expectedValue.
+func AssertMetricValue(t *testing.T, query, expectedMetric, expectedValue string) {
+	var metricResponse MetricResponse
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		_, err := FetchDataFromURL(query, &metricResponse)
+		assert.NoError(c, err)
+		if assert.NotEmpty(c, metricResponse.Data.Result) {
+			assert.Equal(c, expectedMetric, metricResponse.Data.Result[0].Metric.Name)
+			if assert.NotNil(c, metricResponse.Data.Result[0].Value) {
+				assert.Equal(c, expectedValue, metricResponse.Data.Result[0].Value.Value)
+			}
+		}
+	}, TestTimeoutEnv(t), DefaultRetryInterval, "metric %s did not reach value %s within the time limit", expectedMetric, expectedValue)
+}
+
 func AssertMetricData(t *testing.T, query, expectedMetric string, testName string) {
 	var metricResponse MetricResponse
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
