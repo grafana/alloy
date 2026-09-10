@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/google/cadvisor/cache/memory"
-	"github.com/google/cadvisor/container"
+	"github.com/google/cadvisor/lib/cache/memory"
+	"github.com/google/cadvisor/lib/container"
+	"github.com/google/cadvisor/lib/manager"
+	"github.com/google/cadvisor/lib/metrics"
+	"github.com/google/cadvisor/lib/storage"
+	"github.com/google/cadvisor/lib/utils/sysfs"
+
 	v2 "github.com/google/cadvisor/info/v2"
-	"github.com/google/cadvisor/manager"
-	"github.com/google/cadvisor/metrics"
-	"github.com/google/cadvisor/storage"
-	"github.com/google/cadvisor/utils/sysfs"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/clock"
 
@@ -25,11 +26,11 @@ import (
 
 	// Register container providers
 
-	"github.com/google/cadvisor/container/containerd"
-	"github.com/google/cadvisor/container/crio"
 	"github.com/google/cadvisor/container/docker"
-	"github.com/google/cadvisor/container/raw"
-	"github.com/google/cadvisor/container/systemd"
+	"github.com/google/cadvisor/lib/container/containerd"
+	"github.com/google/cadvisor/lib/container/crio"
+	"github.com/google/cadvisor/lib/container/raw"
+	"github.com/google/cadvisor/lib/container/systemd"
 )
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
