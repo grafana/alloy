@@ -160,13 +160,6 @@ func cloneEntries(entries []Entry) []Entry {
 	return out
 }
 
-// benchResultLokiEntry and benchResultEntries sink runPipelineBenchmark's
-// results so the compiler can't optimize the calls being measured away.
-var (
-	benchResultEntries   []Entry
-	benchResultLokiEntry loki.Entry
-)
-
 func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch) {
 	distribute := func(n int, batches []loki.Batch, work func(worker, iters int)) {
 		var (

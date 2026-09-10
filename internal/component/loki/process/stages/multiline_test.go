@@ -322,8 +322,8 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 	})
 }
 
-// TestMultilineStageStreamsMapCleaned verifies that the streams map is empty after the stopping.
-func TestMultilineStageStreamsMapCleanup(t *testing.T) {
+// TestMultilineStageStreamsCleaned verifies that the streams is empty after the stopping.
+func TestMultilineStageStreamsCleanup(t *testing.T) {
 	cfgs := loadConfig(`
 	stage.multiline {
 		firstline     = "^START"
@@ -332,7 +332,7 @@ func TestMultilineStageStreamsMapCleanup(t *testing.T) {
 	}
 	`)
 
-	t.Run("Stage", func(t *testing.T) {
+	t.Run("Pipeline", func(t *testing.T) {
 		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
 		require.NoError(t, err)
 		ms, ok := p.stages[0].(*multilineStage)
@@ -370,7 +370,7 @@ func TestMultilineStageStreamsMapCleanup(t *testing.T) {
 		require.Equal(t, 0, len(ms.streams), "streams map should be empty after channel close")
 	})
 
-	t.Run("New Stage", func(t *testing.T) {
+	t.Run("New Pipeline", func(t *testing.T) {
 		var (
 			mu  sync.Mutex
 			res []Entry
@@ -407,7 +407,12 @@ func TestMultilineStageStreamsMapCleanup(t *testing.T) {
 			return len(res) == 3
 		}, 2*time.Second, 20*time.Millisecond)
 
-		require.Equal(t, 0, len(ms.streams), "streams map should be empty after Stop")
+		var count int
+
+		for i := range ms.streamsStriped.stripes {
+			count += len(ms.streamsStriped.stripes[i].data)
+		}
+		require.Equal(t, 0, count, "streams should be empty after stop")
 	})
 }
 
