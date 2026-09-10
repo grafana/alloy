@@ -28,20 +28,21 @@ const selectIndexUsageStats = `
 var indexLabels = []string{labelDatname, "schemaname", "relname", "indexrelname"}
 
 var (
-	// Matches the naming of the proposed (unmerged) upstream pg_stat_user_indexes
-	// collector, so adopting it later needs no downstream rule changes.
+	// Field names match the proposed (unmerged) upstream pg_stat_user_indexes
+	// collector; the database_observability namespace keeps them from
+	// colliding with that collector's own names if it ever ships.
 	indexUsageIdxScanTotalDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("pg", "stat_user_indexes", "idx_scan_total"),
+		prometheus.BuildFQName("database_observability", "pg_stat_user_indexes", "idx_scan_total"),
 		"Number of index scans initiated on this index",
 		indexLabels, nil,
 	)
 	indexPropertiesDesc = prometheus.NewDesc(
-		"pg_index_properties",
+		prometheus.BuildFQName("database_observability", "pg", "index_properties"),
 		"Properties of an index; a constant 1 with is_primary set to whether the index backs a primary key",
 		append(append([]string{}, indexLabels...), "is_primary"), nil,
 	)
 	indexSizeBytesDesc = prometheus.NewDesc(
-		"pg_index_size_bytes",
+		prometheus.BuildFQName("database_observability", "pg", "index_size_bytes"),
 		"Total disk space used by this index, in bytes",
 		indexLabels, nil,
 	)

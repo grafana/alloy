@@ -46,15 +46,15 @@ func TestTableStats(t *testing.T) {
 		)
 
 	expected := `
-	# HELP pg_stat_user_tables_idx_scan Number of index scans initiated on this table
-	# TYPE pg_stat_user_tables_idx_scan counter
-	pg_stat_user_tables_idx_scan{datname="books_store",relname="gen_adjectives",schemaname="public"} 0
-	# HELP pg_stat_user_tables_n_live_tup Estimated number of live rows
-	# TYPE pg_stat_user_tables_n_live_tup gauge
-	pg_stat_user_tables_n_live_tup{datname="books_store",relname="gen_adjectives",schemaname="public"} 500
-	# HELP pg_stat_user_tables_seq_scan Number of sequential scans initiated on this table
-	# TYPE pg_stat_user_tables_seq_scan counter
-	pg_stat_user_tables_seq_scan{datname="books_store",relname="gen_adjectives",schemaname="public"} 37154
+	# HELP database_observability_pg_stat_user_tables_idx_scan Number of index scans initiated on this table
+	# TYPE database_observability_pg_stat_user_tables_idx_scan counter
+	database_observability_pg_stat_user_tables_idx_scan{datname="books_store",relname="gen_adjectives",schemaname="public"} 0
+	# HELP database_observability_pg_stat_user_tables_n_live_tup Estimated number of live rows
+	# TYPE database_observability_pg_stat_user_tables_n_live_tup gauge
+	database_observability_pg_stat_user_tables_n_live_tup{datname="books_store",relname="gen_adjectives",schemaname="public"} 500
+	# HELP database_observability_pg_stat_user_tables_seq_scan Number of sequential scans initiated on this table
+	# TYPE database_observability_pg_stat_user_tables_seq_scan counter
+	database_observability_pg_stat_user_tables_seq_scan{datname="books_store",relname="gen_adjectives",schemaname="public"} 37154
 `
 
 	require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))
