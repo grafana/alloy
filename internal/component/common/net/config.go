@@ -5,12 +5,12 @@ package net
 import (
 	"flag"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/common/config"
-	"golang.org/x/net/http2"
 )
 
 const (
@@ -113,23 +113,23 @@ type HTTP2Config struct {
 	MaxUploadBufferPerStream     int32         `alloy:"max_upload_buffer_per_stream,attr,optional"`
 }
 
-func (c *HTTP2Config) Server() *http2.Server {
+func (c *HTTP2Config) Server() *http.HTTP2Config {
 	if c == nil || !c.Enabled {
 		return nil
 	}
-	return &http2.Server{
-		MaxHandlers:                  c.MaxHandlers,
-		MaxConcurrentStreams:         c.MaxConcurrentStreams,
-		MaxDecoderHeaderTableSize:    c.MaxDecoderHeaderTableSize,
-		MaxEncoderHeaderTableSize:    c.MaxEncoderHeaderTableSize,
-		MaxReadFrameSize:             c.MaxReadFrameSize,
-		PermitProhibitedCipherSuites: c.PermitProhibitedCipherSuites,
-		IdleTimeout:                  c.IdleTimeout,
-		ReadIdleTimeout:              c.ReadIdleTimeout,
-		PingTimeout:                  c.PingTimeout,
-		WriteByteTimeout:             c.WriteByteTimeout,
-		MaxUploadBufferPerConnection: c.MaxUploadBufferPerConnection,
-		MaxUploadBufferPerStream:     c.MaxUploadBufferPerStream,
+	// MaxHandlers has always been a no-op in x/net/http2. Keep accepting it
+	// for configuration compatibility. IdleTimeout is applied to http.Server.
+	return &http.HTTP2Config{
+		MaxConcurrentStreams:          int(c.MaxConcurrentStreams),
+		MaxDecoderHeaderTableSize:     int(c.MaxDecoderHeaderTableSize),
+		MaxEncoderHeaderTableSize:     int(c.MaxEncoderHeaderTableSize),
+		MaxReadFrameSize:              int(c.MaxReadFrameSize),
+		PermitProhibitedCipherSuites:  c.PermitProhibitedCipherSuites,
+		SendPingTimeout:               c.ReadIdleTimeout,
+		PingTimeout:                   c.PingTimeout,
+		WriteByteTimeout:              c.WriteByteTimeout,
+		MaxReceiveBufferPerConnection: int(c.MaxUploadBufferPerConnection),
+		MaxReceiveBufferPerStream:     int(c.MaxUploadBufferPerStream),
 	}
 }
 
