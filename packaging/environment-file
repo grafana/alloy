@@ -18,7 +18,7 @@ OTEL_CONFIG_FILE="/etc/alloy/config.yaml"
 # when ALLOY_OTEL_MODE=1; use OTEL_CUSTOM_ARGS
 CUSTOM_ARGS=""
 
-# User-defined arguments to pass to the OTel engine (`alloy otel`). Only
+# User-defined arguments to pass to the OTel engine (`alloy otel`).
 # when ALLOY_OTEL_MODE=0; use CUSTOM_ARGS
 OTEL_CUSTOM_ARGS=""
 
