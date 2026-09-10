@@ -138,45 +138,61 @@ func (b *batch) request() (*push.PushRequest, int) {
 // batch they were divided from reports sent data and entry latency, so the
 // halves must never be passed to reportAsSentData, nor added to.
 func (b *batch) split() (*batch, *batch, bool) {
-	switch {
-	case len(b.streams) > 1:
-		// Which streams end up in which half doesn't matter, so take them in
-		// map order rather than paying to order them.
-		mid := len(b.streams) / 2
-		split1, split2 := b.newSplit(mid), b.newSplit(len(b.streams)-mid)
-		for labels, stream := range b.streams {
-			dst := split2
-			if len(split1.streams) < mid {
-				dst = split1
-			}
-			dst.streams[labels] = stream
-			dst.size += entriesSize(stream.Entries)
+	switch len(b.streams) {
+	case 0:
+		return nil, nil, false
+	case 1:
+		return b.splitEntries()
+	default:
+		return b.splitStreams()
+	}
+}
+
+// splitStreams divides the batch's streams in half. It always succeeds, since
+// more than one stream can always be divided into two. b must hold more than
+// one stream.
+func (b *batch) splitStreams() (*batch, *batch, bool) {
+	// Which streams end up in which half doesn't matter, so take them in map
+	// order rather than paying to order them.
+	mid := len(b.streams) / 2
+	split1, split2 := b.newSplit(mid), b.newSplit(len(b.streams)-mid)
+
+	for labels, stream := range b.streams {
+		dst := split2
+		if len(split1.streams) < mid {
+			dst = split1
 		}
-		return split1, split2, true
-
-	case len(b.streams) == 1:
-		var stream *push.Stream
-		for _, s := range b.streams {
-			stream = s
-		}
-
-		// A single entry cannot be divided any further.
-		if len(stream.Entries) < 2 {
-			return nil, nil, false
-		}
-
-		mid := len(stream.Entries) / 2
-		entries1, entries2 := stream.Entries[:mid], stream.Entries[mid:]
-
-		split1, split2 := b.newSplit(1), b.newSplit(1)
-		split1.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries1}
-		split1.size = entriesSize(entries1)
-		split2.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries2}
-		split2.size = entriesSize(entries2)
-		return split1, split2, true
+		dst.streams[labels] = stream
+		dst.size += entriesSize(stream.Entries)
 	}
 
-	return nil, nil, false
+	return split1, split2, true
+}
+
+// splitEntries divides the entries of the batch's only stream in half, the
+// first of the two keeping the earlier entries. It reports false when that
+// stream holds a single entry, which cannot be divided any further. b must hold
+// exactly one stream.
+func (b *batch) splitEntries() (*batch, *batch, bool) {
+	var stream *push.Stream
+	for _, s := range b.streams {
+		stream = s
+	}
+
+	if len(stream.Entries) < 2 {
+		return nil, nil, false
+	}
+
+	mid := len(stream.Entries) / 2
+	entries1, entries2 := stream.Entries[:mid], stream.Entries[mid:]
+
+	split1, split2 := b.newSplit(1), b.newSplit(1)
+	split1.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries1}
+	split1.size = entriesSize(entries1)
+	split2.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries2}
+	split2.size = entriesSize(entries2)
+
+	return split1, split2, true
 }
 
 // newSplit returns an empty batch sized for n streams, sharing this batch's
