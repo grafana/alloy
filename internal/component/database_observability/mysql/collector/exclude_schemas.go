@@ -25,13 +25,12 @@ func buildExcludedSchemasClause(schemas []string) string {
 // as query arguments, for binding as `?` placeholders instead of formatting
 // them into the SQL text.
 func excludedSchemasArgs(schemas []string) []any {
-	all := make([]string, 0, len(excludedSchemas)+len(schemas))
-	all = append(all, excludedSchemas...)
-	all = append(all, schemas...)
-
-	args := make([]any, len(all))
-	for i, s := range all {
-		args[i] = s
+	args := make([]any, 0, len(excludedSchemas)+len(schemas))
+	for _, s := range excludedSchemas {
+		args = append(args, s)
+	}
+	for _, s := range schemas {
+		args = append(args, s)
 	}
 	return args
 }

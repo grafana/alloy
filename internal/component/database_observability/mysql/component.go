@@ -1024,7 +1024,6 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
 			DB:             inst.dbConnection,
 			ExcludeSchemas: c.args.ExcludeSchemas,
-			EngineVersion:  parsedEngineVersion,
 			Registry:       inst.registry,
 			Logger:         c.opts.Logger,
 		})

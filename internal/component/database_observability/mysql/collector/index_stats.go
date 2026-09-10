@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/blang/semver/v4"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 )
 
 // IndexStatsCollector emits the fetch count of each named-index row, from
-// performance_schema.table_io_waits_summary_by_index_usage, and (MySQL >=
-// 5.6.6, see minIndexSizeEngineVersion) its size in bytes, from
-// mysql.innodb_index_stats.
+// performance_schema.table_io_waits_summary_by_index_usage, and its size in
+// bytes, from mysql.innodb_index_stats.
 const IndexStatsCollector = "index_stats"
 
 const selectIndexIOWaits = `
@@ -29,11 +27,6 @@ const selectIndexSizeBytes = `
 	SELECT database_name, table_name, index_name, stat_value * @@innodb_page_size
 	FROM mysql.innodb_index_stats
 	WHERE stat_name = 'size' AND database_name NOT IN (%s)`
-
-// minIndexSizeEngineVersion is the first MySQL version with
-// mysql.innodb_index_stats; older versions have no size source, so the
-// query is skipped below it rather than attempted and failing.
-var minIndexSizeEngineVersion = semver.MustParse("5.6.6")
 
 var indexLabels = []string{labelSchema, labelTable, "index"}
 
@@ -53,7 +46,6 @@ var (
 type IndexStatsArguments struct {
 	DB             *sql.DB
 	ExcludeSchemas []string
-	EngineVersion  semver.Version
 	Registry       *prometheus.Registry
 
 	Logger *slog.Logger
@@ -62,7 +54,6 @@ type IndexStatsArguments struct {
 type IndexStats struct {
 	dbConnection   *sql.DB
 	excludeSchemas []string
-	engineVersion  semver.Version
 	registry       *prometheus.Registry
 
 	logger  *slog.Logger
@@ -73,7 +64,6 @@ func NewIndexStats(args IndexStatsArguments) (*IndexStats, error) {
 	return &IndexStats{
 		dbConnection:   args.DB,
 		excludeSchemas: args.ExcludeSchemas,
-		engineVersion:  args.EngineVersion,
 		registry:       args.Registry,
 		logger:         args.Logger.With("collector", IndexStatsCollector),
 		running:        &atomic.Bool{},
@@ -112,10 +102,7 @@ func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
 	c.collectIdxScan(ctx, ch)
-
-	if c.engineVersion.GE(minIndexSizeEngineVersion) {
-		c.collectIndexSize(ctx, ch)
-	}
+	c.collectIndexSize(ctx, ch)
 }
 
 func (c *IndexStats) collectIdxScan(ctx context.Context, ch chan<- prometheus.Metric) {
