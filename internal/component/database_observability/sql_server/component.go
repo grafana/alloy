@@ -590,9 +590,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{
-		ErrorLog: util.PromHTTPErrorLogger(c.opts.Logger),
-	})
+	return util.PromHTTPHandlerFor(c.registry, c.opts.Logger, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {

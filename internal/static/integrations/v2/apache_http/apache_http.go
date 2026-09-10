@@ -95,9 +95,7 @@ func (ah *apacheHandler) createHandler() (http.HandlerFunc, error) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		registry := prometheus.NewRegistry()
 		registry.MustRegister(aeExporter)
-		h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-			ErrorLog: util.PromHTTPErrorLogger(ah.log),
-		})
+		h := util.PromHTTPHandlerFor(registry, ah.log, promhttp.HandlerOpts{})
 		h.ServeHTTP(w, r)
 	}, nil
 }

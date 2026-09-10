@@ -86,9 +86,7 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 			return
 		}
 
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-			ErrorLog: util.PromHTTPErrorLogger(e.logger),
-		}).ServeHTTP(w, req)
+		util.PromHTTPHandlerFor(reg, e.logger, promhttp.HandlerOpts{}).ServeHTTP(w, req)
 	})
 	return h, nil
 }

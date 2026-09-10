@@ -180,9 +180,8 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 
 // MetricsHandler returns the HTTP handler for the integration.
 func (e *Exporter) MetricsHandler() (http.Handler, error) {
-	return promhttp.HandlerFor(e.reg, promhttp.HandlerOpts{
+	return util.PromHTTPHandlerFor(e.reg, e.log, promhttp.HandlerOpts{
 		ErrorHandling: promhttp.ContinueOnError,
-		ErrorLog:      util.PromHTTPErrorLogger(e.log),
 	}), nil
 }
 

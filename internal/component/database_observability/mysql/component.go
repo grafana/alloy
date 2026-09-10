@@ -356,9 +356,7 @@ func (c *Component) loadInstances() []*dbInstance {
 func (c *Component) storeInstances(instances []*dbInstance) {
 	mux := http.NewServeMux()
 	for _, inst := range instances {
-		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{
-			ErrorLog: util.PromHTTPErrorLogger(c.opts.Logger),
-		}))
+		mux.Handle(metricsPath(inst.cfg.name), util.PromHTTPHandlerFor(inst.registry, c.opts.Logger, promhttp.HandlerOpts{}))
 	}
 	c.instances.Store(&instances)
 	c.handlerMux.Store(mux)

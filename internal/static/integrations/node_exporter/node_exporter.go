@@ -62,13 +62,13 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	if err := r.Register(i.nc); err != nil {
 		return nil, fmt.Errorf("couldn't register node_exporter node collector: %w", err)
 	}
-	handler := promhttp.HandlerFor(
+	handler := util.PromHTTPHandlerFor(
 		prometheus.Gatherers{i.exporterMetricsRegistry, r},
+		i.log,
 		promhttp.HandlerOpts{
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: 0,
 			Registry:            i.exporterMetricsRegistry,
-			ErrorLog:            util.PromHTTPErrorLogger(i.log),
 		},
 	)
 

@@ -54,9 +54,7 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 	// This is promhttp.Handler() with an ErrorLog added. Keep the
 	// InstrumentMetricHandler wrapper so promhttp_metric_handler_requests_total
 	// and promhttp_metric_handler_requests_in_flight stay exposed.
-	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-		ErrorLog: util.PromHTTPErrorLogger(i.log),
-	})
+	handler := util.PromHTTPHandlerFor(prometheus.DefaultGatherer, i.log, promhttp.HandlerOpts{})
 	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, handler), nil
 }
 

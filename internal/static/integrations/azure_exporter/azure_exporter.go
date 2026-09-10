@@ -95,9 +95,7 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 			prober.Run()
 		}
 
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-			ErrorLog: util.PromHTTPErrorLogger(e.logger),
-		}).ServeHTTP(resp, req)
+		util.PromHTTPHandlerFor(reg, e.logger, promhttp.HandlerOpts{}).ServeHTTP(resp, req)
 	})
 	return h, nil
 }

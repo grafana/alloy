@@ -95,9 +95,8 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		return nil, fmt.Errorf("failed to parse prom text: %w", err)
 	}
 
-	return promhttp.HandlerFor(newStaticGatherer(mf), promhttp.HandlerOpts{
+	return util.PromHTTPHandlerFor(newStaticGatherer(mf), i.log, promhttp.HandlerOpts{
 		EnableOpenMetrics: true,
-		ErrorLog:          util.PromHTTPErrorLogger(i.log),
 	}), nil
 }
 

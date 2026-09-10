@@ -63,12 +63,12 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		return nil, fmt.Errorf("couldn't register process_exporter: %w", err)
 	}
 
-	return promhttp.HandlerFor(
+	return util.PromHTTPHandlerFor(
 		prometheus.Gatherers{r},
+		i.log,
 		promhttp.HandlerOpts{
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: 0,
-			ErrorLog:            util.PromHTTPErrorLogger(i.log),
 		},
 	), nil
 }

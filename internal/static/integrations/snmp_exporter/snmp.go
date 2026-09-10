@@ -126,9 +126,7 @@ func Handler(w http.ResponseWriter, r *http.Request, logger *slog.Logger, snmpCf
 	c := collector.New(r.Context(), target, authName, snmpContext, auth, nmodules, logger, NewSNMPMetrics(registry), concurrency, false)
 	registry.MustRegister(c)
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
-	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
-		ErrorLog: util.PromHTTPErrorLogger(logger),
-	})
+	h := util.PromHTTPHandlerFor(registry, logger, promhttp.HandlerOpts{})
 	h.ServeHTTP(w, r)
 	duration := time.Since(start).Seconds()
 	logger.Debug("Finished scrape", "duration_seconds", duration)

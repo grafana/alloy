@@ -86,13 +86,9 @@ func (i *CollectorIntegration) MetricsHandler() (http.Handler, error) {
 		return nil, fmt.Errorf("couldn't register %s: %w", i.name, err)
 	}
 
-	handler := promhttp.HandlerFor(
-		r,
-		promhttp.HandlerOpts{
-			ErrorHandling: promhttp.ContinueOnError,
-			ErrorLog:      util.PromHTTPErrorLogger(i.logger),
-		},
-	)
+	handler := util.PromHTTPHandlerFor(r, i.logger, promhttp.HandlerOpts{
+		ErrorHandling: promhttp.ContinueOnError,
+	})
 
 	if i.includeExporterMetrics {
 		// Note that we have to use reg here to use the same promhttp metrics for

@@ -62,9 +62,7 @@ func (e *asyncExporter) MetricsHandler() (http.Handler, error) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-			ErrorLog: util.PromHTTPErrorLogger(e.logger),
-		}).ServeHTTP(w, req)
+		util.PromHTTPHandlerFor(reg, e.logger, promhttp.HandlerOpts{}).ServeHTTP(w, req)
 	})
 	return h, nil
 }
