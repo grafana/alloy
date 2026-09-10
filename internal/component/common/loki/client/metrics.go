@@ -31,6 +31,7 @@ type metrics struct {
 	requestSize                  *prometheus.HistogramVec
 	requestDuration              *prometheus.HistogramVec
 	batchRetries                 *prometheus.CounterVec
+	batchSplits                  *prometheus.CounterVec
 	entryLatency                 *prometheus.HistogramVec
 	countersWithHostTenant       []*prometheus.CounterVec
 	countersWithHostTenantReason []*prometheus.CounterVec
@@ -98,8 +99,13 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Help: "Number of times batches has had to be retried.",
 	}, []string{labelHost, labelTenant})
 
+	m.batchSplits = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "loki_write_batch_splits_total",
+		Help: "Number of times a batch has been divided in half after the server rejected it as too large.",
+	}, []string{labelHost, labelTenant})
+
 	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries, m.sentBytes, m.sentEntries,
+		m.batchRetries, m.batchSplits, m.sentBytes, m.sentEntries,
 	}
 
 	m.countersWithHostTenantReason = []*prometheus.CounterVec{
@@ -116,6 +122,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.requestSize = util.MustRegisterOrGet(reg, m.requestSize).(*prometheus.HistogramVec)
 		m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
 		m.batchRetries = util.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
+		m.batchSplits = util.MustRegisterOrGet(reg, m.batchSplits).(*prometheus.CounterVec)
 	}
 
 	return &m

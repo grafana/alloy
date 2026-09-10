@@ -198,6 +198,7 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
+* `loki_write_batch_splits_total` (counter): Number of times a batch has been divided in half and retried because the endpoint rejected it as too large.
 * `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.
 * `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
 * `loki_write_sent_bytes_total` (counter): Number of bytes sent.

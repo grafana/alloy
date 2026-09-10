@@ -398,6 +398,12 @@ func (s *shards) initBatchMetrics(tenantID string) {
 	}
 }
 
+// maxBatchSplitDepth is how many times a batch that Loki rejects as too large
+// is divided in half before the remaining data is dropped. It bounds the number
+// of requests one batch can generate if the server rejects everything we send
+// it.
+const maxBatchSplitDepth = 10
+
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
@@ -407,6 +413,16 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	// compared against the configured batch_size when filling the batch.
 	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(float64(batch.size))
 
+	s.trySendBatch(tenantID, batch, protoBuf, snappyBuf, 0)
+}
+
+// trySendBatch sends a batch to Loki, retrying 429s, 5xxs and connection-level
+// errors. When Loki rejects the batch as too large, it is divided in half and
+// each half is sent on its own, up to maxBatchSplitDepth times. Data that still
+// doesn't fit is dropped.
+//
+// It must not report sent data: sendBatch does that once for the whole batch.
+func (s *shards) trySendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte, depth int) {
 	r, entriesCount := batch.request()
 
 	size := r.Size()
@@ -460,6 +476,24 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		// Make sure it sends at least once before checking for retry.
 		if !backoff.Ongoing() {
 			break
+		}
+	}
+
+	// The batch was too large for the server to accept, so divide it in half and
+	// try to send each half on its own. Most of the data usually fits, and only
+	// what still doesn't is dropped below.
+	if batchIsTooLarge(status) && depth < maxBatchSplitDepth {
+		if split1, split2, ok := batch.split(); ok {
+			s.logger.Warn("batch too large, dividing it in half and retrying",
+				"status", status, "tenant", tenantID, "streams", len(batch.streams),
+				"entries", entriesCount, "bytes", bufBytes)
+			s.metrics.batchSplits.WithLabelValues(s.cfg.URL.Host, tenantID).Inc()
+
+			// The halves are sent one after the other so that entries in a
+			// stream stay in order and so they can reuse the buffers.
+			s.trySendBatch(tenantID, split1, protoBuf, snappyBuf, depth+1)
+			s.trySendBatch(tenantID, split2, protoBuf, snappyBuf, depth+1)
+			return
 		}
 	}
 

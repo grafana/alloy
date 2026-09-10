@@ -125,6 +125,89 @@ func (b *batch) request() (*push.PushRequest, int) {
 	return req, entries
 }
 
+// split divides the batch into two smaller batches, so a batch that Loki
+// rejected as too large can be retried in halves.
+//
+// When the batch holds more than one stream, the streams are divided in half.
+// When it holds a single stream, that stream's entries are divided in half
+// instead, the first of the two keeping the earlier entries. It reports false
+// when the batch cannot be divided any further, that is when it holds a single
+// entry.
+//
+// The halves carry no created timestamps and no segment counters: only the
+// batch they were divided from reports sent data and entry latency, so the
+// halves must never be passed to reportAsSentData, nor added to.
+func (b *batch) split() (*batch, *batch, bool) {
+	switch {
+	case len(b.streams) > 1:
+		// Which streams end up in which half doesn't matter, so take them in
+		// map order rather than paying to order them.
+		mid := len(b.streams) / 2
+		split1, split2 := b.newSplit(mid), b.newSplit(len(b.streams)-mid)
+		for labels, stream := range b.streams {
+			dst := split2
+			if len(split1.streams) < mid {
+				dst = split1
+			}
+			dst.streams[labels] = stream
+			dst.size += entriesSize(stream.Entries)
+		}
+		return split1, split2, true
+
+	case len(b.streams) == 1:
+		var stream *push.Stream
+		for _, s := range b.streams {
+			stream = s
+		}
+
+		// A single entry cannot be divided any further.
+		if len(stream.Entries) < 2 {
+			return nil, nil, false
+		}
+
+		mid := len(stream.Entries) / 2
+		return b.newSplitOfStream(stream, stream.Entries[:mid]),
+			b.newSplitOfStream(stream, stream.Entries[mid:]), true
+	}
+
+	return nil, nil, false
+}
+
+// newSplit returns an empty batch sized for n streams, sharing this batch's
+// limits and creation time. See split for why created is left empty.
+func (b *batch) newSplit(n int) *batch {
+	return &batch{
+		streams:        make(map[string]*push.Stream, n),
+		createdAt:      b.createdAt,
+		maxSize:        b.maxSize,
+		maxStreams:     b.maxStreams,
+		segmentCounter: map[int]int{},
+	}
+}
+
+// newSplitOfStream returns a batch holding a single stream with entries, which
+// must be a subset of stream's entries.
+func (b *batch) newSplitOfStream(stream *push.Stream, entries []push.Entry) *batch {
+	split := b.newSplit(1)
+	split.streams[stream.Labels] = &push.Stream{
+		Labels:  stream.Labels,
+		Entries: entries,
+	}
+	split.size = entriesSize(entries)
+	return split
+}
+
+// entriesSize is the number of bytes across the entries' log lines, matching
+// how batch.size is accumulated in add.
+func entriesSize(entries []push.Entry) int {
+	var size int
+	for _, e := range entries {
+		entry := loki.Entry{Entry: e}
+		size += entry.Size()
+	}
+	return size
+}
+
 // countForSegment tracks that one data item has been read from a certain WAL segment.
 func (b *batch) countForSegment(segmentNum int) {
 	if curr, ok := b.segmentCounter[segmentNum]; ok {
