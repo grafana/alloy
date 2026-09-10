@@ -987,9 +987,10 @@ You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
 
 The `jvm_runtime_metrics` block configures collection of JVM runtime metrics, such as heap usage, garbage collection, and thread counts, from instrumented Java processes. You must append `application_runtime` to the `features` list in the `metrics` block to enable JVM runtime metrics.
 
-| Name                | Type       | Description                               | Default | Required |
-|---------------------|------------|--------------------------------------------|---------|----------|
-| `sampling_interval` | `duration` | How often to sample JVM runtime metrics.   | `""`    | no       |
+| Name                | Type       | Description                                                           | Default | Required |
+|---------------------|------------|-----------------------------------------------------------------------|---------|----------|
+| `enabled`           | `bool`     | Deprecated. Add `application_runtime` to `metrics.features` instead.  | `false` | no  
+| `sampling_interval` | `duration` | How often to sample JVM runtime metrics.                              | `""`    | no       |
 
 When `sampling_interval` is unset, Beyla uses its own default interval.
 
