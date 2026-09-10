@@ -245,11 +245,6 @@ func TestCRIStageMaxPartialLinesExceeded(t *testing.T) {
 			newEntry(map[string]any{}, model.LabelSet{"label1": "val3"}, tagFTime2Str+" stdout F another full log", time.Now()),
 			newEntry(map[string]any{}, model.LabelSet{"label1": "val4"}, tagFTime2Str+" stdout F yet an another full log", time.Now()),
 		}
-		for i := range entries {
-			for labelName, labelValue := range entries[i].Labels {
-				entries[i].Extracted[string(labelName)] = string(labelValue)
-			}
-		}
 		return entries
 	}
 
@@ -365,7 +360,7 @@ func TestCRIStageFlushOnShutdown(t *testing.T) {
 
 	expected := []Entry{
 		newEntry(
-			map[string]any{"flags": "P", "stream": "stdout", "content": "partial line ", "time": partialTimeStr},
+			map[string]any{"foo": "bar", "flags": "P", "stream": "stdout", "content": "partial line ", "time": partialTimeStr},
 			model.LabelSet{"foo": "bar", "stream": "stdout"},
 			"partial line ",
 			partialTime,

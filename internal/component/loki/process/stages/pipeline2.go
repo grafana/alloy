@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"slices"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -70,20 +69,15 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 	return batch.ConsumeStreams(func(stream loki.Stream) error {
 		entries = slices.Grow(entries[:0], len(stream.Entries))
 
-		extracted := make(map[string]any, len(stream.Labels))
-		for k, v := range stream.Labels {
-			extracted[string(k)] = string(v)
-		}
-
 		for i, e := range stream.Entries {
 			if i == len(stream.Entries)-1 {
 				entries = append(entries, Entry{
-					Extracted: extracted,
+					Extracted: make(map[string]any, len(stream.Labels)),
 					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
 				})
 			} else {
 				entries = append(entries, Entry{
-					Extracted: maps.Clone(extracted),
+					Extracted: make(map[string]any, len(stream.Labels)),
 					//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
 				})
@@ -158,6 +152,14 @@ func newPipeline(
 }
 
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {
+	// Seed extracted with labels. It is important to do it
+	// here since a nested pipeline within a match stage needs to
+	// seed it again whith any new labels.
+	for i := range entries {
+		for k, v := range entries[i].Labels {
+			entries[i].Extracted[string(k)] = string(v)
+		}
+	}
 	return p.next(ctx, entries)
 }
 
