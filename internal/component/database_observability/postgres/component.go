@@ -661,6 +661,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
+			TableRegistry:    tableRegistry,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
