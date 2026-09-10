@@ -186,6 +186,10 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	out := entries[:dst]
+	// Flush any partial lines if we have buffered too many. The stripe locks
+	// are released before we call next, so a concurrent batch can reach next
+	// ahead of the lines we are about to send. This can cause OOO for entries,
+	// an acceptable trade-off since this is a failure case we can revisit later.
 	out = append(out, c.partialLinesStriped.FlushIfExceeded()...)
 
 	if len(out) == 0 {
