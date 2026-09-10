@@ -193,7 +193,7 @@ The `logs` collector processes PostgreSQL logs received through the `logs_receiv
 
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
-- `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
+- `loki.source.file`: to read and process PostgreSQL log files from a self-managed database instance
 - `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
 
 PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
