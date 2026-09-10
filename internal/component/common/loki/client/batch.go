@@ -166,8 +166,14 @@ func (b *batch) split() (*batch, *batch, bool) {
 		}
 
 		mid := len(stream.Entries) / 2
-		return b.newSplitOfStream(stream, stream.Entries[:mid]),
-			b.newSplitOfStream(stream, stream.Entries[mid:]), true
+		entries1, entries2 := stream.Entries[:mid], stream.Entries[mid:]
+
+		split1, split2 := b.newSplit(1), b.newSplit(1)
+		split1.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries1}
+		split1.size = entriesSize(entries1)
+		split2.streams[stream.Labels] = &push.Stream{Labels: stream.Labels, Entries: entries2}
+		split2.size = entriesSize(entries2)
+		return split1, split2, true
 	}
 
 	return nil, nil, false
@@ -183,18 +189,6 @@ func (b *batch) newSplit(n int) *batch {
 		maxStreams:     b.maxStreams,
 		segmentCounter: map[int]int{},
 	}
-}
-
-// newSplitOfStream returns a batch holding a single stream with entries, which
-// must be a subset of stream's entries.
-func (b *batch) newSplitOfStream(stream *push.Stream, entries []push.Entry) *batch {
-	split := b.newSplit(1)
-	split.streams[stream.Labels] = &push.Stream{
-		Labels:  stream.Labels,
-		Entries: entries,
-	}
-	split.size = entriesSize(entries)
-	return split
 }
 
 // entriesSize is the number of bytes across the entries' log lines, matching
