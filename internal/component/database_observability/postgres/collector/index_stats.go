@@ -9,9 +9,9 @@ import (
 	"go.uber.org/atomic"
 )
 
-// IndexStatsCollector emits the minimal set of per-index metrics needed for
-// the unused-index KG insight, from pg_stat_user_indexes, scoped to every
-// database the connection can reach rather than only the one named in the DSN.
+// IndexStatsCollector emits per-index usage counters from pg_stat_user_indexes,
+// scoped to every database the connection can reach rather than only the one
+// named in the DSN.
 const IndexStatsCollector = "index_stats"
 
 const selectIndexUsageStats = `
@@ -28,9 +28,8 @@ const selectIndexUsageStats = `
 var indexLabels = []string{labelDatname, "schemaname", "relname", "indexrelname"}
 
 var (
-	// Named to match the metrics proposed by the (currently unmerged) upstream
-	// prometheus-community/postgres_exporter#1071, so that adopting the real
-	// upstream collector later, if/when it lands, needs no rule changes.
+	// Matches the naming of the proposed (unmerged) upstream pg_stat_user_indexes
+	// collector, so adopting it later needs no downstream rule changes.
 	indexUsageIdxScanTotalDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("pg", "stat_user_indexes", "idx_scan_total"),
 		"Number of index scans initiated on this index",

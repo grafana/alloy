@@ -6,12 +6,10 @@ import (
 	"fmt"
 )
 
-// discoverDatabases lists the databases on the Postgres instance that the
-// current connection is allowed to CONNECT to, via the pg_database catalog
-// view (readable from any single connection). Callers use this to fan out
-// per-database connections, since most stat views (e.g. pg_stat_user_tables,
-// pg_stat_user_indexes) only ever report on the database a connection is
-// actually established to.
+// discoverDatabases lists databases the current connection can reach, via
+// pg_database (readable from any single connection) -- used to fan out
+// per-database connections, since most stat views only report on the
+// database a connection is actually established to.
 func discoverDatabases(ctx context.Context, conn *sql.DB, excludeDatabases []string) ([]string, error) {
 	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(excludeDatabases))
 	rows, err := conn.QueryContext(ctx, query)
@@ -36,14 +34,12 @@ func discoverDatabases(ctx context.Context, conn *sql.DB, excludeDatabases []str
 	return databases, nil
 }
 
-// connectToDatabase opens a connection to dbName by rewriting the database
-// name in dsn, using factory. If dbName is the database dsn (and so initial)
-// already points to, initial is reused directly instead of opening a
-// redundant connection: with the real sql.Open-based factory, a freshly
-// opened *sql.DB is never pointer-equal to initial even for an identical
-// DSN, so skipping the redundant open/close has to happen here, up front.
-// The returned closeFn closes the connection unless it is initial (in which
-// case closing it is the caller's responsibility elsewhere).
+// connectToDatabase opens a connection to dbName by rewriting dsn. If dbName
+// is already what dsn (and so initial) points to, it reuses initial instead
+// of opening a redundant connection -- sql.Open never returns something
+// pointer-equal to an existing *sql.DB, so this has to be checked by name up
+// front, not via "conn != initial" after the fact. closeFn closes the
+// connection unless it's initial.
 func connectToDatabase(dsn, dbName string, factory databaseConnectionFactory, initial *sql.DB) (conn *sql.DB, closeFn func(), err error) {
 	noopClose := func() {}
 

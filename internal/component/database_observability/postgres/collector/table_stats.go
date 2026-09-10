@@ -9,9 +9,9 @@ import (
 	"go.uber.org/atomic"
 )
 
-// TableStatsCollector emits the minimal set of table-level metrics needed for
-// the missing-index KG insight, from pg_stat_user_tables, scoped to every
-// database the connection can reach rather than only the one named in the DSN.
+// TableStatsCollector emits table-level scan counters from pg_stat_user_tables,
+// scoped to every database the connection can reach rather than only the one
+// named in the DSN.
 const TableStatsCollector = "table_stats"
 
 const selectTableScanStats = `

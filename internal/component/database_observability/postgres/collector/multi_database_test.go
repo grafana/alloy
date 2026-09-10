@@ -8,14 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestConnectToDatabaseReusesInitialConnection guards against a regression
-// where connectToDatabase opens (and immediately closes) a redundant
-// connection for the one database in a fan-out that's already the database
-// initial points to. With the real sql.Open-based factory, a freshly opened
-// *sql.DB is never pointer-equal to initial even for an identical DSN, so
-// the "same database" case has to be detected up front, before the factory
-// is ever called -- a bare `conn != initial` check after the fact can't
-// catch it.
+// TestConnectToDatabaseReusesInitialConnection guards against connectToDatabase
+// opening a redundant connection for the database initial already points to;
+// see the comment on connectToDatabase for why a bare "conn != initial" check
+// can't catch this.
 func TestConnectToDatabaseReusesInitialConnection(t *testing.T) {
 	initial, _, err := sqlmock.New()
 	require.NoError(t, err)
