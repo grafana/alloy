@@ -4,121 +4,170 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 )
 
-var pipelineStagesStructuredMetadataDropOne = `
-stage.static_labels {
-	values = {"foo" = "bar"}
-}
+func TestStructuredMetadataDropStage(t *testing.T) {
+	now := time.Now()
 
-stage.structured_metadata {
-	values = {"foo" = ""}
-}
-
-stage.structured_metadata_drop {
-	values = ["foo"]
-}
-`
-var pipelineStagesStructuredMetadataDropTwo = `
-stage.static_labels {
-	values = {
-	  "foo" = "bar",
-	  "bar" = "baz",
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
-}
 
-stage.structured_metadata {
-	values = {
-	  "foo" = "",
-	  "bar" = "",
-	}
-}
+	tests := []testCase{
+		{
+			name: "expected structured_metadata_drop to remove one entry",
+			config: `
+			stage.static_labels {
+				values = {"foo" = "bar"}
+			}
 
-stage.structured_metadata_drop {
-	values = ["foo", "bar"]
-}
-`
+			stage.structured_metadata {
+				values = {"foo" = ""}
+			}
 
-var pipelineStagesStructuredMetadataDropNonExisting = `
-stage.static_labels {
-	values = {
-	  "foo" = "bar",
-	}
-}
-
-stage.structured_metadata {
-	values = {
-	  "foo" = "",
-	}
-}
-
-stage.structured_metadata_drop {
-	values = ["baz"]
-}
-`
-
-var pipelineStagesStructuredMetadataDropKeepOthers = `
-stage.static_labels {
-	values = {
-	  "foo" = "bar",
-	  "bar" = "baz",
-	}
-}
-stage.structured_metadata {
-	values = {
-	  "foo" = "",
-	  "bar" = "",
-	}
-}
-
-stage.structured_metadata_drop {
-	values = ["foo"]
-}
-`
-
-func Test_StructuredMetadataDropStage(t *testing.T) {
-	tests := map[string]struct {
-		pipelineStagesYaml         string
-		logLine                    string
-		expectedStructuredMetadata push.LabelsAdapter
-	}{
-		"expected structured_metadata_drop to remove one entry": {
-			pipelineStagesYaml:         pipelineStagesStructuredMetadataDropOne,
-			expectedStructuredMetadata: push.LabelsAdapter{},
+			stage.structured_metadata_drop {
+				values = ["foo"]
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					Timestamp:          now,
+					StructuredMetadata: push.LabelsAdapter{},
+				}),
+			},
 		},
-		"expected structured_metadata_drop to remove two entries": {
-			pipelineStagesYaml:         pipelineStagesStructuredMetadataDropTwo,
-			expectedStructuredMetadata: push.LabelsAdapter{},
+		{
+			name: "expected structured_metadata_drop to remove two entries",
+			config: `
+			stage.static_labels {
+				values = {
+				  "foo" = "bar",
+				  "bar" = "baz",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+				  "foo" = "",
+				  "bar" = "",
+				}
+			}
+
+			stage.structured_metadata_drop {
+				values = ["foo", "bar"]
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					Timestamp:          now,
+					StructuredMetadata: push.LabelsAdapter{},
+				}),
+			},
 		},
-		"expected structured_metadata_drop to remove non existing entry": {
-			pipelineStagesYaml:         pipelineStagesStructuredMetadataDropNonExisting,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "foo", Value: "bar"}},
+		{
+			name: "expected structured_metadata_drop to remove non existing entry",
+			config: `
+			stage.static_labels {
+				values = {
+				  "foo" = "bar",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+				  "foo" = "",
+				}
+			}
+
+			stage.structured_metadata_drop {
+				values = ["baz"]
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					Timestamp:          now,
+					StructuredMetadata: push.LabelsAdapter{{Name: "foo", Value: "bar"}},
+				}),
+			},
 		},
-		"expected structured_metadata_drop to keep other entries": {
-			pipelineStagesYaml:         pipelineStagesStructuredMetadataDropKeepOthers,
-			expectedStructuredMetadata: push.LabelsAdapter{push.LabelAdapter{Name: "bar", Value: "baz"}},
+		{
+			name: "expected structured_metadata_drop to keep other entries",
+			config: `
+			stage.static_labels {
+				values = {
+				  "foo" = "bar",
+				  "bar" = "baz",
+				}
+			}
+			stage.structured_metadata {
+				values = {
+				  "foo" = "",
+				  "bar" = "",
+				}
+			}
+
+			stage.structured_metadata_drop {
+				values = ["foo"]
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "", now),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					Timestamp:          now,
+					StructuredMetadata: push.LabelsAdapter{{Name: "bar", Value: "baz"}},
+				}),
+			},
 		},
 	}
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(test.pipelineStagesYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			require.NoError(t, err)
 
-			result := processEntries(pl, newEntry(nil, nil, "", time.Now()))[0]
-			require.Equal(t, test.expectedStructuredMetadata, result.StructuredMetadata)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }
 
-func Test_StructuredMetadataDropStage_Validation(t *testing.T) {
-	stage, err := newStructuredMetadataDropStage(logging.NewSlogNop(), StructuredMetadataDropConfig{Values: []string{}})
-	assert.EqualError(t, err, ErrEmptyStructuredMetadataDropStageConfig.Error())
-	assert.Nil(t, stage)
+func TestValidateStructuredMetadataDropConfig(t *testing.T) {
+	type testCase struct {
+		name   string
+		config StructuredMetadataDropConfig
+		err    error
+	}
+
+	tests := []testCase{
+		{
+			name:   "empty config",
+			config: StructuredMetadataDropConfig{},
+			err:    errEmptyStructuredMetadataDropStageConfig,
+		},
+		{
+			name:   "with values",
+			config: StructuredMetadataDropConfig{Values: []string{"1"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.ErrorIs(t, validateStructuredMetadataDropConfig(tt.config), tt.err)
+		})
+	}
 }

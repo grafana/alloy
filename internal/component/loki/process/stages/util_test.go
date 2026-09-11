@@ -64,19 +64,6 @@ func toLabelSet(lbs map[string]string) model.LabelSet {
 	return res
 }
 
-func assertLabels(t *testing.T, expect map[string]string, got model.LabelSet) {
-	if len(expect) != len(got) {
-		t.Fatalf("labels are not equal in size want: %s got: %s", expect, got)
-	}
-	for k, v := range expect {
-		gotV, ok := got[model.LabelName(k)]
-		if !ok {
-			t.Fatalf("missing expected label key: %s", k)
-		}
-		assert.Equal(t, model.LabelValue(v), gotV, "mismatch label value")
-	}
-}
-
 // Verify the formatting of float conversion to make sure there are not any trailing zeros,
 // and also make sure unix timestamps are converted properly
 func TestGetString(t *testing.T) {

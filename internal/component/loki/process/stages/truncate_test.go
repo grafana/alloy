@@ -1,249 +1,283 @@
 package stages
 
 import (
+	"strings"
 	"testing"
-	"time"
 
-	dskit "github.com/grafana/dskit/server"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
-func Test_TruncateStage_Process(t *testing.T) {
-	cfg := &dskit.Config{}
-	require.Nil(t, cfg.LogLevel.Set("debug"))
+const truncateMetricsHeader = `
+# HELP loki_process_truncated_fields_total A count of all log lines, labels, extracted values, or structured_metadata truncated as a result of a pipeline stage
+# TYPE loki_process_truncated_fields_total counter
+`
 
-	tests := []struct {
-		name                       string
-		config                     []*RuleConfig
-		t                          time.Time
-		entry                      string
-		expectedEntry              *string
-		labels                     map[string]string
-		expectedLabels             *map[string]string
-		structured_metadata        push.LabelsAdapter
-		expectedStructuredMetadata *push.LabelsAdapter
-		extracted                  map[string]any
-		expectedExtracted          *map[string]any
-		incrementedCount           *map[string]float64
-	}{
+func TestTruncateStage(t *testing.T) {
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
+		metrics  string
+	}
+
+	tests := []testCase{
 		{
 			name: "passthrough when under limits",
-			config: []*RuleConfig{
-				{
-					Limit:      1000,
-					Suffix:     "...",
-					SourceType: SourceTypeLine,
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "1000B"
+					suffix      = "..."
+					source_type = "line"
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
 			},
-			labels:              map[string]string{},
-			structured_metadata: push.LabelsAdapter{},
-			extracted:           map[string]any{},
-			entry:               "12345678901",
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
+			},
 		},
 		{
 			name: "Longer line should truncate",
-			config: []*RuleConfig{
-				{
-					Limit:      10,
-					SourceType: SourceTypeLine,
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "10B"
+					source_type = "line"
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{Line: "123456789012", StructuredMetadata: push.LabelsAdapter{}}),
 			},
-			labels:              map[string]string{},
-			structured_metadata: push.LabelsAdapter{},
-			entry:               "123456789012",
-			expectedEntry:       ptr("1234567890"),
-			expectedExtracted:   ptr(map[string]any{"truncated": "line"}),
-			incrementedCount:    ptr(map[string]float64{"line": 1}),
-		}, {
+			expected: []Entry{
+				newTestEntry(map[string]any{"truncated": "line"}, model.LabelSet{}, push.Entry{Line: "1234567890", StructuredMetadata: push.LabelsAdapter{}}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"line\"} 1\n",
+		},
+		{
 			name: "Longer line should truncate with suffix",
-			config: []*RuleConfig{
-				{
-					Limit:      10,
-					Suffix:     "...",
-					SourceType: SourceTypeLine,
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "10B"
+					suffix      = "..."
+					source_type = "line"
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
 			},
-			labels:              map[string]string{},
-			structured_metadata: push.LabelsAdapter{},
-			entry:               "12345678901",
-			expectedEntry:       ptr("1234567..."),
-			expectedExtracted:   ptr(map[string]any{"truncated": "line"}),
-			incrementedCount:    ptr(map[string]float64{"line": 1}),
+			expected: []Entry{
+				newTestEntry(map[string]any{"truncated": "line"}, model.LabelSet{}, push.Entry{Line: "1234567...", StructuredMetadata: push.LabelsAdapter{}}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"line\"} 1\n",
 		},
 		{
 			name: "Longer labels should truncate",
-			config: []*RuleConfig{
-				{
-					Limit:      15,
-					SourceType: SourceTypeLabel,
-					Suffix:     "[truncated]",
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "15B"
+					source_type = "label"
+					suffix      = "[truncated]"
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
 			},
-			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
-			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.[truncated]", "env": "prod"}),
-			structured_metadata: push.LabelsAdapter{},
-			entry:               "12345678901",
-			expectedExtracted:   ptr(map[string]any{"truncated": "label"}),
-			incrementedCount:    ptr(map[string]float64{"label": 2}),
+			expected: []Entry{
+				newTestEntry(map[string]any{
+					"app":       "my-very-long-app-name",
+					"version":   "1.0.0-experimental",
+					"env":       "prod",
+					"truncated": "label",
+				}, model.LabelSet{"app": "my-v[truncated]", "version": "1.0.[truncated]", "env": "prod"}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"label\"} 2\n",
 		},
 		{
 			name: "Only specified sources should truncate in labels",
-			config: []*RuleConfig{
-				{
-					Limit:      15,
-					SourceType: SourceTypeLabel,
-					Suffix:     "[truncated]",
-					Sources:    []string{"app"},
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "15B"
+					source_type = "label"
+					suffix      = "[truncated]"
+					sources     = ["app"]
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
 			},
-			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
-			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}),
-			structured_metadata: push.LabelsAdapter{},
-			entry:               "12345678901",
-			expectedExtracted:   ptr(map[string]any{"truncated": "label"}),
-			incrementedCount:    ptr(map[string]float64{"label": 1}),
+			expected: []Entry{
+				newTestEntry(map[string]any{
+					"app":       "my-very-long-app-name",
+					"version":   "1.0.0-experimental",
+					"env":       "prod",
+					"truncated": "label",
+				}, model.LabelSet{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}, push.Entry{Line: "12345678901", StructuredMetadata: push.LabelsAdapter{}}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"label\"} 1\n",
 		},
 		{
 			name: "Longer structured_metadata should truncate",
-			config: []*RuleConfig{
-				{
-					Limit:      15,
-					SourceType: SourceTypeStructuredMetadata,
-					Suffix:     "<trunc>",
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "15B"
+					source_type = "structured_metadata"
+					suffix      = "<trunc>"
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{"app": "my-very-long-app-name", "env": "prod"}, push.Entry{
+					Line: "12345678901",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-long-metadata-value"},
+						{Name: "meta2", Value: "short"},
+					},
+				}),
 			},
-			labels:              map[string]string{"app": "my-very-long-app-name", "env": "prod"},
-			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "short"}},
-			expectedStructuredMetadata: ptr(push.LabelsAdapter{
-				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
-				push.LabelAdapter{Name: "meta2", Value: "short"},
-			}),
-			entry:             "12345678901",
-			expectedExtracted: ptr(map[string]any{"truncated": "structured_metadata"}),
-			incrementedCount:  ptr(map[string]float64{"structured_metadata": 1}),
+			expected: []Entry{
+				newTestEntry(map[string]any{
+					"app":       "my-very-long-app-name",
+					"env":       "prod",
+					"truncated": "structured_metadata",
+				}, model.LabelSet{"app": "my-very-long-app-name", "env": "prod"}, push.Entry{
+					Line: "12345678901",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-<trunc>"},
+						{Name: "meta2", Value: "short"},
+					},
+				}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"structured_metadata\"} 1\n",
 		},
 		{
 			name: "Only specified structured_metadata should truncate",
-			config: []*RuleConfig{
-				{
-					Limit:      15,
-					SourceType: SourceTypeStructuredMetadata,
-					Suffix:     "<trunc>",
-					Sources:    []string{"meta1"},
-				},
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "15B"
+					source_type = "structured_metadata"
+					suffix      = "<trunc>"
+					sources     = ["meta1"]
+				}
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{"app": "my-very-long-app-name", "env": "prod"}, push.Entry{
+					Line: "12345678901",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-long-metadata-value"},
+						{Name: "meta2", Value: "another long value"},
+					},
+				}),
 			},
-			labels:              map[string]string{"app": "my-very-long-app-name", "env": "prod"},
-			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "another long value"}},
-			expectedStructuredMetadata: ptr(push.LabelsAdapter{
-				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
-				push.LabelAdapter{Name: "meta2", Value: "another long value"},
-			}),
-			entry:             "12345678901",
-			expectedExtracted: ptr(map[string]any{"truncated": "structured_metadata"}),
-			incrementedCount:  ptr(map[string]float64{"structured_metadata": 1}),
+			expected: []Entry{
+				newTestEntry(map[string]any{
+					"app":       "my-very-long-app-name",
+					"env":       "prod",
+					"truncated": "structured_metadata",
+				}, model.LabelSet{"app": "my-very-long-app-name", "env": "prod"}, push.Entry{
+					Line: "12345678901",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-<trunc>"},
+						{Name: "meta2", Value: "another long value"},
+					},
+				}),
+			},
+			metrics: "loki_process_truncated_fields_total{field=\"structured_metadata\"} 1\n",
 		},
 		{
 			name: "Multiple rules applied together",
-			config: []*RuleConfig{
-				{
-					Limit:      10,
-					SourceType: SourceTypeLine,
-				},
-				{
-					Limit:      15,
-					SourceType: SourceTypeLabel,
-					Suffix:     "[truncated]",
-					Sources:    []string{"app"},
-				},
-				{
-					Limit:      15,
-					SourceType: SourceTypeStructuredMetadata,
-					Suffix:     "<trunc>",
-				},
-				{
-					Limit:      8,
-					SourceType: SourceTypeExtractedMap,
-					Sources:    []string{"field2"},
-				},
-			},
-			entry:               "12345678901234",
-			expectedEntry:       ptr("1234567890"),
-			labels:              map[string]string{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"},
-			expectedLabels:      ptr(map[string]string{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}),
-			structured_metadata: push.LabelsAdapter{push.LabelAdapter{Name: "meta1", Value: "my-very-long-metadata-value"}, push.LabelAdapter{Name: "meta2", Value: "another long value"}},
-			expectedStructuredMetadata: ptr(push.LabelsAdapter{
-				push.LabelAdapter{Name: "meta1", Value: "my-very-<trunc>"},
-				push.LabelAdapter{Name: "meta2", Value: "another <trunc>"},
-			}),
-			extracted: map[string]any{"field1": "this is kind of long", "field2": "this-is-a-very-long-field-value"},
-			expectedExtracted: &map[string]any{
-				"field1": "this is kind of long", "field2": "this-is-", "truncated": "extracted,label,line,structured_metadata",
-			},
-			incrementedCount: ptr(map[string]float64{"structured_metadata": 2, "line": 1, "label": 1, "extracted": 1}),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := &TruncateConfig{Rules: tt.config}
-
-			logger := util.TestAlloyLogger(t)
-			registry := prometheus.NewRegistry()
-			m := newTruncateStage(logger.Slog(), *cfg, registry)
-			entry := newEntry(map[string]any{}, toLabelSet(tt.labels), tt.entry, tt.t)
-			if tt.extracted != nil {
-				entry.Extracted = tt.extracted
-			}
-			entry.StructuredMetadata = tt.structured_metadata
-			out := processEntries(m, entry)
-			if tt.expectedEntry != nil {
-				require.Equal(t, *tt.expectedEntry, out[0].Line)
-
-				require.Contains(t, out[0].Extracted, "truncated")
-				require.Contains(t, out[0].Extracted["truncated"], "line")
-			} else {
-				require.Equal(t, tt.entry, out[0].Line)
-			}
-			if tt.expectedLabels != nil {
-				assertLabels(t, *tt.expectedLabels, out[0].Labels)
-
-				require.Contains(t, out[0].Extracted, "truncated")
-				require.Contains(t, out[0].Extracted["truncated"], "label")
-			} else {
-				assertLabels(t, tt.labels, out[0].Labels)
-			}
-			if tt.expectedStructuredMetadata != nil {
-				require.Equal(t, *tt.expectedStructuredMetadata, out[0].StructuredMetadata)
-
-				require.Contains(t, out[0].Extracted, "truncated")
-				require.Contains(t, out[0].Extracted["truncated"], "structured_metadata")
-			} else {
-				require.Equal(t, tt.structured_metadata, out[0].StructuredMetadata)
-			}
-
-			if tt.expectedExtracted != nil {
-				require.Equal(t, *tt.expectedExtracted, out[0].Extracted)
-			} else {
-				require.Equal(t, tt.extracted, out[0].Extracted)
-			}
-
-			if tt.incrementedCount != nil {
-				mfs, _ := registry.Gather()
-				require.Len(t, mfs, 1)
-				require.Equal(t, "loki_process_truncated_fields_total", *mfs[0].Name)
-				// Check all expected counts are present
-				for k, v := range *tt.incrementedCount {
-					for _, mf := range mfs[0].Metric {
-						if *mf.Label[0].Value == k && mf.Label[0].GetName() == "field" {
-							require.Equal(t, v, mf.GetCounter().GetValue(), "expected truncated count for type %s to be %d", k, v)
-						}
-					}
+			config: `
+			stage.truncate {
+				rule {
+					limit       = "10B"
+					source_type = "line"
+				}
+				rule {
+					limit       = "15B"
+					source_type = "label"
+					suffix      = "[truncated]"
+					sources     = ["app"]
+				}
+				rule {
+					limit       = "15B"
+					source_type = "structured_metadata"
+					suffix      = "<trunc>"
+				}
+				rule {
+					limit       = "8B"
+					source_type = "extracted"
+					sources     = ["field2"]
 				}
 			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{
+					"field1": "this is kind of long",
+					"field2": "this-is-a-very-long-field-value",
+				}, model.LabelSet{"app": "my-very-long-app-name", "version": "1.0.0-experimental", "env": "prod"}, push.Entry{
+					Line: "12345678901234",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-long-metadata-value"},
+						{Name: "meta2", Value: "another long value"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{
+					"field1":    "this is kind of long",
+					"field2":    "this-is-",
+					"app":       "my-very-long-app-name",
+					"version":   "1.0.0-experimental",
+					"env":       "prod",
+					"truncated": "extracted,label,line,structured_metadata",
+				}, model.LabelSet{"app": "my-v[truncated]", "version": "1.0.0-experimental", "env": "prod"}, push.Entry{
+					Line: "1234567890",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "meta1", Value: "my-very-<trunc>"},
+						{Name: "meta2", Value: "another <trunc>"},
+					},
+				}),
+			},
+			metrics: `
+loki_process_truncated_fields_total{field="extracted"} 1
+loki_process_truncated_fields_total{field="label"} 1
+loki_process_truncated_fields_total{field="line"} 1
+loki_process_truncated_fields_total{field="structured_metadata"} 2
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			expectedMetrics := tt.metrics
+			if expectedMetrics != "" {
+				expectedMetrics = truncateMetricsHeader + expectedMetrics
+			}
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, entryCheckFNs{metrics: func(reg *prometheus.Registry) error {
+				return testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics))
+			}})
 		})
 	}
 }
