@@ -98,8 +98,8 @@ type recordingLogger struct{ lines []string }
 
 func (l *recordingLogger) Println(v ...any) { l.lines = append(l.lines, fmt.Sprintln(v...)) }
 
-// TestPromHTTPHandlerFor_KeepsCallerErrorLog makes sure the helper fills in a
-// default rather than overwriting a destination the caller chose.
+// TestPromHTTPHandlerFor_KeepsCallerErrorLog makes sure an ErrorLog set by the
+// caller survives. The helper must not replace it with the default logger.
 func TestPromHTTPHandlerFor_KeepsCallerErrorLog(t *testing.T) {
 	logger, logs := debugLogger()
 	caller := &recordingLogger{}
