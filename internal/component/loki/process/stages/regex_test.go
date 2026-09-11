@@ -455,7 +455,7 @@ func TestRegexParser_Parse(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
-			p, err := New(logger.Slog(), StageConfig{RegexConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
+			p, err := newStage(logger.Slog(), StageConfig{RegexConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create regex parser: %s", err)
 			}
@@ -481,7 +481,7 @@ func BenchmarkRegexStage(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			logger := util.TestAlloyLogger(b)
-			stage, err := New(logger.Slog(), StageConfig{RegexConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
+			stage, err := newStage(logger.Slog(), StageConfig{RegexConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				panic(err)
 			}

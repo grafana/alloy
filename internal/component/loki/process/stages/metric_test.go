@@ -447,15 +447,15 @@ func TestMetricStage_Process(t *testing.T) {
 		}}}
 
 	registry := prometheus.NewRegistry()
-	jsonStage, err := New(logging.NewSlogNop(), jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	jsonStage, err := newStage(logging.NewSlogNop(), jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	regexStage, err := New(logging.NewSlogNop(), regexStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	regexStage, err := newStage(logging.NewSlogNop(), regexStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	metricStage, err := New(logging.NewSlogNop(), metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	metricStage, err := newStage(logging.NewSlogNop(), metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
