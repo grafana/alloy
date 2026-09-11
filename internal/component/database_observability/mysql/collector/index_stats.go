@@ -31,9 +31,9 @@ const selectIndexSizeBytes = `
 var indexLabels = []string{labelSchema, labelTable, "index"}
 
 var (
-	indexStatsIdxScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "mysql_index_stats", "idx_scan_total"),
-		"Number of row fetches against this index",
+	indexStatsIdxFetchDesc = prometheus.NewDesc(
+		prometheus.BuildFQName("database_observability", "mysql_index_stats", "idx_fetch_total"),
+		"Count of index I/O wait events for fetch operations",
 		indexLabels, nil,
 	)
 	indexStatsSizeBytesDesc = prometheus.NewDesc(
@@ -93,7 +93,7 @@ func (c *IndexStats) Stop() {
 
 // Describe implements prometheus.Collector.
 func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
-	ch <- indexStatsIdxScanDesc
+	ch <- indexStatsIdxFetchDesc
 	ch <- indexStatsSizeBytesDesc
 }
 
@@ -101,11 +101,11 @@ func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
 func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	c.collectIdxScan(ctx, ch)
+	c.collectIdxFetch(ctx, ch)
 	c.collectIndexSize(ctx, ch)
 }
 
-func (c *IndexStats) collectIdxScan(ctx context.Context, ch chan<- prometheus.Metric) {
+func (c *IndexStats) collectIdxFetch(ctx context.Context, ch chan<- prometheus.Metric) {
 	query := fmt.Sprintf(selectIndexIOWaits, buildExcludedSchemasClause(c.excludeSchemas))
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
@@ -123,7 +123,7 @@ func (c *IndexStats) collectIdxScan(ctx context.Context, ch chan<- prometheus.Me
 			return
 		}
 
-		ch <- prometheus.MustNewConstMetric(indexStatsIdxScanDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, indexName)
+		ch <- prometheus.MustNewConstMetric(indexStatsIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, indexName)
 	}
 
 	if err := rows.Err(); err != nil {
