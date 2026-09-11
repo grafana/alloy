@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -390,6 +391,7 @@ func TestPartialLinesStriped(t *testing.T) {
 
 		require.Equal(t, "a full line that never had a partial predecessor", got.Line)
 		require.Zero(t, testutil.ToFloat64(truncated))
+		require.Zero(t, pl.size.Load(), "a Complete that finds nothing buffered must not change the size")
 	})
 
 	t.Run("Append then Complete merges the accumulated partial lines", func(t *testing.T) {
@@ -397,10 +399,15 @@ func TestPartialLinesStriped(t *testing.T) {
 		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
 
 		pl.Append(1, entry("partial one "))
+		require.Equal(t, int64(1), pl.size.Load())
+
 		pl.Append(1, entry("partial two "))
+		require.Equal(t, int64(1), pl.size.Load(), "merging into an existing stream must not grow the size")
+
 		got := pl.Complete(1, entry("full line"))
 
 		require.Equal(t, "partial one partial two full line", got.Line)
+		require.Zero(t, pl.size.Load())
 	})
 
 	t.Run("Complete removes the entry so a repeated Complete does not see stale state", func(t *testing.T) {
@@ -411,8 +418,11 @@ func TestPartialLinesStriped(t *testing.T) {
 		first := pl.Complete(1, entry("first full"))
 		require.Equal(t, "partial first full", first.Line)
 
+		require.Zero(t, pl.size.Load())
+
 		second := pl.Complete(1, entry("second full"))
 		require.Equal(t, "second full", second.Line)
+		require.Zero(t, pl.size.Load(), "completing an already removed stream must not change the size")
 	})
 
 	t.Run("Append and Complete keep independent state per fingerprint", func(t *testing.T) {
@@ -421,12 +431,14 @@ func TestPartialLinesStriped(t *testing.T) {
 
 		pl.Append(1, entry("stream one "))
 		pl.Append(2, entry("stream two "))
+		require.Equal(t, int64(2), pl.size.Load())
 
 		gotOne := pl.Complete(1, entry("full one"))
 		gotTwo := pl.Complete(2, entry("full two"))
 
 		require.Equal(t, "stream one full one", gotOne.Line)
 		require.Equal(t, "stream two full two", gotTwo.Line)
+		require.Zero(t, pl.size.Load())
 	})
 
 	t.Run("Append does not truncate when MaxPartialLineSizeTruncate is false", func(t *testing.T) {
@@ -460,6 +472,7 @@ func TestPartialLinesStriped(t *testing.T) {
 
 		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushAll())
 		require.Empty(t, pl.FlushAll())
+		require.Zero(t, pl.size.Load())
 	})
 
 	t.Run("FlushIfExceeded below the threshold does nothing", func(t *testing.T) {
@@ -471,6 +484,7 @@ func TestPartialLinesStriped(t *testing.T) {
 
 		require.Nil(t, pl.FlushIfExceeded())
 		require.Zero(t, testutil.ToFloat64(flushed))
+		require.Equal(t, int64(2), pl.size.Load())
 		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushAll())
 	})
 
@@ -484,6 +498,139 @@ func TestPartialLinesStriped(t *testing.T) {
 		require.ElementsMatch(t, []Entry{entry("one"), entry("two")}, pl.FlushIfExceeded())
 		require.Equal(t, float64(2), testutil.ToFloat64(flushed))
 		require.Empty(t, pl.FlushAll())
+		require.Zero(t, pl.size.Load())
+	})
+
+}
+
+func TestPartialLinesStripedConcurrent(t *testing.T) {
+	now := time.Now()
+
+	counters := func() (truncated, flushed prometheus.Counter) {
+		return prometheus.NewCounter(prometheus.CounterOpts{Name: "t"}), prometheus.NewCounter(prometheus.CounterOpts{Name: "f"})
+	}
+
+	streamEntry := func(g, i int, line string) Entry {
+		labels := model.LabelSet{
+			"pod":       model.LabelValue(fmt.Sprintf("pod-%d", g)),
+			"container": model.LabelValue(fmt.Sprintf("container-%d", i)),
+		}
+		return newEntry(map[string]any{}, labels, line, now)
+	}
+
+	t.Run("workers do not mix up each others streams", func(t *testing.T) {
+		const (
+			workers    = 8
+			partials   = 5
+			iterations = 10
+		)
+
+		truncated, flushed := counters()
+		pl := newPartialLinesStriped(
+			CRIConfig{MaxPartialLines: workers * 2},
+			logging.NewSlogNop(),
+			truncated,
+			flushed,
+		)
+
+		var (
+			mut       sync.Mutex
+			completed []Entry
+		)
+
+		var wg sync.WaitGroup
+		for w := range workers {
+			wg.Go(func() {
+				for i := range iterations {
+					for p := range partials {
+						e := streamEntry(w, 0, fmt.Sprintf("w%d-i%d-p%d ", w, i, p))
+						pl.Append(e.Labels.Fingerprint(), e)
+					}
+
+					full := streamEntry(w, 0, fmt.Sprintf("w%d-i%d-F", w, i))
+					got := pl.Complete(full.Labels.Fingerprint(), full)
+
+					mut.Lock()
+					completed = append(completed, got)
+					mut.Unlock()
+				}
+			})
+		}
+		wg.Wait()
+
+		want := make(map[string]struct{}, workers*iterations)
+		for w := range workers {
+			for i := range iterations {
+				var sb strings.Builder
+				for p := range partials {
+					fmt.Fprintf(&sb, "w%d-i%d-p%d ", w, i, p)
+				}
+				fmt.Fprintf(&sb, "w%d-i%d-F", w, i)
+				want[sb.String()] = struct{}{}
+			}
+		}
+
+		require.Len(t, completed, workers*iterations)
+		for _, e := range completed {
+			require.Contains(t, want, e.Line)
+			delete(want, e.Line)
+		}
+		require.Empty(t, want)
+
+		require.Zero(t, pl.size.Load())
+		require.Zero(t, testutil.ToFloat64(truncated))
+		require.Zero(t, testutil.ToFloat64(flushed))
+	})
+
+	t.Run("every partial line comes back out of a flush exactly once", func(t *testing.T) {
+		const (
+			workers          = 8
+			streamsPerWorker = 8
+			total            = workers * streamsPerWorker
+		)
+
+		truncated, flushed := counters()
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 4}, logging.NewSlogNop(), truncated, flushed)
+
+		var (
+			mut     sync.Mutex
+			emitted []Entry
+		)
+		collectFlush := func(entries []Entry) {
+			mut.Lock()
+			defer mut.Unlock()
+			emitted = append(emitted, entries...)
+		}
+
+		var wg sync.WaitGroup
+		for w := range workers {
+			wg.Go(func() {
+				for st := range streamsPerWorker {
+					e := streamEntry(w, st, fmt.Sprintf("w%d-s%d", w, st))
+					collectFlush(pl.FlushIfExceeded())
+					pl.Append(e.Labels.Fingerprint(), e)
+				}
+			})
+		}
+		wg.Wait()
+
+		emitted = append(emitted, pl.FlushAll()...)
+
+		seen := make(map[string]int, total)
+		for _, e := range emitted {
+			seen[e.Line]++
+		}
+		for w := range workers {
+			for st := range streamsPerWorker {
+				line := fmt.Sprintf("w%d-s%d", w, st)
+				require.Equal(t, 1, seen[line], "%s must be emitted exactly once", line)
+			}
+		}
+
+		require.Len(t, emitted, total)
+		require.Zero(t, pl.size.Load())
+		require.Empty(t, pl.FlushAll())
+		require.Equal(t, float64(total), testutil.ToFloat64(flushed))
 	})
 }
 
