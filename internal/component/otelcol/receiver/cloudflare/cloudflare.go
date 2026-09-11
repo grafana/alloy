@@ -47,24 +47,25 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	// Defaults filled by upstream OTel receiver in a factory.
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	*args = Arguments{
+		TimestampField:  cfg.Logs.TimestampField,
+		TimestampFormat: cfg.Logs.TimestampFormat,
+		Separator:       cfg.Logs.Separator,
+	}
 }
 
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	tlsCfg := args.TLS.Convert()
-	logCfg := cloudflarereceiver.LogsConfig{
-		Secret:          args.Secret,
-		Endpoint:        args.Endpoint,
-		TLS:             tlsCfg.Get(),
-		Attributes:      args.Attributes,
-		TimestampField:  args.TimestampField,
-		TimestampFormat: args.TimestampFormat,
-		Separator:       args.Separator,
-	}
-
-	return &cloudflarereceiver.Config{
-		Logs: logCfg,
-	}
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	cfg.Logs.Secret = args.Secret
+	cfg.Logs.Endpoint = args.Endpoint
+	cfg.Logs.TLS = tlsCfg.Get()
+	cfg.Logs.Attributes = args.Attributes
+	cfg.Logs.TimestampField = args.TimestampField
+	cfg.Logs.TimestampFormat = args.TimestampFormat
+	cfg.Logs.Separator = args.Separator
+	return cfg
 }
 
 // Validate implements syntax.Validator.
