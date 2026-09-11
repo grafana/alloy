@@ -3,7 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -535,4 +538,121 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	// Stop the endpoint: it waits until the current batch is sent
 	endpoint.stop()
 	close(receivedReqsChan)
+}
+
+func TestWALConsumer_StopWhileBlockedOnOverflow(t *testing.T) {
+	// An endpoint that never succeeds, combined with infinite retries, means batches are
+	// never drained and the send queue stays full. With BlockOnOverflow the WAL watcher then
+	// blocks enqueueing, and shutting the consumer down must still work.
+	//
+	// Cover both shutdown paths: Update uses Stop, while component shutdown uses StopAndDrain.
+	t.Run("Stop", func(t *testing.T) {
+		testWALStopWhileBlockedOnOverflow(t, func(c *WALConsumer) { c.Stop() })
+	})
+	t.Run("StopAndDrain", func(t *testing.T) {
+		testWALStopWhileBlockedOnOverflow(t, func(c *WALConsumer) { c.StopAndDrain() })
+	})
+}
+
+func testWALStopWhileBlockedOnOverflow(t *testing.T, stop func(*WALConsumer)) {
+	const drainTimeout = time.Second
+
+	// The WAL drain has its own timeout, and a blocked watcher reads nothing during it, so the
+	// two waits must not stack behind each other.
+	watchConfig := wal.DefaultWatchConfig
+	watchConfig.DrainTimeout = drainTimeout
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	serverURL, _ := url.Parse(server.URL)
+	reg := prometheus.NewRegistry()
+	consumer, err := NewWALConsumer(logging.NewSlogNop(), reg, wal.Config{
+		Dir:           t.TempDir(),
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+		WatchConfig:   watchConfig,
+	}, Config{
+		Name:      "blocked",
+		URL:       flagext.URLValue{URL: serverURL},
+		Timeout:   time.Second,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0, // retry indefinitely, as max_backoff_retries = 0 does
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	})
+	require.NoError(t, err)
+
+	// Keep writing so the watcher has more to read than the queue can hold.
+	writing, stopWriting := context.WithCancel(context.Background())
+	var writers sync.WaitGroup
+	writers.Go(func() {
+		for {
+			select {
+			case consumer.Chan() <- loki.Entry{
+				Labels: model.LabelSet{"test": "backpressure"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: "line"},
+			}:
+			case <-writing.Done():
+				return
+			}
+		}
+	})
+
+	// Retries mean a batch is stuck in flight and the queue behind it is filling.
+	require.Eventually(t, func() bool {
+		return counterValue(t, reg, "loki_write_batch_retries_total") > 0
+	}, 30*time.Second, 50*time.Millisecond, "timed out waiting for the endpoint to start retrying")
+
+	// Stop writing before Stop closes the WAL writer's channel underneath us. The watcher
+	// stays blocked either way, since the segments already hold more than the queue can take.
+	stopWriting()
+	writers.Wait()
+
+	stopped := make(chan struct{})
+	start := time.Now()
+	go func() {
+		stop(consumer)
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(30 * time.Second):
+		t.Fatal("shutdown did not return while the WAL watcher was blocked on a full queue")
+	}
+
+	// Releasing the blocked enqueue and draining the send queue each get their own budget, but
+	// the WAL drain runs concurrently with the first rather than ahead of it.
+	elapsed := time.Since(start)
+	t.Logf("shutdown took %s", elapsed)
+	require.Less(t, elapsed, 5*drainTimeout/2, "shutdown waits are stacking")
+}
+
+func counterValue(t *testing.T, g prometheus.Gatherer, name string) float64 {
+	t.Helper()
+
+	families, err := g.Gather()
+	require.NoError(t, err)
+
+	var total float64
+	for _, family := range families {
+		if family.GetName() != name {
+			continue
+		}
+		for _, m := range family.GetMetric() {
+			total += m.GetCounter().GetValue()
+		}
+	}
+	return total
 }
