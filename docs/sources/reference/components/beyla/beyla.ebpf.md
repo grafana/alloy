@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-07-30
 title: beyla.ebpf
 ---
 
@@ -135,14 +136,12 @@ beyla.ebpf "<LABEL>" {
 
 You can use the following arguments with `beyla.ebpf`:
 
-| Name               | Type     | Description                                                    | Default      | Required |
-|--------------------|----------|----------------------------------------------------------------|--------------|----------|
-| `debug`            | `bool`   | Enable debug mode for Beyla.                                   | `false`      | no       |
-| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation. | `false`      | no       |
-| `trace_printer`    | `string` | Format for printing trace information.                         | `"disabled"` | no       |
-
-
-`debug` enables debug mode for Beyla. This mode logs BPF logs, network logs, trace representation logs, and other debug information.
+| Name               | Type     | Description                                                                 | Default      | Required |
+| ------------------ | -------- | --------------------------------------------------------------------------- | ------------ | -------- |
+| `debug`            | `bool`   | Enable debug mode for Beyla. Deprecated: use `log_level = "debug"` instead. | `false`      | no       |
+| `enforce_sys_caps` | `bool`   | Enforce system capabilities required for eBPF instrumentation.              | `false`      | no       |
+| `log_level`        | `string` | Log level for Beyla. Replaces the deprecated `debug` attribute.             | `""`         | no       |
+| `trace_printer`    | `string` | Format for printing trace information.                                      | `"disabled"` | no       |
 
 When `enforce_sys_caps`  is set to true and the required system capabilities aren't present, Beyla aborts its startup and logs a list of the missing capabilities.
 
@@ -247,19 +246,25 @@ You can use the following blocks with `beyla.ebpf`:
 
 ### `output`
 
-{{< badge text="Required" >}}
-
 The `output` block configures a set of components to forward the resulting telemetry data to.
 
 The following arguments are supported:
 
-| Name     | Type                     | Description                          | Default | Required |
-|----------|--------------------------|--------------------------------------|---------|----------|
-| `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
+| Name      | Type                     | Description                           | Default | Required |
+|-----------|--------------------------|---------------------------------------|---------|----------|
+| `metrics` | `list(otelcol.Consumer)` | List of consumers to send metrics to. | `[]`    | no       |
+| `traces`  | `list(otelcol.Consumer)` | List of consumers to send traces to.  | `[]`    | no       |
 
-You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.
-Configure the `traces` argument to send traces data to other components.
+Configure `traces` to forward traces to OTel consumer components.
+Configure `metrics` to forward metrics to OTel consumer components instead of, or in addition to, the Prometheus scrape path exposed via the `targets` export.
+
+<!-- TODO: Validate output block requirement status and document internal_metrics block.
+     - Check validation.go to confirm whether output is unconditionally required or conditionally required
+     - If conditionally required, document which configurations trigger the requirement
+     - Locate and document the internal_metrics block and its exporter attribute (referenced in conditional requirements)
+     - Verify whether metrics field in output block should be required/optional and when it's used
+-->
 
 ### `attributes`
 
@@ -373,6 +378,8 @@ The `discovery` block configures the discovery for processes to instrument match
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
 
+<!-- TODO: exclude_otel_instrumented_services is declared as *bool (pointer) in source (args.go), not bool. Verify whether the three-state semantics (nil/unset vs false vs true) are user-visible and update type and description accordingly. -->
+
 It contains the following blocks:
 
 #### `instrument`
@@ -413,9 +420,9 @@ The `exclude_instrument` block uses the same configuration options as the `instr
 
 #### `default_exclude_instrument`
 
-The `default_exclude_instrument` block disables instrumentation of Grafana Alloy and related components by default.
+The `default_exclude_instrument` block disables instrumentation of {{< param "PRODUCT_NAME" >}} and related components by default.
 The default value for `exe_path` uses a glob pattern that matches `beyla`, `alloy`, and `otelcol*` executables.
-Set to empty to allow Alloy to instrument itself as well as these other components.
+Set to empty to allow {{< param "PRODUCT_NAME" >}} to instrument itself as well as these other components.
 
 #### `survey`
 
@@ -497,6 +504,12 @@ The supported values for `instrumentations` are:
 * `mongo`: Enables the collection of MongoDB database traces.
 * `redis`: Enables the collection of Redis client/server database traces.
 * `sql`: Enables the collection of SQL database client call traces.
+* `amqp`: Enables the collection of AMQP client/server traces.
+* `couchbase`: Enables the collection of Couchbase database traces.
+* `dns`: Enables the collection of DNS traces.
+* `mqtt`: Enables the collection of MQTT client/server traces.
+* `nats`: Enables the collection of NATS client/server traces.
+* `sunrpc`: Enables the collection of Sun RPC traces.
 
 Example:
 
@@ -558,36 +571,20 @@ beyla.ebpf "default" {
 }
 ```
 
-Global sampling (configured within `traces`):
-
-```alloy
-beyla.ebpf "default" {
-  traces {
-    instrumentations = ["http", "grpc", "sql"]
-    sampler {
-      name = "traceidratio"
-      arg = "0.1"  // Global 10% sampling rate for all traces
-    }
-  }
-  output {
-    traces = [otelcol.processor.batch.default.input]
-  }
-}
-```
-
 ### `ebpf`
 
 The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
-|-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
-| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
-| `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
-| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
-| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
-| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
+|-------------------------|------------|---------------------------------------------------------------------------------|--------------|----------|
+| `wakeup_len`            | `int`      | Number of messages to accumulate before wake up request.                        | `0`          | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for `traceparent` fields.                    | `false`      | no       |
+| `http_request_timeout`  | `duration` | Timeout for HTTP requests. When unset, Beyla uses its own default of `30s`.     | `""`         | no       |
+| `context_propagation`   | `string`   | Enables injecting of the `traceparent` header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.               | `false`      | no       |
+| `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                               | `false`      | no       |
 
+<!-- TODO: force_bpf_map_reader (string) and traffic_control_backend (string) are undocumented attributes in this block. Accepted values for both are unknown from source alone — verify valid values with the Beyla team before documenting. -->
 
 #### `context_propagation`
 
@@ -784,6 +781,14 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
 * `stats` exports kernel-level connection statistics per service.
+* `application_jvm` exports JVM runtime metrics for instrumented Java processes.
+* `application_runtime` exports application runtime metrics.
+* `ebpf` exports eBPF-level internal metrics.
+* `network_flow_packets` exports network flow packet metrics.
+* `stats_tcp_failed_connections` exports stats for failed TCP connections.
+* `stats_tcp_io` exports stats for TCP I/O operations.
+* `stats_tcp_retransmits` exports stats for TCP retransmits.
+* `stats_tcp_rtt` exports stats for TCP round-trip time.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -797,6 +802,12 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
+* `amqp` enables the collection of AMQP client/server message queue metrics.
+* `couchbase` enables the collection of Couchbase database metrics.
+* `dns` enables the collection of DNS metrics.
+* `mqtt` enables the collection of MQTT client/server metrics.
+* `nats` enables the collection of NATS client/server metrics.
+* `sunrpc` enables the collection of Sun RPC metrics.
 
 `extra_resource_labels` is a list of OTEL resource labels, supplied through the `OTEL_RESOURCE_ATTRIBUTES` environment variable 
 on the service, that you want to include on the `target_info` metric.
@@ -915,6 +926,7 @@ The matcher tags can be in the `:name` or `{name}` format.
 * `unset` leaves the `http.route` property as unset.
 * `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
 
+<!-- TODO: The top-level javaagent block (args.go: Javaagent struct, alloy:"javaagent,block,optional") is undocumented. Clarify its relationship to the injector block below (complementary, legacy, or mutually exclusive) before documenting it. -->
 ### `injector`
 
 The `injector` block configures the Beyla SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
@@ -1059,136 +1071,41 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 
 ## Examples
 
-The following examples show you how to collect metrics and traces from `beyla.ebpf`.
-
-### Metrics
-
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `beyla.ebpf` of the specified port:
+The following example instruments a service by port and enables application metrics.
+`beyla.ebpf` exposes metrics as a Prometheus scrape target via the `targets` export.
+To also forward traces to an OTel receiver, add an [`output`][output] block pointing at an OTel consumer component.
 
 ```alloy
-beyla.ebpf "default" {
+beyla.ebpf "<LABEL>" {
   discovery {
     instrument {
-      open_ports = <OPEN_PORT>
+      open_ports = "<OPEN_PORT>"
+      name       = "<SERVICE_NAME>"
     }
   }
 
   metrics {
-    features = [
-     "application", 
-    ]
-  }
-}
-
-prometheus.scrape "beyla" {
-  targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-
-prometheus.remote_write "demo" {
-  endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
-
-    basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
-    }
-  }
-}
-```
-
-#### Kubernetes
-
-This example gets metrics from `beyla.ebpf` for the specified namespace and Pods running in a Kubernetes cluster:
-
-```alloy
-beyla.ebpf "default" {
-  discovery {
-    instrument {
-     kubernetes {
-      namespace = "<NAMESPACE>"
-      pod_name = "<POD_NAME>"
-     }
-    }
-  }
-  metrics {
-    features = [
-     "application", 
-    ]
-  }
-}
-
-prometheus.scrape "beyla" {
-  targets = beyla.ebpf.default.targets
-  honor_labels = true // required to keep job and instance labels
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-
-prometheus.remote_write "demo" {
-  endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
-
-    basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
-    }
+    features = ["application"]
   }
 }
 ```
 
 Replace the following:
 
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<NAMESPACE>`_: The namespaces of the applications running in a Kubernetes cluster.
-* _`<POD_NAME>`_: The name of the Pods running in a Kubernetes cluster.
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<LABEL>`_: A unique label for the component instance.
+* _`<OPEN_PORT>`_: The port of the running service to instrument with eBPF.
+* _`<SERVICE_NAME>`_: The name to assign to the instrumented service in exported metrics and traces.
 
-### Traces
-
-This example gets traces from `beyla.ebpf` and forwards them to `otlp`:
-
-```alloy
-beyla.ebpf "default" {
-  discovery {
-    instrument {
-      open_ports = <OPEN_PORT>
-    }
-  }
-  output {
-    traces = [otelcol.processor.batch.default.input]
-  }
-}
-
-otelcol.processor.batch "default" {
-  output {
-    traces  = [otelcol.exporter.otlphttp.default.input]
-  }
-}
-
-otelcol.exporter.otlphttp "default" {
-  client {
-    endpoint = sys.env("<OTLP_ENDPOINT>")
-  }
-}
-```
-
-Replace the following:
-
-* _`<OPEN_PORT>`_: The port of the running service for Beyla automatically instrumented with eBPF.
-* _`<OTLP_ENDPOINT>`_: The endpoint of the OpenTelemetry Collector to send traces to.
+For a complete working example that collects both metrics and traces from a running service using `beyla.ebpf`, refer to the [Zero-code instrumentation with Beyla][beyla-zero-code-instrumentation scenario] scenario.
 
 [Grafana Beyla]: https://github.com/grafana/beyla
 [eBPF website]: https://ebpf.io/
-[in-memory traffic]: ../../../../get-started/component_controller/#in-memory-traffic
+[in-memory traffic]: ../../../../get-started/components/component-controller/#in-memory-traffic
 [run command]: ../../../cli/run/
-[scrape]: ../../prometheus/prometheus.scrape/
-[Distributed traces with Beyla]: /docs/beyla/latest/distributed-traces/
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
 [Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
 [Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+[beyla-zero-code-instrumentation scenario]: https://github.com/grafana/alloy-scenarios/tree/main/beyla-zero-code-instrumentation
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
