@@ -286,7 +286,7 @@ func TestWALEndpoint(t *testing.T) {
 					},
 				}, 0)
 
-				_ = adapter.AppendEntries(wal.RefEntries{
+				_ = adapter.AppendEntries(t.Context(), wal.RefEntries{
 					Ref:     chunks.HeadSeriesRef(mod),
 					Created: time.Now().UnixMicro(),
 					Entries: []push.Entry{{
@@ -305,7 +305,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			adapter.Stop()
+			adapter.stop()
 			close(receivedReqsChan)
 		})
 	}
@@ -431,7 +431,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 				},
 			}, 0)
 
-			_ = adapter.AppendEntries(wal.RefEntries{
+			_ = adapter.AppendEntries(b.Context(), wal.RefEntries{
 				Ref:     chunks.HeadSeriesRef(seriesId),
 				Created: time.Now().UnixMicro(),
 				Entries: []push.Entry{{
@@ -450,7 +450,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	adapter.Stop()
+	adapter.stop()
 	close(receivedReqsChan)
 }
 
@@ -512,7 +512,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
-			endpoint.enqueue(loki.Entry{
+			endpoint.enqueue(b.Context(), loki.Entry{
 				Labels: model.LabelSet{
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
@@ -535,4 +535,66 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	// Stop the endpoint: it waits until the current batch is sent
 	endpoint.stop()
 	close(receivedReqsChan)
+}
+
+func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
+	const (
+		drainTimeout = time.Second
+	)
+
+	server, blocked, release := newBlockedServer()
+	defer server.Close()
+	defer release()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	walConfig := wal.Config{
+		Dir:           t.TempDir(),
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+		WatchConfig: wal.WatchConfig{
+			MinReadFrequency: 10 * time.Millisecond,
+			MaxReadFrequency: 50 * time.Millisecond,
+			DrainTimeout:     drainTimeout,
+		},
+	}
+
+	endpointConfig := Config{
+		Name: "test-client",
+		URL:  flagext.URLValue{URL: serverURL},
+		// Long enough that the in-flight request stays parked for the whole test.
+		Timeout:   time.Minute,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	}
+
+	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, endpointConfig)
+	require.NoError(t, err)
+
+	feedUntilBlocked(t, blocked, consumer.Chan())
+
+	stopped := make(chan struct{})
+	go func() {
+		consumer.StopAndDrain()
+		close(stopped)
+	}()
+
+	// A healthy shutdown costs at most the WAL drain timeout plus the queue drain timeout.
+	select {
+	case <-stopped:
+	case <-time.After(5 * (drainTimeout + drainTimeout)):
+		release()
+		t.Fatal("StopAndDrain did not finish in time")
+	}
 }

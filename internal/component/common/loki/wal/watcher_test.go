@@ -2,6 +2,7 @@ package wal
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -40,7 +41,7 @@ func (t *testWriteTo) SeriesReset(segmentNum int) {
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
-func (t *testWriteTo) AppendEntries(entries RefEntries, _ int) error {
+func (t *testWriteTo) AppendEntries(_ context.Context, entries RefEntries, _ int) error {
 	var entry loki.Entry
 	if l, ok := t.series[uint64(entries.Ref)]; ok {
 		entry.Labels = l
@@ -584,7 +585,7 @@ func (s *slowWriteTo) SeriesReset(segmentNum int) {
 func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
-func (s *slowWriteTo) AppendEntries(entries RefEntries, segmentNum int) error {
+func (s *slowWriteTo) AppendEntries(_ context.Context, entries RefEntries, segmentNum int) error {
 	s.entriesReceived.Add(uint64(len(entries.Entries)))
 	time.Sleep(s.sleepAfterAppendEntries)
 	return nil

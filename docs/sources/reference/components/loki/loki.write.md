@@ -81,7 +81,7 @@ The following arguments are supported:
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
-| `max_backoff_retries`    | `int`               | Maximum number of retries.                                                                       | `10`      | no       |
+| `max_backoff_retries`    | `int`               | Maximum number of retries. Set to `0` to retry indefinitely.                                     | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
 | `name`                   | `string`            | Optional name to identify this endpoint with.                                                    |           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |           | no       |
@@ -139,7 +139,7 @@ The following arguments are supported:
 | -------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `block_on_overflow`  | `bool`     | If `true`, block until there is space in the queue; if `false`, drop entries when queue is full.                                                                              | `true`  | no       |
 | `capacity`           | `string`   | Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full. | `10MiB` | no       |
-| `drain_timeout`      | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"1m"`  | no       |
+| `drain_timeout`      | `duration` | Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.  | `"15s"` | no       |
 | `min_shards`         | `number`   | Minimum number of concurrent shards sending samples to the endpoint.                                                                                                          | `1`     | no       |
 
 Each endpoint is divided into a number of concurrent _shards_ which are responsible for sending a fraction of batches. The number of shards is controlled with `min_shards` argument.
@@ -171,7 +171,7 @@ The following arguments are supported:
 
 | Name                 | Type       | Description                                                                                                    | Default   | Required |
 | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                | `"30s"`   | no       |
+| `drain_timeout`      | `duration` | Maximum time the WAL drain procedure can take, before being forcefully stopped.                                | `"15s"`   | no       |
 | `enabled`            | `bool`     | Whether to enable the WAL.                                                                                     | `false`   | no       |
 | `max_read_frequency` | `duration` | Maximum backoff time in the backup read mechanism.                                                             | `"1s"`    | no       |
 | `max_segment_age`    | `duration` | Maximum time a WAL segment should be allowed to live. Segments older than this setting are eventually deleted. | `"1h"`    | no       |

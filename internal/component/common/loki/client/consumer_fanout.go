@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -16,10 +17,12 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	m := &FanoutConsumer{
+	c := &FanoutConsumer{
 		endpoints: make([]*endpoint, 0, len(cfgs)),
 		recv:      make(chan loki.Entry),
 	}
+
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	var (
 		metrics        = newMetrics(reg)
@@ -39,27 +42,30 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}
 
-		m.endpoints = append(m.endpoints, endpoint)
+		c.endpoints = append(c.endpoints, endpoint)
 	}
 
-	m.wg.Go(m.run)
-	return m, nil
+	c.wg.Go(c.run)
+	return c, nil
 }
 
 var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	endpoints []*endpoint
-	wg        sync.WaitGroup
-	once      sync.Once
-	recv      chan loki.Entry
+
+	wg     sync.WaitGroup
+	once   sync.Once
+	recv   chan loki.Entry
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (c *FanoutConsumer) run() {
 	for e := range c.recv {
-		for _, c := range c.endpoints {
+		for _, endpoint := range c.endpoints {
 			// NOTE: For now it's fine to ignore error because we can't act on it.
-			_ = c.enqueue(e, 0)
+			_ = endpoint.enqueue(c.ctx, e, 0)
 		}
 	}
 }
@@ -70,7 +76,11 @@ func (c *FanoutConsumer) Chan() chan<- loki.Entry {
 
 func (c *FanoutConsumer) Stop() {
 	// First stop the receiving channel.
-	c.once.Do(func() { close(c.recv) })
+	c.once.Do(func() {
+		close(c.recv)
+		c.cancel()
+	})
+
 	c.wg.Wait()
 
 	var stopWG sync.WaitGroup

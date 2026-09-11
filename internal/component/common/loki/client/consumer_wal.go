@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -89,8 +90,8 @@ type endpointWatcherPair struct {
 	endpoint *walEndpointAdapter
 }
 
-// Stop will proceed to stop, in order, watcher and the endpoint.
-func (p endpointWatcherPair) Stop(drain bool) {
+// stop will proceed to stop, in order, watcher and the endpoint.
+func (p endpointWatcherPair) stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
@@ -98,7 +99,7 @@ func (p endpointWatcherPair) Stop(drain bool) {
 	p.watcher.Stop()
 
 	// Subsequently stop the endpoint.
-	p.endpoint.Stop()
+	p.endpoint.stop()
 }
 
 var _ DrainableConsumer = (*WALConsumer)(nil)
@@ -132,7 +133,7 @@ func (m *WALConsumer) stop(drain bool) {
 	// endpoint config, each (watcher, queue) pair is stopped concurrently.
 	for _, pair := range m.pairs {
 		stopWG.Go(func() {
-			pair.Stop(drain)
+			pair.stop(drain)
 		})
 	}
 
@@ -193,7 +194,7 @@ func (c *walEndpointAdapter) StoreSeries(series []record.RefSeries, segment int)
 	}
 }
 
-func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) error {
+func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefEntries, segment int) error {
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
@@ -206,16 +207,15 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	if ok {
 		for i := range entries.Entries {
 			e := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(e, segment)
+			err := c.endpoint.enqueue(ctx, e, segment)
 			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
 			// Here we just skip the entry and try with the next one.
 			if errors.Is(err, errQueueIsFull) {
 				continue
 			}
-			// NOTE: The only other error that can be returned is context.Canceled and that happens
-			// if endpoint was stopped.
+
 			if err != nil {
-				return nil
+				return err
 			}
 
 			queuedEntries += 1
@@ -236,9 +236,9 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	return nil
 }
 
-// Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
-// limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
-func (c *walEndpointAdapter) Stop() {
+// stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
+// limited by a deadline, controlled by a configured drain timeout, which is global to the stop call.
+func (c *walEndpointAdapter) stop() {
 	c.endpoint.stop()
 	c.tracker.Stop()
 }
