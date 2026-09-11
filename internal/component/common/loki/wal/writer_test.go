@@ -20,13 +20,16 @@ import (
 )
 
 func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
-	dir := t.TempDir()
+	var (
+		dir = t.TempDir()
+		reg = prometheus.NewRegistry()
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
 	defer func() {
 		writer.Stop()
@@ -72,18 +75,19 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 }
 
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	subscriber1 := []int{}
-	subscriber2 := []int{}
+	var (
+		dir           = t.TempDir()
+		reg           = prometheus.NewRegistry()
+		maxSegmentAge = time.Second * 2
+		subscriber1   = []int{}
+		subscriber2   = []int{}
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
 	writer.Start(maxSegmentAge)
 	defer func() {
@@ -166,17 +170,18 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 }
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	segmentsReclaimedNotificationsReceived := []int{}
+	var (
+		dir                                    = t.TempDir()
+		reg                                    = prometheus.NewRegistry()
+		maxSegmentAge                          = time.Second * 2
+		segmentsReclaimedNotificationsReceived = []int{}
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
 	writer.Start(maxSegmentAge)
 	defer func() {
@@ -342,13 +347,16 @@ func BenchmarkWriter_WriteEntries(b *testing.B) {
 }
 
 func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
-	dir := b.TempDir()
+	var (
+		dir = b.TempDir()
+		reg = prometheus.NewRegistry()
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, logging.NewSlogNop(), prometheus.NewRegistry())
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(b, err)
 	writer.Start(time.Minute)
 	defer func() {
