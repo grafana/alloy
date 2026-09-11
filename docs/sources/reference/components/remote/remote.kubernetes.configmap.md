@@ -38,14 +38,14 @@ You can use the following arguments with `remote.kubernetes.configmap`:
 | `poll_timeout`   | `duration` | Timeout when polling the Kubernetes API.               | `"15s"` | no       |
 
 When this component performs a poll operation, it requests the ConfigMap data from the Kubernetes API.
-A poll is triggered by the following:
+The following triggers a poll:
 
-* When the component first loads.
-* Every time the component's arguments get re-evaluated.
-* At the frequency specified by the `poll_frequency` argument.
+- When the component first loads.
+- Every time the component's arguments get re-evaluated.
+- At the frequency specified by the `poll_frequency` argument.
 
-Any error while polling will mark the component as unhealthy.
-After a successful poll, all data is exported with the same field names as the source ConfigMap.
+Any error while polling marks the component as unhealthy.
+After a successful poll, `remote.kubernetes.configmap` exports all data with the same field names as the source ConfigMap.
 
 ## Blocks
 
@@ -73,25 +73,25 @@ You can use the following blocks with `remote.kubernetes.configmap`:
 ### `client`
 
 The `client` block configures the Kubernetes client used to discover ConfigMaps.
-If the `client` block isn't provided, the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod is used.
+If the `client` block isn't provided, {{< param "PRODUCT_NAME" >}} uses the default in-cluster configuration with the service account of the running {{< param "PRODUCT_NAME" >}} Pod.
 
-The following arguments are supported:
+The `client` block supports the following arguments:
 
 | Name                     | Type                | Description                                                                                      | Default | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
+| `enable_http2`           | `bool`              | Whether the client supports HTTP2 for requests.                                                  | `true`  | no       |
+| `follow_redirects`       | `bool`              | Whether the client follows redirects returned by the server.                                     | `true`  | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to send along with each request. The map key is the header name.             |         | no       |
 | `kubeconfig_file`        | `string`            | Path of the `kubeconfig` file to use for connecting to Kubernetes.                               |         | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |         | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |         | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
-At most, one of the following can be provided:
+At most, you can provide one of the following:
 
 - [`authorization`](#authorization) block
 - [`basic_auth`](#basic_auth) block
@@ -165,4 +165,4 @@ prometheus.remote_write "default" {
 }
 ```
 
-This example assumes that the Secret and ConfigMap have already been created, and that the appropriate field names exist in their data.
+This example assumes that the Secret and ConfigMap already exist, and that the appropriate field names exist in their data.
