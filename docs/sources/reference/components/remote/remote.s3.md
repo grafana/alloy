@@ -7,23 +7,24 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: remote.s3
 ---
 
 # `remote.s3`
 
 `remote.s3` exposes the string contents of a file located in [AWS S3](https://aws.amazon.com/s3/) to other components.
-The file is polled for changes so that the most recent content is always available.
+`remote.s3` polls the file for changes, so the most recent content is always available.
 
 The most common use of `remote.s3` is to load secrets from files.
 
-You can specify multiple `remote.s3` components by using different name labels.
-By default, [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) are used to authenticate against S3.
-The `key` and `secret` arguments inside `client` blocks can be used to provide custom authentication.
+You can specify multiple `remote.s3` components by giving them different labels.
+By default, `remote.s3` uses [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) to authenticate against S3.
+Use the `key` and `secret` arguments inside `client` blocks to provide custom authentication.
 
 {{< admonition type="note" >}}
-Other S3-compatible systems can be read  with `remote.s3` but may require specific authentication environment variables.
-There is no  guarantee that `remote.s3` will work with non-AWS S3 systems.
+`remote.s3` can read other S3-compatible systems, but they may require specific authentication environment variables.
+`remote.s3` isn't guaranteed to work with non-AWS S3 systems.
 {{< /admonition >}}
 
 ## Usage
@@ -49,7 +50,7 @@ You can use the following arguments with `remote.s3`:
 This doesn't support reading of directories.
 {{< /admonition >}}
 
-[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/expressions/types_and_values/#secrets
 
 ## Blocks
 
@@ -57,7 +58,7 @@ You can use the following block with `remote.s3`:
 
 {{< docs/alloy-config >}}
 
-| Name               | Description                                       | Required |
+| Block              | Description                                       | Required |
 | ------------------ | ------------------------------------------------- | -------- |
 | [`client`][client] | Additional options for configuring the S3 client. | no       |
 
@@ -83,11 +84,11 @@ The `client` block customizes options to connect to the S3 server.
 
 The following fields are exported and can be referenced by other components:
 
-| Name      | Type                 | Description               | Default | Required |
-| --------- | -------------------- | ------------------------- | ------- | -------- |
-| `content` | `string` or `secret` | The contents of the file. |         | no       |
+| Name      | Type                 | Description               |
+| --------- | -------------------- | ------------------------- |
+| `content` | `string` or `secret` | The contents of the file. |
 
-The `content` field will be secret if `is_secret` is set to true.
+The `content` field is secret if `is_secret` is `true`.
 
 ## Component health
 
@@ -99,7 +100,12 @@ Instances of `remote.s3` report as healthy if the most recent read of the watche
 
 ## Debug metrics
 
-`remote.s3` doesn't expose any component-specific debug metrics.
+`remote.s3` exposes the following metrics:
+
+| Name                                             | Type      | Description                                 |
+| ------------------------------------------------ | --------- | ------------------------------------------- |
+| `remote_s3_errors_total`                         | `counter` | The number of errors while accessing S3.    |
+| `remote_s3_timestamp_last_accessed_unix_seconds` | `gauge`   | The last successful access in Unix seconds. |
 
 ## Example
 
