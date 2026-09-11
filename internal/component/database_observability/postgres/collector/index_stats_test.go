@@ -51,7 +51,7 @@ func TestIndexStats(t *testing.T) {
 	# TYPE database_observability_pg_index_stats_idx_scan_total counter
 	database_observability_pg_index_stats_idx_scan_total{datname="books_store",indexrelname="books_pkey",relname="books",schemaname="public"} 1.84e+08
 	database_observability_pg_index_stats_idx_scan_total{datname="books_store",indexrelname="idx_books_title",relname="books",schemaname="public"} 0
-	# HELP database_observability_pg_index_stats_size_bytes Total disk space used by this index, in bytes, labeled with whether it backs a primary key or unique constraint, or is partial
+	# HELP database_observability_pg_index_stats_size_bytes Total disk space used by this index, in bytes, labeled with whether it backs the primary key or a unique constraint, or is partial
 	# TYPE database_observability_pg_index_stats_size_bytes gauge
 	database_observability_pg_index_stats_size_bytes{datname="books_store",indexrelname="books_pkey",is_partial="false",is_primary="true",is_unique="true",relname="books",schemaname="public"} 65536
 	database_observability_pg_index_stats_size_bytes{datname="books_store",indexrelname="idx_books_title",is_partial="true",is_primary="false",is_unique="false",relname="books",schemaname="public"} 32768

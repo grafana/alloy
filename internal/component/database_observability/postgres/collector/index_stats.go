@@ -39,7 +39,7 @@ var (
 	)
 	indexSizeBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("database_observability", "pg_index_stats", "size_bytes"),
-		"Total disk space used by this index, in bytes, labeled with whether it backs a primary key or unique constraint, or is partial",
+		"Total disk space used by this index, in bytes, labeled with whether it backs the primary key or a unique constraint, or is partial",
 		indexSizeLabels, nil,
 	)
 )
