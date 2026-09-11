@@ -3,11 +3,11 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/
 aliases:
   - ../pyroscope.ebpf/ # /docs/alloy/latest/reference/components/pyroscope.ebpf/
 description: Learn about pyroscope.ebpf
-review_date: 2026-09-11
 labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.ebpf
 ---
 

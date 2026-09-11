@@ -1,11 +1,11 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/pyroscope/pyroscope.enrich/
 description: Learn about pyroscope.enrich
-review_date: 2026-09-11
 labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.enrich
 ---
 
