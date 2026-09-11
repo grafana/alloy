@@ -2,10 +2,8 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"slices"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -70,20 +68,15 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 	return batch.ConsumeStreams(func(stream loki.Stream) error {
 		entries = slices.Grow(entries[:0], len(stream.Entries))
 
-		extracted := make(map[string]any, len(stream.Labels))
-		for k, v := range stream.Labels {
-			extracted[string(k)] = string(v)
-		}
-
 		for i, e := range stream.Entries {
 			if i == len(stream.Entries)-1 {
 				entries = append(entries, Entry{
-					Extracted: extracted,
+					Extracted: make(map[string]any, len(stream.Labels)),
 					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
 				})
 			} else {
 				entries = append(entries, Entry{
-					Extracted: maps.Clone(extracted),
+					Extracted: make(map[string]any, len(stream.Labels)),
 					//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
 				})
@@ -122,8 +115,7 @@ func newPipeline(
 	cfgs []StageConfig,
 	next nextFn,
 ) (*pipeline, error) {
-
-	var stages []entryProcessor
+	p := &pipeline{}
 
 	// We build stages from the back so we can pass the correct next function
 	// to the constructor.
@@ -135,29 +127,35 @@ func newPipeline(
 			next:         next,
 		})
 		if err != nil {
+			p.stop()
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
-		ep, ok := s.(entryProcessor)
-		if !ok {
-			return nil, errors.New("stage has not been migrated to new interface")
-		}
-
-		stages = append(stages, ep)
+		ep := s.(entryProcessor)
+		p.stages = append(p.stages, ep)
 		next = ep.process
 	}
 
 	// We start stages after we have sucessfully built them all.
-	for _, s := range slices.Backward(stages) {
+	for _, s := range slices.Backward(p.stages) {
 		if ss, ok := s.(starter); ok {
 			ss.start()
 		}
 	}
 
-	return &pipeline{next: next, stages: stages}, nil
+	p.next = next
+	return p, nil
 }
 
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {
+	// Seed extracted with labels. It is important to do it
+	// here since a nested pipeline within a match stage needs to
+	// seed it again whith any new labels.
+	for i := range entries {
+		for k, v := range entries[i].Labels {
+			entries[i].Extracted[string(k)] = string(v)
+		}
+	}
 	return p.next(ctx, entries)
 }
 

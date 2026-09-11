@@ -280,12 +280,6 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 
 	t.Run("New Pipeline", func(t *testing.T) {
 		cloned := cloneEntries(entries)
-		for i := range cloned {
-			for labelName, labelValue := range cloned[i].Labels {
-				cloned[i].Extracted[string(labelName)] = string(labelValue)
-			}
-		}
-
 		var (
 			mu        sync.Mutex
 			collected []Entry
