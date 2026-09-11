@@ -148,6 +148,74 @@ func TestScheduler(t *testing.T) {
 		cancel()
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
 	})
+
+	// TestShutdownTimeout_HotReload verifies that when a component's Shutdown()
+	// blocks longer than shutdownTimeout, Schedule() still returns within a
+	// bounded time and the new component is successfully started. This is a
+	// regression test for https://github.com/grafana/alloy/issues/6622 where a
+	// blocking Shutdown (e.g. a gRPC server draining long-lived connections)
+	// caused /-/reload to hang indefinitely.
+	t.Run("Schedule returns promptly when old component Shutdown blocks (shutdownTimeout)", func(t *testing.T) {
+		const shutdownTimeout = 200 * time.Millisecond
+
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.NewWithPauseCallbacks(l.Slog(), func() {}, func() {})
+			h  = scheduler.NewHost()
+		)
+		// Override the default shutdown timeout to something short for this test.
+		cs.SetShutdownTimeout(shutdownTimeout)
+
+		// Run our scheduler in the background.
+		go func() {
+			err := cs.Run(componenttest.TestContext(t))
+			require.NoError(t, err)
+		}()
+
+		// First, schedule a component that blocks on Shutdown (simulating a gRPC
+		// server with active long-lived connections configured with keepalive params).
+		blockingStarted := util.NewWaitTrigger()
+		shutdownCalled := util.NewWaitTrigger()
+		blockingComponent := &fakeComponent{
+			StartFunc: func(_ context.Context, _ otelcomponent.Host) error {
+				blockingStarted.Trigger()
+				return nil
+			},
+			ShutdownFunc: func(ctx context.Context) error {
+				// Signal that Shutdown was called, then block until the context
+				// provided by the scheduler (with shutdownTimeout) expires.
+				shutdownCalled.Trigger()
+				<-ctx.Done()
+				return ctx.Err()
+			},
+		}
+		cs.Schedule(t.Context(), func() {}, h, blockingComponent)
+
+		// Give the scheduler's Run() goroutine time to start the blocking component.
+		require.NoError(t, blockingStarted.Wait(5*time.Second))
+		// Wait just a bit to ensure Run() has fully started the component.
+		time.Sleep(50 * time.Millisecond)
+
+		// Hot-reload: schedule a new component. This calls Shutdown on the
+		// blocking component. With the timeout, Schedule must not block past
+		// shutdownTimeout.
+		newComponent, newStarted, _ := newTriggerComponent()
+
+		start := time.Now()
+		cs.Schedule(t.Context(), func() {}, h, newComponent)
+		elapsed := time.Since(start)
+
+		// Schedule should return within roughly shutdownTimeout + overhead,
+		// NOT after an indefinite wait.
+		assert.Less(t, elapsed, shutdownTimeout+2*time.Second,
+			"Schedule() took too long; Shutdown() may be blocking the hot-reload path")
+
+		// The new component must be started even though the old one's Shutdown blocked.
+		require.NoError(t, newStarted.Wait(5*time.Second), "new component did not start after hot-reload")
+
+		// Shutdown of the old component should have been called.
+		require.NoError(t, shutdownCalled.Wait(5*time.Second), "old component Shutdown was not called")
+	})
 }
 
 func newTriggerComponent() (component otelcomponent.Component, started, stopped *util.WaitTrigger) {
