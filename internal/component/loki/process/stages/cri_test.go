@@ -463,6 +463,25 @@ func TestPartialLinesStriped(t *testing.T) {
 		require.NotZero(t, testutil.ToFloat64(truncated))
 	})
 
+	t.Run("Append does not count a truncation when the new line discards nothing", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, logging.NewSlogNop(), truncated, flushed)
+
+		pl.Append(1, entry("abcdefg"))
+		require.Equal(t, float64(1), testutil.ToFloat64(truncated))
+
+		// The buffer is already at max size and there is nothing to discard.
+		pl.Append(1, entry(""))
+		require.Equal(t, float64(1), testutil.ToFloat64(truncated))
+
+		// A non-empty line is discarded, so this one does count.
+		pl.Append(1, entry("h"))
+		require.Equal(t, float64(2), testutil.ToFloat64(truncated))
+
+		got := pl.Complete(1, entry(""))
+		require.Equal(t, "abcde", got.Line)
+	})
+
 	t.Run("FlushAll drains every buffered entry and clears the state", func(t *testing.T) {
 		truncated, flushed := counters()
 		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)

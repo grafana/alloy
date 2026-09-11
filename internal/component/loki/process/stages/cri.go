@@ -356,7 +356,10 @@ func ensureTruncateIfRequired(prevLine, newLine string, cfg CRIConfig, linesTrun
 
 	// If prev line is already at max size we don't have to concatenate new line.
 	if len(prevLine) >= int(cfg.MaxPartialLineSize) {
-		linesTruncated.Inc()
+		// An empty new line discards nothing, so it is not a truncation.
+		if len(newLine) > 0 {
+			linesTruncated.Inc()
+		}
 		return prevLine[:cfg.MaxPartialLineSize]
 	}
 
