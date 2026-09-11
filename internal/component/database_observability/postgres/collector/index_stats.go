@@ -33,12 +33,12 @@ var indexSizeLabels = append(append([]string{}, indexLabels...), "is_primary", "
 
 var (
 	indexUsageIdxScanTotalDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg_stat_user_indexes", "idx_scan_total"),
+		prometheus.BuildFQName("database_observability", "pg_index_stats", "idx_scan_total"),
 		"Number of index scans initiated on this index",
 		indexLabels, nil,
 	)
 	indexSizeBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg", "index_size_bytes"),
+		prometheus.BuildFQName("database_observability", "pg_index_stats", "size_bytes"),
 		"Total disk space used by this index, in bytes, labeled with whether it backs a primary key or unique constraint, or is partial",
 		indexSizeLabels, nil,
 	)

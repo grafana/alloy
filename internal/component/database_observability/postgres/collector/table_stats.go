@@ -29,17 +29,17 @@ var tableLabels = []string{labelDatname, "schemaname", "relname"}
 
 var (
 	tableScanStatsSeqScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg_stat_user_tables", "seq_scan"),
+		prometheus.BuildFQName("database_observability", "pg_table_stats", "seq_scan"),
 		"Number of sequential scans initiated on this table",
 		tableLabels, nil,
 	)
 	tableScanStatsIdxScanDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg_stat_user_tables", "idx_scan"),
+		prometheus.BuildFQName("database_observability", "pg_table_stats", "idx_scan"),
 		"Number of index scans initiated on this table",
 		tableLabels, nil,
 	)
 	tableScanStatsNLiveTupDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg_stat_user_tables", "n_live_tup"),
+		prometheus.BuildFQName("database_observability", "pg_table_stats", "n_live_tup"),
 		"Estimated number of live rows",
 		tableLabels, nil,
 	)
