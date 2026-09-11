@@ -46,6 +46,7 @@ Var User
 Var Password
 Var AuthFlag
 Var ForceRegistry
+Var OtelMode
 
 # Pages during the installer.
 Page license
@@ -69,6 +70,7 @@ Section "install"
   ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
   ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
+  ${GetOptions} $PassedInParameters "/OTELMODE=" $OtelMode
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -118,6 +120,7 @@ Section "install"
   WriteRegDWORD HKLM "${UNINSTALLKEY}" "NoRepair" 1
 
   Call CreateConfig
+  Call CreateOtelConfig
   Call CreateDataDirectory
   Call InitializeRegistry
   Call RegisterEventSource
@@ -158,6 +161,27 @@ Function CreateConfig
     AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ReadAttributes"
     ${If} $User != ""
       AccessControl::SetOnFile    "$INSTDIR\config.alloy" "$User" "FullAccess"
+    ${EndIf}
+
+    Return
+FunctionEnd
+
+Function CreateOtelConfig
+  IfFileExists "$INSTDIR\config.yaml" Noop CreateNewOtelConfig
+  Noop:
+    Return
+  CreateNewOtelConfig:
+    File "config.yaml"
+
+    # Set permissions on the OTel engine config file, mirroring CreateConfig.
+    AccessControl::DisableFileInheritance "$INSTDIR\config.yaml"
+    AccessControl::SetFileOwner "$INSTDIR\config.yaml" "Administrators"
+    AccessControl::ClearOnFile  "$INSTDIR\config.yaml" "Administrators" "FullAccess"
+    AccessControl::SetOnFile    "$INSTDIR\config.yaml" "SYSTEM" "FullAccess"
+    AccessControl::GrantOnFile  "$INSTDIR\config.yaml" "Everyone" "ListDirectory"
+    AccessControl::GrantOnFile  "$INSTDIR\config.yaml" "Everyone" "ReadAttributes"
+    ${If} $User != ""
+      AccessControl::SetOnFile    "$INSTDIR\config.yaml" "$User" "FullAccess"
     ${EndIf}
 
     Return
@@ -244,6 +268,28 @@ Function InitializeRegistry
     # Define the environment key, which holds environment variables to pass to the
     # service.
     nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Environment /t REG_MULTI_SZ /d "$Environment"'
+    Pop $0 # Ignore return result
+  ${EndIf}
+
+  # Define the ALLOY_OTEL_MODE key, which selects the run engine. Mirrors
+  # the ALLOY_OTEL_MODE environment variable used by the systemd packages
+  # and Homebrew: truthy values (1, true, yes, on) select the OTel engine
+  # (alloy otel); anything else, including absent/empty, keeps the default
+  # engine (alloy run).
+  nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v ALLOY_OTEL_MODE'
+  Pop $0
+  ${If} $0 == 1
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v ALLOY_OTEL_MODE /t REG_SZ /d "$OtelMode"'
+    Pop $0 # Ignore return result
+  ${EndIf}
+
+  # Define the OTelArguments key, which holds extra flags for the OTel
+  # engine only, mirroring Arguments for the default engine. Empty by
+  # default; edited by hand after install, the same way Arguments is.
+  nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v OTelArguments'
+  Pop $0
+  ${If} $0 == 1
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v OTelArguments /t REG_MULTI_SZ /d ""'
     Pop $0 # Ignore return result
   ${EndIf}
 
