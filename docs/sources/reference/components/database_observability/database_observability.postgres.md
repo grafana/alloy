@@ -56,6 +56,8 @@ The following collectors are configurable:
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
+| `table_stats`    | Collect table-level scan statistics.                                  | no                 |
+| `index_stats`    | Collect per-index usage statistics.                                   | no                 |
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
