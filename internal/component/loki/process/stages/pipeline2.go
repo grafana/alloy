@@ -24,6 +24,14 @@ type entryProcessor interface {
 	process(ctx context.Context, entries []Entry) error
 }
 
+// starter is implemented by stages that need to start background work (e.g.
+// a goroutine) once the pipeline is fully built and guaranteed to run.
+type starter interface {
+	start()
+}
+
+// stopper is implemented by stages that need to flush buffered entries or
+// release resources when the pipeline shuts down.
 type stopper interface {
 	stop()
 }
@@ -137,6 +145,13 @@ func newPipeline(
 
 		stages = append(stages, ep)
 		next = ep.process
+	}
+
+	// We start stages after we have sucessfully built them all.
+	for _, s := range slices.Backward(stages) {
+		if ss, ok := s.(starter); ok {
+			ss.start()
+		}
 	}
 
 	return &pipeline{next: next, stages: stages}, nil
