@@ -91,7 +91,15 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug metrics
 
-`discovery.relabel` doesn't expose any component-specific debug metrics.
+`discovery.relabel` caches the result of applying its rules to each target, so that targets which don't change between discovery updates don't need to be processed again.
+The cache holds one entry per target it currently receives, and entries are dropped as soon as a target is no longer discovered.
+The cache is emptied when you change the `rule` blocks.
+
+`discovery.relabel` exposes the following metrics:
+
+* `alloy_discovery_relabel_cache_hits_total` (counter): The total number of targets whose relabeling result was reused from the cache.
+* `alloy_discovery_relabel_cache_misses_total` (counter): The total number of targets that had to be relabeled.
+* `alloy_discovery_relabel_cache_size` (gauge): The number of targets currently held in the cache.
 
 ## Example
 
