@@ -205,3 +205,51 @@ func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequ
 		close(receivedReqsChan)
 	}
 }
+
+func TestFanoutConsumer_StopWithFullSendQueue(t *testing.T) {
+	const drainTimeout = time.Second
+
+	server, blocked, release := newBlockedServer()
+	defer server.Close()
+	defer release()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	endpointConfig := Config{
+		Name: "test-client",
+		URL:  flagext.URLValue{URL: serverURL},
+		// Long enough that the in-flight request stays parked for the whole test.
+		Timeout:   time.Minute,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	}
+
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), endpointConfig)
+	require.NoError(t, err)
+
+	feedUntilBlocked(t, blocked, consumer.Chan())
+
+	done := make(chan struct{})
+	go func() {
+		consumer.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * drainTimeout):
+		release()
+		t.Fatal("Stop did not finish in time")
+	}
+}
