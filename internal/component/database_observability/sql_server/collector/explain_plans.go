@@ -30,28 +30,30 @@ const (
 // SET SHOWPLAN_XML ON compilation - the plan is read from the same Query
 // Store data query_metrics already joins). A query_hash can map to more than
 // one query_id/plan_id (recompiles, parameter sniffing), so ROW_NUMBER picks
-// exactly one plan per hash rather than enumerating every match.
+// exactly one plan per hash rather than enumerating every match. Recency is
+// ranked by the plan's own last_execution_time rather than the latest
+// runtime-stats interval end time, since that avoids joining through
+// runtime_stats/runtime_stats_interval entirely - see the plan_id-keyed fetch
+// below. plan_id DESC breaks ties (including NULL last_execution_time for a
+// plan that has never executed, which sorts last under DESC) deterministically.
 const selectExplainPlansTemplate = `
 	WITH ranked_plans AS (
 		SELECT
 			q.query_hash,
-			p.query_plan,
+			p.plan_id,
 			ROW_NUMBER() OVER (
 				PARTITION BY q.query_hash
-				ORDER BY MAX(i.end_time) DESC
+				ORDER BY p.last_execution_time DESC, p.plan_id DESC
 			) AS rn
 		FROM sys.query_store_query q
 		JOIN sys.query_store_plan p ON p.query_id = q.query_id
-		JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-		JOIN sys.query_store_runtime_stats_interval i
-			ON i.runtime_stats_interval_id = rs.runtime_stats_interval_id
 		WHERE q.is_internal_query = 0
 			AND q.query_hash IN (%s)
-		GROUP BY q.query_hash, p.plan_id, p.query_plan
 	)
-	SELECT query_hash, query_plan
-	FROM ranked_plans
-	WHERE rn = 1`
+	SELECT rp.query_hash, p.query_plan
+	FROM ranked_plans rp
+	JOIN sys.query_store_plan p ON p.plan_id = rp.plan_id
+	WHERE rp.rn = 1`
 
 type ExplainPlansArguments struct {
 	DB              *sql.DB
