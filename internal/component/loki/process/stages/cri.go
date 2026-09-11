@@ -186,6 +186,7 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	out := entries[:dst]
+	// One check per batch keeps the limit approximate. It only prevents leaks.
 	// If we have buffered too many, flush all partial lines globally. This
 	// includes streams this batch does not own, so their lines go out through
 	// our next call and a concurrent batch can reach next ahead of them. That
