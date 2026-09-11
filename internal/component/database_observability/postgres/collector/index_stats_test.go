@@ -41,9 +41,9 @@ func TestIndexStats(t *testing.T) {
 
 	mock.ExpectQuery(selectIndexUsageStats).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
-			sqlmock.NewRows([]string{"schemaname", "relname", "indexrelname", "idx_scan", "indisprimary", "index_size_bytes"}).
-				AddRow("public", "books", "books_pkey", 184000000, true, 65536).
-				AddRow("public", "books", "idx_books_title", 0, false, 32768),
+			sqlmock.NewRows([]string{"schemaname", "relname", "indexrelname", "idx_scan", "index_size_bytes"}).
+				AddRow("public", "books", "books_pkey", 184000000, 65536).
+				AddRow("public", "books", "idx_books_title", 0, 32768),
 		)
 
 	expected := `
@@ -51,10 +51,6 @@ func TestIndexStats(t *testing.T) {
 	# TYPE database_observability_pg_stat_user_indexes_idx_scan_total counter
 	database_observability_pg_stat_user_indexes_idx_scan_total{datname="books_store",indexrelname="books_pkey",relname="books",schemaname="public"} 1.84e+08
 	database_observability_pg_stat_user_indexes_idx_scan_total{datname="books_store",indexrelname="idx_books_title",relname="books",schemaname="public"} 0
-	# HELP database_observability_pg_index_properties Properties of an index; a constant 1 with is_primary set to whether the index backs a primary key
-	# TYPE database_observability_pg_index_properties gauge
-	database_observability_pg_index_properties{datname="books_store",indexrelname="books_pkey",is_primary="true",relname="books",schemaname="public"} 1
-	database_observability_pg_index_properties{datname="books_store",indexrelname="idx_books_title",is_primary="false",relname="books",schemaname="public"} 1
 	# HELP database_observability_pg_index_size_bytes Total disk space used by this index, in bytes
 	# TYPE database_observability_pg_index_size_bytes gauge
 	database_observability_pg_index_size_bytes{datname="books_store",indexrelname="books_pkey",relname="books",schemaname="public"} 65536

@@ -20,26 +20,16 @@ const selectIndexUsageStats = `
 		s.relname,
 		s.indexrelname,
 		s.idx_scan,
-		i.indisprimary,
 		pg_relation_size(s.indexrelid) AS index_size_bytes
-	FROM pg_stat_user_indexes s
-	JOIN pg_index i ON i.indexrelid = s.indexrelid`
+	FROM pg_stat_user_indexes s`
 
 var indexLabels = []string{labelDatname, "schemaname", "relname", "indexrelname"}
 
 var (
-	// Field names match the proposed (unmerged) upstream pg_stat_user_indexes
-	// collector; the database_observability namespace keeps them from
-	// colliding with that collector's own names if it ever ships.
 	indexUsageIdxScanTotalDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("database_observability", "pg_stat_user_indexes", "idx_scan_total"),
 		"Number of index scans initiated on this index",
 		indexLabels, nil,
-	)
-	indexPropertiesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg", "index_properties"),
-		"Properties of an index; a constant 1 with is_primary set to whether the index backs a primary key",
-		append(append([]string{}, indexLabels...), "is_primary"), nil,
 	)
 	indexSizeBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("database_observability", "pg", "index_size_bytes"),
@@ -111,7 +101,6 @@ func (c *IndexStats) Stop() {
 // Describe implements prometheus.Collector.
 func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indexUsageIdxScanTotalDesc
-	ch <- indexPropertiesDesc
 	ch <- indexSizeBytesDesc
 }
 
@@ -150,20 +139,13 @@ func (c *IndexStats) collectIndexUsageStats(ctx context.Context, dbName string, 
 	for rows.Next() {
 		var schemaname, relname, indexrelname string
 		var idxScan, indexSizeBytes sql.NullInt64
-		var isPrimary bool
 
-		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &isPrimary, &indexSizeBytes); err != nil {
+		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &indexSizeBytes); err != nil {
 			c.logger.Error("failed to scan pg_stat_user_indexes row", "datname", dbName, "err", err)
 			return
 		}
 
-		isPrimaryLabel := "false"
-		if isPrimary {
-			isPrimaryLabel = "true"
-		}
-
 		ch <- prometheus.MustNewConstMetric(indexUsageIdxScanTotalDesc, prometheus.CounterValue, float64(idxScan.Int64), dbName, schemaname, relname, indexrelname)
-		ch <- prometheus.MustNewConstMetric(indexPropertiesDesc, prometheus.GaugeValue, 1, dbName, schemaname, relname, indexrelname, isPrimaryLabel)
 		ch <- prometheus.MustNewConstMetric(indexSizeBytesDesc, prometheus.GaugeValue, float64(indexSizeBytes.Int64), dbName, schemaname, relname, indexrelname)
 	}
 
