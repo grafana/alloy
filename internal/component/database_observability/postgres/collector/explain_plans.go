@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -227,6 +228,7 @@ type ExplainPlansArguments struct {
 	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
+	TableRegistry    *TableRegistry
 
 	Logger *slog.Logger
 }
@@ -245,6 +247,7 @@ type ExplainPlans struct {
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
+	tableRegistry       *TableRegistry
 	lastEmittedAt       map[string]time.Time
 	now                 func() time.Time
 	logger              *slog.Logger
@@ -269,6 +272,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		lastEmittedAt:       make(map[string]time.Time),
 		now:                 time.Now,
 		entryHandler:        args.EntryHandler,
+		tableRegistry:       args.TableRegistry,
 		logger:              args.Logger.With("collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
 	}
@@ -497,8 +501,6 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
-		generatedAt := time.Now().Format(time.RFC3339)
-		nonRecoverableFailureOccurred := false
 		if c.isThrottled(qi.uniqueKey) {
 			c.markFinished(qi)
 			delete(c.queryCache, qi.uniqueKey)
@@ -507,126 +509,127 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		if processedCount >= c.currentBatchSize {
 			break
 		}
-		logger := c.logger.With("query_id", qi.queryId)
 
-		defer func(nonRecoverableFailureOccurred *bool) {
-			if *nonRecoverableFailureOccurred {
-				c.queryDenylist[qi.uniqueKey] = struct{}{}
-			} else {
-				c.markFinished(qi)
-			}
-			delete(c.queryCache, qi.uniqueKey)
-			processedCount++
-		}(&nonRecoverableFailureOccurred)
-
-		if strings.HasSuffix(qi.queryText, "...") {
-			err := c.sendExplainPlansOutput(
-				qi.datname,
-				qi.queryId,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query is truncated",
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send truncated query skip explain plan output", "err", err)
-			}
-			continue
+		if c.processExplainPlan(ctx, qi) {
+			c.queryDenylist[qi.uniqueKey] = struct{}{}
+		} else {
+			c.markFinished(qi)
 		}
-
-		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
-		if err != nil {
-			logger.Error("failed to check for reserved keywords", "err", err)
-			err := c.sendExplainPlansOutput(
-				qi.datname,
-				qi.queryId,
-				generatedAt,
-				database_observability.ExplainProcessingResultError,
-				fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
-			}
-			continue
-		}
-
-		if containsReservedWord {
-			err := c.sendExplainPlansOutput(
-				qi.datname,
-				qi.queryId,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query contains reserved word",
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
-			}
-			continue
-		}
-
-		logger = logger.With("datname", qi.datname)
-
-		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
-		if err != nil {
-			logger.Debug("failed to fetch explain plan json bytes", "err", err)
-			for _, code := range unrecoverablePostgresSQLErrors {
-				if strings.Contains(err.Error(), code) {
-					nonRecoverableFailureOccurred = true
-					break
-				}
-			}
-			continue
-		}
-
-		if len(byteExplainPlanJSON) == 0 {
-			logger.Error("explain plan json bytes is empty")
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if !utf8.Valid(byteExplainPlanJSON) {
-			logger.Error("explain plan json bytes is not valid UTF-8")
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
-
-		logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
-
-		explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
-		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
-		if err != nil {
-			logger.Error("failed to marshal explain plan output", "err", err)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if genErr != nil {
-			logger.Error(
-				"failed to create explain plan output",
-				"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-				"err", genErr,
-			)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if err := c.sendExplainPlansOutput(
-			qi.datname,
-			qi.queryId,
-			generatedAt,
-			database_observability.ExplainProcessingResultSuccess,
-			"",
-			explainPlanOutput,
-		); err != nil {
-			c.logger.Error("failed to send explain plan output", "err", err)
-		}
+		delete(c.queryCache, qi.uniqueKey)
+		processedCount++
 	}
 
 	return nil
+}
+
+// processExplainPlan processes a single query from the cache.
+// Returns true if the query encountered a non-recoverable failure and should be denylisted.
+func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bool {
+	generatedAt := time.Now().Format(time.RFC3339)
+	logger := c.logger.With("query_id", qi.queryId)
+
+	if strings.HasSuffix(qi.queryText, "...") {
+		err := c.sendExplainPlansOutput(
+			qi.datname,
+			qi.queryId,
+			generatedAt,
+			database_observability.ExplainProcessingResultSkipped,
+			"query is truncated",
+			nil,
+		)
+		if err != nil {
+			c.logger.Error("failed to send truncated query skip explain plan output", "err", err)
+		}
+		return false
+	}
+
+	containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
+	if err != nil {
+		logger.Error("failed to check for reserved keywords", "err", err)
+		sendErr := c.sendExplainPlansOutput(
+			qi.datname,
+			qi.queryId,
+			generatedAt,
+			database_observability.ExplainProcessingResultError,
+			fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
+			nil,
+		)
+		if sendErr != nil {
+			logger.Error("failed to send reserved keyword check error explain plan output", "err", sendErr)
+		}
+		return false
+	}
+
+	if containsReservedWord {
+		sendErr := c.sendExplainPlansOutput(
+			qi.datname,
+			qi.queryId,
+			generatedAt,
+			database_observability.ExplainProcessingResultSkipped,
+			"query contains reserved word",
+			nil,
+		)
+		if sendErr != nil {
+			logger.Error("failed to send reserved keyword skip explain plan output", "err", sendErr)
+		}
+		return false
+	}
+
+	logger = logger.With("datname", qi.datname)
+
+	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
+	if err != nil {
+		logger.Debug("failed to fetch explain plan json bytes", "err", err)
+		for _, code := range unrecoverablePostgresSQLErrors {
+			if strings.Contains(err.Error(), code) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if len(byteExplainPlanJSON) == 0 {
+		logger.Error("explain plan json bytes is empty")
+		return true
+	}
+
+	if !utf8.Valid(byteExplainPlanJSON) {
+		logger.Error("explain plan json bytes is not valid UTF-8")
+		return true
+	}
+
+	redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
+
+	logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
+
+	explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
+	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
+	if err != nil {
+		logger.Error("failed to marshal explain plan output", "err", err)
+		return true
+	}
+
+	if genErr != nil {
+		logger.Error(
+			"failed to create explain plan output",
+			"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+			"err", genErr,
+		)
+		return true
+	}
+
+	if err := c.sendExplainPlansOutput(
+		qi.datname,
+		qi.queryId,
+		generatedAt,
+		database_observability.ExplainProcessingResultSuccess,
+		"",
+		explainPlanOutput,
+	); err != nil {
+		c.logger.Error("failed to send explain plan output", "err", err)
+	}
+
+	return false
 }
 
 // postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest
@@ -644,6 +647,48 @@ func postgresPreparedStatementParamCount(queryText string) int {
 	return maxParam
 }
 
+// buildSearchPathStatement builds the "SET SESSION search_path ..." statement executed before
+// preparing an explain plan. When the table registry knows the schemas for the database, all of
+// them are included (with public always last as a catch-all) so that unqualified table names in
+// the query can resolve regardless of which schema they live in. When the registry is unavailable
+// (schema_details disabled, cold start, or a database with no tables) it falls back to the public
+// schema only.
+func (c *ExplainPlans) buildSearchPathStatement(datname string) string {
+	const prefix = "SET SESSION search_path TO "
+
+	if c.tableRegistry != nil {
+		if schemas := c.tableRegistry.SchemasForDatabase(database(datname)); len(schemas) > 0 {
+			nonPublic := make([]string, 0, len(schemas))
+			for _, s := range schemas {
+				if s != "public" {
+					nonPublic = append(nonPublic, s)
+				}
+			}
+
+			// Sort for deterministic output. Note that the order only affects resolution of
+			// table names that are duplicated across schemas, which is inherently ambiguous
+			// for queries that do not use qualified table names.
+			sort.Strings(nonPublic)
+
+			quoted := make([]string, 0, len(nonPublic)+1)
+			for _, s := range nonPublic {
+				quoted = append(quoted, quotePostgresIdentifier(s))
+			}
+			quoted = append(quoted, quotePostgresIdentifier("public"))
+
+			return prefix + strings.Join(quoted, ", ")
+		}
+	}
+
+	return prefix + quotePostgresIdentifier("public")
+}
+
+// quotePostgresIdentifier wraps an identifier in double quotes, escaping any embedded double
+// quotes, so it can be safely used as a schema name in a search_path statement.
+func quotePostgresIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
@@ -655,7 +700,7 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 	defer conn.Close()
 
-	setSearchPathStatement := fmt.Sprintf("SET SESSION search_path TO \"%s\", public", qi.datname)
+	setSearchPathStatement := c.buildSearchPathStatement(qi.datname)
 	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
 		return nil, fmt.Errorf("failed to set search path: %w", err)
 	}

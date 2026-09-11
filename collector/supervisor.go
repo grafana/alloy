@@ -63,7 +63,7 @@ func newOtelSupervisorCommand() *cobra.Command {
 		Use:           "otel-supervisor",
 		Short:         "Run the embedded OpAMP supervisor for Alloy's OTel engine",
 		Long:          svCmdDoc,
-		Hidden:        true, // TODO: unhide the command after the docs are ready.
+		Hidden:        false,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -44,6 +44,52 @@ func validatePlan(t *testing.T, expect, actual database_observability.ExplainPla
 	})
 }
 
+func Test_ExplainPlans_buildSearchPathStatement(t *testing.T) {
+	t.Run("falls back to public only when registry is nil", func(t *testing.T) {
+		ep := &ExplainPlans{}
+		assert.Equal(t, `SET SESSION search_path TO "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("falls back to public only when database is unknown to the registry", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("otherdb", []*tableInfo{
+			{database: "otherdb", schema: "public", tableName: "users"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("includes all schemas with public last", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "catalog", tableName: "products"},
+			{database: "testdb", schema: "auth", tableName: "users"},
+			{database: "testdb", schema: "public", tableName: "databasechangelog"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		// Non-public schemas are sorted alphabetically; public is always appended last.
+		assert.Equal(t, `SET SESSION search_path TO "auth", "catalog", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("appends public when the database has no public schema", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "catalog", tableName: "products"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "catalog", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("escapes embedded double quotes in schema names", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: `we"ird`, tableName: "t"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "we""ird", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+}
+
 type mockDbConnectionFactory struct {
 	Mock               *sqlmock.Sqlmock
 	InstantiationCount int
@@ -2422,7 +2468,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 		require.Contains(t, c.queryCache, key)
 		require.Equal(t, 1, c.currentBatchSize)
 
-		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`SET SESSION search_path TO "public"`).WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").
@@ -2914,6 +2960,41 @@ func TestPlanNode_ToExplainPlanOutputNode(t *testing.T) {
 	assert.Equal(t, database_observability.ExplainPlanJoinAlgorithmHash, *result.Details.JoinAlgorithm)
 }
 
+func TestExplainPlanBatchSizeLimitsProcessing(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlan(ExplainPlansArguments{
+		Logger:         logging.NewSlogNop(),
+		ScrapeInterval: time.Second,
+		PerScrapeRatio: 1,
+		EntryHandler:   lokiClient,
+		DBVersion:      "17.0",
+	})
+	require.NoError(t, err)
+
+	c.queryCache = map[string]*queryInfo{
+		explainPlanQueryKey("db", "1"): newQueryInfo("db", "1", "select * from table_1 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "2"): newQueryInfo("db", "2", "select * from table_2 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "3"): newQueryInfo("db", "3", "select * from table_3 where ...", 1, time.Now()),
+		explainPlanQueryKey("db", "4"): newQueryInfo("db", "4", "select * from table_4 where ...", 1, time.Now()),
+	}
+	c.currentBatchSize = 2
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.Len(t, c.queryCache, 2, "batch size limit should leave unprocessed items in cache")
+	require.Len(t, c.finishedQueryCache, 2)
+	require.Empty(t, c.queryDenylist)
+	require.Eventually(
+		t,
+		func() bool { return len(lokiClient.Received()) == 2 },
+		5*time.Second,
+		10*time.Millisecond,
+		"expected exactly 2 Loki entries, got %d",
+		len(lokiClient.Received()),
+	)
+}
+
 func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -3125,7 +3206,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3192,7 +3273,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3260,7 +3341,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS " + dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null,null,null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3328,7 +3409,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))

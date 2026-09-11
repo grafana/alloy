@@ -1,4 +1,4 @@
-import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
+import { faArrowDown, faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useParams } from 'react-router';
@@ -136,9 +136,14 @@ function PageLiveDebugging() {
         </button>
       </div>
       <div className={styles.debugLink}>
-        <label>
-          <input type="checkbox" checked={autoScroll} onChange={(e) => setAutoScroll(e.target.checked)} /> Auto-scroll
-        </label>
+        <button
+          type="button"
+          aria-pressed={autoScroll}
+          className={`${styles.toggleButton} ${autoScroll ? styles.toggleButtonActive : ''}`}
+          onClick={() => setAutoScroll((enabled) => !enabled)}
+        >
+          <FontAwesomeIcon icon={faArrowDown} /> Auto-scroll
+        </button>
       </div>
     </>
   );

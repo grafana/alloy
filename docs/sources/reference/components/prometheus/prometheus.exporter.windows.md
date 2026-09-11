@@ -15,7 +15,18 @@ title: prometheus.exporter.windows
 The `prometheus.exporter.windows` component embeds the [`windows_exporter`][windows_exporter] which exposes a wide variety of hardware and OS metrics for Windows-based systems.
 
 The `windows_exporter` itself comprises various _collectors_, which you can enable and disable as needed.
-For more information on collectors, refer to the [`collectors-list`](#collectors-list) section.
+
+The available collectors depend on the [`windows_exporter`][windows_exporter] version embedded in your {{< param "PRODUCT_NAME" >}} release. If a documented collector isn't available:
+
+1. Make sure you're using the latest {{< param "PRODUCT_NAME" >}} version.
+1. Refer to the {{< param "PRODUCT_NAME" >}} release notes for component upgrades.
+1. Upgrade {{< param "PRODUCT_NAME" >}} to a version that includes the collector.
+
+For more information on available collectors, refer to the [Collectors list](#collectors-list).
+
+{{< admonition type="tip" >}}
+If a collector is available in the upstream [`windows_exporter`][windows_exporter] repository but isn't available in {{< param "PRODUCT_NAME" >}}, open a GitHub issue to request it.
+{{< /admonition >}}
 
 {{< admonition type="note" >}}
 The `blacklist` and `whitelist` configuration arguments are deprecated but remain available for backwards compatibility.
@@ -77,8 +88,8 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`process`][process]                       | Configures the `process` collector.                                       | no       |
 | [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.                                | no       |
 | [`service`][service]                       | Configures the `service` collector.                                       | no       |
-| [`smb_client`][smb_client]                 | Configures the `smb_client` collector.                                    | no       |
-| [`smb`][smb]                               | Configures the `smb` collector.                                           | no       |
+| [`smb`][smb]                               | Deprecated. Add `"smb"` to [`enabled_collectors`][] instead.              | no       |
+| [`smb_client`][smb_client]                 | Deprecated. Add `"smb_client"` to [`enabled_collectors`][] instead.       | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
 | [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
@@ -111,6 +122,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 [tcp]: #tcp
 [time]: #time
 [update]: #update
+[`enabled_collectors`](#arguments)
 
 {{< /docs/alloy-config >}}
 
@@ -126,8 +138,8 @@ You can still include this block in your configuration files, but it has no effe
 
 ### `dfsr`
 
-| Name              | Type           | Description                            | Default                            | Required |
-| ----------------- | -------------- | -------------------------------------- | ---------------------------------- | -------- |
+| Name              | Type           | Description                              | Default                            | Required |
+| ----------------- | -------------- | ---------------------------------------- | ---------------------------------- | -------- |
 | `sources_enabled` | `list(string)` | A list of DFSR `Perflib` sources to use. | `["connection","folder","volume"]` | no       |
 
 ### `dns`
@@ -144,9 +156,9 @@ You can still include this block in your configuration files, but it has no effe
 
 ### `filetime`
 
-| Name            | Type           | Description                                             | Default | Required |
-| --------------- | -------------- | ------------------------------------------------------- | ------- | -------- |
-| `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor.    | `[]`    | no       |
+| Name            | Type           | Description                                          | Default | Required |
+| --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
+| `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor. | `[]`    | no       |
 
 ### `iis`
 
@@ -200,29 +212,29 @@ For example, you can set `enabled_list` to `["cluster"]`.
 
 ### `net`
 
-| Name           | Type           | Description                            | Default                   | Required |
-| -------------- | -------------- | -------------------------------------- | ------------------------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use.           | `["metrics", "nic_info"]` | no       |
-| `exclude`      | `string`       | Regular expression of NICs to exclude. | `"^$"`                    | no       |
-| `include`      | `string`       | Regular expression of NICs to include. | `"^.+$"`                  | no       |
+| Name           | Type           | Description                                          | Default                   | Required |
+| -------------- | -------------- | ---------------------------------------------------- | ------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use.                         | `["metrics", "nic_info"]` | no       |
+| `exclude`      | `string`       | Regular expression of network interfaces to exclude. | `"^$"`                    | no       |
+| `include`      | `string`       | Regular expression of network interfaces to include. | `"^.+$"`                  | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
 - `metrics`
 - `nic_info`
 
-The component includes NIC names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
+The component includes network interface names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
 ### `network`
 
-| Name      | Type     | Description                            | Default  | Required |
-| --------- | -------- | -------------------------------------- | -------- | -------- |
-| `exclude` | `string` | Regular expression of NICs to exclude. | `"^$"`   | no       |
-| `include` | `string` | Regular expression of NICs to include. | `"^.+$"` | no       |
+| Name      | Type     | Description                                          | Default  | Required |
+| --------- | -------- | ---------------------------------------------------- | -------- | -------- |
+| `exclude` | `string` | Regular expression of network interfaces to exclude. | `"^$"`   | no       |
+| `include` | `string` | Regular expression of network interfaces to include. | `"^.+$"` | no       |
 
-The component includes NIC names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
+The component includes network interface names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
@@ -278,14 +290,14 @@ The `performance_counters.yaml` file should be a YAML file that represents an ar
   object: "Memory"
   counters:
     - name: "Cache Faults/sec"
-      type: "counter"  # Use 'counter' for cumulative/rate metrics
+      type: "counter" # Use 'counter' for cumulative/rate metrics
     - name: "Available Bytes"
-      type: "gauge"    # Use 'gauge' for point-in-time values
+      type: "gauge" # Use 'gauge' for point-in-time values
 
 # Monitor Processor performance counters
 - name: processor
   object: "Processor"
-  instances: ["_Total"]  # Optional: filter to specific instances
+  instances: ["_Total"] # Optional: filter to specific instances
   counters:
     - name: "% Processor Time"
       type: "gauge"
@@ -369,27 +381,19 @@ You can still include these attributes in your configuration files, but they hav
 
 ### `smb`
 
-| Name           | Type           | Description                                      | Default | Required |
-| -------------- | -------------- | ------------------------------------------------ | ------- | -------- |
-| `enabled_list` | `list(string)` | Deprecated (no-op), a list of collectors to use. | `[]`    | no       |
+This block and its `enabled_list` argument are deprecated.
 
-The collectors specified by `enabled_list` can include the following:
+You can still include this block and its argument in your configuration files, but they have no effect.
 
-- `ServerShares`
-
-For example, you can set `enabled_list` to `["ServerShares"]`.
+To collect SMB Server metrics, include `"smb"` in [`enabled_collectors`](#arguments).
 
 ### `smb_client`
 
-| Name           | Type           | Description                                      | Default | Required |
-| -------------- | -------------- | ------------------------------------------------ | ------- | -------- |
-| `enabled_list` | `list(string)` | Deprecated (no-op), a list of collectors to use. | `[]`    | no       |
+This block and its `enabled_list` argument are deprecated.
 
-The collectors specified by `enabled_list` can include the following:
+You can still include this block and its argument in your configuration files, but they have no effect.
 
-- `ClientShares`
-
-For example, you can set `enabled_list` to `["ClientShares"]`.
+To collect SMB Client metrics, include `"smb_client"` in [`enabled_collectors`](#arguments).
 
 ### `smtp`
 
@@ -554,7 +558,7 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`netframework`][netframework]             | .NET Framework metrics                                         |                    |
 | [`net`][net]                               | Network interface I/O                                          | Yes                |
 | [`os`][os]                                 | OS metrics (memory, processes, users)                          | Yes                |
-| [`pagefile`][pagefile]                     | Pagefile metrics                                               |                    |
+| [`pagefile`][pagefile]                     | `pagefile` metrics                                             |                    |
 | [`performancecounter`][performancecounter] | Performance Counter metrics                                    |                    |
 | [`physical_disk`][physical_disk]           | Physical disks                                                 |                    |
 | [`printer`][printer]                       | Printer metrics                                                |                    |

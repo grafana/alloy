@@ -16,6 +16,8 @@ import (
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
@@ -73,6 +75,7 @@ type Arguments struct {
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
 	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
 }
 
 type CloudProvider struct {
@@ -109,6 +112,10 @@ type QueryDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type ExplainPlansArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:   database_observability.DefaultExcludedSchemas(),
@@ -125,6 +132,10 @@ func defaultArguments() Arguments {
 		},
 
 		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+		},
+
+		ExplainPlansArguments: ExplainPlansArguments{
 			CollectInterval: 1 * time.Minute,
 		},
 	}
@@ -156,6 +167,12 @@ func (a *Arguments) Validate() error {
 	if enableOrDisableCollectors(*a)[collector.QueryDetailsCollector] {
 		if a.QueryDetailsArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_details.collect_interval must be greater than zero")
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.ExplainPlansCollector] {
+		if a.ExplainPlansArguments.CollectInterval <= 0 {
+			return fmt.Errorf("explain_plans.collect_interval must be greater than zero")
 		}
 	}
 
@@ -426,6 +443,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.SchemaDetailsCollector: true,
 		collector.QueryMetricsCollector:  true,
 		collector.QueryDetailsCollector:  true,
+		collector.ExplainPlansCollector:  true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -520,6 +538,33 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		}
 	}
 
+	if collectors[collector.ExplainPlansCollector] {
+		epArgs := collector.ExplainPlansArguments{
+			DB:              c.dbConnection,
+			CollectInterval: c.args.ExplainPlansArguments.CollectInterval,
+			EntryHandler:    entryHandler,
+			Logger:          c.opts.Logger,
+		}
+
+		// explain_plans has the same hard dependency on query_metrics's tracked
+		// query_hash set as query_details does, so its candidate set stays
+		// bounded by query_metrics.statements_limit rather than being an
+		// independent, unbounded discovery query.
+		if queryMetricsCollector != nil {
+			epArgs.Tracker = queryMetricsCollector.Tracker()
+		}
+
+		epCollector, err := collector.NewExplainPlans(epArgs)
+		if err != nil {
+			logStartError(collector.ExplainPlansCollector, "create", err)
+		} else {
+			if err := epCollector.Start(context.Background()); err != nil {
+				logStartError(collector.ExplainPlansCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, epCollector)
+		}
+	}
+
 	// Connection Info collector is always enabled
 	ciCollector, err := collector.NewConnectionInfo(collector.ConnectionInfoArguments{
 		DSN:           string(c.args.DataSourceName),
@@ -545,7 +590,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+	return util.PromHTTPHandlerFor(c.registry, c.opts.Logger, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {
@@ -609,6 +654,7 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
+		"engine":    model.LabelValue(collector.EngineName),
 	}).Wrap(entryHandler)
 
 	return entryHandler

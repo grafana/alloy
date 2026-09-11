@@ -10,6 +10,24 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+
+1.12.1 (2026-08-26)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.19.2 (@dehaansa)
+
+1.12.0 (2026-08-24)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.19.0 (@dehaansa)
+
 1.11.1 (2026-08-06)
 ----------
 
