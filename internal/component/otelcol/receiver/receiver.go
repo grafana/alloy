@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/xreceiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 
@@ -219,6 +220,21 @@ func (r *Receiver) Update(args component.Arguments) error {
 			return err
 		} else if logsReceiver != nil {
 			components = append(components, logsReceiver)
+		}
+	}
+
+	if len(next.Profiles) > 0 {
+		profilesFactory, ok := r.factory.(xreceiver.Factory)
+		if !ok {
+			return pipeline.ErrSignalNotSupported
+		}
+
+		fanout := fanoutconsumer.Profiles(next.Profiles)
+		profilesReceiver, err := profilesFactory.CreateProfiles(r.ctx, settings, receiverConfig, fanout)
+		if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+			return err
+		} else if profilesReceiver != nil {
+			components = append(components, profilesReceiver)
 		}
 	}
 
