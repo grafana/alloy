@@ -38,9 +38,9 @@ var (
 		"Number of index scans initiated on this table",
 		tableLabels, nil,
 	)
-	tableScanStatsNLiveTupDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("database_observability", "pg_table_stats", "n_live_tup"),
-		"Estimated number of live rows",
+	tableStatsRowCountDesc = prometheus.NewDesc(
+		prometheus.BuildFQName("database_observability", "pg_table_stats", "row_count"),
+		"Estimated number of live rows in this table",
 		tableLabels, nil,
 	)
 )
@@ -109,7 +109,7 @@ func (c *TableStats) Stop() {
 func (c *TableStats) Describe(ch chan<- *prometheus.Desc) {
 	ch <- tableScanStatsSeqScanDesc
 	ch <- tableScanStatsIdxScanDesc
-	ch <- tableScanStatsNLiveTupDesc
+	ch <- tableStatsRowCountDesc
 }
 
 // Collect implements prometheus.Collector. It runs synchronously at scrape
@@ -146,16 +146,16 @@ func (c *TableStats) collectTableScanStats(ctx context.Context, dbName string, c
 
 	for rows.Next() {
 		var schemaname, relname string
-		var seqScan, idxScan, nLiveTup sql.NullInt64
+		var seqScan, idxScan, rowCount sql.NullInt64
 
-		if err := rows.Scan(&schemaname, &relname, &seqScan, &idxScan, &nLiveTup); err != nil {
+		if err := rows.Scan(&schemaname, &relname, &seqScan, &idxScan, &rowCount); err != nil {
 			c.logger.Error("failed to scan pg_stat_user_tables row", "datname", dbName, "err", err)
 			return
 		}
 
 		ch <- prometheus.MustNewConstMetric(tableScanStatsSeqScanDesc, prometheus.CounterValue, float64(seqScan.Int64), dbName, schemaname, relname)
 		ch <- prometheus.MustNewConstMetric(tableScanStatsIdxScanDesc, prometheus.CounterValue, float64(idxScan.Int64), dbName, schemaname, relname)
-		ch <- prometheus.MustNewConstMetric(tableScanStatsNLiveTupDesc, prometheus.GaugeValue, float64(nLiveTup.Int64), dbName, schemaname, relname)
+		ch <- prometheus.MustNewConstMetric(tableStatsRowCountDesc, prometheus.GaugeValue, float64(rowCount.Int64), dbName, schemaname, relname)
 	}
 
 	if err := rows.Err(); err != nil {

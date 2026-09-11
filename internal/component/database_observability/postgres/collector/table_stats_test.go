@@ -49,9 +49,9 @@ func TestTableStats(t *testing.T) {
 	# HELP database_observability_pg_table_stats_idx_scan_total Number of index scans initiated on this table
 	# TYPE database_observability_pg_table_stats_idx_scan_total counter
 	database_observability_pg_table_stats_idx_scan_total{datname="books_store",relname="gen_adjectives",schemaname="public"} 0
-	# HELP database_observability_pg_table_stats_n_live_tup Estimated number of live rows
-	# TYPE database_observability_pg_table_stats_n_live_tup gauge
-	database_observability_pg_table_stats_n_live_tup{datname="books_store",relname="gen_adjectives",schemaname="public"} 500
+	# HELP database_observability_pg_table_stats_row_count Estimated number of live rows in this table
+	# TYPE database_observability_pg_table_stats_row_count gauge
+	database_observability_pg_table_stats_row_count{datname="books_store",relname="gen_adjectives",schemaname="public"} 500
 	# HELP database_observability_pg_table_stats_seq_scan_total Number of sequential scans initiated on this table
 	# TYPE database_observability_pg_table_stats_seq_scan_total counter
 	database_observability_pg_table_stats_seq_scan_total{datname="books_store",relname="gen_adjectives",schemaname="public"} 37154
