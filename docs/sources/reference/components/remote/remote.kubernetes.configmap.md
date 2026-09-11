@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: remote.kubernetes.configmap
 ---
 
@@ -79,8 +80,8 @@ The following arguments are supported:
 | Name                     | Type                | Description                                                                                      | Default | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `api_server`             | `string`            | URL of the Kubernetes API server.                                                                |         | no       |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |         | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |         | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`  | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`  | no       |
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |         | no       |
@@ -90,13 +91,13 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false` | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |         | no       |
 
- At most, one of the following can be provided:
+At most, one of the following can be provided:
 
-* [`authorization`](#authorization) block
-* [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`](#client) argument
-* [`bearer_token`](#client) argument
-* [`oauth2`](#oauth2) block
+- [`authorization`](#authorization) block
+- [`basic_auth`](#basic_auth) block
+- [`bearer_token_file`](#client) argument
+- [`bearer_token`](#client) argument
+- [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -128,7 +129,7 @@ The `data` field contains a mapping from field names to values.
 
 ## Component health
 
-Instances of `remote.kubernetes.configmap` report as healthy if the most recent attempt to poll the kubernetes API succeeds.
+Instances of `remote.kubernetes.configmap` report as healthy if the most recent attempt to poll the Kubernetes API succeeds.
 
 ## Debug information
 
