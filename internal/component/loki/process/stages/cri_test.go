@@ -218,7 +218,7 @@ func TestCRIStage(t *testing.T) {
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total %d
-# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total %d
 `, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
@@ -255,7 +255,7 @@ func TestCRIStageMaxPartialLinesExceeded(t *testing.T) {
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total 0
-# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total 3
 `

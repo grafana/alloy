@@ -67,7 +67,7 @@ func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 func getLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
 	metric := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "loki_process_cri_partial_lines_flushed_total",
-		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded",
+		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown",
 	})
 	return util.MustRegisterOrGet(registerer, metric).(prometheus.Counter)
 }
