@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,24 @@ func Test_metricsExporter_Export(t *testing.T) {
 
 	err := promtestutil.CollectAndCompare(reg, strings.NewReader(expect), metricNames...)
 	require.NoError(t, err)
+}
+
+func Test_LogsExporter_SendTimeout(t *testing.T) {
+	blocked := loki.NewLogsReceiver()
+	exp := newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, FormatLogfmt, 50*time.Millisecond)
+	exp.SetReceivers([]loki.LogsReceiver{blocked})
+
+	p := payload.Payload{
+		Logs: []payload.Log{{Message: "hello", LogLevel: payload.LogLevelInfo}},
+	}
+
+	start := time.Now()
+	err := exp.Export(t.Context(), p)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, elapsed, 500*time.Millisecond)
 }
 
 func Test_LogsExporter_Export(t *testing.T) {
@@ -318,7 +337,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 			t.Parallel()
 			var (
 				lr  = newFakeLogsReceiver(t)
-				exp = newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, tc.format)
+				exp = newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, tc.format, 2*time.Second)
 			)
 			exp.SetReceivers([]loki.LogsReceiver{lr})
 			exp.SetLabels(map[string]string{
