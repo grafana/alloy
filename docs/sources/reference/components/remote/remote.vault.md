@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: remote.vault
 ---
 
@@ -135,11 +136,11 @@ The `auth.azure` block authenticates to Vault using the [Azure auth method][Azur
 
 Credentials are retrieved for the running Azure VM using Managed Identities for Azure Resources.
 
-| Name           | Type     | Description                                          | Default   | Required |
-| -------------- | -------- | ---------------------------------------------------- | --------- | -------- |
-| `role`         | `string` | Role name to authenticate as.                        |           | yes      |
-| `resource_url` | `string` | Resource URL to include with authentication request. |           | no       |
-| `mount_path`   | `string` | Mount path for the login.                            | `"azure"` | no       |
+| Name           | Type     | Description                                          | Default                           | Required |
+| -------------- | -------- | ---------------------------------------------------- | --------------------------------- | -------- |
+| `role`         | `string` | Role name to authenticate as.                        |                                   | yes      |
+| `resource_url` | `string` | Resource URL to include with authentication request. | `"https://management.azure.com/"` | no       |
+| `mount_path`   | `string` | Mount path for the login.                            | `"azure"`                         | no       |
 
 [Azure]: https://www.vaultproject.io/docs/auth/azure
 
@@ -149,21 +150,21 @@ The `auth.custom` blocks allows authenticating against Vault using an arbitrary 
 
 Using `auth.custom` is equivalent to calling `vault write PATH DATA` on the command line.
 
-
-| Name         | Type            | Description                                            | Default | Required |
-|--------------|-----------------|--------------------------------------------------------| ------- |----------|
-| `path`       | `string`        | Path to write to for creating an authentication token. |         | yes      |
-| `data`       | `map(secret)`   | Authentication data.                                   |         | yes      |
-| `namespace`  | `string`        | The namespace to authenticate to.                      |         | no       |
+| Name        | Type          | Description                                            | Default | Required |
+| ----------- | ------------- | ------------------------------------------------------ | ------- | -------- |
+| `path`      | `string`      | Path to write to for creating an authentication token. |         | yes      |
+| `data`      | `map(secret)` | Authentication data.                                   |         | yes      |
+| `namespace` | `string`      | The namespace to authenticate to.                      |         | no       |
 
 All values in the `data` attribute are considered secret, even if they contain nonsensitive information like usernames.
 
-With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace. 
+With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace.
 By specifying the namespace argument in `auth.custom`, you can authenticate to a namespace different from the one used to retrieve the secrets.
 
-You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} will automatically load. 
+You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} will automatically load.
 This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
 Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
+
 ### `auth.gcp`
 
 The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
@@ -186,11 +187,11 @@ When `type` is `"iam"`, the `iam_service_account` argument determines what servi
 
 The `auth.kubernetes` block authenticates to Vault using the [Kubernetes auth method][Kubernetes].
 
-| Name                   | Type     | Description                                 | Default        | Required |
-| ---------------------- | -------- | ------------------------------------------- | -------------- | -------- |
-| `role`                 | `string` | Role name to authenticate as.               |                | yes      |
-| `service_account_file` | `string` | Override service account token file to use. |                | no       |
-| `mount_path`           | `string` | Mount path for the login.                   | `"kubernetes"` | no       |
+| Name                   | Type     | Description                                 | Default                                                 | Required |
+| ---------------------- | -------- | ------------------------------------------- | ------------------------------------------------------- | -------- |
+| `role`                 | `string` | Role name to authenticate as.               |                                                         | yes      |
+| `service_account_file` | `string` | Override service account token file to use. | `"/var/run/secrets/kubernetes.io/serviceaccount/token"` | no       |
+| `mount_path`           | `string` | Mount path for the login.                   | `"kubernetes"`                                          | no       |
 
 When `service_account_file` is not specified, the JWT token to authenticate with is retrieved from `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 
@@ -291,10 +292,12 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 
 `remote.vault` exposes the following metrics:
 
-* `remote_vault_auth_total` (counter): Total number of times the component authenticated to Vault.
-* `remote_vault_secret_reads_total` (counter): Total number of times the secret was read from Vault.
-* `remote_vault_auth_lease_renewal_total` (counter): Total number of times the component renewed its authentication token lease.
-* `remote_vault_secret_lease_renewal_total` (counter): Total number of times the component renewed its secret token lease.
+| Name                                      | Type      | Description                                                                 |
+| ----------------------------------------- | --------- | --------------------------------------------------------------------------- |
+| `remote_vault_auth_total`                 | `counter` | Total number of times the component authenticated to Vault.                 |
+| `remote_vault_secret_reads_total`         | `counter` | Total number of times the secret was read from Vault.                       |
+| `remote_vault_auth_lease_renewal_total`   | `counter` | Total number of times the component renewed its authentication token lease. |
+| `remote_vault_secret_lease_renewal_total` | `counter` | Total number of times the component renewed its secret lease.               |
 
 ## Example
 
@@ -314,8 +317,8 @@ remote.vault "remote_write" {
   }
 }
 
-metrics.remote_write "prod" {
-  remote_write {
+prometheus.remote_write "prod" {
+  endpoint {
     url = "https://onprem-mimir:9009/api/v1/push"
     basic_auth {
       username = remote.vault.remote_write.data.username
