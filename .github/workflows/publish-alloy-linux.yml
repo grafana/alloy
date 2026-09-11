@@ -18,6 +18,10 @@ on:
         required: false
         type: string
         default: ""
+    outputs:
+      image:
+        description: "Digest-pinned ref of the pushed image (e.g. <repo>@sha256:...). Empty when not pushed or when the build target isn't configured for signing."
+        value: ${{ jobs.publish_linux_container.outputs.image }}
 
 permissions:
   contents: read
@@ -32,6 +36,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    outputs:
+      image: ${{ steps.build.outputs.image }}
     steps:
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
@@ -58,7 +64,8 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
 
-    - run: |
+    - id: build
+      run: |
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --name multiarch-alloy-${IMG_NAME}-${GITHUB_SHA} --driver docker-container --use
         ./scripts/docker-containers ${IMG_NAME}
