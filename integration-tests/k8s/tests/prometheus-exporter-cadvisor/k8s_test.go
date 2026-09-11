@@ -24,12 +24,10 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 	})
 
 	// Covers the cAdvisor collector families: version, cpu, memory, filesystem,
-	// network, and blkio.
+	// network, blkio, and pressure (PSI), plus metrics added in cAdvisor v0.60.
 	//
-	// Two families are left out on purpose:
-	//   - container_pressure_* (PSI) needs kernel CONFIG_PSI. Not every host has it.
-	//   - container_health_state needs a container with a Docker HEALTHCHECK. It
-	//     depends on the sibling workloads, not the exporter.
+	// container_health_state is left out on purpose: it needs a container with a
+	// Docker HEALTHCHECK, which kind's containerd runtime does not provide.
 	mimir.QueryMetrics(t, "cadvisor", []string{
 		"cadvisor_build_info",
 		"cadvisor_version_info",
@@ -78,6 +76,26 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 		"container_network_transmit_packets_dropped_total",
 		"container_network_transmit_packets_total",
 		"container_oom_events_total",
+
+		// Pressure stall (PSI) metrics. Present on the CI runner kernel.
+		"container_pressure_cpu_stalled_seconds_total",
+		"container_pressure_cpu_waiting_seconds_total",
+		"container_pressure_io_stalled_seconds_total",
+		"container_pressure_io_waiting_seconds_total",
+		"container_pressure_memory_stalled_seconds_total",
+		"container_pressure_memory_waiting_seconds_total",
+
+		// Metrics added in cAdvisor v0.60: cgroup v2 memory events and stats, CPU
+		// burst accounting, and container start time.
+		"container_cpu_cfs_burst_periods_total",
+		"container_cpu_cfs_burst_seconds_total",
+		"container_memory_events_high_total",
+		"container_memory_events_max_total",
+		"container_memory_pgscan_total",
+		"container_memory_pgsteal_total",
+		"container_memory_workingset_refault_anon_total",
+		"container_memory_workingset_refault_file_total",
+		"container_start_time_seconds",
 	})
 
 	// The filesystem metrics must report real data, not just be present. These

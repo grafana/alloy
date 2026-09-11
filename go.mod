@@ -39,7 +39,6 @@ require (
 	github.com/containerd/errdefs v1.0.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/dimchansky/utfbom v1.1.1
-	github.com/docker/docker v28.5.2+incompatible // indirect
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/elastic/go-freelru v0.16.0
@@ -58,7 +57,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0
-	github.com/google/cadvisor v0.54.1
+	github.com/google/cadvisor v0.60.5
 	github.com/google/dnsmasq_exporter v0.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/pprof v0.0.0-20260604005048-7023385849c0
@@ -513,7 +512,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
-	github.com/containerd/ttrpc v1.2.7 // indirect
+	github.com/containerd/ttrpc v1.2.9 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
@@ -548,7 +547,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.37.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
-	github.com/euank/go-kmsg-parser v2.0.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/expr-lang/expr v1.17.8 // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
@@ -670,7 +668,6 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/jsimonetti/rtnetlink v1.4.2 // indirect
-	github.com/karrick/godirwalk v1.17.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -759,9 +756,9 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/zipkin v0.158.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/opencontainers/runc v1.3.6 // indirect
+	github.com/opencontainers/runc v1.4.3 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
-	github.com/opencontainers/selinux v1.13.0 // indirect
+	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
 	github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.4 // indirect
@@ -953,6 +950,7 @@ require (
 	github.com/99designs/gqlgen v0.17.91
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
 	github.com/charmbracelet/huh v1.0.0
+	github.com/google/cadvisor/lib v0.0.0
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.158.0
@@ -1035,8 +1033,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coder/quartz v0.3.1 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
-	github.com/containerd/containerd/api v1.9.0 // indirect
-	github.com/containerd/typeurl/v2 v2.2.3 // indirect
+	github.com/containerd/containerd/api v1.10.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/semgroup v1.2.0 // indirect
@@ -1066,7 +1063,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/basicauth v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.158.0 // indirect
-	github.com/opencontainers/cgroups v0.0.4 // indirect
+	github.com/opencontainers/cgroups v0.0.6 // indirect
 	github.com/outscale/osc-sdk-go/v2 v2.34.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
@@ -1141,8 +1138,11 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 // Replace thanos-io/objstore with Grafana fork (auto-synced from collector/builder-config.yaml)
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-// TODO - remove forks when changes are merged upstream — non-singleton cadvisor Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.54.1-noglobals (auto-synced from collector/builder-config.yaml)
-replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
+// TODO - remove forks when changes are merged upstream — non-singleton cadvisor Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.60.5-noglobals (auto-synced from collector/builder-config.yaml)
+replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260910193702-34389474b6ec
+
+// cadvisor v0.60 split its /lib submodule out; its local replace is ignored from a dependency, so redirect /lib to the fork here too. (auto-synced from collector/builder-config.yaml)
+replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260910193702-34389474b6ec
 
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
@@ -1165,8 +1165,9 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 // Update openshift/client-go to version compatible with structured-merge-diff v6 (auto-synced from collector/builder-config.yaml)
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-// Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages (auto-synced from collector/builder-config.yaml)
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+// Pin runc to v1.3.6: cadvisor and other deps import runc libcontainer packages (auto-synced from collector/builder-config.yaml)
+// (intelrdt, user) that v1.4+ removed, so runc cannot float higher. (auto-synced from collector/builder-config.yaml)
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
 
 // Replace controller-runtime with pinned version (auto-synced from collector/builder-config.yaml)
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
