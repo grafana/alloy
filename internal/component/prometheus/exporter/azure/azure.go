@@ -41,6 +41,7 @@ type Arguments struct {
 	AzureCloudEnvironment    string   `alloy:"azure_cloud_environment,attr,optional"`
 	ValidateDimensions       bool     `alloy:"validate_dimensions,attr,optional"`
 	Regions                  []string `alloy:"regions,attr,optional"`
+	UseBatchAPI              bool     `alloy:"use_batch_api,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -84,5 +85,6 @@ func (a *Arguments) Convert() *azure_exporter.Config {
 		AzureCloudEnvironment:    a.AzureCloudEnvironment,
 		ValidateDimensions:       a.ValidateDimensions,
 		Regions:                  a.Regions,
+		UseBatchAPI:              a.UseBatchAPI,
 	}
 }
