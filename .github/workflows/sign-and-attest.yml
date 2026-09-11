@@ -1,0 +1,70 @@
+name: Sign release image
+
+# Keyless-signs a pushed container image with cosign via GitHub Actions OIDC.
+# Input is a digest-pinned image ref.
+#
+# The signer is this workflow, so consumers verify against a cert identity of:
+#   https://github.com/grafana/alloy/.github/workflows/sign-and-attest.yml@<ref>
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: 'Digest-pinned image reference to sign, e.g. us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror/alloy@sha256:...'
+        required: true
+        type: string
+      registry:
+        description: 'Registry to authenticate against when writing the signature.'
+        required: false
+        type: string
+        default: us-docker.pkg.dev
+
+permissions:
+  contents: read
+  id-token: write # keyless cosign OIDC, and login-to-gar workload identity
+
+jobs:
+  sign:
+    name: Sign image with cosign
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate image is digest-pinned
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: |
+        if [[ "${IMAGE}" != *"@sha256:"* ]]; then
+          echo "::error::image must be digest-pinned (contain @sha256:), got: ${IMAGE}"
+          exit 1
+        fi
+
+    - name: Log in to Google Artifact Registry
+      uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
+      with:
+        registry: ${{ inputs.registry }}
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      with:
+        cosign-release: v3.0.6
+
+    - name: Sign image
+      # Signs the image index only (no --recursive); that covers pulls by tag or
+      # index digest. Uploads to the public Rekor transparency log by default,
+      # which is what makes the short-lived cert verifiable after it expires.
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: |
+        cosign sign --yes "${IMAGE}"
+
+    - name: Verify signature
+      # Catch a broken signature before the draft release is published, since
+      # immutable releases can't be re-signed after publish. This checks the GAR
+      # copy; the mirror to Docker Hub is async, so it isn't verified here.
+      env:
+        IMAGE: ${{ inputs.image }}
+        REPO: ${{ github.repository }}
+      run: |
+        cosign verify \
+          --certificate-identity-regexp "^https://github\.com/${REPO}/\.github/workflows/sign-and-attest\.yml@" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          "${IMAGE}"

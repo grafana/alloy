@@ -84,6 +84,7 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                          \
       .
+    SIGN_TAG="$TAG_VERSION"
     ;;
 
   alloy-boringcrypto)
@@ -100,6 +101,7 @@ case "$TARGET_CONTAINER" in
       -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                       \
       .
+    SIGN_TAG="$TAG_VERSION-boringcrypto"
     ;;
 
   alloy-devel)
@@ -159,4 +161,12 @@ case "$TARGET_CONTAINER" in
     exit 1
     ;;
 esac
+
+# Surface the pushed digest so the signing workflow can sign it by digest (see
+# sign-and-attest.yml). SIGN_TAG is set only for release targets. buildx --push
+# doesn't load the image locally, so query the registry for the digest.
+if [[ $PUSH_ALLOY_IMAGE == "true" && -n "${SIGN_TAG:-}" && -n "${GITHUB_OUTPUT:-}" ]]; then
+  DIGEST=$(docker buildx imagetools inspect "$RELEASE_ALLOY_IMAGE:$SIGN_TAG" --format '{{.Manifest.Digest}}')
+  echo "image=$RELEASE_ALLOY_IMAGE@$DIGEST" >> "$GITHUB_OUTPUT"
+fi
 
