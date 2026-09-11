@@ -40,19 +40,19 @@ remote.vault "<LABEL>" {
 
 You can use the following arguments with `remote.vault`:
 
-| Name               | Type       | Description                                                | Default | Required |
-| ------------------ | ---------- | ---------------------------------------------------------- | ------- | -------- |
-| `path`             | `string`   | The path to retrieve a secret from.                        |         | yes      |
-| `server`           | `string`   | The Vault server to connect to.                            |         | yes      |
-| `namespace`        | `string`   | The Vault namespace to connect to (Vault Enterprise only). |         | no       |
-| `key`              | `string`   | The key to retrieve a secret from.                         |         | no       |
-| `reread_frequency` | `duration` | Rate to re-read keys.                                      | `"0s"`  | no       |
+| Name               | Type       | Description                                   | Default | Required |
+| ------------------ | ---------- | --------------------------------------------- | ------- | -------- |
+| `path`             | `string`   | The path to retrieve a secret from.           |         | yes      |
+| `server`           | `string`   | The Vault server to connect to.               |         | yes      |
+| `namespace`        | `string`   | The Vault Enterprise namespace to connect to. |         | no       |
+| `key`              | `string`   | The key to retrieve a secret from.            |         | no       |
+| `reread_frequency` | `duration` | Rate to re-read keys.                         | `"0s"`  | no       |
 
 Tokens with a lease are automatically renewed roughly two-thirds through their lease duration.
 If the leased token isn't renewable, or renewing the lease fails, the token is re-read.
 
 All tokens, regardless of whether they have a lease, are automatically reread at a frequency specified by the `reread_frequency` argument.
-Setting `reread_frequency` to `"0s"` (the default) disables this behavior.
+The default value of `reread_frequency`, `"0s"`, disables this behavior.
 
 ## Blocks
 
@@ -86,7 +86,7 @@ You can use the following blocks with `remote.vault`:
 
 {{< /docs/alloy-config >}}
 
-Exactly one `auth.*` block **must** be provided, otherwise the component will fail to load.
+You must provide exactly one `auth.*` block, or the component fails to load.
 
 ### `auth.approle`
 
@@ -106,8 +106,8 @@ The `auth.approle` block authenticates to Vault using the [AppRole auth method][
 
 The `auth.aws` block authenticates to Vault using the [AWS auth method][AWS].
 
-Credentials used to connect to AWS are specified by the environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION`.
-The environment variable `AWS_SHARED_CREDENTIALS_FILE` may be specified to use a credentials file instead.
+The environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION` specify the credentials used to connect to AWS.
+You can specify the environment variable `AWS_SHARED_CREDENTIALS_FILE` to use a credentials file instead.
 
 | Name                   | Type     | Description                                       | Default       | Required |
 | ---------------------- | -------- | ------------------------------------------------- | ------------- | -------- |
@@ -118,15 +118,15 @@ The environment variable `AWS_SHARED_CREDENTIALS_FILE` may be specified to use a
 | `region`               | `string` | AWS region to connect to.                         | `"us-east-1"` | no       |
 | `role`                 | `string` | Overrides the inferred role name inferred.        | `""`          | no       |
 
-The `type` argument must be set to one of `"ec2"` or `"iam"`.
+Set the `type` argument to `"ec2"` or `"iam"`.
 
-The `iam_server_id_header` argument is required used when `type` is set to `"iam"`.
+You must set `iam_server_id_header` when `type` is `"iam"`.
 
-If the `region` argument is explicitly set to an empty string `""`, the region to connect to will be inferred using an API call to the EC2 metadata service.
+If you explicitly set the `region` argument to an empty string `""`, `remote.vault` infers the region using an API call to the EC2 metadata service.
 
 The `ec2_signature_type` argument configures the signature to use when authenticating against EC2.
-It only applies when `type` is set to `"ec2"`.
-`ec2_signature_type` must be set to either `"identity"` or `"pkcs7"`.
+It only applies when `type` is `"ec2"`.
+Set `ec2_signature_type` to `"identity"` or `"pkcs7"`.
 
 [AWS]: https://www.vaultproject.io/docs/auth/aws
 
@@ -134,7 +134,7 @@ It only applies when `type` is set to `"ec2"`.
 
 The `auth.azure` block authenticates to Vault using the [Azure auth method][Azure].
 
-Credentials are retrieved for the running Azure VM using Managed Identities for Azure Resources.
+`remote.vault` retrieves credentials for the running Azure VM using Managed Identities for Azure Resources.
 
 | Name           | Type     | Description                                          | Default                           | Required |
 | -------------- | -------- | ---------------------------------------------------- | --------------------------------- | -------- |
@@ -156,12 +156,12 @@ Using `auth.custom` is equivalent to calling `vault write PATH DATA` on the comm
 | `data`      | `map(secret)` | Authentication data.                                   |         | yes      |
 | `namespace` | `string`      | The namespace to authenticate to.                      |         | no       |
 
-All values in the `data` attribute are considered secret, even if they contain nonsensitive information like usernames.
+`remote.vault` considers all values in the `data` attribute secret, even if they contain nonsensitive information like usernames.
 
 With Vault Enterprise, you can authenticate against a parent namespace while storing secrets in a child namespace.
 By specifying the namespace argument in `auth.custom`, you can authenticate to a namespace different from the one used to retrieve the secrets.
 
-You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} will automatically load.
+You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} automatically load.
 This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
 Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
 
@@ -176,8 +176,8 @@ The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
 | `iam_service_account` | `string` | IAM service account name to use.           |         | no       |
 | `mount_path`          | `string` | Mount path for the login.                  | `"gcp"` | no       |
 
-The `type` argument must be set to `"gce"` or `"iam"`. When `type` is `"gce"`, credentials are retrieved using the metadata service on GCE VMs.
-When `type` is `"iam"`, credentials are retrieved from the file that the `GOOGLE_APPLICATION_CREDENTIALS` environment variable points to.
+Set the `type` argument to `"gce"` or `"iam"`. When `type` is `"gce"`, `remote.vault` retrieves credentials using the metadata service on GCE VMs.
+When `type` is `"iam"`, `remote.vault` retrieves credentials from the file that the `GOOGLE_APPLICATION_CREDENTIALS` environment variable points to.
 
 When `type` is `"iam"`, the `iam_service_account` argument determines what service account name to use.
 
@@ -193,7 +193,7 @@ The `auth.kubernetes` block authenticates to Vault using the [Kubernetes auth me
 | `service_account_file` | `string` | Override service account token file to use. | `"/var/run/secrets/kubernetes.io/serviceaccount/token"` | no       |
 | `mount_path`           | `string` | Mount path for the login.                   | `"kubernetes"`                                          | no       |
 
-When `service_account_file` is not specified, the JWT token to authenticate with is retrieved from `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+When `service_account_file` isn't specified, `remote.vault` retrieves the JWT token to authenticate with from `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 
 [Kubernetes]: https://www.vaultproject.io/docs/auth/kubernetes
 
@@ -240,14 +240,14 @@ The `client_options` block customizes the connection to vault.
 | `max_retries`    | `int`      | Maximum number of times to retry after a 5xx error.   | `2`        | no       |
 | `timeout`        | `duration` | Maximum time to wait before a request times out.      | `"60s"`    | no       |
 
-Requests which fail due to server errors (HTTP 5xx error codes) can be retried.
+`remote.vault` can retry requests that fail with an HTTP 5xx server error.
 The `max_retries` argument specifies how many times to retry failed requests.
 The `min_retry_wait` and `max_retry_wait` arguments specify how long to wait before retrying.
 The wait period starts at `min_retry_wait` and exponentially increases up to `max_retry_wait`.
 
 Other types of failed requests, including HTTP 4xx error codes, aren't retried.
 
-If the `max_retries` argument is set to `0`, failed requests aren't retried.
+If you set the `max_retries` argument to `0`, `remote.vault` doesn't retry failed requests.
 
 ## Exported fields
 
@@ -261,10 +261,10 @@ The `data` field contains a mapping from data field names to values.
 There is one mapping for each string-like field stored in the Vault secret.
 
 Vault permits secret engines to store arbitrary data within the key-value pairs for a secret.
-The `remote.vault` component is only able to use values which are strings or can be converted to strings.
-Keys with non-string values are ignored and omitted from the `data` field.
+The `remote.vault` component can only use values that are strings, or that it can convert to strings.
+`remote.vault` ignores and omits keys with non-string values from the `data` field.
 
-If an individual key stored in `data` doesn't hold sensitive data, it can be converted into a string using [the `nonsensitive` function][convert.nonsensitive]:
+If an individual key stored in `data` doesn't hold sensitive data, you can convert it into a string using [the `nonsensitive` function][convert.nonsensitive]:
 
 ```alloy
 convert.nonsensitive(remote.vault.LABEL.data.KEY_NAME)
@@ -276,17 +276,17 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 
 ## Component health
 
-`remote.vault` is reported as unhealthy if the latest reread or renewal of secrets was unsuccessful.
+`remote.vault` reports as unhealthy if the most recent reread or renewal of secrets was unsuccessful.
 
 ## Debug information
 
 `remote.vault` exposes debug information for the authentication token and secret around:
 
-* The latest request ID used for retrieving or renewing the token.
-* The most recent time when the token was retrieved or renewed.
-* The expiration time for the token (if applicable).
-* Whether the token is renewable.
-* Warnings from Vault from when the token was retrieved.
+- The most recent request ID used for retrieving or renewing the token.
+- The most recent time `remote.vault` retrieved or renewed the token.
+- The token's expiration time, if applicable.
+- Whether the token is renewable.
+- Warnings from Vault when it retrieved the token.
 
 ## Debug metrics
 
@@ -295,7 +295,7 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 | Name                                      | Type      | Description                                                                 |
 | ----------------------------------------- | --------- | --------------------------------------------------------------------------- |
 | `remote_vault_auth_total`                 | `counter` | Total number of times the component authenticated to Vault.                 |
-| `remote_vault_secret_reads_total`         | `counter` | Total number of times the secret was read from Vault.                       |
+| `remote_vault_secret_reads_total`         | `counter` | Total number of times `remote.vault` read the secret from Vault.            |
 | `remote_vault_auth_lease_renewal_total`   | `counter` | Total number of times the component renewed its authentication token lease. |
 | `remote_vault_secret_lease_renewal_total` | `counter` | Total number of times the component renewed its secret lease.               |
 
