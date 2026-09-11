@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
@@ -20,10 +21,15 @@ const selectIndexUsageStats = `
 		s.relname,
 		s.indexrelname,
 		s.idx_scan,
+		i.indisprimary,
+		i.indisunique,
+		i.indpred IS NOT NULL AS is_partial,
 		pg_relation_size(s.indexrelid) AS index_size_bytes
-	FROM pg_stat_user_indexes s`
+	FROM pg_stat_user_indexes s
+	JOIN pg_index i ON i.indexrelid = s.indexrelid`
 
 var indexLabels = []string{labelDatname, "schemaname", "relname", "indexrelname"}
+var indexSizeLabels = append(append([]string{}, indexLabels...), "is_primary", "is_unique", "is_partial")
 
 var (
 	indexUsageIdxScanTotalDesc = prometheus.NewDesc(
@@ -33,8 +39,8 @@ var (
 	)
 	indexSizeBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("database_observability", "pg", "index_size_bytes"),
-		"Total disk space used by this index, in bytes",
-		indexLabels, nil,
+		"Total disk space used by this index, in bytes, labeled with whether it backs a primary key or unique constraint, or is partial",
+		indexSizeLabels, nil,
 	)
 )
 
@@ -139,14 +145,17 @@ func (c *IndexStats) collectIndexUsageStats(ctx context.Context, dbName string, 
 	for rows.Next() {
 		var schemaname, relname, indexrelname string
 		var idxScan, indexSizeBytes sql.NullInt64
+		var isPrimary, isUnique, isPartial bool
 
-		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &indexSizeBytes); err != nil {
+		if err := rows.Scan(&schemaname, &relname, &indexrelname, &idxScan, &isPrimary, &isUnique, &isPartial, &indexSizeBytes); err != nil {
 			c.logger.Error("failed to scan pg_stat_user_indexes row", "datname", dbName, "err", err)
 			return
 		}
 
 		ch <- prometheus.MustNewConstMetric(indexUsageIdxScanTotalDesc, prometheus.CounterValue, float64(idxScan.Int64), dbName, schemaname, relname, indexrelname)
-		ch <- prometheus.MustNewConstMetric(indexSizeBytesDesc, prometheus.GaugeValue, float64(indexSizeBytes.Int64), dbName, schemaname, relname, indexrelname)
+		ch <- prometheus.MustNewConstMetric(indexSizeBytesDesc, prometheus.GaugeValue, float64(indexSizeBytes.Int64),
+			dbName, schemaname, relname, indexrelname,
+			strconv.FormatBool(isPrimary), strconv.FormatBool(isUnique), strconv.FormatBool(isPartial))
 	}
 
 	if err := rows.Err(); err != nil {
