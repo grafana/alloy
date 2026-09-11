@@ -326,9 +326,8 @@ func (c *Component) startup(ctx context.Context) error {
 	}
 
 	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, ruleLister)
-	if err = c.eventProcessor.syncMimir(ctx); err != nil {
-		return err
-	}
+	// Re-queue a sync to make sure that the state is synced at least once after startup.
+	c.eventProcessor.enqueueSyncMimir()
 
 	go c.eventProcessor.run(ctx)
 	return nil
