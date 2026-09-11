@@ -290,6 +290,7 @@ func (m *partialLinesStriped) Complete(fp model.Fingerprint, e Entry) Entry {
 	return e
 }
 
+// FlushAll does not count towards linesFlushed, which tracks only max_partial_lines.
 func (m *partialLinesStriped) FlushAll() []Entry {
 	m.lockAll()
 	defer m.unlockAll()
