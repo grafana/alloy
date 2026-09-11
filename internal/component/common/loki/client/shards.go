@@ -373,8 +373,13 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool
 		s.initBatchMetrics(tenantID)
 	}
 
-	fingerprint := entry.Labels.FastFingerprint()
-	shard := uint64(fingerprint) % uint64(len(s.queues))
+	var shard uint64
+	// If only one shard is configurec we don't need to compute FastFingerprint.
+	if len(s.queues) == 1 {
+		shard = 0
+	} else {
+		shard = uint64(entry.Labels.FastFingerprint()) % uint64(len(s.queues))
+	}
 
 	select {
 	case <-s.softShutdown:
