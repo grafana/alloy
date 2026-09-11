@@ -36,15 +36,15 @@ You can specify multiple `pyroscope.ebpf` components by giving them different la
 
 When running on Kubernetes without `privileged: true`, grant the following Linux capabilities and mount the kernel filesystem paths:
 
-| Capability           | Purpose                                                                                                                                 |
-|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `BPF`                | Load and manage eBPF programs and maps.                                                                                                 |
-| `PERFMON`            | Attach perf events and read performance counters.                                                                                       |
-| `SYS_PTRACE`         | Read `/proc/<pid>/` entries.                                                                                                            |
-| `CHECKPOINT_RESTORE` | Follow magic-links in `/proc/<pid>/map_files/*` for ELF symbol reading (kernel 5.9+; use `SYS_ADMIN` on older kernels).                 |
-| `SYS_RESOURCE`       | Raise `RLIMIT_MEMLOCK` for eBPF map locking.                                                                                            |
-| `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                                |
-| `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                                              |
+| Capability           | Purpose                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `BPF`                | Load and manage eBPF programs and maps.                                                                                 |
+| `PERFMON`            | Attach perf events and read performance counters.                                                                       |
+| `SYS_PTRACE`         | Read `/proc/<pid>/` entries.                                                                                            |
+| `CHECKPOINT_RESTORE` | Follow magic-links in `/proc/<pid>/map_files/*` for ELF symbol reading (kernel 5.9+; use `SYS_ADMIN` on older kernels). |
+| `SYS_RESOURCE`       | Raise `RLIMIT_MEMLOCK` for eBPF map locking.                                                                            |
+| `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                |
+| `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                              |
 
 Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
 
@@ -68,43 +68,43 @@ The component configures and starts a new eBPF profiling job to collect performa
 
 You can use the following arguments with `pyroscope.ebpf`:
 
-| Name                      | Type                     | Description                                                                                                          | Default  | Required |
-|---------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------|----------|----------|
-| `forward_to`              | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |          | yes      |
-| `targets`                 | `list(map(string))`      | List of process or container targets to profile.                                                                     |          | no       |
-| `bpf_fs_root`             | `string`                 | Root path of the BPF filesystem for pinned maps used in trace correlation.                                           | `"/sys/fs/bpf/"` | no       |
-| `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`     | no       |
-| `cache_rounds`            | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |          | no       |
-| `collect_interval`        | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`  | no       |
-| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`   | no       |
-| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`   | no       |
-| `comm`                    | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"` | no       |
-| `container_id_cache_size` | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> container ID table LRU cache.                       | `1024`   | no       |
-| `demangle`                | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"` | no       |
-| `dotnet_enabled`          | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`   | no       |
-| `go_enabled`              | `bool`                   | A flag to enable or disable Go profiling.                                                                            | `true`   | no       |
-| `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`  | no       |
-| `hotspot_enabled`         | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`   | no       |
-| `kernel_frames`           | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`   | no       |
-| `no_kernel_version_check` | `bool`                   | Skip the kernel version check for eBPF support.                                                                      | `false`  | no       |
-| `obi_process_context_enabled` | `bool`               | Enable profile correlation with traces generated by components compatible with OpenTelemetry eBPF Instrumentation. | `true`   | no       |
-| `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
-| `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
-| `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
-| `pid_label`               | `bool`                   | Attach the process PID to each pprof sample as a `pid` label.                                                        | `false`  | no       |
-| `pid_map_size`            | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`   | no       |
-| `python_enabled`          | `bool`                   | A flag to enable or disable Python profiling.                                                                        | `true`   | no       |
-| `probe_links`             | `list(string)`           | List of kernel or user-space probes from which to collect stack traces.                                              |          | no       |
-| `ruby_enabled`            | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`   | no       |
-| `same_file_cache_size`    | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache.                       | `8`      | no       |
-| `sample_rate`             | `int`                    | How many times per second to collect profile samples.                                                                | `19`     | no       |
-| `symbols_map_size`        | `int`                    | Deprecated (no-op), previously controlled the size of the eBPF symbols map.                                          | `16384`  | no       |
-| `load_probe`              | `bool`                   | Load a generic eBPF program that can be attached to a kernel or user-space hook externally.                          | `false`  | no       |
-| `u_probe_links`           | `list(string)`           | Deprecated. Use `probe_links` instead.                                                                               |          | no       |
-| `v8_enabled`              | `bool`                   | A flag to enable or disable V8 profiling.                                                                            | `true`   | no       |
-| `off_cpu_threshold`       | `float`                  | Probability from `0` to `1` for recording an off-CPU event. A value of `0` disables off-CPU profiling.              | `0`      | no       |
-| `verbose_mode`            | `bool`                   | Enable verbose logging for the eBPF profiler.                                                                        | `false`  | no       |
-| `lazy_mode`               | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`  | no       |
+| Name                          | Type                     | Description                                                                                                          | Default          | Required |
+| ----------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `forward_to`                  | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |                  | yes      |
+| `bpf_fs_root`                 | `string`                 | Root path of the BPF filesystem for pinned maps used in trace correlation.                                           | `"/sys/fs/bpf/"` | no       |
+| `build_id_cache_size`         | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`             | no       |
+| `cache_rounds`                | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |                  | no       |
+| `collect_interval`            | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`          | no       |
+| `collect_kernel_profile`      | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`           | no       |
+| `collect_user_profile`        | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`           | no       |
+| `comm`                        | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"`         | no       |
+| `container_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> container ID table LRU cache.                       | `1024`           | no       |
+| `demangle`                    | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"`         | no       |
+| `dotnet_enabled`              | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`           | no       |
+| `go_enabled`                  | `bool`                   | A flag to enable or disable Go profiling.                                                                            | `true`           | no       |
+| `go_table_fallback`           | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`          | no       |
+| `hotspot_enabled`             | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`           | no       |
+| `kernel_frames`               | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`           | no       |
+| `lazy_mode`                   | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`          | no       |
+| `load_probe`                  | `bool`                   | Load a generic eBPF program that can be attached to a kernel or user-space hook externally.                          | `false`          | no       |
+| `no_kernel_version_check`     | `bool`                   | Skip the kernel version check for eBPF support.                                                                      | `false`          | no       |
+| `obi_process_context_enabled` | `bool`                   | Enable profile correlation with traces generated by components compatible with OpenTelemetry eBPF Instrumentation.   | `true`           | no       |
+| `off_cpu_threshold`           | `float`                  | Probability from `0` to `1` for recording an off-CPU event. A value of `0` disables off-CPU profiling.               | `0`              | no       |
+| `perl_enabled`                | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`           | no       |
+| `php_enabled`                 | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`           | no       |
+| `pid_cache_size`              | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`             | no       |
+| `pid_label`                   | `bool`                   | Attach the process PID to each pprof sample as a `pid` label.                                                        | `false`          | no       |
+| `pid_map_size`                | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`           | no       |
+| `probe_links`                 | `list(string)`           | List of kernel or user-space probes from which to collect stack traces.                                              |                  | no       |
+| `python_enabled`              | `bool`                   | A flag to enable or disable Python profiling.                                                                        | `true`           | no       |
+| `ruby_enabled`                | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`           | no       |
+| `same_file_cache_size`        | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache.                       | `8`              | no       |
+| `sample_rate`                 | `int`                    | How many times per second to collect profile samples.                                                                | `19`             | no       |
+| `symbols_map_size`            | `int`                    | Deprecated (no-op), previously controlled the size of the eBPF symbols map.                                          | `16384`          | no       |
+| `targets`                     | `list(map(string))`      | List of process or container targets to profile.                                                                     |                  | no       |
+| `u_probe_links`               | `list(string)`           | Deprecated. Use `probe_links` instead.                                                                               |                  | no       |
+| `v8_enabled`                  | `bool`                   | A flag to enable or disable V8 profiling.                                                                            | `true`           | no       |
+| `verbose_mode`                | `bool`                   | Enable verbose logging for the eBPF profiler.                                                                        | `false`          | no       |
 
 {{< admonition type="caution" >}}
 Use `no_kernel_version_check` only when you run on an older kernel that includes backported eBPF features from a later release.
@@ -118,7 +118,30 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-`pyroscope.ebpf` doesn't support any blocks.
+You can use the following block with `pyroscope.ebpf`:
+
+{{< docs/alloy-config >}}
+
+| Block                       | Description                                               | Required |
+| --------------------------- | --------------------------------------------------------- | -------- |
+| [`debug_info`][debug_info]  | Configures on-target symbolization and debug info upload. | no       |
+
+[debug_info]: #debug_info
+
+{{< /docs/alloy-config >}}
+
+### `debug_info`
+
+The `debug_info` block configures on-target symbolization and the upload of debug information used for off-target symbolization.
+
+| Name                      | Type   | Description                                                                  | Default  | Required |
+| ------------------------- | ------ | ----------------------------------------------------------------------------- | -------- | -------- |
+| `cache_size`              | `int`  | Size of the LRU cache used to avoid re-uploading the same debug information. | `262144` | no       |
+| `on_target_symbolization` | `bool` | Symbolize stack traces directly on the profiled host.                        | `true`   | no       |
+| `queue_size`              | `int`  | Size of the upload queue.                                                    | `256`    | no       |
+| `strip_text_section`      | `bool` | Strip the executable's text section before upload.                           | `false`  | no       |
+| `upload`                  | `bool` | Upload executable debug information for off-target symbolization.            | `false`  | no       |
+| `worker_num`              | `int`  | Number of workers processing the upload queue.                               | `16`     | no       |
 
 ## Exported fields
 
@@ -126,21 +149,24 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Component health
 
-`pyroscope.ebpf` is only reported as unhealthy if given an invalid configuration.
+`pyroscope.ebpf` is reported as unhealthy if given an invalid configuration, or if the eBPF profiling session fails to start, for example due to missing privileges or an unsupported kernel.
 
 ## Debug information
 
-* `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-* `pid_cache` per process elf symbol tables and their sizes in symbols count.
-* `targets` currently tracked active targets.
+- `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
+- `pid_cache` per process elf symbol tables and their sizes in symbols count.
+- `targets` currently tracked active targets.
 
 ## Debug metrics
 
-* `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
-* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
-* `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-* `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
-* `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
+- `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
+- `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
+- `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
+- `pyroscope_ebpf_pprofs_dropped_total` (counter): Number of pprof profiles dropped by the eBPF component.
+- `pyroscope_ebpf_pprof_bytes_total` (counter): Total bytes of pprof profiles collected by the eBPF component, per `service_name`.
+- `pyroscope_ebpf_pprof_samples_total` (counter): Total samples in pprof profiles collected by the eBPF component, per `service_name`.
+- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 
 ### eBPF profiler internal metrics
 
@@ -152,50 +178,50 @@ Notable metrics include:
 
 #### Native unwinding
 
-* `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
-* `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
-* `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
-* `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
-* `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
+- `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
+- `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
+- `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
+- `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
+- `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
 
 #### Interpreter unwinding
 
-* `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
-* `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
-* `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
-* `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
-* `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
-* `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
-* `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
-* `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
-* `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
-* `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
-* `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
-* `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
-* `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
-* `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
+- `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
+- `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
+- `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
+- `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
+- `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
+- `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
+- `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
+- `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
+- `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
+- `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
+- `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
+- `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
+- `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
+- `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
 
 #### Symbolization
 
-* `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
-* `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
-* `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
-* `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
-* `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
-* `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
+- `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
+- `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
+- `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
+- `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
+- `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
+- `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
 
 #### Process management
 
-* `NumProcNew_total` (counter): Number of new PID events.
-* `NumProcExit_total` (counter): Number of exit PID events.
-* `NumGenericPID_total` (counter): Number of generic PID events.
+- `NumProcNew_total` (counter): Number of new PID events.
+- `NumProcExit_total` (counter): Number of exit PID events.
+- `NumGenericPID_total` (counter): Number of generic PID events.
 
 #### eBPF map state
 
-* `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
-* `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
-* `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
-* `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
+- `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
+- `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
+- `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
+- `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
 
 The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
 
@@ -222,10 +248,10 @@ These labels can help you pin down a profiling target.
 
 One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
 
-* `__container_id__`: The container ID.
-* `__meta_docker_container_id`: The ID of the Docker container.
-* `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
-* `__process_pid__` : The process ID.
+- `__container_id__`: The container ID.
+- `__meta_docker_container_id`: The ID of the Docker container.
+- `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
+- `__process_pid__` : The process ID.
 
 Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
 
@@ -236,11 +262,13 @@ Otherwise the process isn't profiled.
 ### Service name
 
 The special label `service_name` is required and must always be present.
-If it's not specified, it's attempted to be inferred from multiple sources:
+If it's not specified, it's attempted to be inferred, in order, from the following sources:
 
-* `__meta_docker_container_name`
-* `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
-* `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
+- `__meta_kubernetes_pod_annotation_pyroscope_io_service_name`, which is a `pyroscope.io/service_name` Pod annotation.
+- `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `ebpf/<namespace>/<container_name>`.
+- `__meta_docker_container_name`.
+- `__meta_dockerswarm_container_label_service_name`.
+- `__meta_dockerswarm_service_name`.
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
@@ -248,18 +276,18 @@ If `service_name` isn't specified and couldn't be inferred, it's set to `unspeci
 
 Symbols are extracted from various sources, including:
 
-* The `.gopclntab` section in Go language ELF files.
-* The `.symtab` and `.dynsym` sections in the debug ELF file.
-* The `.symtab` and `.dynsym` sections in the ELF file.
+- The `.gopclntab` section in Go language ELF files.
+- The `.symtab` and `.dynsym` sections in the debug ELF file.
+- The `.symtab` and `.dynsym` sections in the ELF file.
 
 The search for debug files follows [gdb algorithm][].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
-* `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
-* `/lib/x86_64-linux-gnu/libc.so.6.debug`
-* `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
-* `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
+- `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
+- `/lib/x86_64-linux-gnu/libc.so.6.debug`
+- `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
+- `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
 
 ### Deal with unknown symbols
 
@@ -267,9 +295,9 @@ Unknown symbols in the profiles you've collected indicate that the profiler coul
 
 This can occur for several reasons:
 
-* The process has terminated, making the ELF file inaccessible.
-* The ELF file is either corrupted or not recognized as an ELF file.
-* There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
+- The process has terminated, making the ELF file inaccessible.
+- The ELF file is either corrupted or not recognized as an ELF file.
+- There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
 
 ### Address unresolved symbols
 
@@ -277,8 +305,8 @@ If you only see module names without corresponding function names, for example, 
 
 This can occur for several reasons:
 
-* The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
-* The debug file is missing or couldn't be located.
+- The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+- The debug file is missing or couldn't be located.
 
 To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
 You can achieve this by running:
@@ -425,8 +453,8 @@ pyroscope.ebpf "probes" {
 
 Replace the following:
 
-* _`<TARGET_LIST>`_: The list of process or container targets to profile.
-* _`<RECEIVER_LIST>`_: The list of profile receivers to forward profiles to.
+- _`<TARGET_LIST>`_: The list of process or container targets to profile.
+- _`<RECEIVER_LIST>`_: The list of profile receivers to forward profiles to.
 
 ### Correlate request profiles with Beyla traces and spans
 
@@ -493,10 +521,9 @@ pyroscope.write "profiles" {
 
 Replace the following:
 
-* _`<OTLP_TRACES_ENDPOINT>`_: The OTLP HTTP endpoint to send traces to.
-* _`<PYROSCOPE_URL>`_: The URL of the Pyroscope server to send profiles to.
+- _`<OTLP_TRACES_ENDPOINT>`_: The OTLP HTTP endpoint to send traces to.
+- _`<PYROSCOPE_URL>`_: The URL of the Pyroscope server to send profiles to.
 
-[troubleshooting]: #troubleshoot-unknown-symbols
 [gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
