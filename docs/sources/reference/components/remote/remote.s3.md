@@ -85,7 +85,7 @@ The `client` block customizes options to connect to the S3 server.
 The following fields are exported and can be referenced by other components:
 
 | Name      | Type                 | Description               |
-| --------- | -------------------- | -------------------------- |
+| --------- | -------------------- | ------------------------- |
 | `content` | `string` or `secret` | The contents of the file. |
 
 The `content` field will be secret if `is_secret` is set to true.
