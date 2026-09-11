@@ -1,0 +1,25 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  clickhouse:
+    endpoint: tcp://localhost:9000
+    database: otel
+    ttl: 48h
+    table_engine:
+      name: ReplicatedMergeTree
+    cluster_name: my_cluster
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [clickhouse]
+    metrics:
+      receivers: [otlp]
+      exporters: [clickhouse]
+    logs:
+      receivers: [otlp]
+      exporters: [clickhouse]

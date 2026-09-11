@@ -825,8 +825,8 @@ require (
 	github.com/tidwall/wal v1.2.1 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tjhop/slog-gokit v0.1.6 // indirect
-	github.com/tklauser/go-sysconf v0.3.16 // indirect
-	github.com/tklauser/numcpus v0.11.0 // indirect
+	github.com/tklauser/go-sysconf v0.4.0 // indirect
+	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/twmb/franz-go v1.21.5 // indirect
 	github.com/twmb/franz-go/pkg/kadm v1.18.0 // indirect
@@ -867,7 +867,7 @@ require (
 	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.158.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.158.0 // indirect
 	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.158.0 // indirect
-	go.opentelemetry.io/collector/exporter/exportertest v0.158.0 // indirect
+	go.opentelemetry.io/collector/exporter/exportertest v0.158.0
 	go.opentelemetry.io/collector/exporter/xexporter v0.158.0 // indirect
 	go.opentelemetry.io/collector/extension/extensioncapabilities v0.158.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.158.0 // indirect
@@ -956,6 +956,7 @@ require (
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.158.0
@@ -967,14 +968,14 @@ require (
 
 require (
 	cloud.google.com/go/secretmanager v1.20.0 // indirect
-	github.com/ClickHouse/ch-go v0.71.0 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.43.0 // indirect
+	github.com/ClickHouse/ch-go v0.74.0 // indirect
+	github.com/ClickHouse/clickhouse-go/v2 v2.48.0
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/jackc/pgx/v5 v5.9.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/nginx/nginx-prometheus-exporter v1.5.1 // indirect
-	github.com/paulmach/orb v0.12.0 // indirect
+	github.com/paulmach/orb v0.13.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sethvargo/go-envconfig v1.3.0 // indirect
 )

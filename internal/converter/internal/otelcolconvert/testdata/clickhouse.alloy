@@ -1,0 +1,47 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		metrics = [otelcol.exporter.clickhouse.default.input]
+		logs    = [otelcol.exporter.clickhouse.default.input]
+		traces  = [otelcol.exporter.clickhouse.default.input]
+	}
+}
+
+otelcol.exporter.clickhouse "default" {
+	endpoint           = "tcp://localhost:9000"
+	database           = "otel"
+	metrics_table_name = ""
+	ttl                = "48h0m0s"
+
+	table_engine {
+		name = "ReplicatedMergeTree"
+	}
+	cluster_name = "my_cluster"
+	compress     = ""
+
+	metrics_tables {
+		gauge {
+			name = "otel_metrics_gauge"
+		}
+
+		sum {
+			name = "otel_metrics_sum"
+		}
+
+		summary {
+			name = "otel_metrics_summary"
+		}
+
+		histogram {
+			name = "otel_metrics_histogram"
+		}
+
+		exponential_histogram {
+			name = "otel_metrics_exponential_histogram"
+		}
+	}
+	timeout = "5s"
+}
