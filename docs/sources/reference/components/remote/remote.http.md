@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: remote.http
 ---
 
@@ -31,17 +32,18 @@ remote.http "<LABEL>" {
 
 You can use the following arguments with `remote.http`:
 
-| Name             | Type          | Description                                                  | Default | Required |
-| ---------------- | ------------- | ------------------------------------------------------------ | ------- | -------- |
-| `url`            | `string`      | URL to poll.                                                 |         | yes      |
-| `body`           | `string`      | The request body.                                            | `""`    | no       |
-| `headers`        | `map(string)` | Custom headers for the request.                              | `{}`    | no       |
-| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][]. | `false` | no       |
-| `method`         | `string`      | Define HTTP method for the request                           | `"GET"` | no       |
-| `poll_frequency` | `duration`    | Frequency to poll the URL.                                   | `"1m"`  | no       |
-| `poll_timeout`   | `duration`    | Timeout when polling the URL.                                | `"10s"` | no       |
+| Name             | Type          | Description                                                       | Default | Required |
+| ---------------- | ------------- | ----------------------------------------------------------------- | ------- | -------- |
+| `url`            | `string`      | URL to poll.                                                      |         | yes      |
+| `body`           | `string`      | The request body.                                                 | `""`    | no       |
+| `headers`        | `map(string)` | Custom headers for the request.                                   | `{}`    | no       |
+| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][].      | `false` | no       |
+| `method`         | `string`      | The HTTP method for the request.                                  | `"GET"` | no       |
+| `poll_frequency` | `duration`    | Frequency to poll the URL.                                        | `"1m"`  | no       |
+| `poll_timeout`   | `duration`    | Timeout when polling the URL. Must be less than `poll_frequency`. | `"10s"` | no       |
 
-When `remote.http` performs a poll operation, an HTTP `GET` request is made against the URL specified by the `url` argument.
+When `remote.http` performs a poll operation, an HTTP request using the method specified by the `method` argument is made against the URL specified by the `url` argument.
+If the `headers` argument doesn't set a `User-Agent` header, `remote.http` sends a default `User-Agent` header.
 A poll is triggered by the following:
 
 * When the component first loads.
@@ -52,7 +54,7 @@ The poll is successful if the URL returns a `200 OK` response code.
 All other response codes are treated as errors and mark the component as unhealthy.
 After a successful poll, the response body from the URL is exported.
 
-[secret]: ../../../../get-started/configuration-syntax/expressions/types_and_values/#secrets
+[secret]: ../../../../get-started/expressions/types_and_values/#secrets
 
 ## Blocks
 
@@ -119,7 +121,7 @@ If the `is_secret` argument was `true`, `content` is a secret type.
 
 ## Component health
 
-Instances of `remote.http` report as healthy if the most recent HTTP `GET` request of the specified URL succeeds.
+Instances of `remote.http` report as healthy if the most recent HTTP request of the specified URL succeeds.
 
 ## Debug information
 
