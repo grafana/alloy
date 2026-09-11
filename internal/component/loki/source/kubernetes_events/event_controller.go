@@ -314,6 +314,9 @@ func appendTextMsg(msg *strings.Builder, fields map[string]any, key string, valu
 }
 
 func eventTimestamp(event *corev1.Event) time.Time {
+	if event.Series != nil && !event.Series.LastObservedTime.IsZero() {
+		return event.Series.LastObservedTime.Time
+	}
 	if !event.LastTimestamp.IsZero() {
 		return event.LastTimestamp.Time
 	}
