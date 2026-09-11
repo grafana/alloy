@@ -1009,6 +1009,16 @@ func splitPath(id string) (string, string) {
 	return "/" + parent, id
 }
 
+// setDataFlowEdges inspects the given component references and adds data flow
+// edges so that graph views can display how data flows between components.
+//
+// Module components (declared with declare blocks or imported with import.*
+// blocks) only publish their exports once they are evaluated, which happens
+// after the graph has been wired. Since wiring runs only once, the exports of
+// a module component can never be matched against a struct field here; when a
+// reference points at an export field of a module component, a data flow edge
+// is added directly instead, with the module component as the source of the
+// edge.
 func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
@@ -1019,12 +1029,25 @@ func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 			if tn, ok := ref.Target.(ComponentNode); ok {
 				exports := tn.Exports()
 				if exports == nil {
+					// The exports of module components are only published
+					// after evaluation, so there is nothing to match against
+					// at wiring time. Referencing an export field still
+					// implies a data flow from the component providing it.
+					if len(ref.Traversal) > 0 {
+						tn.AddDataFlowEdgeTo(cn.NodeID())
+					}
 					continue
 				}
 
 				t := reflect.TypeOf(exports)
 
 				if t.Kind() != reflect.Struct {
+					// Exports published as a map (module components) cannot
+					// be matched against struct fields; connect the edge
+					// directly for the same reason as above.
+					if len(ref.Traversal) > 0 {
+						tn.AddDataFlowEdgeTo(cn.NodeID())
+					}
 					continue
 				}
 
