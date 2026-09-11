@@ -141,6 +141,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.debug` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.debug` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example receives OTLP metrics, logs, and traces and writes them to the console:

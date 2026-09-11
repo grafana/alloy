@@ -83,6 +83,10 @@ You can use the following blocks with `otelcol.receiver.awsecscontainermetrics`:
 
 `otelcol.receiver.awsecscontainermetrics` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.awsecscontainermetrics` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example collects eight task-level metrics from the 52 metrics available in an ECS task and forwards them to a filter processor.

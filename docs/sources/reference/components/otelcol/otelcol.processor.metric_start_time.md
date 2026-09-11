@@ -171,6 +171,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.processor.metric_start_time` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.metric_start_time` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Basic usage with default strategy

@@ -72,6 +72,10 @@ Logs sent to `input` are converted to Loki-compatible log entries and are forwar
 `otelcol.exporter.loki` doesn't expose any component-specific debug
 information.
 
+## Debug metrics
+
+`otelcol.exporter.loki` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Basic usage

@@ -42,15 +42,6 @@ You can use the following arguments with `database_observability.postgres`:
 
 Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_name`.
 
-## Exports
-
-The following fields are exported and can be referenced by other components:
-
-| Name            | Type                | Description                                                            |
-| --------------- | ------------------- | ---------------------------------------------------------------------- |
-| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
-| `targets`       | `list(map(string))` | Targets that can be used to collect metrics from the component.        |
-
 The following collectors are configurable:
 
 | Name             | Description                                                           | Enabled by default |
@@ -187,6 +178,19 @@ The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+| Name            | Type                | Description                                                            |
+| --------------- | ------------------- | ---------------------------------------------------------------------- |
+| `targets`       | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.  |
+| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
+
+## Component health
+
+`database_observability.postgres` is reported as unhealthy if one or more collectors fail to start or if any database instance encounters connection or configuration errors. Otherwise, the component is reported as healthy.
+
 ## `logs` collector
 
 The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point. It counts server errors and exposes them as a Prometheus metric on the component's metrics endpoint. When [`enable_error_logs_processing`](#logs) is `true`, it also emits per-query error telemetry as Loki log entries, so each error can be associated with the query that caused it.
@@ -201,6 +205,14 @@ PostgreSQL must be configured with a specific `log_line_prefix` so the collector
 {{< admonition type="note" >}}
 Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
 {{< /admonition >}}
+
+## Debug information
+
+`database_observability.postgres` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`database_observability.postgres` doesn't expose any component-specific debug metrics.
 
 ## Example
 

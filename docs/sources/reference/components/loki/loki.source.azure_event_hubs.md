@@ -116,7 +116,11 @@ If `"oauth"` is used, you must configure one of the [supported credential types]
 
 ## Debug information
 
-`loki.source.azure_event_hubs` doesn't expose additional debug info.
+`loki.source.azure_event_hubs` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`loki.source.azure_event_hubs` doesn't expose any component-specific debug metrics.
 
 ## Example
 

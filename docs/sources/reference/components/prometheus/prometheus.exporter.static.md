@@ -31,6 +31,10 @@ You can use the following argument with `prometheus.exporter.static`:
 | ------ | -------- | ------------------------------------- | ------- | -------- |
 | `text` | `string` | Text in Prometheus exposition format. | `""`    | no       |
 
+### Blocks
+
+The `prometheus.exporter.static` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}

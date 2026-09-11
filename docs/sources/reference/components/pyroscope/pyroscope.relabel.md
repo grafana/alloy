@@ -77,6 +77,10 @@ The following fields are exported and can be referenced by other components:
 
 `pyroscope.relabel` is reported as unhealthy if it is given an invalid configuration.
 
+## Debug information
+
+`pyroscope.relabel` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 * `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.

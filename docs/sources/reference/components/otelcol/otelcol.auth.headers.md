@@ -111,6 +111,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.auth.headers` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.auth.headers` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example configures [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] to use custom headers:

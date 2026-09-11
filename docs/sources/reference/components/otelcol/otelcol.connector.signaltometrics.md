@@ -248,6 +248,10 @@ The connector generates metrics from the received telemetry according to the con
 
 `otelcol.connector.signaltometrics` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.signaltometrics` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Generate a native histogram from log lines

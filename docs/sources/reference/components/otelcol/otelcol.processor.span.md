@@ -240,6 +240,10 @@ Logs and metrics aren't supported.
 
 `otelcol.processor.attributes` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.span` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Create a new span name from attribute values

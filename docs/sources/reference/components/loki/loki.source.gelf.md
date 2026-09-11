@@ -60,11 +60,19 @@ To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] compon
 
 The `loki.source.gelf` component doesn't support any blocks. You can configure this component with arguments.
 
+## Exported fields
+
+The `loki.source.gelf` component doesn't export any values.
+
 ## Component health
 
 `loki.source.gelf` is only reported as unhealthy if given an invalid configuration.
 
-## Debug Metrics
+## Debug information
+
+`loki.source.gelf` doesn't expose any component-specific debug information.
+
+## Debug metrics
 
 * `gelf_target_entries_total` (counter): Total number of successful entries sent to the GELF target.
 * `gelf_target_parsing_errors_total` (counter): Total number of parsing errors while receiving GELF messages.
