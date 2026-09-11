@@ -69,9 +69,9 @@ func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 // by testutil.GatherAndCompare) to assert against each run's own registry.
 func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, expectedMetrics string) {
 	// Pipeline.Run seeds the extracted map with each entry's initial labels
-	// before running any stage. process (called directly below, bypassing
-	// ProcessBatch/ProcessEntry) does not. Seed it here once so both
-	// pipeline implementations start from the same state.
+	// before running any stage. process, called directly below, does not.
+	// Seed it here once so both pipeline implementations start from the same
+	// state.
 	for i := range entries {
 		for labelName, labelValue := range entries[i].Labels {
 			entries[i].Extracted[string(labelName)] = string(labelValue)

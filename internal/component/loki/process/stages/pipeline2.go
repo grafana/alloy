@@ -76,7 +76,7 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 			} else {
 				entries = append(entries, Entry{
 					Extracted: maps.Clone(extracted),
-					//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+					// FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
 				})
 			}

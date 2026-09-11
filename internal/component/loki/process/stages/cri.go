@@ -216,9 +216,15 @@ func (c *criStage) stop() {
 
 func (c *criStage) Cleanup() {}
 
-const stripeCount = 16
+const (
+	stripeCount = 16
 
-// partialLinesStriped is an concurrency safe
+	// maxPreallocPerStripe of 3k caps the up-front allocation at about 8 MiB across all 16 stripes.
+	maxPreallocPerStripe = 3000
+)
+
+// partialLinesStriped holds partial lines in a map sharded into a fixed
+// number of independently locked stripes. It is safe for concurrent use.
 type partialLinesStriped struct {
 	// size is only exact while every stripe lock is held. Other readers treat it as a hint.
 	size atomic.Int64
@@ -245,7 +251,10 @@ func newPartialLinesStriped(cfg CRIConfig, logger *slog.Logger, linesTruncated p
 		linesFlushed:   linesFlushed,
 		linesTruncated: linesTruncated,
 	}
-	perStripe := m.cfg.MaxPartialLines/stripeCount + 1
+	// MaxPartialLines is user supplied and has no upper bound, so cap what we
+	// pre-allocate. The stripe maps grow on demand, so a larger limit still
+	// works, it just pays for the growth as it goes.
+	perStripe := min(cfg.MaxPartialLines/stripeCount+1, maxPreallocPerStripe)
 	for i := range m.stripes {
 		m.stripes[i].data = make(map[model.Fingerprint]Entry, perStripe)
 	}

@@ -500,7 +500,6 @@ func TestPartialLinesStriped(t *testing.T) {
 		require.Empty(t, pl.FlushAll())
 		require.Zero(t, pl.size.Load())
 	})
-
 }
 
 func TestPartialLinesStripedConcurrent(t *testing.T) {
@@ -595,11 +594,16 @@ func TestPartialLinesStripedConcurrent(t *testing.T) {
 		var (
 			mut     sync.Mutex
 			emitted []Entry
+			// limitFlushed counts only the entries that left through
+			// FlushIfExceeded. How many are still buffered when the workers
+			// finish is timing dependent, so the total is not predictable.
+			limitFlushed int
 		)
 		collectFlush := func(entries []Entry) {
 			mut.Lock()
 			defer mut.Unlock()
 			emitted = append(emitted, entries...)
+			limitFlushed += len(entries)
 		}
 
 		var wg sync.WaitGroup
@@ -630,7 +634,9 @@ func TestPartialLinesStripedConcurrent(t *testing.T) {
 		require.Len(t, emitted, total)
 		require.Zero(t, pl.size.Load())
 		require.Empty(t, pl.FlushAll())
-		require.Equal(t, float64(total), testutil.ToFloat64(flushed))
+		// FlushAll is the shutdown drain and does not count towards the
+		// metric, so only limit triggered flushes are counted.
+		require.Equal(t, float64(limitFlushed), testutil.ToFloat64(flushed))
 	})
 }
 
