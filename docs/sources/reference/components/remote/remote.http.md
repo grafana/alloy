@@ -14,7 +14,7 @@ title: remote.http
 # `remote.http`
 
 `remote.http` exposes the response body of a URL to other components.
-The URL is polled for changes so that the most recent content is always available.
+`remote.http` polls the URL for changes, so the most recent content is always available.
 
 The most common use of `remote.http` is to load discovery targets from an HTTP server.
 
@@ -37,22 +37,22 @@ You can use the following arguments with `remote.http`:
 | `url`            | `string`      | URL to poll.                                                      |         | yes      |
 | `body`           | `string`      | The request body.                                                 | `""`    | no       |
 | `headers`        | `map(string)` | Custom headers for the request.                                   | `{}`    | no       |
-| `is_secret`      | `bool`        | Whether the response body should be treated as a [secret][].      | `false` | no       |
+| `is_secret`      | `bool`        | Whether to treat the response body as a [secret][].              | `false` | no       |
 | `method`         | `string`      | The HTTP method for the request.                                  | `"GET"` | no       |
 | `poll_frequency` | `duration`    | Frequency to poll the URL.                                        | `"1m"`  | no       |
 | `poll_timeout`   | `duration`    | Timeout when polling the URL. Must be less than `poll_frequency`. | `"10s"` | no       |
 
-When `remote.http` performs a poll operation, an HTTP request using the method specified by the `method` argument is made against the URL specified by the `url` argument.
+When `remote.http` performs a poll operation, it makes an HTTP request using the method specified by the `method` argument against the URL specified by the `url` argument.
 If the `headers` argument doesn't set a `User-Agent` header, `remote.http` sends a default `User-Agent` header.
-A poll is triggered by the following:
+The following triggers a poll:
 
-* When the component first loads.
-* Every time the component's arguments get re-evaluated.
-* At the frequency specified by the `poll_frequency` argument.
+- When the component first loads.
+- Every time the component's arguments get re-evaluated.
+- At the frequency specified by the `poll_frequency` argument.
 
 The poll is successful if the URL returns a `200 OK` response code.
-All other response codes are treated as errors and mark the component as unhealthy.
-After a successful poll, the response body from the URL is exported.
+`remote.http` treats all other response codes as errors and marks the component as unhealthy.
+After a successful poll, `remote.http` exports the response body from the URL.
 
 [secret]: ../../../../get-started/expressions/types_and_values/#secrets
 
