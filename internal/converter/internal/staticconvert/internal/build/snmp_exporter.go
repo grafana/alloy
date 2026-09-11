@@ -1,13 +1,14 @@
 package build
 
 import (
+	snmp_config "github.com/prometheus/snmp_exporter/config"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/snmp"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	snmp_exporter_v2 "github.com/grafana/alloy/internal/static/integrations/v2/snmp_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	snmp_config "github.com/prometheus/snmp_exporter/config"
 )
 
 func (b *ConfigBuilder) appendSnmpExporter(config *snmp_exporter.Config) discovery.Exports {
@@ -50,7 +51,7 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 	}
 
 	return &snmp.Arguments{
-		ConfigFile:          config.SnmpConfigFile,
+		ConfigFiles:         nilIfEmpty(config.SnmpConfigFiles),
 		Config:              alloytypes.OptionalSecret{},
 		ConfigMergeStrategy: config.SnmpConfigMergeStrategy,
 		SnmpConcurrency:     config.SnmpConcurrency,
@@ -102,6 +103,7 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 
 	return &snmp.Arguments{
 		ConfigFile:          config.SnmpConfigFile,
+		ConfigFiles:         nilIfEmpty(config.SnmpConfigFiles),
 		Config:              alloytypes.OptionalSecret{},
 		ConfigMergeStrategy: config.SnmpConfigMergeStrategy,
 		SnmpConcurrency:     config.SnmpConcurrency,
@@ -113,4 +115,12 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 			Version: config.SnmpConfig.Version,
 		},
 	}
+}
+
+func nilIfEmpty[T any](s []T) []T {
+	if len(s) == 0 {
+		return nil
+	}
+
+	return s
 }
