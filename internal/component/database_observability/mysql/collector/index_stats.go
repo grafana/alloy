@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
@@ -21,13 +22,26 @@ const selectIndexIOWaits = `
 	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN %s`
 
 // mysql.innodb_index_stats holds InnoDB's persistent optimizer statistics,
-// refreshed by MySQL itself.
+// refreshed by MySQL itself. NON_UNIQUE comes from information_schema.statistics,
+// joined on seq_in_index = 1 since uniqueness is a property of the index, not of
+// any one column within it, and would otherwise repeat once per indexed column.
 const selectIndexSizeBytes = `
-	SELECT database_name, table_name, index_name, stat_value * @@innodb_page_size
-	FROM mysql.innodb_index_stats
-	WHERE stat_name = 'size' AND database_name NOT IN %s`
+	SELECT
+		s.database_name,
+		s.table_name,
+		s.index_name,
+		s.stat_value * @@innodb_page_size,
+		stats.NON_UNIQUE
+	FROM mysql.innodb_index_stats s
+	LEFT JOIN information_schema.statistics stats
+		ON stats.TABLE_SCHEMA = s.database_name
+		AND stats.TABLE_NAME = s.table_name
+		AND stats.INDEX_NAME = s.index_name
+		AND stats.SEQ_IN_INDEX = 1
+	WHERE s.stat_name = 'size' AND s.database_name NOT IN %s`
 
 var indexLabels = []string{labelSchema, labelTable, "index"}
+var indexSizeLabels = append(append([]string{}, indexLabels...), "is_primary", "is_unique")
 
 var (
 	indexStatsIdxFetchDesc = prometheus.NewDesc(
@@ -37,8 +51,8 @@ var (
 	)
 	indexStatsSizeBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("database_observability", "mysql_index_stats", "size_bytes"),
-		"Total disk space used by this index, in bytes",
-		indexLabels, nil,
+		"Total disk space used by this index, in bytes, labeled with whether it backs the primary key or a unique constraint",
+		indexSizeLabels, nil,
 	)
 )
 
@@ -142,13 +156,19 @@ func (c *IndexStats) collectIndexSize(ctx context.Context, ch chan<- prometheus.
 	for rows.Next() {
 		var databaseName, tableName, indexName string
 		var sizeBytes float64
+		var nonUnique sql.NullInt64
 
-		if err := rows.Scan(&databaseName, &tableName, &indexName, &sizeBytes); err != nil {
+		if err := rows.Scan(&databaseName, &tableName, &indexName, &sizeBytes, &nonUnique); err != nil {
 			c.logger.Error("failed to scan mysql.innodb_index_stats row", "err", err)
 			return
 		}
 
-		ch <- prometheus.MustNewConstMetric(indexStatsSizeBytesDesc, prometheus.GaugeValue, sizeBytes, databaseName, tableName, indexName)
+		isPrimary := indexName == "PRIMARY"
+		isUnique := nonUnique.Valid && nonUnique.Int64 == 0
+
+		ch <- prometheus.MustNewConstMetric(indexStatsSizeBytesDesc, prometheus.GaugeValue, sizeBytes,
+			databaseName, tableName, indexName,
+			strconv.FormatBool(isPrimary), strconv.FormatBool(isUnique))
 	}
 
 	if err := rows.Err(); err != nil {

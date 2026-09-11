@@ -35,11 +35,19 @@ func TestTableStats(t *testing.T) {
 			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "COUNT_FETCH"}).
 				AddRow("books_store", "books", 39),
 		)
+	mock.ExpectQuery(fmt.Sprintf(selectTableRowCount, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{"database_name", "table_name", "n_rows"}).
+				AddRow("books_store", "books", 500),
+		)
 
 	expected := `
 	# HELP database_observability_mysql_table_stats_no_idx_fetch_total Count of index I/O wait events for fetch operations that did not use an index
 	# TYPE database_observability_mysql_table_stats_no_idx_fetch_total counter
 	database_observability_mysql_table_stats_no_idx_fetch_total{schema="books_store",table="books"} 39
+	# HELP database_observability_mysql_table_stats_row_count Estimated number of rows in this table
+	# TYPE database_observability_mysql_table_stats_row_count gauge
+	database_observability_mysql_table_stats_row_count{schema="books_store",table="books"} 500
 `
 
 	require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))
