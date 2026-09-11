@@ -18,7 +18,7 @@ const IndexStatsCollector = "index_stats"
 const selectIndexIOWaits = `
 	SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, COUNT_FETCH
 	FROM performance_schema.table_io_waits_summary_by_index_usage
-	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN (%s)`
+	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN %s`
 
 // mysql.innodb_index_stats holds InnoDB's persistent optimizer statistics,
 // refreshed by MySQL itself, never by us. Reading it requires SELECT on this
@@ -26,7 +26,7 @@ const selectIndexIOWaits = `
 const selectIndexSizeBytes = `
 	SELECT database_name, table_name, index_name, stat_value * @@innodb_page_size
 	FROM mysql.innodb_index_stats
-	WHERE stat_name = 'size' AND database_name NOT IN (%s)`
+	WHERE stat_name = 'size' AND database_name NOT IN %s`
 
 var indexLabels = []string{labelSchema, labelTable, "index"}
 
@@ -106,9 +106,8 @@ func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *IndexStats) collectIdxScan(ctx context.Context, ch chan<- prometheus.Metric) {
-	args := excludedSchemasArgs(c.excludeSchemas)
-	query := fmt.Sprintf(selectIndexIOWaits, sqlPlaceholders(len(args)))
-	rows, err := c.dbConnection.QueryContext(ctx, query, args...)
+	query := fmt.Sprintf(selectIndexIOWaits, buildExcludedSchemasClause(c.excludeSchemas))
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		c.logger.Error("failed to query table_io_waits_summary_by_index_usage", "err", err)
 		return
@@ -133,9 +132,8 @@ func (c *IndexStats) collectIdxScan(ctx context.Context, ch chan<- prometheus.Me
 }
 
 func (c *IndexStats) collectIndexSize(ctx context.Context, ch chan<- prometheus.Metric) {
-	args := excludedSchemasArgs(c.excludeSchemas)
-	query := fmt.Sprintf(selectIndexSizeBytes, sqlPlaceholders(len(args)))
-	rows, err := c.dbConnection.QueryContext(ctx, query, args...)
+	query := fmt.Sprintf(selectIndexSizeBytes, buildExcludedSchemasClause(c.excludeSchemas))
+	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		c.logger.Error("failed to query mysql.innodb_index_stats", "err", err)
 		return

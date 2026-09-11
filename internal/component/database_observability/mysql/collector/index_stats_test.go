@@ -30,15 +30,12 @@ func TestIndexStats(t *testing.T) {
 	require.NoError(t, c.Start(t.Context()))
 	defer c.Stop()
 
-	args := excludedSchemasArgs(nil)
-	mock.ExpectQuery(fmt.Sprintf(selectIndexIOWaits, sqlPlaceholders(len(args)))).
-		WithArgs(toDriverValues(args)...).RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectIndexIOWaits, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "INDEX_NAME", "COUNT_FETCH"}).
 				AddRow("books_store", "books", "idx_books_title", 0),
 		)
-	mock.ExpectQuery(fmt.Sprintf(selectIndexSizeBytes, sqlPlaceholders(len(args)))).
-		WithArgs(toDriverValues(args)...).RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectIndexSizeBytes, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{"database_name", "table_name", "index_name", "size_bytes"}).
 				AddRow("books_store", "books", "idx_books_title", 14196736),
