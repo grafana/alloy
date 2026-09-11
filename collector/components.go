@@ -31,6 +31,7 @@ import (
 	otlpexporter "go.opentelemetry.io/collector/exporter/otlpexporter"
 	otlphttpexporter "go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	alloyengine "github.com/grafana/alloy/extension/alloyengine"
+	supportbundle "github.com/grafana/alloy/extension/supportbundle"
 	basicauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	bearertokenauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	headerssetterextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
@@ -111,6 +112,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory](
 		alloyengine.NewFactory(),
+		supportbundle.NewFactory(),
 		basicauthextension.NewFactory(),
 		bearertokenauthextension.NewFactory(),
 		headerssetterextension.NewFactory(),
@@ -129,6 +131,7 @@ func components() (otelcol.Factories, error) {
 	}
 	factories.ExtensionModules = makeModulesMap(factories.Extensions, map[component.Type]string{
 		alloyengine.NewFactory().Type(): "github.com/grafana/alloy v1.19.0",
+		supportbundle.NewFactory().Type(): "github.com/grafana/alloy/extension/supportbundle v0.1.0",
 		basicauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0",
 		bearertokenauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.158.0",
 		headerssetterextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.158.0",

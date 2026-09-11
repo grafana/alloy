@@ -27,7 +27,8 @@
       "versioning": "minor-breaking",
       "changelog-path": "CHANGELOG.md",
       "exclude-paths": [
-        "syntax"
+        "syntax",
+        "extension/supportbundle"
       ],
       "extra-files": [
         {
@@ -46,6 +47,19 @@
     },
     "syntax": {
       "package-name": "syntax",
+      "release-type": "go",
+      "versioning": "minor-breaking",
+      "changelog-path": "CHANGELOG.md",
+      "skip-github-release": true,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "/go.mod"
+        }
+      ]
+    },
+    "extension/supportbundle": {
+      "package-name": "extension/supportbundle",
       "release-type": "go",
       "versioning": "minor-breaking",
       "changelog-path": "CHANGELOG.md",
