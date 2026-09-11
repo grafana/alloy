@@ -1,3 +1,5 @@
+//go:build !alloy_custom_components
+
 package alloycli
 
 import (

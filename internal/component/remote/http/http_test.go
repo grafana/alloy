@@ -1,3 +1,5 @@
+//go:build !alloy_custom_components || alloy_component_remote_http
+
 package http_test
 
 import (

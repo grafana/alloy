@@ -14,21 +14,8 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "discovery.lightsail",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      LightsailArguments{},
-		Exports:   discovery.Exports{},
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return NewLightsail(opts, args.(LightsailArguments))
-		},
-	})
-}
 
 // LightsailArguments is the configuration for AWS Lightsail based service discovery.
 type LightsailArguments struct {

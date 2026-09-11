@@ -1,0 +1,1099 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "package": "github.com/grafana/alloy/internal/component/beyla/ebpf",
+      "components": [
+        "beyla.ebpf"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/database_observability/mysql",
+      "components": [
+        "database_observability.mysql"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/database_observability/postgres",
+      "components": [
+        "database_observability.postgres"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/database_observability/sql_server",
+      "components": [
+        "database_observability.sql_server"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/aws",
+      "components": [
+        "discovery.aws",
+        "discovery.ec2",
+        "discovery.lightsail"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/azure",
+      "components": [
+        "discovery.azure"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/consul",
+      "components": [
+        "discovery.consul"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/consulagent",
+      "components": [
+        "discovery.consulagent"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/digitalocean",
+      "components": [
+        "discovery.digitalocean"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/dns",
+      "components": [
+        "discovery.dns"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/docker",
+      "components": [
+        "discovery.docker"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/dockerswarm",
+      "components": [
+        "discovery.dockerswarm"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/eureka",
+      "components": [
+        "discovery.eureka"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/file",
+      "components": [
+        "discovery.file"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/gce",
+      "components": [
+        "discovery.gce"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/hetzner",
+      "components": [
+        "discovery.hetzner"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/http",
+      "components": [
+        "discovery.http"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/ionos",
+      "components": [
+        "discovery.ionos"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/kubelet",
+      "components": [
+        "discovery.kubelet"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/kubernetes",
+      "components": [
+        "discovery.kubernetes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/kuma",
+      "components": [
+        "discovery.kuma"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/linode",
+      "components": [
+        "discovery.linode"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/marathon",
+      "components": [
+        "discovery.marathon"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/nerve",
+      "components": [
+        "discovery.nerve"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/nomad",
+      "components": [
+        "discovery.nomad"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/openstack",
+      "components": [
+        "discovery.openstack"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/ovhcloud",
+      "components": [
+        "discovery.ovhcloud"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/process",
+      "components": [
+        "discovery.process"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/puppetdb",
+      "components": [
+        "discovery.puppetdb"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/relabel",
+      "components": [
+        "discovery.relabel"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/scaleway",
+      "components": [
+        "discovery.scaleway"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/serverset",
+      "components": [
+        "discovery.serverset"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/triton",
+      "components": [
+        "discovery.triton"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/discovery/uyuni",
+      "components": [
+        "discovery.uyuni"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/faro/receiver",
+      "components": [
+        "faro.receiver"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/local/file",
+      "components": [
+        "local.file"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/local/file_match",
+      "components": [
+        "local.file_match"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/echo",
+      "components": [
+        "loki.echo"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/enrich",
+      "components": [
+        "loki.enrich"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/process",
+      "components": [
+        "loki.process"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/relabel",
+      "components": [
+        "loki.relabel"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/rules/kubernetes",
+      "components": [
+        "loki.rules.kubernetes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/secretfilter",
+      "components": [
+        "loki.secretfilter"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/api",
+      "components": [
+        "loki.source.api"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/aws_firehose",
+      "components": [
+        "loki.source.awsfirehose"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs",
+      "components": [
+        "loki.source.azure_event_hubs"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/cloudflare",
+      "components": [
+        "loki.source.cloudflare"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/docker",
+      "components": [
+        "loki.source.docker"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/file",
+      "components": [
+        "loki.source.file"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/gcplog",
+      "components": [
+        "loki.source.gcplog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/gelf",
+      "components": [
+        "loki.source.gelf"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/heroku",
+      "components": [
+        "loki.source.heroku"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/journal",
+      "components": [
+        "loki.source.journal"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/kafka",
+      "components": [
+        "loki.source.kafka"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/kubernetes",
+      "components": [
+        "loki.source.kubernetes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/kubernetes_events",
+      "components": [
+        "loki.source.kubernetes_events"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/podlogs",
+      "components": [
+        "loki.source.podlogs"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/syslog",
+      "components": [
+        "loki.source.syslog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/source/windowsevent",
+      "components": [
+        "loki.source.windowsevent"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/loki/write",
+      "components": [
+        "loki.write"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/mimir/alerts/kubernetes",
+      "components": [
+        "mimir.alerts.kubernetes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/mimir/rules/kubernetes",
+      "components": [
+        "mimir.rules.kubernetes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/basic",
+      "components": [
+        "otelcol.auth.basic"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/bearer",
+      "components": [
+        "otelcol.auth.bearer"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/google",
+      "components": [
+        "otelcol.auth.google"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/headers",
+      "components": [
+        "otelcol.auth.headers"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/oauth2",
+      "components": [
+        "otelcol.auth.oauth2"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/auth/sigv4",
+      "components": [
+        "otelcol.auth.sigv4"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/count",
+      "components": [
+        "otelcol.connector.count"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/host_info",
+      "components": [
+        "otelcol.connector.host_info"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph",
+      "components": [
+        "otelcol.connector.servicegraph"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/signaltometrics",
+      "components": [
+        "otelcol.connector.signaltometrics"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs",
+      "components": [
+        "otelcol.connector.spanlogs"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/connector/spanmetrics",
+      "components": [
+        "otelcol.connector.spanmetrics"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3",
+      "components": [
+        "otelcol.exporter.awss3"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog",
+      "components": [
+        "otelcol.exporter.datadog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/debug",
+      "components": [
+        "otelcol.exporter.debug"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/faro",
+      "components": [
+        "otelcol.exporter.faro"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/file",
+      "components": [
+        "otelcol.exporter.file"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloud",
+      "components": [
+        "otelcol.exporter.googlecloud"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/googlecloudpubsub",
+      "components": [
+        "otelcol.exporter.googlecloudpubsub"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka",
+      "components": [
+        "otelcol.exporter.kafka"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing",
+      "components": [
+        "otelcol.exporter.loadbalancing"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/loki",
+      "components": [
+        "otelcol.exporter.loki"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/otlp",
+      "components": [
+        "otelcol.exporter.otlp"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp",
+      "components": [
+        "otelcol.exporter.otlphttp"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus",
+      "components": [
+        "otelcol.exporter.prometheus"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/splunkhec",
+      "components": [
+        "otelcol.exporter.splunkhec"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/exporter/syslog",
+      "components": [
+        "otelcol.exporter.syslog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/extension/jaeger_remote_sampling",
+      "components": [
+        "otelcol.extension.jaeger_remote_sampling"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/attributes",
+      "components": [
+        "otelcol.processor.attributes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/batch",
+      "components": [
+        "otelcol.processor.batch"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/cumulativetodelta",
+      "components": [
+        "otelcol.processor.cumulativetodelta"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/deltatocumulative",
+      "components": [
+        "otelcol.processor.deltatocumulative"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/discovery",
+      "components": [
+        "otelcol.processor.discovery"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/filter",
+      "components": [
+        "otelcol.processor.filter"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/groupbyattrs",
+      "components": [
+        "otelcol.processor.groupbyattrs"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/interval",
+      "components": [
+        "otelcol.processor.interval"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes",
+      "components": [
+        "otelcol.processor.k8sattributes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter",
+      "components": [
+        "otelcol.processor.memory_limiter"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/metricstarttime",
+      "components": [
+        "otelcol.processor.metric_start_time"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler",
+      "components": [
+        "otelcol.processor.probabilistic_sampler"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/redaction",
+      "components": [
+        "otelcol.processor.redaction"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection",
+      "components": [
+        "otelcol.processor.resourcedetection"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/span",
+      "components": [
+        "otelcol.processor.span"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/tail_sampling",
+      "components": [
+        "otelcol.processor.tail_sampling"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/processor/transform",
+      "components": [
+        "otelcol.processor.transform"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/awscloudwatch",
+      "components": [
+        "otelcol.receiver.awscloudwatch"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/awsecscontainermetrics",
+      "components": [
+        "otelcol.receiver.awsecscontainermetrics"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/awss3",
+      "components": [
+        "otelcol.receiver.awss3"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/cloudflare",
+      "components": [
+        "otelcol.receiver.cloudflare"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/datadog",
+      "components": [
+        "otelcol.receiver.datadog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/faro",
+      "components": [
+        "otelcol.receiver.faro"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats",
+      "components": [
+        "otelcol.receiver.file_stats"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/filelog",
+      "components": [
+        "otelcol.receiver.filelog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/fluentforward",
+      "components": [
+        "otelcol.receiver.fluentforward"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/googlecloudpubsub",
+      "components": [
+        "otelcol.receiver.googlecloudpubsub"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb",
+      "components": [
+        "otelcol.receiver.influxdb"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger",
+      "components": [
+        "otelcol.receiver.jaeger"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka",
+      "components": [
+        "otelcol.receiver.kafka"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/loki",
+      "components": [
+        "otelcol.receiver.loki"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/nginx",
+      "components": [
+        "otelcol.receiver.nginx"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp",
+      "components": [
+        "otelcol.receiver.otlp"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/prometheus",
+      "components": [
+        "otelcol.receiver.prometheus"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/solace",
+      "components": [
+        "otelcol.receiver.solace"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/splunkhec",
+      "components": [
+        "otelcol.receiver.splunkhec"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/syslog",
+      "components": [
+        "otelcol.receiver.syslog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/tcplog",
+      "components": [
+        "otelcol.receiver.tcplog"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/vcenter",
+      "components": [
+        "otelcol.receiver.vcenter"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/receiver/zipkin",
+      "components": [
+        "otelcol.receiver.zipkin"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/otelcol/storage/file",
+      "components": [
+        "otelcol.storage.file"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/echo",
+      "components": [
+        "prometheus.echo"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/enrich",
+      "components": [
+        "prometheus.enrich"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/apache",
+      "components": [
+        "prometheus.exporter.apache"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/azure",
+      "components": [
+        "prometheus.exporter.azure"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox",
+      "components": [
+        "prometheus.exporter.blackbox"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/cadvisor",
+      "components": [
+        "prometheus.exporter.cadvisor"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint",
+      "components": [
+        "prometheus.exporter.catchpoint"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch",
+      "components": [
+        "prometheus.exporter.cloudwatch"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/consul",
+      "components": [
+        "prometheus.exporter.consul"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks",
+      "components": [
+        "prometheus.exporter.databricks"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/dnsmasq",
+      "components": [
+        "prometheus.exporter.dnsmasq"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/elasticsearch",
+      "components": [
+        "prometheus.exporter.elasticsearch"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/gcp",
+      "components": [
+        "prometheus.exporter.gcp"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/github",
+      "components": [
+        "prometheus.exporter.github"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/kafka",
+      "components": [
+        "prometheus.exporter.kafka"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/memcached",
+      "components": [
+        "prometheus.exporter.memcached"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb",
+      "components": [
+        "prometheus.exporter.mongodb"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/mssql",
+      "components": [
+        "prometheus.exporter.mssql"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql",
+      "components": [
+        "prometheus.exporter.mysql"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/oracledb",
+      "components": [
+        "prometheus.exporter.oracledb"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres",
+      "components": [
+        "prometheus.exporter.postgres"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/process",
+      "components": [
+        "prometheus.exporter.process"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/redis",
+      "components": [
+        "prometheus.exporter.redis"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/self",
+      "components": [
+        "prometheus.exporter.self"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/snmp",
+      "components": [
+        "prometheus.exporter.snmp"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/snowflake",
+      "components": [
+        "prometheus.exporter.snowflake"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/squid",
+      "components": [
+        "prometheus.exporter.squid"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/static",
+      "components": [
+        "prometheus.exporter.static"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/statsd",
+      "components": [
+        "prometheus.exporter.statsd"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/unix",
+      "components": [
+        "prometheus.exporter.unix"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/exporter/windows",
+      "components": [
+        "prometheus.exporter.windows"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/operator/podmonitors",
+      "components": [
+        "prometheus.operator.podmonitors"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/operator/probes",
+      "components": [
+        "prometheus.operator.probes"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/operator/scrapeconfigs",
+      "components": [
+        "prometheus.operator.scrapeconfigs"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors",
+      "components": [
+        "prometheus.operator.servicemonitors"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/receive_http",
+      "components": [
+        "prometheus.receive_http"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/relabel",
+      "components": [
+        "prometheus.relabel"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/remotewrite",
+      "components": [
+        "prometheus.remote_write"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/prometheus/scrape",
+      "components": [
+        "prometheus.scrape"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/ebpf",
+      "components": [
+        "pyroscope.ebpf"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/enrich",
+      "components": [
+        "pyroscope.enrich"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/java",
+      "components": [
+        "pyroscope.java"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/receive_http",
+      "components": [
+        "pyroscope.receive_http"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/relabel",
+      "components": [
+        "pyroscope.relabel"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/scrape",
+      "components": [
+        "pyroscope.scrape"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/pyroscope/write/glue",
+      "components": [
+        "pyroscope.write"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/remote/http",
+      "components": [
+        "remote.http"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/remote/kubernetes/configmap",
+      "components": [
+        "remote.kubernetes.configmap"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/remote/kubernetes/secret",
+      "components": [
+        "remote.kubernetes.secret"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/remote/s3",
+      "components": [
+        "remote.s3"
+      ]
+    },
+    {
+      "package": "github.com/grafana/alloy/internal/component/remote/vault",
+      "components": [
+        "remote.vault"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+prometheus.scrape "omitted" {
+  targets    = []
+  forward_to = []
+}
