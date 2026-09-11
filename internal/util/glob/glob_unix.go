@@ -13,7 +13,7 @@ func NewGlobber() Globber {
 }
 
 func (g *defaultGlobber) FilepathGlob(pattern string) ([]string, error) {
-	return doublestar.FilepathGlob(pattern)
+	return doublestar.FilepathGlob(pattern, doublestar.WithFailOnIOErrors())
 }
 
 func (g *defaultGlobber) PathMatch(pattern, path string) (bool, error) {
