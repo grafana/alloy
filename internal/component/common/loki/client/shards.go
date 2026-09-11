@@ -374,7 +374,7 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool
 	}
 
 	var shard uint64
-	// If only one shard is configurec we don't need to compute FastFingerprint.
+	// If only one shard is configured we don't need to compute FastFingerprint.
 	if len(s.queues) == 1 {
 		shard = 0
 	} else {

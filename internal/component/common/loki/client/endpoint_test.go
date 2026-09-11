@@ -1,8 +1,10 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"strings"
 	"testing"
@@ -17,6 +19,7 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
@@ -341,7 +344,7 @@ func TestEndpoint(t *testing.T) {
 
 			// Send all the input log entries
 			for i, logEntry := range tt.inputEntries {
-				c.enqueue(logEntry, 0)
+				c.enqueue(t.Context(), logEntry, 0)
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
 					time.Sleep(tt.inputDelay)
@@ -402,14 +405,14 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		// NOTE: We have configured batch size to 1 so only one entry will fit in each batch.
 		// To exceed the queue's capacity we need to pass 4 entries. We have one batch that we are actively trying
 		// to send, one batch that is queued and one batch that we are currently working with filling up.
-		require.NoError(t, e.enqueue(entry, 0))
-		require.NoError(t, e.enqueue(entry, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
 
 		// Which enqueue fails depends on whether the shard worker has already
 		// consumed the queued batch after the third call. If the third call loses that race,
 		// it returns errQueueIsFull, otherwise the fourth call does.
-		err3 := e.enqueue(entry, 0)
-		err4 := e.enqueue(entry, 0)
+		err3 := e.enqueue(t.Context(), entry, 0)
+		err4 := e.enqueue(t.Context(), entry, 0)
 		queueIsFull := errors.Is(err3, errQueueIsFull) || errors.Is(err4, errQueueIsFull)
 		require.True(t, queueIsFull, "expected either the third or fourth enqueue to fail with queue full")
 	})
@@ -448,10 +451,10 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			// We just need to finish one request in order for all entries to be successfully enqueued.
 			<-receivedReqsChan
 		}()
-		require.NoError(t, e.enqueue(entry1, 0))
-		require.NoError(t, e.enqueue(entry2, 0))
-		require.NoError(t, e.enqueue(entry3, 0))
-		require.NoError(t, e.enqueue(entry4, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry1, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry2, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry3, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry4, 0))
 	})
 }
 
@@ -483,7 +486,7 @@ func TestEndpointBatchSizeMetric(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, entry := range entries {
-		require.NoError(t, e.enqueue(entry, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
 	}
 
 	// Stopping the endpoint waits until the current batch is sent.
@@ -496,6 +499,83 @@ func TestEndpointBatchSizeMetric(t *testing.T) {
 	sum, count := histogramSumAndCount(t, reg, "loki_write_batch_size_bytes")
 	assert.Equal(t, uint64(1), count)
 	assert.Equal(t, float64(entries[0].Size()+entries[1].Size()), sum)
+}
+
+func TestEndpointCallerCancel(t *testing.T) {
+	t.Run("entry is not queued or sent if callers context is canceled", func(t *testing.T) {
+		called := atomic.NewBool(false)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			called.Store(true)
+		}))
+		defer server.Close()
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{URL: url}, logging.NewSlogNop(), marker.NewNopTracker())
+		require.NoError(t, err)
+		defer e.stop()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		require.ErrorIs(t, e.enqueue(ctx, loki.Entry{Entry: push.Entry{Line: "my entry"}}, 0), context.Canceled)
+		require.Equal(t, false, called.Load())
+	})
+
+	t.Run("when queue is full and callers context is done", func(t *testing.T) {
+		server, blocked, release := newBlockedServer()
+		defer server.Close()
+		defer release()
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{
+			Name:      "test-client",
+			URL:       url,
+			Timeout:   time.Minute,
+			BatchSize: 1,
+			BackoffConfig: backoff.Config{
+				MinBackoff: time.Millisecond,
+				MaxBackoff: 10 * time.Millisecond,
+				MaxRetries: 0,
+			},
+			QueueConfig: QueueConfig{
+				Capacity:        1,
+				MinShards:       1,
+				DrainTimeout:    1 * time.Second,
+				BlockOnOverflow: true,
+			},
+		}, logging.NewSlogNop(), marker.NewNopTracker())
+		require.NoError(t, err)
+
+		defer e.stop()
+
+		entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
+
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+		require.Eventually(t, func() bool { return blocked.Load() }, 3*time.Second, 100*time.Millisecond)
+
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+
+		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
+		defer cancel()
+
+		done := make(chan error, 1)
+		go func() {
+			done <- e.enqueue(ctx, entry, 0)
+		}()
+
+		select {
+		case err := <-done:
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+		case <-time.After(2 * time.Second):
+			t.Fatal("entry trying to be queued was not canceled in time")
+		}
+	})
 }
 
 // histogramSumAndCount returns the sum and count of the single series of the

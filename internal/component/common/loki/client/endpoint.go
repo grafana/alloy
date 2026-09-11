@@ -18,13 +18,7 @@ type endpoint struct {
 	cfg     Config
 	metrics *metrics
 	logger  *slog.Logger
-	entries chan loki.Entry
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
 	shards  *shards
-	backoff *backoff.Backoff
 }
 
 func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
@@ -35,19 +29,11 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	c := &endpoint{
 		cfg:     cfg,
 		logger:  logger,
 		metrics: metrics,
-		entries: make(chan loki.Entry),
-		ctx:     ctx,
-		cancel:  cancel,
 		shards:  shards,
-		backoff: backoff.New(ctx, backoff.Config{
-			MinBackoff: 5 * time.Millisecond,
-			MaxBackoff: 50 * time.Millisecond,
-		}),
 	}
 
 	c.shards.start(cfg.QueueConfig.MinShards)
@@ -57,30 +43,34 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 var errQueueIsFull = errors.New("queue is full")
 
 // enqueue tries to enqueue an entry. It returns an error if the entry could not be enqueued.
-// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled when
-// endpoint is stopped.
-func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
-	defer e.backoff.Reset()
+// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled if
+// caller canceled ctx.
+func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int) error {
+	bo := backoff.New(ctx, backoff.Config{
+		MinBackoff: 5 * time.Millisecond,
+		MaxBackoff: 50 * time.Millisecond,
+	})
 
 	tenantID := getTenantID(e.cfg, entry)
-	for !e.shards.enqueue(tenantID, entry, segmentNum) {
+
+	for bo.Ongoing() {
+		if e.shards.enqueue(tenantID, entry, segmentNum) {
+			return nil
+		}
+
 		if !e.cfg.QueueConfig.BlockOnOverflow {
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
 		}
 
-		e.backoff.Wait()
-		if !e.backoff.Ongoing() {
-			return e.backoff.Err()
-		}
+		bo.Wait()
 	}
 
-	return nil
+	return bo.Err()
 }
 
 func (e *endpoint) stop() {
-	e.cancel()
 	e.shards.stop()
 }
 
