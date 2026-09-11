@@ -48,5 +48,4 @@ func feedUntilBlocked(t *testing.T, blocked *atomic.Bool, c chan<- loki.Entry) {
 		}
 	}
 	require.True(t, blocked.Load())
-
 }
