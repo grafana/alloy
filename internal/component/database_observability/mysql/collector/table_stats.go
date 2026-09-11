@@ -25,9 +25,9 @@ const (
 	labelTable  = "table"
 )
 
-var tableStatsNoIndexFetchDesc = prometheus.NewDesc(
-	prometheus.BuildFQName("database_observability", "mysql_table_stats", "no_index_fetch_total"),
-	"Number of row fetches against this table that did not use an index",
+var tableStatsNoIdxFetchDesc = prometheus.NewDesc(
+	prometheus.BuildFQName("database_observability", "mysql_table_stats", "no_idx_fetch_total"),
+	"Count of index I/O wait events for fetch operations that did not use an index",
 	[]string{labelSchema, labelTable}, nil,
 )
 
@@ -81,7 +81,7 @@ func (c *TableStats) Stop() {
 
 // Describe implements prometheus.Collector.
 func (c *TableStats) Describe(ch chan<- *prometheus.Desc) {
-	ch <- tableStatsNoIndexFetchDesc
+	ch <- tableStatsNoIdxFetchDesc
 }
 
 // Collect implements prometheus.Collector. It runs synchronously at scrape time.
@@ -105,7 +105,7 @@ func (c *TableStats) Collect(ch chan<- prometheus.Metric) {
 			return
 		}
 
-		ch <- prometheus.MustNewConstMetric(tableStatsNoIndexFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName)
+		ch <- prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName)
 	}
 
 	if err := rows.Err(); err != nil {

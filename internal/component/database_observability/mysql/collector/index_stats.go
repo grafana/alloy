@@ -21,8 +21,7 @@ const selectIndexIOWaits = `
 	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN %s`
 
 // mysql.innodb_index_stats holds InnoDB's persistent optimizer statistics,
-// refreshed by MySQL itself, never by us. Reading it requires SELECT on this
-// one table, which isn't in today's default grant set.
+// refreshed by MySQL itself.
 const selectIndexSizeBytes = `
 	SELECT database_name, table_name, index_name, stat_value * @@innodb_page_size
 	FROM mysql.innodb_index_stats
