@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,21 @@ type metricsResponse struct {
 type metadataResponse struct {
 	Status string                        `json:"status"`
 	Data   map[string][]ExpectedMetadata `json:"data"`
+}
+
+type instantQueryResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Metric map[string]string `json:"metric"`
+			Value  []any             `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+type seriesResponse struct {
+	Status string              `json:"status"`
+	Data   []map[string]string `json:"data"`
 }
 
 // ExpectedMetadata is both the JSON payload shape from Mimir's metadata
@@ -133,6 +149,66 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 		}
 
 		require.Emptyf(c, missingMetrics, "missing expected metrics for %s=%s: %v found=%v", testNameLabel, testName, missingMetrics, actualMetrics)
+	}, timeout, retryInterval)
+}
+
+// QueryPositive polls an instant query for each metric (scoped to testName) and
+// asserts at least one returned sample is greater than zero. It checks a metric
+// is not just present but reports real data.
+func (m *Mimir) QueryPositive(t *testing.T, testName string, metrics []string) {
+	t.Helper()
+	base := m.endpoint("/prometheus/api/v1/query")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for _, metric := range metrics {
+			queryURL, err := url.Parse(base)
+			require.NoError(c, err)
+			values := queryURL.Query()
+			values.Set("query", metric+"{"+testNameLabel+"=\""+testName+"\"}")
+			queryURL.RawQuery = values.Encode()
+			resp := curl(c, queryURL.String(), nil)
+
+			var parsed instantQueryResponse
+			require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse query response: %s", resp)
+			require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+			require.NotEmptyf(c, parsed.Data.Result, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+
+			var maxValue float64
+			for _, result := range parsed.Data.Result {
+				if len(result.Value) != 2 {
+					continue
+				}
+				sample, ok := result.Value[1].(string)
+				if !ok {
+					continue
+				}
+				value, convErr := strconv.ParseFloat(sample, 64)
+				if convErr == nil && value > maxValue {
+					maxValue = value
+				}
+			}
+			require.Greaterf(c, maxValue, 0.0, "%s: expected a positive sample", metric)
+		}
+	}, timeout, retryInterval)
+}
+
+// QueryLabelPresent asserts at least one series for testName carries labelName
+// with a non-empty value. It checks cAdvisor attaches container labels.
+func (m *Mimir) QueryLabelPresent(t *testing.T, testName, labelName string) {
+	t.Helper()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		queryURL, err := url.Parse(m.endpoint("/prometheus/api/v1/series"))
+		require.NoError(c, err)
+		values := queryURL.Query()
+		values.Add("match[]", "{"+testNameLabel+"=\""+testName+"\","+labelName+"=~\".+\"}")
+		queryURL.RawQuery = values.Encode()
+		resp := curl(c, queryURL.String(), nil)
+
+		var parsed seriesResponse
+		require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse series response: %s", resp)
+		require.Equal(c, "success", parsed.Status, "mimir series query failed: %s", resp)
+		require.NotEmptyf(c, parsed.Data, "no series carrying label %s for %s=%s", labelName, testNameLabel, testName)
 	}, timeout, retryInterval)
 }
 
