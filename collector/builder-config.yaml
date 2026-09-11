@@ -152,8 +152,11 @@ replaces:
   - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260724100839-b73e704d1c59
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
-  # Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
-  - github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+  # Pin runc to v1.3.6: cadvisor (resctrl/intel) and other deps still import runc's
+  # libcontainer packages (intelrdt, user) that v1.4+ removed, so runc cannot float
+  # to latest. v1.3.6 keeps those packages and clears the govulncheck advisory that
+  # flagged v1.2.x.
+  - github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
   # Replace controller-runtime with pinned version
   - sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
   # Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.

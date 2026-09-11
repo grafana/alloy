@@ -758,7 +758,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runc v1.4.3 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
-	github.com/opencontainers/selinux v1.13.0 // indirect
+	github.com/opencontainers/selinux v1.13.1 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
 	github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.4 // indirect
@@ -1165,8 +1165,11 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 // Update openshift/client-go to version compatible with structured-merge-diff v6 (auto-synced from collector/builder-config.yaml)
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
-// Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages (auto-synced from collector/builder-config.yaml)
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+// Pin runc to v1.3.6: cadvisor (resctrl/intel) and other deps still import runc's (auto-synced from collector/builder-config.yaml)
+// libcontainer packages (intelrdt, user) that v1.4+ removed, so runc cannot float (auto-synced from collector/builder-config.yaml)
+// to latest. v1.3.6 keeps those packages and clears the govulncheck advisory that (auto-synced from collector/builder-config.yaml)
+// flagged v1.2.x. (auto-synced from collector/builder-config.yaml)
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
 
 // Replace controller-runtime with pinned version (auto-synced from collector/builder-config.yaml)
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
