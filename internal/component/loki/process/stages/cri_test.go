@@ -218,7 +218,7 @@ func TestCRIStage(t *testing.T) {
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total %d
-# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total %d
 `, tt.expectedLinesTruncated, tt.expectedPartialLinesFlushed)
@@ -255,7 +255,7 @@ func TestCRIStageMaxPartialLinesExceeded(t *testing.T) {
 # HELP loki_process_cri_lines_truncated_total A count of lines that were truncated due to the max_partial_line_size limit
 # TYPE loki_process_cri_lines_truncated_total counter
 loki_process_cri_lines_truncated_total 0
-# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded
+# HELP loki_process_cri_partial_lines_flushed_total A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown
 # TYPE loki_process_cri_partial_lines_flushed_total counter
 loki_process_cri_partial_lines_flushed_total 3
 `
@@ -335,6 +335,77 @@ loki_process_cri_partial_lines_flushed_total 3
 		assertEntriesUnordered(t, expected, collected)
 		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 	})
+}
+
+func TestCRIStageNoContentLost(t *testing.T) {
+	const maxPartialLines = 4
+
+	var (
+		batch   []Entry
+		want    []string
+		content = func(s int, suffix string) string { return fmt.Sprintf("s%d-%s ", s, suffix) }
+	)
+
+	add := func(stream int, flag, line string) {
+		want = append(want, line)
+		ts := tagFTime1Str
+		if flag == "F" {
+			ts = tagFTime2Str
+		}
+		batch = append(batch, newEntry(
+			map[string]any{},
+			model.LabelSet{"s": model.LabelValue(fmt.Sprintf("%d", stream))},
+			fmt.Sprintf("%s stdout %s %s", ts, flag, line),
+			time.Now(),
+		))
+	}
+
+	// Every stream gets three partial lines. Even streams are completed in this
+	// batch, odd streams are left open and outnumber maxPartialLines.
+	for s := range 10 {
+		for p := range 3 {
+			add(s, "P", content(s, fmt.Sprintf("p%d", p)))
+		}
+		if s%2 == 0 {
+			add(s, "F", content(s, "end"))
+		}
+	}
+
+	var got []string
+	next := func(_ context.Context, out []Entry) error {
+		for _, e := range out {
+			got = append(got, e.Line)
+		}
+		return nil
+	}
+
+	cfg := CRIConfig{MaxPartialLines: maxPartialLines}
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(),
+		featuregate.StabilityGenerallyAvailable, []StageConfig{{CRIConfig: &cfg}}, next)
+	require.NoError(t, err)
+
+	require.NoError(t, p.process(context.Background(), batch))
+
+	// A second batch of partial lines that nothing completes, so only stop can
+	// release them.
+	batch = nil
+	for s := 10; s < 12; s++ {
+		add(s, "P", content(s, "p0"))
+	}
+	require.NoError(t, p.process(context.Background(), batch))
+
+	p.stop()
+
+	all := strings.Join(got, "")
+	for _, line := range want {
+		require.Equal(t, 1, strings.Count(all, line), "%q must appear exactly once", line)
+	}
+
+	var wantLen int
+	for _, line := range want {
+		wantLen += len(line)
+	}
+	require.Equal(t, wantLen, len(all), "the output must not gain or lose content")
 }
 
 // TestCRIStageFlushOnShutdown verifies that buffered entries are flushed when stop is called.
@@ -463,6 +534,25 @@ func TestPartialLinesStriped(t *testing.T) {
 		require.NotZero(t, testutil.ToFloat64(truncated))
 	})
 
+	t.Run("Append does not count a truncation when the new line discards nothing", func(t *testing.T) {
+		truncated, flushed := counters()
+		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10, MaxPartialLineSize: 5, MaxPartialLineSizeTruncate: true}, logging.NewSlogNop(), truncated, flushed)
+
+		pl.Append(1, entry("abcdefg"))
+		require.Equal(t, float64(1), testutil.ToFloat64(truncated))
+
+		// The buffer is already at max size and there is nothing to discard.
+		pl.Append(1, entry(""))
+		require.Equal(t, float64(1), testutil.ToFloat64(truncated))
+
+		// A non-empty line is discarded, so this one does count.
+		pl.Append(1, entry("h"))
+		require.Equal(t, float64(2), testutil.ToFloat64(truncated))
+
+		got := pl.Complete(1, entry(""))
+		require.Equal(t, "abcde", got.Line)
+	})
+
 	t.Run("FlushAll drains every buffered entry and clears the state", func(t *testing.T) {
 		truncated, flushed := counters()
 		pl := newPartialLinesStriped(CRIConfig{MaxPartialLines: 10}, logging.NewSlogNop(), truncated, flushed)
@@ -500,7 +590,6 @@ func TestPartialLinesStriped(t *testing.T) {
 		require.Empty(t, pl.FlushAll())
 		require.Zero(t, pl.size.Load())
 	})
-
 }
 
 func TestPartialLinesStripedConcurrent(t *testing.T) {
@@ -630,6 +719,7 @@ func TestPartialLinesStripedConcurrent(t *testing.T) {
 		require.Len(t, emitted, total)
 		require.Zero(t, pl.size.Load())
 		require.Empty(t, pl.FlushAll())
+		// Every entry left through FlushIfExceeded or FlushAll, and both count.
 		require.Equal(t, float64(total), testutil.ToFloat64(flushed))
 	})
 }

@@ -67,7 +67,7 @@ func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 func getLinesFlushedMetric(registerer prometheus.Registerer) prometheus.Counter {
 	metric := prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "loki_process_cri_partial_lines_flushed_total",
-		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded",
+		Help: "A count of partial lines that were flushed prematurely due to the max_partial_lines limit being exceeded or shutdown",
 	})
 	return util.MustRegisterOrGet(registerer, metric).(prometheus.Counter)
 }
@@ -186,10 +186,12 @@ func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	out := entries[:dst]
-	// Flush any partial lines if we have buffered too many. The stripe locks
-	// are released before we call next, so a concurrent batch can reach next
-	// ahead of the lines we are about to send. This can cause OOO for entries,
-	// an acceptable trade-off since this is a failure case we can revisit later.
+	// One check per batch keeps the limit approximate. It only prevents leaks.
+	// If we have buffered too many, flush all partial lines globally. This
+	// includes streams this batch does not own, so their lines go out through
+	// our next call and a concurrent batch can reach next ahead of them. That
+	// can cause OOO for entries. We consider this an acceptable trade-off,
+	// since it is a safety mechanism and no logs are lost.
 	out = append(out, c.partialLinesStriped.FlushIfExceeded()...)
 
 	if len(out) == 0 {
@@ -216,9 +218,15 @@ func (c *criStage) stop() {
 
 func (c *criStage) Cleanup() {}
 
-const stripeCount = 16
+const (
+	stripeCount = 16
 
-// partialLinesStriped is an concurrency safe
+	// maxPreallocPerStripe of 3k caps the up-front allocation at about 8 MiB across all 16 stripes.
+	maxPreallocPerStripe = 3000
+)
+
+// partialLinesStriped holds partial lines in a map sharded into a fixed
+// number of independently locked stripes. It is safe for concurrent use.
 type partialLinesStriped struct {
 	// size is only exact while every stripe lock is held. Other readers treat it as a hint.
 	size atomic.Int64
@@ -245,7 +253,10 @@ func newPartialLinesStriped(cfg CRIConfig, logger *slog.Logger, linesTruncated p
 		linesFlushed:   linesFlushed,
 		linesTruncated: linesTruncated,
 	}
-	perStripe := m.cfg.MaxPartialLines/stripeCount + 1
+	// MaxPartialLines is user supplied and has no upper bound, so cap what we
+	// pre-allocate. The stripe maps grow on demand, so a larger limit still
+	// works, it just pays for the growth as it goes.
+	perStripe := min(cfg.MaxPartialLines/stripeCount+1, maxPreallocPerStripe)
 	for i := range m.stripes {
 		m.stripes[i].data = make(map[model.Fingerprint]Entry, perStripe)
 	}
@@ -284,7 +295,9 @@ func (m *partialLinesStriped) FlushAll() []Entry {
 	m.lockAll()
 	defer m.unlockAll()
 
-	return m.drainLocked()
+	entries := m.drainLocked()
+	m.linesFlushed.Add(float64(len(entries)))
+	return entries
 }
 
 func (m *partialLinesStriped) FlushIfExceeded() []Entry {
@@ -347,7 +360,10 @@ func ensureTruncateIfRequired(prevLine, newLine string, cfg CRIConfig, linesTrun
 
 	// If prev line is already at max size we don't have to concatenate new line.
 	if len(prevLine) >= int(cfg.MaxPartialLineSize) {
-		linesTruncated.Inc()
+		// An empty new line discards nothing, so it is not a truncation.
+		if len(newLine) > 0 {
+			linesTruncated.Inc()
+		}
 		return prevLine[:cfg.MaxPartialLineSize]
 	}
 

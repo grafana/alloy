@@ -76,7 +76,7 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 			} else {
 				entries = append(entries, Entry{
 					Extracted: maps.Clone(extracted),
-					//FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+					// FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
 				})
 			}
@@ -86,6 +86,10 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 	})
 }
 
+// Stop flushes any state the stages still hold, such as cri partial lines that
+// never received their full line. Callers must make sure no call to Consume is
+// in flight or can start after this point. A racing Consume can buffer an entry
+// after the flush has passed it, and nothing will forward it.
 func (p *PipelineConsumer) Stop() {
 	p.inner.stop()
 }
