@@ -3,10 +3,8 @@ package enrich
 import (
 	"context"
 	"fmt"
-	"sort"
 	"sync"
 
-	"github.com/cespare/xxhash/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -17,6 +15,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
+	commonenrich "github.com/grafana/alloy/internal/component/common/enrich"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -77,51 +76,10 @@ type Exports struct {
 	Receiver storage.Appendable `alloy:"receiver,attr"`
 }
 
-var sep = []byte{0xff} // separator to prevent hash collisions across value boundaries
-
-// hashValuesFromLabelSet hashes the values of the given label names (in order)
-// from a model.LabelSet. Returns (0, false) if names is empty or any label is
-// missing or empty.
-func hashValuesFromLabelSet(ls model.LabelSet, names []string) (uint64, bool) {
-	if len(names) == 0 {
-		return 0, false
-	}
-	h := xxhash.New()
-	for _, name := range names {
-		v := string(ls[model.LabelName(name)])
-		if v == "" {
-			return 0, false
-		}
-		_, _ = h.WriteString(v)
-		_, _ = h.Write(sep)
-	}
-	return h.Sum64(), true
-}
-
-// hashValuesFromLabels hashes the values of the given label names (in order)
-// from a labels.Labels. Returns (0, false) if names is empty or any label is
-// missing or empty.
-func hashValuesFromLabels(lbls labels.Labels, names []string) (uint64, bool) {
-	if len(names) == 0 {
-		return 0, false
-	}
-	h := xxhash.New()
-	for _, name := range names {
-		v := lbls.Get(name)
-		if v == "" {
-			return 0, false
-		}
-		_, _ = h.WriteString(v)
-		_, _ = h.Write(sep)
-	}
-	return h.Sum64(), true
-}
-
 // matchCache holds the hash-based lookup for a match strategy.
 type matchCache struct {
-	sortedMetricLabels []string                  // metric label names to hash, sorted by corresponding target label name
-	cache              map[uint64]model.LabelSet // hash of values -> target label set
-	labelsToCopy       []string                  // snapshot of which target labels to copy (empty means copy all)
+	matcher      *commonenrich.Matcher
+	labelsToCopy []string // snapshot of which target labels to copy (empty means copy all)
 }
 
 type Component struct {
@@ -257,12 +215,8 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 		return lbls
 	}
 
-	h, ok := hashValuesFromLabels(lbls, mc.sortedMetricLabels)
-	if !ok {
-		return lbls
-	}
-	targetSet, found := mc.cache[h]
-	if !found {
+	targetSet := mc.matcher.Match(lbls.Get)
+	if targetSet == nil {
 		return lbls
 	}
 
@@ -281,22 +235,6 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 	return newLabels.Labels()
 }
 
-// sortStrategyMap converts a target_label->metric_label map into sorted
-// parallel slices for deterministic hashing.
-func sortStrategyMap(m map[string]string) (targetLabels, metricLabels []string) {
-	targetLabels = make([]string, 0, len(m))
-	for k := range m {
-		targetLabels = append(targetLabels, k)
-	}
-	sort.Strings(targetLabels)
-
-	metricLabels = make([]string, 0, len(targetLabels))
-	for _, k := range targetLabels {
-		metricLabels = append(metricLabels, m[k])
-	}
-	return targetLabels, metricLabels
-}
-
 func (c *Component) refreshCacheFromTargets(args Arguments) {
 	// Build the strategy map: target_label -> metric_label.
 	strategyMap := args.TargetToMetricMatch
@@ -309,28 +247,14 @@ func (c *Component) refreshCacheFromTargets(args Arguments) {
 		strategyMap = map[string]string{args.TargetMatchLabel: metricsLabel}
 	}
 
-	sortedTargetLabels, sortedMetricLabels := sortStrategyMap(strategyMap)
-	cache := make(map[uint64]model.LabelSet)
-	for _, target := range args.Targets {
-		labelSet := make(model.LabelSet)
-		target.ForEachLabel(func(k, v string) bool {
-			labelSet[model.LabelName(k)] = model.LabelValue(v)
-			return true
-		})
-		h, ok := hashValuesFromLabelSet(labelSet, sortedTargetLabels)
-		if !ok {
-			continue
-		}
-		cache[h] = labelSet
-	}
+	matcher := commonenrich.NewMatcher(args.Targets, strategyMap)
 
 	c.cacheMutex.Lock()
 	c.mc = &matchCache{
-		sortedMetricLabels: sortedMetricLabels,
-		cache:              cache,
-		labelsToCopy:       args.LabelsToCopy,
+		matcher:      matcher,
+		labelsToCopy: args.LabelsToCopy,
 	}
 	c.cacheMutex.Unlock()
 
-	c.cacheSize.Set(float64(len(cache)))
+	c.cacheSize.Set(float64(matcher.Len()))
 }
