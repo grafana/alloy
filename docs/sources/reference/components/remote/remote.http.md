@@ -113,9 +113,9 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 The following field is exported and can be referenced by other components:
 
-| Name      | Type                 | Description               | Default | Required |
-| --------- | -------------------- | ------------------------- | ------- | -------- |
-| `content` | `string` or `secret` | The contents of the file. |         | no       |
+| Name      | Type                 | Description                                                             |
+| --------- | -------------------- | ----------------------------------------------------------------------- |
+| `content` | `string` or `secret` | The contents of the response body from the most recent successful poll. |
 
 If the `is_secret` argument was `true`, `content` is a secret type.
 
