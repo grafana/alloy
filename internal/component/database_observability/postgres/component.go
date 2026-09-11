@@ -15,6 +15,8 @@ import (
 	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
 	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -718,7 +720,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.instance.registry, promhttp.HandlerOpts{})
+	return util.PromHTTPHandlerFor(c.instance.registry, c.opts.Logger, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {

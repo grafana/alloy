@@ -125,6 +125,7 @@ func (c *databricksConfig) NewIntegration(l *slog.Logger) (integrations.Integrat
 	col := collector.NewCollector(l, exporterCfg)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
+		integrations.WithLogger(l),
 		integrations.WithCollectors(col),
 	), nil
 }
