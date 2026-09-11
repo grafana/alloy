@@ -194,7 +194,7 @@ func (c *walEndpointAdapter) StoreSeries(series []record.RefSeries, segment int)
 	}
 }
 
-func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) error {
+func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefEntries, segment int) error {
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
@@ -207,16 +207,15 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 	if ok {
 		for i := range entries.Entries {
 			e := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(context.Background(), e, segment)
+			err := c.endpoint.enqueue(ctx, e, segment)
 			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
 			// Here we just skip the entry and try with the next one.
 			if errors.Is(err, errQueueIsFull) {
 				continue
 			}
-			// NOTE: The only other error that can be returned is context.Canceled and that happens
-			// if endpoint was stopped.
+
 			if err != nil {
-				return nil
+				return err
 			}
 
 			queuedEntries += 1
