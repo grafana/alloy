@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.write
 ---
 
@@ -15,8 +16,8 @@ title: pyroscope.write
 `pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints.
 When `pyroscope.write` forwards profiles, all labels starting with double underscore (`__`) are dropped before the data is sent, with the following exceptions:
 
-* `__name__` is preserved because it identifies the profile type.
-* `__delta__`is preserved because it's required for delta profiles.
+- `__name__` is preserved because it identifies the profile type.
+- `__delta__`is preserved because it's required for delta profiles.
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
@@ -56,12 +57,14 @@ You can use the following blocks with `pyroscope.write`:
 | `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`tracing`][tracing]                               | Configure trace context propagation for requests.          | no       |
 
 [endpoint]: #endpoint
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+[tracing]: #tracing
 
 {{< /docs/alloy-config >}}
 
@@ -75,8 +78,9 @@ The following arguments are supported:
 | Name                     | Type                | Description                                                                                      | Default   | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------- | -------- |
 | `url`                    | `string`            | Full URL to send profiles to.                                                                    |           | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
+| `debug_info_upload_timeout` | `duration`       | Timeout for uploading debug information to this endpoint.                                        | `"2m"`    | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
@@ -94,11 +98,11 @@ The following arguments are supported:
 
  At most, one of the following can be provided:
 
-* [`authorization`](#authorization) block
-* [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`](#endpoint) argument
-* [`bearer_token`](#endpoint) argument
-* [`oauth2`](#oauth2) block
+- [`authorization`](#authorization) block
+- [`basic_auth`](#basic_auth) block
+- [`bearer_token_file`](#endpoint) argument
+- [`bearer_token`](#endpoint) argument
+- [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -124,6 +128,16 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `tracing`
+
+The `tracing` block configures which trace-context headers `pyroscope.write` attaches to outgoing push requests, so a downstream Pyroscope server can correlate the write with the trace it belongs to.
+If both arguments are `false`, no trace-context headers are added to any request.
+
+| Name                       | Type   | Description                                                       | Default | Required |
+| -------------------------- | ------ | ----------------------------------------------------------------- | ------- | -------- |
+| `jaeger_propagator`        | `bool` | Attach Jaeger-format trace propagation headers (`uber-trace-id`). | `true`  | no       |
+| `trace_context_propagator` | `bool` | Attach W3C Trace Context headers (`traceparent`/`tracestate`).    | `true`  | no       |
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
@@ -145,19 +159,20 @@ In those cases, exported fields are kept at their last healthy values.
 
 `pyroscope.write` exposes the following metrics:
 
-| Metric                                   | Type      | Description                                                      |
-|------------------------------------------|-----------|------------------------------------------------------------------|
-| `pyroscope_write_sent_bytes_total`       | Counter   | Total number of compressed bytes sent to Pyroscope endpoints.    |
-| `pyroscope_write_dropped_bytes_total`    | Counter   | Total number of compressed bytes dropped by Pyroscope endpoints. |
-| `pyroscope_write_sent_profiles_total`    | Counter   | Total number of profiles sent to Pyroscope endpoints.            |
-| `pyroscope_write_dropped_profiles_total` | Counter   | Total number of profiles dropped by Pyroscope endpoints.         |
-| `pyroscope_write_retries_total`          | Counter   | Total number of retries to Pyroscope endpoints.                  |
-| `pyroscope_write_latency`                | Histogram | Write latency for sending profiles to Pyroscope endpoints.       |
+| Metric                                         | Type      | Description                                                       |
+| ---------------------------------------------- | --------- | ----------------------------------------------------------------- |
+| `pyroscope_write_sent_bytes_total`             | Counter   | Total number of compressed bytes sent to Pyroscope endpoints.     |
+| `pyroscope_write_dropped_bytes_total`          | Counter   | Total number of compressed bytes dropped by Pyroscope endpoints.  |
+| `pyroscope_write_sent_profiles_total`          | Counter   | Total number of profiles sent to Pyroscope endpoints.             |
+| `pyroscope_write_dropped_profiles_total`       | Counter   | Total number of profiles dropped by Pyroscope endpoints.          |
+| `pyroscope_write_retries_total`                | Counter   | Total number of retries to Pyroscope endpoints.                   |
+| `pyroscope_write_latency`                      | Histogram | Write latency for sending profiles to Pyroscope endpoints.        |
+| `pyroscope_ebpf_debug_info_upload_bytes_total` | Counter   | Total number of bytes uploaded to the debug information endpoint. |
 
 All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 
 - `push_total`: Total latency for push operations
-- `push_endpoint`: Per-endpoint latency for push operations  
+- `push_endpoint`: Per-endpoint latency for push operations
 - `push_downstream`: Downstream request latency for push operations
 - `ingest_total`: Total latency for ingest operations
 - `ingest_endpoint`: Per-endpoint latency for ingest operations

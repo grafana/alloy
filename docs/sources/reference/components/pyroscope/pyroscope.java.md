@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.java
 ---
 
@@ -73,7 +74,7 @@ You can use the following arguments with `pyroscope.java`:
 | `targets`    | `list(map(string))`      | List of java process targets to profile.         |          | yes      |
 | `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `"/tmp"` | no       |
 
-## Profiling behavior
+## How profiling works
 
 The special label `__process_pid__` _must always_ be present in each target of `targets` and corresponds to the `PID` of the process to profile.
 
@@ -102,10 +103,10 @@ The special `__process_pid__` label _must always_ be present and corresponds to 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 
 The special label `service_name` is required and must always be present.
-If it's not specified, `pyroscope.scrape` will attempt to infer it from either of the following sources, in this order:
+If it's not specified, `pyroscope.java` attempts to infer it from either of the following sources, in this order:
 
 1. `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
-1. `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
+1. `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `java/<namespace>/<container_name>`.
 1. `__meta_docker_container_name`
 1. `__meta_dockerswarm_container_label_service_name` or `__meta_dockerswarm_service_name`
 
@@ -127,9 +128,9 @@ You can use the following block with `pyroscope.java`:
 
 {{< docs/alloy-config >}}
 
-| Block                                 | Description                             | Required |
-| ------------------------------------- | --------------------------------------- | -------- |
-| [profiling_config`][profiling_config] | Describes java profiling configuration. | no       |
+| Block                                  | Description                             | Required |
+| -------------------------------------- | --------------------------------------- | -------- |
+| [`profiling_config`][profiling_config] | Describes java profiling configuration. | no       |
 
 [profiling_config]: #profiling_config
 
@@ -203,7 +204,6 @@ Refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob
 ## Component health
 
 `pyroscope.java` is only reported as unhealthy when given an invalid configuration.
-In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
