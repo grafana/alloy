@@ -36,11 +36,18 @@ The component starts an HTTP server supporting the following endpoints:
 
 ## Arguments
 
-You can use the following argument with `pyroscope.receive_http`:
+You can use the following arguments with `pyroscope.receive_http`:
 
-| Name         | Type                     | Description                            | Default | Required |
-| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
-| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
+| Name                        | Type                     | Description                                                       | Default | Required |
+| --------------------------- | ------------------------ | ----------------------------------------------------------------- | ------- | -------- |
+| `forward_to`                | `list(ProfilesReceiver)` | List of receivers to send profiles to.                            |         | yes      |
+| `debug_info_upload_timeout` | `duration`               | Timeout for uploading debug information to downstream components. | `"2m"`  | no       |
+
+`debug_info_upload_timeout` applies only to the debug information upload proxy endpoint `pyroscope.receive_http` exposes for downstream components.
+It doesn't affect the profile-ingest endpoints described in [Usage](#usage).
+
+Debug information upload requests are only proxied to the first receiver in `forward_to`.
+Unlike profiles, which are sent to every configured receiver, debug information isn't fanned out to the rest of the list.
 
 ## Blocks
 
@@ -48,7 +55,7 @@ You can use the following blocks with `pyroscope.receive_http`:
 
 {{< docs/alloy-config >}}
 
-| Name                  | Description                                        | Required |
+| Block                 | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
@@ -71,16 +78,17 @@ The `tls` block configures TLS for the HTTP server.
 
 ## Exported fields
 
-`pyroscope.receive_http` doesn't export any fields.
+`pyroscope.receive_http` doesn't export any fields that can be referenced by other components.
 
 ## Component health
 
-`pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+`pyroscope.receive_http` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug metrics
 
-`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+- `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
+- `pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+- `pyroscope_receive_http_debuginfo_downstream_calls_total` (counter): Total number of downstream debug information calls, labeled by `method` and `result`.
 
 ## Troubleshoot
 
