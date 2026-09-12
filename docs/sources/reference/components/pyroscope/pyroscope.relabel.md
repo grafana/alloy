@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.relabel
 ---
 
@@ -14,7 +15,7 @@ title: pyroscope.relabel
 
 The `pyroscope.relabel` component rewrites the external label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
-If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
+If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments.
 The profile is dropped if no external labels remain after the relabeling rules are applied.
 
 `pyroscope.relabel` only rewrites labels that aren't embedded in the profile itself, such as labels inferred by `pyroscope.scrape` or labels provided through the `/ingest?name=...` query parameter.
@@ -41,10 +42,10 @@ pyroscope.relabel "<LABEL>" {
 
 You can use the following arguments with `pyroscope.relabel`:
 
-| Name             | Type                         | Description                                               | Default | Required |
-| ---------------- | ---------------------------- | --------------------------------------------------------- | ------- | -------- |
-| `forward_to`     | `list(pyroscope.Appendable)` | List of receivers to forward profiles to after relabeling |         | yes      |
-| `max_cache_size` | `number`                     | Maximum number of entries in the label cache              | `10000` | no       |
+| Name             | Type                     | Description                                               | Default | Required |
+| ---------------- | ------------------------ | --------------------------------------------------------- | ------- | -------- |
+| `forward_to`     | `list(ProfilesReceiver)` | List of receivers to forward profiles to after relabeling |         | yes      |
+| `max_cache_size` | `number`                 | Maximum number of entries in the label cache              | `10000` | no       |
 
 ## Blocks
 
@@ -52,7 +53,7 @@ You can use the following block with `pyroscope.relabel`:
 
 {{< docs/alloy-config >}}
 
-|      Name      |                      Description                       | Required |
+| Block          | Description                                            | Required |
 | -------------- | ------------------------------------------------------ | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received profile entries. | no       |
 
@@ -71,20 +72,20 @@ The following fields are exported and can be referenced by other components:
 | Name       | Type               | Description                                      |
 | ---------- | ------------------ | ------------------------------------------------ |
 | `receiver` | `ProfilesReceiver` | A receiver that accepts profiles for relabeling. |
-| `rules`    | `[]relabel.Config` | The list of relabeling rules.                    |
+| `rules`    | `RelabelRules`     | The list of relabeling rules.                    |
 
 ## Component health
 
-`pyroscope.relabel` is reported as unhealthy if it is given an invalid configuration.
+`pyroscope.relabel` is only reported as unhealthy if given an invalid configuration.
 
 ## Debug metrics
 
-* `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
-* `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
-* `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
-* `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
-* `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
-* `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
+- `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
+- `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
+- `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
+- `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
+- `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
+- `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
 
 ## Example
 
