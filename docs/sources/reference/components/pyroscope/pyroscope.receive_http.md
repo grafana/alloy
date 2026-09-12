@@ -5,6 +5,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.receive_http
 ---
 
