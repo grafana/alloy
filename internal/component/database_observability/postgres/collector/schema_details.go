@@ -242,6 +242,24 @@ func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*t
 	}
 }
 
+// SchemasForDatabase returns the known schema names for a database, or nil if the
+// database is unknown to the registry.
+func (tr *TableRegistry) SchemasForDatabase(database database) []string {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return nil
+	}
+
+	out := make([]string, 0, len(schemas))
+	for s := range schemas {
+		out = append(out, string(s))
+	}
+	return out
+}
+
 // IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry.
 // It also returns the resolved table name, which may differ from the input (e.g. lowercased due to PostgreSQL's identifier folding).
 func (tr *TableRegistry) IsValid(database database, parsedTableName string) (string, bool) {

@@ -546,12 +546,12 @@ func (j Javaagent) Convert() map[string]any {
 	return m
 }
 
-// Convert builds the jvm_runtime_metrics configuration.
+// Convert builds the jvm_runtime_metrics configuration. Enabled is not
+// forwarded: Beyla >= v3.35.0 (OBI v0.13.0) dropped jvm_runtime_metrics.enabled
+// from its schema, so the key would be silently ignored. JVM runtime metrics
+// are now gated solely by "application_runtime" in metrics.features.
 func (j JVMRuntimeMetrics) Convert() map[string]any {
 	m := make(map[string]any)
-	if j.Enabled {
-		m["enabled"] = true
-	}
 	if v := j.SamplingInterval; v != 0 {
 		m["sampling_interval"] = v.String()
 	}
