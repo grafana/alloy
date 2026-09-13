@@ -97,7 +97,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
-	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
+	return batch.ConsumeStreams(func(stream loki.Stream) error {
 		lbls := stream.Labels.String()
 		for _, e := range stream.Entries {
 			c.printEntry(lbls, e)

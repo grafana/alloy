@@ -132,3 +132,7 @@ func (l disabledCluster) Peers() []peer.Peer {
 func (l disabledCluster) Ready() bool {
 	return true
 }
+
+func (l disabledCluster) Enabled() bool {
+	return false
+}
