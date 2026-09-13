@@ -50,7 +50,7 @@ The following strings are recognized as valid log line formats:
 
 ### `write_to`
 
-The `write_to` argument allows {{< param "PRODUCT_NAME" >}} to tee its log entries to one or more `loki.*` component log receivers in addition to the default [location][].
+The `write_to` argument allows {{< param "PRODUCT_NAME" >}} to tee its log entries to one or more `loki.*` component log receivers in addition to the default [destinations][].
 This, for example can be the export of a `loki.write` component to send log entries directly to Loki, or a `loki.relabel` component to add a certain label first.
 
 ### `destination`
@@ -59,6 +59,7 @@ The following strings are recognized as valid log destinations:
 
 * `"stderr"`: Write logs to `stderr`.
 * `"windows_event_log"`:  Windows only. Write logs to the Windows Event Log under the "Alloy" source.
+* `"none"`: Don't write the primary log output. Logs are still forwarded to any receivers configured in [`write_to`](#write_to).
 
 The default value of `destination` is set to `"windows_event_log"` when {{< param "PRODUCT_NAME" >}} runs as a Windows service.
 Otherwise, `destination` defaults to `"stderr"`.
@@ -104,4 +105,4 @@ logging {
 ```
 
 [logfmt]: https://brandur.org/logfmt
-[location]: #log-location
+[destination]: #destination

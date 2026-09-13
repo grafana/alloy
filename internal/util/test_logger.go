@@ -34,8 +34,9 @@ func TestAlloyLogger(t require.TestingT) *logging.Logger {
 	}
 
 	l, err := logging.New(os.Stderr, logging.Options{
-		Level:  logging.LevelDebug,
-		Format: logging.FormatLogfmt,
+		Level:       logging.LevelDebug,
+		Format:      logging.FormatLogfmt,
+		Destination: logging.LogDestinationStderr,
 	})
 	require.NoError(t, err)
 	return l
