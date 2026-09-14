@@ -192,23 +192,29 @@ func (m *Mimir) QueryPositive(t *testing.T, testName string, metrics []string) {
 	}, timeout, retryInterval)
 }
 
-// QueryLabelPresent asserts at least one series for testName carries labelName
-// with a non-empty value. It checks cAdvisor attaches container labels.
-func (m *Mimir) QueryLabelPresent(t *testing.T, testName, labelName string) {
+// QueryLabelsPresent asserts at least one series for testName carries every
+// given label with a non-empty value. Passing multiple labels requires them on
+// the same series. It checks cAdvisor attaches container labels.
+func (m *Mimir) QueryLabelsPresent(t *testing.T, testName string, labelNames ...string) {
 	t.Helper()
+
+	matchers := testNameLabel + "=\"" + testName + "\""
+	for _, labelName := range labelNames {
+		matchers += "," + labelName + "=~\".+\""
+	}
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		queryURL, err := url.Parse(m.endpoint("/prometheus/api/v1/series"))
 		require.NoError(c, err)
 		values := queryURL.Query()
-		values.Add("match[]", "{"+testNameLabel+"=\""+testName+"\","+labelName+"=~\".+\"}")
+		values.Add("match[]", "{"+matchers+"}")
 		queryURL.RawQuery = values.Encode()
 		resp := curl(c, queryURL.String(), nil)
 
 		var parsed seriesResponse
 		require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse series response: %s", resp)
 		require.Equal(c, "success", parsed.Status, "mimir series query failed: %s", resp)
-		require.NotEmptyf(c, parsed.Data, "no series carrying label %s for %s=%s", labelName, testNameLabel, testName)
+		require.NotEmptyf(c, parsed.Data, "no series carrying labels %v for %s=%s", labelNames, testNameLabel, testName)
 	}, timeout, retryInterval)
 }
 

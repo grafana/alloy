@@ -90,12 +90,10 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 
 	// The containerd socket lets cAdvisor resolve pod metadata, so container
 	// labels are attached. Kubernetes sets these io.kubernetes.* labels on every
-	// container, so they are present whenever the containerd plugin works.
-	for _, label := range []string{
+	// container, so a single series carries all three when the plugin works.
+	mimir.QueryLabelsPresent(t, "cadvisor",
 		"container_label_io_kubernetes_pod_name",
 		"container_label_io_kubernetes_pod_namespace",
 		"container_label_io_kubernetes_container_name",
-	} {
-		mimir.QueryLabelPresent(t, "cadvisor", label)
-	}
+	)
 }
