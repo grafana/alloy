@@ -732,7 +732,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/open-telemetry/opamp-go v0.23.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.158.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.158.0 // indirect; indirect)
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.158.0 // indirect)
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.158.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.158.0 // indirect
