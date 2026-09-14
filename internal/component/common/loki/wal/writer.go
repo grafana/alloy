@@ -77,7 +77,7 @@ func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer, me
 		wg:          sync.WaitGroup{},
 		cfg:         walCfg,
 		wal:         wl,
-		done:        make(chan struct{}, 1),
+		done:        make(chan struct{}),
 		metrics:     metrics,
 	}
 
