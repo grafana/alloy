@@ -309,14 +309,14 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 			require.FailNow(t, "failed waiting for logs")
 		case req := <-ch1:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		case req := <-ch2:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		}
 	}
 }

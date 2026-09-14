@@ -80,18 +80,14 @@ var (
 
 // Component implements the loki.write component.
 type Component struct {
-	opts component.Options
-
-	mut      sync.RWMutex
-	args     Arguments
+	opts     component.Options
 	receiver loki.LogsReceiver
+
+	mut            sync.RWMutex
+	externalLabels model.LabelSet
 
 	// remote write consumer
 	consumer client.Consumer
-
-	// sink is the place where log entries received by this component should be written to.
-	// It will in turn write to client.Consumer.
-	sink loki.EntryHandler
 }
 
 // New creates a new loki.write component.
@@ -116,10 +112,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// First we need to stop the sink. Stopping the sink will not stop the wrapped handler.
-		if c.sink != nil {
-			c.sink.Stop()
-		}
+		c.mut.Lock()
+		defer c.mut.Unlock()
 
 		if c.consumer != nil {
 			if d, ok := c.consumer.(client.DrainableConsumer); ok {
@@ -135,15 +129,8 @@ func (c *Component) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case entry := <-c.receiver.Chan():
-			c.mut.RLock()
-			select {
-			case <-ctx.Done():
-				c.mut.RUnlock()
-				return nil
-			case c.sink.Chan() <- entry:
-			}
-			c.mut.RUnlock()
+		case e := <-c.receiver.Chan():
+			c.consumeEntry(ctx, e)
 		}
 	}
 }
@@ -158,16 +145,13 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	c.args = newArgs
-
-	if c.sink != nil {
-		c.sink.Stop()
-	}
 
 	if c.consumer != nil {
 		// only drain on component shutdown
 		c.consumer.Stop()
 	}
+
+	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	cfgs := newArgs.convertEndpointConfigs()
 
@@ -202,19 +186,23 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create cliens: %w", err)
 	}
 
-	c.sink = newEntryHandler(c.consumer, util.MapToModelLabelSet(c.args.ExternalLabels))
-
 	return nil
 }
 
-func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
-	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
-		if len(externalLabels) == 0 {
-			return e
-		}
-		e.Labels = externalLabels.Merge(e.Labels)
-		return e
-	})
+func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	if len(c.externalLabels) > 0 {
+		e.Labels = c.externalLabels.Merge(e.Labels)
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	case c.consumer.Chan() <- e:
+		return
+	}
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
