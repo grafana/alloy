@@ -1,6 +1,7 @@
 package prometheusexportercadvisor
 
 import (
+	"os"
 	"testing"
 
 	"github.com/grafana/alloy/integration-tests/k8s/deps"
@@ -24,11 +25,11 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 	})
 
 	// Covers the cAdvisor collector families: version, cpu, memory, filesystem,
-	// network, blkio, and pressure (PSI), plus metrics added in cAdvisor v0.60.
+	// network, and blkio, plus container_start_time_seconds added in v0.60.
 	//
 	// container_health_state is left out on purpose: it needs a container with a
 	// Docker HEALTHCHECK, which kind's containerd runtime does not provide.
-	mimir.QueryMetrics(t, "cadvisor", []string{
+	expected := []string{
 		"cadvisor_build_info",
 		"cadvisor_version_info",
 		"container_blkio_device_usage_total",
@@ -76,25 +77,52 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 		"container_network_transmit_packets_dropped_total",
 		"container_network_transmit_packets_total",
 		"container_oom_events_total",
-
-		// Pressure stall (PSI) metrics. Present on the CI runner kernel.
-		"container_pressure_cpu_stalled_seconds_total",
-		"container_pressure_cpu_waiting_seconds_total",
-		"container_pressure_io_stalled_seconds_total",
-		"container_pressure_io_waiting_seconds_total",
-		"container_pressure_memory_stalled_seconds_total",
-		"container_pressure_memory_waiting_seconds_total",
-
-		// Metrics added in cAdvisor v0.60: cgroup v2 memory events and stats, CPU
-		// burst accounting, and container start time.
-		"container_cpu_cfs_burst_periods_total",
-		"container_cpu_cfs_burst_seconds_total",
-		"container_memory_events_high_total",
-		"container_memory_events_max_total",
-		"container_memory_pgscan_total",
-		"container_memory_pgsteal_total",
-		"container_memory_workingset_refault_anon_total",
-		"container_memory_workingset_refault_file_total",
+		// container_start_time_seconds was added in cAdvisor v0.60 and does not
+		// depend on the cgroup version.
 		"container_start_time_seconds",
-	})
+	}
+
+	// PSI and cgroup v2 memory metrics are only produced on capable kernels. kind
+	// shares the host kernel, so gate on the host's capabilities and assert these
+	// only where cAdvisor actually emits them, keeping the test portable to hosts
+	// without CONFIG_PSI or cgroup v2 (e.g. local dev).
+	if psiAvailable() {
+		expected = append(expected,
+			"container_pressure_cpu_stalled_seconds_total",
+			"container_pressure_cpu_waiting_seconds_total",
+			"container_pressure_io_stalled_seconds_total",
+			"container_pressure_io_waiting_seconds_total",
+			"container_pressure_memory_stalled_seconds_total",
+			"container_pressure_memory_waiting_seconds_total",
+		)
+	} else {
+		t.Log("skipping PSI metric assertions: /proc/pressure/cpu is not present")
+	}
+	if cgroupV2() {
+		expected = append(expected,
+			"container_memory_events_high_total",
+			"container_memory_events_max_total",
+			"container_memory_pgscan_total",
+			"container_memory_pgsteal_total",
+			"container_memory_workingset_refault_anon_total",
+			"container_memory_workingset_refault_file_total",
+		)
+	} else {
+		t.Log("skipping cgroup v2 memory metric assertions: cgroup v2 was not detected")
+	}
+
+	mimir.QueryMetrics(t, "cadvisor", expected)
+}
+
+// psiAvailable reports whether the kernel exposes pressure stall information.
+// The kind node shares the host kernel, so the host's /proc reflects the node.
+func psiAvailable() bool {
+	_, err := os.Stat("/proc/pressure/cpu")
+	return err == nil
+}
+
+// cgroupV2 reports whether the host uses the cgroup v2 unified hierarchy.
+func cgroupV2() bool {
+	_, err := os.Stat("/sys/fs/cgroup/cgroup.controllers")
+	return err == nil
 }
