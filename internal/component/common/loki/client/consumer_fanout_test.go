@@ -56,7 +56,6 @@ func TestFanoutConsumer(t *testing.T) {
 				},
 			),
 		)
-
 	}
 
 	require.Eventually(t, func() bool {
