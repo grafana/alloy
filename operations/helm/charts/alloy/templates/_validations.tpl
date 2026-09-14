@@ -11,6 +11,14 @@ the offending values and tells the user what to set.
 {{- end -}}
 {{- end -}}
 
+{{- define "alloy.validations.httpRouteParentRefs" -}}
+{{- if and .Values.httpRoute.enabled (empty .Values.httpRoute.parentRefs) -}}
+{{- $msg := printf "httpRoute.enabled is true but httpRoute.parentRefs is empty.\nAn HTTPRoute has to name at least one Gateway to attach to.\nSet httpRoute.parentRefs, for example:\n  httpRoute:\n    parentRefs:\n      - name: my-gateway\n        namespace: gateway-system" -}}
+{{- fail $msg -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "alloy.validations.all" -}}
 {{- include "alloy.validations.externalHPA" . -}}
+{{- include "alloy.validations.httpRouteParentRefs" . -}}
 {{- end -}}

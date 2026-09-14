@@ -151,6 +151,21 @@ Return if ingress supports pathType.
 {{- end }}
 
 {{/*
+Return the appropriate apiVersion for HTTPRoute. Falls back to v1beta1 on
+clusters that only have the older Gateway API bundle installed, and assumes v1
+when no cluster is reachable, such as during `helm template`.
+*/}}
+{{- define "alloy.httpRoute.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1" }}
+{{- print "gateway.networking.k8s.io/v1" }}
+{{- else if $.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1beta1" }}
+{{- print "gateway.networking.k8s.io/v1beta1" }}
+{{- else }}
+{{- print "gateway.networking.k8s.io/v1" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Return the appropriate apiVersion for PodDisruptionBudget.
 */}}
 {{- define "alloy.controller.pdb.apiVersion" -}}

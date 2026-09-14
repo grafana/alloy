@@ -1,0 +1,45 @@
+{{- if .Values.httpRoute.enabled -}}
+{{- $fullName := include "alloy.fullname" . -}}
+apiVersion: {{ include "alloy.httpRoute.apiVersion" . }}
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: networking
+    {{- with .Values.httpRoute.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ tpl $value $ | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- tpl (toYaml .Values.httpRoute.parentRefs) $ | nindent 4 }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- range . }}
+    - {{ tpl . $ | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+  {{- with .Values.httpRoute.rules }}
+    {{- tpl (toYaml .) $ | nindent 4 }}
+  {{- else }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.httpRoute.path }}
+      backendRefs:
+        - name: {{ $fullName }}
+          port: {{ .Values.httpRoute.faroPort }}
+      {{- with .Values.httpRoute.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- end }}
+{{- end }}
