@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -35,17 +36,17 @@ func newBlockedServer() (*httptest.Server, *atomic.Bool, func()) {
 	return server, blocked, release
 }
 
-func feedUntilBlocked(t *testing.T, blocked *atomic.Bool, c chan<- loki.Entry) {
+func feedUntilBlocked(t *testing.T, blocked *atomic.Bool, consumer Consumer) {
 	e := loki.NewEntry(model.LabelSet{"A": "b"}, push.Entry{
 		Line:      "test",
 		Timestamp: time.Now(),
 	})
 
 	for !blocked.Load() {
-		select {
-		case c <- e:
-		case <-time.After(50 * time.Millisecond):
-		}
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+
+		_ = consumer.ConsumeEntry(ctx, e)
+		cancel()
 	}
 	require.True(t, blocked.Load())
 }

@@ -191,18 +191,14 @@ func (c *Component) Update(args component.Arguments) error {
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 	c.mut.RLock()
-	defer c.mut.RUnlock()
+	consumer := c.consumer
 
 	if len(c.externalLabels) > 0 {
 		e.Labels = c.externalLabels.Merge(e.Labels)
 	}
+	c.mut.RUnlock()
 
-	select {
-	case <-ctx.Done():
-		return
-	case c.consumer.Chan() <- e:
-		return
-	}
+	_ = consumer.ConsumeEntry(ctx, e)
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {

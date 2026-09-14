@@ -40,11 +40,10 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 	return c, nil
 }
 
-var errQueueIsFull = errors.New("queue is full")
-
-// enqueue tries to enqueue an entry. It returns an error if the entry could not be enqueued.
-// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled if
-// caller canceled ctx.
+// enqueue tries to enqueue an entry, waiting for room until ctx is done.
+// It returns loki.ErrConsumerStopped when the endpoint is shutting down and waiting cannot help,
+// errQueueIsFull when the queue is full and BlockOnOverflow is not set
+// and the context error when ctx is done before the entry is enqueued.
 func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int) error {
 	bo := backoff.New(ctx, backoff.Config{
 		MinBackoff: 5 * time.Millisecond,
@@ -54,14 +53,20 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 	tenantID := getTenantID(e.cfg, entry)
 
 	for bo.Ongoing() {
-		if e.shards.enqueue(tenantID, entry, segmentNum) {
+		err := e.shards.enqueue(tenantID, entry, segmentNum)
+
+		if err == nil {
 			return nil
 		}
 
-		if !e.cfg.QueueConfig.BlockOnOverflow {
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			return err
+		}
+
+		if errors.Is(err, errQueueIsFull) && !e.cfg.QueueConfig.BlockOnOverflow {
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
-			return errQueueIsFull
+			return err
 		}
 
 		bo.Wait()

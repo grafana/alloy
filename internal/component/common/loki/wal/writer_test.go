@@ -19,47 +19,81 @@ import (
 	autil "github.com/grafana/alloy/internal/util"
 )
 
-func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
-	dir := t.TempDir()
+func TestWriter(t *testing.T) {
+	t.Run("entries are written to wal", func(t *testing.T) {
+		dir := t.TempDir()
 
-	writer, err := NewWriter(Config{
-		Dir:           dir,
-		Enabled:       true,
-		MaxSegmentAge: time.Minute,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
-	require.NoError(t, err)
-	defer func() {
-		writer.Stop()
-	}()
-	// write entries to wal and sync
-	writer.Start(time.Minute)
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			Enabled:       true,
+			MaxSegmentAge: time.Minute,
+		}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+		require.NoError(t, err)
+		defer writer.Stop()
 
-	var testLabels = model.LabelSet{
-		"testing": "log",
-	}
-	var lines = []string{
-		"some line",
-		"some other line",
-		"some other other line",
-	}
+		// write entries to wal and sync
+		writer.Start()
 
-	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
+		var testLabels = model.LabelSet{
+			"testing": "log",
+		}
+		var lines = []string{
+			"some line",
+			"some other line",
+			"some other other line",
+		}
+
+		for _, line := range lines {
+			require.NoError(t, writer.WriteEntry(
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      line,
+					},
+				},
+			))
+		}
+
+		// accessing the WAL inside, just for testing!
+		require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+
+		// assert over WAL entries
+		readEntries := eventuallyReadWAL(t, len(lines), dir)
+		require.NotNil(t, readEntries)
+		require.Equal(t, testLabels, readEntries[0].Labels)
+	})
+
+	t.Run("stopped writer returns error", func(t *testing.T) {
+		dir := t.TempDir()
+
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			Enabled:       true,
+			MaxSegmentAge: time.Minute,
+		}, logging.NewSlogNop(), prometheus.NewRegistry())
+
+		require.NoError(t, err)
+		writer.Start()
+
+		require.NoError(t, writer.WriteEntry(loki.Entry{
+			Labels: model.LabelSet{"key": "value"},
 			Entry: push.Entry{
 				Timestamp: time.Now(),
-				Line:      line,
+				Line:      "lin",
 			},
-		}
-	}
+		}))
 
-	// accessing the WAL inside, just for testing!
-	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+		writer.Stop()
 
-	// assert over WAL entries
-	readEntries := eventuallyReadWAL(t, len(lines), dir)
-	require.NotNil(t, readEntries)
-	require.Equal(t, testLabels, readEntries[0].Labels)
+		require.ErrorIs(t, writer.WriteEntry(loki.Entry{
+			Labels: model.LabelSet{"key": "value"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "lin",
+			},
+		}), loki.ErrConsumerStopped)
+	})
 }
 
 type notifySegmentsCleanedFunc func(num int)
@@ -72,12 +106,12 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 }
 
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	subscriber1 := []int{}
-	subscriber2 := []int{}
+	var (
+		dir           = t.TempDir()
+		subscriber1   = []int{}
+		subscriber2   = []int{}
+		maxSegmentAge = time.Second * 2
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
@@ -85,10 +119,8 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
 	require.NoError(t, err)
-	writer.Start(maxSegmentAge)
-	defer func() {
-		writer.Stop()
-	}()
+	defer writer.Stop()
+	writer.Start()
 
 	notificationMutex := sync.Mutex{}
 	// add writer events subscriber. Add multiple to test fanout
@@ -114,13 +146,15 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	}
 
 	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
+		require.NoError(t, writer.WriteEntry(
+			loki.Entry{
+				Labels: testLabels,
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      line,
+				},
 			},
-		}
+		))
 	}
 
 	// accessing the WAL inside, just for testing!
@@ -166,11 +200,11 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 }
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	segmentsReclaimedNotificationsReceived := []int{}
+	var (
+		dir                                    = t.TempDir()
+		maxSegmentAge                          = 2 * time.Second
+		segmentsReclaimedNotificationsReceived = []int{}
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
@@ -178,7 +212,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		MaxSegmentAge: maxSegmentAge,
 	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
 	require.NoError(t, err)
-	writer.Start(maxSegmentAge)
+	writer.Start()
 	defer func() {
 		writer.Stop()
 	}()
@@ -197,13 +231,15 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	}
 
 	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
+		require.NoError(t, writer.WriteEntry(
+			loki.Entry{
+				Labels: testLabels,
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      line,
+				},
 			},
-		}
+		))
 	}
 
 	// accessing the WAL inside, just for testing!
@@ -350,20 +386,22 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 		MaxSegmentAge: time.Minute,
 	}, logging.NewSlogNop(), prometheus.NewRegistry())
 	require.NoError(b, err)
-	writer.Start(time.Minute)
+	writer.Start()
 	defer func() {
 		writer.Stop()
 	}()
 
 	for i := 0; i < lines; i++ {
-		writer.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
+		require.NoError(b, writer.WriteEntry(
+			loki.Entry{
+				Labels: model.LabelSet{
+					"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      fmt.Sprintf("some line being written %d", i),
+				},
 			},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("some line being written %d", i),
-			},
-		}
+		))
 	}
 }

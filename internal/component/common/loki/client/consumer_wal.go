@@ -80,7 +80,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		})
 	}
 
-	writer.Start(walCfg.MaxSegmentAge)
+	writer.Start()
 
 	return m, nil
 }
@@ -109,8 +109,9 @@ type WALConsumer struct {
 	pairs  []endpointWatcherPair
 }
 
-func (m *WALConsumer) Chan() chan<- loki.Entry {
-	return m.writer.Chan()
+// ConsumeEntry implements DrainableConsumer.
+func (m *WALConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	return m.writer.WriteEntry(entry)
 }
 
 func (m *WALConsumer) Stop() {

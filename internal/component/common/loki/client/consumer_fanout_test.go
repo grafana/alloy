@@ -43,13 +43,20 @@ func TestFanoutConsumer(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
+
 	}
 
 	require.Eventually(t, func() bool {
@@ -104,13 +111,19 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	// times 2 due to endpoints being run
@@ -238,7 +251,7 @@ func TestFanoutConsumer_StopWithFullSendQueue(t *testing.T) {
 	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), endpointConfig)
 	require.NoError(t, err)
 
-	feedUntilBlocked(t, blocked, consumer.Chan())
+	feedUntilBlocked(t, blocked, consumer)
 
 	done := make(chan struct{})
 	go func() {

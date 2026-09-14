@@ -58,13 +58,19 @@ func TestWALConsumer(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	require.Eventually(t, func() bool {
@@ -125,13 +131,17 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				}),
+		)
 	}
 
 	// times 2 due to endpoint being run
@@ -582,7 +592,7 @@ func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
 	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, endpointConfig)
 	require.NoError(t, err)
 
-	feedUntilBlocked(t, blocked, consumer.Chan())
+	feedUntilBlocked(t, blocked, consumer)
 
 	stopped := make(chan struct{})
 	go func() {

@@ -361,12 +361,20 @@ func (s *shards) runShard(q *queue) {
 	}
 }
 
+var errQueueIsFull = errors.New("queue is full")
+
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
-// Returns false if we could not enqueue the entry, either because the shard is shutting down or the queue is full.
-// It is up to the caller to retry or drop the entry.
-func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool {
+// Returns loki.ErrConsumerStopped if the shard is shutting down, in which case retrying will never
+// succeed, and errQueueIsFull if the queue is full, which the caller may retry or drop the entry.
+func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) error {
 	s.mut.Lock()
 	defer s.mut.Unlock()
+
+	select {
+	case <-s.softShutdown:
+		return loki.ErrConsumerStopped
+	default:
+	}
 
 	if _, ok := s.tenants[tenantID]; !ok {
 		s.tenants[tenantID] = struct{}{}
@@ -376,12 +384,10 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool
 	fingerprint := entry.Labels.FastFingerprint()
 	shard := uint64(fingerprint) % uint64(len(s.queues))
 
-	select {
-	case <-s.softShutdown:
-		return false
-	default:
-		return s.queues[shard].append(tenantID, entry, segmentNum)
+	if !s.queues[shard].append(tenantID, entry, segmentNum) {
+		return errQueueIsFull
 	}
+	return nil
 }
 
 func (s *shards) initBatchMetrics(tenantID string) {

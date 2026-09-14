@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -19,10 +20,7 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 
 	c := &FanoutConsumer{
 		endpoints: make([]*endpoint, 0, len(cfgs)),
-		recv:      make(chan loki.Entry),
 	}
-
-	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	var (
 		metrics        = newMetrics(reg)
@@ -45,7 +43,6 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		c.endpoints = append(c.endpoints, endpoint)
 	}
 
-	c.wg.Go(c.run)
 	return c, nil
 }
 
@@ -53,36 +50,23 @@ var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	endpoints []*endpoint
-
-	wg     sync.WaitGroup
-	once   sync.Once
-	recv   chan loki.Entry
-	ctx    context.Context
-	cancel context.CancelFunc
 }
 
-func (c *FanoutConsumer) run() {
-	for e := range c.recv {
-		for _, endpoint := range c.endpoints {
-			// NOTE: For now it's fine to ignore error because we can't act on it.
-			_ = endpoint.enqueue(c.ctx, e, 0)
+func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	for _, e := range c.endpoints {
+		if err := e.enqueue(ctx, entry, 0); err != nil {
+			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
+			// We just skip the endpoint and try the next one.
+			if errors.Is(err, errQueueIsFull) {
+				continue
+			}
+			return err
 		}
 	}
-}
-
-func (c *FanoutConsumer) Chan() chan<- loki.Entry {
-	return c.recv
+	return nil
 }
 
 func (c *FanoutConsumer) Stop() {
-	// First stop the receiving channel.
-	c.once.Do(func() {
-		close(c.recv)
-		c.cancel()
-	})
-
-	c.wg.Wait()
-
 	var stopWG sync.WaitGroup
 	// Stop all endpoints.
 	for _, c := range c.endpoints {
