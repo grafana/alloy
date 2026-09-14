@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -60,6 +63,58 @@ func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
 	readEntries := eventuallyReadWAL(t, len(lines), dir)
 	require.NotNil(t, readEntries)
 	require.Equal(t, testLabels, readEntries[0].Labels)
+}
+
+func TestWriterMetricsWorksAfterRecreation(t *testing.T) {
+	var (
+		dir = t.TempDir()
+		reg = prometheus.NewRegistry()
+	)
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg)
+	require.NoError(t, err)
+
+	writer.Start(time.Minute)
+	entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "line"})
+	writer.Chan() <- entry
+
+	expected := fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, entry.Timestamp.Unix())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
+
+	writer.Stop()
+
+	writer, err = NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg)
+	require.NoError(t, err)
+	writer.Start(time.Minute)
+	defer writer.Stop()
+
+	newEntry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now().Add(1 * time.Second), Line: "line"})
+	writer.Chan() <- newEntry
+
+	expected = fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, newEntry.Timestamp.Unix())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 type notifySegmentsCleanedFunc func(num int)
