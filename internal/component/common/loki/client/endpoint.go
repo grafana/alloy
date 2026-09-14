@@ -40,10 +40,10 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 	return c, nil
 }
 
-// enqueue tries to enqueue an entry, waiting for room until ctx is done.
-// It returns loki.ErrConsumerStopped when the endpoint is shutting down and waiting cannot help,
-// errQueueIsFull when the queue is full and BlockOnOverflow is not set
-// and the context error when ctx is done before the entry is enqueued.
+// enqueue tries to enqueue an entry. It waits for room while BlockOnOverflow
+// is set and drops the entry when it is not. It will return context error
+// if caller cancels context or loki.ErrConsumerStopped if endpoint
+// has been stopped.
 func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int) error {
 	bo := backoff.New(ctx, backoff.Config{
 		MinBackoff: 5 * time.Millisecond,
@@ -66,7 +66,7 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 		if errors.Is(err, errQueueIsFull) && !e.cfg.QueueConfig.BlockOnOverflow {
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
-			return err
+			return nil
 		}
 
 		bo.Wait()

@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -209,12 +208,9 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 		for i := range entries.Entries {
 			e := entries.EntryAt(l, i)
 			err := c.endpoint.enqueue(ctx, e, segment)
-			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
-			// Here we just skip the entry and try with the next one.
-			if errors.Is(err, errQueueIsFull) {
-				continue
-			}
 
+			// NOTE: The only errors we can get are the context error and loki.ErrConsumerStopped.
+			// In both these cases there is no point trying to enqueue other entries.
 			if err != nil {
 				return err
 			}

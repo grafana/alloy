@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -408,13 +407,11 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		require.NoError(t, e.enqueue(t.Context(), entry, 0))
 		require.NoError(t, e.enqueue(t.Context(), entry, 0))
 
-		// Which enqueue fails depends on whether the shard worker has already
-		// consumed the queued batch after the third call. If the third call loses that race,
-		// it returns errQueueIsFull, otherwise the fourth call does.
-		err3 := e.enqueue(t.Context(), entry, 0)
-		err4 := e.enqueue(t.Context(), entry, 0)
-		queueIsFull := errors.Is(err3, errQueueIsFull) || errors.Is(err4, errQueueIsFull)
-		require.True(t, queueIsFull, "expected either the third or fourth enqueue to fail with queue full")
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+		require.NoError(t, e.enqueue(t.Context(), entry, 0))
+
+		require.Equal(t, 1, testutil.ToFloat64(m.droppedEntries.WithLabelValues(url.Host, "", reasonQueueIsFull)))
+		require.Equal(t, entry.Size(), testutil.ToFloat64(m.droppedBytes.WithLabelValues(url.Host, "", reasonQueueIsFull)))
 	})
 
 	t.Run("should block until queue has space when BlockOnOverflow is true", func(t *testing.T) {
