@@ -183,7 +183,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create cliens: %w", err)
+		return fmt.Errorf("failed to create clients: %w", err)
 	}
 
 	return nil
@@ -198,6 +198,8 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 	}
 	c.mut.RUnlock()
 
+	// NOTE: For now it's ok to ignore error here. Error mean the consumer is going away,
+	// either because ctx was canceled or because it has been stopped by a shutdown or an update.
 	_ = consumer.ConsumeEntry(ctx, e)
 }
 
