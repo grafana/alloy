@@ -36,7 +36,8 @@ The `format` argument controls how metrics are encoded when written to stdout:
 
 ## Blocks
 
-The `prometheus.echo` component doesn't support any blocks. You can configure this component with arguments.
+The `prometheus.echo` component doesn't support any blocks.
+You can configure this component with arguments.
 
 ## Exported fields
 
