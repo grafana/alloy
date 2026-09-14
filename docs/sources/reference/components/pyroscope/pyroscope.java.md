@@ -74,11 +74,7 @@ You can use the following arguments with `pyroscope.java`:
 | `targets`    | `list(map(string))`      | List of java process targets to profile.         |          | yes      |
 | `tmp_dir`    | `string`                 | Temporary directory to store async-profiler.     | `"/tmp"` | no       |
 
-## How profiling works
-
-The special label `__process_pid__` _must always_ be present in each target of `targets` and corresponds to the `PID` of the process to profile.
-
-After component startup, `pyroscope.java` creates a temporary directory under `tmp_dir` and extracts the async-profiler binaries for both `glibc` and `musl` into the directory with the following layout.
+After component startup, `pyroscope.java` creates a temporary directory under the `tmp_dir` argument and extracts the async-profiler binaries for both `glibc` and `musl` into the directory with the following layout.
 
 ```text
 /tmp/alloy-asprof-glibc-{SHA1}/bin/asprof
@@ -87,18 +83,21 @@ After component startup, `pyroscope.java` creates a temporary directory under `t
 /tmp/alloy-asprof-musl-{SHA1}/lib/libasyncProfiler.so
 ```
 
-After process profiling startup, the component detects `libc` type and copies according `libAsyncProfiler.so` into the target process file system at the exact same path.
+After process profiling startup, the component detects `libc` type and copies the matching `libAsyncProfiler.so` into the target process's file system at the exact same path.
 
 {{< admonition type="note" >}}
 The `asprof` binary runs with root permissions.
-If you change the `tmp_dir` configuration to something other than `/tmp`, then you must ensure that the directory is only writable by root.
+If you change the `tmp_dir` argument to something other than `/tmp`, then you must ensure that the directory is only writable by root.
 
 The filesystem mounted at `tmp_dir` in the {{< param "PRODUCT_NAME" >}} and target containers, needs to allow execution of files stored there. Typically a mount option called `noexec` would prevent files from being executed.
 {{< /admonition >}}
 
-### `targets`
+Each target in the `targets` argument must always include the special `__process_pid__` label, which corresponds to the process PID that's used for profiling.
 
-The special `__process_pid__` label _must always_ be present and corresponds to the process PID that's used for profiling.
+{{< admonition type="warning" >}}
+`pyroscope.java` doesn't fail or report unhealthy if a target is missing the `__process_pid__` label.
+It logs an error and silently skips profiling that target instead.
+{{< /admonition >}}
 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 
@@ -112,7 +111,9 @@ If it's not specified, `pyroscope.java` attempts to infer it from either of the 
 
 If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
 
-The following labels are automatically injected into the collected profiles if you haven't defined them:
+### Injected labels
+
+Independently of the `targets` argument, `pyroscope.java` automatically injects the following labels into collected profiles if you haven't already defined them:
 
 | Label                | Description                                                                |
 | -------------------- | -------------------------------------------------------------------------- |
@@ -158,20 +159,6 @@ The following arguments are supported:
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
-#### `event`
-
-The `event` argument configures the profiling mode used by async-profiler.
-async-profiler supports various profiling modes including CPU profiling, wall-clock profiling, and hardware performance monitoring events.
-For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) in the async-profiler documentation.
-
-#### `per_thread`
-
-{{< admonition type="warning" >}}
-The `per_thread` option doesn't apply when using JFR output format.
-Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
-For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
-{{< /admonition >}}
-
 ### `custom_arguments`
 
 `custom_arguments` passes async-profiler `start` flags directly.
@@ -196,6 +183,19 @@ pyroscope.java "java" {
 
 Refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) and [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for the complete async-profiler option list.
 
+#### `event`
+
+The `event` argument configures the profiling mode used by async-profiler.
+async-profiler supports various profiling modes including CPU profiling, wall-clock profiling, and hardware performance monitoring events.
+For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) in the async-profiler documentation.
+
+#### `per_thread`
+
+{{< admonition type="warning" >}}
+The `per_thread` option doesn't apply when using JFR output format.
+Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
+For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
+{{< /admonition >}}
 
 ## Exported fields
 

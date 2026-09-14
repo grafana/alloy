@@ -155,19 +155,19 @@ In those cases, exported fields are kept at their last healthy values.
 
 `pyroscope.write` doesn't expose any component-specific debug information.
 
-## Metrics
+## Debug metrics
 
-`pyroscope.write` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
-| Metric                                         | Type      | Description                                                       |
-| ---------------------------------------------- | --------- | ----------------------------------------------------------------- |
-| `pyroscope_write_sent_bytes_total`             | Counter   | Total number of compressed bytes sent to Pyroscope endpoints.     |
-| `pyroscope_write_dropped_bytes_total`          | Counter   | Total number of compressed bytes dropped by Pyroscope endpoints.  |
-| `pyroscope_write_sent_profiles_total`          | Counter   | Total number of profiles sent to Pyroscope endpoints.             |
-| `pyroscope_write_dropped_profiles_total`       | Counter   | Total number of profiles dropped by Pyroscope endpoints.          |
-| `pyroscope_write_retries_total`                | Counter   | Total number of retries to Pyroscope endpoints.                   |
-| `pyroscope_write_latency`                      | Histogram | Write latency for sending profiles to Pyroscope endpoints.        |
-| `pyroscope_ebpf_debug_info_upload_bytes_total` | Counter   | Total number of bytes uploaded to the debug information endpoint. |
+| Name                                           | Type        | Description                                                       |
+| ---------------------------------------------- | ----------- | ----------------------------------------------------------------- |
+| `pyroscope_write_sent_bytes_total`             | `counter`   | Total number of compressed bytes sent to Pyroscope endpoints.     |
+| `pyroscope_write_dropped_bytes_total`          | `counter`   | Total number of compressed bytes dropped by Pyroscope endpoints.  |
+| `pyroscope_write_sent_profiles_total`          | `counter`   | Total number of profiles sent to Pyroscope endpoints.             |
+| `pyroscope_write_dropped_profiles_total`       | `counter`   | Total number of profiles dropped by Pyroscope endpoints.          |
+| `pyroscope_write_retries_total`                | `counter`   | Total number of retries to Pyroscope endpoints.                   |
+| `pyroscope_write_latency`                      | `histogram` | Write latency for sending profiles to Pyroscope endpoints.        |
+| `pyroscope_ebpf_debug_info_upload_bytes_total` | `counter`   | Total number of bytes uploaded to the debug information endpoint. |
 
 All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 

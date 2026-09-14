@@ -78,14 +78,22 @@ The following fields are exported and can be referenced by other components:
 
 `pyroscope.relabel` is only reported as unhealthy if given an invalid configuration.
 
+## Debug information
+
+`pyroscope.relabel` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
-- `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
-- `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
-- `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
-- `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
-- `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
-- `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
+The following Prometheus metrics are exposed:
+
+| Name                                   | Type      | Description                                           |
+| -------------------------------------- | --------- | ----------------------------------------------------- |
+| `pyroscope_relabel_cache_hits`         | `counter` | Total number of cache hits.                           |
+| `pyroscope_relabel_cache_misses`       | `counter` | Total number of cache misses.                         |
+| `pyroscope_relabel_cache_size`         | `gauge`   | Total size of relabel cache.                          |
+| `pyroscope_relabel_profiles_dropped`   | `counter` | Total number of profiles dropped by relabeling rules. |
+| `pyroscope_relabel_profiles_processed` | `counter` | Total number of profiles processed.                   |
+| `pyroscope_relabel_profiles_written`   | `counter` | Total number of profiles forwarded.                   |
 
 ## Example
 

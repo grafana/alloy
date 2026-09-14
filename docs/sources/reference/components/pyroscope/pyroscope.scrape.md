@@ -198,7 +198,6 @@ You can use the following blocks with `pyroscope.scrape`:
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [oauth2]: #oauth2
-[pprof]: https://github.com/google/pprof/blob/main/doc/README.md
 [profile.block]: #profileblock
 [profile.custom]: #profilecustom
 [profile.fgprof]: #profilefgprof
@@ -211,11 +210,8 @@ You can use the following blocks with `pyroscope.scrape`:
 [profile.process_cpu]: #profileprocess_cpu
 [profiling_config]: #profiling_config
 [tls_config]: #tls_config
-
 [fgprof]: https://github.com/felixge/fgprof
 [godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
-
-[delta argument]: #delta-argument
 
 {{< /docs/alloy-config >}}
 
@@ -417,6 +413,8 @@ For more information about the `delta` argument, see the [delta argument][] sect
 
 ## Common configuration
 
+The following configuration applies across the profile types described in [Blocks](#blocks).
+
 ### `delta` argument
 
 When the `delta` argument is `false`, the [pprof][] HTTP query will be instantaneous.
@@ -448,11 +446,15 @@ When the `delta` argument is `true`:
 
 ## Debug metrics
 
-- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+The following Prometheus metrics are exposed:
+
+| Name                       | Type        | Description                                                  |
+| -------------------------- | ----------- | ------------------------------------------------------------ |
+| `pyroscope_fanout_latency` | `histogram` | Write latency for sending to direct and indirect components. |
 
 ## Examples
 
-[example_static_targets]: #default-endpoints-of-static-targets
+The following examples show how to scrape profiles from static and dynamically discovered targets, and how to enable and disable specific profile types.
 
 ### Default endpoints of static targets
 
@@ -499,8 +501,6 @@ http://localhost:12345/debug/pprof/profile?seconds=14
 
 The `/debug/fgprof` endpoint won't be scraped, because the `enabled` argument of the `profile.fgprof` block is `false` by default.
 
-[example_dynamic_targets]: #default-endpoints-of-dynamic-targets
-
 ### Default endpoints of dynamic targets
 
 ```alloy
@@ -521,8 +521,6 @@ pyroscope.write "local" {
   }
 }
 ```
-
-[example_static_and_dynamic_targets]: #default-endpoints-of-static-and-dynamic-targets
 
 ### Default endpoints of static and dynamic targets
 

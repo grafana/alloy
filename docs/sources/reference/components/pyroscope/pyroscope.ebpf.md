@@ -112,6 +112,7 @@ Use `no_kernel_version_check` only when you run on an older kernel that includes
 When you skip this check, the profiler can't verify that your kernel has the eBPF features it needs, and profiling may fail or produce incomplete results.
 Proceed at your own risk.
 {{< /admonition >}}
+
 Only the `forward_to` field is required.
 Omitted fields take their default values.
 
@@ -136,7 +137,7 @@ You can use the following block with `pyroscope.ebpf`:
 The `debug_info` block configures on-target symbolization and the upload of debug information used for off-target symbolization.
 
 | Name                      | Type   | Description                                                                  | Default  | Required |
-| ------------------------- | ------ | ----------------------------------------------------------------------------- | -------- | -------- |
+| ------------------------- | ------ | ---------------------------------------------------------------------------- | -------- | -------- |
 | `cache_size`              | `int`  | Size of the LRU cache used to avoid re-uploading the same debug information. | `262144` | no       |
 | `on_target_symbolization` | `bool` | Symbolize stack traces directly on the profiled host.                        | `true`   | no       |
 | `queue_size`              | `int`  | Size of the upload queue.                                                    | `256`    | no       |
@@ -160,14 +161,18 @@ The `debug_info` block configures on-target symbolization and the upload of debu
 
 ## Debug metrics
 
-* `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
-* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
-* `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-* `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
-* `pyroscope_ebpf_pprofs_dropped_total` (counter): Number of pprof profiles dropped by the eBPF component.
-* `pyroscope_ebpf_pprof_bytes_total` (counter): Total bytes of pprof profiles collected by the eBPF component, per `service_name`.
-* `pyroscope_ebpf_pprof_samples_total` (counter): Total samples in pprof profiles collected by the eBPF component, per `service_name`.
-* `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+The following Prometheus metrics are exposed:
+
+| Name                                              | Type        | Description                                                                          |
+| ------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------ |
+| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                       |
+| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component.                            |
+| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                                 |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions completed.                                              |
+| `pyroscope_ebpf_pprofs_dropped_total`             | `counter`   | Number of pprof profiles dropped by the eBPF component.                              |
+| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`.   |
+| `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total samples in pprof profiles collected by the eBPF component, per `service_name`. |
+| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                         |
 
 ### eBPF profiler internal metrics
 
@@ -179,52 +184,62 @@ Notable metrics include:
 
 #### Native unwinding
 
-* `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
-* `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
-* `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
-* `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
-* `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
+| Name                                 | Type      | Description                                                   |
+| ------------------------------------ | --------- | ------------------------------------------------------------- |
+| `UnwindNativeAttempts_total`         | `counter` | Unwind attempts since the previous check.                     |
+| `UnwindNativeFrames_total`           | `counter` | Unwound frames since the previous check.                      |
+| `UnwindNativeStackDeltaStop_total`   | `counter` | Number of stop stack deltas in the native unwinder (success). |
+| `UnwindNativeSmallPC_total`          | `counter` | Number of times PC held a value smaller than `0x1000`.        |
+| `UnwindErrStackLengthExceeded_total` | `counter` | Number of times `MAX_FRAME_UNWINDS` has been exceeded.        |
 
 #### Interpreter unwinding
 
-* `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
-* `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
-* `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
-* `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
-* `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
-* `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
-* `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
-* `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
-* `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
-* `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
-* `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
-* `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
-* `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
-* `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
+| Name                          | Type      | Description                              |
+| ----------------------------- | --------- | ---------------------------------------- |
+| `UnwindPythonAttempts_total`  | `counter` | Number of attempted Python unwinds.      |
+| `UnwindPythonFrames_total`    | `counter` | Number of unwound Python frames.         |
+| `UnwindHotspotAttempts_total` | `counter` | Number of attempted Hotspot JVM unwinds. |
+| `UnwindHotspotFrames_total`   | `counter` | Number of unwound Hotspot JVM frames.    |
+| `UnwindRubyAttempts_total`    | `counter` | Number of attempted Ruby unwinds.        |
+| `UnwindRubyFrames_total`      | `counter` | Number of unwound Ruby frames.           |
+| `UnwindPHPAttempts_total`     | `counter` | Number of attempted PHP unwinds.         |
+| `UnwindPHPFrames_total`       | `counter` | Number of unwound PHP frames.            |
+| `UnwindPerlAttempts_total`    | `counter` | Number of attempted Perl unwinds.        |
+| `UnwindPerlFrames_total`      | `counter` | Number of unwound Perl frames.           |
+| `UnwindV8Attempts_total`      | `counter` | Number of attempted V8 unwinds.          |
+| `UnwindV8Frames_total`        | `counter` | Number of unwound V8 frames.             |
+| `UnwindDotnetAttempts_total`  | `counter` | Number of attempted .NET unwinds.        |
+| `UnwindDotnetFrames_total`    | `counter` | Number of unwound .NET frames.           |
 
 #### Symbolization
 
-* `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
-* `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
-* `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
-* `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
-* `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
-* `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
+| Name                                  | Type      | Description                                         |
+| ------------------------------------- | --------- | --------------------------------------------------- |
+| `PythonSymbolizationSuccesses_total`  | `counter` | Number of successfully symbolized Python frames.    |
+| `PythonSymbolizationFailures_total`   | `counter` | Number of Python frames that failed symbolization.  |
+| `HotspotSymbolizationSuccesses_total` | `counter` | Number of successfully symbolized Hotspot frames.   |
+| `HotspotSymbolizationFailures_total`  | `counter` | Number of Hotspot frames that failed symbolization. |
+| `RubySymbolizationSuccess_total`      | `counter` | Number of successfully symbolized Ruby frames.      |
+| `RubySymbolizationFailure_total`      | `counter` | Number of Ruby frames that failed symbolization.    |
 
 #### Process management
 
-* `NumProcNew_total` (counter): Number of new PID events.
-* `NumProcExit_total` (counter): Number of exit PID events.
-* `NumGenericPID_total` (counter): Number of generic PID events.
+| Name                  | Type      | Description                   |
+| --------------------- | --------- | ----------------------------- |
+| `NumProcNew_total`    | `counter` | Number of new PID events.     |
+| `NumProcExit_total`   | `counter` | Number of exit PID events.    |
+| `NumGenericPID_total` | `counter` | Number of generic PID events. |
 
 #### eBPF map state
 
-* `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
-* `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
-* `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
-* `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
+| Name                          | Type    | Description                                              |
+| ----------------------------- | ------- | -------------------------------------------------------- |
+| `NumExeIDLoadedToEBPF`        | `gauge` | The number of executables loaded to eBPF maps.           |
+| `HashmapPidPageToMappingInfo` | `gauge` | Current size of the `pid_page_to_mapping_info` hash map. |
+| `HashmapNumStackDeltaPages`   | `gauge` | Current size of the stack delta pages hash map.          |
+| `UnwindInfoArraySize`         | `gauge` | Current size of the unwind info array.                   |
 
-The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
+The full list of metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
 
 ## Profile collecting behavior
 
