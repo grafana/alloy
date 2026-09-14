@@ -5,6 +5,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-14
 title: prometheus.echo
 ---
 
