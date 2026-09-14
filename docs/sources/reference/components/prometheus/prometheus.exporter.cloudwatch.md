@@ -84,7 +84,8 @@ To use all of the integration features, use the following AWS IAM Policy:
         "apigateway:GET",
         "dms:DescribeReplicationInstances",
         "dms:DescribeReplicationTasks",
-        "iam:ListAccountAliases"      ],
+        "iam:ListAccountAliases"
+      ],
       "Effect": "Allow",
       "Resource": "*"
     }
