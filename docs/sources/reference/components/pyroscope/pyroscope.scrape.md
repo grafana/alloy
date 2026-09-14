@@ -28,9 +28,9 @@ The `pyroscope.scrape` component regards a scrape as successful if it responded 
 
 If a scrape request fails, the [debug UI][] for `pyroscope.scrape` shows:
 
-- Detailed information about the failure.
-- The time of the last successful scrape.
-- The labels last used for scraping.
+* Detailed information about the failure.
+* The time of the last successful scrape.
+* The labels last used for scraping.
 
 The scraped performance profiles can be forwarded to components such as `pyroscope.write` via the `forward_to` argument.
 
@@ -76,11 +76,11 @@ You can use the following arguments with `pyroscope.scrape`:
 
  At most, one of the following can be provided:
 
-- [`authorization`][authorization] block
-- [`basic_auth`][basic_auth] block
-- [`bearer_token_file`][arguments] argument
-- [`bearer_token`][arguments] argument
-- [`oauth2`][oauth2] block
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
 Any omitted arguments take on their default values.
 If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` fails to start and reports an error.
@@ -105,11 +105,11 @@ The list of `targets` can be provided [statically][example_static_targets], [dyn
 
 The following special labels can change the behavior of `pyroscope.scrape`:
 
-- `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that's used for the scrape request.
-- `__name__` is the special label that indicates the profile type being collected.
-- `__profile_path__` is the special label that holds the path to the profile endpoint on the target (for example, "/debug/pprof/allocs").
-- `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (for example, `"/mimir-prometheus"`).
-- `service_name` is a required label that identifies the service being profiled.
+* `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that's used for the scrape request.
+* `__name__` is the special label that indicates the profile type being collected.
+* `__profile_path__` is the special label that holds the path to the profile endpoint on the target (for example, "/debug/pprof/allocs").
+* `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (for example, `"/mimir-prometheus"`).
+* `service_name` is a required label that identifies the service being profiled.
 
 Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
 
@@ -148,17 +148,17 @@ This parameter is important for controlling the trade-off between resource usage
 
 If `scrape_interval` is short:
 
-- Advantages:
+* Advantages:
   * Fewer profiles may be lost if the application being scraped crashes.
-- Disadvantages:
+* Disadvantages:
   * Greater consumption of CPU, memory, and network resources during scrapes and remote writes.
   * The backend database (Pyroscope) consumes more storage space.
 
 If `scrape_interval` is long:
 
-- Advantages:
+* Advantages:
   * Lower resource consumption.
-- Disadvantages:
+* Disadvantages:
   * More profiles may be lost if the application being scraped crashes.
   * If the [delta argument][] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
     The Pyroscope database may need to be tuned with higher limits.
@@ -166,9 +166,9 @@ If `scrape_interval` is long:
 
 For example, consider this situation:
 
-- `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
-- The application being scraped is running an HTTP server with a timeout of 30 seconds.
-- Any scrape HTTP requests where the [delta argument][] is set to `true` fail, because they attempt to run for 59 seconds.
+* `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
+* The application being scraped is running an HTTP server with a timeout of 30 seconds.
+* Any scrape HTTP requests where the [delta argument][] is set to `true` fail, because they attempt to run for 59 seconds.
 
 [delta argument]: #delta-argument
 
@@ -425,9 +425,9 @@ When the `delta` argument is `false`, the [pprof][] HTTP query is instantaneous.
 
 When the `delta` argument is `true`:
 
-- The [pprof][] HTTP query runs for a certain amount of time.
-- A `seconds` parameter is automatically added to the HTTP request.
-- The default value for the `seconds` query parameter is `scrape_interval - 1`.
+* The [pprof][] HTTP query runs for a certain amount of time.
+* A `seconds` parameter is automatically added to the HTTP request.
+* The default value for the `seconds` query parameter is `scrape_interval - 1`.
   If you set `delta_profiling_duration`, then `seconds` is assigned the same value as `delta_profiling_duration`.
   However, the `delta_profiling_duration` can't be larger than `scrape_interval`.
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
@@ -500,8 +500,8 @@ http://localhost:12345/debug/pprof/profile?seconds=14
 
 `seconds=14` is added to the `/debug/pprof/profile` endpoint, because:
 
-- The `delta` argument of the `profile.process_cpu` block is `true` by default.
-- `scrape_interval` is `"15s"` by default.
+* The `delta` argument of the `profile.process_cpu` block is `true` by default.
+* `scrape_interval` is `"15s"` by default.
 
 The `/debug/fgprof` endpoint won't be scraped, because the `enabled` argument of the `profile.fgprof` block is `false` by default.
 
