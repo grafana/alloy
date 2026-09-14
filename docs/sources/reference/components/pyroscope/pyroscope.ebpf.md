@@ -40,7 +40,7 @@ When running on Kubernetes without `privileged: true`, grant the following Linux
 | Capability           | Purpose                                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `BPF`                | Load and manage eBPF programs and maps.                                                                                 |
-| `PERFMON`            | Attach perf events and read performance counters.                                                                       |
+| `PERFMON`            | Attach performance events and read performance counters.                                                                |
 | `SYS_PTRACE`         | Read `/proc/<pid>/` entries.                                                                                            |
 | `CHECKPOINT_RESTORE` | Follow magic-links in `/proc/<pid>/map_files/*` for ELF symbol reading (kernel 5.9+; use `SYS_ADMIN` on older kernels). |
 | `SYS_RESOURCE`       | Raise `RLIMIT_MEMLOCK` for eBPF map locking.                                                                            |
@@ -52,7 +52,7 @@ Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kerne
 ## Supported languages
 
 * Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
-* Broad set of HLLs (Hotspot JVM, Python, Ruby, PHP, Node.JS, V8, Perl).
+* Broad set of high level languages (HotSpot JVM, Python, Ruby, PHP, Node.js, V8, Perl).
 
 ## Usage
 
@@ -141,7 +141,7 @@ The `debug_info` block configures on-target symbolization and the upload of debu
 | `cache_size`              | `int`  | Size of the LRU cache used to avoid re-uploading the same debug information. | `262144` | no       |
 | `on_target_symbolization` | `bool` | Symbolize stack traces directly on the profiled host.                        | `true`   | no       |
 | `queue_size`              | `int`  | Size of the upload queue.                                                    | `256`    | no       |
-| `strip_text_section`      | `bool` | Strip the executable's text section before upload.                           | `false`  | no       |
+| `strip_text_section`      | `bool` | Strip the text section of the executable before upload.                      | `false`  | no       |
 | `upload`                  | `bool` | Upload executable debug information for off-target symbolization.            | `false`  | no       |
 | `worker_num`              | `int`  | Number of workers processing the upload queue.                               | `16`     | no       |
 
@@ -198,8 +198,8 @@ Notable metrics include:
 | ----------------------------- | --------- | ---------------------------------------- |
 | `UnwindPythonAttempts_total`  | `counter` | Number of attempted Python unwinds.      |
 | `UnwindPythonFrames_total`    | `counter` | Number of unwound Python frames.         |
-| `UnwindHotspotAttempts_total` | `counter` | Number of attempted Hotspot JVM unwinds. |
-| `UnwindHotspotFrames_total`   | `counter` | Number of unwound Hotspot JVM frames.    |
+| `UnwindHotspotAttempts_total` | `counter` | Number of attempted HotSpot JVM unwinds. |
+| `UnwindHotspotFrames_total`   | `counter` | Number of unwound HotSpot JVM frames.    |
 | `UnwindRubyAttempts_total`    | `counter` | Number of attempted Ruby unwinds.        |
 | `UnwindRubyFrames_total`      | `counter` | Number of unwound Ruby frames.           |
 | `UnwindPHPAttempts_total`     | `counter` | Number of attempted PHP unwinds.         |
@@ -217,8 +217,8 @@ Notable metrics include:
 | ------------------------------------- | --------- | --------------------------------------------------- |
 | `PythonSymbolizationSuccesses_total`  | `counter` | Number of successfully symbolized Python frames.    |
 | `PythonSymbolizationFailures_total`   | `counter` | Number of Python frames that failed symbolization.  |
-| `HotspotSymbolizationSuccesses_total` | `counter` | Number of successfully symbolized Hotspot frames.   |
-| `HotspotSymbolizationFailures_total`  | `counter` | Number of Hotspot frames that failed symbolization. |
+| `HotspotSymbolizationSuccesses_total` | `counter` | Number of successfully symbolized HotSpot frames.   |
+| `HotspotSymbolizationFailures_total`  | `counter` | Number of HotSpot frames that failed symbolization. |
 | `RubySymbolizationSuccess_total`      | `counter` | Number of successfully symbolized Ruby frames.      |
 | `RubySymbolizationFailure_total`      | `counter` | Number of Ruby frames that failed symbolization.    |
 
@@ -296,7 +296,7 @@ Symbols are extracted from various sources, including:
 * The `.symtab` and `.dynsym` sections in the debug ELF file.
 * The `.symtab` and `.dynsym` sections in the ELF file.
 
-The search for debug files follows [gdb algorithm][].
+The search for debug files follows the [GNU Debugger algorithm][gdb algorithm].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
