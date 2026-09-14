@@ -11,7 +11,8 @@ title: prometheus.echo
 # `prometheus.echo`
 
 The `prometheus.echo` component receives Prometheus metrics and writes them to stdout in Prometheus exposition format.
-This component is useful for debugging and testing the flow of metrics through a pipeline, allowing you to see exactly what metrics are being received at a particular point in your configuration.
+This component is useful for debugging and testing the flow of metrics through a pipeline.
+It lets you see exactly what metrics arrive at a particular point in your configuration.
 
 ## Usage
 
@@ -30,8 +31,8 @@ You can use the following arguments with `prometheus.echo`:
 
 The `format` argument controls how metrics are encoded when written to stdout:
 
-* `text` - Uses the Prometheus text exposition format (default).
-* `openmetrics` - Uses the OpenMetrics text format.
+- `text` - Uses the Prometheus text exposition format. This is the default.
+- `openmetrics` - Uses the OpenMetrics text format.
 
 ## Blocks
 
@@ -84,10 +85,10 @@ In this example:
 
 When you run this configuration, you'll see the metrics being written to stdout, which is useful to:
 
-* Debug metric collection issues
-* Verify metric labels and values
-* Test metric transformations
-* Understand the structure of metrics in your pipeline
+- Debug metric collection issues
+- Verify metric labels and values
+- Test metric transformations
+- Understand the structure of metrics in your pipeline
 
 ### Example with OpenMetrics format
 
