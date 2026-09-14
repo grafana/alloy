@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -202,39 +203,42 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 
 	var (
 		queuedEntries    int
-		maxSeenTimestamp int64 = -1
+		maxSeenTimestamp time.Time
 	)
 
-	if ok {
-		for i := range entries.Entries {
-			entry := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(ctx, entry, segment)
-
-			// If we get errQueueIsFull we skipped the entry and should
-			// not count it as queued and should move on to the next one.
-			if errors.Is(err, errQueueIsFull) {
-				continue
-			}
-
-			if err != nil {
-				return err
-			}
-
-			queuedEntries += 1
-			if entry.Timestamp.Unix() > maxSeenTimestamp {
-				maxSeenTimestamp = entry.Timestamp.Unix()
-			}
-		}
-		// update marker with all successfully queued entries.
-		c.tracker.UpdateReceivedData(segment, queuedEntries)
-	} else {
+	if !ok {
 		// TODO(thepalbi): Add metric here
-		c.logger.Debug("series for entry not found")
+		c.logger.Debug("series for entries not found")
+		return nil
 	}
 
-	// It's safe to assume that upon an AppendEntries call, there will always be at least
-	// one entry.
-	c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp))
+	for i := range entries.Entries {
+		entry := entries.EntryAt(l, i)
+		err := c.endpoint.enqueue(ctx, entry, segment)
+
+		// If we get errQueueIsFull we skipped the entry and should
+		// not count it as queued and should move on to the next one.
+		if errors.Is(err, errQueueIsFull) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		queuedEntries += 1
+
+		if entry.Timestamp.After(maxSeenTimestamp) {
+			maxSeenTimestamp = entry.Timestamp
+		}
+	}
+	// update tracker with all successfully queued entries.
+	c.tracker.UpdateReceivedData(segment, queuedEntries)
+
+	if queuedEntries > 0 {
+		c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp.Unix()))
+	}
+
 	return nil
 }
 
