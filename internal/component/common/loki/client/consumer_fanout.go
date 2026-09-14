@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -53,10 +54,16 @@ type FanoutConsumer struct {
 
 func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
 	for _, e := range c.endpoints {
-		// NOTE: The only errors we can get are the context error and loki.ErrConsumerStopped.
-		// In both these cases there is no point trying to enqueue for other endpoints.
+		err := e.enqueue(ctx, entry, 0)
 
-		if err := e.enqueue(ctx, entry, 0); err != nil {
+		if err != nil {
+			// If we get errQueueIsFull we skipped the entry for this endpoints
+			// and should try next.
+			if errors.Is(err, errQueueIsFull) {
+				continue
+			}
+			// The other errors we can get are the context error and loki.ErrConsumerStopped.
+			// In both these cases there is no point trying to enqueue for other endpoints.
 			return err
 		}
 	}

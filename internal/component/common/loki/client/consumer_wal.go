@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -206,18 +207,22 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 
 	if ok {
 		for i := range entries.Entries {
-			e := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(ctx, e, segment)
+			entry := entries.EntryAt(l, i)
+			err := c.endpoint.enqueue(ctx, entry, segment)
 
-			// NOTE: The only errors we can get are the context error and loki.ErrConsumerStopped.
-			// In both these cases there is no point trying to enqueue other entries.
+			// If we get errQueueIsFull we skipped the entry and should
+			// not count it as queued and should move on to the next one.
+			if errors.Is(err, errQueueIsFull) {
+				continue
+			}
+
 			if err != nil {
 				return err
 			}
 
 			queuedEntries += 1
-			if e.Timestamp.Unix() > maxSeenTimestamp {
-				maxSeenTimestamp = e.Timestamp.Unix()
+			if entry.Timestamp.Unix() > maxSeenTimestamp {
+				maxSeenTimestamp = entry.Timestamp.Unix()
 			}
 		}
 		// update marker with all successfully queued entries.
