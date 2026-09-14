@@ -1,11 +1,7 @@
-# cAdvisor reads the node's cgroup tree and machine stats. The Alloy pod runs
-# privileged and mounts the host paths read-only, following the canonical
-# cAdvisor DaemonSet. It also mounts the containerd socket so the containerd
-# plugin resolves pod metadata and attaches container_label_* labels.
-#
-# It does not mount all of /var/run: a read-only /var/run blocks Kubernetes from
-# mounting the service account token and the pod fails to start. Mounting only
-# the containerd socket avoids that.
+# The containerd socket lets cAdvisor's containerd plugin resolve pod metadata
+# and attach container_label_* labels. Only the socket is mounted, not all of
+# /var/run: a read-only /var/run blocks Kubernetes from mounting the service
+# account token, so the pod would fail to start.
 controller:
   type: daemonset
   volumes:
@@ -41,6 +37,6 @@ alloy:
       - name: disk
         mountPath: /dev/disk
         readOnly: true
-      # Not read-only: cAdvisor connects to the containerd socket.
       - name: containerd-sock
         mountPath: /run/containerd/containerd.sock
+        readOnly: true
