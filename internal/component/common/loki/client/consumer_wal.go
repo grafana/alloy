@@ -21,7 +21,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	writer, err := wal.NewWriter(walCfg, logger, reg)
+	writer, err := wal.NewWriter(walCfg, logger, reg, wal.NewWriterMetrics(reg))
 	if err != nil {
 		return nil, fmt.Errorf("error creating wal writer: %w", err)
 	}
