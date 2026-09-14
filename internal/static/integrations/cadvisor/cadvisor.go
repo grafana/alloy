@@ -107,17 +107,6 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	klog.SetLogger(logr.FromSlogHandler(l.Handler()))
 
-	// v0.60 makes these optional collectors instance-injected instead of global.
-	// The lean library leaves them nil; wire the ones this integration supports so
-	// perf events, resctrl, and application metrics keep working.
-	manager.PerfManagerFactory = perf.NewManager
-	manager.ResctrlManagerFactory = func(interval time.Duration, vendorID string, inHostNamespace bool) (stats.ResctrlManager, error) {
-		return intel.NewManager(interval, intel.Setup, vendorID, inHostNamespace, c.DockerOnly)
-	}
-	manager.CollectorManagerFactory = func(handler container.ContainerHandler, readFile func(string) ([]byte, error), httpClient *http.Client) (manager.CollectorManager, error) {
-		return appmetrics.NewManager(handler, readFile, httpClient, manager.ApplicationMetricsCountLimit())
-	}
-
 	plugins := map[string]container.Plugin{
 		"containerd": containerd.NewPluginWithOptions(&containerd.Options{
 			ContainerdEndpoint:  c.Containerd,
@@ -163,7 +152,26 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 		DockerOnly:             c.DockerOnly,
 		DisableRootCgroupStats: c.DisableRootCgroupStats,
 	}
-	rm, err := manager.New(plugins, fsPlugins, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval), rawOpts)
+
+	// v0.60 injects the optional collectors per manager instead of through process
+	// globals. Wire the ones this integration supports (perf events, resctrl,
+	// application metrics); the rest fall back to the library default (disabled).
+	cfg := manager.Config{
+		Plugins:    plugins,
+		FsPlugins:  fsPlugins,
+		RawOptions: rawOpts,
+		Factories: manager.Factories{
+			Perf: perf.NewManager,
+			Resctrl: func(interval time.Duration, vendorID string, inHostNamespace bool) (stats.ResctrlManager, error) {
+				return intel.NewManager(interval, intel.Setup, vendorID, inHostNamespace, c.DockerOnly)
+			},
+			Collector: func(handler container.ContainerHandler, readFile func(string) ([]byte, error), httpClient *http.Client) (manager.CollectorManager, error) {
+				return appmetrics.NewManager(handler, readFile, httpClient, manager.ApplicationMetricsCountLimit())
+			},
+		},
+	}
+
+	rm, err := manager.New(cfg, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a manager: %w", err)
 	}
