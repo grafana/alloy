@@ -236,7 +236,6 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 	const messagesCount = 100
 	for i := range messagesCount {
-
 		require.NoError(t, lokiClient.ConsumeEntry(
 			ctx,
 			loki.NewEntry(
