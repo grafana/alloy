@@ -15,6 +15,8 @@ import (
 	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
 	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -520,6 +522,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:  true,
 		collector.SchemaDetailsCollector: true,
 		collector.ExplainPlanCollector:   true,
+		collector.TableStatsCollector:    false,
+		collector.IndexStatsCollector:    false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -661,6 +665,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
+			TableRegistry:    tableRegistry,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
@@ -669,6 +674,42 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.ExplainPlanCollector, "start", err)
 		}
 		c.instance.collectors = append(c.instance.collectors, epCollector)
+	}
+
+	if collectors[collector.TableStatsCollector] {
+		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
+			DB:               c.instance.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Registry:         c.instance.registry,
+			Logger:           c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.TableStatsCollector, "create", err)
+		} else {
+			if err := tsCollector.Start(context.Background()); err != nil {
+				logStartError(collector.TableStatsCollector, "start", err)
+			}
+			c.instance.collectors = append(c.instance.collectors, tsCollector)
+		}
+	}
+
+	if collectors[collector.IndexStatsCollector] {
+		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
+			DB:               c.instance.dbConnection,
+			DSN:              string(c.args.DataSourceName),
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			Registry:         c.instance.registry,
+			Logger:           c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.IndexStatsCollector, "create", err)
+		} else {
+			if err := isCollector.Start(context.Background()); err != nil {
+				logStartError(collector.IndexStatsCollector, "start", err)
+			}
+			c.instance.collectors = append(c.instance.collectors, isCollector)
+		}
 	}
 
 	// HealthCheck collector is always enabled
@@ -717,7 +758,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.instance.registry, promhttp.HandlerOpts{})
+	return util.PromHTTPHandlerFor(c.instance.registry, c.opts.Logger, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {

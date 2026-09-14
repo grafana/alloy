@@ -237,6 +237,9 @@ type Javaagent struct {
 }
 
 type JVMRuntimeMetrics struct {
+	// Deprecated: Add "application_runtime" to metrics.features instead. Beyla
+	// no longer has an enabled switch for JVM runtime metrics; this field is
+	// kept only so existing configs don't fail to parse, but has no effect.
 	Enabled          bool          `alloy:"enabled,attr,optional"`
 	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
 }

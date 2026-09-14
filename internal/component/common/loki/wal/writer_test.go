@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -21,13 +24,16 @@ import (
 
 func TestWriter(t *testing.T) {
 	t.Run("entries are written to wal", func(t *testing.T) {
-		dir := t.TempDir()
+		var (
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
+		)
 
 		writer, err := NewWriter(Config{
 			Dir:           dir,
 			Enabled:       true,
 			MaxSegmentAge: time.Minute,
-		}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+		}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 		require.NoError(t, err)
 		defer writer.Stop()
 
@@ -65,13 +71,16 @@ func TestWriter(t *testing.T) {
 	})
 
 	t.Run("stopped writer returns error", func(t *testing.T) {
-		dir := t.TempDir()
+		var (
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
+		)
 
 		writer, err := NewWriter(Config{
 			Dir:           dir,
 			Enabled:       true,
 			MaxSegmentAge: time.Minute,
-		}, logging.NewSlogNop(), prometheus.NewRegistry())
+		}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 
 		require.NoError(t, err)
 		writer.Start()
@@ -96,6 +105,58 @@ func TestWriter(t *testing.T) {
 	})
 }
 
+func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
+	var (
+		dir = t.TempDir()
+		reg = prometheus.NewRegistry()
+	)
+
+	writer, err := NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
+	require.NoError(t, err)
+
+	writer.Start()
+	entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "line"})
+	writer.WriteEntry(entry)
+
+	expected := fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, entry.Timestamp.Unix())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
+
+	writer.Stop()
+
+	writer, err = NewWriter(Config{
+		Dir:           dir,
+		Enabled:       true,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
+	require.NoError(t, err)
+	writer.Start()
+	defer writer.Stop()
+
+	newEntry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now().Add(1 * time.Second), Line: "line"})
+	writer.WriteEntry(newEntry)
+
+	expected = fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, newEntry.Timestamp.Unix())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
+}
+
 type notifySegmentsCleanedFunc func(num int)
 
 func (n notifySegmentsCleanedFunc) NotifyWrite() {
@@ -108,16 +169,17 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	var (
 		dir           = t.TempDir()
+		reg           = prometheus.NewRegistry()
+		maxSegmentAge = time.Second * 2
 		subscriber1   = []int{}
 		subscriber2   = []int{}
-		maxSegmentAge = time.Second * 2
 	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
 	defer writer.Stop()
 	writer.Start()
@@ -202,6 +264,7 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	var (
 		dir                                    = t.TempDir()
+		reg                                    = prometheus.NewRegistry()
 		maxSegmentAge                          = 2 * time.Second
 		segmentsReclaimedNotificationsReceived = []int{}
 	)
@@ -210,7 +273,7 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
 	writer.Start()
 	defer func() {
@@ -378,13 +441,16 @@ func BenchmarkWriter_WriteEntries(b *testing.B) {
 }
 
 func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
-	dir := b.TempDir()
+	var (
+		dir = b.TempDir()
+		reg = prometheus.NewRegistry()
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
 		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, logging.NewSlogNop(), prometheus.NewRegistry())
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(b, err)
 	writer.Start()
 	defer func() {

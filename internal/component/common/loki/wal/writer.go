@@ -55,15 +55,13 @@ type Writer struct {
 	writeSubscribersLock sync.RWMutex
 	writeSubscribers     []WriteEventSubscriber
 
-	reclaimedOldSegmentsSpaceCounter *prometheus.CounterVec
-	lastReclaimedSegment             *prometheus.GaugeVec
-	lastWrittenTimestamp             *prometheus.GaugeVec
+	metrics *WriterMetrics
 
 	done chan struct{}
 }
 
 // NewWriter creates a new Writer.
-func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Writer, error) {
+func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer, metrics *WriterMetrics) (*Writer, error) {
 	// Start WAL
 	wl, err := New(Config{
 		Dir:     walCfg.Dir,
@@ -80,32 +78,7 @@ func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer) (*
 		cfg:         walCfg,
 		wal:         wl,
 		done:        make(chan struct{}, 1),
-	}
-
-	wrt.reclaimedOldSegmentsSpaceCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "loki_write",
-		Subsystem: "wal_writer",
-		Name:      "reclaimed_space",
-		Help:      "Number of bytes reclaimed from storage.",
-	}, []string{})
-
-	wrt.lastReclaimedSegment = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "loki_write",
-		Subsystem: "wal_writer",
-		Name:      "last_reclaimed_segment",
-		Help:      "Last reclaimed segment number",
-	}, []string{})
-	wrt.lastWrittenTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "loki_write",
-		Subsystem: "wal_writer",
-		Name:      "last_written_timestamp",
-		Help:      "Latest timestamp that was written to the WAL",
-	}, []string{})
-
-	if reg != nil {
-		_ = reg.Register(wrt.reclaimedOldSegmentsSpaceCounter)
-		_ = reg.Register(wrt.lastReclaimedSegment)
-		_ = reg.Register(wrt.lastWrittenTimestamp)
+		metrics:     metrics,
 	}
 
 	return wrt, nil
@@ -150,7 +123,7 @@ func (wrt *Writer) WriteEntry(entry loki.Entry) error {
 	}
 
 	// emit metric with latest written timestamp, to be able to track delay from writer to watcher
-	wrt.lastWrittenTimestamp.WithLabelValues().Set(float64(entry.Timestamp.Unix()))
+	wrt.metrics.lastWrittenTimestamp.WithLabelValues().Set(float64(entry.Timestamp.Unix()))
 
 	wrt.writeSubscribersLock.RLock()
 	for _, s := range wrt.writeSubscribers {
@@ -204,7 +177,7 @@ func (wrt *Writer) cleanSegments(maxAge time.Duration) error {
 				wrt.logger.Error("Error old wal segment", "err", err, "segmentNum", segment.number)
 			}
 			wrt.logger.Debug("Deleted old wal segment", "segmentNum", segment.number)
-			wrt.reclaimedOldSegmentsSpaceCounter.WithLabelValues().Add(float64(segment.size))
+			wrt.metrics.reclaimedOldSegmentsSpaceCounter.WithLabelValues().Add(float64(segment.size))
 			// keep track of the largest segment number reclaimed
 			if segment.number > maxReclaimed {
 				maxReclaimed = segment.number
@@ -218,7 +191,7 @@ func (wrt *Writer) cleanSegments(maxAge time.Duration) error {
 		for _, subscriber := range wrt.cleanupSubscribers {
 			subscriber.SeriesReset(maxReclaimed)
 		}
-		wrt.lastReclaimedSegment.WithLabelValues().Set(float64(maxReclaimed))
+		wrt.metrics.lastReclaimedSegment.WithLabelValues().Set(float64(maxReclaimed))
 	}
 	return nil
 }
