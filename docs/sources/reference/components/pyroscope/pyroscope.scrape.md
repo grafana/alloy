@@ -136,6 +136,10 @@ The following labels are automatically injected to the scraped profiles so that 
 {{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the scraped profile.
 `otel.scope.version` is only set when `otel.scope.name` matches the default value.
 
+[example_static_targets]: #default-endpoints-of-static-targets
+[example_dynamic_targets]: #default-endpoints-of-dynamic-targets
+[example_static_and_dynamic_targets]: #default-endpoints-of-static-and-dynamic-targets
+
 #### `scrape_interval`
 
 The `scrape_interval` typically refers to the frequency with which {{< param "PRODUCT_NAME" >}} collects performance profiles from the monitored targets.
