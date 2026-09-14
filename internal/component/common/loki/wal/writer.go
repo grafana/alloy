@@ -145,6 +145,7 @@ func (wrt *Writer) WriteEntry(entry loki.Entry) error {
 	}
 
 	if err := wrt.entryWriter.writeEntry(entry, wrt.wal); err != nil {
+		wrt.logger.Error("failed to write entry", "err", err)
 		return err
 	}
 
