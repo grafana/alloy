@@ -37,17 +37,19 @@ func TestIndexStats(t *testing.T) {
 		)
 	mock.ExpectQuery(fmt.Sprintf(selectIndexSizeBytes, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
-			sqlmock.NewRows([]string{"database_name", "table_name", "index_name", "size_bytes"}).
-				AddRow("books_store", "books", "idx_books_title", 14196736),
+			sqlmock.NewRows([]string{"database_name", "table_name", "index_name", "size_bytes", "non_unique"}).
+				AddRow("books_store", "books", "PRIMARY", 65536, 0).
+				AddRow("books_store", "books", "idx_books_title", 14196736, 1),
 		)
 
 	expected := `
 	# HELP database_observability_mysql_index_stats_idx_fetch_total Count of index I/O wait events for fetch operations
 	# TYPE database_observability_mysql_index_stats_idx_fetch_total counter
 	database_observability_mysql_index_stats_idx_fetch_total{index="idx_books_title",schema="books_store",table="books"} 0
-	# HELP database_observability_mysql_index_stats_size_bytes Total disk space used by this index, in bytes
+	# HELP database_observability_mysql_index_stats_size_bytes Total disk space used by this index, in bytes, labeled with whether it backs the primary key or a unique constraint
 	# TYPE database_observability_mysql_index_stats_size_bytes gauge
-	database_observability_mysql_index_stats_size_bytes{index="idx_books_title",schema="books_store",table="books"} 1.4196736e+07
+	database_observability_mysql_index_stats_size_bytes{index="PRIMARY",is_primary="true",is_unique="true",schema="books_store",table="books"} 65536
+	database_observability_mysql_index_stats_size_bytes{index="idx_books_title",is_primary="false",is_unique="false",schema="books_store",table="books"} 1.4196736e+07
 `
 
 	require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(expected)))
