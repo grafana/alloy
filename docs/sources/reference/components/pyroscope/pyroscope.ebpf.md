@@ -51,8 +51,8 @@ Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kerne
 
 ## Supported languages
 
-- Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
-- Broad set of HLLs (Hotspot JVM, Python, Ruby, PHP, Node.JS, V8, Perl).
+* Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
+* Broad set of HLLs (Hotspot JVM, Python, Ruby, PHP, Node.JS, V8, Perl).
 
 ## Usage
 
@@ -154,20 +154,20 @@ The `debug_info` block configures on-target symbolization and the upload of debu
 
 ## Debug information
 
-- `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-- `pid_cache` per process elf symbol tables and their sizes in symbols count.
-- `targets` currently tracked active targets.
+* `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
+* `pid_cache` per process elf symbol tables and their sizes in symbols count.
+* `targets` currently tracked active targets.
 
 ## Debug metrics
 
-- `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
-- `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
-- `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-- `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
-- `pyroscope_ebpf_pprofs_dropped_total` (counter): Number of pprof profiles dropped by the eBPF component.
-- `pyroscope_ebpf_pprof_bytes_total` (counter): Total bytes of pprof profiles collected by the eBPF component, per `service_name`.
-- `pyroscope_ebpf_pprof_samples_total` (counter): Total samples in pprof profiles collected by the eBPF component, per `service_name`.
-- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+* `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
+* `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the eBPF component.
+* `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
+* `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
+* `pyroscope_ebpf_pprofs_dropped_total` (counter): Number of pprof profiles dropped by the eBPF component.
+* `pyroscope_ebpf_pprof_bytes_total` (counter): Total bytes of pprof profiles collected by the eBPF component, per `service_name`.
+* `pyroscope_ebpf_pprof_samples_total` (counter): Total samples in pprof profiles collected by the eBPF component, per `service_name`.
+* `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 
 ### eBPF profiler internal metrics
 
@@ -179,50 +179,50 @@ Notable metrics include:
 
 #### Native unwinding
 
-- `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
-- `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
-- `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
-- `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
-- `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
+* `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
+* `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
+* `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
+* `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
+* `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
 
 #### Interpreter unwinding
 
-- `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
-- `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
-- `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
-- `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
-- `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
-- `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
-- `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
-- `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
-- `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
-- `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
-- `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
-- `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
-- `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
-- `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
+* `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
+* `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
+* `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
+* `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
+* `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
+* `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
+* `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
+* `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
+* `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
+* `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
+* `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
+* `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
+* `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
+* `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
 
 #### Symbolization
 
-- `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
-- `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
-- `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
-- `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
-- `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
-- `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
+* `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
+* `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
+* `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
+* `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
+* `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
+* `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
 
 #### Process management
 
-- `NumProcNew_total` (counter): Number of new PID events.
-- `NumProcExit_total` (counter): Number of exit PID events.
-- `NumGenericPID_total` (counter): Number of generic PID events.
+* `NumProcNew_total` (counter): Number of new PID events.
+* `NumProcExit_total` (counter): Number of exit PID events.
+* `NumGenericPID_total` (counter): Number of generic PID events.
 
 #### eBPF map state
 
-- `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
-- `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
-- `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
-- `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
+* `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
+* `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
+* `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
+* `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
 
 The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
 
@@ -249,10 +249,10 @@ These labels can help you pin down a profiling target.
 
 One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
 
-- `__container_id__`: The container ID.
-- `__meta_docker_container_id`: The ID of the Docker container.
-- `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
-- `__process_pid__` : The process ID.
+* `__container_id__`: The container ID.
+* `__meta_docker_container_id`: The ID of the Docker container.
+* `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes Pod container.
+* `__process_pid__` : The process ID.
 
 Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
 
@@ -265,11 +265,11 @@ Otherwise the process isn't profiled.
 The special label `service_name` is required and must always be present.
 If it's not specified, it's attempted to be inferred, in order, from the following sources:
 
-- `__meta_kubernetes_pod_annotation_pyroscope_io_service_name`, which is a `pyroscope.io/service_name` Pod annotation.
-- `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `ebpf/<namespace>/<container_name>`.
-- `__meta_docker_container_name`.
-- `__meta_dockerswarm_container_label_service_name`.
-- `__meta_dockerswarm_service_name`.
+* `__meta_kubernetes_pod_annotation_pyroscope_io_service_name`, which is a `pyroscope.io/service_name` Pod annotation.
+* `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `ebpf/<namespace>/<container_name>`.
+* `__meta_docker_container_name`.
+* `__meta_dockerswarm_container_label_service_name`.
+* `__meta_dockerswarm_service_name`.
 
 If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
 
@@ -277,18 +277,18 @@ If `service_name` isn't specified and couldn't be inferred, it's set to `unspeci
 
 Symbols are extracted from various sources, including:
 
-- The `.gopclntab` section in Go language ELF files.
-- The `.symtab` and `.dynsym` sections in the debug ELF file.
-- The `.symtab` and `.dynsym` sections in the ELF file.
+* The `.gopclntab` section in Go language ELF files.
+* The `.symtab` and `.dynsym` sections in the debug ELF file.
+* The `.symtab` and `.dynsym` sections in the ELF file.
 
 The search for debug files follows [gdb algorithm][].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
 The following paths are examined:
 
-- `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
-- `/lib/x86_64-linux-gnu/libc.so.6.debug`
-- `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
-- `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
+* `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
+* `/lib/x86_64-linux-gnu/libc.so.6.debug`
+* `/lib/x86_64-linux-gnu/.debug/libc.so.6.debug`
+* `/usr/lib/debug/lib/x86_64-linux-gnu/libc.so.6.debug`
 
 ### Deal with unknown symbols
 
@@ -296,9 +296,9 @@ Unknown symbols in the profiles you've collected indicate that the profiler coul
 
 This can occur for several reasons:
 
-- The process has terminated, making the ELF file inaccessible.
-- The ELF file is either corrupted or not recognized as an ELF file.
-- There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
+* The process has terminated, making the ELF file inaccessible.
+* The ELF file is either corrupted or not recognized as an ELF file.
+* There is no corresponding ELF file entry in `/proc/pid/maps` for the address in the stack trace.
 
 ### Address unresolved symbols
 
@@ -306,8 +306,8 @@ If you only see module names without corresponding function names, for example, 
 
 This can occur for several reasons:
 
-- The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
-- The debug file is missing or couldn't be located.
+* The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+* The debug file is missing or couldn't be located.
 
 To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
 You can achieve this by running:
@@ -454,8 +454,8 @@ pyroscope.ebpf "probes" {
 
 Replace the following:
 
-- _`<TARGET_LIST>`_: The list of process or container targets to profile.
-- _`<RECEIVER_LIST>`_: The list of profile receivers to forward profiles to.
+* _`<TARGET_LIST>`_: The list of process or container targets to profile.
+* _`<RECEIVER_LIST>`_: The list of profile receivers to forward profiles to.
 
 ### Correlate request profiles with Beyla traces and spans
 
@@ -522,8 +522,8 @@ pyroscope.write "profiles" {
 
 Replace the following:
 
-- _`<OTLP_TRACES_ENDPOINT>`_: The OTLP HTTP endpoint to send traces to.
-- _`<PYROSCOPE_URL>`_: The URL of the Pyroscope server to send profiles to.
+* _`<OTLP_TRACES_ENDPOINT>`_: The OTLP HTTP endpoint to send traces to.
+* _`<PYROSCOPE_URL>`_: The URL of the Pyroscope server to send profiles to.
 
 [gdb algorithm]: https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html
 
@@ -533,8 +533,8 @@ Replace the following:
 
 `pyroscope.ebpf` can accept arguments from the following components:
 
-- Components that export [Targets](../../../compatibility/#targets-exporters)
-- Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
+* Components that export [Targets](../../../compatibility/#targets-exporters)
+* Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
 
 
 {{< admonition type="note" >}}
