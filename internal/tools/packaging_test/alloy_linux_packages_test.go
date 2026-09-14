@@ -8,7 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
@@ -32,13 +34,7 @@ func TestAlloyLinuxPackages(t *testing.T) {
 		{"ensure existing config doesn't get overridden", (*AlloyEnvironment).TestConfigPersistence},
 		{"test data folder permissions", (*AlloyEnvironment).TestDataFolderPermissions},
 		{"test engine toggle", (*AlloyEnvironment).TestEngineToggle},
-
-		// TODO: a test to verify that the systemd service works would be nice, but not
-		// required.
-		//
-		// An implementation of the test would have to consider what host platforms it
-		// works on; bind mounting /sys/fs/cgroup and using the host systemd wouldn't
-		// work on macOS or Windows.
+		{"test systemd service", (*AlloyEnvironment).TestSystemdService},
 	}
 
 	for _, tc := range tt {
@@ -205,6 +201,75 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			require.Equal(t, tc.expected, res.Stdout)
 		})
 	}
+}
+
+// TestSystemdService verifies that systemd starts Alloy from the installed unit
+// file, and that toggling ALLOY_OTEL_MODE in the environment file changes which
+// engine systemd launches.
+func (env *AlloyEnvironment) TestSystemdService(t *testing.T) {
+	env.logSystemdDiagnosticsOnFailure(t)
+
+	res := env.Install()
+	require.Equalf(t, 0, res.ExitCode, "installation failed:\n%s%s", res.Stdout, res.Stderr)
+
+	res = env.ExecScript(`systemctl daemon-reload && systemctl enable --now alloy`)
+	require.Equal(t, 0, res.ExitCode, "failed to enable and start the alloy service")
+
+	// An unset ALLOY_OTEL_MODE keeps the default engine, so a fresh install must
+	// behave the same as it did before the toggle existed.
+	env.requireServiceActive(t)
+	env.requireAlloyArgs(t, "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy")
+
+	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; sed -i 's/^ALLOY_OTEL_MODE=.*/ALLOY_OTEL_MODE="1"/' "$f"`)
+	require.Equal(t, 0, res.ExitCode, "failed to enable ALLOY_OTEL_MODE in the environment file")
+
+	res = env.ExecScript(`systemctl restart alloy`)
+	require.Equal(t, 0, res.ExitCode, "failed to restart the alloy service")
+
+	env.requireServiceActive(t)
+	env.requireAlloyArgs(t, "otel --config=/etc/alloy/config.yaml")
+}
+
+// requireServiceActive waits for the alloy service to become active, then checks
+// that it stayed up
+func (env *AlloyEnvironment) requireServiceActive(t *testing.T) {
+	t.Helper()
+
+	var state string
+	deadline := time.Now().Add(serviceStartTimeout)
+	for time.Now().Before(deadline) {
+		state = strings.TrimSpace(env.ExecScript(`systemctl is-active alloy`).Stdout)
+		if state == "active" {
+			break
+		}
+		time.Sleep(pollInterval)
+	}
+	require.Equal(t, "active", state, "alloy service never became active")
+
+	res := env.ExecScript(`systemctl show -p NRestarts --value alloy`)
+	require.Equal(t, 0, res.ExitCode, "failed to read the service restart count")
+	require.Equal(t, "0", strings.TrimSpace(res.Stdout), "alloy service restarted, so it didn't stay up")
+}
+
+// requireAlloyArgs asserts which command systemd actually launched.
+func (env *AlloyEnvironment) requireAlloyArgs(t *testing.T, expectedArgs string) {
+	t.Helper()
+
+	res := env.ExecScript(`ps -o args= -C alloy | head -n 1`)
+	require.Equal(t, "/usr/bin/alloy "+expectedArgs, strings.TrimSpace(res.Stdout),
+		"systemd launched an unexpected command")
+}
+
+func (env *AlloyEnvironment) logSystemdDiagnosticsOnFailure(t *testing.T) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		t.Logf("systemctl status alloy:\n%s", env.ExecScript(`systemctl --no-pager status alloy`).Stdout)
+		t.Logf("journalctl -u alloy:\n%s", env.ExecScript(`journalctl -u alloy --no-pager`).Stdout)
+	})
 }
 
 func (env *AlloyEnvironment) TestDataFolderPermissions(t *testing.T) {

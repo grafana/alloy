@@ -10,11 +10,26 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	// systemdBootTimeout is how long to wait for systemd to finish booting in a
+	// freshly started container.
+	systemdBootTimeout = 60 * time.Second
+
+	// serviceStartTimeout is how long to wait for the alloy service to become
+	// active after being started or restarted.
+	serviceStartTimeout = 30 * time.Second
+
+	// pollInterval is how often to re-check a systemd state that's being waited on.
+	pollInterval = 500 * time.Millisecond
 )
 
 type Environment struct {
@@ -83,13 +98,16 @@ func DEBEnvironment(t *testing.T, packageName string, pool *dockertest.Pool) Env
 func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string, name string, packagePath string) *dockertest.Resource {
 	t.Helper()
 
+	// The images run systemd as PID 1 instead of a shell, so the tests can
+	// exercise the installed alloy.service unit. systemd needs to manage cgroups
+	// to boot, which requires a privileged container and a writable
+	// /sys/fs/cgroup.
 	container, err := pool.BuildAndRunWithOptions(
 		dockerfile,
 		&dockertest.RunOptions{
 			Name:       name,
-			Entrypoint: []string{"/bin/bash"},
-			Tty:        true,
-			Mounts:     []string{"/sys/fs/cgroup:/sys/fs/cgroup:ro"},
+			Privileged: true,
+			Mounts:     []string{"/sys/fs/cgroup:/sys/fs/cgroup:rw"},
 			PortBindings: map[docker.Port][]docker.PortBinding{
 				"9009/tcp": {{HostIP: "0.0.0.0", HostPort: "0"}},
 			},
@@ -106,6 +124,8 @@ func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string
 		_ = container.Close()
 	})
 
+	waitForSystemd(t, container)
+
 	packageFile, err := buildTar(packagePath)
 	require.NoError(t, err)
 	err = pool.Client.UploadToContainer(container.Container.ID, docker.UploadToContainerOptions{
@@ -115,6 +135,22 @@ func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string
 	require.NoError(t, err)
 
 	return container
+}
+
+func waitForSystemd(t *testing.T, container *dockertest.Resource) {
+	t.Helper()
+
+	var state string
+	deadline := time.Now().Add(systemdBootTimeout)
+	for time.Now().Before(deadline) {
+		state = strings.TrimSpace(containerExec(t, container, "systemctl", "is-system-running").Stdout)
+		if state == "running" || state == "degraded" {
+			return
+		}
+		time.Sleep(pollInterval)
+	}
+
+	require.Failf(t, "systemd did not finish booting", "last reported state: %q", state)
 }
 
 func buildTar(path string) (io.Reader, error) {
