@@ -469,6 +469,8 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	dropReason := reasonGeneric
 	if batchIsRateLimited(status) {
 		dropReason = reasonRateLimited
+	} else if batchIsTooLarge(status) {
+		dropReason = reasonBatchTooLarge
 	}
 	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
 	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
@@ -542,4 +544,8 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 
 func batchIsRateLimited(status int) bool {
 	return status == 429
+}
+
+func batchIsTooLarge(status int) bool {
+	return status == 413
 }

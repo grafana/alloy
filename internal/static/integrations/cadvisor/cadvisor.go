@@ -156,6 +156,7 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	ci := integrations.NewCollectorIntegration(
 		c.Name(),
+		integrations.WithLogger(l),
 		integrations.WithRunner(start),
 		integrations.WithCollectors(machCol, contCol),
 	)
