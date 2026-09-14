@@ -94,7 +94,7 @@ The `client` block supports the following arguments:
 At most, you can provide one of the following:
 
 - [`authorization`](#authorization) block
-- [`basic_auth`](#basic_auth) block
+- [`basic_auth`](#basic-auth) block
 - [`bearer_token_file`](#client) argument
 - [`bearer_token`](#client) argument
 - [`oauth2`](#oauth2) block
@@ -139,7 +139,7 @@ Instances of `remote.kubernetes.configmap` report as healthy if the most recent 
 
 `remote.kubernetes.configmap` doesn't expose any component-specific debug metrics.
 
-## Example
+## Examples
 
 This example reads a Secret and a ConfigMap from Kubernetes and uses them to supply remote-write credentials.
 

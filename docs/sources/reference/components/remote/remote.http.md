@@ -131,7 +131,7 @@ Instances of `remote.http` report as healthy if the most recent HTTP request of 
 
 `remote.http` doesn't expose any component-specific debug metrics.
 
-## Example
+## Examples
 
 This example reads a JSON array of objects from an endpoint and uses them as a set of scrape targets:
 

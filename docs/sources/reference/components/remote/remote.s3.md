@@ -107,7 +107,7 @@ Instances of `remote.s3` report as healthy if the most recent read of the watche
 | `remote_s3_errors_total`                         | `counter` | The number of errors while accessing S3.    |
 | `remote_s3_timestamp_last_accessed_unix_seconds` | `gauge`   | The last successful access in Unix seconds. |
 
-## Example
+## Examples
 
 ```alloy
 remote.s3 "data" {

@@ -299,7 +299,7 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 | `remote_vault_auth_lease_renewal_total`   | `counter` | Total number of times the component renewed its authentication token lease. |
 | `remote_vault_secret_lease_renewal_total` | `counter` | Total number of times the component renewed its secret lease.               |
 
-## Example
+## Examples
 
 ```alloy
 local.file "vault_token" {
