@@ -1,0 +1,374 @@
+# This file is generated. DO NOT EDIT.
+# Regenerate with `make generate-component-manifest`.
+#
+# Lists every component registered in the Alloy default engine and its
+# stability. The Alloy version is the git tag this file is committed under.
+components:
+  - name: beyla.ebpf
+    stability: generally-available
+  - name: database_observability.mysql
+    stability: generally-available
+  - name: database_observability.postgres
+    stability: generally-available
+  - name: database_observability.sql_server
+    stability: experimental
+  - name: discovery.aws
+    stability: generally-available
+  - name: discovery.azure
+    stability: generally-available
+  - name: discovery.consul
+    stability: generally-available
+  - name: discovery.consulagent
+    stability: generally-available
+  - name: discovery.digitalocean
+    stability: generally-available
+  - name: discovery.dns
+    stability: generally-available
+  - name: discovery.docker
+    stability: generally-available
+  - name: discovery.dockerswarm
+    stability: generally-available
+  - name: discovery.ec2
+    stability: generally-available
+  - name: discovery.eureka
+    stability: generally-available
+  - name: discovery.file
+    stability: generally-available
+  - name: discovery.gce
+    stability: generally-available
+  - name: discovery.hetzner
+    stability: generally-available
+  - name: discovery.http
+    stability: generally-available
+  - name: discovery.ionos
+    stability: generally-available
+  - name: discovery.kubelet
+    stability: generally-available
+  - name: discovery.kubernetes
+    stability: generally-available
+  - name: discovery.kuma
+    stability: generally-available
+  - name: discovery.lightsail
+    stability: generally-available
+  - name: discovery.linode
+    stability: generally-available
+  - name: discovery.marathon
+    stability: generally-available
+  - name: discovery.nerve
+    stability: generally-available
+  - name: discovery.nomad
+    stability: generally-available
+  - name: discovery.openstack
+    stability: generally-available
+  - name: discovery.ovhcloud
+    stability: generally-available
+  - name: discovery.process
+    stability: generally-available
+  - name: discovery.puppetdb
+    stability: generally-available
+  - name: discovery.relabel
+    stability: generally-available
+  - name: discovery.scaleway
+    stability: generally-available
+  - name: discovery.serverset
+    stability: generally-available
+  - name: discovery.triton
+    stability: generally-available
+  - name: discovery.uyuni
+    stability: generally-available
+  - name: faro.receiver
+    stability: generally-available
+  - name: local.file
+    stability: generally-available
+  - name: local.file_match
+    stability: generally-available
+  - name: loki.echo
+    stability: generally-available
+  - name: loki.enrich
+    stability: experimental
+  - name: loki.process
+    stability: generally-available
+  - name: loki.relabel
+    stability: generally-available
+  - name: loki.rules.kubernetes
+    stability: generally-available
+  - name: loki.secretfilter
+    stability: experimental
+  - name: loki.source.api
+    stability: generally-available
+  - name: loki.source.awsfirehose
+    stability: generally-available
+  - name: loki.source.azure_event_hubs
+    stability: generally-available
+  - name: loki.source.cloudflare
+    stability: generally-available
+  - name: loki.source.docker
+    stability: generally-available
+  - name: loki.source.file
+    stability: generally-available
+  - name: loki.source.gcplog
+    stability: generally-available
+  - name: loki.source.gelf
+    stability: generally-available
+  - name: loki.source.heroku
+    stability: generally-available
+  - name: loki.source.journal
+    stability: generally-available
+  - name: loki.source.kafka
+    stability: generally-available
+  - name: loki.source.kubernetes
+    stability: generally-available
+  - name: loki.source.kubernetes_events
+    stability: generally-available
+  - name: loki.source.podlogs
+    stability: generally-available
+  - name: loki.source.syslog
+    stability: generally-available
+  - name: loki.source.windowsevent
+    stability: generally-available
+  - name: loki.write
+    stability: generally-available
+  - name: mimir.alerts.kubernetes
+    stability: experimental
+  - name: mimir.rules.kubernetes
+    stability: generally-available
+  - name: otelcol.auth.basic
+    stability: generally-available
+  - name: otelcol.auth.bearer
+    stability: generally-available
+  - name: otelcol.auth.google
+    stability: public-preview
+  - name: otelcol.auth.headers
+    stability: generally-available
+  - name: otelcol.auth.oauth2
+    stability: generally-available
+  - name: otelcol.auth.sigv4
+    stability: generally-available
+  - name: otelcol.connector.count
+    stability: experimental
+  - name: otelcol.connector.host_info
+    stability: generally-available
+  - name: otelcol.connector.servicegraph
+    stability: generally-available
+  - name: otelcol.connector.signaltometrics
+    stability: experimental
+  - name: otelcol.connector.spanlogs
+    stability: generally-available
+  - name: otelcol.connector.spanmetrics
+    stability: generally-available
+  - name: otelcol.exporter.awss3
+    stability: experimental
+  - name: otelcol.exporter.datadog
+    community: true
+  - name: otelcol.exporter.debug
+    stability: experimental
+  - name: otelcol.exporter.faro
+    stability: experimental
+  - name: otelcol.exporter.file
+    stability: public-preview
+  - name: otelcol.exporter.googlecloud
+    community: true
+  - name: otelcol.exporter.googlecloudpubsub
+    community: true
+  - name: otelcol.exporter.kafka
+    stability: generally-available
+  - name: otelcol.exporter.loadbalancing
+    stability: generally-available
+  - name: otelcol.exporter.loki
+    stability: generally-available
+  - name: otelcol.exporter.otlp
+    stability: generally-available
+  - name: otelcol.exporter.otlphttp
+    stability: generally-available
+  - name: otelcol.exporter.prometheus
+    stability: generally-available
+  - name: otelcol.exporter.splunkhec
+    community: true
+  - name: otelcol.exporter.syslog
+    stability: public-preview
+  - name: otelcol.extension.jaeger_remote_sampling
+    stability: generally-available
+  - name: otelcol.processor.attributes
+    stability: generally-available
+  - name: otelcol.processor.batch
+    stability: generally-available
+  - name: otelcol.processor.cumulativetodelta
+    stability: public-preview
+  - name: otelcol.processor.deltatocumulative
+    stability: experimental
+  - name: otelcol.processor.discovery
+    stability: generally-available
+  - name: otelcol.processor.filter
+    stability: generally-available
+  - name: otelcol.processor.groupbyattrs
+    stability: generally-available
+  - name: otelcol.processor.interval
+    stability: experimental
+  - name: otelcol.processor.k8sattributes
+    stability: generally-available
+  - name: otelcol.processor.memory_limiter
+    stability: generally-available
+  - name: otelcol.processor.metric_start_time
+    stability: generally-available
+  - name: otelcol.processor.probabilistic_sampler
+    stability: generally-available
+  - name: otelcol.processor.resourcedetection
+    stability: generally-available
+  - name: otelcol.processor.span
+    stability: generally-available
+  - name: otelcol.processor.tail_sampling
+    stability: generally-available
+  - name: otelcol.processor.transform
+    stability: generally-available
+  - name: otelcol.receiver.awscloudwatch
+    stability: experimental
+  - name: otelcol.receiver.awsecscontainermetrics
+    stability: experimental
+  - name: otelcol.receiver.awss3
+    stability: experimental
+  - name: otelcol.receiver.cloudflare
+    stability: experimental
+  - name: otelcol.receiver.datadog
+    stability: experimental
+  - name: otelcol.receiver.faro
+    stability: experimental
+  - name: otelcol.receiver.file_stats
+    stability: generally-available
+  - name: otelcol.receiver.filelog
+    stability: public-preview
+  - name: otelcol.receiver.fluentforward
+    stability: experimental
+  - name: otelcol.receiver.googlecloudpubsub
+    community: true
+  - name: otelcol.receiver.influxdb
+    stability: generally-available
+  - name: otelcol.receiver.jaeger
+    stability: generally-available
+  - name: otelcol.receiver.kafka
+    stability: generally-available
+  - name: otelcol.receiver.loki
+    stability: generally-available
+  - name: otelcol.receiver.nginx
+    stability: public-preview
+  - name: otelcol.receiver.otlp
+    stability: generally-available
+  - name: otelcol.receiver.prometheus
+    stability: generally-available
+  - name: otelcol.receiver.solace
+    stability: generally-available
+  - name: otelcol.receiver.splunkhec
+    stability: public-preview
+  - name: otelcol.receiver.syslog
+    stability: public-preview
+  - name: otelcol.receiver.tcplog
+    stability: experimental
+  - name: otelcol.receiver.vcenter
+    stability: experimental
+  - name: otelcol.receiver.zipkin
+    stability: generally-available
+  - name: otelcol.storage.file
+    stability: public-preview
+  - name: prometheus.echo
+    stability: generally-available
+  - name: prometheus.enrich
+    stability: experimental
+  - name: prometheus.exporter.apache
+    stability: generally-available
+  - name: prometheus.exporter.azure
+    stability: generally-available
+  - name: prometheus.exporter.blackbox
+    stability: generally-available
+  - name: prometheus.exporter.cadvisor
+    stability: generally-available
+  - name: prometheus.exporter.catchpoint
+    stability: experimental
+  - name: prometheus.exporter.cloudwatch
+    stability: generally-available
+  - name: prometheus.exporter.consul
+    stability: generally-available
+  - name: prometheus.exporter.databricks
+    stability: generally-available
+  - name: prometheus.exporter.dnsmasq
+    stability: generally-available
+  - name: prometheus.exporter.elasticsearch
+    stability: generally-available
+  - name: prometheus.exporter.gcp
+    stability: generally-available
+  - name: prometheus.exporter.github
+    stability: generally-available
+  - name: prometheus.exporter.kafka
+    stability: generally-available
+  - name: prometheus.exporter.memcached
+    stability: generally-available
+  - name: prometheus.exporter.mongodb
+    stability: generally-available
+  - name: prometheus.exporter.mssql
+    stability: generally-available
+  - name: prometheus.exporter.mysql
+    stability: generally-available
+  - name: prometheus.exporter.oracledb
+    stability: generally-available
+  - name: prometheus.exporter.postgres
+    stability: generally-available
+  - name: prometheus.exporter.process
+    stability: generally-available
+  - name: prometheus.exporter.redis
+    stability: generally-available
+  - name: prometheus.exporter.self
+    stability: generally-available
+  - name: prometheus.exporter.snmp
+    stability: generally-available
+  - name: prometheus.exporter.snowflake
+    stability: generally-available
+  - name: prometheus.exporter.squid
+    stability: generally-available
+  - name: prometheus.exporter.static
+    stability: experimental
+  - name: prometheus.exporter.statsd
+    stability: generally-available
+  - name: prometheus.exporter.unix
+    stability: generally-available
+  - name: prometheus.exporter.windows
+    stability: generally-available
+  - name: prometheus.operator.podmonitors
+    stability: generally-available
+  - name: prometheus.operator.probes
+    stability: generally-available
+  - name: prometheus.operator.scrapeconfigs
+    stability: experimental
+  - name: prometheus.operator.servicemonitors
+    stability: generally-available
+  - name: prometheus.receive_http
+    stability: generally-available
+  - name: prometheus.relabel
+    stability: generally-available
+  - name: prometheus.remote_write
+    stability: generally-available
+  - name: prometheus.scrape
+    stability: generally-available
+  - name: prometheus.write.queue
+    stability: experimental
+  - name: pyroscope.ebpf
+    stability: generally-available
+  - name: pyroscope.enrich
+    stability: experimental
+  - name: pyroscope.java
+    stability: generally-available
+  - name: pyroscope.receive_http
+    stability: generally-available
+  - name: pyroscope.relabel
+    stability: generally-available
+  - name: pyroscope.scrape
+    stability: generally-available
+  - name: pyroscope.write
+    stability: generally-available
+  - name: remote.http
+    stability: generally-available
+  - name: remote.kubernetes.configmap
+    stability: generally-available
+  - name: remote.kubernetes.secret
+    stability: generally-available
+  - name: remote.s3
+    stability: generally-available
+  - name: remote.vault
+    stability: generally-available
