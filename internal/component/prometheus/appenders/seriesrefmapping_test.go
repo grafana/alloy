@@ -210,6 +210,209 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 	})
 }
 
+func TestSeriesRefMappingStore_RemoveStaleRefs_RemovesStaleKeepsFresh(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	staleLbls := labels.FromStrings("k", "stale")
+	freshLbls := labels.FromStrings("k", "fresh")
+	staleRef := store.CreateMapping([]storage.SeriesRef{1, 2}, staleLbls)
+	freshRef := store.CreateMapping([]storage.SeriesRef{3, 4}, freshLbls)
+
+	now := time.Now().Unix()
+	trackRef(store, staleRef, now-3600)
+	trackRef(store, freshRef, now)
+
+	store.removeStaleRefs(now - 60)
+
+	require.Nil(t, store.GetMapping(staleRef, staleLbls), "stale mapping should be removed")
+	require.NotNil(t, store.GetMapping(freshRef, freshLbls), "fresh mapping should survive")
+
+	// Both maps and the timestamp index must drop only the stale ref.
+	require.NotContains(t, store.uniqueRefToChildRefs, staleRef)
+	require.NotContains(t, store.uniqueRefTimestamps, staleRef)
+	require.Contains(t, store.uniqueRefToChildRefs, freshRef)
+	require.Contains(t, store.uniqueRefTimestamps, freshRef)
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_DeletesAcrossChunkBoundary(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	// More stale refs than a single chunk so the scan flushes at the boundary and
+	// again for the remainder.
+	total := staleRefDeleteChunk + 100
+	old := time.Now().Unix() - 3600
+	for i := range total {
+		ref := store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i)}, labels.FromStrings("k", strconv.Itoa(i)))
+		trackRef(store, ref, old)
+	}
+
+	store.removeStaleRefs(time.Now().Unix() - 60)
+
+	require.Empty(t, store.uniqueRefToChildRefs)
+	require.Empty(t, store.uniqueRefTimestamps)
+	require.Empty(t, store.labelHashToUniqueRef)
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_ExactChunkMultiple(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	// Exactly one chunk, so the flush inside the scan empties the batch and the flush
+	// after it gets nothing.
+	old := time.Now().Unix() - 3600
+	for i := range staleRefDeleteChunk {
+		ref := store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i)}, labels.FromStrings("k", strconv.Itoa(i)))
+		trackRef(store, ref, old)
+	}
+
+	store.removeStaleRefs(time.Now().Unix() - 60)
+
+	require.Empty(t, store.uniqueRefToChildRefs)
+	require.Empty(t, store.uniqueRefTimestamps)
+	require.Empty(t, store.labelHashToUniqueRef)
+	require.Equal(t, float64(staleRefDeleteChunk), testutil.ToFloat64(store.refsCleaned))
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_UpdatesMetrics(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	staleLbls := labels.FromStrings("k", "stale")
+	freshLbls := labels.FromStrings("k", "fresh")
+	staleRef := store.CreateMapping([]storage.SeriesRef{1, 2}, staleLbls)
+	freshRef := store.CreateMapping([]storage.SeriesRef{3, 4}, freshLbls)
+
+	now := time.Now().Unix()
+	trackRef(store, staleRef, now-3600)
+	trackRef(store, freshRef, now)
+	require.Equal(t, 2.0, testutil.ToFloat64(store.activeMappings))
+
+	store.removeStaleRefs(now - 60)
+
+	require.Equal(t, 1.0, testutil.ToFloat64(store.activeMappings))
+	require.Equal(t, 1.0, testutil.ToFloat64(store.refsCleaned))
+	require.Equal(t, 1.0, testutil.ToFloat64(store.trackedRefs))
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_OrphanTimestampsDoNotSkewActiveMappings(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	old := time.Now().Unix() - 3600
+	keepLbls := labels.FromStrings("k", "keep")
+	keepRef := store.CreateMapping([]storage.SeriesRef{1}, keepLbls)
+	trackRef(store, keepRef, time.Now().Unix())
+
+	staleLbls := labels.FromStrings("k", "stale")
+	staleRef := store.CreateMapping([]storage.SeriesRef{2}, staleLbls)
+	trackRef(store, staleRef, old)
+
+	// Refs tracked with no mapping behind them, as happens when a batch commits after
+	// cleanup has already evicted the ref it read. Subtracting per stale ref would
+	// charge these against a gauge that only ever counted mappings.
+	for _, orphan := range []storage.SeriesRef{9001, 9002, 9003} {
+		trackRef(store, orphan, old)
+	}
+
+	store.removeStaleRefs(time.Now().Unix() - 60)
+
+	// One real mapping survives, so the gauge must read 1 rather than 1-4.
+	require.Equal(t, 1.0, testutil.ToFloat64(store.activeMappings))
+	require.Len(t, store.uniqueRefToChildRefs, 1)
+	require.Equal(t, 4.0, testutil.ToFloat64(store.refsCleaned))
+	require.Equal(t, 1.0, testutil.ToFloat64(store.trackedRefs))
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefs_SetsGaugeFromMapEveryCycle(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	lbls := labels.FromStrings("k", "v")
+	ref := store.CreateMapping([]storage.SeriesRef{1}, lbls)
+	trackRef(store, ref, time.Now().Unix())
+
+	// The gauge is read off the map rather than accumulated, so every cycle re-establishes
+	// it from the map size. Forcing a wrong value stands in for divergence from any cause.
+	store.activeMappings.Set(99)
+
+	// Evict nothing, which is the case a per-delete update would miss entirely.
+	store.removeStaleRefs(time.Now().Unix() - 3600)
+
+	require.Len(t, store.uniqueRefToChildRefs, 1, "nothing should have been evicted")
+	require.Equal(t, 1.0, testutil.ToFloat64(store.activeMappings))
+}
+
+func TestSeriesRefMappingStore_RemoveStaleRefsRacesWithAppends(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	const series = 128
+	lbls := make([]labels.Labels, series)
+	refs := make([]storage.SeriesRef, series)
+	for i := range series {
+		lbls[i] = labels.FromStrings("k", strconv.Itoa(i))
+		refs[i] = store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i + 1)}, lbls[i])
+	}
+
+	stop := make(chan struct{})
+	var wg, ready sync.WaitGroup
+	ready.Add(8)
+	for w := range 8 {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			first := true
+			for i := w; ; i = (i + 8) % series {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				store.GetMapping(refs[i], lbls[i])
+				trackRef(store, refs[i], time.Now().Unix())
+				if first {
+					ready.Done()
+					first = false
+				}
+			}
+		}(w)
+	}
+
+	// Wait for every worker to be inside its loop, otherwise the passes below can finish
+	// before the workers are scheduled and nothing actually overlaps.
+	ready.Wait()
+
+	// A cutoff in the future makes every tracked ref stale, so each pass deletes whatever
+	// the workers just tracked.
+	for range 200 {
+		store.removeStaleRefs(time.Now().Unix() + 60)
+	}
+	close(stop)
+	wg.Wait()
+
+	// Whatever survived must be mutually consistent: each reverse entry resolves to a
+	// live mapping carrying the same hash.
+	for hash, ref := range store.labelHashToUniqueRef {
+		mapping, ok := store.uniqueRefToChildRefs[ref]
+		require.True(t, ok, "labelHashToUniqueRef points at a deleted mapping")
+		require.Equal(t, hash, mapping.labelHash)
+	}
+
+	// The store is still usable afterward.
+	newLbls := labels.FromStrings("k", "after")
+	newRef := store.CreateMapping([]storage.SeriesRef{42}, newLbls)
+	require.Equal(t, []storage.SeriesRef{42}, store.GetMapping(newRef, newLbls))
+}
+
+// trackRef records ts as ref's last-append time via the normal tracking path.
+func trackRef(store *SeriesRefMappingStore, ref storage.SeriesRef, ts int64) {
+	cell := store.GetCellForAppendedSeries()
+	cell.Refs = append(cell.Refs, ref)
+	store.TrackAppendedSeries(ts, cell)
+}
+
 func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	lbls := labels.EmptyLabels()
