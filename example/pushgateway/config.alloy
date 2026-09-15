@@ -1,0 +1,15 @@
+// Accepts remote write on /api/v1/metrics/write and Pushgateway-format
+// pushes on /metrics/job/<JOB_NAME>{/<LABEL_NAME>/<LABEL_VALUE>}.
+prometheus.receive_http "pushes" {
+  http {
+    listen_address = "127.0.0.1"
+    listen_port    = 9999
+  }
+  forward_to = [prometheus.remote_write.vmsingle.receiver]
+}
+
+prometheus.remote_write "vmsingle" {
+  endpoint {
+    url = "http://127.0.0.1:8428/api/v1/write"
+  }
+}
