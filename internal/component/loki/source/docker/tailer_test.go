@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -263,6 +264,66 @@ func TestTailerStopsWhenContainerNotFound(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("tailer did not stop after container was removed")
 	}
+}
+
+func TestTailerPositionCleanup(t *testing.T) {
+	tests := []struct {
+		name              string
+		componentStopping bool
+		inspectErr        error
+		wantRemoved       bool
+	}{
+		{
+			name: "stopped container preserves position",
+		},
+		{
+			name:        "removed container deletes position",
+			inspectErr:  cerrdefs.ErrNotFound,
+			wantRemoved: true,
+		},
+		{
+			name:       "inspect error preserves position",
+			inspectErr: errors.New("inspect failed"),
+		},
+		{
+			name:              "component shutdown preserves position",
+			componentStopping: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pos := &trackingPositions{Positions: positions.NewNop()}
+			mock := clientMock{
+				running:    func() bool { return false },
+				finishedAt: func() string { return "0001-01-01T00:00:00Z" },
+				inspectErr: func() error { return tt.inspectErr },
+			}
+			tailer := &tailer{
+				logger:            logging.NewSlogNop(),
+				positions:         pos,
+				containerID:       "container-id",
+				labelsStr:         "{}",
+				client:            mock,
+				componentStopping: func() bool { return tt.componentStopping },
+				running:           true,
+				cancel:            func() {},
+			}
+
+			tailer.stop()
+
+			require.Equal(t, tt.wantRemoved, pos.removed)
+		})
+	}
+}
+
+type trackingPositions struct {
+	positions.Positions
+	removed bool
+}
+
+func (p *trackingPositions) Remove(_, _ string) {
+	p.removed = true
 }
 
 var _ io.ReadCloser = (*stringReader)(nil)
