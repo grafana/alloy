@@ -118,15 +118,13 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
 
-		p.process(context.Background(), entries)
+		require.NoError(t, p.process(context.Background(), entries))
 		p.stop()
 
-		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected)
-			if expectedMetrics != "" {
-				assert.NoError(c, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
-			}
-		}, 2*time.Second, 100*time.Millisecond)
+		assertEntriesUnordered(t, expected, collected)
+		if expectedMetrics != "" {
+			assert.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
+		}
 	})
 }
 

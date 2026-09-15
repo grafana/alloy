@@ -35,6 +35,9 @@ func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry)
 }
 
 func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
+	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
+	// much more efficient. If this still shows up in profiles as expensive after
+	// that change we should consider alternative representations for streams.
 	i := slices.IndexFunc(b.streams, func(s Stream) bool {
 		return s.Labels.Equal(labels)
 	})
@@ -49,7 +52,6 @@ func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry)
 	}
 
 	stream := NewStreamWithCreatedUnixMicro(labels, created, entries...)
-	stream.created = created
 	b.streams = append(b.streams, stream)
 }
 

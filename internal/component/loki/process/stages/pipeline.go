@@ -59,11 +59,11 @@ type Pipeline struct {
 func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := newStage(slogger, stage, registerer, minStability)
+		s, err := newStage(slogger, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
-		st = append(st, newStage)
+		st = append(st, s)
 	}
 	dropCount, err := getDropCountMetric(registerer)
 	if err != nil {
