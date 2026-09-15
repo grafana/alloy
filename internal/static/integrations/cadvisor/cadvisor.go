@@ -34,8 +34,8 @@ import (
 
 // Matching the default disabled set from cadvisor - https://github.com/google/cadvisor/blob/3c6e3093c5ca65c57368845ddaea2b4ca6bc0da8/cmd/cadvisor.go#L78-L93
 // Note: This *could* be kept in sync with upstream by using the following. However, that would require importing the github.com/google/cadvisor/cmd package, which introduces some dependency conflicts that weren't worth the hassle IMHO.
-// var disabledMetrics = *flag.Lookup("disable_metrics").Value.(*container.MetricSet)
-var disabledMetrics = container.MetricSet{
+// var defaultDisabledMetrics = *flag.Lookup("disable_metrics").Value.(*container.MetricSet)
+var defaultDisabledMetrics = container.MetricSet{
 	container.MemoryNumaMetrics:              struct{}{},
 	container.NetworkTcpUsageMetrics:         struct{}{},
 	container.NetworkUdpUsageMetrics:         struct{}{},
@@ -51,10 +51,10 @@ var disabledMetrics = container.MetricSet{
 
 // GetIncludedMetrics applies some logic to determine the final set of metrics to be scraped and returned by the cAdvisor integration
 func (c *Config) GetIncludedMetrics() (container.MetricSet, error) {
-	var enabledMetrics, includedMetrics container.MetricSet
+	var enabledMetrics, userDisabledMetrics, includedMetrics container.MetricSet
 
 	if c.DisabledMetrics != nil {
-		if err := disabledMetrics.Set(strings.Join(c.DisabledMetrics, ",")); err != nil {
+		if err := userDisabledMetrics.Set(strings.Join(c.DisabledMetrics, ",")); err != nil {
 			return includedMetrics, fmt.Errorf("failed to set disabled metrics: %w", err)
 		}
 	}
@@ -68,6 +68,18 @@ func (c *Config) GetIncludedMetrics() (container.MetricSet, error) {
 	if len(enabledMetrics) > 0 {
 		includedMetrics = enabledMetrics
 	} else {
+		// Build the effective disabled set on top of a fresh copy of the defaults, so that
+		// disabled_metrics only *adds* to the built-in defaults instead of replacing them.
+		// Replacing them could silently re-enable metrics such as ResctrlMetrics, which cadvisor
+		// disables by default because it can panic with a nil pointer dereference when no resctrl
+		// plugin is registered (see https://github.com/grafana/alloy/issues/5838).
+		disabledMetrics := container.MetricSet{}
+		for metric := range defaultDisabledMetrics {
+			disabledMetrics[metric] = struct{}{}
+		}
+		for metric := range userDisabledMetrics {
+			disabledMetrics[metric] = struct{}{}
+		}
 		includedMetrics = container.AllMetrics.Difference(disabledMetrics)
 	}
 
