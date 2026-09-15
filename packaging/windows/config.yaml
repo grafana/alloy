@@ -1,0 +1,24 @@
+# Sample config for Alloy's OTel engine.
+#
+# For a full configuration reference, see https://grafana.com/docs/alloy
+receivers:
+  otlp:
+    protocols:
+      grpc: {}
+      http: {}
+
+exporters:
+  # TODO: replace the debug exporter with a real backend.
+  debug:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      exporters: [debug]
