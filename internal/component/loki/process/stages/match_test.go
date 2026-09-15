@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/loki/pkg/push"
 )
 
 var testMatchAlloy = `
@@ -258,5 +262,28 @@ stage.match {
 }`
 
 func TestMatchNestedLimitShutdown(t *testing.T) {
-	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testMatchNestedLimitAlloy), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	in := make(chan loki.Entry)
+	out := make(chan loki.Entry, 1)
+	handler := pl.Start(in, out)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{"app": "loki"},
+		Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+	}
+
+	in <- entry
+	<-out       // burst consumed; next Wait() will block
+	in <- entry // blocks the limit stage in rateLimiter.Wait
+
+	done := make(chan struct{})
+	go func() { defer close(done); handler.Stop() }()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait within 2s")
+	}
 }
