@@ -18,21 +18,8 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "loki.source.kubernetes",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
-		},
-	})
-}
 
 // Arguments holds values which are used to configure the loki.source.kubernetes
 // component.
