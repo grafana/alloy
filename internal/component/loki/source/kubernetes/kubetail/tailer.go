@@ -266,9 +266,16 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
-func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+//
+// sinceTime is the time the stream was opened from. The API server applies
+// SinceTime with second precision, so the head of the stream can repeat lines
+// that were already shipped; those are the only lines skipped. Lines are never
+// compared against the previous line: the container runtime stamps stdout and
+// stderr independently, so a live stream is not ordered by timestamp.
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
+	lastReadTime := sinceTime
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -278,13 +285,11 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			// Skip only if the timestamp is strictly before lastReadTime.
-			// This allows multiple log lines with the same timestamp to be processed,
-			// which is common in Windows containers that log rapidly.
-			if entryTimestamp.Before(lastReadTime) {
+			// Skip only if the timestamp is strictly before sinceTime, so that
+			// lines sharing the resume timestamp are still processed.
+			if entryTimestamp.Before(sinceTime) {
 				continue
 			}
-			lastReadTime = entryTimestamp
 
 			entry := loki.NewEntry(t.lset.Clone(), push.Entry{
 				Timestamp: entryTimestamp,
@@ -295,9 +300,14 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			case <-ctx.Done():
 				return nil
 			case ch <- entry:
-				// Save position after it's been sent over the channel.
-				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, entryTimestamp.UnixMicro())
-				t.target.Report(entryTimestamp, nil)
+				// Save position after it's been sent over the channel. The saved
+				// position seeds sinceTime for the next tail, so it never moves
+				// backwards even when the stream is out of order.
+				if entryTimestamp.After(lastReadTime) {
+					lastReadTime = entryTimestamp
+				}
+				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
+				t.target.Report(lastReadTime, nil)
 			}
 		}
 
