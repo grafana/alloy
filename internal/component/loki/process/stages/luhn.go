@@ -74,7 +74,6 @@ func (l *luhnFilterStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = l.processEntry(entries[i])
@@ -85,7 +84,6 @@ func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
 // Cleanup implements Stage.
 func (l *luhnFilterStage) Cleanup() {}
 
-// Process implements Stage.
 func (l *luhnFilterStage) processEntry(e Entry) Entry {
 	input := e.Line
 	if l.config.Source != nil {

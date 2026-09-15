@@ -141,7 +141,6 @@ func (g *geoIPStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (g *geoIPStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = g.processEntry(entries[i])

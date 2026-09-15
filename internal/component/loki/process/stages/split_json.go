@@ -67,7 +67,6 @@ func (s *splitJSONStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage.
 func (s *splitJSONStage) process(ctx context.Context, entries []Entry) error {
 	// NOTE: out is sized off len(entries) but one entry can split into many,
 	// so it may still grow via append. If this becomes an allocation hotspot

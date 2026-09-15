@@ -94,7 +94,6 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (m *truncateStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = m.processEntry(entries[i])

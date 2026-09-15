@@ -131,7 +131,6 @@ func (d *dropStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage and is only used by our new pipeline.
 func (d *dropStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 

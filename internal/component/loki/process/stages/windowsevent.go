@@ -74,7 +74,6 @@ func (w *windowsEventStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage.
 func (w *windowsEventStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 

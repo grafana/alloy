@@ -75,7 +75,6 @@ func (l *staticLabelStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (l *staticLabelStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		for i := 0; i < len(l.values); i += 2 {

@@ -133,7 +133,6 @@ func (o *templateStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (o *templateStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = o.processEntry(entries[i])

@@ -46,7 +46,6 @@ func (l *labelDropStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (l *labelDropStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		for _, label := range l.config.Values {

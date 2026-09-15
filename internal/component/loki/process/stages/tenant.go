@@ -62,7 +62,6 @@ type tenantStage struct {
 	logger *slog.Logger
 }
 
-// process implements stage.
 func (s *tenantStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = s.processEntry(entries[i])

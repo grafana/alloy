@@ -91,7 +91,6 @@ func (j *logfmtStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (j *logfmtStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = j.processEntry(entries[i])

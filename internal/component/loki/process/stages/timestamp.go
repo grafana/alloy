@@ -164,7 +164,6 @@ func (ts *timestampStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (ts *timestampStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = ts.processEntry(entries[i])

@@ -122,7 +122,6 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage.
 func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 
