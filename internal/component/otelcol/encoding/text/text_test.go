@@ -117,6 +117,13 @@ func TestExtension(t *testing.T) {
 
 	require.NoError(t, ctrl.WaitRunning(5*time.Second), "component never started")
 	require.NoError(t, ctrl.WaitExports(5*time.Second), "component never exported anything")
+	startedComponent, err := ctrl.GetComponent()
+	require.NoError(t, err, "no component added in controller")
+	healthComponent, ok := startedComponent.(component.HealthComponent)
+	require.True(t, ok, "component does not implement component.HealthComponent")
+	require.Eventually(t, func() bool {
+		return healthComponent.CurrentHealth().Health == component.HealthTypeHealthy
+	}, 5*time.Second, 10*time.Millisecond, "timed out waiting for the component to be healthy")
 
 	exports, ok := ctrl.Exports().(extension.Exports)
 	require.True(t, ok)
