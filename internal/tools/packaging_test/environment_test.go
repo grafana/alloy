@@ -50,8 +50,8 @@ func RPMEnvironment(t *testing.T, packageName string, pool *dockertest.Pool) Env
 	container := environmentContainer(
 		t,
 		pool,
-		"testdata/centos-systemd.Dockerfile",
-		packageName+"-test-centos-systemd",
+		"testdata/rocky-systemd.Dockerfile",
+		packageName+"-test-rocky-systemd",
 		fmt.Sprintf("../../../dist/%s-0.0.0-1.%s.rpm", packageName, runtime.GOARCH),
 	)
 
