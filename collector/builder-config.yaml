@@ -9,6 +9,10 @@ extensions:
   - gomod: github.com/grafana/alloy v1.19.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
+  # supportbundle is a separately released module. Its version is managed by its
+  # own release-please package, so it does not carry the x-release-please-version
+  # marker (which tracks the root module version).
+  - gomod: github.com/grafana/alloy/extension/supportbundle v0.1.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.158.0
@@ -111,6 +115,7 @@ replaces:
   # Local modules.
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
+  - github.com/grafana/alloy/extension/supportbundle => ../extension/supportbundle
   # <BEGIN_SHARED_REPLACE_DIRECTIVES>
   # The OTel supervisor that's embedded in Alloy imports cmd/opampsupervisor, but OCB does not list it as a component.
   # This would cause `go mod tidy` to resolve it to @latest

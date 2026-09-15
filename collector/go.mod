@@ -6,6 +6,7 @@ go 1.26.7
 
 require (
 	github.com/grafana/alloy v1.19.0
+	github.com/grafana/alloy/extension/supportbundle v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.158.0
@@ -1089,6 +1090,8 @@ require (
 replace github.com/grafana/alloy => ../
 
 replace github.com/grafana/alloy/syntax => ../syntax
+
+replace github.com/grafana/alloy/extension/supportbundle => ../extension/supportbundle
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.158.0
 
