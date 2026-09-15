@@ -47,7 +47,7 @@ The component reports an invalid configuration if the upstream extension doesn't
 The `marshaling_separator` argument separates consecutive log record bodies in marshaled output.
 
 The `unmarshaling_separator` argument is a regular expression that splits input into log records.
-Set `unmarshaling_separator` to an empty string to decode all input as one log record.
+If `unmarshaling_separator` is empty, the decoder waits until it reaches the end of the input and decodes as a single log record.
 
 ## Blocks
 
