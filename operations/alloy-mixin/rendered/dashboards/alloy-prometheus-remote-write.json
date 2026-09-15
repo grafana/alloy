@@ -454,7 +454,7 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Total number of active series across all components.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "description": "Total number of active series across all components.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n",
          "fieldConfig": {
             "defaults": {
                "unit": "short"
@@ -485,7 +485,7 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, with separate lines for each Alloy instance.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, with separate lines for each Alloy instance.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n",
          "fieldConfig": {
             "defaults": {
                "unit": "short"
@@ -511,7 +511,7 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, aggregated across all instances.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n\nNOTE: This metric is not available when using prometheus.write.queue component.\n",
+         "description": "Total number of active series which are currently being tracked by\nprometheus.remote_write components, aggregated across all instances.\n\nAn \"active series\" is a series that prometheus.remote_write recently\nreceived a sample for. Active series are garbage collected whenever a\ntruncation of the WAL occurs.\n",
          "fieldConfig": {
             "defaults": {
                "unit": "short"

@@ -1,0 +1,39 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT o.OrderId, c.Name
+FROM Orders o
+JOIN Customers c ON c.CustomerId = o.CustomerId
+WHERE o.Total > 100
+```
+
+-- nested_loop_seek_and_scan.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Nested Loops" LogicalOp="Inner Join" EstimateRows="12" EstimatedTotalSubtreeCost="0.045">
+              <NestedLoops>
+                <RelOp PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="8" EstimatedTotalSubtreeCost="0.012">
+                  <IndexScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" Index="[PK_Orders]" />
+                    <Predicate>
+                      <ScalarOperator ScalarString="[dbo].[Orders].[Total]&gt;(100)" />
+                    </Predicate>
+                  </IndexScan>
+                </RelOp>
+                <RelOp PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="1" EstimatedTotalSubtreeCost="0.003">
+                  <IndexScan Lookup="1">
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Customers]" Index="[PK_Customers]" />
+                  </IndexScan>
+                </RelOp>
+              </NestedLoops>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

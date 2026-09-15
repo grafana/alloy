@@ -63,6 +63,16 @@ Exercise caution when using `otelcol.processor.filter`:
 [Orphaned Telemetry]: https://github.com/open-telemetry/opentelemetry-collector/blob/v0.85.0/docs/standard-warnings.md#orphaned-telemetry
 {{< /admonition >}}
 
+{{< admonition type="note" >}}
+Span-level only. `otelcol.processor.filter` evaluates each span (or log/metric) independently.
+It doesn't keep or drop an entire trace based on a child span matching a URL or attribute, and it doesn't rewrite the root span's name or service after filtering siblings.
+
+For whole-trace keep/drop decisions, use [`otelcol.processor.tail_sampling`][otelcol.processor.tail_sampling].
+Tail sampling makes a trace decision from buffered data, and `decision_wait` controls how long it waits after the first span before deciding.
+
+[otelcol.processor.tail_sampling]: ../otelcol.processor.tail_sampling/
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

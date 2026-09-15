@@ -17,6 +17,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
@@ -1172,7 +1173,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractNames(context.Background()))
-		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(database_observability.EmitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractNames(context.Background()))
 
 		require.Eventually(t, func() bool {
@@ -1243,7 +1244,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than emitInterval ago, no further metadata queries are expected.
+		// less than EmitInterval ago, no further metadata queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
@@ -1388,7 +1389,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.Contains(t, collector.lastEmittedAt[database("db_a")], schemaTableKey("public", "test_table"))
 		require.Contains(t, collector.lastEmittedAt[database("db_b")], schemaTableKey("public", "test_table"))
 
-		// Second scrape (within emitInterval): db_a scrapes successfully but
+		// Second scrape (within EmitInterval): db_a scrapes successfully but
 		// is throttled (no metadata queries). db_b's selectSchemaNames fails
 		// transiently. The throttle entry for db_b must survive — otherwise
 		// the throttle guarantee is broken.
@@ -2005,6 +2006,34 @@ func Test_parseSchemaQualifiedIfAny(t *testing.T) {
 			assert.Equal(t, tc.expectedTable, gotTable)
 		})
 	}
+}
+
+func Test_TableRegistry_SchemasForDatabase(t *testing.T) {
+	t.Run("returns all schemas for a known database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "catalog", tableName: "products"},
+			{database: "mydb", schema: "catalog", tableName: "categories"},
+		})
+
+		schemas := tr.SchemasForDatabase("mydb")
+		assert.ElementsMatch(t, []string{"public", "catalog"}, schemas)
+	})
+
+	t.Run("returns nil for an unknown database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.Nil(t, tr.SchemasForDatabase("otherdb"))
+	})
+
+	t.Run("returns nil for an empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		assert.Nil(t, tr.SchemasForDatabase("mydb"))
+	})
 }
 
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {

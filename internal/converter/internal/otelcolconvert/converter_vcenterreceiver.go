@@ -57,9 +57,9 @@ func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenter
 		MetricsBuilderConfig: toMetricsBuildConfig(encodeMapstruct(cfg.MetricsBuilderConfig)),
 
 		ScraperControllerArguments: otelcol.ScraperControllerArguments{
-			CollectionInterval: cfg.CollectionInterval,
-			InitialDelay:       cfg.InitialDelay,
-			Timeout:            cfg.Timeout,
+			CollectionInterval: cfg.ControllerConfig.CollectionInterval,
+			InitialDelay:       cfg.ControllerConfig.InitialDelay,
+			Timeout:            cfg.ControllerConfig.Timeout,
 		},
 
 		TLS: toTLSClientArguments(cfg.ClientConfig),

@@ -30,7 +30,7 @@ Each block has a name and contains attributes or nested blocks.
 ```alloy
 prometheus.remote_write "production" {
   endpoint {
-    url = "http://localhost:9009/api/prom/push"
+    url = "http://localhost:9009/api/v1/push"
   }
 }
 ```

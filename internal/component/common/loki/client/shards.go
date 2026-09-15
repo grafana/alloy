@@ -403,6 +403,10 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
 	defer batch.reportAsSentData(s.tracker, obs)
 
+	// batch.size is the uncompressed size of the log lines, which is what's
+	// compared against the configured batch_size when filling the batch.
+	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(float64(batch.size))
+
 	r, entriesCount := batch.request()
 
 	size := r.Size()
@@ -465,6 +469,8 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	dropReason := reasonGeneric
 	if batchIsRateLimited(status) {
 		dropReason = reasonRateLimited
+	} else if batchIsTooLarge(status) {
+		dropReason = reasonBatchTooLarge
 	}
 	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
 	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
@@ -538,4 +544,8 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 
 func batchIsRateLimited(status int) bool {
 	return status == 429
+}
+
+func batchIsTooLarge(status int) bool {
+	return status == 413
 }

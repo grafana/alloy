@@ -199,7 +199,8 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(w.logger, nil, segment)
+	// Metrics must be non-nil (built with a nil registerer), the LiveReader panics otherwise.
+	reader := wlog.NewLiveReader(w.logger, wlog.NewLiveReaderMetrics(nil), segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 

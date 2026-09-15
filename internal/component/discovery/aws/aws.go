@@ -46,7 +46,7 @@ type AWSArguments struct {
 	RefreshInterval time.Duration     `alloy:"refresh_interval,attr,optional"`
 	Port            int               `alloy:"port,attr,optional"`
 
-	// Filters applies only to the ec2 role.
+	// Filters applies only to the ec2 and rds roles.
 	Filters []*EC2Filter `alloy:"filter,block,optional"`
 	// Clusters and RequestConcurrency apply only to the ecs, elasticache, msk, and rds roles.
 	Clusters           []string `alloy:"clusters,attr,optional"`
@@ -65,12 +65,12 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 	// build and attach it here based on the selected role. For numeric fields we
 	// mirror upstream's "override the per-role default only when set" semantics,
 	// sourcing the defaults from upstream's Default*SDConfig rather than hardcoding.
-	// https://github.com/prometheus/prometheus/blob/v3.12.0/discovery/aws/aws.go#L101
+	// https://github.com/prometheus/prometheus/blob/v3.13.2/discovery/aws/aws.go#L107
 	cfg := &promaws.SDConfig{Role: role}
 	switch role {
 	case promaws.RoleEC2:
 		def := promaws.DefaultEC2SDConfig
-		sub := &promaws.EC2SDConfig{
+		cfg.EC2SDConfig = &promaws.EC2SDConfig{
 			Endpoint:         args.Endpoint,
 			Region:           args.Region,
 			AccessKey:        args.AccessKey,
@@ -81,11 +81,8 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			RefreshInterval:  nonZero(model.Duration(args.RefreshInterval), def.RefreshInterval),
 			Port:             nonZero(args.Port, def.Port),
 			HTTPClientConfig: httpClient,
+			Filters:          toFilters(args.Filters),
 		}
-		for _, f := range args.Filters {
-			sub.Filters = append(sub.Filters, &promaws.EC2Filter{Name: f.Name, Values: f.Values})
-		}
-		cfg.EC2SDConfig = sub
 	case promaws.RoleECS:
 		def := promaws.DefaultECSSDConfig
 		cfg.ECSSDConfig = &promaws.ECSSDConfig{
@@ -163,6 +160,7 @@ func (args AWSArguments) Convert() discovery.DiscovererConfig {
 			Port:               nonZero(args.Port, def.Port),
 			RequestConcurrency: nonZero(args.RequestConcurrency, def.RequestConcurrency),
 			HTTPClientConfig:   httpClient,
+			Filters:            toFilters(args.Filters),
 		}
 	}
 	return cfg
@@ -181,6 +179,14 @@ func nonZero[T int | model.Duration](v, roleDefault T) T {
 		return v
 	}
 	return roleDefault
+}
+
+func toFilters(filters []*EC2Filter) []*promaws.Filter {
+	var out []*promaws.Filter
+	for _, f := range filters {
+		out = append(out, &promaws.Filter{Name: f.Name, Values: f.Values})
+	}
+	return out
 }
 
 // resolveRegion mirrors upstream loadRegion: prefer the region from AWS
@@ -227,8 +233,8 @@ func (args *AWSArguments) Validate() error {
 		args.Region = region
 	}
 
-	if len(args.Filters) > 0 && role != promaws.RoleEC2 {
-		return fmt.Errorf("filter blocks are only supported with the ec2 role, not %q", args.Role)
+	if len(args.Filters) > 0 && role != promaws.RoleEC2 && role != promaws.RoleRDS {
+		return fmt.Errorf("filter blocks are only supported with the ec2 and rds roles, not %q", args.Role)
 	}
 	for _, f := range args.Filters {
 		if len(f.Values) == 0 {

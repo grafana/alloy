@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.faro/
 description: Learn about otelcol.exporter.faro
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otelcol.exporter.faro
@@ -10,7 +10,7 @@ title: otelcol.exporter.faro
 
 # `otelcol.exporter.faro`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
 Use this exporter to send telemetry data to Grafana Cloud Collector Endpoint for [Frontend Observability][Frontend Observability] or to any backend that supports Faro format, allowing you to gain insights into the end user experience of your web application.
@@ -176,4 +176,4 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [Faro]: https://grafana.com/oss/faro/
-[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability/

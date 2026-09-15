@@ -35,6 +35,7 @@ This approach reduces operational complexity while giving you the flexibility to
 - [Requirements and expectations][Requirements]: Review deployment considerations and constraints
 - [Supported platforms][Supported platforms]: Check platform compatibility
 - [Estimate resource usage][Estimate resource usage]: Plan your deployment
+- [Access and permissions][Access and permissions]: Hardening, identity, network exposure, and secrets
 - [Migrate from other collectors][migrate]: Move from OpenTelemetry Collector, Prometheus Agent, or Grafana Agent
 
 [OpenTelemetry]: https://opentelemetry.io/docs/collector/distributions/
@@ -47,6 +48,28 @@ This approach reduces operational complexity while giving you the flexibility to
 [Requirements]: ./requirements/
 [Supported platforms]: ../set-up/supported-platforms/
 [Estimate resource usage]: ../set-up/estimate-resource-usage/
+[Access and permissions]: ../access_permissions/
 [migrate]: ../set-up/migrate/
 [beginners]: https://github.com/grafana/Grafana-Alloy-for-Beginners
 [scenarios]: https://github.com/grafana/alloy-scenarios
+
+## Frequently asked questions
+
+{{< qa-list >}}
+{{< qa question="What is Grafana Alloy?" >}}
+Grafana Alloy is an open source telemetry collector that simplifies how you gather and send telemetry.
+Alloy is a distribution of the OpenTelemetry Collector, an open source collector that receives, processes, and sends telemetry.
+Alloy also includes built-in support for Prometheus, a system for collecting metrics, and can send data to Loki (logs), Pyroscope (profiles), and other telemetry backends.
+{{< /qa >}}
+{{< qa question="Do I need a separate collector for metrics, logs, traces, and profiles?" >}}
+Not with Alloy.
+It's designed to collect metrics, logs, traces, and profiles all in one tool, cutting down on the number of collectors you have to run and maintain.
+You can still route that data to Grafana Cloud, a self-managed stack, or other compatible backends.
+{{< /qa >}}
+{{< qa question="How does Grafana Alloy work?" >}}
+You build pipelines out of components which are small building blocks that each do one job, like receiving data, transforming it, or sending it to a backend.
+You connect components together in a configuration file.
+One component's output feeds into another's input.
+Alloy runs that configuration as a continuous pipeline, so data flows from source to backend without you managing separate tools for each step.
+{{< /qa >}}
+{{< /qa-list >}}

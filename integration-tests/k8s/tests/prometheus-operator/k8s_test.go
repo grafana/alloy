@@ -37,10 +37,21 @@ func TestPrometheusOperator(t *testing.T) {
 		mimir.QueryMetrics(t, "servicemonitor", []string{
 			"test_servicemonitors_golang_counter",
 			"test_servicemonitors_golang_gauge",
+			"test_servicemonitors_golang_histogram_bucket",
+			"test_servicemonitors_golang_histogram_count",
+			"test_servicemonitors_golang_histogram_sum",
+			"test_servicemonitors_golang_native_histogram",
+			"test_servicemonitors_golang_mixed_histogram",
+			"test_servicemonitors_golang_mixed_histogram_bucket",
+			"test_servicemonitors_golang_mixed_histogram_count",
+			"test_servicemonitors_golang_mixed_histogram_sum",
 		})
 		mimir.QueryMetadata(t, map[string]deps.ExpectedMetadata{
-			"test_servicemonitors_golang_counter": {Type: "counter", Help: "The counter description string"},
-			"test_servicemonitors_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
+			"test_servicemonitors_golang_counter":          {Type: "counter", Help: "The counter description string"},
+			"test_servicemonitors_golang_gauge":            {Type: "gauge", Help: "The gauge description string"},
+			"test_servicemonitors_golang_histogram":        {Type: "histogram", Help: "The histogram description string"},
+			"test_servicemonitors_golang_native_histogram": {Type: "histogram", Help: "The native_histogram description string"},
+			"test_servicemonitors_golang_mixed_histogram":  {Type: "histogram", Help: "The mixed_histogram description string"},
 		})
 	})
 
@@ -51,10 +62,21 @@ func TestPrometheusOperator(t *testing.T) {
 		mimir.QueryMetrics(t, "podmonitor", []string{
 			"test_podmonitors_golang_counter",
 			"test_podmonitors_golang_gauge",
+			"test_podmonitors_golang_histogram_bucket",
+			"test_podmonitors_golang_histogram_count",
+			"test_podmonitors_golang_histogram_sum",
+			"test_podmonitors_golang_native_histogram",
+			"test_podmonitors_golang_mixed_histogram",
+			"test_podmonitors_golang_mixed_histogram_bucket",
+			"test_podmonitors_golang_mixed_histogram_count",
+			"test_podmonitors_golang_mixed_histogram_sum",
 		})
 		mimir.QueryMetadata(t, map[string]deps.ExpectedMetadata{
-			"test_podmonitors_golang_counter": {Type: "counter", Help: "The counter description string"},
-			"test_podmonitors_golang_gauge":   {Type: "gauge", Help: "The gauge description string"},
+			"test_podmonitors_golang_counter":          {Type: "counter", Help: "The counter description string"},
+			"test_podmonitors_golang_gauge":            {Type: "gauge", Help: "The gauge description string"},
+			"test_podmonitors_golang_histogram":        {Type: "histogram", Help: "The histogram description string"},
+			"test_podmonitors_golang_native_histogram": {Type: "histogram", Help: "The native_histogram description string"},
+			"test_podmonitors_golang_mixed_histogram":  {Type: "histogram", Help: "The mixed_histogram description string"},
 		})
 	})
 

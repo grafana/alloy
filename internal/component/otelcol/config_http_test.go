@@ -25,6 +25,21 @@ func TestHTTPServerArguments_ConvertTimeoutZeroValue(t *testing.T) {
 	require.Equal(t, time.Duration(0), server.ReadTimeout)
 }
 
+func TestCORSArguments_ConvertExposedHeaders(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		cors := (&otelcol.CORSArguments{}).Convert()
+		require.Nil(t, cors.Get().ExposedHeaders)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		args := &otelcol.CORSArguments{
+			ExposedHeaders: []string{"X-Request-Id", "X-Trace-Id"},
+		}
+		cors := args.Convert()
+		require.Equal(t, []string{"X-Request-Id", "X-Trace-Id"}, cors.Get().ExposedHeaders)
+	})
+}
+
 func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 	args := &otelcol.HTTPServerArguments{
 		IdleTimeout:       2 * time.Minute,

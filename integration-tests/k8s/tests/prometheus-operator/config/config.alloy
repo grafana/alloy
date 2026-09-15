@@ -11,7 +11,9 @@ prometheus.operator.servicemonitors "default" {
   namespaces = [sys.env("POD_NAMESPACE")]
   // honor_metadata forwards TYPE/HELP; asserted in k8s_test.
   scrape {
-    honor_metadata = true
+    honor_metadata              = true
+    scrape_native_histograms    = true
+    scrape_classic_histograms   = true
   }
   selector {
     match_labels = {
@@ -40,7 +42,9 @@ prometheus.operator.podmonitors "default" {
   forward_to = [prometheus.relabel.podmonitors.receiver]
   namespaces = [sys.env("POD_NAMESPACE")]
   scrape {
-    honor_metadata = true
+    honor_metadata              = true
+    scrape_native_histograms    = true
+    scrape_classic_histograms   = true
   }
   selector {
     match_labels = {

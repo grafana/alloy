@@ -341,8 +341,6 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
-
-        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 0, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
@@ -366,8 +364,6 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
-
-        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 8, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([
@@ -391,8 +387,6 @@ local filename = 'alloy-prometheus-remote-write.json';
         An "active series" is a series that prometheus.remote_write recently
         received a sample for. Active series are garbage collected whenever a
         truncation of the WAL occurs.
-
-        NOTE: This metric is not available when using prometheus.write.queue component.
       |||) +
       panel.withPosition({ x: 16, y: 31 + y_offset, w: 8, h: 10 }) +
       panel.withQueries([

@@ -3,12 +3,14 @@ package otelcolconvert
 import (
 	"fmt"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/file"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configcompression"
 )
 
 func init() {
@@ -42,12 +44,13 @@ func (fileExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 
 func toFileExporter(diags diag.Diagnostics, cfg *fileexporter.Config) *file.Arguments {
 	args := &file.Arguments{
-		Path:          cfg.Path,
-		Format:        cfg.FormatType,
-		Append:        cfg.Append,
-		Compression:   cfg.Compression,
-		FlushInterval: cfg.FlushInterval,
-		DebugMetrics:  common.DefaultValue[file.Arguments]().DebugMetrics,
+		Path:              cfg.Path,
+		Format:            cfg.FormatType,
+		Append:            cfg.Append,
+		Compression:       cfg.Compression,
+		CompressionParams: toFileCompressionParams(cfg.CompressionParams),
+		FlushInterval:     cfg.FlushInterval,
+		DebugMetrics:      common.DefaultValue[file.Arguments]().DebugMetrics,
 	}
 
 	// Convert rotation settings if present
@@ -80,4 +83,14 @@ func toFileExporter(diags diag.Diagnostics, cfg *fileexporter.Config) *file.Argu
 	}
 
 	return args
+}
+
+// toFileCompressionParams maps upstream's value type onto Alloy's optional block.
+// Level 0 is the zero value and means "codec default", so emit no block for it rather
+// than an empty one.
+func toFileCompressionParams(cfg configcompression.CompressionParams) *otelcol.CompressionParams {
+	if cfg.Level == 0 {
+		return nil
+	}
+	return &otelcol.CompressionParams{Level: int(cfg.Level)}
 }

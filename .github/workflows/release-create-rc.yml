@@ -8,6 +8,12 @@ on:
         type: boolean
         default: true # For safety!
 
+# Same concurrency group as release please workflow
+concurrency:
+  group: release-branch-write-${{ github.ref_name }}
+  cancel-in-progress: false
+  queue: max
+
 permissions:
   id-token: write
 
@@ -53,5 +59,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
-          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
         run: go run -C tools ./cmd release create-rc --branch "${GITHUB_REF_NAME}" ${{ inputs.dry_run == true && '--dry-run' || '' }}

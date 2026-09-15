@@ -17,7 +17,7 @@ jobs:
     name: Test Linux system packages
     runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
+      image: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
       volumes:
         - /var/run/docker.sock
     steps:

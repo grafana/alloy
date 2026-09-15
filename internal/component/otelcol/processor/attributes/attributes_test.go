@@ -175,12 +175,12 @@ func Test_Insert(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "attribute1", action.Key)
 	require.Equal(t, 111111, action.Value)
 	require.Equal(t, "insert", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "string key", action.Key)
 	require.Equal(t, "anotherkey", action.Value)
 	require.Equal(t, "insert", string(action.Action))
@@ -245,7 +245,7 @@ func Test_RegexExtract(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "user_key", action.Key)
 	require.Equal(t, `\/api\/v1\/document\/(?P<new_user_key>.*)\/update\/(?P<version>.*)$`, action.RegexPattern)
 	require.Equal(t, "extract", string(action.Action))
@@ -313,12 +313,12 @@ func Test_Update(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "boo", action.Key)
 	require.Equal(t, "foo", action.FromAttribute)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "db.secret", action.Key)
 	require.Equal(t, "redacted", action.Value)
 	require.Equal(t, "update", string(action.Action))
@@ -394,12 +394,12 @@ func Test_Upsert(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "region", action.Key)
 	require.Equal(t, "planet-earth", action.Value)
 	require.Equal(t, "upsert", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "new_user_key", action.Key)
 	require.Equal(t, "user_key", action.FromAttribute)
 	require.Equal(t, "upsert", string(action.Action))
@@ -465,11 +465,11 @@ func Test_Delete(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -530,7 +530,7 @@ func Test_Hash(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "user.email", action.Key)
 	require.Equal(t, "hash", string(action.Action))
 
@@ -600,7 +600,7 @@ func Test_Convert(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "http.status_code", action.Key)
 	require.Equal(t, "int", action.ConvertedType)
 	require.Equal(t, "convert", string(action.Action))
@@ -669,27 +669,27 @@ func Test_ExcludeMulti(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
 
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	svc := &otelObj.Exclude.Services[0]
+	svc := &otelObj.MatchConfig.Exclude.Services[0]
 	require.Equal(t, "svcA", *svc)
-	svc = &otelObj.Exclude.Services[1]
+	svc = &otelObj.MatchConfig.Exclude.Services[1]
 	require.Equal(t, "svcB", *svc)
 
-	attr := &otelObj.Exclude.Attributes[0]
+	attr := &otelObj.MatchConfig.Exclude.Attributes[0]
 	require.Equal(t, "env", attr.Key)
 	require.Equal(t, "dev", attr.Value)
 
-	attr = &otelObj.Exclude.Attributes[1]
+	attr = &otelObj.MatchConfig.Exclude.Attributes[1]
 	require.Equal(t, "test_request", attr.Key)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -897,19 +897,19 @@ func Test_ExcludeResources(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
 
-	res := &otelObj.Exclude.Resources[0]
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	res := &otelObj.MatchConfig.Exclude.Resources[0]
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
 	require.Equal(t, "host.type", res.Key)
 	require.Equal(t, "n1-standard-1", res.Value)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -1059,18 +1059,18 @@ func Test_ExcludeLibrary(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	lib := &otelObj.Exclude.Libraries[0]
+	lib := &otelObj.MatchConfig.Exclude.Libraries[0]
 	require.Equal(t, "mongo-java-driver", lib.Name)
 	require.Equal(t, "3.8.0", *lib.Version)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -1235,18 +1235,18 @@ func Test_ExcludeLibraryAnyVersion(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	lib := &otelObj.Exclude.Libraries[0]
+	lib := &otelObj.MatchConfig.Exclude.Libraries[0]
 	require.Equal(t, "mongo-java-driver", lib.Name)
 	require.Nil(t, lib.Version)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -1412,18 +1412,18 @@ func Test_ExcludeLibraryBlankVersion(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	lib := &otelObj.Exclude.Libraries[0]
+	lib := &otelObj.MatchConfig.Exclude.Libraries[0]
 	require.Equal(t, "mongo-java-driver", lib.Name)
 	require.Equal(t, "", *lib.Version)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -1644,18 +1644,18 @@ func Test_ExcludeServices(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "regexp", string(otelObj.Exclude.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	svc := &otelObj.Exclude.Services
+	svc := &otelObj.MatchConfig.Exclude.Services
 	require.Equal(t, "auth.*", (*svc)[0])
 	require.Equal(t, "login.*", (*svc)[1])
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -1867,25 +1867,25 @@ func Test_SelectiveProcessing(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "strict", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Include.MatchType))
 
-	svc := &otelObj.Include.Services
+	svc := &otelObj.MatchConfig.Include.Services
 	require.Equal(t, "svcA", (*svc)[0])
 	require.Equal(t, "svcB", (*svc)[1])
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "strict", string(otelObj.Exclude.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "strict", string(otelObj.MatchConfig.Exclude.MatchType))
 
-	attr := &otelObj.Exclude.Attributes[0]
+	attr := &otelObj.MatchConfig.Exclude.Attributes[0]
 	require.Equal(t, "redact_trace", attr.Key)
 	require.Equal(t, false, attr.Value)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "credit_card", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "duplicate_key", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -2034,17 +2034,17 @@ func Test_Complex(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "operation", action.Key)
 	require.Equal(t, "default", action.Value)
 	require.Equal(t, "insert", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "svc.operation", action.Key)
 	require.Equal(t, "operation", action.Value)
 	require.Equal(t, "upsert", string(action.Action))
 
-	action = &otelObj.Actions[2]
+	action = &otelObj.Settings.Actions[2]
 	require.Equal(t, "operation", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -2152,26 +2152,26 @@ func Test_ExampleActions(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "db.table", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "redacted_span", action.Key)
 	require.Equal(t, true, action.Value)
 	require.Equal(t, "upsert", string(action.Action))
 
-	action = &otelObj.Actions[2]
+	action = &otelObj.Settings.Actions[2]
 	require.Equal(t, "copy_key", action.Key)
 	require.Equal(t, "key_original", action.FromAttribute)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[3]
+	action = &otelObj.Settings.Actions[3]
 	require.Equal(t, "account_id", action.Key)
-	require.Equal(t, 2245, otelObj.Actions[3].Value)
+	require.Equal(t, 2245, otelObj.Settings.Actions[3].Value)
 	require.Equal(t, "insert", string(action.Action))
 
-	action = &otelObj.Actions[4]
+	action = &otelObj.Settings.Actions[4]
 	require.Equal(t, "account_password", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -2261,20 +2261,20 @@ func Test_Regexp(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
-	require.Equal(t, "auth.*", otelObj.Include.Services[0])
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
+	require.Equal(t, "auth.*", otelObj.MatchConfig.Include.Services[0])
 
-	require.NotNil(t, otelObj.Exclude)
-	require.Equal(t, "regexp", string(otelObj.Exclude.MatchType))
-	require.Equal(t, "login.*", otelObj.Exclude.SpanNames[0])
+	require.NotNil(t, otelObj.MatchConfig.Exclude)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Exclude.MatchType))
+	require.Equal(t, "login.*", otelObj.MatchConfig.Exclude.SpanNames[0])
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "password", action.Key)
 	require.Equal(t, "obfuscated", action.Value)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "token", action.Key)
 	require.Equal(t, "delete", string(action.Action))
 
@@ -2393,14 +2393,14 @@ func Test_Regexp2(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
 
-	attr := &otelObj.Include.Attributes[0]
+	attr := &otelObj.MatchConfig.Include.Attributes[0]
 	require.Equal(t, "db.statement", attr.Key)
 	require.Equal(t, "SELECT \\* FROM USERS.*", attr.Value)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "db.statement", action.Key)
 	require.Equal(t, "SELECT * FROM USERS [obfuscated]", action.Value)
 	require.Equal(t, "update", string(action.Action))
@@ -2485,18 +2485,18 @@ func Test_LogBodyRegexp(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
 
-	require.Equal(t, "AUTH.*", otelObj.Include.LogBodies[0])
+	require.Equal(t, "AUTH.*", otelObj.MatchConfig.Include.LogBodies[0])
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "password", action.Key)
 	require.Equal(t, "obfuscated", action.Value)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[1]
-	require.Equal(t, "token", otelObj.Actions[1].Key)
+	action = &otelObj.Settings.Actions[1]
+	require.Equal(t, "token", otelObj.Settings.Actions[1].Key)
 	require.Equal(t, "delete", string(action.Action))
 
 	var inputLog = `{
@@ -2607,18 +2607,18 @@ func Test_LogSeverityTextsRegexp(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
 
-	require.Equal(t, "info.*", otelObj.Include.LogSeverityTexts[0])
+	require.Equal(t, "info.*", otelObj.MatchConfig.Include.LogSeverityTexts[0])
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "password", action.Key)
 	require.Equal(t, "obfuscated", action.Value)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[1]
-	require.Equal(t, "token", otelObj.Actions[1].Key)
+	action = &otelObj.Settings.Actions[1]
+	require.Equal(t, "token", otelObj.Settings.Actions[1].Key)
 	require.Equal(t, "delete", string(action.Action))
 
 	var inputLog = `{
@@ -2732,19 +2732,19 @@ func Test_LogSeverity(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
 
-	require.Equal(t, int32(9), int32(otelObj.Include.LogSeverityNumber.Min))
-	require.Equal(t, true, otelObj.Include.LogSeverityNumber.MatchUndefined)
+	require.Equal(t, int32(9), int32(otelObj.MatchConfig.Include.LogSeverityNumber.Min))
+	require.Equal(t, true, otelObj.MatchConfig.Include.LogSeverityNumber.MatchUndefined)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "password", action.Key)
 	require.Equal(t, "obfuscated", action.Value)
 	require.Equal(t, "update", string(action.Action))
 
-	action = &otelObj.Actions[1]
-	require.Equal(t, "token", otelObj.Actions[1].Key)
+	action = &otelObj.Settings.Actions[1]
+	require.Equal(t, "token", otelObj.Settings.Actions[1].Key)
 	require.Equal(t, "delete", string(action.Action))
 
 	var inputLog = `{
@@ -2853,12 +2853,12 @@ func Test_FromContext(t *testing.T) {
 
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "origin", action.Key)
 	require.Equal(t, "metadata.origin", action.FromContext)
 	require.Equal(t, "insert", string(action.Action))
 
-	action = &otelObj.Actions[1]
+	action = &otelObj.Settings.Actions[1]
 	require.Equal(t, "enduser.id", action.Key)
 	require.Equal(t, "auth.subject", action.FromContext)
 	require.Equal(t, "insert", string(action.Action))
@@ -2953,12 +2953,12 @@ func Test_MetricNames(t *testing.T) {
 	require.NoError(t, err)
 	otelObj := (convertedArgs).(*attributesprocessor.Config)
 
-	require.NotNil(t, otelObj.Include)
-	require.Equal(t, "regexp", string(otelObj.Include.MatchType))
+	require.NotNil(t, otelObj.MatchConfig.Include)
+	require.Equal(t, "regexp", string(otelObj.MatchConfig.Include.MatchType))
 
-	require.Equal(t, "counter.*", otelObj.Include.MetricNames[0])
+	require.Equal(t, "counter.*", otelObj.MatchConfig.Include.MetricNames[0])
 
-	action := &otelObj.Actions[0]
+	action := &otelObj.Settings.Actions[0]
 	require.Equal(t, "important_label", action.Key)
 	require.Equal(t, "label_val", action.Value)
 	require.Equal(t, "upsert", string(action.Action))

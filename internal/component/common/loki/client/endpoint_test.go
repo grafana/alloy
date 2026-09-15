@@ -454,3 +454,67 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		require.NoError(t, e.enqueue(entry4, 0))
 	})
 }
+
+func TestEndpointBatchSizeMetric(t *testing.T) {
+	receivedReqsChan := make(chan util.RemoteWriteRequest, 10)
+	server := util.NewRemoteWriteServer(receivedReqsChan, http.StatusOK)
+	defer server.Close()
+
+	var url flagext.URLValue
+	require.NoError(t, url.Set(server.URL))
+
+	entries := []loki.Entry{
+		{Entry: push.Entry{Timestamp: time.Unix(1, 0), Line: "line 1"}},
+		{Entry: push.Entry{Timestamp: time.Unix(2, 0), Line: "line 2"}},
+	}
+
+	reg := prometheus.NewRegistry()
+	e, err := newEndpoint(newMetrics(reg), Config{
+		URL: url,
+		// Both entries fit in one batch, so they are sent together once
+		// BatchWait is reached.
+		BatchSize:     int(1 * units.MiB),
+		BatchWait:     50 * time.Millisecond,
+		Timeout:       time.Second,
+		Client:        config.DefaultHTTPClientConfig,
+		BackoffConfig: backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3},
+		QueueConfig:   QueueConfig{Capacity: int(10 * units.MiB), MinShards: 1, BlockOnOverflow: true, DrainTimeout: 30 * time.Second},
+	}, logging.NewSlogNop(), marker.NewNopTracker())
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		require.NoError(t, e.enqueue(entry, 0))
+	}
+
+	// Stopping the endpoint waits until the current batch is sent.
+	e.stop()
+
+	require.Equal(t, 1, len(receivedReqsChan), "expected both entries to be sent in a single batch")
+
+	// The observed size is the uncompressed size of the log lines, which is what
+	// the batch compares against the configured BatchSize.
+	sum, count := histogramSumAndCount(t, reg, "loki_write_batch_size_bytes")
+	assert.Equal(t, uint64(1), count)
+	assert.Equal(t, float64(entries[0].Size()+entries[1].Size()), sum)
+}
+
+// histogramSumAndCount returns the sum and count of the single series of the
+// named histogram in reg.
+func histogramSumAndCount(t *testing.T, reg *prometheus.Registry, name string) (float64, uint64) {
+	t.Helper()
+
+	families, err := reg.Gather()
+	require.NoError(t, err)
+
+	for _, family := range families {
+		if family.GetName() != name {
+			continue
+		}
+		require.Len(t, family.GetMetric(), 1)
+		h := family.GetMetric()[0].GetHistogram()
+		return h.GetSampleSum(), h.GetSampleCount()
+	}
+
+	t.Fatalf("metric %s not found", name)
+	return 0, 0
+}

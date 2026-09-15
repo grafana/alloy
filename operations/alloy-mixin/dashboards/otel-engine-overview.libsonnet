@@ -3,22 +3,30 @@ local panel = import './utils/panel.jsonnet';
 local filename = 'alloy-otel-engine-overview.json';
 
 {
+  local addFilterSelector(labels) =
+    if std.length($._config.filterSelector) == 0 then
+      labels
+    else if std.length(labels) == 0 then
+      $._config.filterSelector
+    else
+      '%s, %s' % [$._config.filterSelector, labels],
+
   local templateVariables = [
     dashboard.newMultiTemplateVariable(
       'cluster',
-      'label_values(otelcol_process_uptime_seconds_total, cluster)',
+      'label_values(otelcol_process_uptime_seconds_total{%s}, cluster)' % addFilterSelector(''),
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
       defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'namespace',
-      'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster"}, namespace)',
+      'label_values(otelcol_process_uptime_seconds_total{%s}, namespace)' % addFilterSelector('cluster=~"$cluster"'),
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
       defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'job',
-      'label_values(otelcol_process_uptime_seconds_total{cluster=~"$cluster", namespace=~"$namespace"}, job)',
+      'label_values(otelcol_process_uptime_seconds_total{%s}, job)' % addFilterSelector('cluster=~"$cluster", namespace=~"$namespace"'),
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ),
     dashboard.newGroupByTemplateVariable(
@@ -431,12 +439,16 @@ local filename = 'alloy-otel-engine-overview.json';
               panel.withQueries([
                 panel.newQuery(
                   expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_spans_total{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by(${groupby}) (rate(otelcol_processor_refused_spans_total{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   legendFormat='{{${groupby}}} spans',
                 ),
                 panel.newQuery(
                   expr=|||
+                    sum by(${groupby}) (rate(otelcol_processor_memory_limiter_refused_metric_points_total{%(groupSelector)s}[$__rate_interval]))
+                    or
                     sum by(${groupby}) (rate(otelcol_processor_refused_metric_points_total{%(groupSelector)s}[$__rate_interval]))
                   ||| % $._config,
                   legendFormat='{{${groupby}}} metric points',

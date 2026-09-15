@@ -64,7 +64,7 @@ func (args EC2Arguments) Convert() discovery.DiscovererConfig {
 		HTTPClientConfig: *args.HTTPClientConfig.Convert(),
 	}
 	for _, f := range args.Filters {
-		cfg.Filters = append(cfg.Filters, &promaws.EC2Filter{
+		cfg.Filters = append(cfg.Filters, &promaws.Filter{
 			Name:   f.Name,
 			Values: f.Values,
 		})

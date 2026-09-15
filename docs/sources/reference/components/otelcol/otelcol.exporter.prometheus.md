@@ -62,7 +62,6 @@ The following components are compatible:
 
 * `otelcol.receiver.prometheus`
 * `prometheus.remote_write` only when configured for Remote Write v2.
-* `prometheus.write_queue`
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
 {{< /admonition >}}

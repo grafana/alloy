@@ -1,0 +1,43 @@
+SQL Server showplan XML generated from a query with a missing join predicate and a
+hash join that spills to tempdb (a synthetic worst-case shape, hand-authored for
+warning coverage rather than a real query):
+
+```
+SELECT o.OrderId, c.Name
+FROM Orders o, Customers c
+```
+
+-- warnings.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Hash Match" LogicalOp="Inner Join" EstimateRows="2000000" EstimatedTotalSubtreeCost="45.2">
+              <Warnings>
+                <NoJoinPredicate />
+                <SpillToTempDb />
+              </Warnings>
+              <Hash>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="1000" EstimatedTotalSubtreeCost="0.5">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Customers]" />
+                  </TableScan>
+                </RelOp>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.6">
+                  <Warnings>
+                    <ColumnsWithNoStatistics />
+                  </Warnings>
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Hash>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

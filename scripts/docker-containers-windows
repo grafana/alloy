@@ -85,6 +85,10 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows                \
       .
 
+    # Sanity check: make sure the image can actually start (e.g. catches a
+    # missing DLL at process launch) before we push it.
+    docker run --rm "$RELEASE_ALLOY_IMAGE:$VERSION_TAG" --version
+
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
       docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
@@ -108,6 +112,8 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows                \
       .
 
+    docker run --rm "$RELEASE_ALLOY_IMAGE:$VERSION_TAG-cngcrypto" --version
+
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$RELEASE_ALLOY_IMAGE:$VERSION_TAG"
       docker push "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"
@@ -124,6 +130,8 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       -f ./Dockerfile.windows              \
       .
+
+    docker run --rm "$DEVEL_ALLOY_IMAGE:$VERSION_TAG" --version
 
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
@@ -148,6 +156,8 @@ case "$TARGET_CONTAINER" in
       -f ./Dockerfile.windows              \
       .
 
+    docker run --rm "$DEVEL_ALLOY_IMAGE:$VERSION_TAG-cngcrypto" --version
+
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$DEVEL_ALLOY_IMAGE:$VERSION_TAG"
       docker push "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"
@@ -165,6 +175,8 @@ case "$TARGET_CONTAINER" in
       --build-arg BASE_IMAGE_WINDOWS="$BASE_IMAGE_WINDOWS" \
       -f ./Dockerfile.windows              \
       .
+
+    docker run --rm "$DEVEL_ALLOY_IMAGE:$TAG" --version
 
     if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
       docker push "$DEVEL_ALLOY_IMAGE:$TAG"

@@ -11,6 +11,8 @@ import (
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/static/integrations/config"
@@ -60,7 +62,7 @@ func (e *asyncExporter) MetricsHandler() (http.Handler, error) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, req)
+		util.PromHTTPHandlerFor(reg, e.logger, promhttp.HandlerOpts{}).ServeHTTP(w, req)
 	})
 	return h, nil
 }

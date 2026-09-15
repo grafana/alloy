@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -244,6 +245,74 @@ func testTransactionAppendDuplicateLabels(t *testing.T) {
 	assert.ErrorContains(t, err, `invalid sample: non-unique label names: "a"`)
 }
 
+func TestTransactionAppendReturnsStableSeriesRef(t *testing.T) {
+	sink := new(consumertest.MetricsSink)
+	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+
+	lsA := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "counter_test",
+		"foo", "bar",
+	)
+	lsB := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "counter_test",
+		"foo", "baz",
+	)
+
+	refA, err := tr.Append(0, lsA, ts, 1.0)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(lsA.Hash()), refA)
+
+	refB, err := tr.Append(0, lsB, ts, 1.0)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(lsB.Hash()), refB)
+
+	require.NotEqual(t, refA, refB)
+}
+
+func TestTransactionAppendStableSeriesRefEnablesSeriesDisappearanceTracking(t *testing.T) {
+	lsA := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "counter_test",
+		"foo", "bar",
+	)
+	lsB := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "counter_test",
+		"foo", "baz",
+	)
+
+	// Scrape #1: both series are present.
+	tr1 := newTransaction(scrapeCtx, new(consumertest.MetricsSink), labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+	refA1, err := tr1.Append(0, lsA, ts, 1.0)
+	require.NoError(t, err)
+	refB1, err := tr1.Append(0, lsB, ts, 1.0)
+	require.NoError(t, err)
+
+	// Scrape #2: only series A is present.
+	tr2 := newTransaction(scrapeCtx, new(consumertest.MetricsSink), labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+	refA2, err := tr2.Append(0, lsA, ts+interval, 1.0)
+	require.NoError(t, err)
+
+	prev := map[storage.SeriesRef]struct{}{refA1: {}, refB1: {}}
+	cur := map[storage.SeriesRef]struct{}{refA2: {}}
+
+	var missing []storage.SeriesRef
+	for ref := range prev {
+		if _, ok := cur[ref]; !ok {
+			missing = append(missing, ref)
+		}
+	}
+
+	require.Len(t, missing, 1)
+	require.Equal(t, refB1, missing[0])
+}
+
 func TestTransactionAppendHistogramNoLe(t *testing.T) {
 	testTransactionAppendHistogramNoLe(t)
 }
@@ -276,6 +345,74 @@ func testTransactionAppendHistogramNoLe(t *testing.T) {
 
 	assert.NoError(t, tr.Commit())
 	assert.Empty(t, sink.AllMetrics())
+}
+
+func TestTransactionAppendHistogramReturnsStableSeriesRef(t *testing.T) {
+	sink := new(consumertest.MetricsSink)
+	tr := newTransaction(scrapeCtx, sink, labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+
+	lsA := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "native_hist_test",
+		"foo", "bar",
+	)
+	lsB := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "native_hist_test",
+		"foo", "baz",
+	)
+
+	refA, err := tr.AppendHistogram(0, lsA, ts, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(lsA.Hash()), refA)
+
+	refB, err := tr.AppendHistogram(0, lsB, ts, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(lsB.Hash()), refB)
+
+	require.NotEqual(t, refA, refB)
+}
+
+func TestTransactionAppendHistogramStableSeriesRefEnablesSeriesDisappearanceTracking(t *testing.T) {
+	lsA := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "native_hist_test",
+		"foo", "bar",
+	)
+	lsB := labels.FromStrings(
+		model.InstanceLabel, "localhost:8855",
+		model.JobLabel, "test",
+		model.MetricNameLabel, "native_hist_test",
+		"foo", "baz",
+	)
+
+	// Scrape #1: both series are present.
+	tr1 := newTransaction(scrapeCtx, new(consumertest.MetricsSink), labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+	refA1, err := tr1.AppendHistogram(0, lsA, ts, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	refB1, err := tr1.AppendHistogram(0, lsB, ts, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+
+	// Scrape #2: only series A is present.
+	tr2 := newTransaction(scrapeCtx, new(consumertest.MetricsSink), labels.EmptyLabels(), receivertest.NewNopSettings(receivertest.NopType), nopObsRecv(t), false, true)
+	refA2, err := tr2.AppendHistogram(0, lsA, ts+interval, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+
+	prev := map[storage.SeriesRef]struct{}{refA1: {}, refB1: {}}
+	cur := map[storage.SeriesRef]struct{}{refA2: {}}
+
+	var missing []storage.SeriesRef
+	for ref := range prev {
+		if _, ok := cur[ref]; !ok {
+			missing = append(missing, ref)
+		}
+	}
+
+	require.Len(t, missing, 1)
+	require.Equal(t, refB1, missing[0])
 }
 
 func TestTransactionAppendSummaryNoQuantile(t *testing.T) {

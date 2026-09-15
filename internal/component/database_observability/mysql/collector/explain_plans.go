@@ -372,12 +372,16 @@ type queryInfo struct {
 	uniqueKey  string
 }
 
+func explainPlanQueryKey(schemaName, digest string) string {
+	return fmt.Sprintf("%s:%s", schemaName, digest)
+}
+
 func newQueryInfo(schemaName, digest, queryText string) *queryInfo {
 	return &queryInfo{
 		schemaName: schemaName,
 		digest:     digest,
 		queryText:  queryText,
-		uniqueKey:  schemaName + digest,
+		uniqueKey:  explainPlanQueryKey(schemaName, digest),
 	}
 }
 
@@ -414,6 +418,8 @@ type ExplainPlans struct {
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
 	lastSeen         time.Time
+	lastEmittedAt    map[string]time.Time
+	now              func() time.Time
 	logger           *slog.Logger
 	running          *atomic.Bool
 	ctx              context.Context
@@ -431,10 +437,40 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]struct{}),
+		lastEmittedAt:  make(map[string]time.Time),
+		now:            time.Now,
 		entryHandler:   args.EntryHandler,
 		logger:         args.Logger.With("collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}, nil
+}
+
+func (c *ExplainPlans) currentTime() time.Time {
+	if c.now != nil {
+		return c.now()
+	}
+	return time.Now()
+}
+
+func (c *ExplainPlans) isThrottled(key string) bool {
+	last, ok := c.lastEmittedAt[key]
+	return ok && c.currentTime().Sub(last) < database_observability.EmitInterval
+}
+
+func (c *ExplainPlans) recordEmission(key string) {
+	if c.lastEmittedAt == nil {
+		c.lastEmittedAt = make(map[string]time.Time)
+	}
+	c.lastEmittedAt[key] = c.currentTime()
+}
+
+func (c *ExplainPlans) pruneExpiredThrottle() {
+	now := c.currentTime()
+	for key, last := range c.lastEmittedAt {
+		if now.Sub(last) >= database_observability.EmitInterval {
+			delete(c.lastEmittedAt, key)
+		}
+	}
 }
 
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
@@ -469,6 +505,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 		OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
+	c.recordEmission(explainPlanQueryKey(schemaName, digest))
 
 	return nil
 }
@@ -520,6 +557,8 @@ func (c *ExplainPlans) Stop() {
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
+	c.pruneExpiredThrottle()
+
 	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
@@ -539,25 +578,31 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		}
 
 		qi := newQueryInfo(schemaName, digest, queryText)
-		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
-			c.queryCache[qi.uniqueKey] = qi
-		} else {
-			err := c.sendExplainPlansOutput(
-				schemaName,
-				digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query denylisted",
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
-			}
-			continue
-		}
 		if ls.After(c.lastSeen) {
 			c.lastSeen = ls
 		}
+
+		if _, ok := c.queryDenylist[qi.uniqueKey]; ok {
+			if !c.isThrottled(qi.uniqueKey) {
+				err := c.sendExplainPlansOutput(
+					schemaName,
+					digest,
+					generatedAt,
+					database_observability.ExplainProcessingResultSkipped,
+					"query denylisted",
+					nil,
+				)
+				if err != nil {
+					c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
+				}
+			}
+			continue
+		}
+
+		if c.isThrottled(qi.uniqueKey) {
+			continue
+		}
+		c.queryCache[qi.uniqueKey] = qi
 	}
 
 	if err := rs.Err(); err != nil {
@@ -580,6 +625,10 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
+		if c.isThrottled(qi.uniqueKey) {
+			delete(c.queryCache, qi.uniqueKey)
+			continue
+		}
 		if processedCount >= c.currentBatchSize {
 			break
 		}

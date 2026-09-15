@@ -15,6 +15,14 @@ local filename = 'alloy-logs.json';
     else
       '{%s}' % baseLabels,
 
+  local addLogsFilter(labels) =
+    if std.length($._config.logsFilterSelector) == 0 then
+      labels
+    else if std.length(labels) == 0 then
+      $._config.logsFilterSelector
+    else
+      '%s, %s' % [$._config.logsFilterSelector, labels],
+
   local lokiTemplateVariables = 
     if $._config.enableK8sCluster then ([
       {
@@ -22,7 +30,7 @@ local filename = 'alloy-logs.json';
         label: 'Cluster',
         type: 'query',
         datasource: '${datasource}',
-        query: 'label_values(alloy_build_info, cluster)',
+        query: 'label_values(alloy_build_info{%s}, cluster)' % addLogsFilter(''),
         refresh: 2,
         sort: 1,
         multi: true,
@@ -33,7 +41,7 @@ local filename = 'alloy-logs.json';
         label: 'Namespace',
         type: 'query',
         datasource: '${datasource}',
-        query: 'label_values(alloy_build_info{cluster=~"$cluster"}, namespace)',
+        query: 'label_values(alloy_build_info{%s}, namespace)' % addLogsFilter('cluster=~"$cluster"'),
         refresh: 2,
         sort: 1,
         multi: true,
@@ -44,7 +52,7 @@ local filename = 'alloy-logs.json';
         label: 'Job',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace"}, job)',
+        query: 'label_values({%s}, job)' % addLogsFilter('cluster=~"$cluster", namespace=~"$namespace"'),
         refresh: 2,
         sort: 1,
         multi: true,
@@ -56,7 +64,7 @@ local filename = 'alloy-logs.json';
         label: 'Instance',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)',
+        query: 'label_values({%s}, instance)' % addLogsFilter('cluster=~"$cluster", namespace=~"$namespace", job=~"$job"'),
         refresh: 2,
         sort: 1,
         multi: true,
@@ -68,7 +76,7 @@ local filename = 'alloy-logs.json';
         label: 'Level',
         type: 'query',
         datasource: '${loki_datasource}',
-        query: 'label_values({cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"}, level)',
+        query: 'label_values({%s}, level)' % addLogsFilter('cluster=~"$cluster", namespace=~"$namespace", job=~"$job", instance=~"$instance"'),
         refresh: 2,
         sort: 1,
         multi: true,
@@ -100,7 +108,7 @@ local filename = 'alloy-logs.json';
       label: 'Job',
       type: 'query',
       datasource: '${loki_datasource}',
-      query: 'label_values({}, job)',
+      query: 'label_values({%s}, job)' % addLogsFilter(''),
       refresh: 2,
       sort: 1,
       multi: true,
@@ -112,7 +120,7 @@ local filename = 'alloy-logs.json';
       label: 'Instance',
       type: 'query',
       datasource: '${loki_datasource}',
-      query: 'label_values({job=~"$job"}, instance)',
+      query: 'label_values({%s}, instance)' % addLogsFilter('job=~"$job"'),
       refresh: 2,
       sort: 1,
       multi: true,
@@ -124,7 +132,7 @@ local filename = 'alloy-logs.json';
       label: 'Level',
       type: 'query',
       datasource: '${loki_datasource}',
-      query: 'label_values({job=~"$job", instance=~"$instance"}, level)',
+      query: 'label_values({%s}, level)' % addLogsFilter('job=~"$job", instance=~"$instance"'),
       refresh: 2,
       sort: 1,
       multi: true,

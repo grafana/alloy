@@ -42,9 +42,10 @@ The following collectors are configurable:
 
 | Name              | Description                                                                   | Enabled by default |
 |-------------------|-------------------------------------------------------------------------------|--------------------|
-| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
-| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `explain_plans`   | Collect and parse query execution plans already captured by Query Store.      | yes                |
 | `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
+| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 
 ## Blocks
 
@@ -58,17 +59,19 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
+| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
-[schema_details]: #schema_details
-[query_metrics]: #query_metrics
+[explain_plans]: #explain_plans
 [query_details]: #query_details
+[query_metrics]: #query_metrics
+[schema_details]: #schema_details
 
 {{< /docs/alloy-config >}}
 
@@ -112,13 +115,29 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
-### `schema_details`
+### `explain_plans`
 
-| Name               | Type       | Description                                          | Default | Required |
-|--------------------|------------|------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+| Name               | Type       | Description                                    | Default | Required |
+|--------------------|------------|-------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to check for a changed execution plan. | `"1m"`  | no       |
 
-The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector.
+It doesn't compile or run a fresh plan.
+Only queries that `query_metrics` is currently tracking are eligible.
+When `query_metrics` is disabled, `explain_plans` produces no output.
+
+The collector checks for a changed plan every `collect_interval`.
+It forwards a log entry only when the plan's shape has changed since the last entry.
+It also forwards a log entry when 30 minutes have passed since the last entry.
+This keeps log volume low and ensures a fresh entry at least every 30 minutes.
+
+### `query_details`
+
+| Name               | Type       | Description                                            | Default | Required |
+|--------------------|------------|--------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+
+The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
 
 ### `query_metrics`
 
@@ -136,13 +155,13 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
 
-### `query_details`
+### `schema_details`
 
-| Name               | Type       | Description                                            | Default | Required |
-|--------------------|------------|--------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+| Name               | Type       | Description                                          | Default | Required |
+|--------------------|------------|------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
-The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
 
 ## Example
 

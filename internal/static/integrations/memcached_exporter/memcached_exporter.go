@@ -78,6 +78,7 @@ func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
+		integrations.WithLogger(log),
 		integrations.WithCollectors(
 			// The memcached client does check if the tlsConfig is nil, so passing
 			// nil here is fine.

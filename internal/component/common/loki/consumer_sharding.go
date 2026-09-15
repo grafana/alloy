@@ -58,8 +58,8 @@ func (s *ShardingConsumer) Consume(ctx context.Context, batch Batch) error {
 	if streamLen == 1 {
 		errChans = append(errChans, s.consume(ctx, s.shardFor(batch.streams[0].Labels), batch))
 	} else {
-		_ = batch.ConsumeStreams(func(stream Stream, created int64) error {
-			streamBatch := NewBatchWithCreatedUnixMicro(created)
+		_ = batch.ConsumeStreams(func(stream Stream) error {
+			streamBatch := NewBatch()
 			streamBatch.Add(stream)
 			errChans = append(errChans, s.consume(ctx, s.shardFor(stream.Labels), streamBatch))
 			return nil
@@ -87,29 +87,6 @@ func (s *ShardingConsumer) consume(ctx context.Context, shard int, batch Batch) 
 	}
 
 	return errCh
-}
-
-// ConsumeEntry shards a single entry to the shard selected by the entry's labels.
-// It returns ErrConsumerStopped if called after shutdown begins.
-// TODO: Remove this when we have moved over to batching.
-func (s *ShardingConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
-	errCh := make(chan error, 1)
-	req := shardingRequest{
-		errCh: errCh,
-		consume: func(consumer Consumer) error {
-			return consumer.ConsumeEntry(ctx, entry)
-		},
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-s.done:
-		return ErrConsumerStopped
-	case s.shards[s.shardFor(entry.Labels)] <- req:
-	}
-
-	return s.joinErrors([]<-chan error{errCh})
 }
 
 // Stop stops the shards and waits for them to exit.

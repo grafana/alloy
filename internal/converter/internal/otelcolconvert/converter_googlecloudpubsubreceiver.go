@@ -54,6 +54,7 @@ func toGoogleCloudPubSubReceiver(state *State, id componentstatus.InstanceID, cf
 		ProjectID:           cfg.ProjectID,
 		UserAgent:           cfg.UserAgent,
 		Endpoint:            cfg.Endpoint,
+		UniverseDomain:      cfg.UniverseDomain,
 		Insecure:            cfg.Insecure,
 		Subscription:        cfg.Subscription,
 		Encoding:            cfg.Encoding,

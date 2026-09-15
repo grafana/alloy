@@ -218,7 +218,7 @@ Each policy results in a decision, and the processor evaluates them to make a fi
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
 There is an exception to this if the policy is within an and or composite policy, the resulting decision will be either sampled or not sampled.
-The "inverted" decisions have been deprecated, please make use of `drop` policy to explicitly not sample select traces.
+The "inverted" decisions are deprecated. Use a `drop` policy to explicitly not sample selected traces.
 
 ### `boolean_attribute`
 

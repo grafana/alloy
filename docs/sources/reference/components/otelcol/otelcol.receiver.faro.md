@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.faro/
 description: Learn about otelcol.receiver.faro
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otelcol.receiver.faro
@@ -10,7 +10,7 @@ title: otelcol.receiver.faro
 
 # `otelcol.receiver.faro`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.faro` accepts telemetry data from the [Grafana Faro Web SDK][faro-sdk] and forwards it to other `otelcol.*` components.
 
@@ -90,11 +90,12 @@ The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-| Name              | Type           | Description                                              | Default                | Required |
-|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no       |
-| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
-| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no       |
+| Name              | Type           | Description                                                     | Default                | Required |
+|-------------------|----------------|-----------------------------------------------------------------|------------------------|----------|
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                         | `[]`                   | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                            | `["X-Requested-With"]` | no       |
+| `exposed_headers` | `list(string)` | Configures the `Access-Control-Expose-Headers` response header. | `[]`                   | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header.        | `0`                    | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:

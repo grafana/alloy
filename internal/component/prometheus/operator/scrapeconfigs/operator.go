@@ -14,7 +14,7 @@ func init() {
 		Args:      operator.Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return common.New(opts, args, common.KindScrapeConfig)
+			return common.New(opts, args.(operator.Arguments), common.DefaultOptions(common.KindScrapeConfig))
 		},
 	})
 }

@@ -300,6 +300,87 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "dimensionGlobOnly",
+			cfg: `
+			dimension {
+				glob = "http.*"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			expected: spanmetricsconnector.Config{
+				Dimensions: []spanmetricsconnector.Dimension{
+					{Glob: "http.*"},
+				},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
+				ExcludeDimensions:        []string{"collector.instance.id"},
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
+				TimestampCacheSize:       &defaultTimestampCacheSize,
+				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
+					Unit:        0,
+					Exponential: configoptional.Some(spanmetricsconnector.ExponentialHistogramConfig{MaxSize: 160}),
+					Explicit:    configoptional.None[spanmetricsconnector.ExplicitHistogramConfig](),
+				},
+				MetricsFlushInterval: 60 * time.Second,
+				Namespace:            "traces.span.metrics",
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
+				},
+			},
+		},
+		{
+			testName: "invalidDimensionNameAndGlob",
+			cfg: `
+			dimension {
+				name = "http.method"
+				glob = "http.*"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "must set only one of `name` or `glob`",
+		},
+		{
+			testName: "invalidDimensionNeitherNameNorGlob",
+			cfg: `
+			dimension {}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "must set one of `name` or `glob`",
+		},
+		{
+			testName: "invalidDimensionDefaultWithGlob",
+			cfg: `
+			dimension {
+				glob    = "http.*"
+				default = "unknown"
+			}
+			histogram {
+				exponential {}
+			}
+
+			output {}
+			`,
+			errorMsg: "`default` is not supported on `glob` dimension",
+		},
+		{
 			testName: "invalidAggregationTemporality",
 			cfg: `
 			aggregation_temporality = "badVal"
@@ -420,7 +501,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			output {}
 			`,
-			errorMsg: `invalid metric_timestamp_cache_size: 0, the cache size should be positive`,
+			errorMsg: `invalid delta timestamp cache size: 0, the maximum number of the items in the cache should be positive`,
 		},
 	}
 

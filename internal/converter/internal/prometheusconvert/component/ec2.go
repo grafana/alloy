@@ -43,7 +43,7 @@ func toDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) *aws.EC2Arguments {
 	}
 }
 
-func toEC2Filters(filtersConfig []*prom_aws.EC2Filter) []*aws.EC2Filter {
+func toEC2Filters(filtersConfig []*prom_aws.Filter) []*aws.EC2Filter {
 	filters := make([]*aws.EC2Filter, 0)
 
 	for _, filter := range filtersConfig {

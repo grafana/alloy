@@ -4,6 +4,7 @@ package beyla
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"net"
@@ -20,7 +21,10 @@ import (
 var socketCounter atomic.Uint64
 
 func abstractSocketAddr(role, componentID string) string {
-	return fmt.Sprintf("@alloy-beyla-%s-%s-%d-%d", role, componentID, os.Getpid(), socketCounter.Add(1))
+	// 16-byte SHA-256 prefix (128 bits) stays unique and within the 108-byte sun_path limit.
+	hash := sha256.Sum256([]byte(componentID))
+	shortID := hash[:16]
+	return fmt.Sprintf("@alloy-beyla-%s-%x-%d-%d", role, shortID, os.Getpid(), socketCounter.Add(1))
 }
 
 var beylaSubprocessCaps = []uintptr{

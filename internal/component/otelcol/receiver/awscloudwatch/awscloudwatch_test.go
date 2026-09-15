@@ -47,6 +47,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				logs {
 					poll_interval = "1m"
 					max_events_per_request = 1000
+					initial_lookback = "45m"
 					groups {
 						autodiscover {
 							prefix = "app-"
@@ -67,6 +68,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Logs: awscloudwatchreceiver.LogsConfig{
 					PollInterval:        time.Minute,
 					MaxEventsPerRequest: 1000,
+					InitialLookback:     45 * time.Minute,
 					Groups: awscloudwatchreceiver.GroupConfig{
 						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
 							Prefix: "app-",

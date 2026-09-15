@@ -23,11 +23,6 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-// emitInterval is the minimum amount of time that must elapse between
-// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
-// the configured collect_interval.
-const emitInterval = 30 * time.Minute
-
 const (
 	selectDatabasesTemplate = `
 		SELECT name, QUOTENAME(name)
@@ -132,7 +127,7 @@ type SchemaDetails struct {
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
 	// the inner key is "schema.table". Used to throttle logging to at most
-	// one per emitInterval per table.
+	// one per EmitInterval per table.
 	lastEmittedAt map[string]map[string]time.Time
 
 	// now allows overriding time.Now() in tests
@@ -289,7 +284,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	// returns (dropped, access revoked, newly excluded). Per-table cleanup
 	// within a still-present database is handled by extractSchemaForDatabase
 	// and is gated on a clean scan so a transient failure does not evict
-	// state that would defeat emitInterval on the next successful cycle.
+	// state that would defeat EmitInterval on the next successful cycle.
 	for db := range c.lastEmittedAt {
 		if _, ok := discovered[db]; !ok {
 			delete(c.lastEmittedAt, db)
@@ -376,13 +371,13 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 	}
 
 	// Compute the due set: tables that have never emitted OP_CREATE_STATEMENT
-	// or whose last emission is older than emitInterval.
+	// or whose last emission is older than EmitInterval.
 	// Group by schema to preserve the iteration order from the tables-list query.
 	dueBySchema := map[string][]*tableInfo{}
 	dueSchemas := []string{}
 	for _, t := range tables {
 		if inner := c.lastEmittedAt[dbName]; inner != nil {
-			if last, ok := inner[schemaTableKey(t.schema, t.tableName)]; ok && now.Sub(last) < emitInterval {
+			if last, ok := inner[schemaTableKey(t.schema, t.tableName)]; ok && now.Sub(last) < database_observability.EmitInterval {
 				continue
 			}
 		}

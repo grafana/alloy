@@ -4,12 +4,47 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/sql_server/collector"
 	"github.com/grafana/alloy/syntax"
 )
+
+func Test_addLokiLabels(t *testing.T) {
+	t.Run("add required labels to loki entries", func(t *testing.T) {
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+		entryHandler := addLokiLabels(handler, "some-instance-key", "some-server-id-hash")
+
+		go func() {
+			ts := time.Now().UnixNano()
+			entryHandler.Chan() <- loki.Entry{
+				Entry: push.Entry{
+					Timestamp: time.Unix(0, ts),
+					Line:      "some-message",
+				},
+			}
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.Len(t, handler.Received(), 1)
+		assert.Equal(t, model.LabelSet{
+			"job":       database_observability.JobName,
+			"instance":  model.LabelValue("some-instance-key"),
+			"server_id": model.LabelValue("some-server-id-hash"),
+			"engine":    model.LabelValue(collector.EngineName),
+		}, handler.Received()[0].Labels)
+		assert.Equal(t, "some-message", handler.Received()[0].Line)
+	})
+}
 
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse aws cloud provider block", func(t *testing.T) {
@@ -198,4 +233,66 @@ func TestValidateQueryMetrics(t *testing.T) {
 		args.QueryMetricsArguments.StatementsLookback = 0
 		require.NoError(t, args.Validate())
 	})
+}
+
+func TestExplainPlansDefaults(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+
+	assert.Equal(t, 1*time.Minute, args.ExplainPlansArguments.CollectInterval)
+}
+
+func TestExplainPlansEnabledByDefault(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+
+	collectors := enableOrDisableCollectors(args)
+	assert.True(t, collectors[collector.ExplainPlansCollector])
+
+	args.DisableCollectors = []string{collector.ExplainPlansCollector}
+	collectors = enableOrDisableCollectors(args)
+	assert.False(t, collectors[collector.ExplainPlansCollector])
+}
+
+func TestValidateExplainPlans(t *testing.T) {
+	base := func() Arguments {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433?database=app"
+		return args
+	}
+
+	t.Run("defaults are valid", func(t *testing.T) {
+		args := base()
+		require.NoError(t, args.Validate())
+	})
+
+	t.Run("non-positive collect_interval is rejected", func(t *testing.T) {
+		args := base()
+		args.ExplainPlansArguments.CollectInterval = 0
+		require.ErrorContains(t, args.Validate(), "explain_plans.collect_interval")
+	})
+
+	t.Run("invalid values are ignored when the collector is disabled", func(t *testing.T) {
+		args := base()
+		args.DisableCollectors = []string{collector.ExplainPlansCollector}
+		args.ExplainPlansArguments.CollectInterval = 0
+		require.NoError(t, args.Validate())
+	})
+}
+
+func TestExplainPlansConfigParsing(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "sqlserver://user:pass@localhost:1433"
+		forward_to       = []
+		targets          = []
+		explain_plans {
+			collect_interval = "5m"
+		}
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+	assert.Equal(t, 5*time.Minute, args.ExplainPlansArguments.CollectInterval)
 }

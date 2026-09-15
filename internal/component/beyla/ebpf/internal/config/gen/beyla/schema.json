@@ -215,6 +215,17 @@
           ],
           "x-env-var": "BEYLA_DISCOVERY_POLL_INTERVAL"
         },
+        "process_context_poll_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "description": "ProcessContextPollInterval controls how often Beyla re-reads the OTEL_CTX mapping of each discovered process.  Polling handles both SDKs that publish the mapping after startup and context updates published later. 0 disables polling; only the initial enrichment on process creation runs.",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PROCESS_CONTEXT_POLL_INTERVAL"
+        },
         "route_harvester_advanced": {
           "$ref": "#/$defs/RouteHarvestingConfig"
         },
@@ -279,6 +290,12 @@
           "type": "array"
         },
         "stat_tcp_rtt_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "v8js_gc_duration_histogram": {
           "items": {
             "type": "number"
           },
@@ -388,6 +405,10 @@
     },
     "EBPFBufferSizes": {
       "properties": {
+        "aerospike": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_AEROSPIKE"
+        },
         "http": {
           "type": "integer",
           "x-env-var": "OTEL_EBPF_BPF_BUFFER_SIZE_HTTP"
@@ -472,6 +493,16 @@
             "legacy"
           ],
           "x-env-var": "OTEL_EBPF_FORCE_BPF_MAP_READER"
+        },
+        "go_http_client_buffer_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_GO_HTTP_CLIENT_BUFFER_TIMEOUT"
         },
         "heuristic_sql_detect": {
           "type": "boolean",
@@ -632,28 +663,38 @@
     },
     "Features": {
       "items": {
-        "type": "string",
-        "enum": [
-          "*",
-          "all",
-          "application",
-          "application_host",
-          "application_jvm",
-          "application_process",
-          "application_runtime",
-          "application_service_graph",
-          "application_span",
-          "application_span_otel",
-          "application_span_sizes",
-          "ebpf",
-          "network",
-          "network_flow_packets",
-          "network_inter_zone",
-          "stats",
-          "stats_tcp_failed_connections",
-          "stats_tcp_io",
-          "stats_tcp_retransmits",
-          "stats_tcp_rtt"
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "*",
+              "all",
+              "application",
+              "application_host",
+              "application_process",
+              "application_runtime",
+              "application_service_graph",
+              "application_span_otel",
+              "ebpf",
+              "network",
+              "network_flow_packets",
+              "network_inter_zone",
+              "stats",
+              "stats_tcp_failed_connections",
+              "stats_tcp_io",
+              "stats_tcp_retransmits",
+              "stats_tcp_rtt"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "application_span",
+              "application_span_sizes"
+            ],
+            "description": "Deprecated feature names, kept for backwards compatibility: application_span (use application_span_otel), application_span_sizes (no direct replacement).",
+            "deprecated": true
+          }
         ]
       },
       "type": "array",
@@ -685,8 +726,14 @@
         "mcp": {
           "$ref": "#/$defs/MCPConfig"
         },
+        "ollama": {
+          "$ref": "#/$defs/OllamaConfig"
+        },
         "openai": {
           "$ref": "#/$defs/OpenAIConfig"
+        },
+        "openai_compatible": {
+          "$ref": "#/$defs/OpenAICompatibleConfig"
         },
         "qwen": {
           "$ref": "#/$defs/QwenConfig"
@@ -831,6 +878,15 @@
         "$ref": "#/$defs/GlobAttributes"
       },
       "type": "array"
+    },
+    "GlobalMetricsConfig": {
+      "properties": {
+        "features": {
+          "$ref": "#/$defs/Features",
+          "x-env-var": "OTEL_EBPF_METRICS_FEATURES"
+        }
+      },
+      "type": "object"
     },
     "GrafanaConfig": {
       "properties": {
@@ -991,6 +1047,9 @@
         "match": {
           "$ref": "#/$defs/HTTPParsingMatch"
         },
+        "obfuscation_string": {
+          "type": "string"
+        },
         "scope": {
           "$ref": "#/$defs/HTTPParsingScope"
         },
@@ -1017,6 +1076,11 @@
     },
     "HealthCheckConfig": {
       "properties": {
+        "listen_address": {
+          "type": "string",
+          "format": "ip",
+          "x-env-var": "OTEL_EBPF_HEALTH_CHECK_LISTEN_ADDRESS"
+        },
         "port": {
           "type": "integer",
           "x-env-var": "OTEL_EBPF_HEALTH_CHECK_PORT"
@@ -1133,7 +1197,7 @@
           "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_EXPORTER"
         },
         "prometheus": {
-          "$ref": "#/$defs/PrometheusConfig"
+          "$ref": "#/$defs/PrometheusEndpointConfig"
         }
       },
       "type": "object"
@@ -1158,10 +1222,6 @@
     },
     "JVMRuntimeMetricsConfig": {
       "properties": {
-        "enabled": {
-          "type": "boolean",
-          "x-env-var": "OBI_JVM_RUNTIME_METRICS_ENABLED"
-        },
         "sampling_interval": {
           "type": "string",
           "pattern": "^[0-9]+(ms|s|m)$",
@@ -1307,11 +1367,55 @@
           ],
           "x-env-var": "OTEL_EBPF_BPF_LOG_ENRICHER_CACHE_TTL"
         },
+        "field_names": {
+          "$ref": "#/$defs/LogEnricherFieldNames"
+        },
+        "plain_text": {
+          "$ref": "#/$defs/LogEnricherPlainTextConfig"
+        },
         "services": {
           "items": {
             "$ref": "#/$defs/LogEnricherServiceConfig"
           },
           "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "LogEnricherFieldNames": {
+      "properties": {
+        "span_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^=\\u0000-\\u0020\\u007F-\\u00A0\\u1680\\u2000-\\u200A\\u2028-\\u2029\\u202F\\u205F\\u3000]+$"
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^=\\u0000-\\u0020\\u007F-\\u00A0\\u1680\\u2000-\\u200A\\u2028-\\u2029\\u202F\\u205F\\u3000]+$"
+        }
+      },
+      "type": "object"
+    },
+    "LogEnricherPlainTextConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "multiline": {
+          "type": "string",
+          "enum": [
+            "each_line",
+            "first_line",
+            "last_line"
+          ]
+        },
+        "placement": {
+          "type": "string",
+          "enum": [
+            "prefix",
+            "suffix"
+          ]
         }
       },
       "type": "object"
@@ -1424,8 +1528,7 @@
           "x-env-var": "OTEL_EBPF_EXTRA_SPAN_RESOURCE_ATTRIBUTES"
         },
         "features": {
-          "$ref": "#/$defs/Features",
-          "x-env-var": "OTEL_EBPF_METRICS_FEATURES"
+          "$ref": "#/$defs/Features"
         },
         "histogram_aggregation": {
           "type": "string",
@@ -1717,6 +1820,10 @@
         "enabled": {
           "type": "boolean",
           "x-env-var": "OTEL_EBPF_NODEJS_ENABLED"
+        },
+        "manual_spans": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_NODEJS_MANUAL_SPANS"
         }
       },
       "type": "object"
@@ -1740,6 +1847,44 @@
         },
         "not_equals": {
           "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "OllamaConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_OLLAMA_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "OpenAICompatibleConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_HTTP_OPENAI_COMPATIBLE_ENABLED"
+        },
+        "gateways": {
+          "items": {
+            "$ref": "#/$defs/OpenAICompatibleGateway"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "OpenAICompatibleGateway": {
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "provider": {
+          "type": "string"
         }
       },
       "type": "object"
@@ -1845,6 +1990,19 @@
             "1ms"
           ],
           "x-env-var": "OTEL_EBPF_PROMETHEUS_TTL"
+        }
+      },
+      "type": "object"
+    },
+    "PrometheusEndpointConfig": {
+      "properties": {
+        "path": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_PROMETHEUS_PATH"
+        },
+        "port": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_PROMETHEUS_PORT"
         }
       },
       "type": "object"
@@ -2568,7 +2726,7 @@
       "x-env-var": "BEYLA_LOG_LEVEL"
     },
     "metrics": {
-      "$ref": "#/$defs/MetricsConfig"
+      "$ref": "#/$defs/GlobalMetricsConfig"
     },
     "name_resolver": {
       "$ref": "#/$defs/NameResolverConfig"
@@ -2628,6 +2786,10 @@
         "1ms"
       ],
       "x-env-var": "BEYLA_SHUTDOWN_TIMEOUT"
+    },
+    "sigil_export": {
+      "$ref": "#/$defs/TracesConfig",
+      "description": "Same as the otel_traces_export option, except all environment variables are prefixed with BEYLA_GRAFANA_AI_"
     },
     "stats": {
       "$ref": "#/$defs/StatsConfig",

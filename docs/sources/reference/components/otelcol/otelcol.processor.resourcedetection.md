@@ -41,11 +41,12 @@ otelcol.processor.resourcedetection "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.resourcedetection`:
 
-| Name        | Type           | Description                                                                        | Default   | Required |
-| ----------- | -------------- | ---------------------------------------------------------------------------------- | --------- | -------- |
-| `detectors` | `list(string)` | An ordered list of named detectors used to detect resource information.            | `["env"]` | no       |
-| `override`  | `bool`         | Configures whether existing resource attributes should be overridden or preserved. | `true`    | no       |
-| `timeout`   | `duration`     | Timeout by which all specified detectors must complete.                            | `"5s"`    | no       |
+| Name                       | Type           | Description                                                                                     | Default   | Required |
+| -------------------------- | -------------- | ----------------------------------------------------------------------------------------------- | --------- | -------- |
+| `detectors`                | `list(string)` | An ordered list of named detectors used to detect resource information.                         | `["env"]` | no       |
+| `override`                 | `bool`         | Configures whether existing resource attributes should be overridden or preserved.              | `true`    | no       |
+| `timeout`                  | `duration`     | Timeout by which all specified detectors must complete.                                         | `"5s"`    | no       |
+| `fail_on_missing_metadata` | `bool`         | Treat an unreachable metadata service as a hard failure instead of returning an empty resource. | `false`   | no       |
 
 `detectors` could contain the following values:
 

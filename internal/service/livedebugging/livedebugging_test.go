@@ -70,6 +70,23 @@ func TestStreamEmpty(t *testing.T) {
 	})
 }
 
+func TestIsActive(t *testing.T) {
+	liveDebugging := NewLiveDebugging()
+	host := createServiceHost(liveDebugging)
+	componentID := ComponentID("fake.liveDebugging")
+	otherComponentID := ComponentID("other.liveDebugging")
+	callbackID := CallbackID("callback1")
+
+	require.False(t, liveDebugging.IsActive(componentID))
+
+	require.NoError(t, liveDebugging.AddCallback(host, callbackID, componentID, func(Data) {}))
+	require.True(t, liveDebugging.IsActive(componentID))
+	require.False(t, liveDebugging.IsActive(otherComponentID))
+
+	liveDebugging.DeleteCallback(callbackID, componentID)
+	require.False(t, liveDebugging.IsActive(componentID))
+}
+
 func TestMultipleStreams(t *testing.T) {
 	livedebugging := NewLiveDebugging()
 	host := createServiceHost(livedebugging)

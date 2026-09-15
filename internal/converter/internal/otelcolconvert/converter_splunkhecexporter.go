@@ -73,17 +73,17 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
 	return splunkhec_config.SplunkHecClientArguments{
-		Endpoint:            cfg.Endpoint,
-		Timeout:             cfg.Timeout,
-		ReadBufferSize:      cfg.ReadBufferSize,
-		WriteBufferSize:     cfg.WriteBufferSize,
-		MaxIdleConns:        cfg.MaxIdleConns,
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
-		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.IdleConnTimeout,
-		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLS.Insecure,
-		ForceAttemptHTTP2:   cfg.ForceAttemptHTTP2,
+		Endpoint:            cfg.ClientConfig.Endpoint,
+		Timeout:             cfg.ClientConfig.Timeout,
+		ReadBufferSize:      cfg.ClientConfig.ReadBufferSize,
+		WriteBufferSize:     cfg.ClientConfig.WriteBufferSize,
+		MaxIdleConns:        cfg.ClientConfig.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.ClientConfig.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
+		IdleConnTimeout:     cfg.ClientConfig.IdleConnTimeout,
+		DisableKeepAlives:   cfg.ClientConfig.DisableKeepAlives,
+		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 
