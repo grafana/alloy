@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -325,11 +327,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxElapsedTime:      11 * time.Minute,
 				},
 				ClientConfig: configkafka.ClientConfig{
-					Brokers:                              []string{"redpanda:123"},
-					ProtocolVersion:                      "2.0.0",
-					ClientID:                             "my-client",
-					ConnIdleTimeout:                      9 * time.Minute,
-					ResolveCanonicalBootstrapServersOnly: true,
+					Brokers:         []string{"redpanda:123"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "my-client",
+					ConnIdleTimeout: 9 * time.Minute,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
 						RefreshInterval: 14 * time.Second,
@@ -339,9 +340,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 					Authentication: configkafka.AuthenticationConfig{
-						PlainText: &configkafka.PlainTextConfig{
-							Username: "user",
-							Password: "pass",
+						SASL: &configkafka.SASLConfig{
+							Username:  "user",
+							Password:  "pass",
+							Mechanism: "PLAIN",
 						},
 					},
 				},
@@ -597,5 +599,17 @@ func TestProducerNewFields(t *testing.T) {
 
 		require.Equal(t, 209715200, otelObj.Producer.MaxMessageBytes)
 		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
+
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
+
+	require.NotPanics(t, func() {
+		args.LogDeprecations(nil)
 	})
 }
