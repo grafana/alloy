@@ -13,6 +13,7 @@ Unreleased
 ### Enhancements
 
 - Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+- Allow setting `trafficDistribution` in the service spec. (@agermel)
 
 1.12.1 (2026-08-26)
 ----------
