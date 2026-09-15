@@ -157,6 +157,103 @@ func TestEnricher(t *testing.T) {
 				Entry: expectedEntry,
 			},
 		},
+		{
+			name: "multi-label match selects the target using all labels",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "production",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "prod",
+					}),
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "staging",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "stage",
+					}),
+				},
+				TargetToLogMatch: map[string]string{
+					"__meta_kubernetes_namespace": "namespace",
+					"__meta_kubernetes_pod_name":  "pod",
+				},
+				LabelsToCopy: []string{"environment"},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
+					"pod":       "api-0",
+				},
+				Entry: inputEntry,
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace":   "staging",
+					"pod":         "api-0",
+					"environment": "stage",
+				},
+				Entry: expectedEntry,
+			},
+		},
+		{
+			name: "multi-label match requires every log label",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "staging",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "stage",
+					}),
+				},
+				TargetToLogMatch: map[string]string{
+					"__meta_kubernetes_namespace": "namespace",
+					"__meta_kubernetes_pod_name":  "pod",
+				},
+				LabelsToCopy: []string{"environment"},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
+				},
+				Entry: inputEntry,
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
+				},
+				Entry: expectedEntry,
+			},
+		},
+		{
+			name: "target_to_log_match takes precedence over legacy labels",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"cluster":   "cluster-a",
+						"legacy_id": "legacy-a",
+						"env":       "prod",
+					}),
+				},
+				TargetToLogMatch: map[string]string{"cluster": "cluster_id"},
+				TargetMatchLabel: "legacy_id",
+				LogsMatchLabel:   "legacy_id",
+				LabelsToCopy:     []string{"env"},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"cluster_id": "cluster-a",
+					"legacy_id":  "does-not-match",
+				},
+				Entry: inputEntry,
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"cluster_id": "cluster-a",
+					"legacy_id":  "does-not-match",
+					"env":        "prod",
+				},
+				Entry: expectedEntry,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -198,6 +295,64 @@ func TestEnricher(t *testing.T) {
 
 			cancel()
 			wg.Wait()
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name: "valid legacy",
+			args: Arguments{
+				TargetMatchLabel: "service",
+			},
+		},
+		{
+			name: "valid legacy with logs_match_label",
+			args: Arguments{
+				TargetMatchLabel: "service",
+				LogsMatchLabel:   "service_name",
+			},
+		},
+		{
+			name: "valid multi-label match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"namespace": "namespace", "pod_name": "pod"},
+			},
+		},
+		{
+			name:    "missing match mechanism",
+			args:    Arguments{},
+			wantErr: "at least one match mechanism must be specified",
+		},
+		{
+			name: "new match takes precedence over legacy",
+			args: Arguments{
+				TargetMatchLabel: "service",
+				TargetToLogMatch: map[string]string{"namespace": "namespace"},
+			},
+		},
+		{
+			name: "logs_match_label requires target_match_label",
+			args: Arguments{
+				LogsMatchLabel: "service_name",
+			},
+			wantErr: "target_match_label must be set",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
