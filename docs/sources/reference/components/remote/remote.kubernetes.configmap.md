@@ -94,7 +94,7 @@ The `client` block supports the following arguments:
 At most, you can provide one of the following:
 
 - [`authorization`](#authorization) block
-- [`basic_auth`](#basic-auth) block
+- [`basic_auth`](#basic_auth) block
 - [`bearer_token_file`](#client) argument
 - [`bearer_token`](#client) argument
 - [`oauth2`](#oauth2) block

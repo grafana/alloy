@@ -51,7 +51,7 @@ You can use the following arguments with `remote.vault`:
 Tokens with a lease are automatically renewed roughly two-thirds through their lease duration.
 If the leased token isn't renewable, or renewing the lease fails, the token is re-read.
 
-All tokens, regardless of whether they have a lease, are automatically reread at a frequency specified by the `reread_frequency` argument.
+The retrieved secret is automatically reread at a frequency specified by the `reread_frequency` argument, regardless of whether it has a lease.
 The default value of `reread_frequency`, `"0s"`, disables this behavior.
 
 ## Blocks
@@ -106,7 +106,7 @@ The `auth.approle` block authenticates to Vault using the [AppRole auth method][
 
 The `auth.aws` block authenticates to Vault using the [AWS auth method][AWS].
 
-The environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION` specify the credentials used to connect to AWS.
+The environment variables `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_SESSION_TOKEN` specify the credentials used to connect to AWS.
 You can specify the environment variable `AWS_SHARED_CREDENTIALS_FILE` to use a credentials file instead.
 
 | Name                   | Type     | Description                                       | Default       | Required |
@@ -116,11 +116,11 @@ You can specify the environment variable `AWS_SHARED_CREDENTIALS_FILE` to use a 
 | `iam_server_id_header` | `string` | Configures a `X-Vault-AWS-IAM-Server-ID` header.  | `""`          | no       |
 | `mount_path`           | `string` | Mount path for the login.                         | `"aws"`       | no       |
 | `region`               | `string` | AWS region to connect to.                         | `"us-east-1"` | no       |
-| `role`                 | `string` | Overrides the inferred role name inferred.        | `""`          | no       |
+| `role`                 | `string` | Overrides the inferred role name.                 | `""`          | no       |
 
 Set the `type` argument to `"ec2"` or `"iam"`.
 
-You must set `iam_server_id_header` when `type` is `"iam"`.
+You can set `iam_server_id_header` when `type` is `"iam"`.
 
 If you explicitly set the `region` argument to an empty string `""`, `remote.vault` infers the region using an API call to the EC2 metadata service.
 
@@ -179,7 +179,7 @@ The `auth.gcp` block authenticates to Vault using the [GCP auth method][GCP].
 Set the `type` argument to `"gce"` or `"iam"`. When `type` is `"gce"`, `remote.vault` retrieves credentials using the metadata service on GCE VMs.
 When `type` is `"iam"`, `remote.vault` retrieves credentials from the file that the `GOOGLE_APPLICATION_CREDENTIALS` environment variable points to.
 
-When `type` is `"iam"`, the `iam_service_account` argument determines what service account name to use.
+When `type` is `"iam"`, you must set the `iam_service_account` argument to the service account name to use. `remote.vault` fails validation if `iam_service_account` isn't set when `type` is `"iam"`.
 
 [GCP]: https://www.vaultproject.io/docs/auth/gcp
 
@@ -261,8 +261,8 @@ The `data` field contains a mapping from data field names to values.
 There is one mapping for each string-like field stored in the Vault secret.
 
 Vault permits secret engines to store arbitrary data within the key-value pairs for a secret.
-The `remote.vault` component can only use values that are strings, or that it can convert to strings.
-`remote.vault` ignores and omits keys with non-string values from the `data` field.
+The `remote.vault` component can use values that are strings or byte slices.
+It ignores and omits keys with other value types from the `data` field.
 
 If an individual key stored in `data` doesn't hold sensitive data, you can convert it into a string using [the `nonsensitive` function][convert.nonsensitive]:
 
@@ -321,7 +321,7 @@ prometheus.remote_write "prod" {
   endpoint {
     url = "https://onprem-mimir:9009/api/v1/push"
     basic_auth {
-      username = remote.vault.remote_write.data.username
+      username = convert.nonsensitive(remote.vault.remote_write.data.username)
       password = remote.vault.remote_write.data.password
     }
   }
