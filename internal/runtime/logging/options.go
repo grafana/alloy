@@ -22,10 +22,10 @@ type Options struct {
 // LogDestination is where to send the primary log output.
 type LogDestination string
 
-// TODO: Add a "none" destination to disable primary output.
 const (
 	LogDestinationStderr          LogDestination = "stderr"
 	LogDestinationWindowsEventLog LogDestination = "windows_event_log"
+	LogDestinationNone            LogDestination = "none"
 )
 
 var _ encoding.TextUnmarshaler = (*LogDestination)(nil)
@@ -33,7 +33,7 @@ var _ encoding.TextUnmarshaler = (*LogDestination)(nil)
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (d *LogDestination) UnmarshalText(text []byte) error {
 	switch LogDestination(text) {
-	case LogDestinationStderr, LogDestinationWindowsEventLog:
+	case LogDestinationStderr, LogDestinationWindowsEventLog, LogDestinationNone:
 		*d = LogDestination(text)
 		return nil
 	default:
@@ -62,7 +62,27 @@ func defaultOptions() Options {
 // DefaultOptions holds defaults for creating a Logger.
 var DefaultOptions = defaultOptions()
 
-var _ syntax.Defaulter = (*Options)(nil)
+var (
+	_ syntax.Defaulter = (*Options)(nil)
+	_ syntax.Validator = (*Options)(nil)
+)
+
+// Validate implements syntax.Validator.
+func (o *Options) Validate() error {
+	switch o.Format {
+	case FormatLogfmt, FormatJSON:
+	default:
+		return fmt.Errorf("unrecognized log format %q", o.Format)
+	}
+
+	switch o.Destination {
+	case LogDestinationStderr, LogDestinationWindowsEventLog, LogDestinationNone:
+	default:
+		return fmt.Errorf("unrecognized log destination %q", o.Destination)
+	}
+
+	return nil
+}
 
 // SetToDefault implements syntax.Defaulter. It re-evaluates the defaults at
 // call time (rather than reusing DefaultOptions) so that tests which stub
