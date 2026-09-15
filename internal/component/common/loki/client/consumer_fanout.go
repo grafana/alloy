@@ -62,8 +62,7 @@ func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) err
 			if errors.Is(err, errQueueIsFull) {
 				continue
 			}
-			// The other errors we can get are the context error and loki.ErrConsumerStopped.
-			// In both these cases there is no point trying to enqueue for other endpoints.
+			// For any other error we assume it's not useful to send to the next endpoint
 			return err
 		}
 	}
