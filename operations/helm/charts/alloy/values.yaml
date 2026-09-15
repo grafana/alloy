@@ -228,6 +228,11 @@ rbac:
     - nonResourceURLs: ["/metrics"]
       verbs: ["get"]
 
+sdkInjectionController:
+  # -- Whether to create RBAC resources for the Beyla Kubernetes SDK injection controller.
+  # When enabled, Alloy can get, create, and update ConfigMaps in its deployment namespace.
+  enabled: false
+
 serviceAccount:
   # -- Whether to create a service account for the Grafana Alloy deployment.
   create: true
