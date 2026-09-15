@@ -69,7 +69,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
 		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
 
-		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 
 		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
 		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
@@ -153,8 +153,8 @@ func toKafkaSASL(cfg map[string]any) *otelcol.KafkaSASLArguments {
 		Username:  cfg["username"].(string),
 		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
-		Version:   cfg["version"].(int),
-		AWSMSK:    toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
+		// Version is deprecated and no longer exists upstream to read back.
+		AWSMSK: toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
 	}
 }
 
@@ -244,17 +244,15 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	}
 }
 
+// toKafkaRebalance always returns the plural strategies form; upstream removed the singular
+// GroupRebalanceStrategy field, so the deprecated singular Alloy argument is never populated here.
 func toKafkaRebalance(cfg configkafka.ConsumerConfig) (strategy string, strategies []string) {
-	switch {
-	case len(cfg.GroupRebalanceStrategies) > 0:
+	if len(cfg.GroupRebalanceStrategies) > 0 {
 		strategies = make([]string, 0, len(cfg.GroupRebalanceStrategies))
 		for _, s := range cfg.GroupRebalanceStrategies {
 			strategies = append(strategies, string(s))
 		}
 		return "", strategies
-	case cfg.GroupRebalanceStrategy != "":
-		return string(cfg.GroupRebalanceStrategy), nil
-	default:
-		return string(configkafka.CooperativeStickyBalanceStrategy), nil
 	}
+	return "", []string{string(configkafka.CooperativeStickyBalanceStrategy)}
 }

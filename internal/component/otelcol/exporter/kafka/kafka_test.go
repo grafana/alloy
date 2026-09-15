@@ -325,11 +325,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxElapsedTime:      11 * time.Minute,
 				},
 				ClientConfig: configkafka.ClientConfig{
-					Brokers:                              []string{"redpanda:123"},
-					ProtocolVersion:                      "2.0.0",
-					ClientID:                             "my-client",
-					ConnIdleTimeout:                      9 * time.Minute,
-					ResolveCanonicalBootstrapServersOnly: true,
+					Brokers:         []string{"redpanda:123"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "my-client",
+					ConnIdleTimeout: 9 * time.Minute,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
 						RefreshInterval: 14 * time.Second,
@@ -339,9 +338,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 					Authentication: configkafka.AuthenticationConfig{
-						PlainText: &configkafka.PlainTextConfig{
-							Username: "user",
-							Password: "pass",
+						SASL: &configkafka.SASLConfig{
+							Username:  "user",
+							Password:  "pass",
+							Mechanism: "PLAIN",
 						},
 					},
 				},

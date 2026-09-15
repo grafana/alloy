@@ -87,10 +87,10 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
 | `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
-| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
+| `authentication` > [`plaintext`][plaintext]             | (Deprecated) Authenticates against Kafka brokers with plaintext.               | no       |
 | `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                                 | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                 | no       |
-| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                            | no       |
+| `authentication` > [`tls`][tls]                         | (Deprecated) Configures TLS for connecting to the Kafka brokers.               | no       |
 | `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                          | no       |
 | [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state.    | no       |
 | [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                                  | no       |

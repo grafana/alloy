@@ -27,7 +27,7 @@ func convertRelabelConfig(in []*promv1.RelabelConfig) ([]*relabel.Config, error)
 			outRule.Regex = regex
 		}
 		if inRule.Modulus != 0 {
-			outRule.Modulus = inRule.Modulus
+			outRule.Modulus = uint64(inRule.Modulus)
 		}
 		if inRule.TargetLabel != "" {
 			outRule.TargetLabel = inRule.TargetLabel

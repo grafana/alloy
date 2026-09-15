@@ -65,7 +65,7 @@ func GetSignalType(opts component.Options, args component.Arguments) exporter.Ty
 type Arguments struct {
 	ProtocolVersion                      string        `alloy:"protocol_version,attr"`
 	Brokers                              []string      `alloy:"brokers,attr,optional"`
-	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 	ClientID                             string        `alloy:"client_id,attr,optional"`
 	Topic                                string        `alloy:"topic,attr,optional"` // Deprecated
 	TopicFromAttribute                   string        `alloy:"topic_from_attribute,attr,optional"`
@@ -299,7 +299,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	result.ClientConfig.Brokers = args.Brokers
-	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
+	// Do not set ResolveCanonicalBootstrapServersOnly - it is deprecated and no longer exists upstream.
 	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
 	result.ClientConfig.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute

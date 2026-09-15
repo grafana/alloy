@@ -46,10 +46,9 @@ func Test_Extract(t *testing.T) {
 
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
-
-	require.True(t, extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 }
 
+// deployment_name_from_replicaset has been deprecated.
 func Test_DeploymentNameFromReplicaSet(t *testing.T) {
 	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
 		var args k8sattributes.Arguments
@@ -60,20 +59,18 @@ func Test_DeploymentNameFromReplicaSet(t *testing.T) {
 	}
 
 	t.Run("default", func(t *testing.T) {
-		otelObj := convert(t, `
+		convert(t, `
 			output {}
 		`)
-		require.True(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 	})
 
-	t.Run("disabled", func(t *testing.T) {
-		otelObj := convert(t, `
+	t.Run("explicitly disabled is a no-op", func(t *testing.T) {
+		convert(t, `
 			extract {
 				deployment_name_from_replicaset = false
 			}
 			output {}
 		`)
-		require.False(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 	})
 }
 
