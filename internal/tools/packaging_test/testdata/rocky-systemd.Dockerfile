@@ -7,5 +7,4 @@ RUN dnf -y install systemd procps-ng \
         && dnf clean all \
         && rm -rf /var/cache/dnf
 
-VOLUME [ "/sys/fs/cgroup" ]
 CMD ["/sbin/init"]
