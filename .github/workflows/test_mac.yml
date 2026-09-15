@@ -39,7 +39,7 @@ jobs:
 
   cross-compile-mac-to-linux-nocgo:
     name: Verify mac-to-linux cross-compile # This is to maintain good developer experience on macOS
-    runs-on: macos-15-xlarge
+    runs-on: macos-26-xlarge
     env:
       CGO_ENABLED: 0
       GOOS: linux
