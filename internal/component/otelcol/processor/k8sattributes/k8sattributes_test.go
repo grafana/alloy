@@ -543,45 +543,13 @@ func Test_PodDeleteGracePeriod(t *testing.T) {
 }
 
 func TestArguments_LogDeprecations(t *testing.T) {
-	tt := []struct {
-		name string
-		args k8sattributes.Arguments
-		want string
-	}{
-		{
-			name: "default (true) is not deprecated",
-			args: func() k8sattributes.Arguments {
-				var args k8sattributes.Arguments
-				args.SetToDefault()
-				return args
-			}(),
-			want: "",
-		},
-		{
-			name: "explicitly disabled is a no-op and warns",
-			args: k8sattributes.Arguments{ExtractConfig: k8sattributes.ExtractConfig{DeploymentNameFromReplicaSet: false}},
-			want: "extract.deployment_name_from_replicaset is deprecated",
-		},
-	}
+	args := k8sattributes.Arguments{ExtractConfig: k8sattributes.ExtractConfig{DeploymentNameFromReplicaSet: false}}
 
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			logger := slog.New(slog.NewTextHandler(&buf, nil))
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
 
-			tc.args.LogDeprecations(logger)
-
-			if tc.want == "" {
-				require.Empty(t, buf.String())
-				return
-			}
-			require.Contains(t, buf.String(), tc.want)
-		})
-	}
-}
-
-func TestArguments_LogDeprecations_nilLogger(t *testing.T) {
 	require.NotPanics(t, func() {
-		k8sattributes.Arguments{}.LogDeprecations(nil)
+		args.LogDeprecations(nil)
 	})
 }

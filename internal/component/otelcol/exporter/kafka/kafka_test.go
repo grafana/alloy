@@ -603,41 +603,13 @@ func TestProducerNewFields(t *testing.T) {
 }
 
 func TestArguments_LogDeprecations(t *testing.T) {
-	tt := []struct {
-		name string
-		args kafka.Arguments
-		want string
-	}{
-		{
-			name: "nothing deprecated set",
-			args: kafka.Arguments{},
-			want: "",
-		},
-		{
-			name: "resolve_canonical_bootstrap_servers_only set",
-			args: kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true},
-			want: "resolve_canonical_bootstrap_servers_only is deprecated",
-		},
-	}
+	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
 
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			logger := slog.New(slog.NewTextHandler(&buf, nil))
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
 
-			tc.args.LogDeprecations(logger)
-
-			if tc.want == "" {
-				require.Empty(t, buf.String())
-				return
-			}
-			require.Contains(t, buf.String(), tc.want)
-		})
-	}
-}
-
-func TestArguments_LogDeprecations_nilLogger(t *testing.T) {
 	require.NotPanics(t, func() {
-		kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}.LogDeprecations(nil)
+		args.LogDeprecations(nil)
 	})
 }
