@@ -73,7 +73,6 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage.
 func (m *samplingStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 	for _, e := range entries {

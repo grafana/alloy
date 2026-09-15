@@ -147,7 +147,6 @@ func (m *packStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (m *packStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = m.pack(entries[i])

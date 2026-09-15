@@ -51,7 +51,6 @@ func (l *labelKeepStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		for label := range e.Labels {

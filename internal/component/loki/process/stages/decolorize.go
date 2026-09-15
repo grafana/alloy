@@ -35,7 +35,6 @@ func (m *decolorizeStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage and is only used by our new pipeline.
 func (m *decolorizeStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		decolorizedLine := ansiRegex.ReplaceAll([]byte(entries[i].Line), []byte{})

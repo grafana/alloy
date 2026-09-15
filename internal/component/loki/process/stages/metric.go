@@ -120,7 +120,6 @@ func (m *metricStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (m *metricStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		m.processEntry(e)

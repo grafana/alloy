@@ -54,7 +54,6 @@ func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (s *structuredMetadataDropStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = s.processEntry(entries[i])

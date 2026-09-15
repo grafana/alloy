@@ -77,7 +77,6 @@ func (r *regexStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (r *regexStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])

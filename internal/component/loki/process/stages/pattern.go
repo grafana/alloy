@@ -84,7 +84,6 @@ func (r *patternStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage.
 func (r *patternStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])

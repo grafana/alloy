@@ -45,7 +45,6 @@ func (d *dockerStage) Run(in chan Entry) chan Entry {
 	})
 }
 
-// process implements stage and is only used by our new pipeline.
 func (d *dockerStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = d.processEntry(entries[i])

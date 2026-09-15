@@ -107,7 +107,6 @@ func (l *labelStage) Run(in chan Entry) chan Entry {
 	return out
 }
 
-// process implements stage.
 func (l *labelStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		// FIXME(kallep): The function we call could be determined
