@@ -84,8 +84,6 @@ func (args Arguments) Validate() error {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	// The contrib extension's Config wraps an internal, unexported clientauth.Config type, so it
-	// can't be built as a struct literal here. Start from its own default and set exported fields.
 	cfg := collectorgoogleauth.NewFactory().CreateDefaultConfig().(*collectorgoogleauth.Config)
 	cfg.Config.Project = args.Project
 	cfg.Config.QuotaProject = args.QuotaProject

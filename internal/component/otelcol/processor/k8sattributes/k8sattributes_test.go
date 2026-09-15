@@ -50,12 +50,11 @@ func Test_Extract(t *testing.T) {
 
 // deployment_name_from_replicaset has been deprecated.
 func Test_DeploymentNameFromReplicaSet(t *testing.T) {
-	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+	convert := func(t *testing.T, cfg string) {
 		var args k8sattributes.Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		convertedArgs, err := args.Convert()
+		_, err := args.Convert()
 		require.NoError(t, err)
-		return convertedArgs.(*k8sattributesprocessor.Config)
 	}
 
 	t.Run("default", func(t *testing.T) {
