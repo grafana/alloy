@@ -17,7 +17,13 @@ type Unmarshaler interface {
 
 const (
 	DefaultRetryInterval = 100 * time.Millisecond
-	DefaultTimeout       = 90 * time.Second
+
+	// Default timeout for polling/assertions if no -timeout is provided to go test.
+	defaultTimeout = 180 * time.Second
+
+	// Timeout padding to subtract from the time left until the go test -timeout deadline.
+	// This makes sure that polling/assertions fail before the process watchdog kills the test.
+	timeoutPadding = 15 * time.Second
 )
 
 func FetchDataFromURL(url string, target Unmarshaler) (string, error) {
@@ -127,17 +133,22 @@ func isStatefulFromEnv() (bool, error) {
 	return isStateful, nil
 }
 
-func TestTimeoutEnv(t *testing.T) time.Duration {
-	if toStr := os.Getenv(TestTimeout); toStr != "" {
-		if to, err := time.ParseDuration(toStr); err == nil {
-			return to
-		} else {
-			t.Logf("failed to parse %s value %s as a duration: %s, defaulting to %s", TestTimeout, toStr, err, DefaultTimeout)
+func DefaultProcessTimeout() time.Duration {
+	return defaultTimeout + timeoutPadding
+}
+
+// TestTimeout returns how long polling helpers should keep retrying. When the
+// test is run with go test -timeout (as the integration harness does), this is
+// assertionPollingTimeout, but never longer than the time left until that
+// deadline. Otherwise it defaults to DefaultTimeout.
+func TestTimeout(t *testing.T) time.Duration {
+	if t != nil {
+		if deadline, ok := t.Deadline(); ok {
+			remaining := time.Until(deadline)
+			return remaining - timeoutPadding
 		}
-	} else {
-		t.Logf("%s not set, defaulting to %s", TestTimeout, DefaultTimeout)
 	}
-	return DefaultTimeout
+	return defaultTimeout
 }
 
 func SanitizeTestName(t *testing.T) string {

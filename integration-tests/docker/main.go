@@ -10,9 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -40,7 +39,7 @@ func main() {
 		"This is useful for a fast iteration loop locally but should not be used in CI." +
 		"You must run 'docker compose down' manually if you want to switch from stateful to stateless mode."
 	rootCmd.PersistentFlags().BoolVar(&stateful, "stateful", false, statefulUsageString)
-	rootCmd.PersistentFlags().DurationVar(&testTimeout, "test-timeout", common.DefaultTimeout, "Timeout for each individual test")
+	rootCmd.PersistentFlags().DurationVar(&testTimeout, "test-timeout", common.DefaultProcessTimeout(), "Timeout for each individual test")
 	rootCmd.PersistentFlags().BoolVar(&alwaysPrintLogs, "always-print-logs", false, "Always print the test and alloy logs, even if the test passed")
 
 	if err := rootCmd.Execute(); err != nil {

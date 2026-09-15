@@ -82,7 +82,7 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string, probe func(c *a
 				t.Logf("Note: Trace has zero duration (TraceID: %s). This can occur with very fast eBPF-instrumented operations.", trace.TraceID)
 			}
 		}
-	}, DefaultTimeout, DefaultRetryInterval, "No traces found matching the search criteria within the time limit")
+	}, TestTimeout(t), DefaultRetryInterval, "No traces found matching the search criteria within the time limit")
 }
 
 func (t *TempoTraceSearchResponse) Unmarshal(data []byte) error {

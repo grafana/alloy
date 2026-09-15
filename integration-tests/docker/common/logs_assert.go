@@ -63,7 +63,7 @@ func AssertLogsPresent(t *testing.T, totalCount int, expected ...ExpectedLogResu
 		}
 
 		require.Equal(c, totalCount, totalRecv)
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
+	}, TestTimeout(t), DefaultRetryInterval)
 
 	for _, e := range expected {
 		entries := matchingEntries(e.Labels, logResponse.Data.Result)
@@ -115,7 +115,7 @@ func AssertLabelsNotIndexed(t *testing.T, labels ...string) {
 // It will return an error if no logs are found after test timeout.
 func WaitForInitalLogs(testName string) error {
 	var (
-		after = time.After(DefaultTimeout)
+		after = time.After(TestTimeout(nil))
 		tick  = time.NewTicker(DefaultRetryInterval)
 	)
 
