@@ -37,6 +37,7 @@ type Arguments struct {
 	GroupID              string              `alloy:"group_id,attr,optional"`
 	Assignor             string              `alloy:"assignor,attr,optional"`
 	Version              string              `alloy:"version,attr,optional"`
+	RackID               string              `alloy:"rack_id,attr,optional"`
 	Authentication       KafkaAuthentication `alloy:"authentication,block,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
@@ -177,6 +178,7 @@ func (args *Arguments) Convert() kt.Config {
 			Topics:               args.Topics,
 			Version:              args.Version,
 			Assignor:             args.Assignor,
+			RackID:               args.RackID,
 			Authentication:       args.Authentication.Convert(),
 		},
 		RelabelConfigs: alloy_relabel.ComponentToPromRelabelConfigs(args.RelabelRules),

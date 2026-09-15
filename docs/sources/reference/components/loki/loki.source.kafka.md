@@ -43,6 +43,7 @@ You can use the following arguments with `loki.source.kafka`:
 | `assignor`               | `string`             | The consumer group rebalancing strategy to use.         | `"range"`             | no       |
 | `group_id`               | `string`             | The Kafka consumer group ID.                            | `"loki.source.kafka"` | no       |
 | `labels`                 | `map(string)`        | The labels to associate with each received Kafka event. | `{}`                  | no       |
+| `rack_id`                | `string`             | The rack identifier for this client.                    | `""`                  | no       |
 | `relabel_rules`          | `RelabelRules`       | Relabeling rules to apply on log entries.               | `{}`                  | no       |
 | `use_incoming_timestamp` | `bool`               | Whether to use the timestamp received from Kafka.       | `false`               | no       |
 | `version`                | `string`             | Kafka version to connect to.                            | `"2.2.1"`             | no       |
@@ -52,6 +53,9 @@ You can use the following arguments with `loki.source.kafka`:
 If a topic starts with a '^', it's treated as a regular expression and may match multiple topics.
 
 Labels from the `labels` argument are applied to every message that the component reads.
+
+The `rack_id` setting enables rack-aware replica selection.
+When it's set and the brokers use a rack-aware replica selector, the component fetches from the closest replica instead of the partition leader.
 
 The `relabel_rules` field can make use of the `rules` export value from a [`loki.relabel`][loki.relabel] component to apply one or more relabeling rules to log entries before they're forwarded to the list of receivers in `forward_to`.
 
