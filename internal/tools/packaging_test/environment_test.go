@@ -99,20 +99,21 @@ func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string
 	t.Helper()
 
 	// The images run systemd as PID 1 instead of a shell, so the tests can
-	// exercise the installed alloy.service unit. systemd needs to manage cgroups
-	// to boot, which requires a privileged container and a writable
-	// /sys/fs/cgroup.
+	// exercise the installed alloy.service
 	container, err := pool.BuildAndRunWithOptions(
 		dockerfile,
 		&dockertest.RunOptions{
 			Name:       name,
 			Privileged: true,
-			Mounts:     []string{"/sys/fs/cgroup:/sys/fs/cgroup:rw"},
 			PortBindings: map[docker.Port][]docker.PortBinding{
 				"9009/tcp": {{HostIP: "0.0.0.0", HostPort: "0"}},
 			},
 		},
 		func(hc *docker.HostConfig) {
+			// Placing the container under a systemd slice keeps systemd's cgroup
+			// management working on hosts where Docker uses the systemd cgroup
+			// driver, such as GitHub's runners.
+			hc.CgroupParent = "docker.slice"
 			hc.Tmpfs = map[string]string{
 				"/run":      "rw",
 				"/run/lock": "rw",
