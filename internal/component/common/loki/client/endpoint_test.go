@@ -578,6 +578,21 @@ func TestEndpointCallerCancel(t *testing.T) {
 	})
 }
 
+func TestEndpointStopped(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	var url flagext.URLValue
+	require.NoError(t, url.Set(srv.URL))
+
+	e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{
+		URL: url,
+	}, logging.NewSlogNop(), marker.NewNopTracker())
+	require.NoError(t, err)
+	e.stop()
+
+	entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
+	require.ErrorIs(t, e.enqueue(t.Context(), entry, 0), loki.ErrConsumerStopped)
+}
+
 // histogramSumAndCount returns the sum and count of the single series of the
 // named histogram in reg.
 func histogramSumAndCount(t *testing.T, reg *prometheus.Registry, name string) (float64, uint64) {
