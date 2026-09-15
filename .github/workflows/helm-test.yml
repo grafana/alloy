@@ -97,6 +97,15 @@ jobs:
         run: |
           helm install my-prometheus-operator-crds prometheus-community/prometheus-operator-crds --version 6.0.0
 
+      # ci/httproute-values.yaml renders an HTTPRoute, so the Gateway API CRDs
+      # have to exist before `ct install` applies the chart.
+      - name: Install Gateway API CRDs
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          # renovate: datasource=github-releases packageName=kubernetes-sigs/gateway-api
+          GATEWAY_API_VERSION=v1.6.2
+          kubectl apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GATEWAY_API_VERSION}/standard-install.yaml"
+
       - name: Test charts
         run: ct install --config ./operations/helm/ct.yaml
 

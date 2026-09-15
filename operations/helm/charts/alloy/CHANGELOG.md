@@ -13,6 +13,7 @@ Unreleased
 ### Enhancements
 
 - Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+- Add `httpRoute` to expose Alloy with a Gateway API HTTPRoute instead of an Ingress. (@ivankliuk)
 
 1.12.1 (2026-08-26)
 ----------

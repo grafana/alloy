@@ -1,0 +1,21 @@
+alloy:
+  extraPorts:
+    - name: "faro"
+      port: 12347
+      targetPort: 12347
+      protocol: "TCP"
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: chart-example-gateway
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - chart-example.local
+  labels:
+    team: telemetry
+  annotations:
+    example.com/owner: "platform"
+  timeouts:
+    request: 10s
