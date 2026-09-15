@@ -77,10 +77,10 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &intervalprocessor.Config{
-		Interval:    args.Interval,
-		PassThrough: args.PassThrough.Convert(),
-	}, nil
+	cfg := intervalprocessor.NewFactory().CreateDefaultConfig().(*intervalprocessor.Config)
+	cfg.Interval = args.Interval
+	cfg.PassThrough = args.PassThrough.Convert()
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.
