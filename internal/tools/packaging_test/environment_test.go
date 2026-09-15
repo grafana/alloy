@@ -30,6 +30,10 @@ const (
 
 	// pollInterval is how often to re-check a systemd state that's being waited on.
 	pollInterval = 500 * time.Millisecond
+
+	// serviceSettleTime is how long to let the service run before checking that
+	// it stayed up
+	serviceSettleTime = 3 * time.Second
 )
 
 type Environment struct {

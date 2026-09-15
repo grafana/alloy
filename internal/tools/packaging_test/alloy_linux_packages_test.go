@@ -246,6 +246,11 @@ func (env *AlloyEnvironment) requireServiceActive(t *testing.T) {
 	}
 	require.Equal(t, "active", state, "alloy service never became active")
 
+	time.Sleep(serviceSettleTime)
+
+	state = strings.TrimSpace(env.ExecScript(`systemctl is-active alloy`).Stdout)
+	require.Equal(t, "active", state, "alloy service did not stay active")
+
 	res := env.ExecScript(`systemctl show -p NRestarts --value alloy`)
 	require.Equal(t, 0, res.ExitCode, "failed to read the service restart count")
 	require.Equal(t, "0", strings.TrimSpace(res.Stdout), "alloy service restarted, so it didn't stay up")
