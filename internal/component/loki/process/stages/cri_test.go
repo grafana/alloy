@@ -337,6 +337,77 @@ loki_process_cri_partial_lines_flushed_total 3
 	})
 }
 
+func TestCRIStageNoContentLost(t *testing.T) {
+	const maxPartialLines = 4
+
+	var (
+		batch   []Entry
+		want    []string
+		content = func(s int, suffix string) string { return fmt.Sprintf("s%d-%s ", s, suffix) }
+	)
+
+	add := func(stream int, flag, line string) {
+		want = append(want, line)
+		ts := tagFTime1Str
+		if flag == "F" {
+			ts = tagFTime2Str
+		}
+		batch = append(batch, newEntry(
+			map[string]any{},
+			model.LabelSet{"s": model.LabelValue(fmt.Sprintf("%d", stream))},
+			fmt.Sprintf("%s stdout %s %s", ts, flag, line),
+			time.Now(),
+		))
+	}
+
+	// Every stream gets three partial lines. Even streams are completed in this
+	// batch, odd streams are left open and outnumber maxPartialLines.
+	for s := range 10 {
+		for p := range 3 {
+			add(s, "P", content(s, fmt.Sprintf("p%d", p)))
+		}
+		if s%2 == 0 {
+			add(s, "F", content(s, "end"))
+		}
+	}
+
+	var got []string
+	next := func(_ context.Context, out []Entry) error {
+		for _, e := range out {
+			got = append(got, e.Line)
+		}
+		return nil
+	}
+
+	cfg := CRIConfig{MaxPartialLines: maxPartialLines}
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(),
+		featuregate.StabilityGenerallyAvailable, []StageConfig{{CRIConfig: &cfg}}, next)
+	require.NoError(t, err)
+
+	require.NoError(t, p.process(context.Background(), batch))
+
+	// A second batch of partial lines that nothing completes, so only stop can
+	// release them.
+	batch = nil
+	for s := 10; s < 12; s++ {
+		add(s, "P", content(s, "p0"))
+	}
+	require.NoError(t, p.process(context.Background(), batch))
+
+	p.stop()
+
+	all := strings.Join(got, "")
+	for _, line := range want {
+		require.Equal(t, 1, strings.Count(all, line), "%q must appear exactly once", line)
+	}
+
+	var wantLen int
+	for _, line := range want {
+		wantLen += len(line)
+	}
+	require.Equal(t, wantLen, len(all), "the output must not gain or lose content")
+}
+
 // TestCRIStageFlushOnShutdown verifies that buffered entries are flushed when stop is called.
 // This is only implemented for the new pipeline.
 func TestCRIStageFlushOnShutdown(t *testing.T) {
