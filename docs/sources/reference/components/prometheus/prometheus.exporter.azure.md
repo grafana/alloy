@@ -40,7 +40,7 @@ The exporter offers the following two options for gathering metrics.
 ## Authentication
 
 {{< param "PRODUCT_NAME" >}} must be running in an environment with access to Azure.
-The exporter uses the Azure SDK for go and supports [authentication][].
+The exporter uses the Azure SDK for Go and supports [authentication][].
 
 The account used by {{< param "PRODUCT_NAME" >}} needs:
 
@@ -75,23 +75,23 @@ prometheus.exporter.azure "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.azure`:
 
-| Name                          | Type           | Description                                                                                                     | Default                                                                       | Required |
-| ----------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- |
-| `metrics`                     | `list(string)` | The metrics to scrape from resources.                                                                           |                                                                               | yes      |
-| `resource_type`               | `string`       | The Azure Resource Type to scrape metrics for.                                                                  |                                                                               | yes      |
-| `subscriptions`               | `list(string)` | List of subscriptions to scrape metrics from.                                                                   |                                                                               | yes      |
-| `azure_cloud_environment`     | `string`       | Name of the cloud environment to connect to.                                                                    | `"azurecloud"`                                                                | no       |
-| `included_dimensions`         | `list(string)` | List of dimensions to include on the final metrics.                                                             |                                                                               | no       |
-| `included_resource_tags`      | `list(string)` | List of resource tags to include on the final metrics.                                                          | `["owner"]`                                                                   | no       |
-| `interval`                    | `string`       | [ISO8601 Duration][] used to generate individual data points in Azure Monitor. Must be smaller than `timespan`. | `"PT1M"`                                                                      | no       |
-| `metric_aggregations`         | `list(string)` | Aggregations to apply for the metrics produced.                                                                 |                                                                               | no       |
-| `metric_help_template`        | `string`       | Description of the metric.                                                                                      | `"Azure metric {metric} for {type} with aggregation {aggregation} as {unit}"` | no       |
-| `metric_name_template`        | `string`       | Metric template used to expose the metrics.                                                                     | `"azure_{type}_{metric}_{aggregation}_{unit}"`                                | no       |
-| `metric_namespace`            | `string`       | Namespace for resource types that have multiple levels of metrics.                                              |                                                                               | no       |
-| `regions`                     | `list(string)` | The list of regions to gather metrics from. Mutually exclusive with `resource_graph_query_filter`.              |                                                                               | no       |
-| `resource_graph_query_filter` | `string`       | The [Kusto query][] filter to apply when searching for resources. Mutually exclusive with `regions`.            |                                                                               | no       |
-| `timespan`                    | `string`       | [ISO8601 Duration][] over which the exporter queries metrics. Defaults to 5 minutes.                            | `"PT5M"`                                                                      | no       |
-| `validate_dimensions`         | `bool`         | Enable dimension validation in the Azure SDK.                                                                   | `false`                                                                       | no       |
+| Name                          | Type           | Description                                                                                                        | Default                                                                       | Required |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------- |
+| `metrics`                     | `list(string)` | The metrics to scrape from resources.                                                                              |                                                                               | yes      |
+| `resource_type`               | `string`       | The Azure Resource Type to scrape metrics for.                                                                     |                                                                               | yes      |
+| `subscriptions`               | `list(string)` | List of subscriptions to scrape metrics from.                                                                      |                                                                               | yes      |
+| `azure_cloud_environment`     | `string`       | Name of the cloud environment to connect to.                                                                       | `"azurecloud"`                                                                | no       |
+| `included_dimensions`         | `list(string)` | List of dimensions to include on the final metrics.                                                                |                                                                               | no       |
+| `included_resource_tags`      | `list(string)` | List of resource tags to include on the final metrics.                                                             | `["owner"]`                                                                   | no       |
+| `interval`                    | `string`       | [ISO8601 Duration][] used to generate individual data points in Azure Monitor. Must be no greater than `timespan`. | `"PT1M"`                                                                      | no       |
+| `metric_aggregations`         | `list(string)` | Aggregations to apply for the metrics produced.                                                                    |                                                                               | no       |
+| `metric_help_template`        | `string`       | Description of the metric.                                                                                         | `"Azure metric {metric} for {type} with aggregation {aggregation} as {unit}"` | no       |
+| `metric_name_template`        | `string`       | Metric template used to expose the metrics.                                                                        | `"azure_{type}_{metric}_{aggregation}_{unit}"`                                | no       |
+| `metric_namespace`            | `string`       | Namespace for resource types that have multiple levels of metrics.                                                 |                                                                               | no       |
+| `regions`                     | `list(string)` | The list of regions to gather metrics from. Mutually exclusive with `resource_graph_query_filter`.                 |                                                                               | no       |
+| `resource_graph_query_filter` | `string`       | The [Kusto query][] filter to apply when searching for resources. Mutually exclusive with `regions`.               |                                                                               | no       |
+| `timespan`                    | `string`       | [ISO8601 Duration][] over which the exporter queries metrics. Defaults to 5 minutes.                               | `"PT5M"`                                                                      | no       |
+| `validate_dimensions`         | `bool`         | Enable dimension validation in the Azure SDK.                                                                      | `false`                                                                       | no       |
 
 The list of available `resource_type` values and their corresponding `metrics` is in [Azure Monitor essentials][].
 
@@ -149,7 +149,7 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 prometheus.exporter.azure "example" {
-    subscriptions    = ["<SUBSCRIPTIONS>"]
+    subscriptions    = ["<SUBSCRIPTION_ID>"]
     resource_type    = "Microsoft.Storage/storageAccounts"
     regions          = [
         "westeurope",
@@ -194,7 +194,7 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<SUBSCRIPTIONS>`_: The Azure subscription IDs holding the resources you want to monitor.
+- _`<SUBSCRIPTION_ID>`_: An Azure subscription ID holding the resources you want to monitor. Add one array element per subscription ID.
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
