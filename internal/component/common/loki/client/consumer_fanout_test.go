@@ -43,13 +43,19 @@ func TestFanoutConsumer(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	require.Eventually(t, func() bool {
@@ -104,13 +110,19 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	// times 2 due to endpoints being run
@@ -203,5 +215,53 @@ func newServerAndEndpointConfig(t *testing.T) (Config, chan util.RemoteWriteRequ
 	return endpointConfig, receivedReqsChan, func() {
 		server.Close()
 		close(receivedReqsChan)
+	}
+}
+
+func TestFanoutConsumer_StopWithFullSendQueue(t *testing.T) {
+	const drainTimeout = time.Second
+
+	server, blocked, release := newBlockedServer()
+	defer server.Close()
+	defer release()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	endpointConfig := Config{
+		Name: "test-client",
+		URL:  flagext.URLValue{URL: serverURL},
+		// Long enough that the in-flight request stays parked for the whole test.
+		Timeout:   time.Minute,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	}
+
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), endpointConfig)
+	require.NoError(t, err)
+
+	feedUntilBlocked(t, blocked, consumer)
+
+	done := make(chan struct{})
+	go func() {
+		consumer.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * drainTimeout):
+		release()
+		t.Fatal("Stop did not finish in time")
 	}
 }
