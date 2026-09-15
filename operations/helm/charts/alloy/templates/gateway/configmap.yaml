@@ -1,0 +1,12 @@
+{{- if .Values.gateway.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "alloy.fullname" . }}-gateway
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+data:
+  nginx.conf: |- {{- tpl .Values.gateway.nginxConfig.file . | nindent 4 }}
+{{- end }}
