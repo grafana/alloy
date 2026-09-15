@@ -231,7 +231,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
-	var result kafkareceiver.Config
+	result := *kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 	err := mapstructure.Decode(input, &result)
 	if err != nil {
 		return nil, err

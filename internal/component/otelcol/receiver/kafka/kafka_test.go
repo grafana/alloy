@@ -60,6 +60,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Topics:   []string{"otlp_spans"},
 				Encoding: "otlp_proto",
 			},
+			Profiles: kafkareceiver.TopicEncodingConfig{
+				Topics:   []string{"otlp_profiles"},
+				Encoding: "otlp_proto",
+			},
 			HeaderExtraction: kafkareceiver.HeaderExtraction{
 				ExtractHeaders: false,
 				Headers:        []string{},
@@ -163,6 +167,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Topics:        []string{"^traces-.*"},
 					Encoding:      "zipkin_json",
 					ExcludeTopics: []string{"^traces-debug-.*$"},
+				},
+				Profiles: kafkareceiver.TopicEncodingConfig{
+					Topics:   []string{"otlp_profiles"},
+					Encoding: "otlp_proto",
 				},
 				ClientConfig: configkafka.ClientConfig{
 					Brokers:         []string{"10.10.10.10:9092"},
@@ -588,7 +596,9 @@ func TestArguments_Auth(t *testing.T) {
 
 			actual := actualPtr.(*kafkareceiver.Config)
 
-			var expected kafkareceiver.Config
+			// Seed the same way Convert does, so the case only has to spell out
+			// what it overrides on top of the upstream defaults.
+			expected := *kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
 
