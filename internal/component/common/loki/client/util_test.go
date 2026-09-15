@@ -10,7 +10,6 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -37,16 +36,24 @@ func newBlockedServer() (*httptest.Server, *atomic.Bool, func()) {
 }
 
 func feedUntilBlocked(t *testing.T, blocked *atomic.Bool, consumer Consumer) {
+	t.Helper()
+
+	const timeout = 10 * time.Second
+
 	e := loki.NewEntry(model.LabelSet{"A": "b"}, push.Entry{
 		Line:      "test",
 		Timestamp: time.Now(),
 	})
 
+	deadline := time.Now().Add(timeout)
 	for !blocked.Load() {
+		if time.Now().After(deadline) {
+			t.Fatalf("endpoint did not block within %s", timeout)
+		}
+
 		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 
 		_ = consumer.ConsumeEntry(ctx, e)
 		cancel()
 	}
-	require.True(t, blocked.Load())
 }
