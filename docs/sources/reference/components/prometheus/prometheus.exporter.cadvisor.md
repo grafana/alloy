@@ -28,7 +28,7 @@ The component requires specific permissions and configuration depending on your 
 
 When you run {{< param "PRODUCT_NAME" >}} as a Linux binary, systemd service, or as the `alloy` user, grant the `alloy` user permissions to access the container runtime socket and related directories to collect metrics from containers on the host.
 
-The component works with Docker, `containerd`, CRI-O, and systemd container runtimes.
+The component works with Docker, `containerd`, CRI-O, and systemd container run times.
 
 For Docker, grant permissions using one of these approaches:
 
@@ -122,9 +122,9 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | Name                           | Type           | Description                                                                                                         | Default                             | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
 | `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
-| `containerd_host`              | `string`       | The containerd endpoint.                                                                                            | `"/run/containerd/containerd.sock"` | no       |
-| `containerd_namespace`         | `string`       | The containerd namespace.                                                                                           | `"k8s.io"`                          | no       |
-| `disable_root_cgroup_stats`    | `bool`         | Disable collecting root Cgroup stats.                                                                               | `false`                             | no       |
+| `containerd_host`              | `string`       | The `containerd` endpoint.                                                                                          | `"/run/containerd/containerd.sock"` | no       |
+| `containerd_namespace`         | `string`       | The `containerd` namespace.                                                                                         | `"k8s.io"`                          | no       |
+| `disable_root_cgroup_stats`    | `bool`         | Disable collecting root `cgroup` stats.                                                                             | `false`                             | no       |
 | `disabled_metrics`             | `list(string)` | List of metrics to disable. If set, this list overrides the default disabled metrics.                               | `[]`                                | no       |
 | `docker_host`                  | `string`       | Docker endpoint.                                                                                                    | `"unix:///var/run/docker.sock"`     | no       |
 | `docker_only`                  | `bool`         | Only report docker containers in addition to root stats.                                                            | `false`                             | no       |
@@ -133,9 +133,9 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
 | `enabled_metrics`              | `list(string)` | List of metrics to enable. If set, this list overrides `disabled_metrics`.                                          | `[]`                                | no       |
 | `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys, matched by prefix, to collect for containers.                               | `[]`                                | no       |
-| `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of perf events to measure.                                         | `""`                                | no       |
-| `raw_cgroup_prefix_allowlist`  | `list(string)` | List of cgroup path prefixes to collect, even when you set `docker_only`.                                           | `[]`                                | no       |
-| `resctrl_interval`             | `duration`     | Interval to update resctrl mon groups.                                                                              | `"0"`                               | no       |
+| `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of performance events to measure.                                  | `""`                                | no       |
+| `raw_cgroup_prefix_allowlist`  | `list(string)` | List of `cgroup` path prefixes to collect, even when you set `docker_only`.                                         | `[]`                                | no       |
+| `resctrl_interval`             | `duration`     | Interval to update `resctrl mon` groups.                                                                            | `"0"`                               | no       |
 | `storage_duration`             | `duration`     | Length of time to keep data stored in memory.                                                                       | `"2m"`                              | no       |
 | `store_container_labels`       | `bool`         | Whether to convert container labels and environment variables into labels on Prometheus metrics for each container. | `true`                              | no       |
 | `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
@@ -144,7 +144,7 @@ For `allowlisted_container_labels` to take effect, set `store_container_labels` 
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 
-`env_metadata_allowlist` is only supported for containerd and Docker runtimes.
+`env_metadata_allowlist` is only supported for `containerd` and Docker run times.
 
 If you don't set `perf_events_config`, {{< param "PRODUCT_NAME" >}} doesn't measure `perf` events.
 
@@ -294,7 +294,7 @@ The required volume mounts are:
 - `/var/run/docker.sock`: Docker socket for container discovery and API access
 - `/`: Read-only access to the host root filesystem for system metrics
 - `/var/run`: Read-write access to host runtime data for container state
-- `/sys`: Read-only access to host system information for cgroup and device metrics
+- `/sys`: Read-only access to host system information for `cgroup` and device metrics
 - `/var/lib/docker/`: Read-only access to the Docker storage directory for container metadata and layer information
 - `/dev/disk/`: Read-only access to disk device information for disk I/O metrics
 
@@ -390,7 +390,7 @@ Key configuration requirements:
 - **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
-For container runtimes other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
+For container run times other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
