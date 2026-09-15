@@ -435,6 +435,10 @@ TODO: Add a troubleshooting section?
 
 `otelcol.exporter.loadbalancing` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.loadbalancing` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Static resolver

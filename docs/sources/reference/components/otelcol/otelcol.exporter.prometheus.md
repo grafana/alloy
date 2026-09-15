@@ -157,6 +157,10 @@ The following are dropped during the conversion process:
 
 `otelcol.exporter.prometheus` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.prometheus` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ## Basic usage

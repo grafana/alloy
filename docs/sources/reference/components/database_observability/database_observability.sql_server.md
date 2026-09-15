@@ -163,6 +163,26 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 
 The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
 
+## Exported fields
+
+The following fields are exported and can be referenced by other components:
+
+| Name      | Type                | Description                                                                |
+| --------- | ------------------- | -------------------------------------------------------------------------- |
+| `targets` | `list(map(string))` | A list of targets that can be used by `prometheus.scrape` components.    |
+
+## Component health
+
+`database_observability.sql_server` is reported as unhealthy if one or more collectors fail to start or if any database instance encounters connection or configuration errors. Otherwise, the component is reported as healthy.
+
+## Debug information
+
+`database_observability.sql_server` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`database_observability.sql_server` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ```alloy

@@ -77,6 +77,10 @@ The `tls` block configures TLS for the HTTP server.
 
 `pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
 
+## Debug information
+
+`pyroscope.receive_http` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 `pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.

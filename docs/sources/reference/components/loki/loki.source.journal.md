@@ -151,11 +151,19 @@ You can use the following blocks with `loki.source.journal`:
 
 The translation of legacy position file will happens if there is no position file already and is a valid yaml file to convert.
 
+## Exported fields
+
+The `loki.source.journal` component doesn't export any values.
+
 ## Component health
 
-`loki.source.journal` is only reported as unhealthy if given an invalid configuration.
+`loki.source.journal` is reported as unhealthy if the journal tailer cannot be created. This can occur if the systemd journal is not available, the systemd library is not installed, or the specified path is inaccessible. Otherwise, the component is reported as healthy.
 
-## Debug Metrics
+## Debug information
+
+`loki.source.journal` doesn't expose any component-specific debug information.
+
+## Debug metrics
 
 * `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
 * `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.

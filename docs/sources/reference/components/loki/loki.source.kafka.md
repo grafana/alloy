@@ -135,7 +135,11 @@ The `oauth_config` is required when the SASL mechanism is set to `OAUTHBEARER`.
 
 ## Debug information
 
-`loki.source.kafka` doesn't expose additional debug info.
+`loki.source.kafka` doesn't expose any component-specific debug information.
+
+## Debug metrics
+
+`loki.source.kafka` doesn't expose any component-specific debug metrics.
 
 ## Example
 

@@ -477,6 +477,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.processor.tail_sampling` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.tail_sampling` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp](../otelcol.exporter.otlphttp/) for further processing.

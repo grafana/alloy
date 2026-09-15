@@ -95,6 +95,10 @@ The `tls` block configures TLS for the HTTP server.
 
 `prometheus.receive_http` is reported as unhealthy if it's given an invalid configuration.
 
+## Debug information
+
+`prometheus.receive_http` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 The following are some of the metrics that are exposed when this component is used.

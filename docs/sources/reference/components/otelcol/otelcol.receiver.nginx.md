@@ -90,6 +90,10 @@ You can use the following blocks with `otelcol.receiver.nginx`:
 
 `otelcol.receiver.nginx` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.nginx` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example collects all available metrics from an NGINX server and forwards them to an exporter.

@@ -124,6 +124,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.auth.basic` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.auth.basic` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 This section includes examples to help you configure basic authentication for exporters and receivers.

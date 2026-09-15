@@ -199,6 +199,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.splunkhec` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.splunkhec` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 ### OpenTelemetry Receiver

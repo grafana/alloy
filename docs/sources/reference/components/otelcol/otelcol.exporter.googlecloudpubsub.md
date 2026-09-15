@@ -133,6 +133,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.googlecloudpubsub` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.googlecloudpubsub` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example scrapes logs from local files through a receiver for conversion to OpenTelemetry format before finally sending them to Pub/Sub.
