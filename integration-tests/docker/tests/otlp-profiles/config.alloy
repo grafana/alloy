@@ -1,0 +1,31 @@
+otelcol.receiver.otlp "profiles" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    profiles = [otelcol.exporter.otlp.profiles.input]
+  }
+}
+
+otelcol.exporter.otlp "profiles" {
+  client {
+    endpoint = "sink:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+
+  sending_queue {
+    enabled = false
+  }
+
+  retry_on_failure {
+    enabled = false
+  }
+}

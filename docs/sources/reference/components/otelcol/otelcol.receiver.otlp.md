@@ -34,6 +34,7 @@ otelcol.receiver.otlp "<LABEL>" {
   output {
     metrics = [...]
     logs    = [...]
+    profiles = [...]
     traces  = [...]
   }
 }
@@ -178,6 +179,7 @@ To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.
 * `[endpoint][metrics_url_path]` for metrics.
 * `[endpoint][logs_url_path]` for logs.
+* `[endpoint]/v1development/profiles` for profiles.
 
 ### `cors`
 
@@ -236,6 +238,7 @@ otelcol.receiver.otlp "default" {
   output {
     metrics = [otelcol.processor.batch.default.input]
     logs    = [otelcol.processor.batch.default.input]
+    profiles = [otelcol.exporter.otlp.default.input]
     traces  = [otelcol.processor.batch.default.input]
   }
 }

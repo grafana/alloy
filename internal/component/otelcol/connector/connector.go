@@ -254,7 +254,7 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	updateConsumersFunc := func() {
-		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector)
+		p.consumer.SetConsumers(tracesConnector, metricsConnector, logsConnector, nil)
 	}
 
 	// Schedule the components to run once our component is running.

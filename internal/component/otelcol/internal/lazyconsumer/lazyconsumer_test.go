@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/goleak"
 
@@ -58,6 +59,9 @@ func Test_ConsumeWaitsForResume(t *testing.T) {
 		},
 		"ConsumeLogs": func() {
 			_ = c.ConsumeLogs(componenttest.TestContext(t), plog.NewLogs())
+		},
+		"ConsumeProfiles": func() {
+			_ = c.ConsumeProfiles(componenttest.TestContext(t), pprofile.NewProfiles())
 		},
 	}
 
@@ -124,6 +128,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 					_ = c.ConsumeLogs(ctx, plog.NewLogs())
 					_ = c.ConsumeMetrics(ctx, pmetric.NewMetrics())
 					_ = c.ConsumeTraces(ctx, ptrace.NewTraces())
+					_ = c.ConsumeProfiles(ctx, pprofile.NewProfiles())
 				}
 			}
 		}()

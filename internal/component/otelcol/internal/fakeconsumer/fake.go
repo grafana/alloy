@@ -7,6 +7,7 @@ import (
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
@@ -15,10 +16,11 @@ import (
 // member field is not provided, implementations of methods will default to a
 // no-op.
 type Consumer struct {
-	CapabilitiesFunc   func() otelconsumer.Capabilities
-	ConsumeTracesFunc  func(context.Context, ptrace.Traces) error
-	ConsumeMetricsFunc func(context.Context, pmetric.Metrics) error
-	ConsumeLogsFunc    func(context.Context, plog.Logs) error
+	CapabilitiesFunc    func() otelconsumer.Capabilities
+	ConsumeTracesFunc   func(context.Context, ptrace.Traces) error
+	ConsumeMetricsFunc  func(context.Context, pmetric.Metrics) error
+	ConsumeLogsFunc     func(context.Context, plog.Logs) error
+	ConsumeProfilesFunc func(context.Context, pprofile.Profiles) error
 }
 
 var _ otelcol.Consumer = (*Consumer)(nil)
@@ -55,6 +57,14 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 func (c *Consumer) ConsumeLogs(ctx context.Context, md plog.Logs) error {
 	if c.ConsumeLogsFunc != nil {
 		return c.ConsumeLogsFunc(ctx, md)
+	}
+	return nil
+}
+
+// ConsumeProfiles implements otelcol.Consumer.
+func (c *Consumer) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
+	if c.ConsumeProfilesFunc != nil {
+		return c.ConsumeProfilesFunc(ctx, pd)
 	}
 	return nil
 }
