@@ -477,7 +477,7 @@ func Test_ExtractMetadata(t *testing.T) {
 
 	upstreamDefaults := []string{
 		"container.image.name",
-		"container.image.tag",
+		"container.image.tags",
 		"k8s.deployment.name",
 		"k8s.namespace.name",
 		"k8s.node.name",

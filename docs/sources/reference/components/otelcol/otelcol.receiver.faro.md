@@ -56,6 +56,11 @@ You can use the following arguments with `otelcol.receiver.faro`:
 By default, `otelcol.receiver.faro` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8080` to listen on all network interfaces.
 
+{{< admonition type="note" >}}
+The upstream OpenTelemetry Collector promoted the stable resource attribute naming convention for deployment environment to the default behavior.
+As a result, `otelcol.receiver.faro` now emits the `deployment.environment.name` resource attribute instead of the deprecated `deployment.environment` attribute by default.
+{{< /admonition >}}
+
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.faro`:
