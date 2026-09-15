@@ -1,0 +1,132 @@
+name: PR Preflight
+
+on:
+  # SECURITY: This workflow uses pull_request_target so these checks report on fork
+  # pull requests without waiting for a maintainer to approve the workflow run.
+  #
+  # - Nothing is checked out and nothing from the contributor is executed
+  # - Only the base branch's copy of this workflow runs
+  # - The PR body reaches the shell through env, never template interpolation
+  # - Jobs grant at most pull-requests: read
+  #
+  # zizmor: ignore[dangerous-triggers] see above
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions: {}
+
+concurrency:
+  # Editing a title or description fires this repeatedly; only the last run matters.
+  # Keyed on PR number because branch names are not unique across forks.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: PR title
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read # Read the title to validate.
+    steps:
+      - name: Validate PR title 🔎
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          # Require conventional commit types
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            ci
+            chore
+            revert
+            proposal
+          # Scope is optional
+          requireScope: false
+          # Disallow uppercase first letter in subject
+          subjectPattern: ^[A-Z].+$
+          subjectPatternError: |
+            The subject "{subject}" must start with an uppercase letter.
+            Example: "feat: Add new component" not "feat: add new component"
+
+  brief-description:
+    name: Brief description
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a brief description 📝
+        # The default shell can fall back to sh and omits pipefail; this needs both.
+        shell: bash
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+          HEADING: '### Brief description of Pull Request'
+          CONTRIBUTING: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md
+        run: |
+          # GitHub sends CRLF bodies, which would leave a stray CR on every line and
+          # make an "empty" section look filled. Drop HTML comments too, so the
+          # template's own guidance text doesn't count as content; perl reads the
+          # whole body at once, which a line-based strip could not do for a comment
+          # spanning several lines.
+          text=$(printf '%s\n' "${BODY}" | tr -d '\r' | perl -0777 -pe 's/<!--.*?-->//gs')
+
+          if grep -qF "${HEADING}" <<<"${text}"; then
+            section=$(awk -v h="${HEADING}" 'index($0,h)==1 {f=1; next} f && /^###/ {exit} f' <<<"${text}")
+            what='The "Brief description of Pull Request" section'
+          else
+            # The template was removed. What we guard against is an empty squash
+            # commit message, not a missing heading, so accept prose in its place.
+            section="${text}"
+            what='The pull request description'
+          fi
+
+          if [[ -z "${section//[[:space:]]/}" ]]; then
+            echo "::error::${what} is empty. Alloy squashes with the pull request body as the commit message, so it needs a factual summary of what changed. See ${CONTRIBUTING}"
+            exit 1
+          fi
+
+          echo "${what} is filled in."
+
+  signatures:
+    name: Commit signatures
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read # List the commits on the PR.
+    steps:
+      - name: Check commit signatures 🔑
+        # The default shell can fall back to sh and omits pipefail; this needs both.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          CONTRIBUTING: https://github.com/grafana/alloy/blob/main/docs/developer/contributing.md#signed-commits
+        run: |
+          unsigned=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/commits" --paginate \
+            --jq '.[] | select(.commit.verification.verified == false) | "\(.sha[0:8])  \(.commit.message | split("\n")[0])"')
+
+          if [[ -z "${unsigned}" ]]; then
+            echo "All commits have verified signatures."
+            exit 0
+          fi
+
+          # The org ruleset already blocks the merge on this, silently. Listing the
+          # offending commits is the part a contributor needs in order to act.
+          {
+            echo '### Unsigned commits'
+            echo
+            echo '```'
+            echo "${unsigned}"
+            echo '```'
+            echo
+            echo "Re-sign these commits in your fork and force-push. See [Signed commits](${CONTRIBUTING})."
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+          echo "::error::This pull request has commits without a verified signature and cannot be merged until they are re-signed and force-pushed. See ${CONTRIBUTING}"
+          exit 1
