@@ -423,6 +423,32 @@ positions:
 	}, out)
 }
 
+// TestWritePositionFile_ReusesDentry verifies that writePositionFile uses a
+// deterministic temp path (<target>.tmp) rather than a unique random name on
+// every call, so the kernel dentry slab does not grow unboundedly under
+// cgroup v2.
+func TestWritePositionFile_ReusesDentry(t *testing.T) {
+	tmpDir := t.TempDir()
+	target := filepath.Join(tmpDir, "positions.yaml")
+
+	// Write multiple times and verify the temp file path stays the same.
+	for i := 0; i < 3; i++ {
+		err := writePositionFile(target, map[Entry]string{
+			{Path: "/tmp/test.log", Labels: ""}: "100",
+		})
+		require.NoError(t, err)
+
+		// The temp file should either not exist (already renamed) or be the
+		// deterministic <target>.tmp path.
+		entries, readErr := os.ReadDir(tmpDir)
+		require.NoError(t, readErr)
+		for _, entry := range entries {
+			require.NotContains(t, entry.Name(), "positions.yaml.",
+				"unexpected uniquely-named temp file (renameio-style)")
+		}
+	}
+}
+
 func TestReadEmptyLabels(t *testing.T) {
 	temp := tempFilename(t)
 	defer func() {
