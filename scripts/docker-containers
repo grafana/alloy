@@ -111,6 +111,8 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"  \
       -f Dockerfile                        \
       .
+    SIGN_IMAGE="$DEVEL_ALLOY_IMAGE"
+    SIGN_TAG="$TAG_VERSION"
     ;;
 
   alloy-devel-boringcrypto)
@@ -127,6 +129,8 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                     \
       .
+    SIGN_IMAGE="$DEVEL_ALLOY_IMAGE"
+    SIGN_TAG="$TAG_VERSION-boringcrypto"
     ;;
 
   alloy-devel-pr)
@@ -159,4 +163,12 @@ case "$TARGET_CONTAINER" in
     exit 1
     ;;
 esac
+
+# Surface the pushed digest so the signing workflow can sign it by digest (see
+# sign-and-attest.yml). SIGN_IMAGE/SIGN_TAG are set only for targets we sign.
+# buildx --push doesn't load the image locally, so query the registry for the digest.
+if [[ $PUSH_ALLOY_IMAGE == "true" && -n "${SIGN_IMAGE:-}" && -n "${SIGN_TAG:-}" && -n "${GITHUB_OUTPUT:-}" ]]; then
+  DIGEST=$(docker buildx imagetools inspect "$SIGN_IMAGE:$SIGN_TAG" --format '{{.Manifest.Digest}}')
+  echo "image=$SIGN_IMAGE@$DIGEST" >> "$GITHUB_OUTPUT"
+fi
 
