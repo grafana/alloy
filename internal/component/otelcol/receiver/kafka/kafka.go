@@ -26,10 +26,8 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			a := args.(Arguments)
-			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
-			return receiver.New(opts, fact, a)
+			return receiver.New(opts, fact, args.(Arguments))
 		},
 	})
 }
@@ -170,7 +168,13 @@ type KafkaReceiverTopicEncodingConfig struct {
 	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
 }
 
-func (args Arguments) logDeprecations(logger *slog.Logger) {
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
 	for _, signal := range []struct {
 		name string
 		cfg  KafkaReceiverTopicEncodingConfig
@@ -187,6 +191,17 @@ func (args Arguments) logDeprecations(logger *slog.Logger) {
 			)
 		}
 	}
+
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	if args.GroupRebalanceStrategy != "" {
+		logger.Warn(
+			"group_rebalance_strategy is deprecated, use group_rebalance_strategies instead",
+			"group_rebalance_strategy", args.GroupRebalanceStrategy,
+		)
+	}
+	args.Authentication.LogDeprecations(logger)
 }
 
 func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {

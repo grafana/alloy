@@ -2,6 +2,7 @@
 package kafka
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -275,6 +276,19 @@ func (args *Arguments) SetToDefault() {
 	args.Retry.SetToDefault()
 	args.Queue.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+}
+
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	args.Authentication.LogDeprecations(logger)
 }
 
 // Validate implements syntax.Validator.

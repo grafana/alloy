@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -597,5 +599,45 @@ func TestProducerNewFields(t *testing.T) {
 
 		require.Equal(t, 209715200, otelObj.Producer.MaxMessageBytes)
 		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	tt := []struct {
+		name string
+		args kafka.Arguments
+		want string
+	}{
+		{
+			name: "nothing deprecated set",
+			args: kafka.Arguments{},
+			want: "",
+		},
+		{
+			name: "resolve_canonical_bootstrap_servers_only set",
+			args: kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true},
+			want: "resolve_canonical_bootstrap_servers_only is deprecated",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+			tc.args.LogDeprecations(logger)
+
+			if tc.want == "" {
+				require.Empty(t, buf.String())
+				return
+			}
+			require.Contains(t, buf.String(), tc.want)
+		})
+	}
+}
+
+func TestArguments_LogDeprecations_nilLogger(t *testing.T) {
+	require.NotPanics(t, func() {
+		kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}.LogDeprecations(nil)
 	})
 }

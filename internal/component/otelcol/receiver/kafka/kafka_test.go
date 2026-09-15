@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -762,5 +764,57 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 		`), &args)
 
 		require.ErrorContains(t, err, "must be one of")
+	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	tt := []struct {
+		name string
+		args kafka.Arguments
+		want []string
+	}{
+		{
+			name: "nothing deprecated set",
+			args: kafka.Arguments{},
+			want: nil,
+		},
+		{
+			name: "per-signal topic set",
+			args: kafka.Arguments{Logs: kafka.KafkaReceiverTopicEncodingConfig{Topic: "my-topic"}},
+			want: []string{"the topic attribute is deprecated"},
+		},
+		{
+			name: "resolve_canonical_bootstrap_servers_only set",
+			args: kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true},
+			want: []string{"resolve_canonical_bootstrap_servers_only is deprecated"},
+		},
+		{
+			name: "group_rebalance_strategy set",
+			args: kafka.Arguments{GroupRebalanceStrategy: "range"},
+			want: []string{"group_rebalance_strategy is deprecated"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&buf, nil))
+
+			tc.args.LogDeprecations(logger)
+
+			if len(tc.want) == 0 {
+				require.Empty(t, buf.String())
+				return
+			}
+			for _, want := range tc.want {
+				require.Contains(t, buf.String(), want)
+			}
+		})
+	}
+}
+
+func TestArguments_LogDeprecations_nilLogger(t *testing.T) {
+	require.NotPanics(t, func() {
+		kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}.LogDeprecations(nil)
 	})
 }

@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -33,6 +34,27 @@ func (args KafkaAuthenticationArguments) Convert() map[string]any {
 	}
 
 	return auth
+}
+
+var _ DeprecationLogger = KafkaAuthenticationArguments{}
+
+// LogDeprecations logs a warning for each deprecated authentication setting in use.
+// Call it from the embedding component's own LogDeprecations rather than relying on
+// Go method promotion through embedding, since the "authentication." prefix
+// assumes the caller's schema places this under an `authentication` block.
+func (args KafkaAuthenticationArguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if args.Plaintext != nil {
+		logger.Warn(`authentication.plaintext is deprecated, use authentication.sasl with mechanism set to "PLAIN" instead`)
+	}
+	if args.SASL != nil && args.SASL.Version != 0 {
+		logger.Warn("authentication.sasl.version is deprecated and is a no-op upstream", "version", args.SASL.Version)
+	}
+	if args.TLS != nil {
+		logger.Warn("authentication.tls is deprecated and has no effect; configure the component's top-level tls block instead")
+	}
 }
 
 // KafkaPlaintextArguments configures plaintext authentication against the Kafka
