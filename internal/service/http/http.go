@@ -54,6 +54,11 @@ type Options struct {
 	ReadyFunc  func() bool
 	ReloadFunc func() error
 
+	// NotifyFunc, if non-nil, is called once after the HTTP listener is
+	// successfully bound and the server is ready to accept connections.
+	// It is intended for process-readiness signalling (e.g. sd_notify).
+	NotifyFunc func()
+
 	HTTPListenAddr   string                // Address to listen for HTTP traffic on.
 	MemoryListenAddr string                // Address to accept in-memory traffic on.
 	EnablePProf      bool                  // Whether pprof endpoints should be exposed.
@@ -316,6 +321,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}
 
 	defer func() { _ = srv.Shutdown(ctx) }()
+
+	if s.opts.NotifyFunc != nil {
+		s.opts.NotifyFunc()
+	}
 
 	<-ctx.Done()
 	return nil
