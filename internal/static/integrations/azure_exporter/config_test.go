@@ -189,6 +189,14 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "use_batch_api with regions",
+			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
+				config.UseBatchAPI = true
+				config.Regions = []string{"eastus"}
+				return config
+			},
+		},
+		{
 			name: "invalid interval",
 			toInvalidConfig: func(config azure_exporter.Config) azure_exporter.Config {
 				config.Interval = "Not a valid interval"
@@ -227,7 +235,7 @@ func TestMergeConfigWithQueryParams_MapsAllExpectedFieldsByYamlNameFromConfig(t 
 	for i := 0; i < thing.NumField(); i++ {
 		field := thing.Field(i)
 		// Not available to be mapped via query param
-		if field.Name == "AzureCloudEnvironment" {
+		if field.Name == "AzureCloudEnvironment" || field.Name == "UseBatchAPI" {
 			continue
 		}
 
