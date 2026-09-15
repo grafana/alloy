@@ -44,7 +44,7 @@ You can use the following arguments with `pyroscope.receive_http`:
 | `forward_to`                | `list(ProfilesReceiver)` | List of receivers to send profiles to.                            |         | yes      |
 | `debug_info_upload_timeout` | `duration`               | Timeout for uploading debug information to downstream components. | `"2m"`  | no       |
 
-`debug_info_upload_timeout` applies only to the debug information upload proxy endpoint `pyroscope.receive_http` exposes for downstream components.
+`debug_info_upload_timeout` applies only to the debug information upload proxy endpoint `pyroscope.receive_http` exposes for downstream components, `POST /debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}`.
 It doesn't affect the profile-ingest endpoints described in [Usage](#usage).
 
 Debug information upload requests are only proxied to the first receiver in `forward_to`.

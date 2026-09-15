@@ -52,7 +52,7 @@ Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kerne
 ## Supported languages
 
 * Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
-* Broad set of high level languages (HotSpot JVM, Python, Ruby, PHP, Node.js, V8, Perl).
+* Broad set of high-level languages (HotSpot JVM, Python, Ruby, PHP, Node.js, V8, Perl).
 
 ## Usage
 
@@ -173,6 +173,7 @@ The following Prometheus metrics are exposed:
 | `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`. |
 | `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`. |
 | `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                       |
+| `pyroscope_forwarded_entries_total`               | `counter`   | Total number of samples sent to downstream components.                             |
 
 ### eBPF profiler internal metrics
 
@@ -354,7 +355,7 @@ The following examples show how to discover profiling targets and send the resul
 
 In the following example, performance profiles are collected from Pods on the same node, discovered using `discovery.kubernetes`.
 Pod selection relies on the `HOSTNAME` environment variable, which is a Pod name if {{< param "PRODUCT_NAME" >}} is used as an {{< param "PRODUCT_NAME" >}} Helm chart.
-The `service_name` label is set to `{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
+The `service_name` label is set to `ebpf/{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
 
 ```alloy
 discovery.kubernetes "all_pods" {

@@ -178,6 +178,8 @@ All per-endpoint metrics include an `endpoint` label identifying the specific en
 - `ingest_endpoint`: Per-endpoint latency for ingest operations
 - `ingest_downstream`: Downstream request latency for ingest operations
 
+For the `push_total` and `ingest_total` types, the `endpoint` label is set to `-` because these series aggregate across all endpoints rather than identifying a single one.
+
 ## Troubleshoot
 
 {{< docs/shared lookup="reference/components/pyroscope-troubleshooting.md" source="alloy" version="<ALLOY_VERSION>" >}}

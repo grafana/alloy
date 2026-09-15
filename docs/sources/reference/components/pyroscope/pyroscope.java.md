@@ -183,13 +183,13 @@ pyroscope.java "java" {
 
 Refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) and [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for the complete async-profiler option list.
 
-#### `event`
+### `event`
 
 The `event` argument configures the profiling mode used by async-profiler.
 async-profiler supports various profiling modes including CPU profiling, wall-clock profiling, and hardware performance monitoring events.
 For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) in the async-profiler documentation.
 
-#### `per_thread`
+### `per_thread`
 
 {{< admonition type="warning" >}}
 The `per_thread` option doesn't apply when using JFR output format.

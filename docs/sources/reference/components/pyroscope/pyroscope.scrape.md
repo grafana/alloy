@@ -452,9 +452,10 @@ When the `delta` argument is `true`:
 
 The following Prometheus metrics are exposed:
 
-| Name                       | Type        | Description                                                  |
-| -------------------------- | ----------- | ------------------------------------------------------------ |
-| `pyroscope_fanout_latency` | `histogram` | Write latency for sending to direct and indirect components. |
+| Name                                | Type        | Description                                                  |
+| ----------------------------------- | ----------- | ------------------------------------------------------------ |
+| `pyroscope_fanout_latency`          | `histogram` | Write latency for sending to direct and indirect components. |
+| `pyroscope_forwarded_entries_total` | `counter`   | Total number of samples sent to downstream components.       |
 
 ## Examples
 
