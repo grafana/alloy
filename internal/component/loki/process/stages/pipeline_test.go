@@ -131,16 +131,11 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		require.NoError(t, p.process(context.Background(), entries))
 
 		if check.metrics != nil {
-			require.EventuallyWithT(t, func(c *assert.CollectT) {
-				require.NoError(c, check.metrics(registry))
-			}, 2*time.Second, 100*time.Millisecond)
+			require.NoError(t, check.metrics(registry))
 		}
 
 		p.stop()
-
-		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			assertEntriesUnordered(c, expected, collected, check)
-		}, 2*time.Second, 100*time.Millisecond)
+		assertEntriesUnordered(t, expected, collected, check)
 
 		if check.metricsAfterCleanup != nil {
 			require.NoError(t, check.metricsAfterCleanup(registry))
