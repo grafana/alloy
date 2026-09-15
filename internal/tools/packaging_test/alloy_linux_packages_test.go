@@ -52,11 +52,6 @@ func TestAlloyLinuxPackages(t *testing.T) {
 func buildAlloyPackages(t *testing.T) {
 	t.Helper()
 
-	if os.Getenv("ALLOY_SKIP_PACKAGE_BUILD") != "" {
-		t.Log("ALLOY_SKIP_PACKAGE_BUILD is set, using the existing packages in dist/")
-		return
-	}
-
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 	root, err := filepath.Abs(filepath.Join(wd, "../../.."))
