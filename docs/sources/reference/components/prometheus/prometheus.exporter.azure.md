@@ -75,23 +75,23 @@ prometheus.exporter.azure "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.azure`:
 
-| Name                          | Type           | Description                                                                                                    | Default                                                                       | Required |
-| ----------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- |
-| `metrics`                     | `list(string)` | The metrics to scrape from resources.                                                                          |                                                                               | yes      |
-| `resource_type`               | `string`       | The Azure Resource Type to scrape metrics for.                                                                 |                                                                               | yes      |
-| `subscriptions`               | `list(string)` | List of subscriptions to scrape metrics from.                                                                  |                                                                               | yes      |
-| `azure_cloud_environment`     | `string`       | Name of the cloud environment to connect to.                                                                   | `"azurecloud"`                                                                | no       |
-| `included_dimensions`         | `list(string)` | List of dimensions to include on the final metrics.                                                            |                                                                               | no       |
-| `included_resource_tags`      | `list(string)` | List of resource tags to include on the final metrics.                                                         | `["owner"]`                                                                   | no       |
-| `interval`                    | `string`       | [ISO8601 Duration][] used to generate individual datapoints in Azure Monitor. Must be smaller than `timespan`. | `"PT1M"`                                                                      | no       |
-| `metric_aggregations`         | `list(string)` | Aggregations to apply for the metrics produced.                                                                |                                                                               | no       |
-| `metric_help_template`        | `string`       | Description of the metric.                                                                                     | `"Azure metric {metric} for {type} with aggregation {aggregation} as {unit}"` | no       |
-| `metric_name_template`        | `string`       | Metric template used to expose the metrics.                                                                    | `"azure_{type}_{metric}_{aggregation}_{unit}"`                                | no       |
-| `metric_namespace`            | `string`       | Namespace for resource types that have multiple levels of metrics.                                             |                                                                               | no       |
-| `regions`                     | `list(string)` | The list of regions to gather metrics from. Mutually exclusive with `resource_graph_query_filter`.             |                                                                               | no       |
-| `resource_graph_query_filter` | `string`       | The [Kusto query][] filter to apply when searching for resources. Mutually exclusive with `regions`.           |                                                                               | no       |
-| `timespan`                    | `string`       | [ISO8601 Duration][] over which the exporter queries metrics. Defaults to 5 minutes.                           | `"PT5M"`                                                                      | no       |
-| `validate_dimensions`         | `bool`         | Enable dimension validation in the Azure SDK.                                                                  | `false`                                                                       | no       |
+| Name                          | Type           | Description                                                                                                     | Default                                                                       | Required |
+| ----------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------- |
+| `metrics`                     | `list(string)` | The metrics to scrape from resources.                                                                           |                                                                               | yes      |
+| `resource_type`               | `string`       | The Azure Resource Type to scrape metrics for.                                                                  |                                                                               | yes      |
+| `subscriptions`               | `list(string)` | List of subscriptions to scrape metrics from.                                                                   |                                                                               | yes      |
+| `azure_cloud_environment`     | `string`       | Name of the cloud environment to connect to.                                                                    | `"azurecloud"`                                                                | no       |
+| `included_dimensions`         | `list(string)` | List of dimensions to include on the final metrics.                                                             |                                                                               | no       |
+| `included_resource_tags`      | `list(string)` | List of resource tags to include on the final metrics.                                                          | `["owner"]`                                                                   | no       |
+| `interval`                    | `string`       | [ISO8601 Duration][] used to generate individual data points in Azure Monitor. Must be smaller than `timespan`. | `"PT1M"`                                                                      | no       |
+| `metric_aggregations`         | `list(string)` | Aggregations to apply for the metrics produced.                                                                 |                                                                               | no       |
+| `metric_help_template`        | `string`       | Description of the metric.                                                                                      | `"Azure metric {metric} for {type} with aggregation {aggregation} as {unit}"` | no       |
+| `metric_name_template`        | `string`       | Metric template used to expose the metrics.                                                                     | `"azure_{type}_{metric}_{aggregation}_{unit}"`                                | no       |
+| `metric_namespace`            | `string`       | Namespace for resource types that have multiple levels of metrics.                                              |                                                                               | no       |
+| `regions`                     | `list(string)` | The list of regions to gather metrics from. Mutually exclusive with `resource_graph_query_filter`.              |                                                                               | no       |
+| `resource_graph_query_filter` | `string`       | The [Kusto query][] filter to apply when searching for resources. Mutually exclusive with `regions`.            |                                                                               | no       |
+| `timespan`                    | `string`       | [ISO8601 Duration][] over which the exporter queries metrics. Defaults to 5 minutes.                            | `"PT5M"`                                                                      | no       |
+| `validate_dimensions`         | `bool`         | Enable dimension validation in the Azure SDK.                                                                   | `false`                                                                       | no       |
 
 The list of available `resource_type` values and their corresponding `metrics` is in [Azure Monitor essentials][].
 
@@ -115,7 +115,7 @@ Valid values for `azure_cloud_environment` are `azurecloud`, `azurechinacloud`, 
 When you enable `validate_dimensions`, you need one exporter instance per metric + dimension combination, which is more tedious to maintain.
 
 You use `timespan` and `interval` to control how the exporter queries metrics from Azure Monitor. 
-The exporter queries metrics over the `timespan` and returns the most recent datapoint at the specified `interval`. 
+The exporter queries metrics over the `timespan` and returns the most recent data point at the specified `interval`. 
 If you are having issues with missing metrics, try increasing the `timespan` to a larger value, such as `PT10M` for 10 minutes, or `PT15M` for 15 minutes.
 
 [Kusto query]: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
