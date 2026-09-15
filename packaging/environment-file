@@ -6,11 +6,25 @@
 #
 # Command line options for Alloy.
 #
-# The configuration file holding the Alloy config.
+# The configuration file holding the Alloy Default Engine config.
+# Only effective if ALLOY_OTEL_MODE is disabled.
 CONFIG_FILE="/etc/alloy/config.alloy"
 
-# User-defined arguments to pass to the run command.
+# The configuration file holding the Alloy OTel Engine config.
+# Only effective if ALLOY_OTEL_MODE is enabled.
+OTEL_CONFIG_FILE="/etc/alloy/config.yaml"
+
+# User-defined arguments to pass to the default engine (`alloy run`).
+# Only effective if ALLOY_OTEL_MODE is disabled.
 CUSTOM_ARGS=""
+
+# User-defined arguments to pass to the OTel engine (`alloy otel`).
+# Only effective if ALLOY_OTEL_MODE is enabled.
+OTEL_CUSTOM_ARGS=""
+
+# Set to 1 or "true" to run the OTel engine (`alloy otel`) instead of the default engine (`alloy run`).
+# Unset or any other value keeps the default engine.
+ALLOY_OTEL_MODE=""
 
 # Restart on system upgrade. Defaults to true.
 RESTART_ON_UPGRADE=true

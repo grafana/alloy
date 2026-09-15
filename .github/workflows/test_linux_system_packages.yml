@@ -8,6 +8,14 @@ on:
     - internal/tools/packaging_test/**
     - Makefile
     - build-tools/make/*.mk
+    - .github/workflows/test_linux_system_packages.yml
+  pull_request:
+    paths:
+    - packaging/**
+    - internal/tools/packaging_test/**
+    - Makefile
+    - build-tools/make/*.mk
+    - .github/workflows/test_linux_system_packages.yml
 
 permissions:
   contents: read
