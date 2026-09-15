@@ -83,7 +83,7 @@ After component startup, `pyroscope.java` creates a temporary directory under th
 /tmp/alloy-asprof-musl-{SHA1}/lib/libasyncProfiler.so
 ```
 
-After process profiling startup, the component detects `libc` type and copies the matching `libAsyncProfiler.so` into the target process's file system at the exact same path.
+After process profiling startup, the component detects `libc` type and copies the matching `libasyncProfiler.so` into the target process's file system at the exact same path.
 
 {{< admonition type="note" >}}
 The `asprof` binary runs with root permissions.

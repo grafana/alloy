@@ -17,7 +17,7 @@ title: pyroscope.write
 When `pyroscope.write` forwards profiles, all labels starting with double underscore (`__`) are dropped before the data is sent, with the following exceptions:
 
 - `__name__` is preserved because it identifies the profile type.
-- `__delta__`is preserved because it's required for delta profiles.
+- `__delta__` is preserved because it's required for delta profiles.
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
@@ -130,7 +130,7 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 
 ### `tracing`
 
-The `tracing` block configures which trace-context headers `pyroscope.write` attaches to outgoing push requests, so a downstream Pyroscope server can correlate the write with the trace it belongs to.
+The `tracing` block configures which trace-context headers `pyroscope.write` attaches to outgoing requests to each endpoint, so downstream Pyroscope services can correlate them with the trace they belong to.
 If both arguments are `false`, no trace-context headers are added to any request.
 
 | Name                       | Type   | Description                                                       | Default | Required |
@@ -169,7 +169,7 @@ The following Prometheus metrics are exposed:
 | `pyroscope_write_latency`                      | `histogram` | Write latency for sending profiles to Pyroscope endpoints.        |
 | `pyroscope_ebpf_debug_info_upload_bytes_total` | `counter`   | Total number of bytes uploaded to the debug information endpoint. |
 
-All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
+All per-endpoint metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_ebpf_debug_info_upload_bytes_total` metric doesn't include any labels. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 
 - `push_total`: Total latency for push operations
 - `push_endpoint`: Per-endpoint latency for push operations

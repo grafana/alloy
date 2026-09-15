@@ -168,7 +168,7 @@ The following Prometheus metrics are exposed:
 | `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                       |
 | `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component.                            |
 | `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                                 |
-| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions completed.                                              |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                           |
 | `pyroscope_ebpf_pprofs_dropped_total`             | `counter`   | Number of pprof profiles dropped by the eBPF component.                              |
 | `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`.   |
 | `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total samples in pprof profiles collected by the eBPF component, per `service_name`. |
