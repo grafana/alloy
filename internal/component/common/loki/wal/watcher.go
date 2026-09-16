@@ -59,15 +59,12 @@ type WriteTo interface {
 	AppendEntries(ctx context.Context, entries RefEntries, segmentNum int) error
 }
 
-// Marker allows the Watcher to start from a specific segment in the WAL.
-// Implementers can use this interface to save and restore save points.
-type Marker interface {
-	// LastMarkedSegment should return the last segment stored in the marker.
-	// Must return -1 if there is no mark.
-	//
-	// The Watcher will start reading the first segment whose value is greater
-	// than the return value.
-	LastMarkedSegment() int
+// Savepoint allows the Watcher to start from a specific segment in the WAL.
+type Savepoint interface {
+	// LastStoredSegment returns the last segment stored for the consumer, or
+	// -1 if there is none. The Watcher starts reading the first segment whose
+	// number is greater than the returned value.
+	LastStoredSegment() int
 }
 
 type Watcher struct {
@@ -87,12 +84,12 @@ type Watcher struct {
 	minReadFreq  time.Duration
 	maxReadFreq  time.Duration
 	drainTimeout time.Duration
-	marker       Marker
+	savepoint    Savepoint
 	savedSegment int
 }
 
 // NewWatcher creates a new Watcher.
-func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger *slog.Logger, config WatchConfig, marker Marker) *Watcher {
+func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger *slog.Logger, config WatchConfig, savepoint Savepoint) *Watcher {
 	return &Watcher{
 		walDir:       walDir,
 		id:           id,
@@ -101,7 +98,7 @@ func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, log
 		state:        internal.NewWatcherState(logger),
 		done:         make(chan struct{}),
 		MaxSegment:   -1,
-		marker:       marker,
+		savepoint:    savepoint,
 		savedSegment: -1,
 		logger:       logger,
 		metrics:      metrics,
@@ -122,8 +119,8 @@ func (w *Watcher) Start() {
 func (w *Watcher) mainLoop() {
 	defer close(w.done)
 	for !w.state.IsStopping() {
-		if w.marker != nil {
-			w.savedSegment = w.marker.LastMarkedSegment()
+		if w.savepoint != nil {
+			w.savedSegment = w.savepoint.LastStoredSegment()
 			w.logger.Debug("last saved segment", "segment", w.savedSegment)
 		}
 
@@ -156,11 +153,11 @@ func (w *Watcher) run() error {
 
 	currentSegment := lastSegment
 
-	// if the marker contains a valid segment number stored, and we correctly find the segment that follows that one,
+	// if the savepoint contains a valid segment number stored, and we correctly find the segment that follows that one,
 	// start tailing from there.
 	if nextToMarkedSegment, err := w.findNextSegmentFor(w.savedSegment); w.savedSegment != -1 && err == nil {
 		currentSegment = nextToMarkedSegment
-		// keep a separate metric that will help us track when the segment in the marker is used. This should be considered
+		// keep a separate metric that will help us track when the segment in the savepoint is used. This should be considered
 		// a replay event
 		w.metrics.replaySegment.WithLabelValues(w.id).Set(float64(currentSegment))
 	} else {

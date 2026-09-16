@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
@@ -35,7 +35,7 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		}
 
 		endpointsCheck[name] = struct{}{}
-		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
+		endpoint, err := newEndpoint(metrics, cfg, logger, savepoint.NewNopTracker())
 		if err != nil {
 			return nil, fmt.Errorf("failed to create endpoint %s: %w", name, err)
 		}
