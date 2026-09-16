@@ -1,0 +1,90 @@
+# Local Alloy (OTel Engine mode) gatherer for the live_debugging pull
+# workflow. Receives whatever cmd/tracetapclient re-exports from each
+# k8s pod's live_debugging stream, keeps only traces at or above the
+# same 75MB limit Grafana Cloud is rejecting traces at (deduced from:
+# "TRACE_TOO_LARGE: max trace size (75000000) exceeded" -- 75,000,000
+# bytes = 75MB), and sends those to the local Tempo.
+#
+# Requires a build of this repo's alloy-otel binary (same build as the
+# k8s image, since it needs extension/tracesizepolicy and
+# processor/livedebugging registered):
+#   cd ../../../collector && go build -o /tmp/local-alloy-otel .
+
+extensions:
+  tracesizepolicy: {}
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+        # gRPC's built-in server default is 4 MiB; unset (the previous
+        # state here) means every message over that is silently
+        # rejected. Real traces have reached ~196MB once fully
+        # reassembled -- raised to match tempo.yaml's limits.
+        max_recv_msg_size_mib: 500
+      http:
+        endpoint: localhost:4318
+        max_request_body_size: 524288000 # 500 MiB (confighttp default is 20MiB)
+
+processors:
+  tail_sampling:
+    # 75MB is the trace's *cumulative* size at the backend, built up over
+    # its whole lifetime -- decision_wait only needs to be long enough to
+    # let this pod's own view of a trace finish arriving, not to match
+    # 75MB itself.
+    #
+    # num_traces must scale with decision_wait. 20000 turned out to still
+    # be too low: sampling_traces_on_memory pinned at the cap again with
+    # sampling_trace_dropped_too_early > 0, meaning real arrival volume
+    # over a 15-minute window exceeded the earlier ~13/sec estimate.
+    # Confirmed cheap to raise further: the gatherer's actual RSS was
+    # only ~22MB while holding 20000 traces (most traces are small, per
+    # everything observed so far), so 100000 costs little.
+    #
+    # block_on_overflow trades throughput for correctness: if capacity
+    # is ever hit anyway, ingestion backpressures instead of silently
+    # evicting a trace that might still be growing toward 75MB (the
+    # default, false, is what caused dropped_too_early above).
+    decision_wait: 15m
+    num_traces: 100000
+    block_on_overflow: true
+    policies:
+      - name: near-trace-too-large-limit
+        type: tracesizepolicy
+        tracesizepolicy:
+          min_bytes: 75000000 # 75 MB -- the real target, deduced from the TRACE_TOO_LARGE error
+
+exporters:
+  otlp/tempo:
+    endpoint: localhost:4319
+    tls:
+      insecure: true
+    # Local Tempo has been observed to go briefly unresponsive (connection
+    # refused/broken pipe on its gRPC port for several minutes at a time)
+    # while it's busy -- e.g. flushing a large trace's WAL to a block, or
+    # servicing a slow concurrent `GET /api/traces/<id>` query for one of
+    # the very traces this pipeline just captured. The exporterhelper
+    # default retry budget (max_elapsed_time: 5m) is shorter than that
+    # observed stall, so real captured spans were being dropped outright
+    # ("no more retries left: ... Dropping data", 24681 and 24058 spans
+    # lost in two separate incidents) rather than just delayed. Raise the
+    # retry budget well past the longest stall seen so far (~7m).
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 30m
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [tracesizepolicy]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [tail_sampling]
+      exporters: [otlp/tempo, debug]

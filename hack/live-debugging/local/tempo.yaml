@@ -1,0 +1,86 @@
+# Local Tempo config for the live_debugging pull workflow. These traces
+# are, by construction, the ones near/over Grafana Cloud's 75MB
+# TRACE_TOO_LARGE limit -- so max_bytes_per_trace here is set well above
+# that so Tempo itself doesn't reject exactly the traces we're trying to
+# look at.
+
+server:
+  http_listen_port: 3200
+  # A large trace's response body can take way longer than the dskit
+  # default write timeout (30s-ish) to actually write back to the
+  # client -- Tempo's own logs show the query succeeding server-side
+  # (status=200) and then "write tcp ...: i/o timeout" killing the
+  # connection mid-transfer. Raise both read and write generously.
+  http_server_read_timeout: 5m
+  http_server_write_timeout: 5m
+  # This is a SEPARATE gRPC server from the OTLP receiver below --
+  # Tempo's own internal distributor -> ingester push ("pusher failed to
+  # consume trace data" in logs) runs over this dskit server, which
+  # Tempo itself hardcodes to 16MB (cmd/tempo/app/config.go) regardless
+  # of the OTLP receiver's own max_recv_msg_size_mib. Real traces here
+  # have already hit ~196MB in one push, so raise generously.
+  grpc_server_max_recv_msg_size: 524288000 # 500 MB
+  grpc_server_max_send_msg_size: 524288000 # 500 MB
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4319
+          # Tempo vendors the same OTel Collector gRPC receiver, so this
+          # has the same 4 MiB unset-default problem local-gatherer.yaml
+          # has -- raise it here too, or the fully-reassembled large
+          # trace tail_sampling forwards gets rejected right here. This
+          # is the receiver-facing limit only -- see server: above for
+          # the separate internal-push limit.
+          max_recv_msg_size_mib: 500
+
+querier:
+  # A THIRD, independent hardcoded 16MB default -- this one is the
+  # querier's own outbound gRPC client for its connection to the
+  # query-frontend (modules/querier/config.go), unrelated to both the
+  # server: block above and the OTLP receiver. This is what
+  # "GET /api/traces/<id>" for a large trace actually fails on:
+  # "response larger than the max (X vs 16777216)" from
+  # modules/querier/worker/frontend_processor.go.
+  frontend_worker:
+    grpc_client_config:
+      max_send_msg_size: 524288000 # 500 MB
+      max_recv_msg_size: 524288000 # 500 MB
+
+ingester:
+  trace_idle_period: 30s
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    block_retention: 24h
+
+overrides:
+  defaults:
+    global:
+      # Real traces observed so far have already reached ~196MB (well
+      # past the original 150MB headroom over the 75MB target) -- these
+      # keep accumulating for the whole 15-minute decision_wait once
+      # they cross 75MB, not just up to it. Raised generously; watch the
+      # "pusher failed" / RESOURCE_EXHAUSTED errors in `docker logs
+      # local-tempo-1` and raise further if this still isn't enough.
+      max_bytes_per_trace: 500000000 # 500 MB
+    ingestion:
+      max_traces_per_user: 0 # unlimited (dev-only, single user)
+      # Default ingestion byte-rate cap is 15MB/s -- separate from
+      # max_bytes_per_trace above, and hit independently (a burst of
+      # normal-sized traces can trip this even if none of them alone are
+      # near the per-trace limit). A single burst already hit ~196MB,
+      # bigger than the previous 200MB burst allowance -- raised further.
+      rate_limit_bytes: 300000000 # 300 MB/s
+      burst_size_bytes: 500000000 # 500 MB burst
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/traces
+    wal:
+      path: /var/tempo/wal

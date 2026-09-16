@@ -1,0 +1,147 @@
+{
+  "title": "Tail Sampling",
+  "uid": "live-debugging-tail-sampling",
+  "schemaVersion": 39,
+  "timezone": "browser",
+  "time": { "from": "now-30m", "to": "now" },
+  "refresh": "10s",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "New traces received vs sampled/not-sampled decisions",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "rate(otelcol_processor_tail_sampling_new_trace_id_received[1m])",
+          "legendFormat": "new traces/sec"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "sum by (decision) (rate(otelcol_processor_tail_sampling_global_count_traces_sampled[1m]))",
+          "legendFormat": "{{decision}}/sec"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Traces held in memory vs num_traces cap",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "description": "Should stay comfortably below the configured num_traces (20000 as of local-gatherer.yaml). Sitting at the cap means traces are being evicted by capacity pressure, not decision_wait -- see the README.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "otelcol_processor_tail_sampling_sampling_traces_on_memory",
+          "legendFormat": "{{job}} traces on memory"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Trace removal age (p50 / p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "description": "Time from a trace's first span to its removal from memory. Should track close to the configured decision_wait (15m) once num_traces has enough headroom -- much higher means traces are sitting past decision_wait waiting for a free slot.",
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_trace_removal_age_bucket[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(otelcol_processor_tail_sampling_sampling_trace_removal_age_bucket[5m])))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Policy errors / traces dropped too early",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "description": "Both should stay at zero. Non-zero \"dropped too early\" means num_traces is still too low for the current arrival rate and decision_wait.",
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "otelcol_processor_tail_sampling_sampling_policy_evaluation_error",
+          "legendFormat": "policy evaluation errors"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "otelcol_processor_tail_sampling_sampling_trace_dropped_too_early",
+          "legendFormat": "dropped too early"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "End-to-end span throughput (local gatherer)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "description": "Received from the k8s pods (via cmd/tracetapclient) vs sent to / failed sending to local Tempo.",
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "sum(rate(otelcol_receiver_accepted_spans{job=\"local-gatherer\"}[1m]))",
+          "legendFormat": "received"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "sum(rate(otelcol_exporter_sent_spans{job=\"local-gatherer\",exporter=\"otlp/tempo\"}[1m]))",
+          "legendFormat": "sent to Tempo"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "sum(rate(otelcol_exporter_send_failed_spans{job=\"local-gatherer\"}[1m]))",
+          "legendFormat": "failed"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "live_debugging: largest trace size seen (remote pods)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "description": "High-water mark per (namespace, service_name), computed on the k8s pods by processor/livedebugging -- independent of the local tail_sampling threshold.",
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "max by (namespace, service_name) (otelcol_processor_live_debugging_largest_trace_size_bytes)",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "live_debugging: most frequent span names (remote pods)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "expr": "topk(15, sum by (service_name, span_name) (otelcol_processor_live_debugging_span_name_total))",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    }
+  ]
+}

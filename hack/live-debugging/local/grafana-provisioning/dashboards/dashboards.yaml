@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: live-debugging
+    folder: live_debugging
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
+  - name: alloy-mixin
+    folder: Alloy Mixin
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards/alloy-mixin

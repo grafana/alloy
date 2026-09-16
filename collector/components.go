@@ -31,6 +31,7 @@ import (
 	otlpexporter "go.opentelemetry.io/collector/exporter/otlpexporter"
 	otlphttpexporter "go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	alloyengine "github.com/grafana/alloy/extension/alloyengine"
+	tracesizepolicy "github.com/grafana/alloy/extension/tracesizepolicy"
 	basicauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	bearertokenauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	headerssetterextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
@@ -43,6 +44,7 @@ import (
 	sigv4authextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	filestorage "github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage"
 	zpagesextension "go.opentelemetry.io/collector/extension/zpagesextension"
+	livedebugging "github.com/grafana/alloy/processor/livedebugging"
 	attributesprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	cumulativetodeltaprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor"
 	deltatocumulativeprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor"
@@ -111,6 +113,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory](
 		alloyengine.NewFactory(),
+		tracesizepolicy.NewFactory(),
 		basicauthextension.NewFactory(),
 		bearertokenauthextension.NewFactory(),
 		headerssetterextension.NewFactory(),
@@ -129,6 +132,7 @@ func components() (otelcol.Factories, error) {
 	}
 	factories.ExtensionModules = makeModulesMap(factories.Extensions, map[component.Type]string{
 		alloyengine.NewFactory().Type(): "github.com/grafana/alloy v1.19.0",
+		tracesizepolicy.NewFactory().Type(): "github.com/grafana/alloy v1.19.0",
 		basicauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0",
 		bearertokenauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.158.0",
 		headerssetterextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.158.0",
@@ -240,6 +244,7 @@ func components() (otelcol.Factories, error) {
 	})
 
 	factories.Processors, err = otelcol.MakeFactoryMap[processor.Factory](
+		livedebugging.NewFactory(),
 		attributesprocessor.NewFactory(),
 		cumulativetodeltaprocessor.NewFactory(),
 		deltatocumulativeprocessor.NewFactory(),
@@ -262,6 +267,7 @@ func components() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 	factories.ProcessorModules = makeModulesMap(factories.Processors, map[component.Type]string{
+		livedebugging.NewFactory().Type(): "github.com/grafana/alloy v1.19.0",
 		attributesprocessor.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.158.0",
 		cumulativetodeltaprocessor.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.158.0",
 		deltatocumulativeprocessor.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.158.0",

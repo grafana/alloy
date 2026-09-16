@@ -9,6 +9,9 @@ extensions:
   - gomod: github.com/grafana/alloy v1.19.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
+  - gomod: github.com/grafana/alloy v1.19.0 # x-release-please-version
+    import: github.com/grafana/alloy/extension/tracesizepolicy
+    name: tracesizepolicy
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.158.0
@@ -38,6 +41,9 @@ exporters:
   - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.158.0
 
 processors:
+  - gomod: github.com/grafana/alloy v1.19.0 # x-release-please-version
+    import: github.com/grafana/alloy/processor/livedebugging
+    name: livedebugging
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.158.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor v0.158.0

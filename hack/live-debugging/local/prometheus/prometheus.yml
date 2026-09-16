@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: local-gatherer
+    static_configs:
+      - targets: ["host.docker.internal:8888"]
+        labels: {cluster: local-live-debugging, namespace: live-debugging}
+  - job_name: alloy-otel-engine-89c75bc6f-brn96
+    static_configs:
+      - targets: ["host.docker.internal:18892"]
+        labels: {cluster: local-live-debugging, namespace: live-debugging}
+  - job_name: alloy-otel-engine-89c75bc6f-hwz67
+    static_configs:
+      - targets: ["host.docker.internal:18893"]
+        labels: {cluster: local-live-debugging, namespace: live-debugging}

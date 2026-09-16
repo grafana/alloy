@@ -1,0 +1,27 @@
+// Ships this workflow's own log files (the local gatherer's Alloy process
+// log, plus each pod's tracetapclient log) to the local Loki, so they're
+// browsable/correlatable in Grafana alongside the Tempo traces and
+// Prometheus self-telemetry -- instead of only living in
+// $LOG_DIR/*.log on disk.
+//
+// Runs as a second instance of the same alloy-otel binary, in Default
+// Engine mode (`run`, not `otel`), started by run-local.sh with LOG_DIR
+// exported to match env.sh.
+
+local.file_match "logs" {
+	path_targets = [{
+		__path__ = sys.env("LOG_DIR") + "/*.log",
+		job      = "live-debugging-local",
+	}]
+}
+
+loki.source.file "logs" {
+	targets    = local.file_match.logs.targets
+	forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+	endpoint {
+		url = "http://localhost:3100/loki/api/v1/push"
+	}
+}
