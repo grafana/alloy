@@ -2,6 +2,7 @@ package wal
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -40,7 +41,7 @@ func (t *testWriteTo) SeriesReset(segmentNum int) {
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
-func (t *testWriteTo) AppendEntries(entries RefEntries, _ int) error {
+func (t *testWriteTo) AppendEntries(_ context.Context, entries RefEntries, _ int) error {
 	var entry loki.Entry
 	if l, ok := t.series[uint64(entries.Ref)]; ok {
 		entry.Labels = l
@@ -356,7 +357,7 @@ func TestWatcher(t *testing.T) {
 				t,
 				&watcherTestResources{
 					writeEntry: func(entry loki.Entry) {
-						_ = ew.WriteEntry(entry, wl)
+						_ = ew.writeEntry(entry, wl)
 					},
 					notifyWrite: func() {
 						watcher.NotifyWrite()
@@ -432,7 +433,7 @@ func TestWatcher_Replay(t *testing.T) {
 		ew := newEntryWriter()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.WriteEntry(loki.Entry{
+		err = ew.writeEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -447,7 +448,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -463,7 +464,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Finally, write some data to the last segment, this will be the write head
 		for _, line := range segment2Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -514,7 +515,7 @@ func TestWatcher_Replay(t *testing.T) {
 		ew := newEntryWriter()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.WriteEntry(loki.Entry{
+		err = ew.writeEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -529,7 +530,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -551,7 +552,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Write something after watcher started
 		for _, line := range segment2Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -584,7 +585,7 @@ func (s *slowWriteTo) SeriesReset(segmentNum int) {
 func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
-func (s *slowWriteTo) AppendEntries(entries RefEntries, segmentNum int) error {
+func (s *slowWriteTo) AppendEntries(_ context.Context, entries RefEntries, segmentNum int) error {
 	s.entriesReceived.Add(uint64(len(entries.Entries)))
 	time.Sleep(s.sleepAfterAppendEntries)
 	return nil
@@ -641,7 +642,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
@@ -693,7 +694,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
@@ -746,7 +747,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
