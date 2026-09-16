@@ -23,6 +23,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
+	QUERY_HASH_BYTE_LEN   = 8
 )
 
 const selectQuerySamplesTemplate = `
@@ -563,8 +564,8 @@ func buildQuerySamplesStatement(hashes, excludedUsers []string) (string, []any, 
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to decode tracked query hash %q: %w", queryHash, err)
 		}
-		if len(raw) != 8 {
-			return "", nil, fmt.Errorf("invalid tracked query hash length %d for %q, expected 8 bytes", len(raw), queryHash)
+		if len(raw) != QUERY_HASH_BYTE_LEN {
+			return "", nil, fmt.Errorf("invalid tracked query hash length %d for %q, expected %d bytes", len(raw), queryHash, QUERY_HASH_BYTE_LEN)
 		}
 		name := fmt.Sprintf("h%d", i)
 		hashPlaceholders = append(hashPlaceholders, "@"+name)
