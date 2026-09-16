@@ -618,8 +618,24 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 		MaxSegmentAge: time.Second * 10,
 		WatchConfig:   wal.DefaultWatchConfig,
 	}
+	var (
+		cfg = Config{URL: flagext.URLValue{URL: host}}
+		// HTTPClientConfig.Validate allows at most one bearer token source, so
+		// creating the endpoint for this config fails.
+		invalidClientCfg = Config{
+			URL: flagext.URLValue{URL: host},
+			Client: config.HTTPClientConfig{
+				BearerToken:     "my-token",
+				BearerTokenFile: "my-token-file",
+			},
+		}
+	)
 
-	config := Config{URL: flagext.URLValue{URL: host}}
-	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, config, config)
+	// Using same config twice.
+	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, cfg, cfg)
+	require.Error(t, err)
+
+	// Using two different configs but endpoint cannot be created by the second one.
+	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, cfg, invalidClientCfg)
 	require.Error(t, err)
 }

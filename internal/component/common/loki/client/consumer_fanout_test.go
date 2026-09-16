@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -253,7 +254,24 @@ func TestFanoutConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 	host, err := url.Parse("http://localhost:3100")
 	require.NoError(t, err)
 
-	config := Config{URL: flagext.URLValue{URL: host}}
-	_, err = NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), config, config)
+	var (
+		cfg = Config{URL: flagext.URLValue{URL: host}}
+		// HTTPClientConfig.Validate allows at most one bearer token source, so
+		// creating the endpoint for this config fails.
+		invalidClientCfg = Config{
+			URL: flagext.URLValue{URL: host},
+			Client: config.HTTPClientConfig{
+				BearerToken:     "my-token",
+				BearerTokenFile: "my-token-file",
+			},
+		}
+	)
+
+	// Using same config twice.
+	_, err = NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), cfg, cfg)
+	require.Error(t, err)
+
+	// Using two different configs but endpoint cannot be created by the second one.
+	_, err = NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), cfg, invalidClientCfg)
 	require.Error(t, err)
 }
