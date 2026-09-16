@@ -306,7 +306,6 @@ func (c *QuerySamples) collect(ctx context.Context) error {
 			candidateHashes = append(candidateHashes, state.lastRow.QueryHash)
 		}
 	}
-	candidateHashes = uniqueSorted(candidateHashes)
 	if len(candidateHashes) == 0 {
 		return nil
 	}
