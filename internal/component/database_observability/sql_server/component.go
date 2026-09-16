@@ -16,6 +16,8 @@ import (
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
@@ -588,7 +590,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.registry, promhttp.HandlerOpts{})
+	return util.PromHTTPHandlerFor(c.registry, c.opts.Logger, promhttp.HandlerOpts{})
 }
 
 func (c *Component) CurrentHealth() component.Health {

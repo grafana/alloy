@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -21,7 +23,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	writer, err := wal.NewWriter(walCfg, logger, reg)
+	writer, err := wal.NewWriter(walCfg, logger, reg, wal.NewWriterMetrics(reg))
 	if err != nil {
 		return nil, fmt.Errorf("error creating wal writer: %w", err)
 	}
@@ -79,7 +81,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		})
 	}
 
-	writer.Start(walCfg.MaxSegmentAge)
+	writer.Start()
 
 	return m, nil
 }
@@ -89,8 +91,8 @@ type endpointWatcherPair struct {
 	endpoint *walEndpointAdapter
 }
 
-// Stop will proceed to stop, in order, watcher and the endpoint.
-func (p endpointWatcherPair) Stop(drain bool) {
+// stop will proceed to stop, in order, watcher and the endpoint.
+func (p endpointWatcherPair) stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
@@ -98,7 +100,7 @@ func (p endpointWatcherPair) Stop(drain bool) {
 	p.watcher.Stop()
 
 	// Subsequently stop the endpoint.
-	p.endpoint.Stop()
+	p.endpoint.stop()
 }
 
 var _ DrainableConsumer = (*WALConsumer)(nil)
@@ -108,8 +110,9 @@ type WALConsumer struct {
 	pairs  []endpointWatcherPair
 }
 
-func (m *WALConsumer) Chan() chan<- loki.Entry {
-	return m.writer.Chan()
+// ConsumeEntry implements DrainableConsumer.
+func (m *WALConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	return m.writer.WriteEntry(entry)
 }
 
 func (m *WALConsumer) Stop() {
@@ -132,7 +135,7 @@ func (m *WALConsumer) stop(drain bool) {
 	// endpoint config, each (watcher, queue) pair is stopped concurrently.
 	for _, pair := range m.pairs {
 		stopWG.Go(func() {
-			pair.Stop(drain)
+			pair.stop(drain)
 		})
 	}
 
@@ -193,52 +196,55 @@ func (c *walEndpointAdapter) StoreSeries(series []record.RefSeries, segment int)
 	}
 }
 
-func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) error {
+func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefEntries, segment int) error {
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
 
 	var (
 		queuedEntries    int
-		maxSeenTimestamp int64 = -1
+		maxSeenTimestamp time.Time
 	)
 
-	if ok {
-		for i := range entries.Entries {
-			e := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(e, segment)
-			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
-			// Here we just skip the entry and try with the next one.
-			if errors.Is(err, errQueueIsFull) {
-				continue
-			}
-			// NOTE: The only other error that can be returned is context.Canceled and that happens
-			// if endpoint was stopped.
-			if err != nil {
-				return nil
-			}
-
-			queuedEntries += 1
-			if e.Timestamp.Unix() > maxSeenTimestamp {
-				maxSeenTimestamp = e.Timestamp.Unix()
-			}
-		}
-		// update marker with all successfully queued entries.
-		c.tracker.UpdateReceivedData(segment, queuedEntries)
-	} else {
+	if !ok {
 		// TODO(thepalbi): Add metric here
-		c.logger.Debug("series for entry not found")
+		c.logger.Debug("series for entries not found")
+		return nil
 	}
 
-	// It's safe to assume that upon an AppendEntries call, there will always be at least
-	// one entry.
-	c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp))
+	for i := range entries.Entries {
+		entry := entries.EntryAt(l, i)
+		err := c.endpoint.enqueue(ctx, entry, segment)
+
+		// If we get errQueueIsFull we skipped the entry and should
+		// not count it as queued and should move on to the next one.
+		if errors.Is(err, errQueueIsFull) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		queuedEntries += 1
+
+		if entry.Timestamp.After(maxSeenTimestamp) {
+			maxSeenTimestamp = entry.Timestamp
+		}
+	}
+	// update tracker with all successfully queued entries.
+	c.tracker.UpdateReceivedData(segment, queuedEntries)
+
+	if queuedEntries > 0 {
+		c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp.Unix()))
+	}
+
 	return nil
 }
 
-// Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
-// limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
-func (c *walEndpointAdapter) Stop() {
+// stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
+// limited by a deadline, controlled by a configured drain timeout, which is global to the stop call.
+func (c *walEndpointAdapter) stop() {
 	c.endpoint.stop()
 	c.tracker.Stop()
 }
