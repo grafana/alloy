@@ -208,6 +208,57 @@ type queryWaitTracker struct {
 	dropped     int
 }
 
+var (
+	replicationWaitEventPrefixes = []string{
+		"DBMIRROR_",
+		"HADR_",
+		"PWAIT_HADR",
+		"REDO_",
+		"REPL_",
+		"SE_REPL_",
+	}
+	replicationWaitEventNames = []string{
+		"FCB_REPLICA_READ",
+		"FCB_REPLICA_WRITE",
+		"REPLICA_WRITE",
+		"REPLICA_WRITES",
+	}
+	networkWaitEventNames = []string{
+		"ASYNC_NETWORK_IO",
+		"EXTERNAL_SCRIPT_NETWORK_IO",
+		"NET_WAITFOR_PACKET",
+		"PROXY_NETWORK_IO",
+	}
+	ioWaitEventPrefixes = []string{
+		"ASYNC_IO_COMPLETION",
+		"BACKUPBUFFER",
+		"BACKUPIO",
+		"IO_COMPLETION",
+		"PAGEIOLATCH_",
+		"WRITE_COMPLETION",
+	}
+	ioWaitEventNames = []string{
+		"DISKIO_SUSPEND",
+		"LOGBUFFER",
+		"LOGMGR",
+		"LOGMGR_FLUSH",
+		"WRITELOG",
+	}
+	engineWaitEventPrefixes = []string{
+		"CXSYNC_",
+		"LATCH_",
+		"PAGELATCH_",
+		"RESOURCE_SEMAPHORE",
+	}
+	engineWaitEventNames = []string{
+		"CXCONSUMER",
+		"CXPACKET",
+		"EXCHANGE",
+		"SOS_SCHEDULER_YIELD",
+		"THREADPOOL",
+	}
+)
+
 func newQueryWaitTracker() queryWaitTracker {
 	return queryWaitTracker{openByTask: make(map[int64]int)}
 }
@@ -411,7 +462,8 @@ func (c *QuerySamples) applySnapshot(snapshot []querySampleRow, registrySet map[
 			seen[row.ExecContextID.Int64] = struct{}{}
 			if state.waits.observe(row) && !state.capWarned {
 				state.capWarned = true
-				c.logger.Warn("wait occurrence cap reached; dropping further wait episodes for request",
+				c.logger.Warn(
+					"wait occurrence cap reached; dropping further wait episodes for request",
 					"database", row.DatabaseName,
 					"session_id", row.SessionID,
 					"request_id", row.RequestID,
@@ -629,25 +681,19 @@ func (c *QuerySamples) databaseExcluded(database string) bool {
 func classifySQLServerWaitEventType(waitType string) string {
 	waitType = strings.ToUpper(waitType)
 
-	isReplication := hasAnyPrefix(waitType, "HADR_", "DBMIRROR_", "REPL_", "SE_REPL_", "REDO_", "PWAIT_HADR") ||
-		hasAnyValue(waitType, "FCB_REPLICA_READ", "FCB_REPLICA_WRITE", "REPLICA_WRITE", "REPLICA_WRITES")
-	if isReplication {
+	if hasAnyPrefix(waitType, replicationWaitEventPrefixes...) || hasAnyValue(waitType, replicationWaitEventNames...) {
 		return "Replication Wait"
 	}
 	if strings.HasPrefix(waitType, "LCK_M_") {
 		return "Lock Wait"
 	}
-	if hasAnyValue(waitType, "ASYNC_NETWORK_IO", "NET_WAITFOR_PACKET", "PROXY_NETWORK_IO", "EXTERNAL_SCRIPT_NETWORK_IO") {
+	if hasAnyValue(waitType, networkWaitEventNames...) {
 		return "Network Wait"
 	}
-	isIO := hasAnyPrefix(waitType, "PAGEIOLATCH_", "IO_COMPLETION", "ASYNC_IO_COMPLETION", "WRITE_COMPLETION", "BACKUPIO", "BACKUPBUFFER") ||
-		hasAnyValue(waitType, "WRITELOG", "LOGBUFFER", "LOGMGR", "LOGMGR_FLUSH", "DISKIO_SUSPEND")
-	if isIO {
+	if hasAnyPrefix(waitType, ioWaitEventPrefixes...) || hasAnyValue(waitType, ioWaitEventNames...) {
 		return "IO Wait"
 	}
-	isEngine := hasAnyPrefix(waitType, "PAGELATCH_", "LATCH_", "CXSYNC_", "RESOURCE_SEMAPHORE") ||
-		hasAnyValue(waitType, "CXPACKET", "CXCONSUMER", "EXCHANGE", "THREADPOOL", "SOS_SCHEDULER_YIELD")
-	if isEngine {
+	if hasAnyPrefix(waitType, engineWaitEventPrefixes...) || hasAnyValue(waitType, engineWaitEventNames...) {
 		return "Engine Wait"
 	}
 	return "Other Wait"
