@@ -63,10 +63,7 @@ type Writer struct {
 // NewWriter creates a new Writer.
 func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer, metrics *WriterMetrics) (*Writer, error) {
 	// Start WAL
-	wl, err := New(Config{
-		Dir:     walCfg.Dir,
-		Enabled: true,
-	}, logger, reg)
+	wl, err := New(walCfg, logger, reg)
 	if err != nil {
 		return nil, fmt.Errorf("error starting WAL: %w", err)
 	}
