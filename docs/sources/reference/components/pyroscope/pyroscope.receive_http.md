@@ -5,6 +5,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.receive_http
 ---
 
@@ -48,20 +49,19 @@ You can use the following blocks with `pyroscope.receive_http`:
 
 {{< docs/alloy-config >}}
 
-| Name                  | Description                                        | Required |
+| Block                 | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
 [http]: #http
+[tls]: #tls
 
 {{< /docs/alloy-config >}}
 
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-[tls]: #tls
 
 ### `tls`
 
@@ -71,16 +71,24 @@ The `tls` block configures TLS for the HTTP server.
 
 ## Exported fields
 
-`pyroscope.receive_http` doesn't export any fields.
+`pyroscope.receive_http` doesn't export any fields that can be referenced by other components.
 
 ## Component health
 
-`pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+`pyroscope.receive_http` is only reported as unhealthy if given an invalid configuration.
+
+## Debug information
+
+`pyroscope.receive_http` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+The following Prometheus metrics are exposed:
+
+| Name                                           | Type    | Description                                                                                         |
+| ---------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `pyroscope_receive_http_tcp_connections`       | `gauge` | Current number of accepted TCP connections.                                                         |
+| `pyroscope_receive_http_tcp_connections_limit` | `gauge` | The maximum number of TCP connections that the component can accept. A value of `0` means no limit. |
 
 ## Troubleshoot
 
