@@ -9,7 +9,7 @@ case "$(printf '%s' "${ALLOY_OTEL_MODE:-}" | tr '[:upper:]' '[:lower:]')" in
   1 | true | yes | on) otel_mode="1" ;;
 esac
 
-# extra_args is intentionally unquoted so a file with multiple arguments
+# OTEL_CUSTOM_ARGS is intentionally unquoted so a file with multiple arguments
 # word-splits into separate argv entries.
 if [ -n "$otel_mode" ]; then
   echo "Alloy starting in OTel Engine mode" >&2
