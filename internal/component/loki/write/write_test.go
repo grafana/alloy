@@ -585,7 +585,6 @@ func BenchmarkLokiWrite(b *testing.B) {
 			benchSingleEndpoint(b, tt.linesCount, tt.seriesCount)
 		})
 	}
-
 }
 
 func benchSingleEndpoint(b *testing.B, linesCount, seriesCount int) {

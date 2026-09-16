@@ -222,6 +222,10 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 
 			// Only a stopped consumer is worth waiting on. Anything else is an accepted
 			// entry, a canceled context while shutting down, or a failed WAL write.
+			//
+			// This makes delivery at-least-once: a fanout consumer enqueues to its
+			// endpoints in order, so it can be stopped after some of them already
+			// accepted the entry, and the retry hands it to those endpoints again.
 			if err := consumer.ConsumeEntry(ctx, e); !errors.Is(err, loki.ErrConsumerStopped) {
 				return
 			}
