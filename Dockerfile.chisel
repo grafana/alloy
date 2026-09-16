@@ -1,0 +1,140 @@
+# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+
+# NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
+# default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
+# in environment variables.
+
+ARG UBUNTU_RELEASE=24.04
+ARG CHISEL_VERSION=v1.4.2
+
+# Checksums for each asset are available at GitHub release page: https://github.com/canonical/chisel/releases
+FROM scratch AS chisel-amd64
+ARG CHISEL_VERSION
+ADD --checksum=sha256:3b3d86ea38045e54a13334e358ab8da12e6dd33342163c5c1ba13525f1070cfe --unpack \
+    "https://github.com/canonical/chisel/releases/download/${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_amd64.tar.gz" /
+
+FROM scratch AS chisel-arm64
+ARG CHISEL_VERSION
+ADD --checksum=sha256:398050085cf32d7718ba1e2fad144b179e0943d0e0376b2a0614577c51d331e8 --unpack \
+    "https://github.com/canonical/chisel/releases/download/${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_arm64.tar.gz" /
+
+FROM scratch AS chisel-ppc64le
+ARG CHISEL_VERSION
+ADD --checksum=sha256:5271bb65e4cbb16838a234bc2a5d87fd6c96199926490e57a1ea7115e10f2a3d --unpack \
+    "https://github.com/canonical/chisel/releases/download/${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_ppc64le.tar.gz" /
+
+FROM scratch AS chisel-s390x
+ARG CHISEL_VERSION
+ADD --checksum=sha256:125337a9d038763bef3e7ccd2e53bc08accafa2b1b108809a5560ed037e94cb9 --unpack \
+    "https://github.com/canonical/chisel/releases/download/${CHISEL_VERSION}/chisel_${CHISEL_VERSION}_linux_s390x.tar.gz" /
+
+FROM chisel-${TARGETARCH} AS chisel
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6 AS ui-build
+ARG BUILDPLATFORM
+COPY ./internal/web/ui /ui
+WORKDIR /ui
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund                         \
+    && npm run build
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6 AS build
+
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG RELEASE_BUILD=1
+ARG VERSION
+ARG GOEXPERIMENT
+
+COPY . /src/alloy
+WORKDIR /src/alloy
+
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
+    RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
+    GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
+    GOEXPERIMENT=${GOEXPERIMENT} \
+    SKIP_UI_BUILD=1 \
+    make alloy
+
+###
+
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f AS slicer
+
+# Username and uid for alloy user
+ARG UID="473"
+ARG USERNAME="alloy"
+ARG UBUNTU_RELEASE
+SHELL ["/bin/bash", "-oeux", "pipefail", "-c"]
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qy --no-install-recommends ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=chisel /chisel /usr/bin/chisel
+# base-files_chisel generates the Chisel manifest. Keep the package cache until
+# its Debian control records have populated the dpkg status file for scanners.
+RUN mkdir -p /rootfs/var/lib/dpkg \
+    && XDG_CACHE_HOME=/tmp/chisel-cache chisel cut --release "ubuntu-${UBUNTU_RELEASE}" --root /rootfs \
+        base-files_base \
+        base-files_chisel \
+        base-files_release-info \
+        ca-certificates_data \
+        dash_bins \
+        libc6_libs \
+        libsystemd0_libs \
+        tzdata_zoneinfo \
+    && for archive in /tmp/chisel-cache/chisel/sha256/*; do \
+        if dpkg-deb --field "$archive" Package >/dev/null 2>&1; then \
+            dpkg-deb --field "$archive" >> /rootfs/var/lib/dpkg/status; \
+            printf '\n' >> /rootfs/var/lib/dpkg/status; \
+        fi; \
+    done \
+    && rm -rf /tmp/chisel-cache
+
+# Create the Alloy user directly because the chiseled rootfs has no useradd.
+RUN cat >>/rootfs/etc/passwd <<EOF
+root:x:0:0:root:/root:/sbin/nologin
+${USERNAME}:x:${UID}:${UID}::/home/${USERNAME}:/sbin/nologin
+EOF
+RUN cat >>/rootfs/etc/group <<EOF
+root:x:0:
+${USERNAME}:x:${UID}:
+EOF
+
+COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /rootfs/usr/bin/alloy
+COPY --chown=${UID}:${UID} example-config.alloy /rootfs/etc/alloy/config.alloy
+
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otelcol.sh /rootfs/usr/bin/otelcol
+
+# Provide /bin/otel-supervisor entrypoint to run Alloy's embedded OpAMP supervisor as PID 1
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/otel-supervisor.sh /rootfs/usr/bin/otel-supervisor
+
+# Create Alloy's writable directories, but do not set the user as default.
+#
+# NOTE: non-root support in Docker containers is an experimental,
+# undocumented feature; use at your own risk.
+RUN mkdir -p /rootfs/var/lib/alloy/data /rootfs/var/lib/alloy/supervisor /rootfs/home/${USERNAME} \
+    && chown -R ${UID}:${UID} /rootfs/var/lib/alloy /rootfs/home/${USERNAME} \
+    && chmod -R 770 /rootfs/var/lib/alloy
+
+###
+
+FROM scratch
+
+LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
+
+COPY --from=slicer /rootfs/ /
+
+ENTRYPOINT ["/bin/alloy"]
+ENV ALLOY_DEPLOY_MODE=docker
+CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
