@@ -614,7 +614,6 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 	require.NoError(t, err)
 
 	walConfig := wal.Config{
-		Enabled:       true,
 		Dir:           t.TempDir(),
 		MaxSegmentAge: time.Second * 10,
 		WatchConfig:   wal.DefaultWatchConfig,
