@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 type endpoint struct {
@@ -21,10 +21,10 @@ type endpoint struct {
 	shards  *shards
 }
 
-func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
+func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, tracker savepoint.Tracker) (*endpoint, error) {
 	logger = logger.With("component", "endpoint", "host", cfg.URL.Host)
 
-	shards, err := newShards(metrics, logger, markerHandler, cfg)
+	shards, err := newShards(metrics, logger, tracker, cfg)
 	if err != nil {
 		return nil, err
 	}
