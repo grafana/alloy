@@ -669,10 +669,7 @@ func resolveExcludeUsers(ctx context.Context, db *sql.DB, configured []string, e
 	if !originalLogin.Valid || originalLogin.String == "" {
 		return nil, fmt.Errorf("failed to query original login: empty result")
 	}
-	alreadyExcluded := slices.ContainsFunc(effective, func(user string) bool {
-		return strings.EqualFold(user, originalLogin.String)
-	})
-	if !alreadyExcluded {
+	if !slices.Contains(effective, originalLogin.String) {
 		effective = append(effective, originalLogin.String)
 	}
 	return effective, nil

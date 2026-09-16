@@ -392,7 +392,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("deduplicates case-insensitively", func(t *testing.T) {
+	t.Run("preserves differently cased login names", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -402,7 +402,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 
 		effective, err := resolveExcludeUsers(context.Background(), db, []string{"alloy_monitor"}, true)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"alloy_monitor"}, effective)
+		assert.Equal(t, []string{"alloy_monitor", "Alloy_Monitor"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
