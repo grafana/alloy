@@ -86,6 +86,7 @@ func newEndpointWatcherPair(
 	watcherMetrics *wal.WatcherMetrics,
 	endpointMetrics *walEndpointMetrics,
 ) (endpointWatcherPair, error) {
+
 	markerFile, err := marker.NewFile(logger, walCfg.Dir)
 	if err != nil {
 		return endpointWatcherPair{}, err
