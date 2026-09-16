@@ -7,6 +7,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-09-15
 title: prometheus.exporter.catchpoint
 ---
 
@@ -14,15 +15,15 @@ title: prometheus.exporter.catchpoint
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
+The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) to collect statistics from a Catchpoint account.
 
 ## Usage
 
 ```alloy
 prometheus.exporter.catchpoint "<LABEL>" {
-    port              = "<PORT>"
-    verbose_logging   = <VERBOSE_LOGGING>
-    webhook_path      = "<WEBHOOK_PATH>"
+  port            = "<PORT>"
+  verbose_logging = <VERBOSE_LOGGING>
+  webhook_path    = "<WEBHOOK_PATH>"
 }
 ```
 
@@ -34,7 +35,7 @@ You can use the following arguments with `prometheus.exporter.catchpoint`:
 | ----------------- | -------- | ------------------------------------------------------------------------------- | ----------------------- | -------- |
 | `port`            | `string` | Sets the port on which the exporter runs.                                       | `"9090"`                | no       |
 | `verbose_logging` | `bool`   | Enables verbose logging to provide more detailed output for debugging purposes. | `false`                 | no       |
-| `webhook_path`    | `string` | Defines the path where the exporter receives webhook data from Catchpoint       | `"/catchpoint-webhook"` | no       |
+| `webhook_path`    | `string` | Defines the path where the exporter receives webhook data from Catchpoint.      | `"/catchpoint-webhook"` | no       |
 
 ## Blocks
 
@@ -63,9 +64,9 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 prometheus.exporter.catchpoint "example" {
-  port             = "9090"
-  verbose_logging  = false
-  webhook_path     = "/catchpoint-webhook"
+  port            = "9090"
+  verbose_logging = false
+  webhook_path    = "/catchpoint-webhook"
 }
 
 // Configure a prometheus.scrape component to collect catchpoint metrics.
@@ -76,11 +77,11 @@ prometheus.scrape "demo" {
 
 prometheus.remote_write "demo" {
   endpoint {
-    url = <PROMETHEUS_REMOTE_WRITE_URL>
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
     basic_auth {
-      username = <USERNAME>
-      password = <PASSWORD>
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
   }
 }
