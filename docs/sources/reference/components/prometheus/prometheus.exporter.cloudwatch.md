@@ -58,7 +58,7 @@ The following IAM permissions are required to discover tagged [Database Migratio
 "dms:DescribeReplicationTasks"
 ```
 
-The following IAM permission is required to retrieve the AWS account alias, which is exported as a label on the `aws_account_info` metric. If it's missing, {{< param "PRODUCT_NAME" >}} logs a `Couldn't get account alias` warning at each scrape and the alias label is empty. Metric collection isn't affected.
+The following IAM permission is required to retrieve the AWS account alias, which is added as an `account_alias` label on the exported metrics. If the permission is missing, {{< param "PRODUCT_NAME" >}} logs a `Couldn't get account alias` warning on each scrape and the label is omitted. Metric collection isn't affected.
 
 ```text
 "iam:ListAccountAliases"
