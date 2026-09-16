@@ -20,6 +20,8 @@ The `blackbox_exporter` lets you collect blackbox probe metrics and expose them 
 
 ```alloy
 prometheus.exporter.blackbox "<LABEL>" {
+  config_file = "<BLACKBOX_CONFIG_FILE>"
+
   target {
     name    = "<NAME>"
     address = "<EXAMPLE_ADDRESS>"
@@ -31,7 +33,8 @@ or
 
 ```alloy
 prometheus.exporter.blackbox "<LABEL>" {
-  targets = <TARGET_LIST>
+  config_file = "<BLACKBOX_CONFIG_FILE>"
+  targets     = <TARGET_LIST>
 }
 ```
 
