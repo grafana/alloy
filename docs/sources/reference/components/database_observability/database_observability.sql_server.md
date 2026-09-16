@@ -167,12 +167,12 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 | `collect_interval`        | `duration` | How frequently to collect query samples.                      | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 
-The `query_samples` collector only admits requests whose query hash is tracked by the `query_metrics` collector.
+The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
 
-Because the collector polls live requests, it can miss queries shorter than `collect_interval`, waits that start and finish between collections, and a query's first execution before Query Store admits its hash.
+The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
 For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, the login requires `VIEW SERVER PERFORMANCE STATE`. Azure SQL Database can restrict the dynamic management views to the current session; in that case, the collector can't observe other sessions.
+The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
 
 ### `schema_details`
 
