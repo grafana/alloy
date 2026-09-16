@@ -37,18 +37,11 @@ The component starts an HTTP server supporting the following endpoints:
 
 ## Arguments
 
-You can use the following arguments with `pyroscope.receive_http`:
+You can use the following argument with `pyroscope.receive_http`:
 
-| Name                        | Type                     | Description                                                       | Default | Required |
-| --------------------------- | ------------------------ | ----------------------------------------------------------------- | ------- | -------- |
-| `forward_to`                | `list(ProfilesReceiver)` | List of receivers to send profiles to.                            |         | yes      |
-| `debug_info_upload_timeout` | `duration`               | Timeout for uploading debug information to downstream components. | `"2m"`  | no       |
-
-`debug_info_upload_timeout` applies only to the debug information upload proxy endpoint `pyroscope.receive_http` exposes for downstream components, `POST /debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}`.
-It doesn't affect the profile-ingest endpoints described in [Usage](#usage).
-
-Debug information upload requests are only proxied to the first receiver in `forward_to`.
-Unlike profiles, which are sent to every configured receiver, debug information isn't fanned out to the rest of the list.
+| Name         | Type                     | Description                            | Default | Required |
+| ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
+| `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
 
 ## Blocks
 
@@ -92,11 +85,10 @@ The `tls` block configures TLS for the HTTP server.
 
 The following Prometheus metrics are exposed:
 
-| Name                                                      | Type      | Description                                                                                         |
-| --------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------- |
-| `pyroscope_receive_http_tcp_connections`                  | `gauge`   | Current number of accepted TCP connections.                                                         |
-| `pyroscope_receive_http_tcp_connections_limit`            | `gauge`   | The maximum number of TCP connections that the component can accept. A value of `0` means no limit. |
-| `pyroscope_receive_http_debuginfo_downstream_calls_total` | `counter` | Total number of downstream debug information calls, labeled by `method` and `result`.               |
+| Name                                           | Type    | Description                                                                                         |
+| ---------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `pyroscope_receive_http_tcp_connections`       | `gauge` | Current number of accepted TCP connections.                                                         |
+| `pyroscope_receive_http_tcp_connections_limit` | `gauge` | The maximum number of TCP connections that the component can accept. A value of `0` means no limit. |
 
 ## Troubleshoot
 

@@ -57,14 +57,12 @@ You can use the following blocks with `pyroscope.write`:
 | `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
-| [`tracing`][tracing]                               | Configure trace context propagation for requests.          | no       |
 
 [endpoint]: #endpoint
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
-[tracing]: #tracing
 
 {{< /docs/alloy-config >}}
 
@@ -80,7 +78,6 @@ The following arguments are supported:
 | `url`                    | `string`            | Full URL to send profiles to.                                                                    |           | yes      |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
 | `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
-| `debug_info_upload_timeout` | `duration`       | Timeout for uploading debug information to this endpoint.                                        | `"2m"`    | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
@@ -127,16 +124,6 @@ When `retry_on_http_429` is enabled, the retry mechanism is governed by the back
 ### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-### `tracing`
-
-The `tracing` block configures which trace-context headers `pyroscope.write` attaches to outgoing requests to each endpoint, so downstream Pyroscope services can correlate them with the trace they belong to.
-If both arguments are `false`, no trace-context headers are added to any request.
-
-| Name                       | Type   | Description                                                       | Default | Required |
-| -------------------------- | ------ | ----------------------------------------------------------------- | ------- | -------- |
-| `jaeger_propagator`        | `bool` | Attach Jaeger-format trace propagation headers (`uber-trace-id`). | `true`  | no       |
-| `trace_context_propagator` | `bool` | Attach W3C Trace Context headers (`traceparent`/`tracestate`).    | `true`  | no       |
 
 ## Exported fields
 

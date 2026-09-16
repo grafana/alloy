@@ -120,30 +120,7 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-You can use the following block with `pyroscope.ebpf`:
-
-{{< docs/alloy-config >}}
-
-| Block                       | Description                                               | Required |
-| --------------------------- | --------------------------------------------------------- | -------- |
-| [`debug_info`][debug_info]  | Configures on-target symbolization and debug info upload. | no       |
-
-[debug_info]: #debug_info
-
-{{< /docs/alloy-config >}}
-
-### `debug_info`
-
-The `debug_info` block configures on-target symbolization and the upload of debug information used for off-target symbolization.
-
-| Name                      | Type   | Description                                                                  | Default  | Required |
-| ------------------------- | ------ | ---------------------------------------------------------------------------- | -------- | -------- |
-| `cache_size`              | `int`  | Size of the LRU cache used to avoid re-uploading the same debug information. | `262144` | no       |
-| `on_target_symbolization` | `bool` | Symbolize stack traces directly on the profiled host.                        | `true`   | no       |
-| `queue_size`              | `int`  | Size of the upload queue.                                                    | `256`    | no       |
-| `strip_text_section`      | `bool` | Strip the text section of the executable before upload.                      | `false`  | no       |
-| `upload`                  | `bool` | Upload executable debug information for off-target symbolization.            | `false`  | no       |
-| `worker_num`              | `int`  | Number of workers processing the upload queue.                               | `16`     | no       |
+`pyroscope.ebpf` doesn't support any blocks.
 
 ## Exported fields
 
@@ -163,17 +140,13 @@ The `debug_info` block configures on-target symbolization and the upload of debu
 
 The following Prometheus metrics are exposed:
 
-| Name                                              | Type        | Description                                                                        |
-| ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
-| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                     |
-| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`.      |
-| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                               |
-| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                        |
-| `pyroscope_ebpf_pprofs_dropped_total`             | `counter`   | Number of pprof profiles dropped by the eBPF component.                            |
-| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`. |
-| `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total bytes of pprof profiles collected by the eBPF component, per `service_name`. |
-| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                       |
-| `pyroscope_forwarded_entries_total`               | `counter`   | Total number of samples sent to downstream components.                             |
+| Name                                              | Type        | Description                                                                   |
+| ------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                |
+| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`. |
+| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                          |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                   |
+| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                  |
 
 ### eBPF profiler internal metrics
 
