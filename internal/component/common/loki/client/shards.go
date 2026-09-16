@@ -232,6 +232,15 @@ func newShards(metrics *metrics, logger *slog.Logger, tracker sentDataTracker, c
 	}, nil
 }
 
+var (
+	// errHardShutdown is used as a signal so that we don't mark data as sent
+	// when we force stop all requests during shutdown.
+	errHardShutdown = errors.New("shutdown")
+	// errQueueIsFull signals that the entry was not accepted, leaving it to the
+	// caller to retry it or drop it.
+	errQueueIsFull = errors.New("queue is full")
+)
+
 // shards manages multiple parallel queues for processing and sending log entries to Loki.
 // It uses sharding to distribute entries across multiple worker goroutines based on label fingerprints,
 // enabling parallel processing and improved throughput. Each shard has its own queue and worker goroutine.
@@ -257,7 +266,7 @@ type shards struct {
 	softShutdown chan struct{}
 	ctx          context.Context
 	// cancel is used to cancel the context when a hard shutdown is initiated.
-	cancel context.CancelFunc
+	cancel context.CancelCauseFunc
 }
 
 // start initializes n shards and starts worker goroutines for each one.
@@ -276,7 +285,7 @@ func (s *shards) start(n int) {
 	}
 
 	s.queues = queues
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancelCause(context.Background())
 	s.running.Store(int32(n))
 	s.onceDone = sync.Once{}
 	s.done = make(chan struct{})
@@ -311,7 +320,7 @@ func (s *shards) stop() {
 	s.logger.Warn("failed to flush all queues during shutdown")
 
 	// Perform hard shutdown
-	s.cancel()
+	s.cancel(errHardShutdown)
 	<-s.done
 }
 
@@ -361,8 +370,6 @@ func (s *shards) runShard(q *queue) {
 	}
 }
 
-var errQueueIsFull = errors.New("queue is full")
-
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
 // Returns loki.ErrConsumerStopped if the shard is shutting down, in which case retrying will never
 // succeed, and errQueueIsFull if the queue is full, which the caller may retry or drop the entry.
@@ -406,8 +413,16 @@ func (s *shards) initBatchMetrics(tenantID string) {
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
-	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
-	defer batch.reportAsSentData(s.tracker, obs)
+	var shutdown bool
+	defer func() {
+		// If request was canceled due to shutdown we don't want to report data as sent.
+		if !shutdown {
+			batch.reportAsSentData(
+				s.tracker,
+				s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID),
+			)
+		}
+	}()
 
 	// batch.size is the uncompressed size of the log lines, which is what's
 	// compared against the configured batch_size when filling the batch.
@@ -465,6 +480,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 
 		// Make sure it sends at least once before checking for retry.
 		if !backoff.Ongoing() {
+			shutdown = errors.Is(context.Cause(s.ctx), errHardShutdown)
 			break
 		}
 	}
