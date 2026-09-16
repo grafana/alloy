@@ -202,20 +202,14 @@ type queryWaitOccurrence struct {
 	duration time.Duration
 }
 
-type openQueryWait struct {
-	identity      queryWaitIdentity
-	occurrenceIdx int
-	lastDuration  time.Duration
-}
-
 type queryWaitTracker struct {
 	occurrences []queryWaitOccurrence
-	openByTask  map[int64]openQueryWait
+	openByTask  map[int64]int
 	dropped     int
 }
 
 func newQueryWaitTracker() queryWaitTracker {
-	return queryWaitTracker{openByTask: make(map[int64]openQueryWait)}
+	return queryWaitTracker{openByTask: make(map[int64]int)}
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
@@ -461,11 +455,10 @@ func (t *queryWaitTracker) observe(row querySampleRow) bool {
 		blockingSessionID: row.BlockingSessionID,
 	}
 
-	if open, ok := t.openByTask[identity.execContextID]; ok {
-		if open.identity == identity && duration >= open.lastDuration {
-			t.occurrences[open.occurrenceIdx].duration = duration
-			open.lastDuration = duration
-			t.openByTask[identity.execContextID] = open
+	if occurrenceIdx, ok := t.openByTask[identity.execContextID]; ok {
+		occurrence := &t.occurrences[occurrenceIdx]
+		if occurrence.identity == identity && duration >= occurrence.duration {
+			occurrence.duration = duration
 			return false
 		}
 		delete(t.openByTask, identity.execContextID)
@@ -480,11 +473,7 @@ func (t *queryWaitTracker) observe(row querySampleRow) bool {
 		identity: identity,
 		duration: duration,
 	})
-	t.openByTask[identity.execContextID] = openQueryWait{
-		identity:      identity,
-		occurrenceIdx: len(t.occurrences) - 1,
-		lastDuration:  duration,
-	}
+	t.openByTask[identity.execContextID] = len(t.occurrences) - 1
 	return false
 }
 
