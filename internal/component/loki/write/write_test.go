@@ -1,6 +1,7 @@
 package write
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -309,14 +310,14 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 			require.FailNow(t, "failed waiting for logs")
 		case req := <-ch1:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		case req := <-ch2:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		}
 	}
 }
@@ -475,4 +476,111 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 			return int64(tc.linesCount) == seenLines.Load()
 		}, time.Minute, time.Second, "haven't seen expected number of lines")
 	}
+}
+
+func TestUpdateWhileSendingIsBlocked(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			ctrl, _ := blockedComponent(t, ctx, walEnabled)
+
+			updated := make(chan error, 1)
+			go func() { updated <- ctrl.Update(blockedEndpointArgs(t, "http://localhost:1", walEnabled)) }()
+
+			select {
+			case err := <-updated:
+				require.NoError(t, err)
+			case <-time.After(30 * time.Second):
+				t.Fatal("Update did not return while sending was blocked")
+			}
+		})
+	}
+}
+
+func TestStopWhileSendingIsBlocked(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			_, stopped := blockedComponent(t, ctx, walEnabled)
+			cancel()
+
+			select {
+			case err := <-stopped:
+				require.NoError(t, err)
+			case <-time.After(30 * time.Second):
+				t.Fatal("Run did not return while sending was blocked")
+			}
+		})
+	}
+}
+
+func blockedComponent(t *testing.T, ctx context.Context, walEnabled bool) (*componenttest.Controller, <-chan error) {
+	t.Helper()
+
+	blocked := atomic.NewBool(false)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		blocked.Store(true)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+	require.NoError(t, err)
+
+	stopped := make(chan error, 1)
+	go func() {
+		stopped <- ctrl.Run(ctx, blockedEndpointArgs(t, srv.URL, walEnabled), func(o component.Options) component.Options {
+			o.MinStability = featuregate.StabilityExperimental
+			return o
+		})
+	}()
+
+	require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+	ch := ctrl.Exports().(Exports).Receiver.Chan()
+
+	go func() {
+		entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "very important log"})
+		for {
+			select {
+			case ch <- entry:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	require.Eventually(t, blocked.Load, 10*time.Second, 10*time.Millisecond)
+	return ctrl, stopped
+}
+func blockedEndpointArgs(t *testing.T, url string, walEnabled bool) Arguments {
+	t.Helper()
+
+	cfg := fmt.Sprintf(`
+		endpoint {
+			url                 = "%s"
+			batch_size          = "1B"
+			min_backoff_period  = "1ms"
+			max_backoff_period  = "5ms"
+			max_backoff_retries = 0
+
+			queue_config {
+				capacity          = "1B"
+				min_shards        = 1
+				drain_timeout     = "1s"
+				block_on_overflow = true
+			}
+		}
+
+		wal {
+			enabled       = %t
+			drain_timeout = "1s"
+		}
+	`, url, walEnabled)
+
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+	return args
 }
