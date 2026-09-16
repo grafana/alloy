@@ -132,6 +132,16 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 	res = env.ExecScript(`f=/etc/default/alloy; [ -f "$f" ] || f=/etc/sysconfig/alloy; grep -qF 'OTEL_CONFIG_FILE="/etc/alloy/config.yaml"' "$f"`)
 	require.Equal(t, 0, res.ExitCode, "expected the installed environment file to declare OTEL_CONFIG_FILE with its default value")
 
+	// Install a simple util that can help us determine the bounds of argv parameters passed to the alloy binary
+	// It's important that we test this as we're relying on the alloy-wrapper to split argv's for us
+	res = env.ExecScript(`cat > /tmp/argv <<'SHIM'
+#!/bin/sh
+for a in "$@"; do printf '[%s]' "$a"; done
+printf '\n'
+SHIM
+chmod +x /tmp/argv`)
+	require.Equal(t, 0, res.ExitCode, "failed to install the argv shim")
+
 	tt := []struct {
 		name     string
 		env      string
@@ -140,93 +150,93 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 		{
 			name:     "default engine, unset toggle",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy`,
-			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+			expected: "[run][--storage.path=/var/lib/alloy/data][/etc/alloy/config.alloy]\n",
 		},
 		{
 			name:     "default engine, custom CONFIG_FILE",
 			env:      `CONFIG_FILE=/custom/config.alloy`,
-			expected: "run --storage.path=/var/lib/alloy/data /custom/config.alloy\n",
+			expected: "[run][--storage.path=/var/lib/alloy/data][/custom/config.alloy]\n",
 		},
 		{
 			name:     "otel engine, default config",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE=true",
 			env:      `ALLOY_OTEL_MODE=true`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE=yes",
 			env:      `ALLOY_OTEL_MODE=yes`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE=on",
 			env:      `ALLOY_OTEL_MODE=on`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (TRUE)",
 			env:      `ALLOY_OTEL_MODE=TRUE`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (Yes)",
 			env:      `ALLOY_OTEL_MODE=Yes`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (ON)",
 			env:      `ALLOY_OTEL_MODE=ON`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine ignores CONFIG_FILE, the default engine's config path",
 			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "otel engine, custom OTEL_CONFIG_FILE",
 			env:      `ALLOY_OTEL_MODE=1 OTEL_CONFIG_FILE=/custom/config.yaml`,
-			expected: "otel --config=/custom/config.yaml\n",
+			expected: "[otel][--config=/custom/config.yaml]\n",
 		},
 		{
 			name:     "default engine ignores OTEL_CONFIG_FILE, the OTel engine's config path",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy OTEL_CONFIG_FILE=/custom/config.yaml`,
-			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+			expected: "[run][--storage.path=/var/lib/alloy/data][/etc/alloy/config.alloy]\n",
 		},
 		{
 			name:     "otel engine, OTEL_CUSTOM_ARGS applies",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 OTEL_CUSTOM_ARGS="--feature-gates=otelcol.printInitialConfig"`,
-			expected: "otel --config=/etc/alloy/config.yaml --feature-gates=otelcol.printInitialConfig\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml][--feature-gates=otelcol.printInitialConfig]\n",
 		},
 		{
 			name:     "otel engine ignores CUSTOM_ARGS, the default engine's flags",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 CUSTOM_ARGS="--storage.path=/should/not/appear"`,
-			expected: "otel --config=/etc/alloy/config.yaml\n",
+			expected: "[otel][--config=/etc/alloy/config.yaml]\n",
 		},
 		{
 			name:     "default engine ignores OTEL_CUSTOM_ARGS, the OTel engine's flags",
 			env:      `CONFIG_FILE=/etc/alloy/config.alloy OTEL_CUSTOM_ARGS="--feature-gates=otelcol.printInitialConfig"`,
-			expected: "run --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+			expected: "[run][--storage.path=/var/lib/alloy/data][/etc/alloy/config.alloy]\n",
 		},
 		{
-			name:     "default engine, CUSTOM_ARGS containing a glob character is passed through literally",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_ARGS="--set=/etc/alloy/*"`,
-			expected: "run --set=/etc/alloy/* --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy\n",
+			name:     "default engine, CUSTOM_ARGS with multiple flags and a glob character is split and passed through literally",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy CUSTOM_ARGS="--set=/etc/alloy/* --disable-reporting"`,
+			expected: "[run][--set=/etc/alloy/*][--disable-reporting][--storage.path=/var/lib/alloy/data][/etc/alloy/config.alloy]\n",
 		},
 		{
-			name:     "otel engine, OTEL_CUSTOM_ARGS containing a glob character is passed through literally",
-			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 OTEL_CUSTOM_ARGS="--set=/etc/alloy/*"`,
-			expected: "otel --config=/etc/alloy/config.yaml --set=/etc/alloy/*\n",
+			name:     "otel engine, OTEL_CUSTOM_ARGS with multiple flags and a glob character is split and passed through literally",
+			env:      `CONFIG_FILE=/etc/alloy/config.alloy ALLOY_OTEL_MODE=1 OTEL_CUSTOM_ARGS="--set=/etc/alloy/* --feature-gates=otelcol.printInitialConfig"`,
+			expected: "[otel][--config=/etc/alloy/config.yaml][--set=/etc/alloy/*][--feature-gates=otelcol.printInitialConfig]\n",
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			res := env.ExecScript(fmt.Sprintf(`ALLOY_BIN=/bin/echo %s /usr/lib/alloy/alloy-wrapper`, tc.env))
+			res := env.ExecScript(fmt.Sprintf(`ALLOY_BIN=/tmp/argv %s /usr/lib/alloy/alloy-wrapper`, tc.env))
 			require.Equal(t, 0, res.ExitCode, "wrapper script exited non-zero")
 			require.Equal(t, tc.expected, res.Stdout)
 		})
