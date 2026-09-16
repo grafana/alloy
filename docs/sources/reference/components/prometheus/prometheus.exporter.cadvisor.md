@@ -125,7 +125,7 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `containerd_host`              | `string`       | The `containerd` endpoint.                                                                                          | `"/run/containerd/containerd.sock"` | no       |
 | `containerd_namespace`         | `string`       | The `containerd` namespace.                                                                                         | `"k8s.io"`                          | no       |
 | `disable_root_cgroup_stats`    | `bool`         | Disable collecting root `cgroup` stats.                                                                             | `false`                             | no       |
-| `disabled_metrics`             | `list(string)` | List of metrics to disable. If set, this list overrides the default disabled metrics.                               | `[]`                                | no       |
+| `disabled_metrics`             | `list(string)` | List of metrics to disable. If set, this list overrides the default disabled metrics.                               | _see below_                         | no       |
 | `docker_host`                  | `string`       | Docker endpoint.                                                                                                    | `"unix:///var/run/docker.sock"`     | no       |
 | `docker_only`                  | `bool`         | Only report docker containers in addition to root stats.                                                            | `false`                             | no       |
 | `docker_tls_ca`                | `string`       | Path to a trusted CA for TLS connection to docker.                                                                  | `"ca.pem"`                          | no       |
@@ -144,7 +144,7 @@ For `allowlisted_container_labels` to take effect, set `store_container_labels` 
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 
-`env_metadata_allowlist` is only supported for `containerd` and Docker run times.
+`env_metadata_allowlist` is only supported for `containerd` and Docker runtimes.
 
 If you don't set `perf_events_config`, {{< param "PRODUCT_NAME" >}} doesn't measure `perf` events.
 
@@ -390,7 +390,7 @@ Key configuration requirements:
 - **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
-For container run times other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
+For container runtimes other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}

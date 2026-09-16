@@ -7,6 +7,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-09-15
 title: prometheus.exporter.catchpoint
 ---
 

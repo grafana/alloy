@@ -306,7 +306,24 @@ prometheus.scrape "example" {
   targets    = discovery.relabel.example.output
   forward_to = [prometheus.remote_write.example.receiver]
 }
+
+prometheus.remote_write "example" {
+  endpoint {
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
+    }
+  }
+}
 ```
+
+Replace the following:
+
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
