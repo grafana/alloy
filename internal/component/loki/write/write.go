@@ -86,14 +86,18 @@ type Component struct {
 	mut            sync.RWMutex
 	externalLabels model.LabelSet
 
-	// remote write consumer
 	consumer client.Consumer
+	// consumerReady is closed while consumer is set, and replaced with an open
+	// channel whenever consumer is cleared, so waiters can park until a working
+	// consumer shows up.
+	consumerReady chan struct{}
 }
 
 // New creates a new loki.write component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts: o,
+		opts:          o,
+		consumerReady: make(chan struct{}),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -149,6 +153,8 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.consumer != nil {
 		// only drain on component shutdown
 		c.consumer.Stop()
+		c.consumer = nil
+		c.consumerReady = make(chan struct{})
 	}
 
 	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
@@ -174,32 +180,60 @@ func (c *Component) Update(args component.Arguments) error {
 		},
 	}
 
-	var err error
+	var (
+		err      error
+		consumer client.Consumer
+	)
 	if newArgs.WAL.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create clients: %w", err)
 	}
 
+	c.consumer = consumer
+	close(c.consumerReady)
+
 	return nil
 }
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
-	c.mut.RLock()
-	consumer := c.consumer
+	var labelsMerged bool
 
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
+	for {
+		// consumer and consumerReady have to be read together,
+		// so that consumerReady always belongs to the consumer we are about to use.
+		c.mut.RLock()
+		var (
+			consumer       = c.consumer
+			consumerReady  = c.consumerReady
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if consumer != nil {
+			if len(externalLabels) > 0 && !labelsMerged {
+				labelsMerged = true
+				e.Labels = externalLabels.Merge(e.Labels)
+			}
+
+			// Only a stopped consumer is worth waiting on. Anything else is an accepted
+			// entry, a canceled context while shutting down, or a failed WAL write.
+			if err := consumer.ConsumeEntry(ctx, e); !errors.Is(err, loki.ErrConsumerStopped) {
+				return
+			}
+		}
+
+		// Wait for an update to bring a new consumer or for the component to stop.
+		select {
+		case <-ctx.Done():
+			return
+		case <-consumerReady:
+		}
 	}
-	c.mut.RUnlock()
-
-	// NOTE: For now it's ok to ignore error here. Error mean the consumer is going away,
-	// either because ctx was canceled or because it has been stopped by a shutdown or an update.
-	_ = consumer.ConsumeEntry(ctx, e)
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
