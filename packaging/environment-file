@@ -22,8 +22,9 @@ CUSTOM_ARGS=""
 # Only effective if ALLOY_OTEL_MODE is enabled.
 OTEL_CUSTOM_ARGS=""
 
-# Set to 1 or "true" to run the OTel engine (`alloy otel`) instead of the default engine (`alloy run`).
-# Unset or any other value keeps the default engine.
+# Set to 1, true, yes, or on (case-insensitive) to run the OTel engine (`alloy otel`)
+# instead of the default engine (`alloy run`). Unset or any other value keeps the
+# default engine.
 ALLOY_OTEL_MODE=""
 
 # Restart on system upgrade. Defaults to true.

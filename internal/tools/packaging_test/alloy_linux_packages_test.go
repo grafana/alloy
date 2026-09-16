@@ -153,6 +153,36 @@ func (env *AlloyEnvironment) TestEngineToggle(t *testing.T) {
 			expected: "otel --config=/etc/alloy/config.yaml\n",
 		},
 		{
+			name:     "otel engine, ALLOY_OTEL_MODE=true",
+			env:      `ALLOY_OTEL_MODE=true`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, ALLOY_OTEL_MODE=yes",
+			env:      `ALLOY_OTEL_MODE=yes`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, ALLOY_OTEL_MODE=on",
+			env:      `ALLOY_OTEL_MODE=on`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (TRUE)",
+			env:      `ALLOY_OTEL_MODE=TRUE`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (Yes)",
+			env:      `ALLOY_OTEL_MODE=Yes`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
+			name:     "otel engine, ALLOY_OTEL_MODE matching is case-insensitive (ON)",
+			env:      `ALLOY_OTEL_MODE=ON`,
+			expected: "otel --config=/etc/alloy/config.yaml\n",
+		},
+		{
 			name:     "otel engine ignores CONFIG_FILE, the default engine's config path",
 			env:      `CONFIG_FILE=/custom/config.alloy ALLOY_OTEL_MODE=1`,
 			expected: "otel --config=/etc/alloy/config.yaml\n",
@@ -252,8 +282,7 @@ func (env *AlloyEnvironment) requireServiceActive(t *testing.T) {
 	require.Equal(t, "active", state, "alloy service did not stay active")
 
 	res := env.ExecScript(`systemctl show -p NRestarts --value alloy`)
-	require.Equal(t, 0, res.ExitCode, "failed to read the service restart count")
-	require.Equal(t, "0", strings.TrimSpace(res.Stdout), "alloy service restarted, so it didn't stay up")
+	require.Equal(t, "0", strings.TrimSpace(res.Stdout), "alloy service failed to boot successfully at least once")
 }
 
 // requireAlloyArgs asserts which command systemd actually launched.

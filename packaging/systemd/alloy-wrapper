@@ -4,7 +4,7 @@ set -euf
 ALLOY_BIN="${ALLOY_BIN:-/usr/bin/alloy}"
 
 otel_mode=""
-case "${ALLOY_OTEL_MODE:-}" in
+case "$(printf '%s' "${ALLOY_OTEL_MODE:-}" | tr 'A-Z' 'a-z')" in
   # check against truthy values
   1 | true | yes | on) otel_mode="1" ;;
 esac
