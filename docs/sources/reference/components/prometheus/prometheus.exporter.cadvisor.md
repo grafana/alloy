@@ -29,7 +29,7 @@ The component requires specific permissions and configuration depending on your 
 
 When you run {{< param "PRODUCT_NAME" >}} as a Linux binary, systemd service, or as the `alloy` user, grant the `alloy` user permissions to access the container runtime socket and related directories to collect metrics from containers on the host.
 
-The component works with the Docker, `containerd`, CRI-O, and systemd container runtime.
+The component works with Docker, `containerd`, CRI-O, and systemd container runtimes.
 
 For Docker, grant permissions using one of these approaches:
 
@@ -145,7 +145,7 @@ For `allowlisted_container_labels` to take effect, set `store_container_labels` 
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 
-`env_metadata_allowlist` works only with `containerd` and Docker.
+`env_metadata_allowlist` works only with the `containerd` and Docker runtimes.
 
 If you don't set `perf_events_config`, {{< param "PRODUCT_NAME" >}} doesn't measure `perf` events.
 
@@ -391,7 +391,7 @@ Key configuration requirements:
 - **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
-For a container runtime other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
+For container runtimes other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
