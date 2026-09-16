@@ -48,7 +48,7 @@ type SinkArguments struct{}
 type SinkExports struct {
 	LokiPushUrl              string             `alloy:"loki_push_url,attr"`
 	LokiReceiver             loki.LogsReceiver  `alloy:"loki_receiver,attr"`
-	PrometheusRemoteWriteURL string             `alloy:"promethues_remote_write_url,attr"`
+	PrometheusRemoteWriteURL string             `alloy:"prometheus_remote_write_url,attr"`
 	PrometheusReceiver       storage.Appendable `alloy:"prometheus_receiver,attr"`
 }
 
