@@ -62,21 +62,6 @@ ignore:
       the legacy docker/docker dependency.
     expires: 2027-01-01
 
-  - id: GO-2026-5115
-    reason: |
-      Loki Ruler API path traversal via double URL-encoding (CVE-2026-21726),
-      fixed in github.com/grafana/loki/v3 v3.6.4. False positive: our pin
-      (v3.0.0-20260909135834-022eb19ccd56, a Loki main-branch commit dated
-      2026-09-09, needed to bridge a dskit/etcd compatibility gap — see the
-      go.mod comment above the require line) already contains the fix.
-      pkg/ruler/base/api.go's parseNamespace at that commit is byte-for-byte
-      identical to v3.6.4's fixed version (the filepath.IsLocal(namespace)
-      check v3.6.2 lacks). govulncheck only flags it because the
-      pseudo-version's base (v3.0.0) sorts below 3.6.4 in semver terms, not
-      because the vulnerable code is present. Revisit once that pin is
-      replaced by a tagged Loki release.
-    expires: 2027-01-01
-
   - id: GO-2026-5662
     reason: |
       Stored XSS via metric names and label values in the Prometheus web UI
