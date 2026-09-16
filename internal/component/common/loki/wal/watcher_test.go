@@ -346,8 +346,7 @@ func TestWatcher(t *testing.T) {
 			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
 			defer watcher.Stop()
 			wl, err := New(Config{
-				Enabled: true,
-				Dir:     dir,
+				Dir: dir,
 			}, logger, reg)
 			require.NoError(t, err)
 			defer wl.Close()
@@ -424,8 +423,7 @@ func TestWatcher_Replay(t *testing.T) {
 		})
 		defer watcher.Stop()
 		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
+			Dir: dir,
 		}, logger, reg)
 		require.NoError(t, err)
 		defer wl.Close()
@@ -506,8 +504,7 @@ func TestWatcher_Replay(t *testing.T) {
 		})
 		defer watcher.Stop()
 		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
+			Dir: dir,
 		}, logger, reg)
 		require.NoError(t, err)
 		defer wl.Close()
@@ -619,8 +616,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		watcher.Start()
 
 		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
+			Dir: dir,
 		}, logger, reg)
 		require.NoError(t, err)
 		return writeTo, watcher, wl

@@ -31,7 +31,6 @@ func TestWriter(t *testing.T) {
 
 		writer, err := NewWriter(Config{
 			Dir:           dir,
-			Enabled:       true,
 			MaxSegmentAge: time.Minute,
 		}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 		require.NoError(t, err)
@@ -78,7 +77,6 @@ func TestWriter(t *testing.T) {
 
 		writer, err := NewWriter(Config{
 			Dir:           dir,
-			Enabled:       true,
 			MaxSegmentAge: time.Minute,
 		}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 
@@ -113,7 +111,6 @@ func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
 	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
@@ -136,7 +133,6 @@ func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 
 	writer, err = NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
 	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
@@ -177,7 +173,6 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
 	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
@@ -271,7 +266,6 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
 	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
@@ -448,7 +442,6 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
 	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(b, err)

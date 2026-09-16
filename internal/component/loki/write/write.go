@@ -165,7 +165,6 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 	walCfg := wal.Config{
-		Enabled:       newArgs.WAL.Enabled,
 		Dir:           filepath.Join(c.opts.DataPath, "wal"),
 		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
 		WatchConfig: wal.WatchConfig{
@@ -176,7 +175,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	var err error
-	if walCfg.Enabled {
+	if newArgs.WAL.Enabled {
 		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
 		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)

@@ -31,7 +31,6 @@ import (
 func TestWALConsumer(t *testing.T) {
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
-		Enabled:       true,
 		MaxSegmentAge: time.Second * 10,
 		WatchConfig:   wal.DefaultWatchConfig,
 	}
@@ -96,7 +95,6 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
-		Enabled:       true,
 		WatchConfig:   wal.DefaultWatchConfig,
 		MaxSegmentAge: time.Second * 10,
 	}
@@ -561,7 +559,6 @@ func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
 
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
 		WatchConfig: wal.WatchConfig{
 			MinReadFrequency: 10 * time.Millisecond,
