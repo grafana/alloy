@@ -424,8 +424,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	excludeCurrentUser := c.args.ExcludeCurrentUser && enableOrDisableCollectors(c.args)[collector.QuerySamplesCollector]
 	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, c.dbConnection, c.args.ExcludeUsers, excludeCurrentUser)
 	if err != nil {
-		c.opts.Logger.Warn("failed to resolve current login for query_samples user exclusion; Alloy's own sessions may appear in query samples", "err", err)
-		effectiveExcludeUsers = slices.Clone(c.args.ExcludeUsers)
+		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
 
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s", serverName.String, machineName.String)))

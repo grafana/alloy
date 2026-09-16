@@ -2,6 +2,7 @@ package sql_server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -421,4 +422,29 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
+}
+
+func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectPing()
+	mock.ExpectQuery(selectServerInfo).
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
+			AddRow("server", "machine", "16.0"))
+	mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
+
+	c := &Component{
+		args: Arguments{
+			ExcludeCurrentUser: true,
+		},
+		openSQL: func(_, _ string) (*sql.DB, error) {
+			return db, nil
+		},
+	}
+
+	err = c.connectAndStartCollectors(context.Background())
+	require.ErrorContains(t, err, "failed to resolve current login for query_samples user exclusion")
+	require.NoError(t, mock.ExpectationsWereMet())
 }
