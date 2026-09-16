@@ -9,20 +9,25 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/grafana/loki/pkg/push"
+	remoteapi "github.com/prometheus/client_golang/exp/api/remote"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/histogram"
+	"github.com/prometheus/prometheus/model/labels"
+	promql_parser "github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/storage"
+	promremote "github.com/prometheus/prometheus/storage/remote"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
-	promql_parser "github.com/prometheus/prometheus/promql/parser"
-	"github.com/prometheus/prometheus/storage"
 )
 
 const (
-	lokiPushPath = "/loki/api/v1/push"
+	lokiPushPath        = "/loki/api/v1/push"
+	promRemoteWritePath = "/prom/api/v1/write"
 )
 
 func init() {
@@ -41,9 +46,10 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl        string             `alloy:"loki_push_url,attr"`
-	LokiReceiver       loki.LogsReceiver  `alloy:"loki_receiver,attr"`
-	PrometheusReceiver storage.Appendable `alloy:"prometheus_receiver,attr"`
+	LokiPushUrl              string             `alloy:"loki_push_url,attr"`
+	LokiReceiver             loki.LogsReceiver  `alloy:"loki_receiver,attr"`
+	PrometheusRemoteWriteURL string             `alloy:"prometheus_remote_write_url,attr"`
+	PrometheusReceiver       storage.Appendable `alloy:"prometheus_receiver,attr"`
 }
 
 // PrometheusSample is one sample captured by the sink. Histogram is set only for
@@ -125,12 +131,32 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 		w.WriteHeader(http.StatusNoContent)
 	}).Methods(http.MethodPost)
 
+	// TODO: These could be configurable per test.
+	var (
+		acceptedMsgs            = remoteapi.MessageTypes{remoteapi.WriteV1MessageType, remoteapi.WriteV2MessageType}
+		appendMetadata          = false
+		ingestSTZeroSample      = false
+		enableTypeAndUnitLabels = false
+	)
+
+	router.Handle(promRemoteWritePath,
+		promremote.NewWriteHandler(
+			opts.Logger,
+			prometheus.NewRegistry(),
+			s.promrecv, acceptedMsgs,
+			ingestSTZeroSample,
+			enableTypeAndUnitLabels,
+			appendMetadata,
+		),
+	)
+
 	s.server = httptest.NewServer(router)
 
 	s.opts.OnStateChange(SinkExports{
-		LokiPushUrl:        s.server.URL + lokiPushPath,
-		LokiReceiver:       s.lokirecv,
-		PrometheusReceiver: s.promrecv,
+		LokiPushUrl:              s.server.URL + lokiPushPath,
+		LokiReceiver:             s.lokirecv,
+		PrometheusRemoteWriteURL: s.server.URL + promRemoteWritePath,
+		PrometheusReceiver:       s.promrecv,
 	})
 
 	return s, nil

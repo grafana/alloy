@@ -21,10 +21,16 @@ config: |
 
   prometheus.scrape "default" {
     targets    = prometheus.exporter.static.default.targets
-    forward_to = [pipelinetest.prometheus.receiver]
+    forward_to = [prometheus.remote_write.default.receiver]
 
     scrape_interval = "1s"
     scrape_timeout  = "500ms"
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = pipelinetest.prometheus.url
+   }
   }
 
 assert:

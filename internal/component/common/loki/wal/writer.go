@@ -37,16 +37,16 @@ type WriteEventSubscriber interface {
 	NotifyWrite()
 }
 
-// Writer implements loki.EntryHandler, exposing a channel were scraping targets can write to. Reading from there, it
-// writes incoming entries to a WAL.
-// Also, since Writer is responsible for all changing operations over the WAL, therefore a routine is run for cleaning
-// old segments.
+// Writer writes log entries to a write-ahead log. It is also responsible for the WAL's segments,
+// removing those older than the configured maximum age and notifying subscribers when it does.
 type Writer struct {
-	entries     chan loki.Entry
-	logger      *slog.Logger
-	wg          sync.WaitGroup
-	once        sync.Once
-	wal         WAL
+	logger *slog.Logger
+	cfg    Config
+	wg     sync.WaitGroup
+	wal    WAL
+
+	writeMut    sync.Mutex
+	stopped     bool
 	entryWriter *entryWriter
 
 	cleanupSubscribersLock sync.RWMutex
@@ -57,91 +57,90 @@ type Writer struct {
 
 	metrics *WriterMetrics
 
-	closeCleaner chan struct{}
+	done chan struct{}
 }
 
 // NewWriter creates a new Writer.
 func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer, metrics *WriterMetrics) (*Writer, error) {
 	// Start WAL
-	wl, err := New(Config{
-		Dir:     walCfg.Dir,
-		Enabled: true,
-	}, logger, reg)
+	wl, err := New(walCfg, logger, reg)
 	if err != nil {
 		return nil, fmt.Errorf("error starting WAL: %w", err)
 	}
 
 	wrt := &Writer{
-		entries:      make(chan loki.Entry),
-		logger:       logger,
-		wg:           sync.WaitGroup{},
-		wal:          wl,
-		entryWriter:  newEntryWriter(),
-		closeCleaner: make(chan struct{}, 1),
-		metrics:      metrics,
+		logger:      logger,
+		entryWriter: newEntryWriter(),
+		wg:          sync.WaitGroup{},
+		cfg:         walCfg,
+		wal:         wl,
+		done:        make(chan struct{}),
+		metrics:     metrics,
 	}
 
 	return wrt, nil
 }
 
-func (wrt *Writer) Start(maxSegmentAge time.Duration) {
-	// main WAL writer routine
-	wrt.wg.Go(func() {
-		for e := range wrt.entries {
-			if err := wrt.entryWriter.WriteEntry(e, wrt.wal); err != nil {
-				wrt.logger.Error("failed to write entry", "err", err)
-				// if an error occurred while writing the wal, go to next entry and don't notify write subscribers
-				continue
-			}
-
-			// emit metric with latest written timestamp, to be able to track delay from writer to watcher
-			wrt.metrics.lastWrittenTimestamp.WithLabelValues().Set(float64(e.Timestamp.Unix()))
-
-			wrt.writeSubscribersLock.RLock()
-			for _, s := range wrt.writeSubscribers {
-				s.NotifyWrite()
-			}
-			wrt.writeSubscribersLock.RUnlock()
-		}
-	})
-
+func (wrt *Writer) Start() {
 	// WAL cleanup routine that cleans old segments
 	wrt.wg.Go(func() {
 		// By cleaning every 10th of the configured threshold for considering a segment old, we are allowing a maximum slip
 		// of 10%. If the configured time is 1 hour, that'd be 6 minutes.
-		triggerEvery := maxSegmentAge / 10
+		triggerEvery := wrt.cfg.MaxSegmentAge / 10
 		if triggerEvery < minimumCleanSegmentsEvery {
 			triggerEvery = minimumCleanSegmentsEvery
 		}
 		trigger := time.NewTicker(triggerEvery)
+		defer trigger.Stop()
 		for {
 			select {
 			case <-trigger.C:
 				wrt.logger.Debug("Running wal old segments cleanup")
-				if err := wrt.cleanSegments(maxSegmentAge); err != nil {
+				if err := wrt.cleanSegments(wrt.cfg.MaxSegmentAge); err != nil {
 					wrt.logger.Error("Error cleaning old segments", "err", err)
 				}
-			case <-wrt.closeCleaner:
-				trigger.Stop()
+			case <-wrt.done:
 				return
 			}
 		}
 	})
 }
 
-func (wrt *Writer) Chan() chan<- loki.Entry {
-	return wrt.entries
+func (wrt *Writer) WriteEntry(entry loki.Entry) error {
+	wrt.writeMut.Lock()
+	defer wrt.writeMut.Unlock()
+
+	if wrt.stopped {
+		return loki.ErrConsumerStopped
+	}
+
+	if err := wrt.entryWriter.writeEntry(entry, wrt.wal); err != nil {
+		wrt.logger.Error("failed to write entry", "err", err)
+		return err
+	}
+
+	// emit metric with latest written timestamp, to be able to track delay from writer to watcher
+	wrt.metrics.lastWrittenTimestamp.WithLabelValues().Set(float64(entry.Timestamp.Unix()))
+
+	wrt.writeSubscribersLock.RLock()
+	for _, s := range wrt.writeSubscribers {
+		s.NotifyWrite()
+	}
+	wrt.writeSubscribersLock.RUnlock()
+
+	return nil
 }
 
 func (wrt *Writer) Stop() {
-	wrt.once.Do(func() {
-		close(wrt.entries)
-	})
-	// close cleaner routine
-	wrt.closeCleaner <- struct{}{}
-	// Wait for routine to write to wal all pending entries
+	wrt.writeMut.Lock()
+	defer wrt.writeMut.Unlock()
+	wrt.stopped = true
+
+	// Stop cleaner routine and wait for it to stop.
+	close(wrt.done)
 	wrt.wg.Wait()
-	// Close WAL to finalize all pending writes
+
+	// Close WAL to finalize all pending writes.
 	wrt.wal.Close()
 }
 
@@ -224,16 +223,18 @@ func newEntryWriter() *entryWriter {
 	}
 }
 
-// WriteEntry writes a loki.Entry to a WAL. Note that since it's re-using the same Record object for every
-// write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
-func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL) error {
-	// Reset wal record slices
-	ew.reusableWALRecord.Reset()
+func (ew *entryWriter) writeEntry(entry loki.Entry, wl WAL) error {
+	defer ew.reusableWALRecord.Reset()
 
 	var fp uint64
 	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
 	fp, _ = lbs.HashWithoutLabels(nil, []string(nil)...)
 	ref := chunks.HeadSeriesRef(fp)
+
+	ew.reusableWALRecord.Series = append(ew.reusableWALRecord.Series, record.RefSeries{
+		Ref:    ref,
+		Labels: lbs,
+	})
 
 	// Append the entry to an already existing stream (if any)
 	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, RefEntries{
@@ -242,10 +243,6 @@ func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL) error {
 			entry.Entry,
 		},
 		Created: entry.Created(),
-	})
-	ew.reusableWALRecord.Series = append(ew.reusableWALRecord.Series, record.RefSeries{
-		Ref:    ref,
-		Labels: lbs,
 	})
 
 	return wl.Log(ew.reusableWALRecord)

@@ -1,14 +1,19 @@
 package client
 
 import (
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -159,5 +164,64 @@ func TestQueue_flushAndShutdown(t *testing.T) {
 		// Second batch should not have been queued
 		_, ok = <-q.channel()
 		assert.False(t, ok)
+	})
+}
+
+type recordingTracker struct {
+	mut      sync.Mutex
+	recorded []sentData
+}
+
+func (t *recordingTracker) UpdateSentData(segment, count int) {
+	t.mut.Lock()
+	defer t.mut.Unlock()
+	t.recorded = append(t.recorded, sentData{segment: segment, count: count})
+}
+
+func (t *recordingTracker) sent() []sentData {
+	t.mut.Lock()
+	defer t.mut.Unlock()
+	return slices.Clone(t.recorded)
+}
+
+type sentData struct {
+	segment int
+	count   int
+}
+
+func TestShards(t *testing.T) {
+	t.Run("should not update marker when in-flight requests are canceled due to hard shutdown", func(t *testing.T) {
+		server, blocked, release := newBlockedServer()
+		defer server.Close()
+		defer release()
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		tracker := &recordingTracker{}
+
+		s, err := newShards(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), tracker, Config{
+			URL:       url,
+			BatchSize: 1,
+			Timeout:   time.Minute,
+			Client:    config.DefaultHTTPClientConfig,
+			BackoffConfig: backoff.Config{
+				MinBackoff: time.Millisecond,
+				MaxBackoff: 10 * time.Millisecond,
+			},
+			QueueConfig: QueueConfig{
+				Capacity:     1,
+				DrainTimeout: 100 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		s.start(1)
+
+		require.NoError(t, s.enqueue("", entry, 1))
+		require.Eventually(t, blocked.Load, 5*time.Second, 10*time.Millisecond)
+
+		s.stop()
+
+		require.Len(t, tracker.sent(), 0)
 	})
 }
