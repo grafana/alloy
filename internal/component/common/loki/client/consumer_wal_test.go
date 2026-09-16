@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
@@ -604,4 +605,22 @@ func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
 		release()
 		t.Fatal("StopAndDrain did not finish in time")
 	}
+}
+
+func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	host, err := url.Parse("http://localhost:3100")
+	require.NoError(t, err)
+
+	walConfig := wal.Config{
+		Enabled:       true,
+		Dir:           t.TempDir(),
+		MaxSegmentAge: time.Second * 10,
+		WatchConfig:   wal.DefaultWatchConfig,
+	}
+
+	config := Config{URL: flagext.URLValue{URL: host}}
+	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, config, config)
+	require.Error(t, err)
 }
