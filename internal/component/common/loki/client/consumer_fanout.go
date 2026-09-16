@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -86,4 +87,16 @@ func (c *FanoutConsumer) Stop() {
 
 	// Wait for all endpoints to stop.
 	stopWG.Wait()
+}
+
+// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
+// or a hash of the config as whole, this allows us to detect repeated configs.
+func getEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%v", cfg)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }

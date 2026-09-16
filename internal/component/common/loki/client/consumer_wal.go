@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -42,7 +43,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 	// endpoint stores its savepoint under.
 	names := make([]string, 0, len(cfgs))
 	for _, cfg := range cfgs {
-		name := getEndpointName(cfg)
+		name := getStableEndpointName(cfg)
 		if slices.Contains(names, name) {
 			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", name)
 		}
@@ -311,4 +312,18 @@ func (c *walEndpointAdapter) stop() {
 	// tracker is stopped after endpoint since endpoint will report sent data while it drains.
 	c.endpoint.stop()
 	c.tracker.Stop()
+}
+
+// getStableEndpointName computes the name of an endpoint config. The name is either the configured Name setting in
+// Config, or a hash of the fields that identify where data is sent. Tuning, credentials and headers are left out on
+// purpose: the name is the key an endpoint stores its savepoint under, so changing any of them must not rename the
+// endpoint and lose its progress.
+func getStableEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%q%q", cfg.URL.String(), cfg.TenantID)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }
