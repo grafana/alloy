@@ -308,7 +308,12 @@ func TestQuerySamplesDefaults(t *testing.T) {
 	assert.Equal(t, 10*time.Second, args.QuerySamplesArguments.CollectInterval)
 	assert.False(t, args.QuerySamplesArguments.DisableQueryRedaction)
 	assert.True(t, args.ExcludeCurrentUser)
-	assert.Empty(t, args.ExcludeUsers)
+	assert.Equal(t, []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y",
+		"rdsadmin",
+	}, args.ExcludeUsers)
 }
 
 func TestQuerySamplesEnabledByDefault(t *testing.T) {

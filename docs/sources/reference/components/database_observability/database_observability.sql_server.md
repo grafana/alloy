@@ -38,7 +38,7 @@ You can use the following arguments with `database_observability.sql_server`:
 | `exclude_current_user` | `bool`            | Exclude query samples from sessions opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `[]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 
 The following collectors are configurable:
 

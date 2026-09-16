@@ -134,6 +134,7 @@ func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
 		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
