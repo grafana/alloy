@@ -194,7 +194,7 @@ type queryWaitIdentity struct {
 	execContextID     int64
 	waitType          string
 	resource          string
-	blockingSessionID int64
+	blockingSessionID sql.NullInt64
 }
 
 type queryWaitOccurrence struct {
@@ -458,7 +458,7 @@ func (t *queryWaitTracker) observe(row querySampleRow) bool {
 		execContextID:     row.ExecContextID.Int64,
 		waitType:          row.WaitType.String,
 		resource:          row.Resource.String,
-		blockingSessionID: row.BlockingSessionID.Int64,
+		blockingSessionID: row.BlockingSessionID,
 	}
 
 	if open, ok := t.openByTask[identity.execContextID]; ok {
@@ -530,14 +530,19 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 
 func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 	line := fmt.Sprintf(
-		`database=%s user=%s original_login=%s host=%s program=%s client_address=%s client_port="%d" session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time="%s" elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
+		`database=%s user=%s original_login=%s host=%s program=%s client_address=%s`,
 		strconv.Quote(row.DatabaseName),
 		strconv.Quote(row.LoginName.String),
 		strconv.Quote(row.OriginalLoginName.String),
 		strconv.Quote(row.HostName.String),
 		strconv.Quote(row.ProgramName.String),
 		strconv.Quote(row.ClientAddress.String),
-		row.ClientPort.Int64,
+	)
+	if row.ClientPort.Valid {
+		line += fmt.Sprintf(` client_port="%d"`, row.ClientPort.Int64)
+	}
+	line += fmt.Sprintf(
+		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time="%s" elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
 		row.SessionID,
 		row.RequestID,
 		strconv.Quote(row.QueryHash),
@@ -562,8 +567,8 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 }
 
 func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccurrence) string {
-	return fmt.Sprintf(
-		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s wait_object_name=%s blocking_session_id="%d" wait_time=%s`,
+	line := fmt.Sprintf(
+		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s wait_object_name=%s`,
 		strconv.Quote(row.DatabaseName),
 		strconv.Quote(row.LoginName.String),
 		row.SessionID,
@@ -573,9 +578,11 @@ func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccu
 		strconv.Quote(classifySQLServerWaitEventType(wait.identity.waitType)),
 		strconv.Quote(wait.identity.waitType),
 		strconv.Quote(wait.identity.resource),
-		wait.identity.blockingSessionID,
-		strconv.Quote(wait.duration.String()),
 	)
+	if wait.identity.blockingSessionID.Valid {
+		line += fmt.Sprintf(` blocking_session_id="%d"`, wait.identity.blockingSessionID.Int64)
+	}
+	return line + fmt.Sprintf(` wait_time=%s`, strconv.Quote(wait.duration.String()))
 }
 
 func buildQuerySamplesStatement(hashes, excludedUsers []string) (string, []any, error) {

@@ -239,6 +239,8 @@ func TestQuerySamples_CollectAndFinalize(t *testing.T) {
 
 	require.Contains(t, entries[0].Line, `database="books_store"`)
 	require.Contains(t, entries[0].Line, `query_hash="0011223344556677"`)
+	require.Contains(t, entries[0].Line, `client_address="10.0.0.2"`)
+	require.Contains(t, entries[0].Line, `client_port="54321"`)
 	require.Contains(t, entries[0].Line, `session_id="51" request_id="0"`)
 	require.Contains(t, entries[0].Line, `cpu_time="90000ms"`)
 	require.Contains(t, entries[0].Line, `elapsed_time="10s" elapsed_time_ms="10000"`)
@@ -250,6 +252,78 @@ func TestQuerySamples_CollectAndFinalize(t *testing.T) {
 	require.Contains(t, entries[1].Line, `exec_context_id="2"`)
 	require.Contains(t, entries[1].Line, `blocking_session_id="77"`)
 	require.Contains(t, entries[1].Line, `wait_time="250ms"`)
+}
+
+func TestQuerySamples_OmitsClientPortWhenUnavailable(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler: handler,
+		Logger:       util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{testHash: {}}
+	row := querySampleRow{
+		Now:           querySampleNow,
+		DatabaseName:  testDatabase,
+		SessionID:     51,
+		RequestID:     0,
+		StartTime:     querySampleStart,
+		QueryHash:     testHash,
+		ClientAddress: sql.NullString{String: "10.0.0.2", Valid: true},
+	}
+
+	collector.applySnapshot([]querySampleRow{row}, registered)
+	collector.applySnapshot(nil, registered)
+	require.Eventually(t, func() bool { return len(handler.Received()) == 1 }, 5*time.Second, 20*time.Millisecond)
+	require.Contains(t, handler.Received()[0].Line, `client_address="10.0.0.2"`)
+	require.NotContains(t, handler.Received()[0].Line, `client_port=`)
+
+	row.ClientPort = sql.NullInt64{Valid: true}
+	collector.applySnapshot([]querySampleRow{row}, registered)
+	collector.applySnapshot(nil, registered)
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	require.Contains(t, handler.Received()[1].Line, `client_port="0"`)
+}
+
+func TestQuerySamples_OmitsBlockingSessionIDWhenUnavailable(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler: handler,
+		Logger:       util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{testHash: {}}
+	row := querySampleRow{
+		Now:            querySampleNow,
+		DatabaseName:   testDatabase,
+		SessionID:      51,
+		RequestID:      0,
+		StartTime:      querySampleStart,
+		QueryHash:      testHash,
+		ExecContextID:  sql.NullInt64{Int64: 2, Valid: true},
+		WaitType:       sql.NullString{String: "LCK_M_S", Valid: true},
+		WaitDurationMs: sql.NullInt64{Int64: 100, Valid: true},
+	}
+
+	collector.applySnapshot([]querySampleRow{row}, registered)
+	collector.applySnapshot(nil, registered)
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, handler.Received()[1].Labels)
+	require.NotContains(t, handler.Received()[1].Line, `blocking_session_id=`)
+
+	row.BlockingSessionID = sql.NullInt64{Valid: true}
+	collector.applySnapshot([]querySampleRow{row}, registered)
+	collector.applySnapshot(nil, registered)
+	require.Eventually(t, func() bool { return len(handler.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
+	require.Contains(t, handler.Received()[3].Line, `blocking_session_id="0"`)
 }
 
 func TestQuerySamples_RawQueryIsOptInAndQuoted(t *testing.T) {
