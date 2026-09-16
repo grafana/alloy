@@ -313,7 +313,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	result.ClientConfig.Brokers = args.Brokers
-	// Do not set ResolveCanonicalBootstrapServersOnly - it is deprecated and no longer exists upstream.
 	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
 	result.ClientConfig.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute

@@ -767,6 +767,66 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 	})
 }
 
+func TestArguments_SASLAndKerberosAreMutuallyExclusive(t *testing.T) {
+	tests := []struct {
+		testName string
+		cfg      string
+	}{
+		{
+			testName: "sasl and kerberos",
+			cfg: `
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+
+				authentication {
+					sasl {
+						username  = "user"
+						password  = "pass"
+						mechanism = "PLAIN"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+
+				output {}
+			`,
+		},
+		{
+			// plaintext also converts to upstream's sasl field (see
+			// KafkaAuthenticationArguments.Convert), so it's rejected too.
+			testName: "plaintext and kerberos",
+			cfg: `
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+
+				authentication {
+					plaintext {
+						username = "user"
+						password = "pass"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+
+				output {}
+			`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+
+			require.ErrorContains(t, err, "mutually exclusive")
+		})
+	}
+}
+
 func TestArguments_LogDeprecations(t *testing.T) {
 	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
 

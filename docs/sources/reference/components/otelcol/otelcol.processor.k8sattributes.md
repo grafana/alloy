@@ -158,7 +158,7 @@ The supported `metadata` keys are:
 
 * `container.id`
 * `container.image.name`
-* `container.image.tag` (Deprecated, use `container.image.tags` instead)
+* `container.image.tag` (No-op by default, use `container.image.tags` instead; see the note below)
 * `container.image.tags`
 * `k8s.container.name`
 * `k8s.cronjob.name`
@@ -198,14 +198,15 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-The upstream OpenTelemetry Collector removed the toggle behind `deployment_name_from_replicaset`. The processor now always extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets. Setting `deployment_name_from_replicaset` to `false` no longer has any effect.
+The `deployment_name_from_replicaset` configuration was removed from the processor. The processor now always extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets. Setting `deployment_name_from_replicaset` to `false` no longer has any effect.
 
-{{< admonition type="note" >}}
-The upstream OpenTelemetry Collector promoted its stable Kubernetes semantic conventions to the default behavior.
-As a result, this processor now emits the plural `container.image.tags` attribute instead of the deprecated singular `container.image.tag` by default, and any labels or annotations extracted with the [`label`][label-extract] or [`annotation`][annotation] blocks use the current singular attribute-key naming convention (for example `k8s.pod.label.<key>`) instead of the deprecated plural form (`k8s.pod.labels.<key>`).
+{{< admonition type="caution" >}}
+This processor's default attribute names changed to follow the [semantic conventions][], and `container.image.tag` is now a no-op:
 
-[label-extract]: #label-extract
-[annotation]: #annotation
+* `container.image.tag` no longer has any effect. Configuring it in `extract.metadata` is accepted but emits nothing; the processor now extracts `container.image.tags` instead, which is a **list**, not a string.
+* When `tag_name` isn't set on a [`label`][extract_label] or [`annotation`][annotation] block whose `from` is `pod`, `namespace`, or `node`, the default attribute name changes from the deprecated plural form (for example `k8s.pod.labels.<key>`) to the singular form (`k8s.pod.label.<key>`).
+
+There's no configuration option in `otelcol.processor.k8sattributes` to restore the previous behavior.
 {{< /admonition >}}
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes

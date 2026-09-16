@@ -134,6 +134,13 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
 	}
 
+	// Upstream rejects configuring both sasl and kerberos authentication. plaintext also
+	// converts to upstream's sasl field (see KafkaAuthenticationArguments.Convert), so it
+	// counts as sasl here too.
+	if (args.Authentication.SASL != nil || args.Authentication.Plaintext != nil) && args.Authentication.Kerberos != nil {
+		return fmt.Errorf("authentication.sasl (or authentication.plaintext) and authentication.kerberos are mutually exclusive")
+	}
+
 	for _, strategy := range args.GroupRebalanceStrategies {
 		if err := validateGroupRebalanceStrategy(strategy); err != nil {
 			return err
@@ -270,8 +277,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
 	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
-	// Upstream removed the singular GroupRebalanceStrategy field; always populate the plural
-	// GroupRebalanceStrategies, converting Alloy's deprecated singular arg when it's the one in use.
+	// Upstream removed the singular GroupRebalanceStrategy field.
 	switch {
 	case len(args.GroupRebalanceStrategies) > 0:
 		strategies := make([]configkafka.GroupRebalanceStrategy, 0, len(args.GroupRebalanceStrategies))

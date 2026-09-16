@@ -12,7 +12,6 @@ var (
 	SchemeGroupVersion = schema.GroupVersion{Group: "monitoring.grafana.com", Version: "v1alpha2"}
 
 	// SchemeBuilder is used to add Go types to the GroupVersionKind scheme.
-	// sigs.k8s.io/controller-runtime/pkg/scheme.Builder is deprecated in favor of this pattern.
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 
 	// AddToScheme is required by client packages.

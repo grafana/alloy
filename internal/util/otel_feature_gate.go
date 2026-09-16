@@ -14,11 +14,7 @@ type gateDetails struct {
 	enabled bool
 }
 
-var (
-	// filelog.allowFileDeletion was promoted from alpha to beta (enabled by default) upstream,
-	// so it no longer needs to be set here. See otelFeatureGates below for gates still needed.
-	otelFeatureGates = []gateDetails{}
-)
+var otelFeatureGates = []gateDetails{}
 
 // Enables a set of feature gates which should always be enabled in Alloy.
 func SetupOtelFeatureGates() error {

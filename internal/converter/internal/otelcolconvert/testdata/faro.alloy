@@ -17,10 +17,6 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.receiver.faro "default" {
-	idle_timeout        = "0s"
-	write_timeout       = "0s"
-	read_header_timeout = "0s"
-
 	output {
 		logs   = [otelcol.exporter.faro.default.input]
 		traces = [otelcol.exporter.faro.default.input]

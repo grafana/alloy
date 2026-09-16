@@ -23,6 +23,4 @@ You can set the `mechanism` argument to one of the following strings:
 
 When `mechanism` is set to `"AWS_MSK_IAM_OAUTHBEARER"`, the `aws_msk` child block must also be provided.
 
-The upstream Kafka client migration from `sarama` to `franz-go` made `version` a no-op: the client
-negotiates the SASL handshake version automatically. Setting `version` doesn't produce an error, but has
-no effect.
+`version` has been deprecated. The client negotiates the SASL handshake version automatically; setting `version` doesn't produce an error, but has no effect.

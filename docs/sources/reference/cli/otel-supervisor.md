@@ -78,7 +78,6 @@ server:
     Authorization: "Basic ${env:GCLOUD_BASIC_AUTH_BASE64}"
 capabilities:
   accepts_remote_config: true
-  reports_remote_config: true
 storage:
   directory: ${env:STORAGE_DIR}
 ```
