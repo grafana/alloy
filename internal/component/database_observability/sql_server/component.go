@@ -45,7 +45,10 @@ SELECT
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
 
-const selectOriginalLogin = `SELECT ORIGINAL_LOGIN()`
+const (
+	selectOriginalLogin = `SELECT ORIGINAL_LOGIN()`
+	queryTimeout        = 10 * time.Second
+)
 
 func init() {
 	component.Register(component.Registration{
@@ -656,8 +659,11 @@ func resolveExcludeUsers(ctx context.Context, db *sql.DB, configured []string, e
 		return effective, nil
 	}
 
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+
 	var originalLogin sql.NullString
-	if err := db.QueryRowContext(ctx, selectOriginalLogin).Scan(&originalLogin); err != nil {
+	if err := db.QueryRowContext(queryCtx, selectOriginalLogin).Scan(&originalLogin); err != nil {
 		return nil, fmt.Errorf("failed to query original login: %w", err)
 	}
 	if !originalLogin.Valid || originalLogin.String == "" {
