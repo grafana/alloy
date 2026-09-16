@@ -121,7 +121,7 @@ func expectQuerySamples(t *testing.T, mock sqlmock.Sqlmock, hashes, users []stri
 func TestBuildQuerySamplesStatement(t *testing.T) {
 	query, args, err := buildQuerySamplesStatement(
 		[]string{"ffeeddccbbaa9988", testHash, testHash},
-		[]string{"monitor", "admin", "monitor"},
+		[]string{"admin", "monitor"},
 	)
 	require.NoError(t, err)
 	require.Contains(t, query, `r.query_hash IN (@h0, @h1)`)
@@ -144,6 +144,15 @@ func TestBuildQuerySamplesStatement(t *testing.T) {
 	require.ErrorContains(t, err, "failed to decode")
 	_, _, err = buildQuerySamplesStatement([]string{"0011"}, nil)
 	require.ErrorContains(t, err, "expected 8 bytes")
+}
+
+func TestNewQuerySamplesNormalizesExcludedUsers(t *testing.T) {
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		Logger:       util.TestAlloyLogger(t).Slog(),
+		ExcludeUsers: []string{"monitor", "admin", "monitor"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"admin", "monitor"}, collector.excludeUsers)
 }
 
 func TestQuerySamples_NoTrackerIsNoOp(t *testing.T) {

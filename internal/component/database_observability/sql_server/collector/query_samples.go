@@ -217,7 +217,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
 		excludeDatabases:      append(slices.Clone(excludedDatabases), args.ExcludeDatabases...),
-		excludeUsers:          slices.Clone(args.ExcludeUsers),
+		excludeUsers:          uniqueSorted(args.ExcludeUsers),
 		logger:                args.Logger.With("collector", QuerySamplesCollector),
 		running:               atomic.NewBool(false),
 		samples:               make(map[querySampleKey]*querySampleState),
@@ -574,7 +574,6 @@ func buildQuerySamplesStatement(hashes, excludedUsers []string) (string, []any, 
 		return "", nil, fmt.Errorf("cannot build query samples statement without query hashes")
 	}
 
-	excludedUsers = uniqueSorted(excludedUsers)
 	userClause := ""
 	if len(excludedUsers) > 0 {
 		userPlaceholders := make([]string, 0, len(excludedUsers))
