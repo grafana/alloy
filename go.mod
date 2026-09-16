@@ -76,14 +76,7 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
-	// Pinned to the tip of Loki's k324 branch, not a tagged release: v3.7.7 (latest tag) calls
-	// dskit/dns.NewProvider with the pre-2026-06-05 3-arg signature, which no longer exists once
-	// dskit is bumped to a version carrying the etcd v3.7 client-compat fix this go.mod also needs.
-	// Loki's own main branch adapted to the new signature in loki#22296 (2026-06-08); k324 is a
-	// protected branch cut from main after that fix, so it carries it too, plus later stabilization
-	// commits. There's no RC or backport of the dns.NewProvider fix on the release-3.7.x branch as
-	// of this pin. Remove this pin (and its Renovate hold in .github/renovate.json5) once a tagged
-	// Loki release requires a dskit version >= the one this go.mod pins.
+	// Pinned to Loki's #k324 branch until Loki has a release with the new dskit NewProvider signature.
 	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope/api v1.5.0
