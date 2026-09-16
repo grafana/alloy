@@ -24,6 +24,12 @@ const (
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
 	QUERY_HASH_BYTE_LEN   = 8
+
+	// maxWaitOccurrencesPerRequest bounds the number of distinct wait episodes
+	// retained per tracked request. Long-lived, heavily-contended requests can
+	// otherwise accumulate one occurrence per poll and flush them as a single
+	// synchronous burst of Loki entries when the request finishes.
+	maxWaitOccurrencesPerRequest = 1000
 )
 
 const selectQuerySamplesTemplate = `
@@ -181,6 +187,7 @@ type querySampleState struct {
 	lastRow    querySampleRow
 	lastSeenAt time.Time
 	waits      queryWaitTracker
+	capWarned  bool
 }
 
 type queryWaitIdentity struct {
@@ -204,6 +211,7 @@ type openQueryWait struct {
 type queryWaitTracker struct {
 	occurrences []queryWaitOccurrence
 	openByTask  map[int64]openQueryWait
+	dropped     int
 }
 
 func newQueryWaitTracker() queryWaitTracker {
@@ -407,7 +415,16 @@ func (c *QuerySamples) applySnapshot(snapshot []querySampleRow, registrySet map[
 				seenWaitTasks[key] = seen
 			}
 			seen[row.ExecContextID.Int64] = struct{}{}
-			state.waits.observe(row)
+			if state.waits.observe(row) && !state.capWarned {
+				state.capWarned = true
+				c.logger.Warn("wait occurrence cap reached; dropping further wait episodes for request",
+					"database", row.DatabaseName,
+					"session_id", row.SessionID,
+					"request_id", row.RequestID,
+					"query_hash", row.QueryHash,
+					"cap", maxWaitOccurrencesPerRequest,
+				)
+			}
 		}
 	}
 
@@ -432,7 +449,7 @@ func newQuerySampleKey(row querySampleRow) querySampleKey {
 	}
 }
 
-func (t *queryWaitTracker) observe(row querySampleRow) {
+func (t *queryWaitTracker) observe(row querySampleRow) bool {
 	duration := time.Duration(row.WaitDurationMs.Int64) * time.Millisecond
 	if duration < 0 {
 		duration = 0
@@ -449,9 +466,14 @@ func (t *queryWaitTracker) observe(row querySampleRow) {
 			t.occurrences[open.occurrenceIdx].duration = duration
 			open.lastDuration = duration
 			t.openByTask[identity.execContextID] = open
-			return
+			return false
 		}
 		delete(t.openByTask, identity.execContextID)
+	}
+
+	if len(t.occurrences) >= maxWaitOccurrencesPerRequest {
+		t.dropped++
+		return true
 	}
 
 	t.occurrences = append(t.occurrences, queryWaitOccurrence{
@@ -463,6 +485,7 @@ func (t *queryWaitTracker) observe(row querySampleRow) {
 		occurrenceIdx: len(t.occurrences) - 1,
 		lastDuration:  duration,
 	}
+	return false
 }
 
 func (t *queryWaitTracker) closeMissing(seen map[int64]struct{}) {

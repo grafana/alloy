@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -340,6 +341,55 @@ func TestQuerySamples_TaskWaitTracking(t *testing.T) {
 	require.Contains(t, entries[1].Line, `wait_time="250ms"`)
 	require.Contains(t, entries[2].Line, `wait_time="50ms"`)
 	require.Contains(t, entries[3].Line, `wait_time="20ms"`)
+}
+
+func TestQuerySamples_WaitOccurrencesAreCapped(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler: handler,
+		Logger:       util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{testHash: {}}
+	base := querySampleRow{
+		Now:            querySampleNow,
+		DatabaseName:   testDatabase,
+		SessionID:      51,
+		RequestID:      0,
+		StartTime:      querySampleStart,
+		QueryHash:      testHash,
+		ExecContextID:  sql.NullInt64{Int64: 2, Valid: true},
+		WaitType:       sql.NullString{String: "LCK_M_S", Valid: true},
+		WaitDurationMs: sql.NullInt64{Int64: 100, Valid: true},
+	}
+
+	const extra = 5
+	for i := 0; i < maxWaitOccurrencesPerRequest+extra; i++ {
+		row := base
+		row.Now = querySampleNow.Add(time.Duration(i) * time.Second)
+		// A unique resource each poll changes the wait identity, forcing a new
+		// occurrence attempt on every snapshot.
+		row.Resource = sql.NullString{String: fmt.Sprintf("keylock-%d", i), Valid: true}
+		collector.applySnapshot([]querySampleRow{row}, registered)
+	}
+
+	key := newQuerySampleKey(base)
+	state, ok := collector.samples[key]
+	require.True(t, ok, "request should still be tracked")
+	require.Len(t, state.waits.occurrences, maxWaitOccurrencesPerRequest, "occurrences are capped")
+	require.Equal(t, extra, state.waits.dropped, "occurrence attempts beyond the cap are counted as dropped")
+	require.True(t, state.capWarned, "the cap crossing is recorded once")
+
+	// Tearing down the request flushes at most one wait event per retained
+	// occurrence (plus the query sample), so the emission burst is bounded by the cap.
+	collector.applySnapshot(nil, registered)
+	require.Eventually(t, func() bool {
+		return len(handler.Received()) == maxWaitOccurrencesPerRequest+1
+	}, 5*time.Second, 20*time.Millisecond)
 }
 
 func TestQuerySamples_ParallelWaitsProduceOneSample(t *testing.T) {
