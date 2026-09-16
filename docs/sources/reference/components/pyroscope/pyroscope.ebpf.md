@@ -522,8 +522,8 @@ Replace the following:
 
 `pyroscope.ebpf` can accept arguments from the following components:
 
-* Components that export [Targets](../../../compatibility/#targets-exporters)
-* Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
+- Components that export [Targets](../../../compatibility/#targets-exporters)
+- Components that export [Pyroscope `ProfilesReceiver`](../../../compatibility/#pyroscope-profilesreceiver-exporters)
 
 
 {{< admonition type="note" >}}
