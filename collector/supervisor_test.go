@@ -77,6 +77,7 @@ func TestBuildSupervisorConfigFromEnv(t *testing.T) {
 			require.True(t, cfg.Capabilities.AcceptsRemoteConfig)
 			// ReportsRemoteConfig is deprecated upstream; AcceptsRemoteConfig alone now
 			// enables both capabilities, so this is intentionally left unset.
+			//nolint:staticcheck // asserting the deprecated field is left unset
 			require.False(t, cfg.Capabilities.ReportsRemoteConfig)
 			require.Equal(t, []string{"otel"}, cfg.Agent.Arguments)
 			require.True(t, cfg.Agent.PassthroughLogs)
