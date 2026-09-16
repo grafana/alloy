@@ -12,7 +12,7 @@ import (
 )
 
 // expectedConfig returns the upstream factory defaults with override applied,
-// so each case only spells out what it actually overrides.
+// so a case only spells out what it actually overrides.
 func expectedConfig(override func(logs *cloudflarereceiver.LogsConfig)) cloudflarereceiver.Config {
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
 	override(&cfg.Logs)
@@ -26,14 +26,21 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		expected cloudflarereceiver.Config
 	}{
 		{
-			testName: "minimal configuration",
+			// Canary for the upstream defaults our docs table promises. If this fails,
+			// a contrib bump changed one: update the docs table, then these values.
+			testName: "minimal configuration applies documented upstream defaults",
 			cfg: `
 				endpoint = "localhost:8080/webhook"
 				output {}
 			`,
-			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
-				logs.Endpoint = "localhost:8080/webhook"
-			}),
+			expected: cloudflarereceiver.Config{
+				Logs: cloudflarereceiver.LogsConfig{
+					Endpoint:        "localhost:8080/webhook",
+					TimestampField:  "EdgeStartTimestamp",
+					TimestampFormat: "rfc3339",
+					Separator:       ".",
+				},
+			},
 		},
 		{
 			testName: "full configuration without TLS",
