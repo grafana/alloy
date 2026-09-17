@@ -13,6 +13,7 @@ Unreleased
 ### Enhancements
 
 - Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+- Add `serviceMonitor.attachMetadata` to attach node metadata to targets discovered by the ServiceMonitor. (@aljohri)
 
 1.12.1 (2026-08-26)
 ----------
