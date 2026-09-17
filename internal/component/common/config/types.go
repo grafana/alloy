@@ -445,8 +445,6 @@ func (o *OAuth2Config) Convert() *config.OAuth2 {
 		ClientSecretFile:         o.ClientSecretFile,
 		ClientCertificateKey:     config.Secret(o.ClientCertificateKey),
 		ClientCertificateKeyFile: o.ClientCertificateKeyFile,
-		GrantType:                o.GrantType,
-		SignatureAlgorithm:       o.SignatureAlgorithm,
 		Iss:                      o.Iss,
 		Audience:                 o.Audience,
 		Claims:                   o.Claims,
@@ -455,6 +453,15 @@ func (o *OAuth2Config) Convert() *config.OAuth2 {
 		EndpointParams:           o.EndpointParams,
 		ProxyConfig:              o.ProxyConfig.Convert(),
 	}
+
+	if o.GrantType != "" {
+		oa.GrantType = o.GrantType
+	}
+
+	if o.SignatureAlgorithm != "" {
+		oa.SignatureAlgorithm = o.SignatureAlgorithm
+	}
+
 	if o.TLSConfig != nil {
 		oa.TLSConfig = *o.TLSConfig.Convert()
 	}
