@@ -86,6 +86,7 @@
         "github.com/google/cadvisor",
         "github.com/grafana/beyla/v3",
         "github.com/grafana/jfr-parser/pprof",
+        "github.com/grafana/loki/v3", // k324 release
         "github.com/hashicorp/vault/api/**",
         "github.com/influxdata/telegraf", // v1.38.3+ require hashicorp/vault/api/auth/** >= v0.12 which is held
         "github.com/jaegertracing/jaeger-idl",

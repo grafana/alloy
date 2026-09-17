@@ -217,7 +217,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.Criteria.ExcludeOlderThan = args.MatchCriteria.ExcludeOlderThan
 	if args.MatchCriteria.OrderingCriteria != nil {
 		cfg.InputConfig.Criteria.OrderingCriteria.Regex = args.MatchCriteria.OrderingCriteria.Regex
-		cfg.InputConfig.Criteria.OrderingCriteria.TopN = args.MatchCriteria.OrderingCriteria.TopN
+		// TopN is a pointer upstream so it can distinguish "unset" (apply the default) from an
+		// explicit 0 (match all files). Alloy's top_n has no such distinction, so 0 keeps meaning
+		// "unset" here, matching the prior behavior.
+		if topN := args.MatchCriteria.OrderingCriteria.TopN; topN != 0 {
+			cfg.InputConfig.Criteria.OrderingCriteria.TopN = &topN
+		}
 		cfg.InputConfig.Criteria.OrderingCriteria.GroupBy = args.MatchCriteria.OrderingCriteria.GroupBy
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
