@@ -1,6 +1,7 @@
 package otlp_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -15,8 +16,13 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/pdata/pprofile"
+	"go.opentelemetry.io/collector/pdata/pprofile/pprofileotlp"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pdata/testdata"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -31,6 +37,7 @@ import (
 // component and ensures that it can receive and forward data.
 func Test(t *testing.T) {
 	httpAddr := componenttest.GetFreeAddr(t)
+	grpcAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
 	l := util.TestLogger(t)
@@ -39,6 +46,10 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := fmt.Sprintf(`
+		grpc {
+			endpoint = "%s"
+		}
+
 		http {
 			endpoint = "%s"
 		}
@@ -46,16 +57,18 @@ func Test(t *testing.T) {
 		output {
 			// no-op: will be overridden by test code.
 		}
-	`, httpAddr)
+	`, grpcAddr, httpAddr)
 
 	require.NoError(t, err)
 
 	var args otlp.Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-	// Override our settings so traces get forwarded to traceCh.
-	traceCh := make(chan ptrace.Traces)
-	args.Output = makeTracesOutput(traceCh)
+	// Override our settings so telemetry gets forwarded to the test channels.
+	traceCh := make(chan ptrace.Traces, 1)
+	profilesCh := make(chan pprofile.Profiles, 2)
+	profilesErrCh := make(chan error, 2)
+	args.Output = makeOutput(traceCh, profilesCh)
 
 	go func() {
 		err := ctrl.Run(ctx, args)
@@ -63,6 +76,63 @@ func Test(t *testing.T) {
 	}()
 
 	require.NoError(t, ctrl.WaitRunning(time.Second))
+
+	sendProfiles := func(transport string, request func() error) {
+		go func() {
+			bo := backoff.New(ctx, backoff.Config{
+				MinBackoff: 10 * time.Millisecond,
+				MaxBackoff: 100 * time.Millisecond,
+			})
+			for bo.Ongoing() {
+				if err := request(); err != nil {
+					l.Error("failed to send profiles", "transport", transport, "err", err)
+					bo.Wait()
+					continue
+				}
+
+				profilesErrCh <- nil
+				return
+			}
+			profilesErrCh <- bo.Err()
+		}()
+	}
+
+	sendProfiles("gRPC", func() error {
+		conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		client := pprofileotlp.NewGRPCClient(conn)
+		_, err = client.Export(ctx, pprofileotlp.NewExportRequestFromProfiles(createTestProfiles()))
+		return err
+	})
+
+	sendProfiles("HTTP", func() error {
+		exportRequest := pprofileotlp.NewExportRequestFromProfiles(createTestProfiles())
+		body, err := exportRequest.MarshalProto()
+		if err != nil {
+			return err
+		}
+
+		profilesURL := fmt.Sprintf("http://%s/v1development/profiles", httpAddr)
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, profilesURL, bytes.NewReader(body))
+		if err != nil {
+			return err
+		}
+		request.Header.Set("Content-Type", "application/x-protobuf")
+
+		resp, err := http.DefaultClient.Do(request)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("unexpected profiles response status: %s", resp.Status)
+		}
+		return nil
+	})
 
 	// Send traces in the background to our receiver.
 	go func() {
@@ -98,25 +168,57 @@ func Test(t *testing.T) {
 	case tr := <-traceCh:
 		require.Equal(t, 1, tr.SpanCount())
 	}
+
+	for range 2 {
+		select {
+		case <-time.After(time.Second):
+			require.FailNow(t, "failed waiting for profiles request")
+		case err := <-profilesErrCh:
+			require.NoError(t, err)
+		}
+	}
+
+	for range 2 {
+		select {
+		case <-time.After(time.Second):
+			require.FailNow(t, "failed waiting for profiles")
+		case profiles := <-profilesCh:
+			require.Equal(t, 1, profiles.ProfileCount())
+		}
+	}
 }
 
-// makeTracesOutput returns ConsumerArguments which will forward traces to the
-// provided channel.
-func makeTracesOutput(ch chan ptrace.Traces) *otelcol.ConsumerArguments {
+// makeOutput returns ConsumerArguments which forward telemetry to the provided channels.
+func makeOutput(traceCh chan ptrace.Traces, profilesCh chan pprofile.Profiles) *otelcol.ConsumerArguments {
 	traceConsumer := fakeconsumer.Consumer{
 		ConsumeTracesFunc: func(ctx context.Context, t ptrace.Traces) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case ch <- t:
+			case traceCh <- t:
+				return nil
+			}
+		},
+	}
+	profilesConsumer := fakeconsumer.Consumer{
+		ConsumeProfilesFunc: func(ctx context.Context, profiles pprofile.Profiles) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case profilesCh <- profiles:
 				return nil
 			}
 		},
 	}
 
 	return &otelcol.ConsumerArguments{
-		Traces: []otelcol.Consumer{&traceConsumer},
+		Traces:   []otelcol.Consumer{&traceConsumer},
+		Profiles: []otelcol.Consumer{&profilesConsumer},
 	}
+}
+
+func createTestProfiles() pprofile.Profiles {
+	return testdata.GenerateProfiles(1)
 }
 
 func TestUnmarshalDefault(t *testing.T) {
