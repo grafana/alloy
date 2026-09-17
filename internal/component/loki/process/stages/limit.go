@@ -113,7 +113,7 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 	go func() {
 		defer close(out)
 		for e := range in {
-			if !m.shouldThrottle(e.Labels) {
+			if !m.shouldThrottle(m.ctx, e.Labels) {
 				out <- e
 				continue
 			}
@@ -125,8 +125,13 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 
+	sctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	stop := context.AfterFunc(m.ctx, cancel)
+	defer stop()
+
 	for _, e := range entries {
-		if m.shouldThrottle(e.Labels) {
+		if m.shouldThrottle(sctx, e.Labels) {
 			continue
 		}
 
@@ -151,7 +156,7 @@ func (m *limitStage) Stop() {
 	m.stop()
 }
 
-func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
+func (m *limitStage) shouldThrottle(ctx context.Context, labels model.LabelSet) bool {
 	if m.cfg.ByLabelName != "" {
 		labelValue, ok := labels[model.LabelName(m.cfg.ByLabelName)]
 		if !ok {
@@ -173,7 +178,7 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
 		return true
 	}
-	return m.rateLimiter.Wait(m.ctx) != nil
+	return m.rateLimiter.Wait(ctx) != nil
 }
 
 // Cleanup implements Stage.
