@@ -15,7 +15,11 @@ func NewGlobber() Globber {
 }
 
 func (g *windowsGlobber) FilepathGlob(pattern string) ([]string, error) {
-	return doublestar.FilepathGlob(pattern, doublestar.WithCaseInsensitive())
+	return doublestar.FilepathGlob(
+		pattern,
+		doublestar.WithFailOnIOErrors(),
+		doublestar.WithCaseInsensitive(),
+	)
 }
 
 func (g *windowsGlobber) PathMatch(pattern, path string) (bool, error) {
