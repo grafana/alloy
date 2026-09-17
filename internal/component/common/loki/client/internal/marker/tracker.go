@@ -12,6 +12,10 @@ import (
 type Tracker interface {
 	wal.Marker
 
+	// Start loads the last marked segment from disk and begins the async processing of
+	// receive/send dataUpdate updates.
+	Start()
+
 	// UpdateReceivedData sends an update event to the tracker, that informs that some dataUpdate, coming from a particular WAL
 	// segment, has been read out of the WAL and enqueued for sending.
 	UpdateReceivedData(segmentId, dataCount int)
@@ -20,10 +24,7 @@ type Tracker interface {
 	// segment, has been delivered, or the sender has given up on it.
 	UpdateSentData(segmentId, dataCount int) // Data which was sent or given up on sending
 
-	// Start starts the tracker, and it's async processing of receive/send dataUpdate updates.
-	Start()
-
-	// Stop stops the tracker, and it's async processing of receive/send dataUpdate updates.
+	// Stop stops the tracker, and its async processing of receive/send dataUpdate updates.
 	Stop()
 }
 
@@ -159,7 +160,7 @@ func (t *SegmentTracker) runUpdatePendingData() {
 
 func (t *SegmentTracker) Stop() {
 	t.runFindTicker.Stop()
-	t.quit <- struct{}{}
+	close(t.quit)
 	t.wg.Wait()
 }
 

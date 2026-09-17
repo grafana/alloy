@@ -37,7 +37,6 @@ func TestWriter(t *testing.T) {
 		defer wl.Close()
 
 		writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
-		require.NoError(t, err)
 		defer writer.Stop()
 
 		// write entries to wal and sync

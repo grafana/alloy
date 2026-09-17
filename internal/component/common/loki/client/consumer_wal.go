@@ -128,17 +128,21 @@ type endpointWatcherPair struct {
 }
 
 func (p endpointWatcherPair) start() {
+	// The watcher forwards entries to the endpoint as soon as it runs, so the endpoint
+	// has to be started first.
 	p.endpoint.start()
 	p.logger.Debug("starting WAL watcher for endpoint", "endpoint", p.name)
 	p.watcher.Start()
 }
 
-// stop will proceed to stop, in order, watcher and the endpoint.
 func (p endpointWatcherPair) stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
 	}
+
+	// Watcher is stopped before the endpoint so it is not handed more entries
+	// while the endpoint drains its queues.
 	p.watcher.Stop()
 
 	p.endpoint.stop()
@@ -153,7 +157,6 @@ type WALConsumer struct {
 
 func (c *WALConsumer) Start() {
 	c.writer.Start()
-
 	for _, e := range c.pairs {
 		e.start()
 	}
@@ -295,6 +298,7 @@ func (c *walEndpointAdapter) start() {
 }
 
 func (c *walEndpointAdapter) stop() {
+	// tracker is stopped after endpoint since endpoint will report sent data while it drains.
 	c.endpoint.stop()
 	c.tracker.Stop()
 }
