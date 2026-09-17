@@ -46,9 +46,9 @@ func TestWindowsService(t *testing.T) {
 	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
 	cleanup := os.Getenv(envVarStateful) != "true"
 	if cleanup {
-		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
-	} else {
 		defer uninstallAlloy(t, uninstallerPath)
+	} else {
+		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
 	}
 
 	// Ensure no existing Alloy install; abort unless envVarCleanIfExists is set to "true".
@@ -123,9 +123,9 @@ func TestWindowsServiceOtelMode(t *testing.T) {
 	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
 	cleanup := os.Getenv(envVarStateful) != "true"
 	if cleanup {
-		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
-	} else {
 		defer uninstallAlloy(t, uninstallerPath)
+	} else {
+		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
 	}
 
 	if isAlloyInstalled(t, installDir) {
@@ -181,9 +181,9 @@ func TestWindowsServiceOtelModeToggle(t *testing.T) {
 	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
 	cleanup := os.Getenv(envVarStateful) != "true"
 	if cleanup {
-		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
-	} else {
 		defer uninstallAlloy(t, uninstallerPath)
+	} else {
+		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
 	}
 
 	if isAlloyInstalled(t, installDir) {
