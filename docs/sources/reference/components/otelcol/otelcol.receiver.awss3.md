@@ -154,8 +154,8 @@ Set `extension` to the `handler` exported by a compatible encoding extension com
 The `suffix` argument matches the end of the S3 object key.
 Specify the entire suffix, including a leading period when applicable, for example, `.txt`.
 
-[`otelcol.encoding.text`]: ./otelcol.encoding.text.md
-[`otelcol.encoding.jsonlog`]: ./otelcol.encoding.jsonlog.md
+[`otelcol.encoding.text`]: ../otelcol.encoding.text/
+[`otelcol.encoding.jsonlog`]: ../otelcol.encoding.jsonlog/
 
 ### `output`
 
