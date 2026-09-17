@@ -8,6 +8,7 @@ import (
 
 // Consumer is an interface for consuming Loki log entries.
 type Consumer interface {
+	Start()
 	ConsumeEntry(ctx context.Context, entry loki.Entry) error
 	Stop()
 }

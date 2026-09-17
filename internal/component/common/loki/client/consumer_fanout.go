@@ -31,14 +31,12 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
 		name := getEndpointName(cfg)
 		if _, ok := endpointsCheck[name]; ok {
-			c.Stop()
 			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
 
 		endpointsCheck[name] = struct{}{}
 		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
 		if err != nil {
-			c.Stop()
 			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}
 
@@ -52,6 +50,12 @@ var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	endpoints []*endpoint
+}
+
+func (c *FanoutConsumer) Start() {
+	for _, e := range c.endpoints {
+		e.start()
+	}
 }
 
 func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {

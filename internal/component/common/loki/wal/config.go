@@ -18,6 +18,7 @@ var DefaultWatchConfig = WatchConfig{
 // Config contains all WAL-related settings.
 type Config struct {
 	// Path where the WAL is written to.
+	// FIXME(kalleep): Probably remove this one..
 	Dir string
 
 	// MaxSegmentAge is threshold at which a WAL segment is considered old enough to be cleaned up. Default: 1h.
