@@ -61,7 +61,7 @@ func TestValidatePatternConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validatePatternConfig(tt.cfg)
+			err := validatePatternConfig(tt.cfg)
 			if tt.err == nil {
 				require.NoError(t, err)
 				return
@@ -449,26 +449,41 @@ func TestPatternStage(t *testing.T) {
 }
 
 func BenchmarkPatternStage(b *testing.B) {
-	benchmarks := []struct {
-		name   string
-		config PatternConfig
-		entry  string
-	}{
-		{"apache common log",
-			PatternConfig{
+	type testCase struct {
+		name       string
+		entry      string
+		numEntries int
+		numBatches int
+		config     PatternConfig
+	}
+
+	tests := []testCase{
+		{
+			name:       "apache common log",
+			entry:      patternLogFixture,
+			numEntries: 20,
+			numBatches: 10,
+			config: PatternConfig{
 				Pattern: "<ip> <identd> <user> [<timestamp>] \"<action> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\"",
 			},
-			patternLogFixture,
 		},
 	}
-	for _, bm := range benchmarks {
-		b.Run(bm.name, func(b *testing.B) {
-			batch := loki.NewBatch()
-			batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
-				Timestamp: time.Now(),
-				Line:      bm.entry,
-			}))
-			runPipelineBenchmark(b, []StageConfig{{PatternConfig: &bm.config}}, []loki.Batch{batch})
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			batches := make([]loki.Batch, 0, tt.numBatches)
+			for range tt.numBatches {
+				batch := loki.NewBatch()
+				for range tt.numEntries {
+					batch.Add(loki.NewStream(model.LabelSet{}, push.Entry{
+						Timestamp: time.Now(),
+						Line:      tt.entry,
+					}))
+				}
+				batches = append(batches, batch)
+			}
+
+			runPipelineBenchmark(b, []StageConfig{{PatternConfig: &tt.config}}, batches)
 		})
 	}
 }

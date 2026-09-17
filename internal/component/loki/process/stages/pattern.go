@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"sync"
 
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/prometheus/common/model"
@@ -25,29 +26,29 @@ type PatternConfig struct {
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validatePatternConfig validates the config and return a regex
-func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
+// validatePatternConfig validates the PatternConfig
+func validatePatternConfig(c PatternConfig) error {
 	if c.Pattern == "" {
-		return nil, errPatternRequired
+		return errPatternRequired
 	}
 
 	if c.Source != nil && *c.Source == "" {
-		return nil, errEmptyPatternStageSource
+		return errEmptyPatternStageSource
 	}
 
 	matcher, err := pattern.New(c.Pattern)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse pattern: %w", err)
+		return fmt.Errorf("failed to parse pattern: %w", err)
 	}
 
 	for _, name := range matcher.Names() {
 		// TODO - support UTF8 when loki does
 		if !model.LegacyValidation.IsValidLabelName(name) {
-			return nil, fmt.Errorf("invalid capture label name '%s'", name)
+			return fmt.Errorf("invalid capture label name '%s'", name)
 		}
 	}
 
-	return matcher, nil
+	return nil
 }
 
 var (
@@ -57,24 +58,31 @@ var (
 
 // newPatternStage creates a newPatternStage
 func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error) {
-	matcher, err := validatePatternConfig(config)
+	err := validatePatternConfig(config)
 	if err != nil {
 		return nil, err
 	}
 	return &patternStage{
-		next:    opts.next,
-		config:  &config,
-		matcher: matcher,
-		logger:  opts.slogger.With("stage", "pattern"),
+		next:   opts.next,
+		config: &config,
+		logger: opts.slogger.With("stage", "pattern"),
+		matcherPool: sync.Pool{
+			New: func() any {
+				// We can ignore error here since validatePatternConfig
+				// makes sure that we can build the matcher.
+				m, _ := pattern.New(config.Pattern)
+				return m
+			},
+		},
 	}, nil
 }
 
 // patternStage sets extracted data using logQL patterns
 type patternStage struct {
-	next    nextFn
-	config  *PatternConfig
-	matcher *pattern.Matcher
-	logger  *slog.Logger
+	next        nextFn
+	config      *PatternConfig
+	logger      *slog.Logger
+	matcherPool sync.Pool
 }
 
 // Run implements Stage.
@@ -119,7 +127,10 @@ func (r *patternStage) processEntry(e Entry) Entry {
 		input = value
 	}
 
-	matches := r.matcher.Matches([]byte(input))
+	matcher := r.matcherPool.Get().(*pattern.Matcher)
+	defer r.matcherPool.Put(matcher)
+
+	matches := matcher.Matches([]byte(input))
 	if matches == nil {
 		if debugEnabled(r.logger) {
 			r.logger.Debug("pattern did not match", "input", input, "pattern", r.config.Pattern)
@@ -127,7 +138,7 @@ func (r *patternStage) processEntry(e Entry) Entry {
 		return e
 	}
 
-	names := r.matcher.Names()[:len(matches)]
+	names := matcher.Names()[:len(matches)]
 	for i, m := range matches {
 		name := names[i]
 		e.Extracted[name] = string(m)
