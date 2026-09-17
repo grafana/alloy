@@ -57,7 +57,6 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		handler:       loki.NewLogsReceiver(),
 		openSQL:       openSQL,
 		logsReceivers: map[string]*receiverPump{},
-		pumpStop:      make(chan struct{}),
 	}
 	c.storeInstances([]*dbInstance{{
 		cfg:         databaseConfig{dsn: args.DataSourceName},
@@ -703,6 +702,55 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)
+}
+
+// TestPostgres_Update_RemovesStalePumps guards against a goroutine leak: a
+// renamed or removed database_instance block must stop and drop its receiver
+// pump, not just stop exporting it. See ensurePumps/removeStalePumps.
+func TestPostgres_Update_RemovesStalePumps(t *testing.T) {
+	opts := cmp.Options{
+		ID:            "test.postgres",
+		Logger:        logging.NewSlogNop(),
+		OnStateChange: func(e cmp.Exports) {},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
+	}
+
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db1", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	c.mut.RLock()
+	pump, ok := c.logsReceivers["db1"]
+	c.mut.RUnlock()
+	require.True(t, ok, "pump for db1 should exist after the initial Update")
+
+	// Rename the block: db1 -> db2.
+	renamed := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db2", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	require.NoError(t, c.Update(renamed))
+
+	c.mut.RLock()
+	_, staleStillTracked := c.logsReceivers["db1"]
+	_, hasNew := c.logsReceivers["db2"]
+	c.mut.RUnlock()
+	assert.False(t, staleStillTracked, "db1's pump should be removed once its database_instance block is renamed away")
+	assert.True(t, hasNew, "db2 should get its own pump")
+
+	select {
+	case <-pump.stop:
+		// Expected: removeStalePumps stopped it, so its goroutine exits.
+	case <-time.After(5 * time.Second):
+		t.Fatal("db1's orphaned pump was never stopped: its goroutine leaks")
+	}
 }
 
 func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {

@@ -307,15 +307,14 @@ type Component struct {
 	openSQL func(driverName, dataSourceName string) (*sql.DB, error)
 
 	// logsReceivers holds the receiver pump of each configured database,
-	// keyed by database name ("" in the single-DSN form). Pumps are created
-	// on demand and never removed, so the exported receivers stay valid for
-	// downstream components across Updates. Guarded by mut.
+	// keyed by database name ("" in the single-DSN form). ensurePumps
+	// creates a pump on demand and reuses it across Updates; removeStalePumps
+	// stops and removes the pump for a database_instance block that was
+	// removed or renamed. Guarded by mut.
 	logsReceivers map[string]*receiverPump
-	// pumpStop stops the receiver pump goroutines. It's closed exactly once:
-	// when Run shuts down, or when the initial Update fails and the component
-	// is discarded.
-	pumpStop chan struct{}
-	pumpWg   sync.WaitGroup
+	// pumpWg tracks every receiver pump goroutine ever started, so stopPumps
+	// can wait for the ones still running to exit.
+	pumpWg sync.WaitGroup
 
 	// instances holds one dbInstance per configured database. The slice is
 	// replaced wholesale on Update and stored atomically so that Handler can
@@ -353,12 +352,36 @@ func (c *Component) ensurePumps(cfgs []databaseConfig) {
 		}
 		pump := newReceiverPump()
 		c.logsReceivers[cfg.name] = pump
-		c.pumpWg.Go(func() { pump.run(c.pumpStop) })
+		c.pumpWg.Go(func() { pump.run(pump.stop) })
 	}
 }
 
+// removeStalePumps stops and removes the receiver pump of every database no
+// longer present in cfgs, so a database_instance block that's removed or
+// renamed doesn't leak its pump goroutine for the rest of the component's
+// lifetime. Must be called with c.mut locked.
+func (c *Component) removeStalePumps(cfgs []databaseConfig) {
+	keep := make(map[string]struct{}, len(cfgs))
+	for _, cfg := range cfgs {
+		keep[cfg.name] = struct{}{}
+	}
+	for name, pump := range c.logsReceivers {
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		close(pump.stop)
+		delete(c.logsReceivers, name)
+	}
+}
+
+// stopPumps stops every remaining receiver pump and waits for all pump
+// goroutines to exit.
 func (c *Component) stopPumps() {
-	close(c.pumpStop)
+	c.mut.Lock()
+	for _, pump := range c.logsReceivers {
+		close(pump.stop)
+	}
+	c.mut.Unlock()
 	c.pumpWg.Wait()
 }
 
@@ -374,7 +397,6 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		handler:       loki.NewLogsReceiver(),
 		openSQL:       openFn,
 		logsReceivers: make(map[string]*receiverPump),
-		pumpStop:      make(chan struct{}),
 	}
 
 	// Export the logs receivers immediately, before any database is
@@ -695,6 +717,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 	c.ensurePumps(cfgs)
+	c.removeStalePumps(cfgs)
 
 	// Replace the previous instances with the newly built ones.
 	c.stopInstances(c.loadInstances())

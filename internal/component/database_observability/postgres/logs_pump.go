@@ -13,9 +13,12 @@ import (
 // This keeps the exported receiver drained at all times, so upstream
 // components can never block on a send to it.
 //
-// The pump (and its exported receiver) lives for the whole component
-// lifetime, surviving Updates that rebuild the instances, so downstream
-// references to the exported receiver stay valid.
+// The pump (and its exported receiver) survives Updates that rebuild the
+// instances, so downstream references to the exported receiver stay valid
+// across reconnects. It lives only as long as its database_instance block
+// is configured: removeStalePumps stops it once the block is removed or
+// renamed, since the exported receiver map only ever contains currently
+// configured names anyway.
 //
 // Delivery around a target swap is best-effort: an entry received just
 // before setTarget or clearTarget may be delivered to the newly installed
@@ -25,6 +28,11 @@ import (
 type receiverPump struct {
 	exported loki.LogsReceiver
 	target   atomic.Pointer[pumpTarget]
+	// stop is this pump's own stop signal, closed when its database_instance
+	// block is removed or renamed, or when the component shuts down. Each
+	// pump owns its own channel so one pump can be stopped without affecting
+	// the others.
+	stop chan struct{}
 }
 
 type pumpTarget struct {
@@ -33,7 +41,7 @@ type pumpTarget struct {
 }
 
 func newReceiverPump() *receiverPump {
-	return &receiverPump{exported: loki.NewLogsReceiver()}
+	return &receiverPump{exported: loki.NewLogsReceiver(), stop: make(chan struct{})}
 }
 
 // setTarget starts forwarding entries to the given receiver.
