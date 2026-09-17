@@ -2,9 +2,11 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
@@ -34,27 +36,36 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 	}
 
 	var (
-		metrics        = newMetrics(reg)
-		endpointsCheck = make(map[string]struct{})
-
-		walWatcherMetrics  = wal.NewWatcherMetrics(reg)
-		walMarkerMetrics   = marker.NewMetrics(reg)
-		walEndpointMetrics = newWALEndpointMetrics(reg)
+		metrics             = newMetrics(reg)
+		walWatcherMetrics   = wal.NewWatcherMetrics(reg)
+		walSavepointMetrics = savepoint.NewMetrics(reg)
+		walEndpointMetrics  = newWALEndpointMetrics(reg)
 	)
 
+	// Don't allow duplicate endpoints, the name is both the label value of endpoint specific metrics and the key an
+	// endpoint stores its savepoint under.
+	names := make([]string, 0, len(cfgs))
 	for _, cfg := range cfgs {
-		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
-		name := getEndpointName(cfg)
-		if _, ok := endpointsCheck[name]; ok {
-			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
+		name := getStableEndpointName(cfg)
+		if slices.Contains(names, name) {
+			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", name)
 		}
-		endpointsCheck[name] = struct{}{}
+		names = append(names, name)
+	}
 
-		markerFile, err := marker.NewFile(logger, walCfg.Dir)
-		if err != nil {
-			return nil, err
-		}
-		tracker := marker.NewSegmentTracker(markerFile, walCfg.MaxSegmentAge, logger, walMarkerMetrics.CurryWithId(name))
+	if err := savepoint.MigrateLegacyMarker(walCfg.Dir, names); err != nil {
+		logger.Error("failed to migrate legacy marker file to savepoint.json, continuing without savepoints, previously unsent segments may be skipped", "err", err)
+	}
+
+	savepointFile, err := savepoint.NewFile(logger, walCfg.Dir)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, cfg := range cfgs {
+		name := names[i]
+
+		tracker := savepoint.NewSegmentTracker(savepointFile, name, walCfg.MaxSegmentAge, logger, walSavepointMetrics)
 
 		endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
 		if err != nil {
@@ -143,7 +154,7 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger *slog.Logger, metrics *walEndpointMetrics, tracker marker.Tracker) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger *slog.Logger, metrics *walEndpointMetrics, tracker savepoint.Tracker) *walEndpointAdapter {
 	c := &walEndpointAdapter{
 		logger:   logger.With("component", "waladapter"),
 		metrics:  metrics,
@@ -172,7 +183,7 @@ type walEndpointAdapter struct {
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
-	tracker marker.Tracker
+	tracker savepoint.Tracker
 }
 
 func (c *walEndpointAdapter) SeriesReset(segmentNum int) {
@@ -247,4 +258,18 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 func (c *walEndpointAdapter) stop() {
 	c.endpoint.stop()
 	c.tracker.Stop()
+}
+
+// getStableEndpointName computes the name of an endpoint config. The name is either the configured Name setting in
+// Config, or a hash of the fields that identify where data is sent. Tuning, credentials and headers are left out on
+// purpose: the name is the key an endpoint stores its savepoint under, so changing any of them must not rename the
+// endpoint and lose its progress.
+func getStableEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%q%q", cfg.URL.String(), cfg.TenantID)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }
