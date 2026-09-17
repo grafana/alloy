@@ -312,9 +312,6 @@ type Component struct {
 	// stops and removes the pump for a database_instance block that was
 	// removed or renamed. Guarded by mut.
 	logsReceivers map[string]*receiverPump
-	// pumpWg tracks every receiver pump goroutine ever started, so stopPumps
-	// can wait for the ones still running to exit.
-	pumpWg sync.WaitGroup
 
 	// instances holds one dbInstance per configured database. The slice is
 	// replaced wholesale on Update and stored atomically so that Handler can
@@ -352,7 +349,7 @@ func (c *Component) ensurePumps(cfgs []databaseConfig) {
 		}
 		pump := newReceiverPump()
 		c.logsReceivers[cfg.name] = pump
-		c.pumpWg.Go(func() { pump.run(pump.stop) })
+		pump.wg.Go(func() { pump.run(pump.stop) })
 	}
 }
 
@@ -374,15 +371,20 @@ func (c *Component) removeStalePumps(cfgs []databaseConfig) {
 	}
 }
 
-// stopPumps stops every remaining receiver pump and waits for all pump
-// goroutines to exit.
+// stopPumps stops every remaining receiver pump and waits for each one's
+// goroutine to exit.
 func (c *Component) stopPumps() {
 	c.mut.Lock()
+	pumps := make([]*receiverPump, 0, len(c.logsReceivers))
 	for _, pump := range c.logsReceivers {
 		close(pump.stop)
+		pumps = append(pumps, pump)
 	}
 	c.mut.Unlock()
-	c.pumpWg.Wait()
+
+	for _, pump := range pumps {
+		pump.wg.Wait()
+	}
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {

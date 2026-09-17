@@ -54,6 +54,19 @@ func Test_receiverPump(t *testing.T) {
 		}
 	}
 
+	t.Run("run exits once its stop channel is closed", func(t *testing.T) {
+		// Uses pump.stop/pump.wg directly, mirroring how ensurePumps launches
+		// a pump in production, rather than startPump's own external stop
+		// channel: this is what removeStalePumps and stopPumps rely on to
+		// know a pump's goroutine has actually exited, not just been asked to.
+		pump := newReceiverPump()
+		pump.wg.Go(func() { pump.run(pump.stop) })
+
+		close(pump.stop)
+
+		runWithTimeout(t, &pump.wg, "run() did not return after its stop channel was closed")
+	})
+
 	t.Run("discards entries when no instance is running", func(t *testing.T) {
 		pump := startPump(t)
 

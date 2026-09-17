@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -704,6 +705,23 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	assert.NotEmpty(t, h.Message)
 }
 
+// runWithTimeout waits for wg, failing the test if it doesn't finish within
+// 5 seconds. sync.WaitGroup has no channel of its own to select on, so this
+// wraps it in one.
+func runWithTimeout(t *testing.T, wg *sync.WaitGroup, timeoutMsg string) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal(timeoutMsg)
+	}
+}
+
 // TestPostgres_Update_RemovesStalePumps guards against a goroutine leak: a
 // renamed or removed database_instance block must stop and drop its receiver
 // pump, not just stop exporting it. See ensurePumps/removeStalePumps.
@@ -745,12 +763,56 @@ func TestPostgres_Update_RemovesStalePumps(t *testing.T) {
 	assert.False(t, staleStillTracked, "db1's pump should be removed once its database_instance block is renamed away")
 	assert.True(t, hasNew, "db2 should get its own pump")
 
-	select {
-	case <-pump.stop:
-		// Expected: removeStalePumps stopped it, so its goroutine exits.
-	case <-time.After(5 * time.Second):
-		t.Fatal("db1's orphaned pump was never stopped: its goroutine leaks")
+	// pump.stop is closed synchronously by removeStalePumps inside Update, so
+	// checking it would only prove the signal was sent, not that the pump's
+	// goroutine actually received it and returned. Wait on pump.wg instead:
+	// it's only Done once run() itself returns.
+	runWithTimeout(t, &pump.wg, "db1's orphaned pump was never stopped: its goroutine leaks")
+}
+
+// TestPostgres_StopPumps_StopsLivePumps guards the final-teardown path:
+// stopPumps must stop and join every pump still tracked in c.logsReceivers,
+// not just the ones removeStalePumps already removed during Updates.
+func TestPostgres_StopPumps_StopsLivePumps(t *testing.T) {
+	opts := cmp.Options{
+		ID:            "test.postgres",
+		Logger:        logging.NewSlogNop(),
+		OnStateChange: func(e cmp.Exports) {},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+		},
 	}
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db1", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	c.mut.RLock()
+	pump, ok := c.logsReceivers["db1"]
+	c.mut.RUnlock()
+	require.True(t, ok, "pump for db1 should exist after the initial Update")
+
+	stopPumpsReturned := make(chan struct{})
+	go func() {
+		c.stopPumps()
+		close(stopPumpsReturned)
+	}()
+
+	select {
+	case <-stopPumpsReturned:
+		// Expected: stopPumps closed db1's pump and waited for it to exit.
+	case <-time.After(5 * time.Second):
+		t.Fatal("stopPumps never returned: it isn't stopping/joining a live pump")
+	}
+
+	// Independently confirm db1's pump goroutine itself is done, rather than
+	// only trusting that stopPumps returned: a version that silently skipped
+	// this pump (e.g. built the wrong slice to wait on) would still return
+	// without hanging.
+	runWithTimeout(t, &pump.wg, "stopPumps returned without db1's pump goroutine having exited")
 }
 
 func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {

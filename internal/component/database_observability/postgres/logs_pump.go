@@ -1,6 +1,8 @@
 package postgres
 
 import (
+	"sync"
+
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -33,6 +35,10 @@ type receiverPump struct {
 	// pump owns its own channel so one pump can be stopped without affecting
 	// the others.
 	stop chan struct{}
+	// wg is done once run() returns. It's tracked per-pump (rather than
+	// shared across all pumps) so a caller can wait for exactly this pump's
+	// goroutine to exit, e.g. right after removing just this one.
+	wg sync.WaitGroup
 }
 
 type pumpTarget struct {
