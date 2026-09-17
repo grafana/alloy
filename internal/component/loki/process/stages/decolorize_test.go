@@ -4,49 +4,43 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/prometheus/common/model"
 )
 
-var testDecolorizePipeline = `
-stage.decolorize {}
-`
+func TestDecolorizeStage(t *testing.T) {
+	type testCase struct {
+		name     string
+		entries  []Entry
+		expected []Entry
+	}
 
-func TestPipeline_Decolorize(t *testing.T) {
-	t.Parallel()
+	now := time.Now()
 
-	tests := map[string]struct {
-		config        string
-		entry         string
-		expectedEntry string
-	}{
-		"successfully run pipeline on non-colored text": {
-			testDecolorizePipeline,
-			"sample text",
-			"sample text",
+	tests := []testCase{
+		{
+			name: "successfully run pipeline on non-colored text",
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "sample text", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "sample text", now),
+			},
 		},
-		"successfully run pipeline on colored text": {
-			testDecolorizePipeline,
-			"\033[0;32mgreen\033[0m \033[0;31mred\033[0m",
-			"green red",
+		{
+			name: "successfully run pipeline on colored text",
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "\033[0;32mgreen\033[0m \033[0;31mred\033[0m", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "green red", now),
+			},
 		},
 	}
 
-	for testName, testData := range tests {
-		testData := testData
-
-		t.Run(testName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
-			assert.Equal(t, testData.expectedEntry, out.Line)
+			runPipelineTest(t, []StageConfig{{DecolorizeConfig: &DecolorizeConfig{}}}, tt.entries, tt.expected)
 		})
 	}
 }
