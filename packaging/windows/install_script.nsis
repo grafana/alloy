@@ -46,7 +46,6 @@ Var User
 Var Password
 Var AuthFlag
 Var ForceRegistry
-Var OtelMode
 
 # Pages during the installer.
 Page license
@@ -70,7 +69,6 @@ Section "install"
   ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
   ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
-  ${GetOptions} $PassedInParameters "/OTELMODE=" $OtelMode
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
@@ -279,7 +277,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v ALLOY_OTEL_MODE'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v ALLOY_OTEL_MODE /t REG_SZ /d "$OtelMode"'
+    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v ALLOY_OTEL_MODE /t REG_SZ /d ""'
     Pop $0 # Ignore return result
   ${EndIf}
 
