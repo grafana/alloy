@@ -195,7 +195,6 @@ func TestHTTPClientConfigOath2ClientCertificateKey(t *testing.T) {
 }
 
 func TestHTTPClientConfigOath2ClientCertificateKeyFile(t *testing.T) {
-
 	clientKeyNoPassPath := testdata.ClientKeyNoPassPath(t)
 
 	var exampleAlloyConfig = fmt.Sprintf(`

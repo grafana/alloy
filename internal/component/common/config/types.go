@@ -7,12 +7,14 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
 const (
-	grantTypeJWTBearer = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	grantTypeJWTBearer         = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	grantTypeClientCredentials = "client_credentials"
 )
 const bearerAuth string = "Bearer"
 
@@ -422,6 +424,16 @@ type OAuth2Config struct {
 	TLSConfig          *TLSConfig        `alloy:"tls_config,block,optional"`
 }
 
+var DefaultOAuth2Config = OAuth2Config{
+	GrantType:          grantTypeClientCredentials,
+	SignatureAlgorithm: jwt.SigningMethodRS256.Name,
+}
+
+// SetToDefault implements the syntax.Defaulter
+func (o *OAuth2Config) SetToDefault() {
+	*o = DefaultOAuth2Config
+}
+
 // Convert converts our type to the native prometheus type
 func (o *OAuth2Config) Convert() *config.OAuth2 {
 	if o == nil {
@@ -461,11 +473,12 @@ func (o *OAuth2Config) Validate() error {
 		return fmt.Errorf("oauth2 token_url must be configured")
 	}
 
-	if o.GrantType == grantTypeJWTBearer {
+	switch o.GrantType {
+	case grantTypeJWTBearer:
 		if len(o.ClientCertificateKey) == 0 && len(o.ClientCertificateKeyFile) == 0 {
 			return fmt.Errorf("either oauth2 client_certificate_key or client_certificate_key_file must be configured")
 		}
-	} else if o.GrantType == "client_credentials" {
+	case grantTypeClientCredentials:
 		if len(o.ClientSecret) == 0 && len(o.ClientSecretFile) == 0 {
 			return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
 		}
