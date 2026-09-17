@@ -1139,4 +1139,6 @@ replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/
 
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
 
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
+
 exclude github.com/knadh/koanf v1.5.0
