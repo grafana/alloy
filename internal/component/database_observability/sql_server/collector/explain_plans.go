@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	ExplainPlansCollector  = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlansCollector = "explain_plans"
 )
 
 // selectExplainPlansTemplate resolves each tracked query_hash to the most
@@ -349,7 +348,7 @@ func (c *ExplainPlans) emit(
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		database_observability.OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
 }

@@ -18,7 +18,6 @@ import (
 
 const (
 	LocksCollector  = "locks"
-	OP_DATA_LOCKS   = "query_data_locks"
 	selectDataLocks = `
 		SELECT
 			waiting_stmt_current.TIMER_WAIT waitingTimerWait,
@@ -165,7 +164,7 @@ func (c *Locks) fetchLocks(ctx context.Context) error {
 				picosecondsToMilliseconds(blockingLockTime),
 			)
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, OP_DATA_LOCKS, lockMsg)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, database_observability.OP_DATA_LOCKS, lockMsg)
 		}
 	}
 

@@ -19,9 +19,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 var selectQueriesFromActivity = `
@@ -186,7 +184,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
+			database_observability.OP_QUERY_ASSOCIATION,
 			body,
 		)
 
@@ -205,7 +203,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
+				database_observability.OP_QUERY_PARSED_TABLE_NAME,
 				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
 			)
 		}

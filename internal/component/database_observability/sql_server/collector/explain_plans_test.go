@@ -164,7 +164,7 @@ func TestExplainPlans_EmitsOnFirstSighting(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 20*time.Millisecond)
 	entries := lokiClient.Received()
-	require.Equal(t, model.LabelSet{"op": OP_EXPLAIN_PLAN_OUTPUT}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_EXPLAIN_PLAN_OUTPUT}, entries[0].Labels)
 	require.Contains(t, entries[0].Line, `database="books_store"`)
 	require.Contains(t, entries[0].Line, `query_hash="0011223344556677"`)
 
