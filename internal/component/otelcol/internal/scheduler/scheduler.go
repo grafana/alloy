@@ -15,6 +15,16 @@ import (
 	"github.com/grafana/alloy/internal/component"
 )
 
+// DefaultShutdownTimeout is the default maximum time to wait for a component
+// to shut down during a hot-reload (Schedule call). This prevents a component
+// whose Shutdown() blocks (e.g. a gRPC server draining long-lived connections)
+// from hanging /-/reload indefinitely.
+//
+// Note: this timeout only applies to the hot-reload path (Schedule). The final
+// shutdown triggered by Run() cancellation always uses context.Background() so
+// Alloy can drain gracefully on process exit.
+const DefaultShutdownTimeout = 30 * time.Second
+
 // Scheduler implements manages a set of OpenTelemetry Collector components.
 // Scheduler is intended to be used from Alloy components which need to
 // schedule OpenTelemetry Collector components; it does not implement the full
@@ -42,15 +52,23 @@ type Scheduler struct {
 	onPause func()
 	// onResume is called when scheduler is done making changes to running components.
 	onResume func()
+
+	// shutdownTimeout is the maximum duration to wait for components to shut
+	// down during a hot-reload (Schedule). 0 means wait forever (no timeout).
+	shutdownTimeout time.Duration
 }
 
 // New creates a new unstarted Scheduler. Call Run to start it, and call
 // Schedule to schedule components to run.
+//
+// The scheduler uses DefaultShutdownTimeout when stopping components during a
+// hot-reload.
 func New(l *slog.Logger) *Scheduler {
 	return &Scheduler{
-		log:      l,
-		onPause:  func() {},
-		onResume: func() {},
+		log:             l,
+		onPause:         func() {},
+		onResume:        func() {},
+		shutdownTimeout: DefaultShutdownTimeout,
 	}
 }
 
@@ -62,10 +80,23 @@ func New(l *slog.Logger) *Scheduler {
 // The scheduler is assumed to start paused; Schedule() won't call onPause() if Run() was never ran.
 func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
-		log:      l,
-		onPause:  onPause,
-		onResume: onResume,
+		log:             l,
+		onPause:         onPause,
+		onResume:        onResume,
+		shutdownTimeout: DefaultShutdownTimeout,
 	}
+}
+
+// SetShutdownTimeout overrides the maximum time that Schedule() will wait for
+// old components to shut down during a hot-reload. A value of 0 disables the
+// timeout (components are allowed to block indefinitely).
+//
+// SetShutdownTimeout is intended for testing. Production callers should rely on
+// the default set by New or NewWithPauseCallbacks.
+func (cs *Scheduler) SetShutdownTimeout(d time.Duration) {
+	cs.schedMut.Lock()
+	defer cs.schedMut.Unlock()
+	cs.shutdownTimeout = d
 }
 
 // Schedule a new set of OpenTelemetry Components to run.
@@ -103,8 +134,19 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	// This prevents them from accepting new data while we're shutting them down.
 	cs.onPause()
 
-	// 2. Stop the old components
-	stopComponents(ctx, cs.log, cs.schedComponents...)
+	// 2. Stop the old components.
+	// Use a bounded context so that a component whose Shutdown() blocks (e.g. a
+	// gRPC server draining long-lived connections) cannot hang a hot-reload
+	// indefinitely. The caller's ctx is kept for reference but we always derive
+	// the stop context from context.Background() so cancellation of ctx (e.g.
+	// the component being torn down) does not race with shutdown here.
+	stopCtx := ctx
+	var stopCancel context.CancelFunc
+	if cs.shutdownTimeout > 0 {
+		stopCtx, stopCancel = context.WithTimeout(context.Background(), cs.shutdownTimeout)
+		defer stopCancel()
+	}
+	stopComponents(stopCtx, cs.log, cs.schedComponents...)
 
 	// 3. Change the consumers
 	// This can only be done after stopping the previous components and before starting the new ones.
