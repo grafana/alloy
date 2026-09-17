@@ -84,16 +84,14 @@ func (args Arguments) Validate() error {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	return &collectorgoogleauth.Config{
-		Config: googleclientauthextension.Config{
-			Project:      args.Project,
-			QuotaProject: args.QuotaProject,
-			TokenType:    args.TokenType,
-			Audience:     args.Audience,
-			TokenHeader:  args.TokenHeader,
-			Scopes:       args.Scopes,
-		},
-	}, nil
+	cfg := collectorgoogleauth.NewFactory().CreateDefaultConfig().(*collectorgoogleauth.Config)
+	cfg.Config.Project = args.Project
+	cfg.Config.QuotaProject = args.QuotaProject
+	cfg.Config.TokenType = args.TokenType
+	cfg.Config.Audience = args.Audience
+	cfg.Config.TokenHeader = args.TokenHeader
+	cfg.Config.Scopes = args.Scopes
+	return cfg, nil
 }
 
 // ConvertServer returns nil since the ouath2 client extension does not support server auth.

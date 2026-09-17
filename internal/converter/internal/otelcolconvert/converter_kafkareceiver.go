@@ -58,7 +58,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		tlsCfgPtr = &tlsCfg
 	}
 
-	rebalanceStrategy, rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
+	rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
 	return &kafka.Arguments{
 		Brokers:           cfg.ClientConfig.Brokers,
 		ProtocolVersion:   cfg.ClientConfig.ProtocolVersion,
@@ -69,7 +69,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
 		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
 
-		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 
 		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
 		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
@@ -89,7 +89,6 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MaxFetchWait:             cfg.ConsumerConfig.MaxFetchWait,
 		RackID:                   cfg.ClientConfig.RackID,
 		UseLeaderEpoch:           cfg.ClientConfig.UseLeaderEpoch,
-		GroupRebalanceStrategy:   rebalanceStrategy,
 		GroupRebalanceStrategies: rebalanceStrategies,
 		GroupInstanceID:          cfg.ConsumerConfig.GroupInstanceID,
 
@@ -153,8 +152,8 @@ func toKafkaSASL(cfg map[string]any) *otelcol.KafkaSASLArguments {
 		Username:  cfg["username"].(string),
 		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
-		Version:   cfg["version"].(int),
-		AWSMSK:    toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
+		// Version is deprecated and no longer exists upstream to read back.
+		AWSMSK: toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
 	}
 }
 
@@ -244,17 +243,15 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	}
 }
 
-func toKafkaRebalance(cfg configkafka.ConsumerConfig) (strategy string, strategies []string) {
-	switch {
-	case len(cfg.GroupRebalanceStrategies) > 0:
-		strategies = make([]string, 0, len(cfg.GroupRebalanceStrategies))
+// toKafkaRebalance always returns the plural strategies form; upstream removed the singular
+// GroupRebalanceStrategy field, so the deprecated singular Alloy argument is never populated here.
+func toKafkaRebalance(cfg configkafka.ConsumerConfig) []string {
+	if len(cfg.GroupRebalanceStrategies) > 0 {
+		strategies := make([]string, 0, len(cfg.GroupRebalanceStrategies))
 		for _, s := range cfg.GroupRebalanceStrategies {
 			strategies = append(strategies, string(s))
 		}
-		return "", strategies
-	case cfg.GroupRebalanceStrategy != "":
-		return string(cfg.GroupRebalanceStrategy), nil
-	default:
-		return string(configkafka.CooperativeStickyBalanceStrategy), nil
+		return strategies
 	}
+	return []string{string(configkafka.CooperativeStickyBalanceStrategy)}
 }

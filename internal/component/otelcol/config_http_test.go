@@ -19,6 +19,7 @@ func TestHTTPServerArguments_ConvertTimeoutZeroValue(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
+	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
 	require.Equal(t, time.Duration(0), server.IdleTimeout)
 	require.Equal(t, time.Duration(0), server.ReadHeaderTimeout)
 	require.Equal(t, time.Duration(0), server.WriteTimeout)
@@ -52,6 +53,7 @@ func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
+	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
 	require.Equal(t, 2*time.Minute, server.IdleTimeout)
 	require.Equal(t, 10*time.Second, server.ReadTimeout)
 	require.Equal(t, 45*time.Second, server.WriteTimeout)

@@ -26,10 +26,8 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			a := args.(Arguments)
-			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
-			return receiver.New(opts, fact, a)
+			return receiver.New(opts, fact, args.(Arguments))
 		},
 	})
 }
@@ -49,7 +47,7 @@ type Arguments struct {
 	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
 	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
-	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 
 	Authentication   otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
 	Metadata         otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
@@ -136,6 +134,13 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
 	}
 
+	// Upstream rejects configuring both sasl and kerberos authentication. plaintext also
+	// converts to upstream's sasl field (see KafkaAuthenticationArguments.Convert), so it
+	// counts as sasl here too.
+	if (args.Authentication.SASL != nil || args.Authentication.Plaintext != nil) && args.Authentication.Kerberos != nil {
+		return fmt.Errorf("authentication.sasl (or authentication.plaintext) and authentication.kerberos are mutually exclusive")
+	}
+
 	for _, strategy := range args.GroupRebalanceStrategies {
 		if err := validateGroupRebalanceStrategy(strategy); err != nil {
 			return err
@@ -170,7 +175,13 @@ type KafkaReceiverTopicEncodingConfig struct {
 	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
 }
 
-func (args Arguments) logDeprecations(logger *slog.Logger) {
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
 	for _, signal := range []struct {
 		name string
 		cfg  KafkaReceiverTopicEncodingConfig
@@ -187,6 +198,17 @@ func (args Arguments) logDeprecations(logger *slog.Logger) {
 			)
 		}
 	}
+
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	if args.GroupRebalanceStrategy != "" {
+		logger.Warn(
+			"group_rebalance_strategy is deprecated, use group_rebalance_strategies instead",
+			"group_rebalance_strategy", args.GroupRebalanceStrategy,
+		)
+	}
+	args.Authentication.LogDeprecations(logger)
 }
 
 func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {
@@ -246,7 +268,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.GroupID = args.GroupID
 	result.ClientConfig.ClientID = args.ClientID
 	result.ConsumerConfig.InitialOffset = args.InitialOffset
-	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
+	// Do not set ResolveCanonicalBootstrapServersOnly - it is deprecated and no longer exists upstream.
 	result.ClientConfig.Metadata = args.Metadata.Convert()
 	result.ConsumerConfig.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
@@ -255,18 +277,18 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
 	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
-	// Upstream rejects both forms being set, so send only the one in use.
-	if len(args.GroupRebalanceStrategies) > 0 {
+	// Upstream removed the singular GroupRebalanceStrategy field.
+	switch {
+	case len(args.GroupRebalanceStrategies) > 0:
 		strategies := make([]configkafka.GroupRebalanceStrategy, 0, len(args.GroupRebalanceStrategies))
 		for _, strategy := range args.GroupRebalanceStrategies {
 			strategies = append(strategies, configkafka.GroupRebalanceStrategy(strategy))
 		}
 		result.ConsumerConfig.GroupRebalanceStrategies = strategies
-		result.ConsumerConfig.GroupRebalanceStrategy = ""
-	} else if args.GroupRebalanceStrategy != "" {
-		result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
-	} else {
-		result.ConsumerConfig.GroupRebalanceStrategy = defaultGroupRebalanceStrategy
+	case args.GroupRebalanceStrategy != "":
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)}
+	default:
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{defaultGroupRebalanceStrategy}
 	}
 	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
 	result.ClientConfig.RackID = args.RackID

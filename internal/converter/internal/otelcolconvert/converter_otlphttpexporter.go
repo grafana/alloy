@@ -84,12 +84,17 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
 
-		Timeout:              cfg.Timeout,
-		Headers:              toHeadersMap(cfg.Headers),
-		MaxIdleConns:         cfg.MaxIdleConns,
-		MaxIdleConnsPerHost:  cfg.MaxIdleConnsPerHost,
-		MaxConnsPerHost:      cfg.MaxConnsPerHost,
-		IdleConnTimeout:      cfg.IdleConnTimeout,
+		Timeout: cfg.Timeout,
+		Headers: toHeadersMap(cfg.Headers),
+		// Deprecated fields remain the source of truth for an already-unmarshaled ClientConfig.
+		//nolint:staticcheck
+		MaxIdleConns: cfg.MaxIdleConns,
+		//nolint:staticcheck
+		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.MaxConnsPerHost,
+		//nolint:staticcheck
+		IdleConnTimeout: cfg.IdleConnTimeout,
+		//nolint:staticcheck
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,

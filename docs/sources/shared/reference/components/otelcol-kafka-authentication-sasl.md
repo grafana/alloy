@@ -12,7 +12,7 @@ The following arguments are supported:
 | `mechanism` | `string` | SASL mechanism to use when authenticating.               |         | yes      |
 | `password`  | `secret` | Password to use for SASL authentication.                 |         | yes      |
 | `username`  | `string` | Username to use for SASL authentication.                 |         | yes      |
-| `version`   | `number` | Version of the SASL Protocol to use when authenticating. | `0`     | no       |
+| `version`   | `number` | (Deprecated) Version of the SASL Protocol to use when authenticating. | `0`     | no       |
 
 You can set the `mechanism` argument to one of the following strings:
 
@@ -23,4 +23,4 @@ You can set the `mechanism` argument to one of the following strings:
 
 When `mechanism` is set to `"AWS_MSK_IAM_OAUTHBEARER"`, the `aws_msk` child block must also be provided.
 
-You can set the `version` argument to either `0` or `1`.
+`version` has been deprecated. The client negotiates the SASL handshake version automatically; setting `version` doesn't produce an error, but has no effect.

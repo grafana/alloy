@@ -44,6 +44,9 @@ remote_write:
       secret_key: fake_secret_key
       profile: fake_profile
       role_arn: fake_role_arn
+      session_name: fake_session_name
+      tags:
+        team: fake_team
   - name: "remote5_azuread_defaults"
     url: http://localhost:9012/api/prom/push
     azuread:
