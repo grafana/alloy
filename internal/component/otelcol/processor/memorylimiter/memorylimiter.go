@@ -62,17 +62,19 @@ var DefaultArguments = Arguments{
 	MemorySpikeLimit:      0,
 	MemoryLimitPercentage: 0,
 	MemorySpikePercentage: 0,
-
-	MinGCIntervalWhenSoftLimited: 10 * time.Second,
-	MinGCIntervalWhenHardLimited: 0,
-	MaxGCIntervalWhenSoftLimited: 30 * time.Second,
-	MaxGCIntervalWhenHardLimited: 30 * time.Second,
 }
 
-// SetToDefault implements syntax.Defaulter.
+// SetToDefault implements syntax.Defaulter. The GC intervals come from the
+// upstream factory rather than literals here, so a contrib bump carries through.
 func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 	args.DebugMetrics.SetToDefault()
+
+	upstream := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
+	args.MinGCIntervalWhenSoftLimited = upstream.MinGCIntervalWhenSoftLimited
+	args.MinGCIntervalWhenHardLimited = upstream.MinGCIntervalWhenHardLimited
+	args.MaxGCIntervalWhenSoftLimited = upstream.MaxGCIntervalWhenSoftLimited
+	args.MaxGCIntervalWhenHardLimited = upstream.MaxGCIntervalWhenHardLimited
 }
 
 // Validate implements syntax.Validator.
