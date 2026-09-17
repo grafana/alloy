@@ -1,0 +1,36 @@
+receivers:
+  awscloudwatch:
+    region: us-west-1
+    logs:
+      poll_interval: 1m
+      start_from: '2025-06-25T00:00:00Z'
+      groups:
+        autodiscover:
+          limit: 100
+          pattern: /aws/lambda/.*
+          account_identifiers: ['123456789012', '987654321098']
+          include_linked_accounts: true
+    metrics:
+      collection_interval: 10m
+      period: 60s
+      delay: 15m
+      discovery:
+        limit: 200
+        stats: [Average]
+        filters:
+          namespace: AWS/EC2
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [awscloudwatch]
+      processors: []
+      exporters: [otlp]
+    metrics:
+      receivers: [awscloudwatch]
+      processors: []
+      exporters: [otlp]
