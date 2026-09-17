@@ -66,7 +66,7 @@ class Alloy < Formula
       fi
 
       otel_mode=""
-      case "${ALLOY_OTEL_MODE:-}" in
+      case "$(printf '%s' "${ALLOY_OTEL_MODE:-}" | tr '[:upper:]' '[:lower:]')" in
         1 | true | yes | on ) otel_mode="1" ;;
       esac
 

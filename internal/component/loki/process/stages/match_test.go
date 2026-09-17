@@ -241,7 +241,7 @@ func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
 	}
 
 	logger := util.TestAlloyLogger(t)
-	_, err := New(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	_, err := newStage(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
 	require.ErrorContains(t, err, "match stage failed to create pipeline")
 	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
 }

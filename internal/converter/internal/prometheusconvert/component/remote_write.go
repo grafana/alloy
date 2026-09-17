@@ -46,6 +46,20 @@ func ValidateRemoteWriteConfig(remoteWriteConfig *prom_config.RemoteWriteConfig)
 	var diags diag.Diagnostics
 
 	diags.AddAll(common.ValidateHttpClientConfig(&remoteWriteConfig.HTTPClientConfig))
+	diags.AddAll(validateSigV4Config(remoteWriteConfig.SigV4Config))
+	return diags
+}
+
+// validateSigV4Config warns about sigv4 fields that Alloy's prometheus.remote_write
+// sigv4 block doesn't expose, so they aren't silently dropped by the conversion.
+func validateSigV4Config(sigv4Config *sigv4.SigV4Config) diag.Diagnostics {
+	var diags diag.Diagnostics
+	if sigv4Config == nil {
+		return diags
+	}
+
+	diags.AddAll(common.ValidateSupported(common.NotEquals, sigv4Config.SessionName, "", "sigv4 session_name", ""))
+	diags.AddAll(common.ValidateSupported(common.NotEquals, len(sigv4Config.Tags), 0, "sigv4 tags", ""))
 	return diags
 }
 

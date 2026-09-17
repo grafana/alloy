@@ -359,6 +359,15 @@ Whenever possible, associate your statements to the context which the statement 
 The contexts are nested, and the higher-level contexts don't have to iterate through any of the contexts at a lower level.
 For example, although you can modify resource attributes associated to a span using the `span` context, it's more efficient to use the `resource` context.
 
+{{< admonition type="caution" >}}
+The upstream OpenTelemetry Collector made two changes to the OTTL functions used in `statements` and `conditions`:
+
+* The `Base64Decode` converter function was removed. Use the `Decode` converter with the `base64` encoding instead, for example `Decode(value, "base64")`.
+* The `set` function's `ottl.set.allowNil` feature gate was promoted to beta and is now enabled by default. Previously, `set(target, nil)` was a no-op; it now sets `target` to `nil`.
+
+There's no configuration option in `otelcol.processor.transform` to restore the previous behavior for either change.
+{{< /admonition >}}
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:

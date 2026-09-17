@@ -140,9 +140,13 @@ func toOtelcolMatchCriteria(cfg matcher.Criteria) *filelog.MatchCriteria {
 }
 
 func toOtelcolOrderingCriteria(cfg matcher.OrderingCriteria) *filelog.OrderingCriteria {
+	var topN int
+	if cfg.TopN != nil {
+		topN = *cfg.TopN
+	}
 	return &filelog.OrderingCriteria{
 		Regex:   cfg.Regex,
-		TopN:    cfg.TopN,
+		TopN:    topN,
 		SortBy:  toOtelcolSortBy(cfg.SortBy),
 		GroupBy: cfg.GroupBy,
 	}
