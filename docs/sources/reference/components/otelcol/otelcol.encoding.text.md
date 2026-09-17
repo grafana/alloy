@@ -86,14 +86,14 @@ otelcol.encoding.text "default" {
 }
 ```
 
-### Decode Windows-1252 records separated by blank lines
+### Decode records separated by blank lines
 
-This example decodes Windows-1252 input and splits records at one or more blank lines.
+This example decodes UTF-8 input and splits records at one or more blank lines.
 It uses two newline characters between bodies when it marshals multiple log records:
 
 ```alloy
-otelcol.encoding.text "windows" {
-  encoding               = "windows-1252"
+otelcol.encoding.text "utf8" {
+  encoding               = "utf8"
   marshaling_separator   = "\n\n"
   unmarshaling_separator = "(\r?\n){2,}"
 }

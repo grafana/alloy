@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name: "otelcol.encoding.text",
-		// TODO: Promote to public preview after the new Alloy component matures; the upstream extension is beta.
+		// TODO: Promote to public preview, the upstream extension is beta.
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Exports:   extension.Exports{},
