@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestIsOtelMode(t *testing.T) {
 	truthy := []string{"1", "true", "yes", "on", "TRUE", "Yes", "ON"}
@@ -94,13 +97,8 @@ func TestResolveEngineArgs(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			got := resolveEngineArgs(tc.otelMode, tc.otelConfigDefault, tc.otelArguments, tc.defaultEngineArgs)
-			if len(got) != len(tc.want) {
+			if !slices.Equal(got, tc.want) {
 				t.Fatalf("got %v, want %v", got, tc.want)
-			}
-			for i := range got {
-				if got[i] != tc.want[i] {
-					t.Fatalf("got %v, want %v", got, tc.want)
-				}
 			}
 		})
 	}

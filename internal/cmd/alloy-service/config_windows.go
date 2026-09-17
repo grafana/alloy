@@ -35,19 +35,17 @@ type config struct {
 }
 
 func getOptionalStringValue(k registry.Key, name string) (string, error) {
-	v, _, err := k.GetStringValue(name)
-	if errors.Is(err, registry.ErrNotExist) {
-		return "", nil
+	if v, _, err := k.GetStringValue(name); !errors.Is(err, registry.ErrNotExist) {
+		return v, err
 	}
-	return v, err
+	return "", nil
 }
 
 func getOptionalStringsValue(k registry.Key, name string) ([]string, error) {
-	v, _, err := k.GetStringsValue(name)
-	if errors.Is(err, registry.ErrNotExist) {
-		return nil, nil
+	if v, _, err := k.GetStringsValue(name); !errors.Is(err, registry.ErrNotExist) {
+		return v, err
 	}
-	return v, err
+	return nil, nil
 }
 
 // loadConfig loads the config from the Windows registry.

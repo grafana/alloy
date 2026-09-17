@@ -31,11 +31,8 @@ const (
 	installDir   = `C:\Program Files\GrafanaLabs\Alloy`
 )
 
-// TestWindowsService runs the Alloy Windows installer, starts the Alloy service, and uninstalls.
-// Requires Administrator privileges and Windows.
-// Set envVarInstallerPath to the path of the Alloy installer.
-func TestWindowsService(t *testing.T) {
-	installerPath := os.Getenv(envVarInstallerPath)
+func prepareInstall(t *testing.T) (installerPath, uninstallerPath string) {
+	installerPath = os.Getenv(envVarInstallerPath)
 	if installerPath == "" {
 		t.Fatalf("%s not set; skipping Windows service integration test", envVarInstallerPath)
 	}
@@ -43,19 +40,16 @@ func TestWindowsService(t *testing.T) {
 		t.Fatalf("%s %q not found: %v", envVarInstallerPath, installerPath, err)
 	}
 
-	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
-	cleanup := os.Getenv(envVarStateful) != "true"
-	if cleanup {
-		defer uninstallAlloy(t, uninstallerPath)
-	} else {
+	uninstallerPath = filepath.Join(installDir, "uninstall.exe")
+	if os.Getenv(envVarStateful) == "true" {
 		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
+	} else {
+		t.Cleanup(func() { uninstallAlloy(t, uninstallerPath) })
 	}
 
 	// Ensure no existing Alloy install; abort unless envVarCleanIfExists is set to "true".
 	if isAlloyInstalled(t, installDir) {
-		cleanIfExists := os.Getenv(envVarCleanIfExists) == "true"
-
-		if !cleanIfExists {
+		if os.Getenv(envVarCleanIfExists) != "true" {
 			t.Fatalf("Alloy already present on the system. Uninstall manually or set %s=true to remove and continue", envVarCleanIfExists)
 		}
 
@@ -69,6 +63,15 @@ func TestWindowsService(t *testing.T) {
 		// Brief pause after cleanup before installer runs
 		time.Sleep(1 * time.Second)
 	}
+
+	return installerPath, uninstallerPath
+}
+
+// TestWindowsService runs the Alloy Windows installer, starts the Alloy service, and uninstalls.
+// Requires Administrator privileges and Windows.
+// Set envVarInstallerPath to the path of the Alloy installer.
+func TestWindowsService(t *testing.T) {
+	installerPath, uninstallerPath := prepareInstall(t)
 
 	//TODO: Test also the "/D=" option with an obscure directory like something in TMP
 	installArgs := []string{"/S", "/D=" + installDir}
@@ -112,34 +115,7 @@ func TestWindowsService(t *testing.T) {
 }
 
 func TestWindowsServiceOtelModeToggle(t *testing.T) {
-	installerPath := os.Getenv(envVarInstallerPath)
-	if installerPath == "" {
-		t.Fatalf("%s not set; skipping Windows service integration test", envVarInstallerPath)
-	}
-	if _, err := os.Stat(installerPath); err != nil {
-		t.Fatalf("%s %q not found: %v", envVarInstallerPath, installerPath, err)
-	}
-
-	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
-	cleanup := os.Getenv(envVarStateful) != "true"
-	if cleanup {
-		defer uninstallAlloy(t, uninstallerPath)
-	} else {
-		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
-	}
-
-	if isAlloyInstalled(t, installDir) {
-		cleanIfExists := os.Getenv(envVarCleanIfExists) == "true"
-		if !cleanIfExists {
-			t.Fatalf("Alloy already present on the system. Uninstall manually or set %s=true to remove and continue", envVarCleanIfExists)
-		}
-		t.Logf("Alloy already present on the system. Uninstalling...")
-		uninstallAlloy(t, uninstallerPath)
-		if isAlloyInstalled(t, installDir) {
-			t.Fatalf("Uninstall failed. Alloy is still present on the system.")
-		}
-		time.Sleep(1 * time.Second)
-	}
+	installerPath, uninstallerPath := prepareInstall(t)
 
 	// Install with the default engine, same as TestWindowsService.
 	installArgs := []string{"/S", "/D=" + installDir}

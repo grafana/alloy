@@ -47,32 +47,42 @@ func ServiceStateString(s svc.State) string {
 	}
 }
 
-// EnsureServiceRunning checks that the Alloy service exists, starts it if needed, and asserts it is running.
-func EnsureServiceRunning(c *assert.CollectT, t *testing.T, serviceName string) {
+func queryService(c *assert.CollectT, t *testing.T, serviceName string) (m *mgr.Mgr, s *mgr.Service, status svc.Status, ok bool) {
 	t.Logf("Connecting to service manager")
 	m, err := mgr.Connect()
 	if !assert.NoError(c, err, "connect to service manager") {
-		return
+		return nil, nil, svc.Status{}, false
 	}
-	defer m.Disconnect()
 	t.Logf("Connected to service manager")
 
 	t.Logf("Opening service name=%s", serviceName)
-	s, err := m.OpenService(serviceName)
-	if !assert.NoError(c, err, "Alloy service should exist after install") {
-		return
+	s, err = m.OpenService(serviceName)
+	if !assert.NoError(c, err, "Alloy service should exist") {
+		m.Disconnect()
+		return nil, nil, svc.Status{}, false
 	}
-	defer s.Close()
 	t.Logf("Opened service name=%s", serviceName)
 
 	t.Logf("Querying service status")
-	status, err := s.Query()
-	assert.NoError(c, err, "query service status")
-	if err != nil {
+	status, err = s.Query()
+	if !assert.NoError(c, err, "query service status") {
+		s.Close()
+		m.Disconnect()
+		return nil, nil, svc.Status{}, false
+	}
+	t.Logf("Service status state=%s", ServiceStateString(status.State))
+
+	return m, s, status, true
+}
+
+// EnsureServiceRunning checks that the Alloy service exists, starts it if needed, and asserts it is running.
+func EnsureServiceRunning(c *assert.CollectT, t *testing.T, serviceName string) {
+	m, s, status, ok := queryService(c, t, serviceName)
+	if !ok {
 		return
 	}
-	stateStr := ServiceStateString(status.State)
-	t.Logf("Service status state=%s", stateStr)
+	defer m.Disconnect()
+	defer s.Close()
 
 	if status.State != svc.Running {
 		if status.State != svc.StartPending {
@@ -94,30 +104,12 @@ func EnsureServiceRunning(c *assert.CollectT, t *testing.T, serviceName string) 
 // EnsureServiceStopped checks that the Alloy service exists, stops it if
 // needed, and asserts it is stopped
 func EnsureServiceStopped(c *assert.CollectT, t *testing.T, serviceName string) {
-	t.Logf("Connecting to service manager")
-	m, err := mgr.Connect()
-	if !assert.NoError(c, err, "connect to service manager") {
+	m, s, status, ok := queryService(c, t, serviceName)
+	if !ok {
 		return
 	}
 	defer m.Disconnect()
-	t.Logf("Connected to service manager")
-
-	t.Logf("Opening service name=%s", serviceName)
-	s, err := m.OpenService(serviceName)
-	if !assert.NoError(c, err, "Alloy service should exist") {
-		return
-	}
 	defer s.Close()
-	t.Logf("Opened service name=%s", serviceName)
-
-	t.Logf("Querying service status")
-	status, err := s.Query()
-	assert.NoError(c, err, "query service status")
-	if err != nil {
-		return
-	}
-	stateStr := ServiceStateString(status.State)
-	t.Logf("Service status state=%s", stateStr)
 
 	if status.State != svc.Stopped {
 		if status.State != svc.StopPending {
