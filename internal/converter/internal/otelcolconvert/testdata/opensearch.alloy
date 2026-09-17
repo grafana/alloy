@@ -1,0 +1,36 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		logs   = [otelcol.exporter.opensearch.default.input]
+		traces = [otelcol.exporter.opensearch.default.input]
+	}
+}
+
+otelcol.exporter.opensearch "default" {
+	dataset      = "kubernetes"
+	namespace    = "production"
+	logs_index   = "alloy-logs"
+	traces_index = "alloy-traces"
+	bulk_action  = "index"
+
+	client {
+		endpoint            = "http://opensearch:9200"
+		headers             = {}
+		max_idle_conns      = 100
+		idle_conn_timeout   = "1m30s"
+		force_attempt_http2 = true
+	}
+
+	mapping {
+		mode  = "ecs"
+		dedup = true
+		dedot = true
+	}
+
+	retry_on_failure {
+		initial_interval = "1s"
+	}
+}
