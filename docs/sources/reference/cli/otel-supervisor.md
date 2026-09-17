@@ -92,3 +92,31 @@ To pass different arguments to the Alloy binary, add an `agent` block to the sup
 agent:
   args: [otel, --feature-gates, +service.profilesSupport]
 ```
+
+### Add resource attributes to the supervisor's own telemetry
+
+The supervisor emits its own logs and metrics, separate from the `{{< param "OTEL_ENGINE" >}}` it
+manages. To add resource attributes to that self-telemetry, add a `telemetry.resource` block to the
+supervisor configuration file:
+
+```yaml
+telemetry:
+  resource:
+    attributes:
+      - name: service.name
+        value: my-supervisor
+```
+
+You can also enable an experimental, upstream resource detector (for example, to detect host resource
+attributes automatically) with `telemetry.resource.detection/development`:
+
+```yaml
+telemetry:
+  resource:
+    detection/development:
+      detectors:
+        - host: {}
+```
+
+This is currently only available in manual mode, through the supervisor configuration file. Simple
+mode's environment variables don't expose it.
