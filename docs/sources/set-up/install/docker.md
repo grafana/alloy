@@ -50,7 +50,8 @@ Replace the following:
 
 - _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
-You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
+Docker passes everything after the image name to the {{< param "PRODUCT_NAME" >}} binary as the `run` command and its arguments.
+You can change them as needed.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
@@ -82,7 +83,7 @@ Every release starting with version 1.1 includes BoringCrypto images:
 BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
 
-Distroless images are built from an Ubuntu root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
+Distroless images use an Ubuntu root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
 They use the same entrypoint, configuration path, and storage path as the standard image, so the `docker run` command is the same.
 
 Every release includes distroless images:
@@ -94,7 +95,7 @@ Every release includes distroless images:
 
 ## Run a Windows Docker container
 
-The Windows image is based on Windows Server 2022, so the host must be a Windows Server 2022 system or a Windows version that supports `ltsc2022` containers.
+The Windows image uses a Windows Server 2022 base image, so the host must be a Windows Server 2022 system or a Windows version that supports `ltsc2022` containers.
 
 To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a Command Prompt or PowerShell window:
 
@@ -129,7 +130,8 @@ Replace the following:
 
 - _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
-You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
+Docker passes everything after the image name to the {{< param "PRODUCT_NAME" >}} binary as the `run` command and its arguments.
+You can change them as needed.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
