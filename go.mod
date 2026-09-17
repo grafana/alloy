@@ -75,8 +75,7 @@ require (
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
-	// pinned to #k324 until Loki has a release with the new dskit NewProvider signature
-	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d
+	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d // k324 release
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
 	github.com/grafana/pyroscope/api v1.5.0
 	github.com/grafana/pyroscope/lidia v0.0.2
