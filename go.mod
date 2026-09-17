@@ -1180,3 +1180,7 @@ replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/
 
 // Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps. Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules. (auto-synced from collector/builder-config.yaml)
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+
+// Cherry-pick of https://github.com/prometheus/prometheus/pull/19218 so Remote Write v2 metadata stops shrinking the remote_write shard count. (auto-synced from collector/builder-config.yaml)
+// TODO - tracks the prometheus-314-metadata-shard-calculator-patch branch of the Grafana fork; drop at the Prometheus 3.15 bump, which has the fix upstream. (auto-synced from collector/builder-config.yaml)
+replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
