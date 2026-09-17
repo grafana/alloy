@@ -49,7 +49,7 @@ Replace the following:
 
 * _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
-You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
+You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
@@ -80,6 +80,9 @@ Every release starting with version 1.1 includes BoringCrypto images:
 {{< admonition type="note" >}}
 BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
+
+Distroless images are built from an Ubuntu root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
+They use the same entrypoint, configuration path, and storage path as the standard image, so the `docker run` command is the same.
 
 Every release includes distroless images:
 
@@ -123,7 +126,7 @@ Replace the following:
 
 * _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
-You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
+You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
@@ -132,6 +135,11 @@ If you don't pass this argument, the [debugging UI][debug] won't be available ou
 
 [debug]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
+
+Every release includes Windows images:
+
+* The `grafana/alloy:windowsservercore-ltsc2022` tag always points to the most recent stable release.
+* The `grafana/alloy:<VERSION>-windowsservercore-ltsc2022` tag pins a specific version.
 
 ## Verify
 
