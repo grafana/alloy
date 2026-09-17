@@ -74,12 +74,20 @@ func TestResolveEngineArgs(t *testing.T) {
 			want:              []string{"otel", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`},
 		},
 		{
-			name:              "otel mode, OTelArguments applies before --config",
+			name:              "otel mode, OTelArguments applies after --config",
 			otelMode:          "1",
 			otelConfigDefault: `C:\ProgramData\GrafanaLabs\Alloy\config.yaml`,
 			otelArguments:     []string{"--set=processors.batch.timeout=2s"},
 			defaultEngineArgs: defaultArgs,
-			want:              []string{"otel", "--set=processors.batch.timeout=2s", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`},
+			want:              []string{"otel", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`, "--set=processors.batch.timeout=2s"},
+		},
+		{
+			name:              "otel mode, a --config in OTelArguments lands after the installer's default --config",
+			otelMode:          "1",
+			otelConfigDefault: `C:\ProgramData\GrafanaLabs\Alloy\config.yaml`,
+			otelArguments:     []string{"--config=C:\\custom\\override.yaml"},
+			defaultEngineArgs: defaultArgs,
+			want:              []string{"otel", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`, `--config=C:\custom\override.yaml`},
 		},
 	}
 
