@@ -65,7 +65,7 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 BoringCrypto support is in _Public preview_ and is only available for Linux containers on AMD64 and ARM64.
 {{< /admonition >}}
 
-BoringCrypto images are published with every release starting with version 1.1:
+Every release starting with version 1.1 includes BoringCrypto images:
 
 * The `grafana/alloy:boringcrypto` tag always points to the most recent stable release.
 * The `grafana/alloy:<VERSION>-boringcrypto` tag pins a specific version, for example `grafana/alloy:v1.1.0-boringcrypto`.
@@ -81,7 +81,7 @@ BoringCrypto images are published with every release starting with version 1.1:
 BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
 
-Distroless images are published with every release:
+Every release includes distroless images:
 
 * The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
 * The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
@@ -90,16 +90,34 @@ Distroless images are published with every release:
 
 ## Run a Windows Docker container
 
-To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a terminal window:
+To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a Command Prompt or PowerShell window:
 
-```shell
-docker run \
-  -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" \
-  -p 12345:12345 \
-  grafana/alloy:windowsservercore-ltsc2022 \
-    run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" \
+{{< tabs >}}
+{{< tab-content name="Command Prompt" >}}
+
+```cmd
+docker run ^
+  -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" ^
+  -p 12345:12345 ^
+  grafana/alloy:windowsservercore-ltsc2022 ^
+    run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" ^
     "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
 ```
+
+{{< /tab-content >}}
+{{< tab-content name="PowerShell" >}}
+
+```powershell
+docker run `
+  -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" `
+  -p 12345:12345 `
+  grafana/alloy:windowsservercore-ltsc2022 `
+    run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" `
+    "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
+```
+
+{{< /tab-content >}}
+{{< /tabs >}}
 
 Replace the following:
 
