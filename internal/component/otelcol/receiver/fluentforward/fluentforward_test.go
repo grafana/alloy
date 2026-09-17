@@ -36,8 +36,8 @@ func TestConfigDefault(t *testing.T) {
 
 	fCfg, err := args.Convert()
 	require.NoError(t, err)
-	cfg := fluentforwardreceiver.NewFactory().CreateDefaultConfig()
-	assert.Equal(t, cfg, fCfg)
+	// Literal, not factory-derived, so a contrib bump that adds a default fails here.
+	assert.Equal(t, &fluentforwardreceiver.Config{}, fCfg)
 
 	assert.Error(t, args.Validate())
 }

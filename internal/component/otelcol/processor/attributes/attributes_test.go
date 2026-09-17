@@ -3075,3 +3075,13 @@ func Test_MetricNames(t *testing.T) {
 
 	testRunProcessor(t, cfg, processortest.NewMetricSignal(inputMetric, expectedOutputMetric))
 }
+
+func TestDefaultArguments(t *testing.T) {
+	var args attributes.Arguments
+	args.SetToDefault()
+
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	// Literal, not factory-derived, so a contrib bump that adds a default fails here.
+	require.Equal(t, &attributesprocessor.Config{}, cfg)
+}

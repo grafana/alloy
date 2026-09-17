@@ -184,3 +184,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Equal(t, otelArgs.HeadersConfig[0].Action, tc.expectedAction)
 	}
 }
+
+func TestDefaultArguments(t *testing.T) {
+	var args headers.Arguments
+	args.SetToDefault()
+
+	client, err := args.ConvertClient()
+	require.NoError(t, err)
+	// Literal, not factory-derived, so a contrib bump that adds a default fails here.
+	require.Equal(t, &headerssetterextension.Config{}, client)
+}
