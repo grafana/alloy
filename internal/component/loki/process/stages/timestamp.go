@@ -7,10 +7,11 @@ import (
 	"log/slog"
 	"reflect"
 	"slices"
+	"sync"
 	"time"
 	_ "time/tzdata" // embed timezone data
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru/v2/simplelru"
 )
 
 var (
@@ -108,6 +109,10 @@ func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 	return convertDateLayout(cfg.Format, loc), nil
 }
 
+func timestampFudgeEnabled(cfg TimestampConfig) bool {
+	return cfg.ActionOnFailure == timestampActionOnFailureFudge || cfg.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge
+}
+
 var (
 	_ Stage          = (*timestampStage)(nil)
 	_ entryProcessor = (*timestampStage)(nil)
@@ -120,9 +125,9 @@ func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage,
 		return nil, err
 	}
 
-	var lastKnownTimestamps *lru.Cache
-	if config.ActionOnFailure == timestampActionOnFailureFudge || config.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge {
-		lastKnownTimestamps, err = lru.New(maxLastKnownTimestampsCacheSize)
+	var lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
+	if timestampFudgeEnabled(config) {
+		lastKnownTimestamps, err = simplelru.NewLRU[string, timestampCacheEntry](maxLastKnownTimestampsCacheSize, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -152,9 +157,10 @@ type timestampStage struct {
 	logger *slog.Logger
 	parser parser
 
-	// Stores the last known timestamp for a given "stream id" (guessed, since at this stage
-	// there's no reliable way to know it).
-	lastKnownTimestamps *lru.Cache
+	// mut guards lastKnownTimestamps.
+	mut sync.Mutex
+	// lastKnownTimestamps holds the last timestamp seen per label set.
+	lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
 }
 
 // Run implements Stage.
@@ -180,52 +186,57 @@ func (ts *timestampStage) processEntry(e Entry) Entry {
 		return ts.processActionOnFailure(e)
 	}
 
-	// Update the log entry timestamp with the parsed one
-	e.Timestamp = *parsedTs
-
-	// When action_on_duplicate_timestamp is fudge, ensure multiple messages with the
-	// exact same parsed timestamp get distinct timestamps (lastKnown+1ns each) so
-	// message order is preserved in Loki and Grafana.
-	labelsStr := e.Labels.String()
-	if ts.config.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge && ts.lastKnownTimestamps != nil {
-		if lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr); ok {
-			entry := lastTimestamp.(timestampCacheEntry)
-			if parsedTs.Equal(entry.lastParsed) {
-				e.Timestamp = entry.lastAdjusted.Add(1 * time.Nanosecond)
-			}
-		}
-	}
-	if (ts.config.ActionOnFailure == timestampActionOnFailureFudge || ts.config.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge) && ts.lastKnownTimestamps != nil {
-		ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: *parsedTs, lastAdjusted: e.Timestamp})
-	}
-
-	return e
+	return ts.processActionOnSuccess(e, parsedTs)
 }
 
-func (ts *timestampStage) parseTimestampFromSource(extracted map[string]any) (*time.Time, error) {
+func (ts *timestampStage) parseTimestampFromSource(extracted map[string]any) (time.Time, error) {
+	var zero time.Time
+
 	// Ensure the extracted data contains the timestamp source.
 	v, ok := extracted[ts.config.Source]
 	if !ok {
 		ts.logger.Debug(errTimestampSourceMissing.Error())
-		return nil, errTimestampSourceMissing
+		return zero, errTimestampSourceMissing
 	}
 
 	// Convert the timestamp source to string (if it's not a string yet).
 	s, err := getString(v)
 	if err != nil {
 		ts.logger.Debug(errTimestampConversionFailed.Error(), "err", err, "type", reflect.TypeOf(v))
-		return nil, errTimestampConversionFailed
+		return zero, errTimestampConversionFailed
 	}
 
 	// Parse the timestamp source according to the configured format
 	parsedTs, err := ts.parser(s)
 	if err != nil {
 		ts.logger.Debug(errTimestampParsingFailed.Error(), "err", err, "format", ts.config.Format, "value", s)
-
-		return nil, errTimestampParsingFailed
+		return zero, errTimestampParsingFailed
 	}
 
-	return &parsedTs, nil
+	return parsedTs, nil
+}
+
+func (ts *timestampStage) processActionOnSuccess(e Entry, parsed time.Time) Entry {
+	e.Timestamp = parsed
+	if !timestampFudgeEnabled(ts.config) {
+		return e
+	}
+
+	labelsStr := e.Labels.String()
+	ts.mut.Lock()
+	defer ts.mut.Unlock()
+
+	// When action_on_duplicate_timestamp is fudge, ensure multiple messages with the
+	// exact same parsed timestamp get distinct timestamps (lastKnown+1ns each) so
+	// message order is preserved in Loki and Grafana.
+	if ts.config.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge {
+		if lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr); ok && parsed.Equal(lastTimestamp.lastParsed) {
+			e.Timestamp = lastTimestamp.lastAdjusted.Add(time.Nanosecond)
+		}
+	}
+	ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: parsed, lastAdjusted: e.Timestamp})
+
+	return e
 }
 
 func (ts *timestampStage) processActionOnFailure(e Entry) Entry {
@@ -241,6 +252,8 @@ func (ts *timestampStage) processActionOnFailure(e Entry) Entry {
 
 func (ts *timestampStage) processActionOnFailureFudge(e Entry) Entry {
 	labelsStr := e.Labels.String()
+	ts.mut.Lock()
+	defer ts.mut.Unlock()
 	lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr)
 
 	// If the last known timestamp is unknown (i.e. has not been successfully parsed yet)
@@ -250,10 +263,9 @@ func (ts *timestampStage) processActionOnFailureFudge(e Entry) Entry {
 	}
 
 	// Fudge the timestamp based on the last adjusted (output) value
-	entry := lastTimestamp.(timestampCacheEntry)
-	e.Timestamp = entry.lastAdjusted.Add(1 * time.Nanosecond)
+	e.Timestamp = lastTimestamp.lastAdjusted.Add(time.Nanosecond)
 
 	// Store the fudged timestamp, so that a subsequent fudged timestamp will be 1ns after it
-	ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: entry.lastParsed, lastAdjusted: e.Timestamp})
+	ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: lastTimestamp.lastParsed, lastAdjusted: e.Timestamp})
 	return e
 }
