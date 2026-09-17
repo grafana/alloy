@@ -86,7 +86,11 @@ type Component struct {
 	mut            sync.RWMutex
 	externalLabels model.LabelSet
 
-	wal      wal.WAL
+	// wal is opened when it is first enabled and reused across updates.
+	// It will always be nil when disabled.
+	wal wal.WAL
+	// consumer is set by the first successful Update and afterwards only replaced by
+	// another successfully built consumer, never cleared.
 	consumer client.Consumer
 }
 
