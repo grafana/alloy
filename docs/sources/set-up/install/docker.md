@@ -85,7 +85,7 @@ BoringCrypto variants of distroless images are only available on AMD64 and ARM64
 
 Distroless images are published with every release:
 
-* The current distroless image is published as `grafana/alloy:latest-distroless`.
+* The latest distroless image is published as `grafana/alloy:latest-distroless`.
 * A specific version of the distroless image is published as `grafana/alloy:<VERSION>-distroless`.
 * The current BoringCrypto distroless image is published as `grafana/alloy:boringcrypto-distroless`.
 * A specific version of the BoringCrypto distroless image is published as `grafana/alloy:<VERSION>-boringcrypto-distroless`.
