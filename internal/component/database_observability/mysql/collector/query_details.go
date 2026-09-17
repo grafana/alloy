@@ -41,6 +41,7 @@ type QueryDetailsArguments struct {
 	StatementsLimit int
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
+	TableRegistry   *TableRegistry
 
 	Logger *slog.Logger
 }
@@ -53,6 +54,7 @@ type QueryDetails struct {
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
+	tableRegistry   *TableRegistry
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -70,6 +72,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
+		tableRegistry:   args.TableRegistry,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -155,10 +158,16 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		)
 
 		for _, table := range tables {
+			validated := false
+			resolvedTable := table
+			if c.tableRegistry != nil {
+				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
+			}
+
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
+				fmt.Sprintf(`schema="%s" digest="%s" table="%s" validated="%t"`, schema, digest, resolvedTable, validated),
 			)
 		}
 	}

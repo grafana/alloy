@@ -263,6 +263,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -288,6 +290,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -313,6 +317,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -339,6 +345,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -365,6 +373,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -391,6 +401,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
+			collector.TableStatsCollector:     false,
+			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 }
@@ -1002,6 +1014,8 @@ func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, err
 func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
+
+func (f *fakeCluster) Enabled() bool { return true }
 
 var (
 	clusterKeyDB1 = shard.StringKey("tcp(127.0.0.1:3306)/db1")

@@ -2008,6 +2008,34 @@ func Test_parseSchemaQualifiedIfAny(t *testing.T) {
 	}
 }
 
+func Test_TableRegistry_SchemasForDatabase(t *testing.T) {
+	t.Run("returns all schemas for a known database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "catalog", tableName: "products"},
+			{database: "mydb", schema: "catalog", tableName: "categories"},
+		})
+
+		schemas := tr.SchemasForDatabase("mydb")
+		assert.ElementsMatch(t, []string{"public", "catalog"}, schemas)
+	})
+
+	t.Run("returns nil for an unknown database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.Nil(t, tr.SchemasForDatabase("otherdb"))
+	})
+
+	t.Run("returns nil for an empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		assert.Nil(t, tr.SchemasForDatabase("mydb"))
+	})
+}
+
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 

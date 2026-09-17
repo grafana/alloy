@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -42,11 +44,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Enable:   true,
 					Interval: 1 * time.Second,
 				},
-				MinFetchSize:           1,
-				MaxFetchSize:           1048576,
-				MaxPartitionFetchSize:  1048576,
-				MaxFetchWait:           250 * time.Millisecond,
-				GroupRebalanceStrategy: "range",
+				MinFetchSize:             1,
+				MaxFetchSize:             1048576,
+				MaxPartitionFetchSize:    1048576,
+				MaxFetchWait:             250 * time.Millisecond,
+				GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"range"},
 			},
 			Logs: kafkareceiver.TopicEncodingConfig{
 				Topics:   []string{"otlp_logs"},
@@ -189,11 +191,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						Enable:   true,
 						Interval: 12 * time.Second,
 					},
-					MinFetchSize:           2,
-					MaxFetchSize:           20,
-					MaxPartitionFetchSize:  30000,
-					MaxFetchWait:           2 * time.Second,
-					GroupRebalanceStrategy: "roundrobin",
+					MinFetchSize:             2,
+					MaxFetchSize:             20,
+					MaxPartitionFetchSize:    30000,
+					MaxFetchWait:             2 * time.Second,
+					GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"roundrobin"},
 				},
 				MessageMarking: kafkareceiver.MessageMarking{
 					After:   true,
@@ -253,22 +255,22 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]any{
-				"brokers":                  []string{"10.10.10.10:9092"},
-				"protocol_version":         "2.0.0",
-				"session_timeout":          10 * time.Second,
-				"heartbeat_interval":       3 * time.Second,
-				"encoding":                 "",
-				"group_id":                 "otel-collector",
-				"client_id":                "otel-collector",
-				"initial_offset":           "latest",
-				"min_fetch_size":           1,
-				"max_fetch_size":           1048576,
-				"max_partition_fetch_size": 1048576,
-				"max_fetch_wait":           250 * time.Millisecond,
-				"group_rebalance_strategy": "range",
-				"rack_id":                  "",
-				"use_leader_epoch":         true,
-				"conn_idle_timeout":        9 * time.Minute,
+				"brokers":                    []string{"10.10.10.10:9092"},
+				"protocol_version":           "2.0.0",
+				"session_timeout":            10 * time.Second,
+				"heartbeat_interval":         3 * time.Second,
+				"encoding":                   "",
+				"group_id":                   "otel-collector",
+				"client_id":                  "otel-collector",
+				"initial_offset":             "latest",
+				"min_fetch_size":             1,
+				"max_fetch_size":             1048576,
+				"max_partition_fetch_size":   1048576,
+				"max_fetch_wait":             250 * time.Millisecond,
+				"group_rebalance_strategies": []string{"range"},
+				"rack_id":                    "",
+				"use_leader_epoch":           true,
+				"conn_idle_timeout":          9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -306,9 +308,10 @@ func TestArguments_Auth(t *testing.T) {
 					MaxElapsedTime:      0,
 				},
 				"auth": map[string]any{
-					"plain_text": map[string]any{
-						"username": "test_username",
-						"password": "test_password",
+					"sasl": map[string]any{
+						"username":  "test_username",
+						"password":  "test_password",
+						"mechanism": "PLAIN",
 					},
 				},
 			},
@@ -334,22 +337,22 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]any{
-				"brokers":                  []string{"10.10.10.10:9092"},
-				"protocol_version":         "2.0.0",
-				"session_timeout":          10 * time.Second,
-				"heartbeat_interval":       3 * time.Second,
-				"encoding":                 "",
-				"group_id":                 "otel-collector",
-				"client_id":                "otel-collector",
-				"initial_offset":           "latest",
-				"min_fetch_size":           1,
-				"max_fetch_size":           1048576,
-				"max_partition_fetch_size": 1048576,
-				"max_fetch_wait":           250 * time.Millisecond,
-				"group_rebalance_strategy": "range",
-				"rack_id":                  "",
-				"use_leader_epoch":         true,
-				"conn_idle_timeout":        9 * time.Minute,
+				"brokers":                    []string{"10.10.10.10:9092"},
+				"protocol_version":           "2.0.0",
+				"session_timeout":            10 * time.Second,
+				"heartbeat_interval":         3 * time.Second,
+				"encoding":                   "",
+				"group_id":                   "otel-collector",
+				"client_id":                  "otel-collector",
+				"initial_offset":             "latest",
+				"min_fetch_size":             1,
+				"max_fetch_size":             1048576,
+				"max_partition_fetch_size":   1048576,
+				"max_fetch_wait":             250 * time.Millisecond,
+				"group_rebalance_strategies": []string{"range"},
+				"rack_id":                    "",
+				"use_leader_epoch":           true,
+				"conn_idle_timeout":          9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -421,22 +424,22 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]any{
-				"brokers":                  []string{"10.10.10.10:9092"},
-				"protocol_version":         "2.0.0",
-				"session_timeout":          10 * time.Second,
-				"heartbeat_interval":       3 * time.Second,
-				"encoding":                 "",
-				"group_id":                 "otel-collector",
-				"client_id":                "otel-collector",
-				"initial_offset":           "latest",
-				"min_fetch_size":           1,
-				"max_fetch_size":           1048576,
-				"max_partition_fetch_size": 1048576,
-				"max_fetch_wait":           250 * time.Millisecond,
-				"group_rebalance_strategy": "range",
-				"rack_id":                  "",
-				"use_leader_epoch":         true,
-				"conn_idle_timeout":        9 * time.Minute,
+				"brokers":                    []string{"10.10.10.10:9092"},
+				"protocol_version":           "2.0.0",
+				"session_timeout":            10 * time.Second,
+				"heartbeat_interval":         3 * time.Second,
+				"encoding":                   "",
+				"group_id":                   "otel-collector",
+				"client_id":                  "otel-collector",
+				"initial_offset":             "latest",
+				"min_fetch_size":             1,
+				"max_fetch_size":             1048576,
+				"max_partition_fetch_size":   1048576,
+				"max_fetch_wait":             250 * time.Millisecond,
+				"group_rebalance_strategies": []string{"range"},
+				"rack_id":                    "",
+				"use_leader_epoch":           true,
+				"conn_idle_timeout":          9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -509,22 +512,22 @@ func TestArguments_Auth(t *testing.T) {
 				output {}
 			`,
 			expected: map[string]any{
-				"brokers":                  []string{"10.10.10.10:9092"},
-				"protocol_version":         "2.0.0",
-				"session_timeout":          10 * time.Second,
-				"heartbeat_interval":       3 * time.Second,
-				"encoding":                 "",
-				"group_id":                 "otel-collector",
-				"client_id":                "otel-collector",
-				"initial_offset":           "latest",
-				"min_fetch_size":           1,
-				"max_fetch_size":           1048576,
-				"max_partition_fetch_size": 1048576,
-				"max_fetch_wait":           250 * time.Millisecond,
-				"group_rebalance_strategy": "range",
-				"rack_id":                  "",
-				"use_leader_epoch":         true,
-				"conn_idle_timeout":        9 * time.Minute,
+				"brokers":                    []string{"10.10.10.10:9092"},
+				"protocol_version":           "2.0.0",
+				"session_timeout":            10 * time.Second,
+				"heartbeat_interval":         3 * time.Second,
+				"encoding":                   "",
+				"group_id":                   "otel-collector",
+				"client_id":                  "otel-collector",
+				"initial_offset":             "latest",
+				"min_fetch_size":             1,
+				"max_fetch_size":             1048576,
+				"max_partition_fetch_size":   1048576,
+				"max_fetch_wait":             250 * time.Millisecond,
+				"group_rebalance_strategies": []string{"range"},
+				"rack_id":                    "",
+				"use_leader_epoch":           true,
+				"conn_idle_timeout":          9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -716,14 +719,15 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 		return converted.(*kafkareceiver.Config)
 	}
 
-	t.Run("defaults to the singular strategy", func(t *testing.T) {
+	t.Run("defaults to the plural form", func(t *testing.T) {
 		otelObj := convert(t, base)
 
-		require.Equal(t, configkafka.GroupRebalanceStrategy("range"), otelObj.ConsumerConfig.GroupRebalanceStrategy)
-		require.Empty(t, otelObj.ConsumerConfig.GroupRebalanceStrategies)
+		// Upstream removed the singular GroupRebalanceStrategy field; the default is always
+		// expressed through the plural GroupRebalanceStrategies.
+		require.Equal(t, []configkafka.GroupRebalanceStrategy{"range"}, otelObj.ConsumerConfig.GroupRebalanceStrategies)
 	})
 
-	t.Run("the plural form replaces the singular", func(t *testing.T) {
+	t.Run("the plural form is used when set", func(t *testing.T) {
 		otelObj := convert(t, `
 			brokers                    = ["broker:9092"]
 			protocol_version           = "2.0.0"
@@ -733,8 +737,6 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 		`)
 
 		require.Equal(t, []configkafka.GroupRebalanceStrategy{"cooperative-sticky", "range"}, otelObj.ConsumerConfig.GroupRebalanceStrategies)
-		// Upstream rejects both forms being set, so the singular must be cleared.
-		require.Empty(t, otelObj.ConsumerConfig.GroupRebalanceStrategy)
 	})
 
 	t.Run("setting both forms is rejected", func(t *testing.T) {
@@ -762,5 +764,77 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 		`), &args)
 
 		require.ErrorContains(t, err, "must be one of")
+	})
+}
+
+func TestArguments_SASLAndKerberosAreMutuallyExclusive(t *testing.T) {
+	tests := []struct {
+		testName string
+		cfg      string
+	}{
+		{
+			testName: "sasl and kerberos",
+			cfg: `
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+
+				authentication {
+					sasl {
+						username  = "user"
+						password  = "pass"
+						mechanism = "PLAIN"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+
+				output {}
+			`,
+		},
+		{
+			// plaintext also converts to upstream's sasl field (see
+			// KafkaAuthenticationArguments.Convert), so it's rejected too.
+			testName: "plaintext and kerberos",
+			cfg: `
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+
+				authentication {
+					plaintext {
+						username = "user"
+						password = "pass"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+
+				output {}
+			`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+
+			require.ErrorContains(t, err, "mutually exclusive")
+		})
+	}
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
+
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
+
+	require.NotPanics(t, func() {
+		args.LogDeprecations(nil)
 	})
 }

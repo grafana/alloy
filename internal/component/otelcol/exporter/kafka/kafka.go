@@ -2,6 +2,7 @@
 package kafka
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -65,7 +66,7 @@ func GetSignalType(opts component.Options, args component.Arguments) exporter.Ty
 type Arguments struct {
 	ProtocolVersion                      string        `alloy:"protocol_version,attr"`
 	Brokers                              []string      `alloy:"brokers,attr,optional"`
-	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 	ClientID                             string        `alloy:"client_id,attr,optional"`
 	Topic                                string        `alloy:"topic,attr,optional"` // Deprecated
 	TopicFromAttribute                   string        `alloy:"topic_from_attribute,attr,optional"`
@@ -277,6 +278,19 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	args.Authentication.LogDeprecations(logger)
+}
+
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	otelCfg, err := args.Convert()
@@ -299,7 +313,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	result.ClientConfig.Brokers = args.Brokers
-	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
 	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
 	result.ClientConfig.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute

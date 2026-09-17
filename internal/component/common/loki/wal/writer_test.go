@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -19,47 +22,135 @@ import (
 	autil "github.com/grafana/alloy/internal/util"
 )
 
-func TestWriter_EntriesAreWrittenToWAL(t *testing.T) {
-	dir := t.TempDir()
+func TestWriter(t *testing.T) {
+	t.Run("entries are written to wal", func(t *testing.T) {
+		var (
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
+		)
+
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			MaxSegmentAge: time.Minute,
+		}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
+		require.NoError(t, err)
+		defer writer.Stop()
+
+		// write entries to wal and sync
+		writer.Start()
+
+		var testLabels = model.LabelSet{
+			"testing": "log",
+		}
+		var lines = []string{
+			"some line",
+			"some other line",
+			"some other other line",
+		}
+
+		for _, line := range lines {
+			require.NoError(t, writer.WriteEntry(
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      line,
+					},
+				},
+			))
+		}
+
+		// accessing the WAL inside, just for testing!
+		require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+
+		// assert over WAL entries
+		readEntries := eventuallyReadWAL(t, len(lines), dir)
+		require.NotNil(t, readEntries)
+		require.Equal(t, testLabels, readEntries[0].Labels)
+	})
+
+	t.Run("stopped writer returns error", func(t *testing.T) {
+		var (
+			dir = t.TempDir()
+			reg = prometheus.NewRegistry()
+		)
+
+		writer, err := NewWriter(Config{
+			Dir:           dir,
+			MaxSegmentAge: time.Minute,
+		}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
+
+		require.NoError(t, err)
+		writer.Start()
+
+		require.NoError(t, writer.WriteEntry(loki.Entry{
+			Labels: model.LabelSet{"key": "value"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "lin",
+			},
+		}))
+
+		writer.Stop()
+
+		require.ErrorIs(t, writer.WriteEntry(loki.Entry{
+			Labels: model.LabelSet{"key": "value"},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "lin",
+			},
+		}), loki.ErrConsumerStopped)
+	})
+}
+
+func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
+	var (
+		dir = t.TempDir()
+		reg = prometheus.NewRegistry()
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	defer func() {
-		writer.Stop()
-	}()
-	// write entries to wal and sync
-	writer.Start(time.Minute)
 
-	var testLabels = model.LabelSet{
-		"testing": "log",
-	}
-	var lines = []string{
-		"some line",
-		"some other line",
-		"some other other line",
-	}
+	writer.Start()
+	entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "line"})
+	writer.WriteEntry(entry)
 
-	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
-			},
-		}
-	}
+	expected := fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, entry.Timestamp.Unix())
 
-	// accessing the WAL inside, just for testing!
-	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
 
-	// assert over WAL entries
-	readEntries := eventuallyReadWAL(t, len(lines), dir)
-	require.NotNil(t, readEntries)
-	require.Equal(t, testLabels, readEntries[0].Labels)
+	writer.Stop()
+
+	writer, err = NewWriter(Config{
+		Dir:           dir,
+		MaxSegmentAge: time.Minute,
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
+	require.NoError(t, err)
+	writer.Start()
+	defer writer.Stop()
+
+	newEntry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now().Add(1 * time.Second), Line: "line"})
+	writer.WriteEntry(newEntry)
+
+	expected = fmt.Sprintf(`
+	# HELP loki_write_wal_writer_last_written_timestamp Latest timestamp that was written to the WAL
+	# TYPE loki_write_wal_writer_last_written_timestamp gauge
+	loki_write_wal_writer_last_written_timestamp %d
+	`, newEntry.Timestamp.Unix())
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.NoError(c, testutil.GatherAndCompare(reg, strings.NewReader(expected), "loki_write_wal_writer_last_written_timestamp"))
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 type notifySegmentsCleanedFunc func(num int)
@@ -72,23 +163,21 @@ func (n notifySegmentsCleanedFunc) SeriesReset(segmentNum int) {
 }
 
 func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	subscriber1 := []int{}
-	subscriber2 := []int{}
+	var (
+		dir           = t.TempDir()
+		reg           = prometheus.NewRegistry()
+		maxSegmentAge = time.Second * 2
+		subscriber1   = []int{}
+		subscriber2   = []int{}
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	writer.Start(maxSegmentAge)
-	defer func() {
-		writer.Stop()
-	}()
+	defer writer.Stop()
+	writer.Start()
 
 	notificationMutex := sync.Mutex{}
 	// add writer events subscriber. Add multiple to test fanout
@@ -114,13 +203,15 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	}
 
 	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
+		require.NoError(t, writer.WriteEntry(
+			loki.Entry{
+				Labels: testLabels,
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      line,
+				},
 			},
-		}
+		))
 	}
 
 	// accessing the WAL inside, just for testing!
@@ -166,19 +257,19 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 }
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
-	dir := t.TempDir()
-
-	maxSegmentAge := time.Second * 2
-
-	segmentsReclaimedNotificationsReceived := []int{}
+	var (
+		dir                                    = t.TempDir()
+		reg                                    = prometheus.NewRegistry()
+		maxSegmentAge                          = 2 * time.Second
+		segmentsReclaimedNotificationsReceived = []int{}
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: maxSegmentAge,
-	}, autil.TestAlloyLogger(t).Slog(), prometheus.NewRegistry())
+	}, autil.TestAlloyLogger(t).Slog(), reg, NewWriterMetrics(reg))
 	require.NoError(t, err)
-	writer.Start(maxSegmentAge)
+	writer.Start()
 	defer func() {
 		writer.Stop()
 	}()
@@ -197,13 +288,15 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	}
 
 	for _, line := range lines {
-		writer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      line,
+		require.NoError(t, writer.WriteEntry(
+			loki.Entry{
+				Labels: testLabels,
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      line,
+				},
 			},
-		}
+		))
 	}
 
 	// accessing the WAL inside, just for testing!
@@ -342,28 +435,32 @@ func BenchmarkWriter_WriteEntries(b *testing.B) {
 }
 
 func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
-	dir := b.TempDir()
+	var (
+		dir = b.TempDir()
+		reg = prometheus.NewRegistry()
+	)
 
 	writer, err := NewWriter(Config{
 		Dir:           dir,
-		Enabled:       true,
 		MaxSegmentAge: time.Minute,
-	}, logging.NewSlogNop(), prometheus.NewRegistry())
+	}, logging.NewSlogNop(), reg, NewWriterMetrics(reg))
 	require.NoError(b, err)
-	writer.Start(time.Minute)
+	writer.Start()
 	defer func() {
 		writer.Stop()
 	}()
 
 	for i := 0; i < lines; i++ {
-		writer.Chan() <- loki.Entry{
-			Labels: model.LabelSet{
-				"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
+		require.NoError(b, writer.WriteEntry(
+			loki.Entry{
+				Labels: model.LabelSet{
+					"someLabel": model.LabelValue(fmt.Sprint(i % labelSetCount)),
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      fmt.Sprintf("some line being written %d", i),
+				},
 			},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("some line being written %d", i),
-			},
-		}
+		))
 	}
 }
