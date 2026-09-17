@@ -163,12 +163,13 @@ func (c *WALConsumer) ConsumeEntry(_ context.Context, entry loki.Entry) error {
 	return c.writer.WriteEntry(entry)
 }
 
+// Stop stops the consumer without draining the WAL.
 func (c *WALConsumer) Stop() {
 	c.stop(false)
 }
 
-// StopAndDrain will stop the consumer, its WalWriter, Write-Ahead Log watchers,
-// and endpoints accordingly. It attempt to drain the WAL completely.
+// StopAndDrain stops the writer first so nothing new enters the WAL, then drains
+// what is left through the watchers and endpoints before stopping them.
 func (c *WALConsumer) StopAndDrain() {
 	c.stop(true)
 }
@@ -178,16 +179,14 @@ func (c *WALConsumer) stop(drain bool) {
 
 	var stopWG sync.WaitGroup
 
-	// Depending on whether drain is enabled, the maximum time stopping a watcher and it's queue can take is
-	// the drain time of the watcher + drain time queue. To minimize this, and since we keep a separate WAL for each
-	// endpoint config, each (watcher, queue) pair is stopped concurrently.
+	// Stopping a pair costs up to the watcher's drain timeout plus the queue's, so pairs
+	// are stopped concurrently to pay that once rather than once per endpoint.
 	for _, pair := range c.pairs {
 		stopWG.Go(func() {
 			pair.stop(drain)
 		})
 	}
 
-	// wait for all pairs to be stopped
 	stopWG.Wait()
 }
 
