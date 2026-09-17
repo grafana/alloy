@@ -453,9 +453,32 @@ func (f *fanOutClient) Appender() pyroscope.Appender {
 
 // Append implements the Appender interface.
 func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []*pyroscope.RawSample) error {
+	return f.AppendBatch(ctx, []pyroscope.RawProfileSeries{{Labels: lbs, Samples: samples}})
+}
+
+func (f *fanOutClient) AppendBatch(ctx context.Context, series []pyroscope.RawProfileSeries) error {
+	if len(series) == 0 {
+		return nil
+	}
+	protoSeries := make([]*pushv1.RawProfileSeries, 0, len(series))
+	for _, s := range series {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		converted, err := f.profileSeries(s.Labels, s.Samples)
+		if err != nil {
+			return err
+		}
+		protoSeries = append(protoSeries, converted)
+	}
+	_, err := f.Push(ctx, connect.NewRequest(&pushv1.PushRequest{Series: protoSeries}))
+	return err
+}
+
+func (f *fanOutClient) profileSeries(lbs labels.Labels, samples []*pyroscope.RawSample) (*pushv1.RawProfileSeries, error) {
 	// Validate labels first
 	if err := validateLabels(lbs); err != nil {
-		return fmt.Errorf("invalid labels in profile: %w", err)
+		return nil, fmt.Errorf("invalid labels in profile: %w", err)
 	}
 
 	// todo(ctovena): we should probably pool the label pair arrays and label builder to avoid allocs.
@@ -490,13 +513,7 @@ func (f *fanOutClient) Append(ctx context.Context, lbs labels.Labels, samples []
 			RawProfile: sample.RawProfile,
 		})
 	}
-	// push to all clients
-	_, err := f.Push(ctx, connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
-			{Labels: protoLabels, Samples: protoSamples},
-		},
-	}))
-	return err
+	return &pushv1.RawProfileSeries{Labels: protoLabels, Samples: protoSamples}, nil
 }
 
 type PyroscopeWriteError struct {

@@ -11,6 +11,7 @@ import (
 var _ Appendable = AppenderMock{}
 
 type AppenderMock struct {
+	AppendBatchFunc      func(context.Context, []RawProfileSeries) error
 	AppendIngestFunc     func(ctx context.Context, profile *IncomingProfile) error
 	AppendFunc           func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 	DebugInfoClientsFunc func() []*debuginfoclient.Client
@@ -52,4 +53,12 @@ func AppendableIngestFunc(f func(ctx context.Context, profile *IncomingProfile) 
 	return AppenderMock{
 		AppendIngestFunc: f,
 	}
+}
+
+func (a AppenderMock) AppendBatch(ctx context.Context, series []RawProfileSeries) error {
+	if a.AppendBatchFunc != nil {
+		return a.AppendBatchFunc(ctx, series)
+	}
+	// Hide the optional batch interface to exercise the compatibility path.
+	return AppendBatch(ctx, struct{ Appender }{a}, series)
 }
