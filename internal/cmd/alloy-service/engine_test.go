@@ -3,14 +3,14 @@ package main
 import "testing"
 
 func TestIsOtelMode(t *testing.T) {
-	truthy := []string{"1", "true", "yes", "on"}
+	truthy := []string{"1", "true", "yes", "on", "TRUE", "Yes", "ON"}
 	for _, v := range truthy {
 		if !isOtelMode(v) {
 			t.Errorf("isOtelMode(%q) = false, want true", v)
 		}
 	}
 
-	notTruthy := []string{"", "0", "false", "no", "off", "maybe", "TRUE", "Yes", "ON"}
+	notTruthy := []string{"", "0", "false", "no", "off", "maybe"}
 	for _, v := range notTruthy {
 		if isOtelMode(v) {
 			t.Errorf("isOtelMode(%q) = true, want false", v)
@@ -47,10 +47,11 @@ func TestResolveEngineArgs(t *testing.T) {
 			want:              defaultArgs,
 		},
 		{
-			name:              "truthy toggle is case-sensitive: wrong case stays default",
+			name:              "truthy toggle matching is case-insensitive",
 			otelMode:          "TRUE",
+			otelConfigDefault: `C:\ProgramData\GrafanaLabs\Alloy\config.yaml`,
 			defaultEngineArgs: defaultArgs,
-			want:              defaultArgs,
+			want:              []string{"otel", `--config=C:\ProgramData\GrafanaLabs\Alloy\config.yaml`},
 		},
 		{
 			name:              "default engine ignores OTelArguments, the OTel engine's flags",

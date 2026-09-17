@@ -1,13 +1,15 @@
 package main
 
+import "strings"
+
 // isOtelMode reports whether value (an ALLOY_OTEL_MODE-style toggle)
 // selects the OTel engine. Mirrors the truthy check in
 // packaging/systemd/alloy-wrapper and the Homebrew wrapper: "1", "true",
-// "yes", "on" (case-sensitive) select the OTel engine ("alloy otel");
+// "yes", "on" (case-insensitive) select the OTel engine ("alloy otel");
 // anything else, including "" (unset or absent), keeps the default engine
 // ("alloy run").
 func isOtelMode(value string) bool {
-	switch value {
+	switch strings.ToLower(value) {
 	case "1", "true", "yes", "on":
 		return true
 	default:
