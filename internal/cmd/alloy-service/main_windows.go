@@ -53,6 +53,12 @@ func main() {
 	otelConfigDefault := filepath.Join(filepath.Dir(managerConfig.ServicePath), "config.yaml")
 	args := resolveEngineArgs(managerConfig.OtelMode, otelConfigDefault, managerConfig.OtelArguments, managerConfig.Args)
 
+	if isOtelMode(managerConfig.OtelMode) {
+		logger.Info("Alloy starting in OTel Engine mode")
+	} else {
+		logger.Info("Alloy starting in Default Engine mode")
+	}
+
 	cfg := serviceManagerConfig{
 		path:        managerConfig.ServicePath,
 		args:        args,
