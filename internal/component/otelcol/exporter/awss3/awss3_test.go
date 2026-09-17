@@ -12,6 +12,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -200,6 +201,16 @@ func TestConfig(t *testing.T) {
 			}
 			`,
 			expected: awss3exporter.Config{
+				// Canary for the upstream retry defaults our docs promise. If this fails, a
+				// contrib bump changed one: update the docs, then these values.
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     5 * time.Second,
+					RandomizationFactor: 0.5,
+					Multiplier:          1.5,
+					MaxInterval:         30 * time.Second,
+					MaxElapsedTime:      5 * time.Minute,
+				},
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 5 * time.Second,
 				},
@@ -249,6 +260,16 @@ func TestConfig(t *testing.T) {
 			}
 			`,
 			expected: awss3exporter.Config{
+				// Canary for the upstream retry defaults our docs promise. If this fails, a
+				// contrib bump changed one: update the docs, then these values.
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     5 * time.Second,
+					RandomizationFactor: 0.5,
+					Multiplier:          1.5,
+					MaxInterval:         30 * time.Second,
+					MaxElapsedTime:      5 * time.Minute,
+				},
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
@@ -275,6 +296,46 @@ func TestConfig(t *testing.T) {
 				ResourceAttrsToS3: awss3exporter.ResourceAttrsToS3{
 					S3Prefix: "resource_prefix",
 					S3Bucket: "resource_bucket",
+				},
+				MarshalerName: "otlp_json",
+				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
+			},
+		},
+		{
+			testName: "explicit_retry_on_failure",
+			agentCfg: `
+			s3_uploader {
+				s3_bucket = "test"
+				s3_prefix = "logs"
+			}
+			retry_on_failure {
+				initial_interval = "1s"
+				max_interval     = "10s"
+				max_elapsed_time = "1m"
+			}
+			`,
+			expected: awss3exporter.Config{
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     1 * time.Second,
+					RandomizationFactor: 0.5,
+					Multiplier:          1.5,
+					MaxInterval:         10 * time.Second,
+					MaxElapsedTime:      1 * time.Minute,
+				},
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 5 * time.Second,
+				},
+				S3Uploader: awss3exporter.S3UploaderConfig{
+					S3Bucket:          "test",
+					S3Prefix:          "logs",
+					S3PartitionFormat: "year=%Y/month=%m/day=%d/hour=%H/minute=%M",
+					Compression:       "none",
+					Region:            "us-east-1",
+					StorageClass:      "STANDARD",
+					RetryMode:         "standard",
+					RetryMaxAttempts:  3,
+					RetryMaxBackoff:   20 * time.Second,
 				},
 				MarshalerName: "otlp_json",
 				QueueSettings: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
