@@ -12,9 +12,9 @@ weight: 350
 
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
-* [Linux containers][] for AMD64, ARM64, ppc64le, and s390x.
-* macOS for AMD64 (Intel) and ARM64 (Apple Silicon) using [Docker Desktop][].
-* [Windows containers][] for AMD64.
+- [Linux containers][] for AMD64, ARM64, ppc64le, and s390x.
+- macOS for AMD64 on Intel and ARM64 on Apple Silicon using [Docker Desktop][].
+- [Windows containers][] for AMD64.
 
 {{< admonition type="note" >}}
 On macOS, Docker Desktop manages a Linux virtual machine transparently, so the Linux container commands work without modification.
@@ -22,8 +22,8 @@ On macOS, Docker Desktop manages a Linux virtual machine transparently, so the L
 
 ## Before you begin
 
-* Install [Docker][] or [Docker Desktop][] on your computer.
-* Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
+- Install [Docker][] or [Docker Desktop][] on your computer.
+- Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
   logging {
@@ -47,14 +47,14 @@ docker run \
 
 Replace the following:
 
-* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example.
-If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
+If you don't pass this argument, the [debugging UI][UI] won't be available outside the Docker container.
 
 [UI]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
@@ -67,8 +67,8 @@ BoringCrypto support is in _Public preview_ and is only available for Linux cont
 
 Every release starting with version 1.1 includes BoringCrypto images:
 
-* The `grafana/alloy:boringcrypto` tag always points to the most recent stable release.
-* The `grafana/alloy:<VERSION>-boringcrypto` tag pins a specific version, for example `grafana/alloy:v1.1.0-boringcrypto`.
+- The `grafana/alloy:boringcrypto` tag always points to the most recent stable release.
+- The `grafana/alloy:<VERSION>-boringcrypto` tag pins a specific version, for example `grafana/alloy:v1.1.0-boringcrypto`.
 
 ### Distroless images
 
@@ -86,10 +86,10 @@ They use the same entrypoint, configuration path, and storage path as the standa
 
 Every release includes distroless images:
 
-* The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
-* The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
-* The `grafana/alloy:boringcrypto-distroless` tag always points to the most recent stable BoringCrypto release.
-* The `grafana/alloy:<VERSION>-boringcrypto-distroless` tag pins a specific BoringCrypto version.
+- The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
+- The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
+- The `grafana/alloy:boringcrypto-distroless` tag always points to the most recent stable BoringCrypto release.
+- The `grafana/alloy:<VERSION>-boringcrypto-distroless` tag pins a specific BoringCrypto version.
 
 ## Run a Windows Docker container
 
@@ -126,22 +126,22 @@ docker run `
 
 Replace the following:
 
-* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can change the `run` command and its arguments after the image name to change what's passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
-Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example above.
-If you don't pass this argument, the [debugging UI][debug] won't be available outside of the Docker container.
+Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example.
+If you don't pass this argument, the [debugging UI][debug] won't be available outside the Docker container.
 
 [debug]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
 
 Every release includes Windows images:
 
-* The `grafana/alloy:windowsservercore-ltsc2022` tag always points to the most recent stable release.
-* The `grafana/alloy:<VERSION>-windowsservercore-ltsc2022` tag pins a specific version.
+- The `grafana/alloy:windowsservercore-ltsc2022` tag always points to the most recent stable release.
+- The `grafana/alloy:<VERSION>-windowsservercore-ltsc2022` tag pins a specific version.
 
 ## Verify
 
@@ -149,7 +149,7 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 
 ## Next steps
 
-* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
