@@ -67,10 +67,8 @@ BoringCrypto support is in _Public preview_ and is only available for Linux cont
 
 BoringCrypto images are published with every release starting with version 1.1:
 
-* The current BoringCrypto image is published as `grafana/alloy:boringcrypto`.
-* A specific version of the BoringCrypto image is published as
-  `grafana/alloy:<VERSION>-boringcrypto`, such as
-  `grafana/alloy:v1.1.0-boringcrypto`.
+* The `grafana/alloy:boringcrypto` tag always points to the most recent stable release.
+* The `grafana/alloy:<VERSION>-boringcrypto` tag pins a specific version, for example `grafana/alloy:v1.1.0-boringcrypto`.
 
 ### Distroless images
 
@@ -85,10 +83,10 @@ BoringCrypto variants of distroless images are only available on AMD64 and ARM64
 
 Distroless images are published with every release:
 
-* The latest distroless image is published as `grafana/alloy:latest-distroless`.
-* A specific version of the distroless image is published as `grafana/alloy:<VERSION>-distroless`.
-* The current BoringCrypto distroless image is published as `grafana/alloy:boringcrypto-distroless`.
-* A specific version of the BoringCrypto distroless image is published as `grafana/alloy:<VERSION>-boringcrypto-distroless`.
+* The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
+* The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
+* The `grafana/alloy:boringcrypto-distroless` tag always points to the most recent stable BoringCrypto release.
+* The `grafana/alloy:<VERSION>-boringcrypto-distroless` tag pins a specific BoringCrypto version.
 
 ## Run a Windows Docker container
 
