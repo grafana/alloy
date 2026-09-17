@@ -53,7 +53,7 @@ var (
 type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
-	Tracing        TracingOptions     `alloy:"tracing,block,optional"`
+	Tracing        TracingOptions     `alloy:"tracing,block,optional"` // Intentionally undocumented: temporary troubleshooting hooks that may change or be removed.
 }
 
 type TracingOptions struct {
@@ -72,7 +72,7 @@ type EndpointOptions struct {
 	Name                   string                   `alloy:"name,attr,optional"`
 	URL                    string                   `alloy:"url,attr"`
 	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
-	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
+	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"` // Intentionally undocumented: controls the experimental debug-info upload path.
 	Headers                map[string]string        `alloy:"headers,attr,optional"`
 	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
 	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level

@@ -68,6 +68,8 @@ For example, in Docker, capabilities that aren't on the allowlist are dropped by
 
 You can use the following arguments with `pyroscope.java`:
 
+<!-- The dist argument is intentionally omitted because it is an internal escape hatch for testing alternate async-profiler distributions. -->
+
 | Name         | Type                     | Description                                      | Default  | Required |
 | ------------ | ------------------------ | ------------------------------------------------ | -------- | -------- |
 | `forward_to` | `list(ProfilesReceiver)` | List of receivers to send collected profiles to. |          | yes      |

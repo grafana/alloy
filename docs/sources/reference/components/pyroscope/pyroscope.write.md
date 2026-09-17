@@ -39,6 +39,8 @@ pyroscope.write "<LABEL>" {
 
 You can use the following argument with `pyroscope.write`:
 
+<!-- The tracing block, endpoint.debug_info_upload_timeout argument, and pyroscope_ebpf_debug_info_upload_bytes_total metric are intentionally omitted because the related functionality is experimental/temporary and may change or be removed. -->
+
 | Name              | Type          | Description                                      | Default | Required |
 | ----------------- | ------------- | ------------------------------------------------ | ------- | -------- |
 | `external_labels` | `map(string)` | Labels to add to profiles sent over the network. |         | no       |

@@ -15,6 +15,8 @@ type Appender interface {
 	DebugInfoClients() []*debuginfoclient.Client
 }
 
+// Arguments contains intentionally undocumented settings for the experimental debug-info feature,
+// which may change or be removed.
 type Arguments struct {
 	OnTargetSymbolizationEnabled bool   `alloy:"on_target_symbolization,attr,optional"`
 	UploadEnabled                bool   `alloy:"upload,attr,optional"`

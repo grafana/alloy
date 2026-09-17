@@ -47,6 +47,7 @@ type Arguments struct {
 	Server    *fnet.ServerConfig     `alloy:",squash"`
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
 
+	// Intentionally undocumented: controls the experimental debug-info proxy.
 	DebugInfoUploadTimeout time.Duration `alloy:"debug_info_upload_timeout,attr,optional"`
 }
 
