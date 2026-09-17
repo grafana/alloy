@@ -29,15 +29,12 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 		return nil, err
 	}
 
-	c := &endpoint{
+	return &endpoint{
 		cfg:     cfg,
 		logger:  logger,
 		metrics: metrics,
 		shards:  shards,
-	}
-
-	c.shards.start(cfg.QueueConfig.MinShards)
-	return c, nil
+	}, nil
 }
 
 // enqueue tries to enqueue an entry. It waits for room while BlockOnOverflow
@@ -73,6 +70,10 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 	}
 
 	return bo.Err()
+}
+
+func (e *endpoint) start() {
+	e.shards.start(e.cfg.QueueConfig.MinShards)
 }
 
 func (e *endpoint) stop() {

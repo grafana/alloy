@@ -3,7 +3,6 @@ package wal
 import (
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/tsdb/wlog"
@@ -19,7 +18,6 @@ type WAL interface {
 	// Log marshals the records and writes it into the WAL.
 	Log(*Record) error
 
-	Delete() error
 	Sync() error
 	Dir() string
 	Close()
@@ -32,10 +30,10 @@ type wrapper struct {
 }
 
 // New creates a new wrapper, instantiating the actual wlog.WL underneath.
-func New(cfg Config, logger *slog.Logger, registerer prometheus.Registerer) (WAL, error) {
+func New(logger *slog.Logger, registerer prometheus.Registerer, dir string) (WAL, error) {
 	// TODO: We should fine-tune the WAL instantiated here to allow some buffering of written entries, but not written to disk
 	// yet. This will attest for the lack of buffering in the channel Writer exposes.
-	tsdbWAL, err := wlog.NewSize(logger, registerer, cfg.Dir, wlog.DefaultSegmentSize, compression.Snappy)
+	tsdbWAL, err := wlog.NewSize(logger, registerer, dir, wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tsdb WAL: %w", err)
 	}
@@ -49,15 +47,6 @@ func New(cfg Config, logger *slog.Logger, registerer prometheus.Registerer) (WAL
 func (w *wrapper) Close() {
 	// Avoid checking the error since it's safe to call Close more than once on wlog.WL
 	_ = w.wal.Close()
-}
-
-func (w *wrapper) Delete() error {
-	err := w.wal.Close()
-	if err != nil {
-		w.logger.Warn("failed to close WAL", "err", err)
-	}
-	err = os.RemoveAll(w.wal.Dir())
-	return err
 }
 
 func (w *wrapper) Log(record *Record) error {
