@@ -191,6 +191,7 @@ func TestDefaultArguments(t *testing.T) {
 
 	client, err := args.ConvertClient()
 	require.NoError(t, err)
-	// Literal, not factory-derived, so a contrib bump that adds a default fails here.
+	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
+	// bump added one: document it, then update these values.
 	require.Equal(t, &headerssetterextension.Config{}, client)
 }
