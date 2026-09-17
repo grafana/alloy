@@ -58,6 +58,11 @@ func toMemoryLimiterProcessor(state *State, id componentstatus.InstanceID, cfg *
 		MemorySpikeLimit:      units.Base2Bytes(cfg.MemorySpikeLimitMiB) * units.MiB,
 		MemoryLimitPercentage: cfg.MemoryLimitPercentage,
 		MemorySpikePercentage: cfg.MemorySpikePercentage,
+
+		MinGCIntervalWhenSoftLimited: cfg.MinGCIntervalWhenSoftLimited,
+		MinGCIntervalWhenHardLimited: cfg.MinGCIntervalWhenHardLimited,
+		MaxGCIntervalWhenSoftLimited: cfg.MaxGCIntervalWhenSoftLimited,
+		MaxGCIntervalWhenHardLimited: cfg.MaxGCIntervalWhenHardLimited,
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
 			Logs:    ToTokenizedConsumers(nextLogs),

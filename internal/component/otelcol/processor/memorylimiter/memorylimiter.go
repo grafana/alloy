@@ -38,6 +38,12 @@ type Arguments struct {
 	MemoryLimitPercentage uint32           `alloy:"limit_percentage,attr,optional"`
 	MemorySpikePercentage uint32           `alloy:"spike_limit_percentage,attr,optional"`
 
+	// Floor and ceiling for the forced-GC interval on each limit path.
+	MinGCIntervalWhenSoftLimited time.Duration `alloy:"min_gc_interval_when_soft_limited,attr,optional"`
+	MinGCIntervalWhenHardLimited time.Duration `alloy:"min_gc_interval_when_hard_limited,attr,optional"`
+	MaxGCIntervalWhenSoftLimited time.Duration `alloy:"max_gc_interval_when_soft_limited,attr,optional"`
+	MaxGCIntervalWhenHardLimited time.Duration `alloy:"max_gc_interval_when_hard_limited,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -56,6 +62,11 @@ var DefaultArguments = Arguments{
 	MemorySpikeLimit:      0,
 	MemoryLimitPercentage: 0,
 	MemorySpikePercentage: 0,
+
+	MinGCIntervalWhenSoftLimited: 10 * time.Second,
+	MinGCIntervalWhenHardLimited: 0,
+	MaxGCIntervalWhenSoftLimited: 30 * time.Second,
+	MaxGCIntervalWhenHardLimited: 30 * time.Second,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -81,7 +92,7 @@ func (args *Arguments) Validate() error {
 		if args.MemorySpikeLimit == 0 {
 			args.MemorySpikeLimit = args.MemoryLimit / 5
 		}
-		return nil
+		return args.validateUpstream()
 	}
 	if args.MemoryLimitPercentage > 0 {
 		if args.MemoryLimitPercentage <= 0 ||
@@ -91,21 +102,38 @@ func (args *Arguments) Validate() error {
 
 			return fmt.Errorf("limit_percentage and spike_limit_percentage must be greater than 0 and and less or equal than 100")
 		}
-		return nil
+		return args.validateUpstream()
 	}
 
 	return fmt.Errorf("either limit or limit_percentage must be set to greater than zero")
 }
 
+// validateUpstream leaves the GC interval invariants to the collector rather than
+// restating them here.
+func (args Arguments) validateUpstream() error {
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+
+	return otelCfg.(*memorylimiterprocessor.Config).Validate()
+}
+
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &memorylimiterprocessor.Config{
-		CheckInterval:         args.CheckInterval,
-		MemoryLimitMiB:        uint32(args.MemoryLimit / units.Mebibyte),
-		MemorySpikeLimitMiB:   uint32(args.MemorySpikeLimit / units.Mebibyte),
-		MemoryLimitPercentage: args.MemoryLimitPercentage,
-		MemorySpikePercentage: args.MemorySpikePercentage,
-	}, nil
+	result := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
+
+	result.CheckInterval = args.CheckInterval
+	result.MemoryLimitMiB = uint32(args.MemoryLimit / units.Mebibyte)
+	result.MemorySpikeLimitMiB = uint32(args.MemorySpikeLimit / units.Mebibyte)
+	result.MemoryLimitPercentage = args.MemoryLimitPercentage
+	result.MemorySpikePercentage = args.MemorySpikePercentage
+	result.MinGCIntervalWhenSoftLimited = args.MinGCIntervalWhenSoftLimited
+	result.MinGCIntervalWhenHardLimited = args.MinGCIntervalWhenHardLimited
+	result.MaxGCIntervalWhenSoftLimited = args.MaxGCIntervalWhenSoftLimited
+	result.MaxGCIntervalWhenHardLimited = args.MaxGCIntervalWhenHardLimited
+
+	return result, nil
 }
 
 // Extensions implements processor.Arguments.

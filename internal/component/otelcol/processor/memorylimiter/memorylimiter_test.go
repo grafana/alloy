@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
@@ -117,4 +118,90 @@ func createTestTraces() ptrace.Traces {
 		panic(err)
 	}
 	return data
+}
+
+func TestDefaultArguments(t *testing.T) {
+	var args memorylimiter.Arguments
+	args.SetToDefault()
+
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib
+	// bump changed one: update the docs, then these values.
+	require.Equal(t, &memorylimiterprocessor.Config{
+		MinGCIntervalWhenSoftLimited: 10 * time.Second,
+		MaxGCIntervalWhenSoftLimited: 30 * time.Second,
+		MaxGCIntervalWhenHardLimited: 30 * time.Second,
+	}, cfg.(*memorylimiterprocessor.Config))
+}
+
+func TestGCIntervalArguments(t *testing.T) {
+	tests := []struct {
+		name             string
+		cfg              string
+		expectedErr      string
+		soft, hard       time.Duration
+		maxSoft, maxHard time.Duration
+	}{
+		{
+			name: "explicit values",
+			cfg: `
+				check_interval = "1s"
+				limit = "100MiB"
+				min_gc_interval_when_soft_limited = "30s"
+				min_gc_interval_when_hard_limited = "5s"
+				max_gc_interval_when_soft_limited = "2m"
+				max_gc_interval_when_hard_limited = "1m"
+				output {}
+			`,
+			soft:    30 * time.Second,
+			hard:    5 * time.Second,
+			maxSoft: 2 * time.Minute,
+			maxHard: 1 * time.Minute,
+		},
+		{
+			name: "max below min is rejected",
+			cfg: `
+				check_interval = "1s"
+				limit = "100MiB"
+				min_gc_interval_when_soft_limited = "30s"
+				max_gc_interval_when_soft_limited = "10s"
+				output {}
+			`,
+			expectedErr: "'max_gc_interval_when_soft_limited' must be greater than or equal to 'min_gc_interval_when_soft_limited'",
+		},
+		{
+			name: "soft below hard is rejected",
+			cfg: `
+				check_interval = "1s"
+				limit = "100MiB"
+				min_gc_interval_when_soft_limited = "1s"
+				min_gc_interval_when_hard_limited = "5s"
+				output {}
+			`,
+			expectedErr: "'min_gc_interval_when_soft_limited' should be larger than 'min_gc_interval_when_hard_limited'",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var args memorylimiter.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+
+			cfg, err := args.Convert()
+			require.NoError(t, err)
+
+			otelCfg := cfg.(*memorylimiterprocessor.Config)
+			require.Equal(t, tc.soft, otelCfg.MinGCIntervalWhenSoftLimited)
+			require.Equal(t, tc.hard, otelCfg.MinGCIntervalWhenHardLimited)
+			require.Equal(t, tc.maxSoft, otelCfg.MaxGCIntervalWhenSoftLimited)
+			require.Equal(t, tc.maxHard, otelCfg.MaxGCIntervalWhenHardLimited)
+		})
+	}
 }
