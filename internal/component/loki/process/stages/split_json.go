@@ -92,6 +92,7 @@ func (s *splitJSONStage) process(ctx context.Context, entries []Entry) error {
 			out = append(out, child)
 		}
 	}
+
 	return s.next(ctx, out)
 }
 

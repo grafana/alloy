@@ -303,6 +303,16 @@ func TestSplitJSONStage(t *testing.T) {
 			},
 			expected: []Entry{},
 		},
+		{
+			name: "empty array generates no entries",
+			config: `
+			stage.split_json {}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"other": "keep"}, model.LabelSet{}, `[]`, now),
+			},
+			expected: []Entry{},
+		},
 	}
 
 	for _, tt := range tests {
