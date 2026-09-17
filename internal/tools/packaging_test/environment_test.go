@@ -10,11 +10,30 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	// systemdBootTimeout is how long to wait for systemd to finish booting in a
+	// freshly started container.
+	systemdBootTimeout = 60 * time.Second
+
+	// serviceStartTimeout is how long to wait for the alloy service to become
+	// active after being started or restarted.
+	serviceStartTimeout = 30 * time.Second
+
+	// pollInterval is how often to re-check a systemd state that's being waited on.
+	pollInterval = 500 * time.Millisecond
+
+	// serviceSettleTime is how long to let the service run before checking that
+	// it stayed up
+	serviceSettleTime = 3 * time.Second
 )
 
 type Environment struct {
@@ -35,8 +54,8 @@ func RPMEnvironment(t *testing.T, packageName string, pool *dockertest.Pool) Env
 	container := environmentContainer(
 		t,
 		pool,
-		"testdata/centos-systemd.Dockerfile",
-		packageName+"-test-centos-systemd",
+		"testdata/rocky-systemd.Dockerfile",
+		packageName+"-test-rocky-systemd",
 		fmt.Sprintf("../../../dist/%s-0.0.0-1.%s.rpm", packageName, runtime.GOARCH),
 	)
 
@@ -83,18 +102,22 @@ func DEBEnvironment(t *testing.T, packageName string, pool *dockertest.Pool) Env
 func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string, name string, packagePath string) *dockertest.Resource {
 	t.Helper()
 
+	// The images run systemd as PID 1 instead of a shell, so the tests can
+	// exercise the installed alloy.service
 	container, err := pool.BuildAndRunWithOptions(
 		dockerfile,
 		&dockertest.RunOptions{
 			Name:       name,
-			Entrypoint: []string{"/bin/bash"},
-			Tty:        true,
-			Mounts:     []string{"/sys/fs/cgroup:/sys/fs/cgroup:ro"},
+			Privileged: true,
 			PortBindings: map[docker.Port][]docker.PortBinding{
 				"9009/tcp": {{HostIP: "0.0.0.0", HostPort: "0"}},
 			},
 		},
 		func(hc *docker.HostConfig) {
+			// Placing the container under a systemd slice keeps systemd's cgroup
+			// management working on hosts where Docker uses the systemd cgroup
+			// driver, such as GitHub's runners.
+			hc.CgroupParent = "docker.slice"
 			hc.Tmpfs = map[string]string{
 				"/run":      "rw",
 				"/run/lock": "rw",
@@ -106,6 +129,8 @@ func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string
 		_ = container.Close()
 	})
 
+	waitForSystemd(t, container)
+
 	packageFile, err := buildTar(packagePath)
 	require.NoError(t, err)
 	err = pool.Client.UploadToContainer(container.Container.ID, docker.UploadToContainerOptions{
@@ -115,6 +140,22 @@ func environmentContainer(t *testing.T, pool *dockertest.Pool, dockerfile string
 	require.NoError(t, err)
 
 	return container
+}
+
+func waitForSystemd(t *testing.T, container *dockertest.Resource) {
+	t.Helper()
+
+	var state string
+	deadline := time.Now().Add(systemdBootTimeout)
+	for time.Now().Before(deadline) {
+		state = strings.TrimSpace(containerExec(t, container, "systemctl", "is-system-running").Stdout)
+		if state == "running" || state == "degraded" {
+			return
+		}
+		time.Sleep(pollInterval)
+	}
+
+	require.Failf(t, "systemd did not finish booting", "last reported state: %q", state)
 }
 
 func buildTar(path string) (io.Reader, error) {
