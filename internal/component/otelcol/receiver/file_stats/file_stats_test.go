@@ -125,7 +125,8 @@ func TestDefaultArguments(t *testing.T) {
 	require.NoError(t, err)
 	cfg := cfgAny.(*filestatsreceiver.Config)
 
-	// Literal, not factory-derived, so a contrib bump that changes a default fails here.
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
+	// changed one: update the docs, then these values.
 	// MetricsBuilderConfig is not covered: its type lives in an upstream internal package,
 	// so it cannot be written out here.
 	require.Equal(t, "", cfg.Include)

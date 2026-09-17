@@ -14,8 +14,9 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 )
 
-// defaultExpected is the upstream default config, written out rather than taken from the
-// factory so a contrib bump that changes a default fails here instead of moving with it.
+// defaultExpected is a canary for the upstream defaults our docs promise. If a case using
+// it fails, a contrib bump changed one: update the docs, then these values. Taking it from
+// the factory instead would move with upstream and never fail.
 func defaultExpected() kafkareceiver.Config {
 	return kafkareceiver.Config{
 		ClientConfig: configkafka.ClientConfig{
@@ -598,8 +599,8 @@ func TestArguments_Auth(t *testing.T) {
 
 			actual := actualPtr.(*kafkareceiver.Config)
 
-			// Seeded from the literal defaults, not the factory, so each case only spells
-			// out the auth it overrides without going blind to an upstream default change.
+			// Seeded from defaultExpected, not the factory, so a case spells out only the
+			// auth it overrides and still catches an upstream default change.
 			expected := defaultExpected()
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
