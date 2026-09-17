@@ -37,7 +37,7 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		endpointsCheck[name] = struct{}{}
 		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
 		if err != nil {
-			return nil, fmt.Errorf("error starting endpoint: %w", err)
+			return nil, fmt.Errorf("failed to create endpoint %s: %w", name, err)
 		}
 
 		c.endpoints = append(c.endpoints, endpoint)

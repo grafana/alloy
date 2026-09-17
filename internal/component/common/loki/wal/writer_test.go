@@ -28,12 +28,11 @@ func TestWriter(t *testing.T) {
 			logger = slog.New(slog.DiscardHandler)
 			reg    = prometheus.NewRegistry()
 			cfg    = Config{
-				Dir:           dir,
 				MaxSegmentAge: time.Minute,
 			}
 		)
 
-		wl, err := New(logger, reg, cfg.Dir)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -80,12 +79,11 @@ func TestWriter(t *testing.T) {
 			reg    = prometheus.NewRegistry()
 			logger = slog.New(slog.DiscardHandler)
 			cfg    = Config{
-				Dir:           dir,
 				MaxSegmentAge: time.Minute,
 			}
 		)
 
-		wl, err := New(logger, reg, cfg.Dir)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -118,12 +116,11 @@ func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 		logger = slog.New(slog.DiscardHandler)
 		reg    = prometheus.NewRegistry()
 		cfg    = Config{
-			Dir:           dir,
 			MaxSegmentAge: time.Minute,
 		}
 	)
 
-	wl, err := New(logger, reg, cfg.Dir)
+	wl, err := New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -180,14 +177,13 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		reg           = prometheus.NewRegistry()
 		maxSegmentAge = time.Second * 2
 		cfg           = Config{
-			Dir:           dir,
 			MaxSegmentAge: maxSegmentAge,
 		}
 		subscriber1 = []int{}
 		subscriber2 = []int{}
 	)
 
-	wl, err := New(logger, reg, cfg.Dir)
+	wl, err := New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -279,13 +275,12 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		reg           = prometheus.NewRegistry()
 		maxSegmentAge = 2 * time.Second
 		cfg           = Config{
-			Dir:           dir,
 			MaxSegmentAge: maxSegmentAge,
 		}
 		segmentsReclaimedNotificationsReceived = []int{}
 	)
 
-	wl, err := New(logger, reg, cfg.Dir)
+	wl, err := New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -459,12 +454,11 @@ func benchWriteEntries(b *testing.B, lines, labelSetCount int) {
 		logger = slog.New(slog.DiscardHandler)
 		reg    = prometheus.NewRegistry()
 		cfg    = Config{
-			Dir:           dir,
 			MaxSegmentAge: time.Minute,
 		}
 	)
 
-	wl, err := New(logger, reg, cfg.Dir)
+	wl, err := New(logger, reg, dir)
 	require.NoError(b, err)
 	defer wl.Close()
 
