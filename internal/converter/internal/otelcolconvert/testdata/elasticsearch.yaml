@@ -1,0 +1,38 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+
+exporters:
+  elasticsearch:
+    endpoints: ["http://elasticsearch:9200"]
+    user: elastic
+    password: changeme
+    logs_index: alloy-logs
+    traces_index: alloy-traces
+    pipeline: alloy-pipeline
+    discover:
+      on_start: true
+      interval: 1m
+    retry:
+      enabled: true
+      max_retries: 5
+      initial_interval: 1s
+      max_interval: 30s
+      retry_on_status: [429, 500]
+    mapping:
+      mode: otel
+    logstash_format:
+      enabled: true
+      prefix_separator: "_"
+      date_format: "%Y-%m-%d"
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [elasticsearch]
+    traces:
+      receivers: [otlp]
+      exporters: [elasticsearch]

@@ -858,12 +858,18 @@ github.com/edsrzf/mmap-go v1.2.1-0.20241212181136-fad1cd13edbd h1:I4PrRZuNMeDP3V
 github.com/edsrzf/mmap-go v1.2.1-0.20241212181136-fad1cd13edbd/go.mod h1:19H/e8pUPLicwkyNgOykDXkJ9F0MHE+Z52B8EIth78Q=
 github.com/efficientgo/core v1.0.0-rc.3 h1:X6CdgycYWDcbYiJr1H1+lQGzx13o7bq3EUkbB9DsSPc=
 github.com/efficientgo/core v1.0.0-rc.3/go.mod h1:FfGdkzWarkuzOlY04VY+bGfb1lWrjaL6x/GLcQ4vJps=
+github.com/elastic/elastic-transport-go/v8 v8.8.0 h1:7k1Ua+qluFr6p1jfJjGDl97ssJS/P7cHNInzfxgBQAo=
+github.com/elastic/elastic-transport-go/v8 v8.8.0/go.mod h1:YLHer5cj0csTzNFXoNQ8qhtGY1GTvSqPnKWKaqQE3Hk=
+github.com/elastic/go-docappender/v2 v2.14.1 h1:Nl3TF9B2Q5vA/P6PKNXjyhLGiJmuOMpIfN6eO7UvOg4=
+github.com/elastic/go-docappender/v2 v2.14.1/go.mod h1:VRq9W2+tHEMKp5rCAVQL1Y+Jbi5jgKVG/OWdGaiyPc0=
 github.com/elastic/go-freelru v0.16.0 h1:gG2HJ1WXN2tNl5/p40JS/l59HjvjRhjyAa+oFTRArYs=
 github.com/elastic/go-freelru v0.16.0/go.mod h1:bSdWT4M0lW79K8QbX6XY2heQYSCqD7THoYf82pT/H3I=
 github.com/elastic/go-grok v0.3.1 h1:WEhUxe2KrwycMnlvMimJXvzRa7DoByJB4PVUIE1ZD/U=
 github.com/elastic/go-grok v0.3.1/go.mod h1:n38ls8ZgOboZRgKcjMY8eFeZFMmcL9n2lP0iHhIDk64=
 github.com/elastic/go-perf v0.0.0-20260224073651-af0ee0c731b7 h1:fGi5uudj7m5O1RgQl+bSZmwlqvuUMEi97X7TzWBOMGk=
 github.com/elastic/go-perf v0.0.0-20260224073651-af0ee0c731b7/go.mod h1:ucTo2u8JvFyIPQOaRlX7aVF0d3wwmF1dy/PVp5GUHZI=
+github.com/elastic/go-structform v0.0.12 h1:HXpzlAKyej8T7LobqKDThUw7BMhwV6Db24VwxNtgxCs=
+github.com/elastic/go-structform v0.0.12/go.mod h1:CZWf9aIRYY5SuKSmOhtXScE5uQiLZNqAFnwKR4OrIM4=
 github.com/elastic/go-sysinfo v1.8.1 h1:4Yhj+HdV6WjbCRgGdZpPJ8lZQlXZLKDAeIkmQ/VRvi4=
 github.com/elastic/go-sysinfo v1.8.1/go.mod h1:JfllUnzoQV/JRYymbH3dO1yggI3mV2oTKSXsDHM+uIM=
 github.com/elastic/go-windows v1.0.0/go.mod h1:TsU0Nrp7/y3+VwE82FoZF8gC/XFg/Elz6CcloAxnPgU=
@@ -1598,6 +1604,10 @@ github.com/leodido/go-syslog/v4 v4.6.0 h1:3o9H6K0cj9ITrNt7MG6CJ/Ae+vXmZcEPhI/N30
 github.com/leodido/go-syslog/v4 v4.6.0/go.mod h1:BOEXCJSgy32THF4eZWwtZ11w6LrrFVBj+nMtv06ge4w=
 github.com/leodido/ragel-machinery v0.0.0-20190525184631-5f46317e436b h1:11UHH39z1RhZ5dc4y4r/4koJo6IYFgTRMe/LlwRTEw0=
 github.com/leodido/ragel-machinery v0.0.0-20190525184631-5f46317e436b/go.mod h1:WZxr2/6a/Ar9bMDc2rN/LJrE/hF6bXE4LPyDSIxwAfg=
+github.com/lestrrat-go/envload v0.0.0-20180220234015-a3eb8ddeffcc h1:RKf14vYWi2ttpEmkA4aQ3j4u9dStX2t4M8UM6qqNsG8=
+github.com/lestrrat-go/envload v0.0.0-20180220234015-a3eb8ddeffcc/go.mod h1:kopuH9ugFRkIXf3YoqHKyrJ9YfUFsckUU9S7B+XP+is=
+github.com/lestrrat-go/strftime v1.2.0 h1:8fAUYOeaJKCuLzNvUWBAo8t6I6hkFfodDTndEzJIun0=
+github.com/lestrrat-go/strftime v1.2.0/go.mod h1:GtsIA/7ddIGJjEdfadUafEb1sbutvlvpMdPCMglykYo=
 github.com/lib/pq v1.1.1/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.12.3 h1:tTWxr2YLKwIvK90ZXEw8GP7UFHtcbTtty8zsI+YjrfQ=
 github.com/lib/pq v1.12.3/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
@@ -1824,6 +1834,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.158.0/go.mod h1:+8xkle4PgBgQC2BCzgjot9cOsdH7ieE54Bd/e1vLFZY=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.158.0 h1:BnL1TvGDZoccD6IpOLxc7VyWV4JIDRvVI7P6i8RrUaY=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.158.0/go.mod h1:WIYmZB+ywAh+ao1rFNiGyovQ3BKDfNtNiO1bKNmjnHo=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.158.0 h1:Yt+rnJSLT6/3Gd8qM/L0LA/49T0Sy4XPmKOFmlrv1DI=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.158.0/go.mod h1:4Im63FtAEjTkO4XERzdJhGXvk+vx0O5qMERSCq2+Ws4=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0 h1:SLJrMQ0KOW+7YiUTFIg6XZVvgdwmKEnJ2vM1cXQw6CI=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0/go.mod h1:nqrDUaZQO1j8ozBzZsiX/2kEe91JVOqmzKj6aSVfm0A=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.158.0 h1:ssVgOndjctMzllHAN5FsKZo4MK+d0ES1/yZt1drvzYo=
@@ -2537,6 +2549,8 @@ github.com/zricethezav/gitleaks/v8 v8.30.1 h1:PmEvCfVI7ti9dV3s5aMZUY7sS2GxRvG3yz
 github.com/zricethezav/gitleaks/v8 v8.30.1/go.mod h1:rTDwxRjufMKAkhTI/Mijd07nday1yOhf9qywjwz5Irw=
 go.einride.tech/aip v0.83.0 h1:TI21IdeOnLTwZEJ3BxtImIZk6bsN2Q+sd0x99SLiQ+M=
 go.einride.tech/aip v0.83.0/go.mod h1:E8+wdTApA70odnpFzJgsGogHozC2JCIhFJBKPr8bVig=
+go.elastic.co/fastjson v1.5.1 h1:zeh1xHrFH79aQ6Xsw7YxixvnOdAl3OSv0xch/jRDzko=
+go.elastic.co/fastjson v1.5.1/go.mod h1:WtvH5wz8z9pDOPqNYSYKoLLv/9zCWZLeejHWuvdL/EM=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.etcd.io/bbolt v1.5.0 h1:S7GAl7Fxv12yohbwFfIbQCGDWbQbtDGPET4P/bD4lxU=
 go.etcd.io/bbolt v1.5.0/go.mod h1:mkltfYE5aUHQxUct9N9V+Kp7aSjFqjgrhcXIS70Lrdk=

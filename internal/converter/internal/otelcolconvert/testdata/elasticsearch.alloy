@@ -1,0 +1,51 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		logs   = [otelcol.exporter.elasticsearch.default.input]
+		traces = [otelcol.exporter.elasticsearch.default.input]
+	}
+}
+
+otelcol.exporter.elasticsearch "default" {
+	endpoints    = ["http://elasticsearch:9200"]
+	logs_index   = "alloy-logs"
+	traces_index = "alloy-traces"
+	pipeline     = "alloy-pipeline"
+
+	client {
+		max_idle_conns    = 100
+		idle_conn_timeout = "1m30s"
+	}
+
+	authentication {
+		user     = "elastic"
+		password = "[REDACTED]"
+		api_key  = "[REDACTED]"
+	}
+
+	discover {
+		on_start = true
+		interval = "1m0s"
+	}
+
+	retry {
+		max_retries      = 5
+		initial_interval = "1s"
+		max_interval     = "30s"
+		retry_on_status  = [429, 500]
+	}
+
+	logstash_format {
+		enabled          = true
+		prefix_separator = "_"
+		date_format      = "%Y-%m-%d"
+	}
+
+	sending_queue {
+		queue_size        = 10
+		block_on_overflow = true
+	}
+}
