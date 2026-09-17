@@ -62,7 +62,7 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 ### BoringCrypto images
 
 {{< admonition type="note" >}}
-BoringCrypto support is in _Public preview_ and is only available on AMD64 and ARM64 platforms.
+BoringCrypto support is in _Public preview_ and is only available for Linux containers on AMD64 and ARM64.
 {{< /admonition >}}
 
 BoringCrypto images are published with every release starting with version 1.1:
