@@ -75,26 +75,36 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
-The following examples configure text encoding with default and non-default behavior.
+### `otelcol.receiver.awss3`
 
-### Use the default text encoding
-
-This example configures UTF-8 text encoding with the default line separators:
+This example uses `otelcol.encoding.text` to decode UTF-8 log records from S3 objects with keys that end in `.txt`.
+The receiver splits records at one or more blank lines and forwards them to `otelcol.exporter.debug`:
 
 ```alloy
 otelcol.encoding.text "default" {
+	encoding               = "utf8"
+	unmarshaling_separator = "(\r?\n){2,}"
 }
-```
 
-### Decode records separated by blank lines
+otelcol.receiver.awss3 "default" {
+	start_time = "2024-01-01 01:00"
+	end_time   = "2024-01-02"
 
-This example decodes UTF-8 input and splits records at one or more blank lines.
-It uses two newline characters between bodies when it marshals multiple log records:
+	s3downloader {
+		region    = "us-west-1"
+		s3_bucket = "mybucket"
+		s3_prefix = "logs"
+	}
 
-```alloy
-otelcol.encoding.text "utf8" {
-  encoding               = "utf8"
-  marshaling_separator   = "\n\n"
-  unmarshaling_separator = "(\r?\n){2,}"
+	encoding {
+		extension = otelcol.encoding.text.default.handler
+		suffix    = ".txt"
+	}
+
+	output {
+		logs = [otelcol.exporter.debug.default.input]
+	}
 }
+
+otelcol.exporter.debug "default" {}
 ```

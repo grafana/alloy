@@ -79,25 +79,35 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
-The following examples configure JSON log encoding with default and non-default behavior.
+### `otelcol.receiver.awss3`
 
-### Use the default JSON log encoding
-
-This example configures JSON log encoding with the default array format and body-only marshaling:
+This example uses `otelcol.encoding.jsonlog` to decode newline-delimited JSON log records from S3 objects with keys that end in `.jsonl`.
+The receiver forwards the decoded logs to `otelcol.exporter.debug`:
 
 ```alloy
 otelcol.encoding.jsonlog "default" {
+	array_mode = false
 }
-```
 
-### Encode newline-delimited JSON with attributes
+otelcol.receiver.awss3 "default" {
+	start_time = "2024-01-01 01:00"
+	end_time   = "2024-01-02"
 
-This example configures the component to marshal newline-delimited JSON objects that include log and resource attributes.
-It also accepts a single JSON object or concatenated JSON objects when unmarshaling:
+	s3downloader {
+		region    = "us-west-1"
+		s3_bucket = "mybucket"
+		s3_prefix = "logs"
+	}
 
-```alloy
-otelcol.encoding.jsonlog "ndjson" {
-  array_mode = false
-  mode       = "body_with_inline_attributes"
+	encoding {
+		extension = otelcol.encoding.jsonlog.default.handler
+		suffix    = ".jsonl"
+	}
+
+	output {
+		logs = [otelcol.exporter.debug.default.input]
+	}
 }
+
+otelcol.exporter.debug "default" {}
 ```
