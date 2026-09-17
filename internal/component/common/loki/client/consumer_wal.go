@@ -50,6 +50,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 		pair, err := newEndpointWatcherPair(
 			name,
 			logger,
+			wl.Dir(),
 			walCfg,
 			cfg,
 			writer,
@@ -71,6 +72,7 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 func newEndpointWatcherPair(
 	name string,
 	logger *slog.Logger,
+	walDir string,
 	walCfg wal.Config,
 	cfg Config,
 	writer *wal.Writer,
@@ -80,7 +82,7 @@ func newEndpointWatcherPair(
 	endpointMetrics *walEndpointMetrics,
 ) (endpointWatcherPair, error) {
 
-	markerFile, err := marker.NewFile(logger, walCfg.Dir)
+	markerFile, err := marker.NewFile(logger, walDir)
 	if err != nil {
 		return endpointWatcherPair{}, err
 	}
@@ -88,7 +90,7 @@ func newEndpointWatcherPair(
 
 	endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
 	if err != nil {
-		return endpointWatcherPair{}, fmt.Errorf("error starting endpoint: %w", err)
+		return endpointWatcherPair{}, fmt.Errorf("failed to create endpoint %s: %w", name, err)
 	}
 
 	adapter := newWalEndpointAdapter(endpoint, logger, endpointMetrics.CurryWithId(name), tracker)
@@ -98,7 +100,7 @@ func newEndpointWatcherPair(
 	writer.SubscribeCleanup(adapter)
 
 	watcher := wal.NewWatcher(
-		walCfg.Dir,
+		walDir,
 		name,
 		watcherMetrics,
 		adapter,

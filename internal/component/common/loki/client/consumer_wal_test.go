@@ -31,10 +31,10 @@ import (
 
 func TestWALConsumer(t *testing.T) {
 	var (
+		dir       = t.TempDir()
 		logger    = logging.NewSlogNop()
 		reg       = prometheus.NewRegistry()
 		walConfig = wal.Config{
-			Dir:           t.TempDir(),
 			MaxSegmentAge: time.Second * 10,
 			WatchConfig:   wal.DefaultWatchConfig,
 		}
@@ -42,7 +42,7 @@ func TestWALConsumer(t *testing.T) {
 	// start all necessary resources
 	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	wl, err := wal.New(logger, reg, walConfig.Dir)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -104,16 +104,16 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	testEndpointConfig2.Name = "test-client-2"
 
 	var (
+		dir       = t.TempDir()
 		logger    = logging.NewSlogNop()
 		reg       = prometheus.NewRegistry()
 		walConfig = wal.Config{
-			Dir:           t.TempDir(),
 			WatchConfig:   wal.DefaultWatchConfig,
 			MaxSegmentAge: time.Second * 10,
 		}
 	)
 
-	wl, err := wal.New(logger, reg, walConfig.Dir)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -181,12 +181,13 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 func TestWALConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no endpoints", func(t *testing.T) {
 		var (
+			dir       = t.TempDir()
 			logger    = logging.NewSlogNop()
 			reg       = prometheus.NewRegistry()
-			walConfig = wal.Config{Dir: t.TempDir()}
+			walConfig = wal.Config{}
 		)
 
-		wl, err := wal.New(logger, reg, walConfig.Dir)
+		wl, err := wal.New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -198,13 +199,14 @@ func TestWALConsumer_InvalidConfig(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 
 		var (
+			dir       = t.TempDir()
 			logger    = logging.NewSlogNop()
 			reg       = prometheus.NewRegistry()
-			walConfig = wal.Config{Dir: t.TempDir()}
+			walConfig = wal.Config{}
 			config    = Config{URL: flagext.URLValue{URL: host}}
 		)
 
-		wl, err := wal.New(logger, reg, walConfig.Dir)
+		wl, err := wal.New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -600,8 +602,8 @@ func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
 	serverURL, err := url.Parse(server.URL)
 	require.NoError(t, err)
 
+	dir := t.TempDir()
 	walConfig := wal.Config{
-		Dir:           t.TempDir(),
 		MaxSegmentAge: time.Minute,
 		WatchConfig: wal.WatchConfig{
 			MinReadFrequency: 10 * time.Millisecond,
@@ -634,7 +636,7 @@ func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
 		reg    = prometheus.NewRegistry()
 	)
 
-	wl, err := wal.New(logger, reg, walConfig.Dir)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 
@@ -666,10 +668,10 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
+		dir       = t.TempDir()
 		logger    = logging.NewSlogNop()
 		reg       = prometheus.NewRegistry()
 		walConfig = wal.Config{
-			Dir:           t.TempDir(),
 			MaxSegmentAge: time.Second * 10,
 			WatchConfig:   wal.DefaultWatchConfig,
 		}
@@ -685,7 +687,7 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 		}
 	)
 
-	wl, err := wal.New(logger, reg, walConfig.Dir)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
 	defer wl.Close()
 

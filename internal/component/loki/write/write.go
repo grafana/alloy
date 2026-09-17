@@ -168,9 +168,8 @@ func (c *Component) Update(args component.Arguments) error {
 	)
 
 	if newArgs.WAL.Enabled {
-		walDir := filepath.Join(c.opts.DataPath, "wal")
 		if c.wal == nil {
-			wl, err := wal.New(c.opts.Logger, c.opts.Registerer, walDir)
+			wl, err := wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
 			if err != nil {
 				return err
 			}
@@ -182,7 +181,6 @@ func (c *Component) Update(args component.Arguments) error {
 			c.opts.Registerer,
 			c.wal,
 			wal.Config{
-				Dir:           walDir,
 				MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
 				WatchConfig: wal.WatchConfig{
 					MinReadFrequency: newArgs.WAL.MinReadFrequency,
