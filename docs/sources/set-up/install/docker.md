@@ -93,6 +93,8 @@ Every release includes distroless images:
 
 ## Run a Windows Docker container
 
+The Windows image is based on Windows Server 2022, so the host must be a Windows Server 2022 system or a Windows version that supports `ltsc2022` containers.
+
 To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the following command in a Command Prompt or PowerShell window:
 
 {{< tabs >}}
