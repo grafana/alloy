@@ -121,9 +121,14 @@ If you don't pass this argument, the [debugging UI][debug] won't be available ou
 
 To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to <http://localhost:12345> and make sure the {{< param "PRODUCT_NAME" >}} [UI][] loads without error.
 
+## Next steps
+
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
 [Docker Desktop]: https://www.docker.com/products/docker-desktop/
 [run]: ../../../reference/cli/run/
 [UI]: ../../../troubleshoot/debug/
+[Configure]: ../../../configure/
