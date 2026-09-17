@@ -122,6 +122,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.processor.interval` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.processor.interval` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example receives OTLP metrics and aggregates them for 30s before sending to the next exporter.

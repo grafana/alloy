@@ -125,6 +125,10 @@ The `rotation` block configures rolling log file behavior.
 
 `otelcol.exporter.file` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.file` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 The following examples demonstrate how you can use `otelcol.exporter.file`.

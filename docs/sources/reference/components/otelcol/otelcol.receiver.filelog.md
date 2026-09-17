@@ -250,6 +250,10 @@ If `max_elapsed_time` is set to `0` data is never discarded.
 
 `otelcol.receiver.filelog` is only reported as unhealthy if given an invalid configuration.
 
+## Debug information
+
+`otelcol.receiver.filelog` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 `otelcol.receiver.filelog` doesn't expose any component-specific debug metrics.

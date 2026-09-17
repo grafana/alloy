@@ -82,6 +82,10 @@ The following fields are exported and can be referenced by other components:
 
 `pyroscope.relabel` doesn't expose any component-specific debug information.
 
+## Debug information
+
+`pyroscope.relabel` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 The following Prometheus metrics are exposed:

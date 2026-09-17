@@ -112,6 +112,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.auth.sigv4` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.auth.sigv4` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Infer the "region" and "service" from an "aps-workspaces" exporter endpoint

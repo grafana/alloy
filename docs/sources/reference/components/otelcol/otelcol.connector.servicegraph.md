@@ -187,6 +187,10 @@ It doesn't accept metrics and logs.
 
 `otelcol.connector.servicegraph` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.servicegraph` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The example below accepts traces, creates service graph metrics from them, and writes the metrics to Mimir.

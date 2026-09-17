@@ -46,6 +46,10 @@ The following fields are exported and can be referenced by other components:
 
 `loki.echo` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`loki.echo` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example creates a pipeline that reads log files from `/var/log` and prints log lines to echo:

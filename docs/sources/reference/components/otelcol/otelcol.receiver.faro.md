@@ -136,6 +136,10 @@ The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
 
 `otelcol.receiver.faro` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.faro` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 This example forwards received telemetry through a batch processor before finally sending it to an OTLP-capable endpoint:

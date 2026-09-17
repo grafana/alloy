@@ -81,6 +81,10 @@ The `tls` block configures TLS for the HTTP server.
 
 `pyroscope.receive_http` doesn't expose any component-specific debug information.
 
+## Debug information
+
+`pyroscope.receive_http` doesn't expose any component-specific debug information.
+
 ## Debug metrics
 
 The following Prometheus metrics are exposed:

@@ -110,6 +110,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.connector.spanlogs` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.spanlogs` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following configuration sends logs derived from spans to Loki.

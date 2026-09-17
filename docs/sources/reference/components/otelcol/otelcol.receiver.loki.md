@@ -70,6 +70,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.receiver.loki` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.loki` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example uses the `otelcol.receiver.loki` component as a bridge between the Loki and OpenTelemetry ecosystems.

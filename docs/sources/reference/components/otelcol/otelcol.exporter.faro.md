@@ -144,6 +144,10 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.faro` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.exporter.faro` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 This example creates an exporter to send data to a [Faro][Faro] endpoint.

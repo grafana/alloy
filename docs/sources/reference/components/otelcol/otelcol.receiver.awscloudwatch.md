@@ -158,6 +158,10 @@ The following arguments are supported:
 
 `otelcol.receiver.awscloudwatch` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.receiver.awscloudwatch` doesn't expose any component-specific debug metrics.
+
 ## Example
 
 The following example collects logs from specific EKS cluster log groups and forwards them through a batch processor:
