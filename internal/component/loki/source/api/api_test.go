@@ -425,8 +425,8 @@ func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component
 			},
 		},
 	})
-
 	require.NoError(t, err)
+	c.Start()
 	return c
 }
 
@@ -640,6 +640,8 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 		},
 	)
 	require.NoError(t, err)
+	lokiClient.Start()
+
 	return lokiClient
 }
 
