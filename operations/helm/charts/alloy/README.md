@@ -188,6 +188,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.externalTrafficPolicy | string | `"Cluster"` | Value for external traffic policy. 'Cluster' or 'Local' |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
+| service.trafficDistribution | string | `""` | Value for traffic distribution. 'PreferSameNode' or 'PreferSameZone' (k8s >= 1.34) |
 | service.type | string | `"ClusterIP"` | Service type |
 | serviceAccount.additionalLabels | object | `{}` | Additional labels to add to the created service account. |
 | serviceAccount.annotations | object | `{}` | Annotations to add to the created service account. |
