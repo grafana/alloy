@@ -16,7 +16,8 @@ func TestDefaultArguments(t *testing.T) {
 
 	cfg, err := args.Convert()
 	require.NoError(t, err)
-	// Literal, not factory-derived, so a contrib bump that changes a default fails here.
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
+	// changed one: update the docs, then these values.
 	require.Equal(t, &deltatocumulativeprocessor.Config{
 		MaxStale:   5 * time.Minute,
 		MaxStreams: math.MaxInt,

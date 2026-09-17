@@ -15,7 +15,8 @@ func TestDefaultArguments(t *testing.T) {
 
 	client, err := args.ConvertClient()
 	require.NoError(t, err)
-	// Literal, not factory-derived, so a contrib bump that changes a default fails here.
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
+	// changed one: update the docs, then these values.
 	require.Equal(t, &googleclientauthextension.Config{
 		Config: gcpauth.Config{
 			TokenType:   "access_token",

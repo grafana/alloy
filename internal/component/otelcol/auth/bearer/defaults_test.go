@@ -12,7 +12,8 @@ func TestDefaultArguments(t *testing.T) {
 	var args bearer.Arguments
 	args.SetToDefault()
 
-	// Literal, not factory-derived, so a contrib bump that changes a default fails here.
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
+	// changed one: update the docs, then these values.
 	expected := &bearertokenauthextension.Config{
 		Header: "Authorization",
 		Scheme: "Bearer",
