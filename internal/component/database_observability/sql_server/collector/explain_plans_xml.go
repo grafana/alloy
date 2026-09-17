@@ -16,7 +16,8 @@ import (
 // <Hash>, <IndexScan>) rather than under a uniform key, so the RelOp struct
 // below declares one optional field per wrapper category we understand.
 // Anything not modeled here falls back to ExplainPlanOutputOperationUnknown
-// rather than being silently misclassified.
+// rather than being silently misclassified, with the engine-native operator
+// name preserved in Details.UnrecognizedOperator for diagnosis.
 
 type xmlShowPlan struct {
 	XMLName       xml.Name    `xml:"ShowPlanXML"`
@@ -69,6 +70,8 @@ type xmlRelOp struct {
 	Parallelism     *xmlOpChildren `xml:"Parallelism"`
 	TableSpool      *xmlOpChildren `xml:"TableSpool"`
 	IndexSpool      *xmlOpChildren `xml:"IndexSpool"`
+	Update          *xmlUpdate     `xml:"Update"`
+	Assert          *xmlOpChildren `xml:"Assert"`
 }
 
 // xmlOpChildren is reused by wrapper elements whose only content we care
@@ -101,6 +104,19 @@ type xmlSort struct {
 
 type xmlFilter struct {
 	xmlOpChildren
+	Predicate *xmlPredicate `xml:"Predicate"`
+}
+
+// xmlUpdate models SQL Server's DML wrapper element, used for every
+// INSERT/UPDATE/DELETE/MERGE physical operator (Table/Index/Clustered Index
+// Insert, Update, Delete, and Merge alike) regardless of statement type -
+// the enclosing RelOp's LogicalOp, not PhysicalOp, is what distinguishes
+// them. Object can repeat once per index the operator maintains alongside
+// the primary one (e.g. nonclustered indexes updated together with the
+// clustered index); only the first is surfaced as the target table/key.
+type xmlUpdate struct {
+	xmlOpChildren
+	Object    []xmlObject   `xml:"Object"`
 	Predicate *xmlPredicate `xml:"Predicate"`
 }
 
@@ -232,8 +248,15 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 	case op.IndexSpool != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationSpool
 		node.Children = childrenOf(op.IndexSpool.RelOp)
+	case op.Update != nil:
+		populateUpdateDetails(&node, op)
+		node.Children = childrenOf(op.Update.RelOp)
+	case op.Assert != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationAssert
+		node.Children = childrenOf(op.Assert.RelOp)
 	default:
 		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		node.Details.UnrecognizedOperator = &op.PhysicalOp
 	}
 
 	return node
@@ -261,6 +284,41 @@ func populateHashDetails(node *database_observability.ExplainPlanNode, op xmlRel
 		node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
 	default:
 		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		unrecognized := fmt.Sprintf("Hash Match (%s)", op.LogicalOp)
+		node.Details.UnrecognizedOperator = &unrecognized
+	}
+}
+
+// populateUpdateDetails disambiguates SQL Server's <Update> DML wrapper,
+// which represents INSERT, UPDATE, DELETE, and MERGE alike - LogicalOp (not
+// PhysicalOp, which varies by storage structure: Table Insert, Clustered
+// Index Update, Index Delete, etc.) is what tells them apart.
+func populateUpdateDetails(node *database_observability.ExplainPlanNode, op xmlRelOp) {
+	switch {
+	case strings.EqualFold(op.LogicalOp, "Insert"):
+		node.Operation = database_observability.ExplainPlanOutputOperationInsert
+	case strings.EqualFold(op.LogicalOp, "Update"):
+		node.Operation = database_observability.ExplainPlanOutputOperationUpdate
+	case strings.EqualFold(op.LogicalOp, "Delete"):
+		node.Operation = database_observability.ExplainPlanOutputOperationDelete
+	case strings.EqualFold(op.LogicalOp, "Merge"):
+		node.Operation = database_observability.ExplainPlanOutputOperationMerge
+	default:
+		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		unrecognized := fmt.Sprintf("%s (%s)", op.PhysicalOp, op.LogicalOp)
+		node.Details.UnrecognizedOperator = &unrecognized
+	}
+
+	if len(op.Update.Object) > 0 {
+		if table := stripBrackets(op.Update.Object[0].Table); table != "" {
+			node.Details.TableName = &table
+		}
+		if index := stripBrackets(op.Update.Object[0].Index); index != "" {
+			node.Details.KeyUsed = &index
+		}
+	}
+	if op.Update.Predicate != nil {
+		node.Details.Condition = redactedCondition(op.Update.Predicate)
 	}
 }
 

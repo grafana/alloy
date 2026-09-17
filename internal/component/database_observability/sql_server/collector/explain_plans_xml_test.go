@@ -256,6 +256,122 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				},
 			},
 		},
+		{
+			fixture: "unmodeled_operator",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationUnknown,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows:        50,
+					EstimatedCost:        floatPtr(0.03),
+					UnrecognizedOperator: stringPtr("Bitmap"),
+				},
+				// No children: the default branch never calls childrenOf, so the
+				// Table Scan nested inside <Bitmap> is unreachable.
+			},
+		},
+		{
+			fixture: "insert_operator",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationInsert,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 500,
+					EstimatedCost: floatPtr(0.8),
+					TableName:     stringPtr("Orders"),
+					KeyUsed:       stringPtr("PK_Orders"),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 500,
+							EstimatedCost: floatPtr(0.5),
+							TableName:     stringPtr("StagingOrders"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "update_operator",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationUpdate,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 1,
+					EstimatedCost: floatPtr(0.15),
+					TableName:     stringPtr("Orders"),
+					Condition:     stringPtr("[dbo].[Orders].[OrderId]=(?)"),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("Orders"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "assert_operator",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationAssert,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 1,
+					EstimatedCost: floatPtr(10.75),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationInsert,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 1,
+							EstimatedCost: floatPtr(10.74),
+							TableName:     stringPtr("ReadingListBooks"),
+							KeyUsed:       stringPtr("PK_ReadingListBooks"),
+						},
+						Children: []database_observability.ExplainPlanNode{
+							{
+								Operation: database_observability.ExplainPlanOutputOperationTableScan,
+								Details: database_observability.ExplainPlanNodeDetails{
+									EstimatedRows: 2000,
+									EstimatedCost: floatPtr(0.5),
+									TableName:     stringPtr("ReadingLists"),
+									AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "unmodeled_hash_match_logical_op",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationUnknown,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows:        300,
+					EstimatedCost:        floatPtr(0.9),
+					UnrecognizedOperator: stringPtr("Hash Match (Flow Distinct)"),
+				},
+				// Unlike the main switch's default branch, the Hash case always
+				// calls childrenOf before populateHashDetails's own default runs,
+				// so the child is preserved even though the node is Unknown.
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.6),
+							TableName:     stringPtr("Orders"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
