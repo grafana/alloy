@@ -14,71 +14,73 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 )
 
-func TestArguments_UnmarshalAlloy(t *testing.T) {
-	defaultExpected := func() kafkareceiver.Config {
-		return kafkareceiver.Config{
-			ClientConfig: configkafka.ClientConfig{
-				Brokers:         []string{"10.10.10.10:9092"},
-				ProtocolVersion: "2.0.0",
-				ClientID:        "otel-collector",
-				RackID:          "",
-				UseLeaderEpoch:  true,
-				ConnIdleTimeout: 9 * time.Minute,
-				Metadata: configkafka.MetadataConfig{
-					Full:            true,
-					RefreshInterval: 10 * time.Minute,
-					Retry: configkafka.MetadataRetryConfig{
-						Max:     3,
-						Backoff: 250 * time.Millisecond,
-					},
+// defaultExpected is the upstream default config, written out rather than taken from the
+// factory so a contrib bump that changes a default fails here instead of moving with it.
+func defaultExpected() kafkareceiver.Config {
+	return kafkareceiver.Config{
+		ClientConfig: configkafka.ClientConfig{
+			Brokers:         []string{"10.10.10.10:9092"},
+			ProtocolVersion: "2.0.0",
+			ClientID:        "otel-collector",
+			RackID:          "",
+			UseLeaderEpoch:  true,
+			ConnIdleTimeout: 9 * time.Minute,
+			Metadata: configkafka.MetadataConfig{
+				Full:            true,
+				RefreshInterval: 10 * time.Minute,
+				Retry: configkafka.MetadataRetryConfig{
+					Max:     3,
+					Backoff: 250 * time.Millisecond,
 				},
 			},
-			ConsumerConfig: configkafka.ConsumerConfig{
-				SessionTimeout:    10 * time.Second,
-				HeartbeatInterval: 3 * time.Second,
-				GroupID:           "otel-collector",
-				InitialOffset:     "latest",
-				AutoCommit: configkafka.AutoCommitConfig{
-					Enable:   true,
-					Interval: 1 * time.Second,
-				},
-				MinFetchSize:           1,
-				MaxFetchSize:           1048576,
-				MaxPartitionFetchSize:  1048576,
-				MaxFetchWait:           250 * time.Millisecond,
-				GroupRebalanceStrategy: "range",
+		},
+		ConsumerConfig: configkafka.ConsumerConfig{
+			SessionTimeout:    10 * time.Second,
+			HeartbeatInterval: 3 * time.Second,
+			GroupID:           "otel-collector",
+			InitialOffset:     "latest",
+			AutoCommit: configkafka.AutoCommitConfig{
+				Enable:   true,
+				Interval: 1 * time.Second,
 			},
-			Logs: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_logs"},
-				Encoding: "otlp_proto",
-			},
-			Metrics: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_metrics"},
-				Encoding: "otlp_proto",
-			},
-			Traces: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_spans"},
-				Encoding: "otlp_proto",
-			},
-			Profiles: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_profiles"},
-				Encoding: "otlp_proto",
-			},
-			HeaderExtraction: kafkareceiver.HeaderExtraction{
-				ExtractHeaders: false,
-				Headers:        []string{},
-			},
-			ErrorBackOff: configretry.BackOffConfig{
-				Enabled:             false,
-				InitialInterval:     0,
-				RandomizationFactor: 0,
-				Multiplier:          0,
-				MaxInterval:         0,
-				MaxElapsedTime:      0,
-			},
-		}
+			MinFetchSize:           1,
+			MaxFetchSize:           1048576,
+			MaxPartitionFetchSize:  1048576,
+			MaxFetchWait:           250 * time.Millisecond,
+			GroupRebalanceStrategy: "range",
+		},
+		Logs: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_logs"},
+			Encoding: "otlp_proto",
+		},
+		Metrics: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_metrics"},
+			Encoding: "otlp_proto",
+		},
+		Traces: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_spans"},
+			Encoding: "otlp_proto",
+		},
+		Profiles: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_profiles"},
+			Encoding: "otlp_proto",
+		},
+		HeaderExtraction: kafkareceiver.HeaderExtraction{
+			ExtractHeaders: false,
+			Headers:        []string{},
+		},
+		ErrorBackOff: configretry.BackOffConfig{
+			Enabled:             false,
+			InitialInterval:     0,
+			RandomizationFactor: 0,
+			Multiplier:          0,
+			MaxInterval:         0,
+			MaxElapsedTime:      0,
+		},
 	}
+}
 
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
@@ -596,9 +598,9 @@ func TestArguments_Auth(t *testing.T) {
 
 			actual := actualPtr.(*kafkareceiver.Config)
 
-			// Seed the same way Convert does, so the case only has to spell out
-			// what it overrides on top of the upstream defaults.
-			expected := *kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
+			// Seeded from the literal defaults, not the factory, so each case only spells
+			// out the auth it overrides without going blind to an upstream default change.
+			expected := defaultExpected()
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
 
