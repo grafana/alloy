@@ -25,8 +25,7 @@ type WAL interface {
 }
 
 type wrapper struct {
-	wal    *wlog.WL
-	logger *slog.Logger
+	wal *wlog.WL
 }
 
 // New creates a new wrapper, instantiating the actual wlog.WL underneath.
@@ -37,10 +36,7 @@ func New(logger *slog.Logger, registerer prometheus.Registerer, dir string) (WAL
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tsdb WAL: %w", err)
 	}
-	return &wrapper{
-		wal:    tsdbWAL,
-		logger: logger,
-	}, nil
+	return &wrapper{wal: tsdbWAL}, nil
 }
 
 // Close closes the underlying wal, flushing pending writes and closing the active segment. Safe to call more than once
