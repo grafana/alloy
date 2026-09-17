@@ -25,6 +25,14 @@ func buildYAML(t *testing.T, args Arguments, rt Runtime) map[string]any {
 	return config
 }
 
+// mustYAML marshals v back to a YAML string for require.YAMLEq comparisons.
+func mustYAML(t *testing.T, v any) string {
+	t.Helper()
+	data, err := yaml.Marshal(v)
+	require.NoError(t, err)
+	return string(data)
+}
+
 func TestYAMLGeneration(t *testing.T) {
 	args := Arguments{
 		Discovery: Discovery{
@@ -45,26 +53,20 @@ func TestYAMLGeneration(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 12345})
 
-	// Verify prometheus_export
-	prometheus, ok := config["prometheus_export"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, 12345, prometheus["port"])
-	require.Equal(t, []any{"application"}, prometheus["features"])
-	require.Equal(t, []any{"*"}, prometheus["instrumentations"])
+	require.YAMLEq(t, `
+port: 12345
+features: [application]
+instrumentations: ['*']
+`, mustYAML(t, config["prometheus_export"]))
 
-	// Verify discovery
-	discovery, ok := config["discovery"].(map[string]any)
-	require.True(t, ok)
-	survey, ok := discovery["survey"].([]any)
-	require.True(t, ok)
-	require.Len(t, survey, 1)
-	surveyItem := survey[0].(map[string]any)
-	require.Equal(t, ".*testserver.*", surveyItem["exe_path"])
+	require.YAMLEq(t, `
+survey:
+  - exe_path: .*testserver.*
+`, mustYAML(t, config["discovery"]))
 
-	// Verify ebpf
-	ebpf, ok := config["ebpf"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, "disabled", ebpf["context_propagation"])
+	require.YAMLEq(t, `
+context_propagation: disabled
+`, mustYAML(t, config["ebpf"]))
 }
 
 func TestYAMLGeneration_TracesExport(t *testing.T) {
@@ -78,11 +80,13 @@ func TestYAMLGeneration_TracesExport(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 12345, OTLPAddr: "beyla-otlp-test"})
 
-	export, ok := config["otel_traces_export"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, "unix://beyla-otlp-test", export["endpoint"])
-	require.Equal(t, []any{"http"}, export["instrumentations"])
-	require.Equal(t, "always_on", export["sampler"].(map[string]any)["name"])
+	require.YAMLEq(t, `
+endpoint: unix://beyla-otlp-test
+protocol: http/protobuf
+instrumentations: [http]
+sampler:
+  name: always_on
+`, mustYAML(t, config["otel_traces_export"]))
 	require.NotContains(t, config, "traces")
 }
 
@@ -118,33 +122,34 @@ func TestYAMLGeneration_NewSchemaFields(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 9090})
 
-	// Verify newly generated EBPF fields round-trip correctly.
-	ebpf := config["ebpf"].(map[string]any)
-	require.Equal(t, 64, ebpf["batch_length"])
-	require.Equal(t, "5s", ebpf["batch_timeout"])
-	require.Equal(t, 128, ebpf["couchbase_db_cache_size"])
+	// Verify newly generated EBPF fields round-trip correctly, including inject_wrapper:
+	// openai/anthropic/gemini/bedrock nested under genai, while graphql stays a direct http field.
+	require.YAMLEq(t, `
+batch_length: 64
+batch_timeout: 5s
+couchbase_db_cache_size: 128
+buffer_sizes:
+  http: 1024
+payload_extraction:
+  http:
+    graphql:
+      enabled: true
+    genai:
+      gemini:
+        enabled: true
+`, mustYAML(t, config["ebpf"]))
 
-	bufSizes := ebpf["buffer_sizes"].(map[string]any)
-	require.Equal(t, 1024, bufSizes["http"])
+	require.YAMLEq(t, `
+reverse_dns:
+  cache_len: 512
+  type: local
+`, mustYAML(t, config["stats"]))
 
-	// Verify inject_wrapper: openai/anthropic/gemini/bedrock nested under genai.
-	http := ebpf["payload_extraction"].(map[string]any)["http"].(map[string]any)
-	genai := http["genai"].(map[string]any)
-	require.Equal(t, true, genai["gemini"].(map[string]any)["enabled"])
-	// Direct http field (not wrapped).
-	require.Equal(t, true, http["graphql"].(map[string]any)["enabled"])
-
-	// Verify new Stats fields.
-	stats := config["stats"].(map[string]any)
-	reverseDNS := stats["reverse_dns"].(map[string]any)
-	require.Equal(t, 512, reverseDNS["cache_len"])
-	require.Equal(t, "local", reverseDNS["type"])
-
-	// Verify new Discovery fields.
-	disc := config["discovery"].(map[string]any)
-	require.Equal(t, true, disc["bpf_pid_filter_off"])
-	require.Equal(t, []any{"/usr/lib"}, disc["excluded_linux_system_paths"])
-	require.Equal(t, "30s", disc["min_process_age"])
+	require.YAMLEq(t, `
+bpf_pid_filter_off: true
+excluded_linux_system_paths: [/usr/lib]
+min_process_age: 30s
+`, mustYAML(t, config["discovery"]))
 }
 
 func TestYAMLGeneration_NetworkFlows(t *testing.T) {
@@ -174,25 +179,24 @@ func TestYAMLGeneration_NetworkFlows(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 12345})
 
-	// Verify network
-	networkFlows, ok := config["network"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, true, networkFlows["enable"])
-	require.Equal(t, "0.0.0.0", networkFlows["agent_ip"])
-	require.Equal(t, []any{"eth0"}, networkFlows["interfaces"])
-	require.Equal(t, []any{"TCP", "UDP"}, networkFlows["protocols"])
-	require.Equal(t, 1, networkFlows["sampling"])
-	require.Equal(t, []any{"10.0.0.0/8"}, networkFlows["cidrs"])
-	require.Equal(t, "ingress", networkFlows["direction"])
-	require.Equal(t, "ipv4", networkFlows["agent_ip_type"])
-
 	// geo_ip/reverse_dns must survive under network (backward compat with released beyla.ebpf).
-	geoIP := networkFlows["geo_ip"].(map[string]any)
-	require.Equal(t, 1024, geoIP["cache_len"])
-	require.Equal(t, "/etc/geoip/country.mmdb", geoIP["maxmind"].(map[string]any)["country_path"])
-	reverseDNS := networkFlows["reverse_dns"].(map[string]any)
-	require.Equal(t, "local", reverseDNS["type"])
-	require.Equal(t, 256, reverseDNS["cache_len"])
+	require.YAMLEq(t, `
+enable: true
+agent_ip: 0.0.0.0
+interfaces: [eth0]
+protocols: [TCP, UDP]
+sampling: 1
+cidrs: [10.0.0.0/8]
+direction: ingress
+agent_ip_type: ipv4
+geo_ip:
+  cache_len: 1024
+  maxmind:
+    country_path: /etc/geoip/country.mmdb
+reverse_dns:
+  type: local
+  cache_len: 256
+`, mustYAML(t, config["network"]))
 }
 
 func TestYAMLGeneration_InjectorEnabledSDKs(t *testing.T) {
@@ -207,10 +211,10 @@ func TestYAMLGeneration_InjectorEnabledSDKs(t *testing.T) {
 
 	config := buildYAML(t, args, Runtime{Port: 4318})
 
-	injector, ok := config["injector"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, []any{"java"}, injector["enabled_sdks"])
-	require.Equal(t, "http://alloy:4318", injector["exporter_otlp_endpoint"])
+	require.YAMLEq(t, `
+enabled_sdks: [java]
+exporter_otlp_endpoint: http://alloy:4318
+`, mustYAML(t, config["injector"]))
 }
 
 func TestYAMLGeneration_InternalMetricsDefault(t *testing.T) {
@@ -218,16 +222,16 @@ func TestYAMLGeneration_InternalMetricsDefault(t *testing.T) {
 	// exposed on the scraped /metrics endpoint (parity with in-process Beyla).
 	config := buildYAML(t, Arguments{}, Runtime{Port: 12345})
 
-	im, ok := config["internal_metrics"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, "prometheus", im["exporter"])
-	prom := im["prometheus"].(map[string]any)
-	require.Equal(t, 12345, prom["port"])
-	require.Equal(t, "/metrics", prom["path"])
+	require.YAMLEq(t, `
+exporter: prometheus
+prometheus:
+  port: 12345
+  path: /metrics
+`, mustYAML(t, config["internal_metrics"]))
 
 	// An explicit exporter overrides the default and drops the prometheus block.
 	config = buildYAML(t, Arguments{InternalMetrics: InternalMetrics{Exporter: "disabled"}}, Runtime{Port: 12345})
-	im = config["internal_metrics"].(map[string]any)
-	require.Equal(t, "disabled", im["exporter"])
-	require.NotContains(t, im, "prometheus")
+	require.YAMLEq(t, `
+exporter: disabled
+`, mustYAML(t, config["internal_metrics"]))
 }
