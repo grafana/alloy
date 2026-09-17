@@ -152,8 +152,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
-
 	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
@@ -172,28 +170,7 @@ func (c *Component) Update(args component.Arguments) error {
 	)
 
 	if newArgs.WAL.Enabled {
-		if c.wal == nil {
-			wl, err := wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
-			if err != nil {
-				return err
-			}
-			c.wal = wl
-		}
-
-		consumer, err = client.NewWALConsumer(
-			c.opts.Logger,
-			c.opts.Registerer,
-			c.wal,
-			wal.Config{
-				MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
-				WatchConfig: wal.WatchConfig{
-					MinReadFrequency: newArgs.WAL.MinReadFrequency,
-					MaxReadFrequency: newArgs.WAL.MaxReadFrequency,
-					DrainTimeout:     newArgs.WAL.DrainTimeout,
-				},
-			},
-			cfgs...,
-		)
+		consumer, err = c.newWALConsumer(newArgs, cfgs)
 	} else {
 		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
@@ -214,8 +191,49 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.consumer = consumer
 	c.consumer.Start()
+	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
+}
+
+func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client.Consumer, error) {
+	var (
+		wl     = c.wal
+		opened = false
+	)
+
+	if wl == nil {
+		var err error
+		wl, err = wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
+		if err != nil {
+			return nil, err
+		}
+		opened = true
+	}
+
+	consumer, err := client.NewWALConsumer(
+		c.opts.Logger,
+		c.opts.Registerer,
+		wl,
+		wal.Config{
+			MaxSegmentAge: args.WAL.MaxSegmentAge,
+			WatchConfig: wal.WatchConfig{
+				MinReadFrequency: args.WAL.MinReadFrequency,
+				MaxReadFrequency: args.WAL.MaxReadFrequency,
+				DrainTimeout:     args.WAL.DrainTimeout,
+			},
+		},
+		cfgs...,
+	)
+	if err != nil {
+		if opened {
+			wl.Close()
+		}
+		return nil, err
+	}
+
+	c.wal = wl
+	return consumer, nil
 }
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
