@@ -12,7 +12,7 @@ weight: 350
 
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
-* [Linux containers][] for AMD64 and ARM64.
+* [Linux containers][] for AMD64, ARM64, ppc64le, and s390x.
 * macOS for AMD64 (Intel) and ARM64 (Apple Silicon) using [Docker Desktop][].
 * [Windows containers][] for AMD64.
 
