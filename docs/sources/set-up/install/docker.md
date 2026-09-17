@@ -153,7 +153,7 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
-[Docker]: https://docker.io
+[Docker]: https://www.docker.com/
 [Docker Desktop]: https://www.docker.com/products/docker-desktop/
 [run]: ../../../reference/cli/run/
 [UI]: ../../../troubleshoot/debug/
