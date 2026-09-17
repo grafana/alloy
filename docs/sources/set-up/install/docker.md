@@ -3,6 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/set-up/install/docker/
 aliases:
   - ../../get-started/install/docker/ # /docs/alloy/latest/get-started/install/docker/
 description: Learn how to run Grafana Alloy in a Docker container
+review_date: 2026-09-17
 menuTitle: Docker
 title: Run Grafana Alloy in a Docker container
 weight: 350
