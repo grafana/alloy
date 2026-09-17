@@ -37,6 +37,11 @@ func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandle
 	}, nil
 }
 
+// start starts the endpoint and must be called before the first call to enqueue.
+func (e *endpoint) start() {
+	e.shards.start(e.cfg.QueueConfig.MinShards)
+}
+
 // enqueue tries to enqueue an entry. It waits for room while BlockOnOverflow
 // is set and drops the entry when it is not, returning errQueueIsFull. It will
 // return context error if caller cancels context or loki.ErrConsumerStopped
@@ -72,10 +77,8 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 	return bo.Err()
 }
 
-func (e *endpoint) start() {
-	e.shards.start(e.cfg.QueueConfig.MinShards)
-}
-
+// stop stops the endpoint, waiting up to the configured drain timeout for queued
+// entries to be sent before canceling in-flight requests.
 func (e *endpoint) stop() {
 	e.shards.stop()
 }
