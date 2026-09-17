@@ -90,3 +90,48 @@ func EnsureServiceRunning(c *assert.CollectT, t *testing.T, serviceName string) 
 	}
 	t.Logf("Service is running")
 }
+
+// EnsureServiceStopped checks that the Alloy service exists, stops it if
+// needed, and asserts it is stopped
+func EnsureServiceStopped(c *assert.CollectT, t *testing.T, serviceName string) {
+	t.Logf("Connecting to service manager")
+	m, err := mgr.Connect()
+	if !assert.NoError(c, err, "connect to service manager") {
+		return
+	}
+	defer m.Disconnect()
+	t.Logf("Connected to service manager")
+
+	t.Logf("Opening service name=%s", serviceName)
+	s, err := m.OpenService(serviceName)
+	if !assert.NoError(c, err, "Alloy service should exist") {
+		return
+	}
+	defer s.Close()
+	t.Logf("Opened service name=%s", serviceName)
+
+	t.Logf("Querying service status")
+	status, err := s.Query()
+	assert.NoError(c, err, "query service status")
+	if err != nil {
+		return
+	}
+	stateStr := ServiceStateString(status.State)
+	t.Logf("Service status state=%s", stateStr)
+
+	if status.State != svc.Stopped {
+		if status.State != svc.StopPending {
+			t.Logf("Stopping service (not stopped)")
+			if _, err := s.Control(svc.Stop); err != nil {
+				t.Logf("Stop failed err=%v", err)
+				assert.NoError(c, err, "stop Alloy service")
+				return
+			}
+			t.Logf("Stop requested successfully")
+		} else {
+			t.Logf("Service is stop pending, waiting")
+		}
+		return
+	}
+	t.Logf("Service is stopped")
+}

@@ -37,3 +37,13 @@ func RegistryStringsValue(registryPath, name string) ([]string, error) {
 	v, _, err := k.GetStringsValue(name)
 	return v, err
 }
+
+// SetRegistryStringValue sets a REG_SZ value under HKLM at registryPath
+func SetRegistryStringValue(registryPath, name, value string) error {
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, registryPath, registry.SET_VALUE)
+	if err != nil {
+		return err
+	}
+	defer k.Close()
+	return k.SetStringValue(name, value)
+}
