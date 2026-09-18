@@ -96,9 +96,9 @@ func EnsureServiceRunning(c *assert.CollectT, t *testing.T, serviceName string) 
 		} else {
 			t.Logf("Service is start pending, waiting")
 		}
-		return // will be polled again until Running
 	}
-	t.Logf("Service is running")
+
+	assert.Equal(c, svc.Running, status.State, "expected service to be running, got %s", ServiceStateString(status.State))
 }
 
 // EnsureServiceStopped checks that the Alloy service exists, stops it if
@@ -123,7 +123,8 @@ func EnsureServiceStopped(c *assert.CollectT, t *testing.T, serviceName string) 
 		} else {
 			t.Logf("Service is stop pending, waiting")
 		}
-		return
 	}
-	t.Logf("Service is stopped")
+
+	// Fail this tick until the service is actually stopped
+	assert.Equal(c, svc.Stopped, status.State, "expected service to be stopped, got %s", ServiceStateString(status.State))
 }
