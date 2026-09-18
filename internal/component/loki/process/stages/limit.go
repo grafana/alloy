@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	errLimitStageDropEntry          = errors.New("entry dropped by limit stage")
 	errLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
 	errLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
 )
@@ -113,10 +114,10 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 	go func() {
 		defer close(out)
 		for e := range in {
-			if !m.shouldThrottle(m.ctx, e.Labels) {
-				out <- e
+			if err := m.throttle(m.ctx, e.Labels); err != nil {
 				continue
 			}
+			out <- e
 		}
 	}()
 	return out
@@ -131,8 +132,12 @@ func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	defer stop()
 
 	for _, e := range entries {
-		if m.shouldThrottle(sctx, e.Labels) {
-			continue
+		err := m.throttle(sctx, e.Labels)
+		if err != nil {
+			if errors.Is(err, errLimitStageDropEntry) {
+				continue
+			}
+			return err
 		}
 
 		entries[dst] = e
@@ -156,29 +161,33 @@ func (m *limitStage) Stop() {
 	m.stop()
 }
 
-func (m *limitStage) shouldThrottle(ctx context.Context, labels model.LabelSet) bool {
+// throttle applies the configured rate limit to the entry. It returns
+// errLimitStageDropEntry when the entry is rate-limited and must be dropped.
+func (m *limitStage) throttle(ctx context.Context, labels model.LabelSet) error {
 	if m.cfg.ByLabelName != "" {
 		labelValue, ok := labels[model.LabelName(m.cfg.ByLabelName)]
 		if !ok {
-			return false // if no label found, dont ratelimit
+			// if no label found, dont ratelimit
+			return nil
 		}
 		rl := m.rateLimiterByLabel.getOrCreate(labelValue)
 		if rl.Allow() {
-			return false
+			return nil
 		}
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
 		m.dropCountByLabel.WithLabelValues(m.cfg.ByLabelName, string(labelValue)).Inc()
-		return true
+		return errLimitStageDropEntry
 	}
 
 	if m.cfg.Drop {
 		if m.rateLimiter.Allow() {
-			return false
+			return nil
 		}
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
-		return true
+		return errLimitStageDropEntry
 	}
-	return m.rateLimiter.Wait(ctx) != nil
+
+	return m.rateLimiter.Wait(ctx)
 }
 
 // Cleanup implements Stage.
