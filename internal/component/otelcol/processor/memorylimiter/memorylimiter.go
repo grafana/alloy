@@ -81,39 +81,34 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	// Upstream stores these as whole MiB, so round down before validating anything:
-	// the checks below and the messages they produce then describe the values the
-	// processor will actually run with rather than what was written.
-	args.MemoryLimit = args.MemoryLimit / units.Mebibyte * units.Mebibyte
-	args.MemorySpikeLimit = args.MemorySpikeLimit / units.Mebibyte * units.Mebibyte
+	// Round down before validating anything so the rules below, and upstream's,
+	// describe the values the processor will actually run with.
+	args.MemoryLimit = roundDownToMiB(args.MemoryLimit)
+	args.MemorySpikeLimit = roundDownToMiB(args.MemorySpikeLimit)
 
-	// Only the rules upstream can't express in Alloy's own attribute names stay
-	// here; every accepted config ends up in validateUpstream.
+	// Upstream accepts both and silently prefers limit, so this rule is ours alone.
 	if args.MemoryLimit > 0 && args.MemoryLimitPercentage > 0 {
 		return fmt.Errorf("either limit or limit_percentage must be set, but not both")
 	}
 
-	if args.MemoryLimit > 0 {
-		if args.MemorySpikeLimit >= args.MemoryLimit {
-			return fmt.Errorf("spike_limit must be less than limit")
-		}
-		if args.MemorySpikeLimit == 0 {
-			args.MemorySpikeLimit = args.MemoryLimit / 5
-		}
-		return args.validateUpstream()
-	}
-	if args.MemoryLimitPercentage > 0 {
-		if args.MemoryLimitPercentage <= 0 ||
-			args.MemoryLimitPercentage > 100 ||
-			args.MemorySpikePercentage <= 0 ||
-			args.MemorySpikePercentage > 100 {
-
-			return fmt.Errorf("limit_percentage and spike_limit_percentage must be greater than 0 and and less or equal than 100")
-		}
-		return args.validateUpstream()
+	// Ours too: upstream doesn't require spike_limit_percentage to be set at all.
+	pctOutOfRange := args.MemoryLimitPercentage > 100 || args.MemorySpikePercentage <= 0 || args.MemorySpikePercentage > 100
+	if args.MemoryLimitPercentage > 0 && pctOutOfRange {
+		return fmt.Errorf("limit_percentage and spike_limit_percentage must be greater than 0 and and less or equal than 100")
 	}
 
-	return fmt.Errorf("either limit or limit_percentage must be set to greater than zero")
+	if args.MemoryLimit > 0 && args.MemorySpikeLimit == 0 {
+		args.MemorySpikeLimit = roundDownToMiB(args.MemoryLimit / 5)
+	}
+
+	// Every remaining rule is upstream's, reported in Alloy's attribute names.
+	return args.validateUpstream()
+}
+
+// roundDownToMiB drops any remainder below a whole MiB, which is all upstream's
+// limit fields can hold.
+func roundDownToMiB(b units.Base2Bytes) units.Base2Bytes {
+	return b / units.Mebibyte * units.Mebibyte
 }
 
 // validateUpstream runs the collector's own rules rather than restating them here.
@@ -126,23 +121,20 @@ func (args Arguments) validateUpstream() error {
 	return alloyFieldNames(otelCfg.(*memorylimiterprocessor.Config).Validate())
 }
 
-// alloyFieldNames rewrites upstream's MiB-suffixed field names to the Alloy
-// attributes users actually write. Rounding down in Validate should keep these
-// two rules unreachable, so this is a backstop for upstream wording we haven't
-// anticipated rather than the primary fix.
+// upstreamFieldNames rewrites upstream's MiB-suffixed field names to the Alloy
+// attributes users actually write. That is what lets us defer those rules to
+// upstream instead of restating them here to get the wording right.
+var upstreamFieldNames = strings.NewReplacer(
+	"'spike_limit_mib'", "'spike_limit'",
+	"'limit_mib'", "'limit'",
+)
+
 func alloyFieldNames(err error) error {
 	if err == nil {
 		return nil
 	}
 
-	msg := err.Error()
-	for _, r := range []struct{ upstream, alloy string }{
-		{"'spike_limit_mib'", "'spike_limit'"},
-		{"'limit_mib'", "'limit'"},
-	} {
-		msg = strings.ReplaceAll(msg, r.upstream, r.alloy)
-	}
-
+	msg := upstreamFieldNames.Replace(err.Error())
 	if msg == err.Error() {
 		return err
 	}
@@ -155,8 +147,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
 
 	result.CheckInterval = args.CheckInterval
-	result.MemoryLimitMiB = uint32(args.MemoryLimit / units.Mebibyte)
-	result.MemorySpikeLimitMiB = uint32(args.MemorySpikeLimit / units.Mebibyte)
+	result.MemoryLimitMiB = uint32(roundDownToMiB(args.MemoryLimit) / units.Mebibyte)
+	result.MemorySpikeLimitMiB = uint32(roundDownToMiB(args.MemorySpikeLimit) / units.Mebibyte)
 	result.MemoryLimitPercentage = args.MemoryLimitPercentage
 	result.MemorySpikePercentage = args.MemorySpikePercentage
 	result.MinGCIntervalWhenSoftLimited = args.MinGCIntervalWhenSoftLimited

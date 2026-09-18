@@ -219,9 +219,9 @@ func TestCheckIntervalRejected(t *testing.T) {
 		"'check_interval' must be greater than zero")
 }
 
-// Upstream stores the limits as whole MiB. Validate rounds down first so these
-// cases are reported in Alloy's own attribute names rather than upstream's
-// limit_mib / spike_limit_mib.
+// Upstream owns these rules, but its messages name limit_mib / spike_limit_mib.
+// Validate rounds down first and the errors are rewritten on the way out, so what
+// a user sees names the attributes they actually wrote.
 func TestMiBRounding(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -232,12 +232,17 @@ func TestMiBRounding(t *testing.T) {
 		{
 			name:        "a limit below 1MiB rounds to nothing",
 			cfg:         `check_interval = "1s"` + "\n" + `limit = "512KiB"` + "\n" + `output {}`,
-			expectedErr: "either limit or limit_percentage must be set to greater than zero",
+			expectedErr: "'limit' or 'limit_percentage' must be greater than zero",
 		},
 		{
 			name:        "a limit and spike that round to the same MiB",
 			cfg:         `check_interval = "1s"` + "\n" + `limit = "1900KiB"` + "\n" + `spike_limit = "1200KiB"` + "\n" + `output {}`,
-			expectedErr: "spike_limit must be less than limit",
+			expectedErr: "'spike_limit' must be smaller than 'limit'",
+		},
+		{
+			name:        "a spike limit equal to the limit",
+			cfg:         `check_interval = "1s"` + "\n" + `limit = "10MiB"` + "\n" + `spike_limit = "10MiB"` + "\n" + `output {}`,
+			expectedErr: "'spike_limit' must be smaller than 'limit'",
 		},
 		{
 			name:  "a fractional limit rounds down",

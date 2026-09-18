@@ -70,7 +70,8 @@ The recommended value for spike limits is about 20% of the corresponding hard li
 The recommended `check_interval` value is 1 second.
 If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
 
-The `limit` and `spike_limit` values must be larger than 1 MiB.
+The `limit` and `spike_limit` values are rounded down to a whole number of MiB, which is the granularity the processor works at.
+A value of `"1536KiB"` is therefore treated as `"1MiB"`, and any value below 1 MiB rounds down to zero and is rejected.
 
 Forcing a garbage collection is CPU-heavy, so the processor spaces them out.
 While over a limit, it forces one no more often than the matching `min_gc_interval_when_*_limited`.
