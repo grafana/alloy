@@ -55,7 +55,8 @@ During unmarshaling, the component stores each JSON object as a log record body.
 
 ## Blocks
 
-The `otelcol.encoding.jsonlog` component does not support any blocks. You can configure this component with arguments.
+The `otelcol.encoding.jsonlog` component doesn't support any blocks.
+You can configure this component with arguments.
 
 ## Exported fields
 

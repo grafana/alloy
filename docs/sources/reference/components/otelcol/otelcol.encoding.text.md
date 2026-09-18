@@ -51,7 +51,8 @@ If `unmarshaling_separator` is empty, the decoder waits until it reaches the end
 
 ## Blocks
 
-The `otelcol.encoding.text` component does not support any blocks. You can configure this component with arguments.
+The `otelcol.encoding.text` component doesn't support any blocks.
+You can configure this component with arguments.
 
 ## Exported fields
 
