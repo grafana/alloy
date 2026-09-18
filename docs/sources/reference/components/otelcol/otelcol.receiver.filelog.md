@@ -80,6 +80,10 @@ Currently, only gzip compressed files are auto detected. This allows for mix of 
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
+{{< admonition type="note" >}}
+On Windows, matching patterns in `include` and `exclude` are case-insensitive by default. This doesn't affect other operating systems.
+{{< /admonition >}}
+
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
 ### `operators`
