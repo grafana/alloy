@@ -48,9 +48,9 @@ func processEntries(s Stage, entries ...Entry) []Entry {
 	return res
 }
 
-func loadConfig(yml string) []StageConfig {
+func loadConfig(cfg string) []StageConfig {
 	var config Configs
-	err := syntax.Unmarshal([]byte(yml), &config)
+	err := syntax.Unmarshal([]byte(cfg), &config)
 	if err != nil {
 		panic(err)
 	}
