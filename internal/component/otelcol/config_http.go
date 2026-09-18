@@ -39,6 +39,10 @@ type HTTPServerArguments struct {
 	ReadTimeout       time.Duration `alloy:"read_timeout,attr,optional"`
 	WriteTimeout      time.Duration `alloy:"write_timeout,attr,optional"`
 	ReadHeaderTimeout time.Duration `alloy:"read_header_timeout,attr,optional"`
+
+	// Keepalive configures HTTP keep-alive settings. When set, it takes
+	// precedence over the deprecated idle_timeout attribute above.
+	Keepalive *HTTPKeepaliveServerArguments `alloy:"keepalive,block,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
@@ -99,6 +103,7 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
+		Keepalive:             args.Keepalive.Convert(),
 	}), nil
 }
 
@@ -120,6 +125,35 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent
 		m[ext.ID] = ext.Extension
 	}
 	return m
+}
+
+// HTTPKeepaliveServerArguments configures HTTP keep-alive settings for an HTTP
+// server.
+type HTTPKeepaliveServerArguments struct {
+	IdleTimeout time.Duration `alloy:"idle_timeout,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*HTTPKeepaliveServerArguments)(nil)
+
+// DefaultKeepaliveServerIdleTimeout matches otelconfighttp.NewDefaultKeepaliveServerConfig().
+const DefaultKeepaliveServerIdleTimeout = 1 * time.Minute
+
+// SetToDefault implements syntax.Defaulter.
+func (args *HTTPKeepaliveServerArguments) SetToDefault() {
+	*args = HTTPKeepaliveServerArguments{
+		IdleTimeout: DefaultKeepaliveServerIdleTimeout,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args *HTTPKeepaliveServerArguments) Convert() configoptional.Optional[otelconfighttp.KeepaliveServerConfig] {
+	if args == nil {
+		return configoptional.None[otelconfighttp.KeepaliveServerConfig]()
+	}
+
+	return configoptional.Some(otelconfighttp.KeepaliveServerConfig{
+		IdleTimeout: args.IdleTimeout,
+	})
 }
 
 // CORSArguments holds shared CORS settings for components which launch HTTP
