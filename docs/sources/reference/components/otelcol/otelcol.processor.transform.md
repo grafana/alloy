@@ -179,8 +179,9 @@ Multiple `log_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Lets this block's OTTL `cache` be read from other statement-list blocks for the same signal. | `false` | no       |
 
 The supported values for `context` are:
 
@@ -197,6 +198,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
 
+{{< admonition type="note" >}}
+`shared_cache` is experimental upstream and might change or be removed in a future release.
+{{< /admonition >}}
+
 [OTTL Context]: #ottl-context
 
 ### `metric_statements`
@@ -208,8 +213,9 @@ Multiple `metric_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Lets this block's OTTL `cache` be read from other statement-list blocks for the same signal. | `false` | no       |
 
 The supported values for `context` are:
 
@@ -226,6 +232,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `metric_statements`, the top-level `error_mode` is applied.
+
+{{< admonition type="note" >}}
+`shared_cache` is experimental upstream and might change or be removed in a future release.
+{{< /admonition >}}
 
 ### `statements`
 
@@ -277,8 +287,9 @@ Multiple `trace_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Lets this block's OTTL `cache` be read from other statement-list blocks for the same signal. | `false` | no       |
 
 The supported values for `context` are:
 
@@ -295,6 +306,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `trace_statements`, the top-level `error_mode` is applied.
+
+{{< admonition type="note" >}}
+`shared_cache` is experimental upstream and might change or be removed in a future release.
+{{< /admonition >}}
 
 ### OTTL Context
 

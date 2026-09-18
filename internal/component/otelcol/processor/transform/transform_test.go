@@ -244,6 +244,48 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "TransformWithSharedCache",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				context = "resource"
+				shared_cache = true
+				statements = [
+					` + backtick + `set(cache["shared"], "value")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "datapoint"
+				statements = [
+					` + backtick + `set(attributes["cached"], cache["shared"])` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"error_mode": "ignore",
+				"trace_statements": []any{
+					map[string]any{
+						"context":      "resource",
+						"shared_cache": true,
+						"statements": []any{
+							`set(cache["shared"], "value")`,
+						},
+					},
+				},
+				"metric_statements": []any{
+					map[string]any{
+						"context": "datapoint",
+						"statements": []any{
+							`set(attributes["cached"], cache["shared"])`,
+						},
+					},
+				},
+				"log_statements":     []any{},
+				"profile_statements": []any{},
+			},
+		},
+		{
 			testName: "RenameAttribute1",
 			cfg: `
 			error_mode = "ignore"
