@@ -218,3 +218,52 @@ func TestCheckIntervalRejected(t *testing.T) {
 	require.ErrorContains(t, syntax.Unmarshal([]byte(cfg), &args),
 		"'check_interval' must be greater than zero")
 }
+
+// Upstream stores the limits as whole MiB. Validate rounds down first so these
+// cases are reported in Alloy's own attribute names rather than upstream's
+// limit_mib / spike_limit_mib.
+func TestMiBRounding(t *testing.T) {
+	tests := []struct {
+		name         string
+		cfg          string
+		expectedErr  string
+		limit, spike uint32
+	}{
+		{
+			name:        "a limit below 1MiB rounds to nothing",
+			cfg:         `check_interval = "1s"` + "\n" + `limit = "512KiB"` + "\n" + `output {}`,
+			expectedErr: "either limit or limit_percentage must be set to greater than zero",
+		},
+		{
+			name:        "a limit and spike that round to the same MiB",
+			cfg:         `check_interval = "1s"` + "\n" + `limit = "1900KiB"` + "\n" + `spike_limit = "1200KiB"` + "\n" + `output {}`,
+			expectedErr: "spike_limit must be less than limit",
+		},
+		{
+			name:  "a fractional limit rounds down",
+			cfg:   `check_interval = "1s"` + "\n" + `limit = "102912KiB"` + "\n" + `output {}`,
+			limit: 100,
+			spike: 20,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var args memorylimiter.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				require.NotContains(t, err.Error(), "_mib")
+				return
+			}
+			require.NoError(t, err)
+
+			cfg, err := args.Convert()
+			require.NoError(t, err)
+
+			otelCfg := cfg.(*memorylimiterprocessor.Config)
+			require.Equal(t, tc.limit, otelCfg.MemoryLimitMiB)
+			require.Equal(t, tc.spike, otelCfg.MemorySpikeLimitMiB)
+		})
+	}
+}

@@ -2,7 +2,9 @@
 package memorylimiter
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -79,6 +81,12 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	// Upstream stores these as whole MiB, so round down before validating anything:
+	// the checks below and the messages they produce then describe the values the
+	// processor will actually run with rather than what was written.
+	args.MemoryLimit = args.MemoryLimit / units.Mebibyte * units.Mebibyte
+	args.MemorySpikeLimit = args.MemorySpikeLimit / units.Mebibyte * units.Mebibyte
+
 	// Only the rules upstream can't express in Alloy's own attribute names stay
 	// here; every accepted config ends up in validateUpstream.
 	if args.MemoryLimit > 0 && args.MemoryLimitPercentage > 0 {
@@ -115,7 +123,31 @@ func (args Arguments) validateUpstream() error {
 		return err
 	}
 
-	return otelCfg.(*memorylimiterprocessor.Config).Validate()
+	return alloyFieldNames(otelCfg.(*memorylimiterprocessor.Config).Validate())
+}
+
+// alloyFieldNames rewrites upstream's MiB-suffixed field names to the Alloy
+// attributes users actually write. Rounding down in Validate should keep these
+// two rules unreachable, so this is a backstop for upstream wording we haven't
+// anticipated rather than the primary fix.
+func alloyFieldNames(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	msg := err.Error()
+	for _, r := range []struct{ upstream, alloy string }{
+		{"'spike_limit_mib'", "'spike_limit'"},
+		{"'limit_mib'", "'limit'"},
+	} {
+		msg = strings.ReplaceAll(msg, r.upstream, r.alloy)
+	}
+
+	if msg == err.Error() {
+		return err
+	}
+
+	return errors.New(msg)
 }
 
 // Convert implements processor.Arguments.
