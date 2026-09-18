@@ -16,67 +16,77 @@ import (
 	"go.opentelemetry.io/collector/config/configretry"
 )
 
-func TestArguments_UnmarshalAlloy(t *testing.T) {
-	defaultExpected := func() kafkareceiver.Config {
-		return kafkareceiver.Config{
-			ClientConfig: configkafka.ClientConfig{
-				Brokers:         []string{"10.10.10.10:9092"},
-				ProtocolVersion: "2.0.0",
-				ClientID:        "otel-collector",
-				RackID:          "",
-				UseLeaderEpoch:  true,
-				ConnIdleTimeout: 9 * time.Minute,
-				Metadata: configkafka.MetadataConfig{
-					Full:            true,
-					RefreshInterval: 10 * time.Minute,
-					Retry: configkafka.MetadataRetryConfig{
-						Max:     3,
-						Backoff: 250 * time.Millisecond,
-					},
+// defaultExpected is a canary for the upstream defaults our docs promise. If a case using
+// it fails, a contrib bump changed one: update the docs, then these values. Taking it from
+// the factory instead would move with upstream and never fail.
+func defaultExpected() kafkareceiver.Config {
+	return kafkareceiver.Config{
+		ClientConfig: configkafka.ClientConfig{
+			Brokers:         []string{"10.10.10.10:9092"},
+			ProtocolVersion: "2.0.0",
+			ClientID:        "otel-collector",
+			RackID:          "",
+			UseLeaderEpoch:  true,
+			ConnIdleTimeout: 9 * time.Minute,
+			Metadata: configkafka.MetadataConfig{
+				Full:            true,
+				RefreshInterval: 10 * time.Minute,
+				Retry: configkafka.MetadataRetryConfig{
+					Max:     3,
+					Backoff: 250 * time.Millisecond,
 				},
 			},
-			ConsumerConfig: configkafka.ConsumerConfig{
-				SessionTimeout:    10 * time.Second,
-				HeartbeatInterval: 3 * time.Second,
-				GroupID:           "otel-collector",
-				InitialOffset:     "latest",
-				AutoCommit: configkafka.AutoCommitConfig{
-					Enable:   true,
-					Interval: 1 * time.Second,
-				},
-				MinFetchSize:             1,
-				MaxFetchSize:             1048576,
-				MaxPartitionFetchSize:    1048576,
-				MaxFetchWait:             250 * time.Millisecond,
-				GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"range"},
+		},
+		ConsumerConfig: configkafka.ConsumerConfig{
+			SessionTimeout:    10 * time.Second,
+			HeartbeatInterval: 3 * time.Second,
+			GroupID:           "otel-collector",
+			InitialOffset:     "latest",
+			AutoCommit: configkafka.AutoCommitConfig{
+				Enable:   true,
+				Interval: 1 * time.Second,
 			},
-			Logs: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_logs"},
-				Encoding: "otlp_proto",
-			},
-			Metrics: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_metrics"},
-				Encoding: "otlp_proto",
-			},
-			Traces: kafkareceiver.TopicEncodingConfig{
-				Topics:   []string{"otlp_spans"},
-				Encoding: "otlp_proto",
-			},
-			HeaderExtraction: kafkareceiver.HeaderExtraction{
-				ExtractHeaders: false,
-				Headers:        []string{},
-			},
-			ErrorBackOff: configretry.BackOffConfig{
-				Enabled:             false,
-				InitialInterval:     0,
-				RandomizationFactor: 0,
-				Multiplier:          0,
-				MaxInterval:         0,
-				MaxElapsedTime:      0,
-			},
-		}
+			MinFetchSize:             1,
+			MaxFetchSize:             1048576,
+			MaxPartitionFetchSize:    1048576,
+			MaxFetchWait:             250 * time.Millisecond,
+			GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"range"},
+		},
+		Logs: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_logs"},
+			Encoding: "otlp_proto",
+		},
+		Metrics: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_metrics"},
+			Encoding: "otlp_proto",
+		},
+		Traces: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_spans"},
+			Encoding: "otlp_proto",
+		},
+		Profiles: kafkareceiver.TopicEncodingConfig{
+			Topics:   []string{"otlp_profiles"},
+			Encoding: "otlp_proto",
+		},
+		PartitionProcessing: kafkareceiver.PartitionProcessing{
+			MaxBufferedBatches: 1,
+		},
+		HeaderExtraction: kafkareceiver.HeaderExtraction{
+			ExtractHeaders: false,
+			Headers:        []string{},
+		},
+		ErrorBackOff: configretry.BackOffConfig{
+			Enabled:             false,
+			InitialInterval:     0,
+			RandomizationFactor: 0,
+			Multiplier:          0,
+			MaxInterval:         0,
+			MaxElapsedTime:      0,
+		},
 	}
+}
 
+func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
 		testName string
 		cfg      string
@@ -165,6 +175,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Topics:        []string{"^traces-.*"},
 					Encoding:      "zipkin_json",
 					ExcludeTopics: []string{"^traces-debug-.*$"},
+				},
+				Profiles: kafkareceiver.TopicEncodingConfig{
+					Topics:   []string{"otlp_profiles"},
+					Encoding: "otlp_proto",
+				},
+				PartitionProcessing: kafkareceiver.PartitionProcessing{
+					MaxBufferedBatches: 1,
 				},
 				ClientConfig: configkafka.ClientConfig{
 					Brokers:         []string{"10.10.10.10:9092"},
@@ -591,7 +608,7 @@ func TestArguments_Auth(t *testing.T) {
 
 			actual := actualPtr.(*kafkareceiver.Config)
 
-			var expected kafkareceiver.Config
+			expected := defaultExpected()
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
 

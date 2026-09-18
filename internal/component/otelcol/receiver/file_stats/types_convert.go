@@ -16,7 +16,7 @@ var _ receiver.Arguments = Arguments{}
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var out filestatsreceiver.Config
+	out := *filestatsreceiver.NewFactory().CreateDefaultConfig().(*filestatsreceiver.Config)
 
 	out.ControllerConfig = *args.Controller.Convert()
 	out.Include = args.Include

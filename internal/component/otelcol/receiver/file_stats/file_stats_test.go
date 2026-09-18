@@ -4,12 +4,14 @@ package file_stats_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/file_stats"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 )
 
 func TestArguments(t *testing.T) {
@@ -113,4 +115,23 @@ func TestArguments_NoFilters(t *testing.T) {
 	if assert.Len(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsExclude, 0, "Expected MetricsExclude to be len 0") {
 		assert.Nil(t, out.MetricsBuilderConfig.ResourceAttributes.FileName.MetricsExclude, "MetricsExclude must be nil when empty")
 	}
+}
+
+func TestDefaultArguments(t *testing.T) {
+	var args file_stats.Arguments
+	args.SetToDefault()
+
+	cfgAny, err := args.Convert()
+	require.NoError(t, err)
+	cfg := cfgAny.(*filestatsreceiver.Config)
+
+	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
+	// changed one: update the docs, then these values.
+	// MetricsBuilderConfig is not covered: its type lives in an upstream internal package,
+	// so it cannot be written out here.
+	require.Equal(t, "", cfg.Include)
+	require.Equal(t, scraperhelper.ControllerConfig{
+		CollectionInterval: time.Minute,
+		InitialDelay:       time.Second,
+	}, cfg.ControllerConfig)
 }
