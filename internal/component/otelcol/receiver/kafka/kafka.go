@@ -49,12 +49,13 @@ type Arguments struct {
 
 	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 
-	Authentication   otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata         otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
-	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
-	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
-	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
-	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
+	Authentication      otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata            otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	AutoCommit          AutoCommitArguments                  `alloy:"autocommit,block,optional"`
+	MessageMarking      MessageMarkingArguments              `alloy:"message_marking,block,optional"`
+	HeaderExtraction    HeaderExtraction                     `alloy:"header_extraction,block,optional"`
+	PartitionProcessing PartitionProcessingArguments         `alloy:"partition_processing,block,optional"`
+	TLS                 *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
 	MinFetchSize             int32         `alloy:"min_fetch_size,attr,optional"`
 	MaxFetchSize             int32         `alloy:"max_fetch_size,attr,optional"`
@@ -114,6 +115,7 @@ func (args *Arguments) SetToDefault() {
 	args.AutoCommit.SetToDefault()
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
+	args.PartitionProcessing.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -273,6 +275,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
+	result.PartitionProcessing = args.PartitionProcessing.Convert()
 	result.ConsumerConfig.MinFetchSize = args.MinFetchSize
 	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
 	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
@@ -367,6 +370,32 @@ func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 	return kafkareceiver.MessageMarking{
 		After:   args.AfterExecution,
 		OnError: args.IncludeUnsuccessful,
+	}
+}
+
+// PartitionProcessingArguments controls optional ordered, independent
+// processing of assigned Kafka partitions.
+type PartitionProcessingArguments struct {
+	// Independent enables ordered processing by independent partition workers.
+	Independent bool `alloy:"independent,attr,optional"`
+
+	// MaxBufferedBatches bounds the number of fetched batches waiting for each
+	// partition worker.
+	MaxBufferedBatches int `alloy:"max_buffered_batches,attr,optional"`
+}
+
+func (args *PartitionProcessingArguments) SetToDefault() {
+	*args = PartitionProcessingArguments{
+		Independent:        false,
+		MaxBufferedBatches: 1,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args PartitionProcessingArguments) Convert() kafkareceiver.PartitionProcessing {
+	return kafkareceiver.PartitionProcessing{
+		Independent:        args.Independent,
+		MaxBufferedBatches: args.MaxBufferedBatches,
 	}
 }
 
