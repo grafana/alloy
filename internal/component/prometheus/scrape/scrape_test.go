@@ -58,17 +58,26 @@ func TestAlloyConfig(t *testing.T) {
 	http_headers = {
 		"foo" = ["foobar"],
 	}
+
+	clustering {
+		enabled = true
+		excluded_labels = ["__param_sig", "__param_exp"]
+	}
 `
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
+	require.True(t, args.Clustering.Enabled)
+	require.Equal(t, []string{"__param_sig", "__param_exp"}, args.Clustering.ExcludedLabels)
 }
 
 func TestDefaults(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
 	require.NoError(t, args.Validate())
+	require.False(t, args.Clustering.Enabled)
+	require.Empty(t, args.Clustering.ExcludedLabels)
 
 	require.Equal(t, "/metrics", args.MetricsPath)
 	require.Equal(t, "http", args.Scheme)
@@ -1061,14 +1070,14 @@ func TestRuntimeUpdate(t *testing.T) {
 			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.EnableTypeAndUnitLabels = false
-				args.Clustering = cluster.ComponentBlock{}
+				args.Clustering = ClusteringConfig{}
 				require.NoError(t, args.Validate())
 				return args
 			},
 			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
 				args := defaultFastScrapeArgs(addrB, app)
 				args.EnableTypeAndUnitLabels = true
-				args.Clustering = cluster.ComponentBlock{}
+				args.Clustering = ClusteringConfig{}
 				require.NoError(t, args.Validate())
 				return args
 			},

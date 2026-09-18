@@ -197,9 +197,10 @@ You can use the following blocks with `prometheus.scrape`:
 
 ### `clustering`
 
-| Name      | Type   | Description                                       | Default | Required |
-| --------- | ------ | ------------------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
+| Name              | Type           | Description                                        | Default | Required |
+| ----------------- | -------------- | -------------------------------------------------- | ------- | -------- |
+| `enabled`         | `bool`         | Enables sharing targets with other cluster nodes.   | `false` | yes      |
+| `excluded_labels` | `list(string)` | Label names to exclude from the ownership hash.     | `[]`    | no       |
 
 When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `prometheus.scrape` component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
 
@@ -208,7 +209,27 @@ upstream components in their `targets` argument.
 
 All `prometheus.scrape` components instances opting in to clustering use target labels and a consistent hashing algorithm to determine ownership for each of the targets between the cluster peers.
 Then, each peer only scrapes the subset of targets that it's responsible for, so that the scrape load is distributed.
+
+By default, the ownership hash includes all target labels except those whose names start with `__meta_`.
+The `excluded_labels` argument excludes additional labels from this hash by exact name.
+Names that aren't present on a target have no effect.
+Exclusions don't modify the labels or parameters used to scrape targets and don't change target deduplication.
+Distinct targets with the same ownership hash remain separate targets assigned to the same cluster node.
+All peers must use the same exclusions and agree on the remaining target labels.
+
+For example, if service discovery returns scrape targets with signatures and expiry times that differ between peers, exclude those unstable labels from the ownership hash:
+
+```alloy
+clustering {
+  enabled         = true
+  excluded_labels = ["__param_sig", "__param_exp"]
+}
+```
+
+The scraper still uses `__param_sig` and `__param_exp` as query parameters in the scrape requests.
+
 When a node joins or leaves the cluster, every peer recalculates ownership and continues scraping with the new target set.
+The previous owner suppresses stale markers for targets whose ownership hash is now assigned to another node, even if excluded labels change.
 This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the targets ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `prometheus.scrape` scrapes every target it receives in its arguments.
