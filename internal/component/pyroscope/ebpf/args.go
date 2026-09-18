@@ -1,6 +1,7 @@
 package ebpf
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -10,6 +11,7 @@ import (
 )
 
 type Arguments struct {
+	AggregateProfiles        bool                   `alloy:"aggregate_profiles,attr,optional"`
 	ForwardTo                []pyroscope.Appendable `alloy:"forward_to,attr"`
 	Targets                  []discovery.Target     `alloy:"targets,attr,optional"`
 	CollectInterval          time.Duration          `alloy:"collect_interval,attr,optional"`
@@ -72,5 +74,8 @@ type DeprecatedArguments struct {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
+	if a.AggregateProfiles && a.PIDLabel {
+		return fmt.Errorf("aggregate_profiles requires pid_label to be false")
+	}
 	return args.CommMode(a.Comm).Validate()
 }
