@@ -334,8 +334,8 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
-	rec := recordPool.GetRecord()
-	defer func() { recordPool.PutRecord(rec) }()
+	rec := getRecord()
+	defer putRecord(rec)
 
 	if err := DecodeRecord(b, rec); err != nil {
 		w.metrics.recordDecodeFails.WithLabelValues(w.id).Inc()

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,34 +44,23 @@ func TestWriter(t *testing.T) {
 		// write entries to wal and sync
 		writer.Start()
 
-		var testLabels = model.LabelSet{
-			"testing": "log",
-		}
-		var lines = []string{
-			"some line",
-			"some other line",
-			"some other other line",
+		lset := model.LabelSet{"testing": "log"}
+		entries := []loki.Entry{
+			loki.NewEntry(lset, push.Entry{Line: "some line", Timestamp: time.Now()}),
+			loki.NewEntry(lset, push.Entry{Line: "some other line", Timestamp: time.Now().Add(1 * time.Second)}),
+			loki.NewEntry(lset, push.Entry{Line: "some other other line", Timestamp: time.Now().Add(2 * time.Second)}),
 		}
 
-		for _, line := range lines {
-			require.NoError(t, writer.WriteEntry(
-				loki.Entry{
-					Labels: testLabels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      line,
-					},
-				},
-			))
+		for _, e := range entries {
+			require.NoError(t, writer.WriteEntry(e))
 		}
 
 		// accessing the WAL inside, just for testing!
 		require.NoError(t, writer.wal.Sync(), "failed to sync wal")
 
 		// assert over WAL entries
-		readEntries := eventuallyReadWAL(t, len(lines), dir)
-		require.NotNil(t, readEntries)
-		require.Equal(t, testLabels, readEntries[0].Labels)
+		refSeries, refEntries := eventuallyReadWAL(t, len(entries), dir)
+		assertEntries(t, refSeries, refEntries, entries)
 	})
 
 	t.Run("stopped writer returns error", func(t *testing.T) {
@@ -106,6 +97,75 @@ func TestWriter(t *testing.T) {
 				Line:      "lin",
 			},
 		}), loki.ErrConsumerStopped)
+	})
+}
+
+func TestWriter_WriteBatch(t *testing.T) {
+	t.Run("batch are written to wal", func(t *testing.T) {
+		var (
+			now    = time.Now()
+			dir    = t.TempDir()
+			reg    = prometheus.NewRegistry()
+			logger = slog.New(slog.DiscardHandler)
+		)
+
+		wl, err := New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
+
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{
+			MaxSegmentAge: time.Minute,
+		})
+		writer.Start()
+		defer writer.Stop()
+
+		var (
+			streams []loki.Stream
+			batch   = loki.NewBatch()
+		)
+
+		addStream := func(id string) {
+			stream := loki.NewStream(
+				model.LabelSet{"stream": model.LabelValue(id)},
+				push.Entry{Line: "line 1", Timestamp: now},
+				push.Entry{Line: "line 2", Timestamp: now.Add(1 * time.Millisecond)},
+				push.Entry{Line: "line 3", Timestamp: now.Add(2 * time.Millisecond)},
+				push.Entry{Line: "line 4", Timestamp: now.Add(3 * time.Millisecond)},
+			)
+			batch.Add(stream)
+			streams = append(streams, stream)
+		}
+
+		addStream("1")
+		addStream("2")
+		addStream("3")
+
+		require.NoError(t, writer.WriteBatch(batch))
+		require.NoError(t, writer.wal.Sync(), "failed to sync wal")
+		refSeries, refEntries := eventuallyReadWAL(t, batch.EntryLen(), dir)
+		assertStreams(t, refSeries, refEntries, streams)
+	})
+
+	t.Run("stopped writer returns error", func(t *testing.T) {
+		var (
+			dir    = t.TempDir()
+			reg    = prometheus.NewRegistry()
+			logger = slog.New(slog.DiscardHandler)
+		)
+
+		wl, err := New(logger, reg, dir)
+		require.NoError(t, err)
+
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{
+			MaxSegmentAge: time.Minute,
+		})
+		writer.Start()
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Timestamp: time.Now(), Line: "1"}))
+
+		writer.Stop()
+		require.ErrorIs(t, writer.WriteBatch(batch), loki.ErrConsumerStopped)
 	})
 }
 
@@ -203,37 +263,24 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 		subscriber2 = append(subscriber2, num)
 	}))
 
-	// write entries to wal and sync
-	var testLabels = model.LabelSet{
-		"testing": "log",
-	}
-	var lines = []string{
-		"some line",
-		"some other line",
-		"some other other line",
+	lset := model.LabelSet{"testing": "log"}
+
+	entries := []loki.Entry{
+		loki.NewEntry(lset, push.Entry{Line: "some line", Timestamp: time.Now()}),
+		loki.NewEntry(lset, push.Entry{Line: "some other line", Timestamp: time.Now().Add(1 * time.Second)}),
+		loki.NewEntry(lset, push.Entry{Line: "some other other line", Timestamp: time.Now().Add(2 * time.Second)}),
 	}
 
-	for _, line := range lines {
-		require.NoError(t, writer.WriteEntry(
-			loki.Entry{
-				Labels: testLabels,
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      line,
-				},
-			},
-		))
+	for _, e := range entries {
+		require.NoError(t, writer.WriteEntry(e))
 	}
 
 	// accessing the WAL inside, just for testing!
 	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
 
 	// assert over WAL entries
-	readEntries := eventuallyReadWAL(t, len(lines), dir)
-	require.NotNil(t, readEntries)
-	require.Equal(t, testLabels, readEntries[0].Labels)
-
-	watchAndLogDirEntries(t, dir)
+	refSeries, refEntries := eventuallyReadWAL(t, len(entries), dir)
+	assertEntries(t, refSeries, refEntries, entries)
 
 	// check segment is there
 	fileInfo, err := os.Stat(filepath.Join(dir, "00000000"))
@@ -246,8 +293,6 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 
 	// wait for segment to be cleaned
 	time.Sleep(maxSegmentAge * 2)
-
-	watchAndLogDirEntries(t, dir)
 
 	_, err = os.Stat(filepath.Join(dir, "00000000"))
 	require.Error(t, err)
@@ -292,35 +337,24 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 		segmentsReclaimedNotificationsReceived = append(segmentsReclaimedNotificationsReceived, num)
 	}))
 
-	// write entries to wal and sync
-	var testLabels = model.LabelSet{
-		"testing": "log",
-	}
-	var lines = []string{
-		"some line",
+	lset := model.LabelSet{"testing": "log"}
+
+	entries := []loki.Entry{
+		loki.NewEntry(lset, push.Entry{Line: "some line", Timestamp: time.Now()}),
+		loki.NewEntry(lset, push.Entry{Line: "some line 2", Timestamp: time.Now().Add(1 * time.Second)}),
 	}
 
-	for _, line := range lines {
-		require.NoError(t, writer.WriteEntry(
-			loki.Entry{
-				Labels: testLabels,
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      line,
-				},
-			},
-		))
+	// write entries to wal and sync
+	for _, e := range entries {
+		require.NoError(t, writer.WriteEntry(e))
 	}
 
 	// accessing the WAL inside, just for testing!
 	require.NoError(t, writer.wal.Sync(), "failed to sync wal")
 
 	// assert over WAL entries
-	readEntries := eventuallyReadWAL(t, len(lines), dir)
-	require.NotNil(t, readEntries)
-	require.Equal(t, testLabels, readEntries[0].Labels)
-
-	watchAndLogDirEntries(t, dir)
+	refSeries, refEntries := eventuallyReadWAL(t, len(entries), dir)
+	assertEntries(t, refSeries, refEntries, entries)
 
 	// check segment is there
 	fileInfo, err := os.Stat(filepath.Join(dir, "00000000"))
@@ -330,81 +364,133 @@ func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
 	// wait for segment to be cleaned
 	time.Sleep(maxSegmentAge * 2)
 
-	watchAndLogDirEntries(t, dir)
-
 	_, err = os.Stat(filepath.Join(dir, "00000000"))
 	require.NoError(t, err)
 	require.Len(t, segmentsReclaimedNotificationsReceived, 0, "expected no notification")
 }
 
-func watchAndLogDirEntries(t *testing.T, path string) {
-	dirs, err := os.ReadDir(path)
-	if len(dirs) == 0 {
-		t.Log("no dirs found")
-		return
+func assertEntries(t *testing.T, refSeries []record.RefSeries, refEntries []RefEntries, expected []loki.Entry) {
+	t.Helper()
+
+	var entries []loki.Entry
+	for _, group := range refEntries {
+		si := slices.IndexFunc(refSeries, func(s record.RefSeries) bool {
+			return s.Ref == group.Ref
+		})
+		require.GreaterOrEqual(t, si, 0)
+
+		lset := util.MapToModelLabelSet(refSeries[si].Labels.Map())
+		for i := range group.Entries {
+			entries = append(entries, group.EntryAt(lset, i))
+		}
 	}
-	require.NoError(t, err)
-	for _, dir := range dirs {
-		t.Logf("dir entry found: %s", dir.Name())
+	require.Lenf(t, entries, len(expected), "expected: %v\nread from wal: %v", expected, entries)
+
+	for _, e := range expected {
+		i := slices.IndexFunc(entries, func(entry loki.Entry) bool {
+			return entriesEqual(e, entry)
+		})
+		require.GreaterOrEqualf(t, i, 0, "entry not found in wal: %v\nread from wal: %v", e, entries)
+		entries = slices.Delete(entries, i, i+1)
 	}
 }
 
-// eventuallyReadWAL reads the WAL several times until the expected number of entries is found, or times out.
-func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) []loki.Entry {
-	var err error
-	var readEntries []loki.Entry
-	require.Eventually(t, func() bool {
-		// read WAL and assert over read entries
-		readEntries, err = readWAL(dir)
-		if err != nil {
+func entriesEqual(a, b loki.Entry) bool {
+	return a.Labels.Equal(b.Labels) &&
+		a.Created() == b.Created() &&
+		pushEntriesEqual(a.Entry, b.Entry)
+}
+
+func pushEntriesEqual(a, b push.Entry) bool {
+	return a.Line == b.Line &&
+		a.Timestamp.Equal(b.Timestamp) &&
+		slices.Equal(a.StructuredMetadata, b.StructuredMetadata)
+}
+
+func assertStreams(t *testing.T, refSeries []record.RefSeries, refEntries []RefEntries, expected []loki.Stream) {
+	t.Helper()
+
+	var streams []loki.Stream
+
+	for _, entries := range refEntries {
+		si := slices.IndexFunc(refSeries, func(s record.RefSeries) bool {
+			return s.Ref == entries.Ref
+		})
+		require.GreaterOrEqual(t, si, 0)
+
+		lset := util.MapToModelLabelSet(refSeries[si].Labels.Map())
+		stream := entries.Stream(lset)
+
+		i := slices.IndexFunc(streams, func(s loki.Stream) bool {
+			return s.Labels.Equal(lset)
+		})
+		if i < 0 {
+			streams = append(streams, stream)
+			continue
+		}
+		streams[i].Entries = append(streams[i].Entries, stream.Entries...)
+	}
+	require.Lenf(t, streams, len(expected), "expected: %v\nread from wal: %v", expected, streams)
+
+	for _, e := range expected {
+		i := slices.IndexFunc(streams, func(s loki.Stream) bool {
+			return streamsEqual(e, s)
+		})
+		require.GreaterOrEqualf(t, i, 0, "stream not found in wal: %v\nread from wal: %v", e, streams)
+		streams = slices.Delete(streams, i, i+1)
+	}
+}
+
+func streamsEqual(a, b loki.Stream) bool {
+	if !a.Labels.Equal(b.Labels) || a.Created() != b.Created() || len(a.Entries) != len(b.Entries) {
+		return false
+	}
+	for i := range a.Entries {
+		if !pushEntriesEqual(a.Entries[i], b.Entries[i]) {
 			return false
 		}
-		return len(readEntries) == expectedEntries
-	}, time.Second*5, time.Second, "timed out waiting for WAL")
-	return readEntries
+	}
+	return true
 }
 
-// readWAL will read all entries in the WAL located under dir.
-func readWAL(dir string) ([]loki.Entry, error) {
-	reader, closeFn, err := newWalReader(dir, -1)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { closeFn.Close() }()
+func eventuallyReadWAL(t *testing.T, expectedEntries int, dir string) ([]record.RefSeries, []RefEntries) {
+	var (
+		refSeries  []record.RefSeries
+		refEntries []RefEntries
+	)
 
-	seenSeries := make(map[uint64]model.LabelSet)
-	seenEntries := []loki.Entry{}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		refSeries, refEntries = readWAL(c, dir)
+
+		var count int
+		for _, re := range refEntries {
+			count += len(re.Entries)
+		}
+		require.Equal(c, count, expectedEntries)
+	}, time.Second*5, time.Second, "timed out waiting for WAL")
+	return refSeries, refEntries
+}
+
+func readWAL(t require.TestingT, dir string) ([]record.RefSeries, []RefEntries) {
+	reader, closeFn, err := newWalReader(dir, -1)
+	require.NoError(t, err)
+	defer closeFn.Close()
+
+	var (
+		refSeries  []record.RefSeries
+		refEntries []RefEntries
+	)
 
 	for reader.Next() {
 		var walRec = Record{}
 		bytes := reader.Record()
-		err = DecodeRecord(bytes, &walRec)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding wal record: %w", err)
-		}
+		require.NoError(t, DecodeRecord(bytes, &walRec))
 
-		// first read series
-		for _, series := range walRec.Series {
-			if _, ok := seenSeries[uint64(series.Ref)]; !ok {
-				seenSeries[uint64(series.Ref)] = util.MapToModelLabelSet(series.Labels.Map())
-			}
-		}
-
-		for _, entries := range walRec.RefEntries {
-			for _, entry := range entries.Entries {
-				labels, ok := seenSeries[uint64(entries.Ref)]
-				if !ok {
-					return nil, fmt.Errorf("found entry without matching series")
-				}
-				seenEntries = append(seenEntries, loki.Entry{
-					Labels: labels,
-					Entry:  entry,
-				})
-			}
-		}
+		refSeries = append(refSeries, walRec.Series...)
+		refEntries = append(refEntries, walRec.RefEntries...)
 	}
 
-	return seenEntries, nil
+	return refSeries, refEntries
 }
 
 func BenchmarkWriter_WriteEntries(b *testing.B) {
