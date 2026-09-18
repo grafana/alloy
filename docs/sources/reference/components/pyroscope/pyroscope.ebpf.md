@@ -69,8 +69,6 @@ The component configures and starts a new eBPF profiling job to collect performa
 
 You can use the following arguments with `pyroscope.ebpf`:
 
-<!-- The targets_only, symb_cache_path, symb_cache_size, reporter_unsymbolized_stubs, and debug_info options are intentionally omitted because they are experimental/internal and may change or be removed. -->
-
 | Name                          | Type                     | Description                                                                                                          | Default          | Required |
 | ----------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `forward_to`                  | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |                  | yes      |
@@ -122,7 +120,6 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Blocks
 
-<!-- The debug_info block is intentionally undocumented because the debug-info feature is experimental and may change or be removed. -->
 `pyroscope.ebpf` doesn't support any blocks.
 
 ## Exported fields

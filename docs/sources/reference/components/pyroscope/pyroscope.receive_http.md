@@ -39,8 +39,6 @@ The component starts an HTTP server supporting the following endpoints:
 
 You can use the following argument with `pyroscope.receive_http`:
 
-<!-- The debug_info_upload_timeout argument and pyroscope_receive_http_debuginfo_downstream_calls_total metric are intentionally omitted because they belong to the experimental debug-info proxy. -->
-
 | Name         | Type                     | Description                            | Default | Required |
 | ------------ | ------------------------ | -------------------------------------- | ------- | -------- |
 | `forward_to` | `list(ProfilesReceiver)` | List of receivers to send profiles to. |         | yes      |
