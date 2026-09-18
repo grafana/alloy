@@ -39,14 +39,7 @@ You can use the following arguments with `database_observability.sql_server`:
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
-| `max_idle_connections` | `int`             | Maximum number of idle connections to retain.                            | `2`     | no       |
-| `max_open_connections` | `int`             | Maximum number of open connections.                                      | `0`     | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
-
-The `max_open_connections` argument limits the number of connections that `database_observability.sql_server` opens.
-A value of `0` doesn't limit the number of open connections.
-The `max_idle_connections` argument must be less than or equal to `max_open_connections` when `max_open_connections` is greater than `0`.
-A value of `0` for `max_idle_connections` disables idle connections.
 
 The `query_timeout` applies separately to each SQL statement.
 The timeout includes waiting for an available connection and reading the statement results.

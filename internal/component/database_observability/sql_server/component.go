@@ -46,11 +46,9 @@ SELECT
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
 
 const (
-	selectOriginalLogin       = `SELECT ORIGINAL_LOGIN()`
-	defaultQueryTimeout       = collector.DefaultQueryTimeout
-	databaseConnectTimeout    = 10 * time.Second
-	defaultMaxOpenConnections = 0
-	defaultMaxIdleConnections = 2
+	selectOriginalLogin    = `SELECT ORIGINAL_LOGIN()`
+	defaultQueryTimeout    = collector.DefaultQueryTimeout
+	databaseConnectTimeout = 10 * time.Second
 )
 
 func init() {
@@ -76,9 +74,7 @@ type Arguments struct {
 	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Targets        []discovery.Target  `alloy:"targets,attr,optional"`
 
-	QueryTimeout       time.Duration `alloy:"query_timeout,attr,optional"`
-	MaxOpenConnections int           `alloy:"max_open_connections,attr,optional"`
-	MaxIdleConnections int           `alloy:"max_idle_connections,attr,optional"`
+	QueryTimeout time.Duration `alloy:"query_timeout,attr,optional"`
 
 	EnableCollectors   []string `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors  []string `alloy:"disable_collectors,attr,optional"`
@@ -140,9 +136,7 @@ type ExplainPlansArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		QueryTimeout:       defaultQueryTimeout,
-		MaxOpenConnections: defaultMaxOpenConnections,
-		MaxIdleConnections: defaultMaxIdleConnections,
+		QueryTimeout: defaultQueryTimeout,
 
 		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
 		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
@@ -185,15 +179,6 @@ func (a *Arguments) Validate() error {
 
 	if a.QueryTimeout <= 0 {
 		return fmt.Errorf("query_timeout must be greater than zero")
-	}
-	if a.MaxOpenConnections < 0 {
-		return fmt.Errorf("max_open_connections must be greater than or equal to zero")
-	}
-	if a.MaxIdleConnections < 0 {
-		return fmt.Errorf("max_idle_connections must be greater than or equal to zero")
-	}
-	if a.MaxOpenConnections > 0 && a.MaxIdleConnections > a.MaxOpenConnections {
-		return fmt.Errorf("max_idle_connections must be less than or equal to max_open_connections")
 	}
 
 	if enableOrDisableCollectors(*a)[collector.QueryMetricsCollector] {
@@ -430,9 +415,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	if dbConnection == nil {
 		return fmt.Errorf("nil DB connection")
 	}
-
-	dbConnection.SetMaxOpenConns(c.args.MaxOpenConnections)
-	dbConnection.SetMaxIdleConns(c.args.MaxIdleConnections)
 
 	connectCtx, cancelConnect := context.WithTimeout(ctx, databaseConnectTimeout)
 	err = dbConnection.PingContext(connectCtx)

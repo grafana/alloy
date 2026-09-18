@@ -187,74 +187,33 @@ func TestQueryMetricsDefaults(t *testing.T) {
 	assert.Equal(t, 1*time.Hour, args.QueryMetricsArguments.StatementsLookback)
 }
 
-func TestDatabaseSettings(t *testing.T) {
-	t.Run("defaults preserve database/sql pool behavior", func(t *testing.T) {
+func TestQueryTimeout(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
 		var args Arguments
 		args.SetToDefault()
 
 		assert.Equal(t, 10*time.Second, args.QueryTimeout)
-		assert.Equal(t, 0, args.MaxOpenConnections)
-		assert.Equal(t, 2, args.MaxIdleConnections)
 	})
 
 	t.Run("configuration is parsed", func(t *testing.T) {
 		config := `
-			data_source_name      = "sqlserver://user:pass@localhost:1433"
-			forward_to            = []
-			query_timeout         = "15s"
-			max_open_connections  = 8
-			max_idle_connections  = 4
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+			query_timeout    = "15s"
 		`
 
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 		assert.Equal(t, 15*time.Second, args.QueryTimeout)
-		assert.Equal(t, 8, args.MaxOpenConnections)
-		assert.Equal(t, 4, args.MaxIdleConnections)
 	})
 
-	base := func() Arguments {
+	t.Run("non-positive value is rejected", func(t *testing.T) {
 		var args Arguments
 		args.SetToDefault()
 		args.DataSourceName = "sqlserver://user:pass@localhost:1433?database=app"
-		return args
-	}
-
-	for _, tc := range []struct {
-		name      string
-		configure func(*Arguments)
-		wantError string
-	}{
-		{
-			name:      "non-positive query timeout",
-			configure: func(args *Arguments) { args.QueryTimeout = 0 },
-			wantError: "query_timeout must be greater than zero",
-		},
-		{
-			name:      "negative max open connections",
-			configure: func(args *Arguments) { args.MaxOpenConnections = -1 },
-			wantError: "max_open_connections must be greater than or equal to zero",
-		},
-		{
-			name:      "negative max idle connections",
-			configure: func(args *Arguments) { args.MaxIdleConnections = -1 },
-			wantError: "max_idle_connections must be greater than or equal to zero",
-		},
-		{
-			name: "max idle exceeds bounded max open",
-			configure: func(args *Arguments) {
-				args.MaxOpenConnections = 2
-				args.MaxIdleConnections = 3
-			},
-			wantError: "max_idle_connections must be less than or equal to max_open_connections",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			args := base()
-			tc.configure(&args)
-			require.EqualError(t, args.Validate(), tc.wantError)
-		})
-	}
+		args.QueryTimeout = 0
+		require.EqualError(t, args.Validate(), "query_timeout must be greater than zero")
+	})
 }
 
 func TestQueryMetricsEnabledByDefault(t *testing.T) {
@@ -513,7 +472,6 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 	var args Arguments
 	args.SetToDefault()
 	args.ExcludeCurrentUser = true
-	args.MaxOpenConnections = 7
 	c := &Component{
 		args: args,
 		openSQL: func(_, _ string) (*sql.DB, error) {
@@ -523,6 +481,5 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	err = c.connectAndStartCollectors(context.Background())
 	require.ErrorContains(t, err, "failed to resolve current login for query_samples user exclusion")
-	assert.Equal(t, 7, db.Stats().MaxOpenConnections)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
