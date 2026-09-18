@@ -19,8 +19,6 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_TABLE_DETECTION     = "table_detection"
-	OP_CREATE_STATEMENT    = "create_statement"
 )
 
 const (
@@ -353,7 +351,7 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_TABLE_DETECTION,
+			database_observability.OP_TABLE_DETECTION,
 			fmt.Sprintf(`database="%s" schema="%s" table="%s"`, database, schema, tableName),
 		)
 	}
@@ -424,7 +422,7 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
-				OP_CREATE_STATEMENT,
+				database_observability.OP_CREATE_STATEMENT,
 				fmt.Sprintf(
 					`database="%s" schema="%s" table="%s" table_spec="%s"`,
 					table.database, table.schema, table.tableName, table.b64TableSpec,

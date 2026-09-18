@@ -19,9 +19,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 // selectQueryTextTemplate returns the query text for the tracked
@@ -236,7 +234,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_QUERY_ASSOCIATION,
+		database_observability.OP_QUERY_ASSOCIATION,
 		fmt.Sprintf(`database="%s" query_hash="%s" querytext=%q`, database, queryHash, normalized),
 	)
 
@@ -247,7 +245,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	for _, table := range metadata.Tables {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_PARSED_TABLE_NAME,
+			database_observability.OP_QUERY_PARSED_TABLE_NAME,
 			fmt.Sprintf(`database="%s" query_hash="%s" table="%s"`, database, queryHash, table),
 		)
 	}
