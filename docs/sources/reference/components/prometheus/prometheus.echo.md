@@ -5,13 +5,15 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-14
 title: prometheus.echo
 ---
 
 # `prometheus.echo`
 
-The `prometheus.echo` component receives Prometheus metrics and writes them to stdout in Prometheus exposition format.
-This component is useful for debugging and testing the flow of metrics through a pipeline, allowing you to see exactly what metrics are being received at a particular point in your configuration.
+The `prometheus.echo` component receives Prometheus metrics and writes them to `stdout` in Prometheus exposition format.
+This component is useful for debugging and testing the flow of metrics through a pipeline.
+It lets you see exactly what metrics arrive at a particular point in your configuration.
 
 ## Usage
 
@@ -28,14 +30,15 @@ You can use the following arguments with `prometheus.echo`:
 | -------- | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `format` | `string` | The output format for metrics. Must be `text` or `openmetrics`. | `text`  | no       |
 
-The `format` argument controls how metrics are encoded when written to stdout:
+The `format` argument controls how metrics are encoded when written to `stdout`:
 
-* `text` - Uses the Prometheus text exposition format (default).
-* `openmetrics` - Uses the OpenMetrics text format.
+- `text` - Uses the Prometheus text exposition format. This is the default.
+- `openmetrics` - Uses the OpenMetrics text format.
 
 ## Blocks
 
-The `prometheus.echo` component doesn't support any blocks. You can configure this component with arguments.
+The `prometheus.echo` component doesn't support any blocks.
+You can configure this component with arguments.
 
 ## Exported fields
 
@@ -80,14 +83,14 @@ In this example:
 
 1. The `prometheus.exporter.unix` component exposes system metrics.
 1. The `prometheus.scrape` component scrapes those metrics.
-1. The `prometheus.echo` component receives the scraped metrics and writes them to stdout in Prometheus text format.
+1. The `prometheus.echo` component receives the scraped metrics and writes them to `stdout` in Prometheus text format.
 
-When you run this configuration, you'll see the metrics being written to stdout, which is useful to:
+When you run this configuration, you'll see the metrics being written to `stdout`, which is useful to:
 
-* Debug metric collection issues
-* Verify metric labels and values
-* Test metric transformations
-* Understand the structure of metrics in your pipeline
+- Debug metric collection issues
+- Verify metric labels and values
+- Test metric transformations
+- Understand the structure of metrics in your pipeline
 
 ### Example with OpenMetrics format
 
