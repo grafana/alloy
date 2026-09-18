@@ -35,7 +35,7 @@ func Test_Encoding_Series(t *testing.T) {
 
 	buf := record.EncodeSeries(nil)
 
-	decoded := recordPool.GetRecord()
+	decoded := getRecord()
 
 	err := DecodeRecord(buf, decoded)
 	require.Nil(t, err)
@@ -273,7 +273,7 @@ func Test_Encoding_Entries(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			decoded := recordPool.GetRecord()
+			decoded := getRecord()
 			buf := tc.rec.EncodeEntries(tc.version, nil)
 			err := DecodeRecord(buf, decoded)
 			require.Nil(t, err)
@@ -346,8 +346,8 @@ func Benchmark_EncodeEntries(b *testing.B) {
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
-			buf := recordPool.GetBytes()
-			defer recordPool.PutBytes(buf)
+			buf := getBytes()
+			defer putBytes(buf)
 
 			for n := 0; n < b.N; n++ {
 				*buf = record.EncodeEntries(CurrentEntriesRec, *buf)
@@ -390,7 +390,7 @@ func Benchmark_DecodeWAL(b *testing.B) {
 			}
 
 			buf := record.EncodeEntries(CurrentEntriesRec, nil)
-			rec := recordPool.GetRecord()
+			rec := getRecord()
 			b.ReportAllocs()
 			b.ResetTimer()
 
