@@ -120,7 +120,6 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) receiverConfig() (*awss3receiver.Config, error) {
-	// TODO(x1unix): map Notification with components.
 	cfg := &awss3receiver.Config{
 		StartTime: args.StartTime,
 		EndTime:   args.EndTime,
