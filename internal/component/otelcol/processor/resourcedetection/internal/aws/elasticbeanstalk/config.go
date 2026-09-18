@@ -14,11 +14,13 @@ type Config struct {
 // DefaultArguments holds default settings for Config.
 var DefaultArguments = Config{
 	ResourceAttributes: ResourceAttributesConfig{
-		CloudPlatform:         rac.ResourceAttributeConfig{Enabled: true},
-		CloudProvider:         rac.ResourceAttributeConfig{Enabled: true},
-		DeploymentEnvironment: rac.ResourceAttributeConfig{Enabled: true},
-		ServiceInstanceID:     rac.ResourceAttributeConfig{Enabled: true},
-		ServiceVersion:        rac.ResourceAttributeConfig{Enabled: true},
+		CloudPlatform:             rac.ResourceAttributeConfig{Enabled: true},
+		CloudProvider:             rac.ResourceAttributeConfig{Enabled: true},
+		DeploymentEnvironment:     rac.ResourceAttributeConfig{Enabled: true},
+		DeploymentEnvironmentName: rac.ResourceAttributeConfig{Enabled: true},
+		DeploymentID:              rac.ResourceAttributeConfig{Enabled: true},
+		ServiceInstanceID:         rac.ResourceAttributeConfig{Enabled: true},
+		ServiceVersion:            rac.ResourceAttributeConfig{Enabled: true},
 	},
 }
 
@@ -37,19 +39,23 @@ func (args Config) Convert() map[string]any {
 
 // ResourceAttributesConfig provides config for elastic_beanstalk resource attributes.
 type ResourceAttributesConfig struct {
-	CloudPlatform         rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
-	CloudProvider         rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
-	DeploymentEnvironment rac.ResourceAttributeConfig `alloy:"deployment.environment,block,optional"`
-	ServiceInstanceID     rac.ResourceAttributeConfig `alloy:"service.instance.id,block,optional"`
-	ServiceVersion        rac.ResourceAttributeConfig `alloy:"service.version,block,optional"`
+	CloudPlatform             rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
+	CloudProvider             rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
+	DeploymentEnvironment     rac.ResourceAttributeConfig `alloy:"deployment.environment,block,optional"`
+	DeploymentEnvironmentName rac.ResourceAttributeConfig `alloy:"deployment.environment.name,block,optional"`
+	DeploymentID              rac.ResourceAttributeConfig `alloy:"deployment.id,block,optional"`
+	ServiceInstanceID         rac.ResourceAttributeConfig `alloy:"service.instance.id,block,optional"`
+	ServiceVersion            rac.ResourceAttributeConfig `alloy:"service.version,block,optional"`
 }
 
 func (r ResourceAttributesConfig) Convert() map[string]any {
 	return map[string]any{
-		"cloud.platform":         r.CloudPlatform.Convert(),
-		"cloud.provider":         r.CloudProvider.Convert(),
-		"deployment.environment": r.DeploymentEnvironment.Convert(),
-		"service.instance.id":    r.ServiceInstanceID.Convert(),
-		"service.version":        r.ServiceVersion.Convert(),
+		"cloud.platform":              r.CloudPlatform.Convert(),
+		"cloud.provider":              r.CloudProvider.Convert(),
+		"deployment.environment":      r.DeploymentEnvironment.Convert(),
+		"deployment.environment.name": r.DeploymentEnvironmentName.Convert(),
+		"deployment.id":               r.DeploymentID.Convert(),
+		"service.instance.id":         r.ServiceInstanceID.Convert(),
+		"service.version":             r.ServiceVersion.Convert(),
 	}
 }

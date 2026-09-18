@@ -1400,6 +1400,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"deployment.environment": map[string]any{
 							"enabled": true,
 						},
+						"deployment.environment.name": map[string]any{
+							"enabled": true,
+						},
+						"deployment.id": map[string]any{
+							"enabled": true,
+						},
 						"service.instance.id": map[string]any{
 							"enabled": false,
 						},

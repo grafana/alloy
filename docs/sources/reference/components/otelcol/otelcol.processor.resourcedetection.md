@@ -544,13 +544,15 @@ The `elasticbeanstalk` block supports the following blocks:
 
 The `resource_attributes` block supports the following blocks:
 
-| Block                              | Description                                                                             | Required |
-| ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`deployment.envir`][res-attr-cfg] | Toggles the `deployment.envir` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`service.instance`][res-attr-cfg] | Toggles the `service.instance` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`service.version`][res-attr-cfg]  | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.  | no       |
+| Block                                        | Description                                                                                       | Required |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------- |
+| [`cloud.platform`][res-attr-cfg]              | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.              | no       |
+| [`cloud.provider`][res-attr-cfg]              | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.              | no       |
+| [`deployment.environment`][res-attr-cfg]      | Toggles the `deployment.environment` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`deployment.environment.name`][res-attr-cfg] | Toggles the `deployment.environment.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`deployment.id`][res-attr-cfg]               | Toggles the `deployment.id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`service.instance.id`][res-attr-cfg]         | Toggles the `service.instance.id` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`service.version`][res-attr-cfg]             | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.             | no       |
 
 Example values:
 
