@@ -96,6 +96,12 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -116,14 +122,15 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	var (
-		newArgs = args.(Arguments)
-		fanout  = fanoutconsumer.Logs(newArgs.Output.Logs)
+		newArgs           = args.(Arguments)
+		fanout            = fanoutconsumer.Logs(newArgs.Output.Logs)
+		componentMetadata = otelcol.GetComponentMetadata(newArgs.Output.Logs)
 	)
 
 	c.logsSink = interceptconsumer.Logs(
 		fanout,
 		func(ctx context.Context, ld plog.Logs) error {
-			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(newArgs.Output.Logs))
+			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, componentMetadata)
 			return fanout.ConsumeLogs(ctx, ld)
 		},
 	)
@@ -137,6 +144,10 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 
 	if c.stopped {
 		return loki.ErrConsumerStopped
+	}
+
+	if batch.EntryLen() == 0 {
+		return nil
 	}
 
 	logs := plog.NewLogs()

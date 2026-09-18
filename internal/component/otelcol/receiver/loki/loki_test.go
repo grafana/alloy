@@ -190,6 +190,56 @@ func TestComponent(t *testing.T) {
 			require.FailNow(t, "logs did not arrive in time")
 		}
 	})
+
+	t.Run("Consumer stopped", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+
+		c, err := New(component.Options{
+			Logger:        slog.New(slog.DiscardHandler),
+			OnStateChange: func(e component.Exports) {},
+			GetServiceData: func(string) (any, error) {
+				return livedebugging.NewLiveDebugging(), nil
+			},
+		}, Arguments{
+			Output: makeLogsOutput(make(chan plog.Logs, 1)),
+		})
+		require.NoError(t, err)
+
+		runErr := make(chan error, 1)
+		go func() { runErr <- c.Run(ctx) }()
+
+		cancel()
+		require.NoError(t, <-runErr)
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(
+			model.LabelSet{"stream": "1"},
+			push.Entry{Line: "1", Timestamp: time.Now()},
+		))
+
+		require.ErrorIs(t, c.Consume(t.Context(), batch), loki.ErrConsumerStopped)
+	})
+
+	t.Run("Consumer empty batch", func(t *testing.T) {
+		recv := make(chan plog.Logs, 1)
+		c, err := New(component.Options{
+			Logger:        slog.New(slog.DiscardHandler),
+			OnStateChange: func(e component.Exports) {},
+			GetServiceData: func(string) (any, error) {
+				return livedebugging.NewLiveDebugging(), nil
+			},
+		}, Arguments{
+			Output: makeLogsOutput(recv),
+		})
+		require.NoError(t, err)
+		require.NoError(t, c.Consume(t.Context(), loki.NewBatch()))
+
+		select {
+		case <-recv:
+			require.FailNow(t, "empty batch should not forward logs")
+		default:
+		}
+	})
 }
 
 type logRecord struct {
