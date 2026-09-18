@@ -590,6 +590,40 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+httpRoute:
+  # -- Enables a Gateway API HTTPRoute for Alloy (Faro port). The Gateway API CRDs have to be installed in the cluster.
+  enabled: false
+  # -- Gateways the route attaches to. Required when httpRoute.enabled is true. Values can be templated.
+  parentRefs: []
+  # - name: my-gateway
+  #   namespace: gateway-system
+  #   # Optional, name of the Gateway listener to attach to
+  #   sectionName: https
+  # -- Hostnames the route matches. When empty, the route matches every hostname the Gateway listener allows. Values can be templated.
+  hostnames: []
+  #  - chart-example.local
+  # -- Additional labels to add to the HTTPRoute resource
+  labels: {}
+  # -- Additional annotations to add to the HTTPRoute resource. Values can be templated.
+  annotations: {}
+  # -- Service port the generated rule sends traffic to
+  faroPort: 12347
+  # -- Path prefix the generated rule matches
+  path: /
+  # -- Timeouts applied to the generated rule.
+  # ref: https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts
+  timeouts: {}
+  # request: 10s
+  # -- Replaces the generated rule. Use this to route several paths or ports, for example when Alloy exposes more than one receiver. When set, httpRoute.path, httpRoute.faroPort and httpRoute.timeouts are unused. Values can be templated.
+  rules: []
+  # - matches:
+  #     - path:
+  #         type: PathPrefix
+  #         value: /
+  #   backendRefs:
+  #     - name: alloy
+  #       port: 12347
+
 # -- Extra k8s manifests to deploy
 extraObjects: []
 # - apiVersion: v1

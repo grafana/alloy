@@ -142,6 +142,15 @@ useful if just using the default DaemonSet isn't sufficient.
 | global.image.pullSecrets | list | `[]` | Optional set of global image pull secrets. |
 | global.image.registry | string | `""` | Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...) |
 | global.podSecurityContext | object | `{}` | Security context to apply to the Grafana Alloy pod. |
+| httpRoute.annotations | object | `{}` | Additional annotations to add to the HTTPRoute resource. Values can be templated. |
+| httpRoute.enabled | bool | `false` | Enables a Gateway API HTTPRoute for Alloy (Faro port). The Gateway API CRDs have to be installed in the cluster. |
+| httpRoute.faroPort | int | `12347` | Service port the generated rule sends traffic to |
+| httpRoute.hostnames | list | `[]` | Hostnames the route matches. When empty, the route matches every hostname the Gateway listener allows. Values can be templated. |
+| httpRoute.labels | object | `{}` | Additional labels to add to the HTTPRoute resource |
+| httpRoute.parentRefs | list | `[]` | Gateways the route attaches to. Required when httpRoute.enabled is true. Values can be templated. |
+| httpRoute.path | string | `"/"` | Path prefix the generated rule matches |
+| httpRoute.rules | list | `[]` | Replaces the generated rule. Use this to route several paths or ports, for example when Alloy exposes more than one receiver. When set, httpRoute.path, httpRoute.faroPort and httpRoute.timeouts are unused. Values can be templated. |
+| httpRoute.timeouts | object | `{}` | Timeouts applied to the generated rule. ref: https://gateway-api.sigs.k8s.io/reference/spec/#httproutetimeouts |
 | image.digest | string | `nil` | Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`. |
 | image.pullPolicy | string | `"IfNotPresent"` | Grafana Alloy image pull policy. |
 | image.pullSecrets | list | `[]` | Optional set of image pull secrets. |
