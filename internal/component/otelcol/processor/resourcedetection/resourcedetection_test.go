@@ -8,6 +8,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/akamai"
 	alibabaecs "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/alibaba/ecs"
@@ -2967,6 +2968,59 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
+		{
+			testName: "retry_explicit",
+			cfg: `
+			retry {
+				enabled               = false
+				initial_interval      = "1s"
+				randomization_factor  = 0.1
+				multiplier            = 2
+				max_interval          = "10s"
+				max_elapsed_time      = "0s"
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors": []string{"env"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"retry": map[string]any{
+					"enabled":              false,
+					"initial_interval":     time.Second,
+					"randomization_factor": 0.1,
+					"multiplier":           float64(2),
+					"max_interval":         10 * time.Second,
+					"max_elapsed_time":     time.Duration(0),
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -2988,6 +3042,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			var expected resourcedetectionprocessor.Config
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
+
+			if _, ok := tc.expected["retry"]; !ok {
+				var defaultRetry otelcol.RetryArguments
+				defaultRetry.SetToDefault()
+				expected.Retry = *defaultRetry.Convert()
+			}
 
 			require.Equal(t, expected, *actual)
 		})

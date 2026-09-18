@@ -71,6 +71,9 @@ type Arguments struct {
 	// returning an empty resource. Defaults to false.
 	FailOnMissingMetadata bool `alloy:"fail_on_missing_metadata,attr,optional"`
 
+	// Retry controls retry/backoff for each detection attempt.
+	Retry otelcol.RetryArguments `alloy:"retry,block,optional"`
+
 	// DetectorConfig is a list of settings specific to all detectors
 	DetectorConfig DetectorConfig `alloy:",squash"`
 
@@ -217,6 +220,7 @@ func (args *Arguments) SetToDefault() {
 		Override:  true,
 		Timeout:   5 * time.Second,
 	}
+	args.Retry.SetToDefault()
 	args.DetectorConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
@@ -323,6 +327,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	result.Retry = *args.Retry.Convert()
 
 	return &result, nil
 }

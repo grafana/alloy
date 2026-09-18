@@ -151,8 +151,10 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`vultr`][vultr]                       | Queries the Vultr instance metadata API to retrieve various resource attributes.                           | no       |
 | [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                         | no       |
 | [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                          | no       |
+| [`retry`][retry]                       | Configures retry/backoff for each detection attempt.                                                       | no       |
 
 [output]: #output
+[retry]: #retry
 [debug_metrics]: #debug_metrics
 [akamai]: #akamai
 [alibaba_ecs]: #alibaba_ecs
@@ -188,6 +190,12 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `retry`
+
+The `retry` block configures retry/backoff behavior for each detection attempt.
+
+{{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `akamai`
 
