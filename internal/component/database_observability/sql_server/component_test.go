@@ -187,6 +187,76 @@ func TestQueryMetricsDefaults(t *testing.T) {
 	assert.Equal(t, 1*time.Hour, args.QueryMetricsArguments.StatementsLookback)
 }
 
+func TestDatabaseSettings(t *testing.T) {
+	t.Run("defaults preserve database/sql pool behavior", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+
+		assert.Equal(t, 10*time.Second, args.QueryTimeout)
+		assert.Equal(t, 0, args.MaxOpenConnections)
+		assert.Equal(t, 2, args.MaxIdleConnections)
+	})
+
+	t.Run("configuration is parsed", func(t *testing.T) {
+		config := `
+			data_source_name      = "sqlserver://user:pass@localhost:1433"
+			forward_to            = []
+			query_timeout         = "15s"
+			max_open_connections  = 8
+			max_idle_connections  = 4
+		`
+
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		assert.Equal(t, 15*time.Second, args.QueryTimeout)
+		assert.Equal(t, 8, args.MaxOpenConnections)
+		assert.Equal(t, 4, args.MaxIdleConnections)
+	})
+
+	base := func() Arguments {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433?database=app"
+		return args
+	}
+
+	for _, tc := range []struct {
+		name      string
+		configure func(*Arguments)
+		wantError string
+	}{
+		{
+			name:      "non-positive query timeout",
+			configure: func(args *Arguments) { args.QueryTimeout = 0 },
+			wantError: "query_timeout must be greater than zero",
+		},
+		{
+			name:      "negative max open connections",
+			configure: func(args *Arguments) { args.MaxOpenConnections = -1 },
+			wantError: "max_open_connections must be greater than or equal to zero",
+		},
+		{
+			name:      "negative max idle connections",
+			configure: func(args *Arguments) { args.MaxIdleConnections = -1 },
+			wantError: "max_idle_connections must be greater than or equal to zero",
+		},
+		{
+			name: "max idle exceeds bounded max open",
+			configure: func(args *Arguments) {
+				args.MaxOpenConnections = 2
+				args.MaxIdleConnections = 3
+			},
+			wantError: "max_idle_connections must be less than or equal to max_open_connections",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := base()
+			tc.configure(&args)
+			require.EqualError(t, args.Validate(), tc.wantError)
+		})
+	}
+}
+
 func TestQueryMetricsEnabledByDefault(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
@@ -385,7 +455,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(selectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("alloy_monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, configured, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"app_reader", "alloy_monitor"}, effective)
 		assert.Equal(t, []string{"app_reader"}, configured)
@@ -400,7 +470,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(selectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("Alloy_Monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, []string{"alloy_monitor"}, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"alloy_monitor", "Alloy_Monitor"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -411,7 +481,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		effective, err := resolveExcludeUsers(context.Background(), db, []string{"app_reader"}, false)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"app_reader"}, false)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"app_reader"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -423,7 +493,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		defer db.Close()
 
 		mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
-		_, err = resolveExcludeUsers(context.Background(), db, nil, true)
+		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, true)
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -440,10 +510,12 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 			AddRow("server", "machine", "16.0"))
 	mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
+	var args Arguments
+	args.SetToDefault()
+	args.ExcludeCurrentUser = true
+	args.MaxOpenConnections = 7
 	c := &Component{
-		args: Arguments{
-			ExcludeCurrentUser: true,
-		},
+		args: args,
 		openSQL: func(_, _ string) (*sql.DB, error) {
 			return db, nil
 		},
@@ -451,5 +523,6 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	err = c.connectAndStartCollectors(context.Background())
 	require.ErrorContains(t, err, "failed to resolve current login for query_samples user exclusion")
+	assert.Equal(t, 7, db.Stats().MaxOpenConnections)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

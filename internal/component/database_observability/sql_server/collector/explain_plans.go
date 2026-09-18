@@ -57,6 +57,7 @@ const selectExplainPlansTemplate = `
 type ExplainPlansArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
+	QueryTimeout    time.Duration
 	// Tracker is query_metrics's tracked query_hash set. This is nil when
 	// query_metrics is disabled, in which case explain_plans has no bounded
 	// candidate set to work from and no-ops every cycle, mirroring
@@ -70,6 +71,7 @@ type ExplainPlansArguments struct {
 type ExplainPlans struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
+	queryTimeout    time.Duration
 	tracker         QueryTracker
 	entryHandler    loki.EntryHandler
 
@@ -95,6 +97,7 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	return &ExplainPlans{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
+		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
 		tracker:         args.Tracker,
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[queryMetricsKey]time.Time{},
@@ -124,7 +127,7 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -151,19 +154,13 @@ func (c *ExplainPlans) Stop() {
 	c.wg.Wait()
 }
 
-func (c *ExplainPlans) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *ExplainPlans) collect(ctx context.Context) error {
 	if c.tracker == nil {
 		c.logger.Error("no query tracker available, skipping collection")
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
@@ -180,38 +177,44 @@ func (c *ExplainPlans) collect(ctx context.Context) error {
 		return err
 	}
 
-	rs, err := c.dbConnection.QueryContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to fetch explain plans: %w", err)
-	}
-	defer rs.Close()
-
 	now := c.now()
 	seen := map[queryMetricsKey]struct{}{}
 	found := map[string]struct{}{}
 
-	for rs.Next() {
-		var hashBytes []byte
-		var planXML []byte
-		if err := rs.Scan(&hashBytes, &planXML); err != nil {
-			c.logger.Error("failed to scan explain plan row", "err", err)
-			continue
-		}
-
-		queryHash, err := formatQueryHash(hashBytes)
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := c.dbConnection.QueryContext(queryCtx, query, args...)
 		if err != nil {
-			c.logger.Error("failed to format query hash", "err", err)
-			continue
+			return fmt.Errorf("failed to fetch explain plans: %w", err)
 		}
+		defer rs.Close()
 
-		found[queryHash] = struct{}{}
-		key := queryMetricsKey{database: database, queryHash: queryHash}
-		seen[key] = struct{}{}
+		for rs.Next() {
+			var hashBytes []byte
+			var planXML []byte
+			if err := rs.Scan(&hashBytes, &planXML); err != nil {
+				c.logger.Error("failed to scan explain plan row", "err", err)
+				continue
+			}
 
-		c.processPlan(now, key, queryHash, database, planXML)
-	}
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over explain plan rows: %w", err)
+			queryHash, err := formatQueryHash(hashBytes)
+			if err != nil {
+				c.logger.Error("failed to format query hash", "err", err)
+				continue
+			}
+
+			found[queryHash] = struct{}{}
+			key := queryMetricsKey{database: database, queryHash: queryHash}
+			seen[key] = struct{}{}
+
+			c.processPlan(now, key, queryHash, database, planXML)
+		}
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over explain plan rows: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Tracked hashes with no captured plan yet still get a gated skip
