@@ -56,6 +56,7 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 - `alibaba_ecs`
 - `aks`
 - `azure`
+- `azurecontainerapps`
 - `consul`
 - `digitalocean`
 - `docker`
@@ -128,6 +129,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
 | [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                    | no       |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
+| [`azurecontainerapps`][azurecontainerapps] | Queries the Azure Container Apps instance metadata to retrieve various resource attributes.            | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
 | [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                                 | no       |
@@ -163,6 +165,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [lambda]: #lambda
 [azure]: #azure
 [aks]: #aks
+[azurecontainerapps]: #azurecontainerapps
 [consul]: #consul
 [digitalocean]: #digitalocean
 [docker]: #docker
@@ -255,6 +258,27 @@ The cluster name is detected if it doesn't contain underscores and if a custom i
 
 If accurate parsing can't be performed, the infrastructure resource group value is returned.
 This value can be used to uniquely identify the cluster, because Azure won't allow users to create multiple clusters with the same infrastructure resource group name.
+
+### `azurecontainerapps`
+
+The `azurecontainerapps` block queries the Azure Container Apps instance metadata to retrieve various resource attributes.
+
+The `azurecontainerapps` block supports the following blocks:
+
+| Block                                                              | Description                                  | Required |
+| -------------------------------------------------------------------- | -------------------------------------------- | -------- |
+| [`resource_attributes`](#azurecontainerapps--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### `azurecontainerapps` > `resource_attributes`
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                                             | Description                                                                                             | Required |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- |
+| [`azure.container_app.instance.id`][res-attr-cfg] | Toggles the `azure.container_app.instance.id` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`][res-attr-cfg]                  | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`cloud.provider`][res-attr-cfg]                  | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`service.name`][res-attr-cfg]                    | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                     | no       |
 
 ### `azure`
 
