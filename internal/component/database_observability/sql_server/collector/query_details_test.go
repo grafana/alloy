@@ -171,14 +171,14 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	}, 5*time.Second, 20*time.Millisecond)
 
 	entries := lokiClient.Received()
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT * FROM [dbo].[orders] o JOIN customers c ON c.id = o.customer_id WHERE o.total > ?"`, entries[0].Line)
 	require.NotContains(t, entries[0].Line, `\n`)
 	require.NotContains(t, entries[0].Line, `\t`)
 
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers"`, entries[2].Line)
 }
 

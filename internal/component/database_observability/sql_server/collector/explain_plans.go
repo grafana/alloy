@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	ExplainPlansCollector  = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlansCollector = "explain_plans"
 )
 
 // selectExplainPlansTemplate resolves each tracked query_hash to the most
@@ -255,6 +254,9 @@ func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash
 		return
 	}
 
+	c.logger.Debug("db native explain plan", "query_hash", queryHash,
+		"db_native_explain_plan", base64.StdEncoding.EncodeToString(planXML))
+
 	c.emit(database, queryHash, now, database_observability.ExplainProcessingResultSuccess, "", planNode)
 	c.recordEmission(key, hash, now)
 }
@@ -349,7 +351,7 @@ func (c *ExplainPlans) emit(
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		database_observability.OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
 }

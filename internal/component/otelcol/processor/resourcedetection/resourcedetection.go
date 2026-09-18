@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/lambda"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/containerapps"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/digitalocean"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
@@ -121,6 +122,9 @@ type DetectorConfig struct {
 	// Aks contains user-specified configurations for the aks detector
 	AksConfig aks.Config `alloy:"aks,block,optional"`
 
+	// AzureContainerAppsConfig contains user-specified configurations for the Azure Container Apps detector
+	AzureContainerAppsConfig containerapps.Config `alloy:"azurecontainerapps,block,optional"`
+
 	// ConsulConfig contains user-specified configurations for the Consul detector
 	ConsulConfig consul.Config `alloy:"consul,block,optional"`
 
@@ -178,31 +182,32 @@ type DetectorConfig struct {
 
 func (dc *DetectorConfig) SetToDefault() {
 	*dc = DetectorConfig{
-		EC2Config:              ec2.DefaultArguments,
-		ECSConfig:              ecs.DefaultArguments,
-		EKSConfig:              eks.DefaultArguments,
-		ElasticbeanstalkConfig: elasticbeanstalk.DefaultArguments,
-		LambdaConfig:           lambda.DefaultArguments,
-		AkamaiConfig:           akamai.DefaultArguments,
-		AzureConfig:            azure.DefaultArguments,
-		AksConfig:              aks.DefaultArguments,
-		ConsulConfig:           consul.DefaultArguments,
-		DockerConfig:           docker.DefaultArguments,
-		DigitalOceanConfig:     digitalocean.DefaultArguments,
-		GcpConfig:              gcp.DefaultArguments,
-		HerokuConfig:           heroku.DefaultArguments,
-		HetznerConfig:          hetzner.DefaultArguments,
-		OpenShiftConfig:        openshift.DefaultArguments,
-		KubernetesNodeConfig:   k8snode.DefaultArguments,
-		KubeADMConfig:          kubeadm.DefaultArguments,
-		DynatraceConfig:        dynatrace.DefaultArguments,
-		OpenStackNovaConfig:    openstacknova.DefaultArguments,
-		OracleCloudConfig:      oraclecloud.DefaultArguments,
-		ScalewayConfig:         scaleway.DefaultArguments,
-		UpCloudConfig:          upcloud.DefaultArguments,
-		VultrConfig:            vultr.DefaultArguments,
-		TencentCVMConfig:       tencentcvm.DefaultArguments,
-		AlibabaECSConfig:       alibabaecs.DefaultArguments,
+		EC2Config:                ec2.DefaultArguments,
+		ECSConfig:                ecs.DefaultArguments,
+		EKSConfig:                eks.DefaultArguments,
+		ElasticbeanstalkConfig:   elasticbeanstalk.DefaultArguments,
+		LambdaConfig:             lambda.DefaultArguments,
+		AkamaiConfig:             akamai.DefaultArguments,
+		AzureConfig:              azure.DefaultArguments,
+		AksConfig:                aks.DefaultArguments,
+		AzureContainerAppsConfig: containerapps.DefaultArguments,
+		ConsulConfig:             consul.DefaultArguments,
+		DockerConfig:             docker.DefaultArguments,
+		DigitalOceanConfig:       digitalocean.DefaultArguments,
+		GcpConfig:                gcp.DefaultArguments,
+		HerokuConfig:             heroku.DefaultArguments,
+		HetznerConfig:            hetzner.DefaultArguments,
+		OpenShiftConfig:          openshift.DefaultArguments,
+		KubernetesNodeConfig:     k8snode.DefaultArguments,
+		KubeADMConfig:            kubeadm.DefaultArguments,
+		DynatraceConfig:          dynatrace.DefaultArguments,
+		OpenStackNovaConfig:      openstacknova.DefaultArguments,
+		OracleCloudConfig:        oraclecloud.DefaultArguments,
+		ScalewayConfig:           scaleway.DefaultArguments,
+		UpCloudConfig:            upcloud.DefaultArguments,
+		VultrConfig:              vultr.DefaultArguments,
+		TencentCVMConfig:         tencentcvm.DefaultArguments,
+		AlibabaECSConfig:         alibabaecs.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -270,6 +275,7 @@ func (args *Arguments) Validate() error {
 			akamai.Name,
 			azure.Name,
 			aks.Name,
+			containerapps.Name,
 			consul.Name,
 			digitalocean.Name,
 			docker.Name,
@@ -337,6 +343,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["akamai"] = args.DetectorConfig.AkamaiConfig.Convert()
 	input["azure"] = args.DetectorConfig.AzureConfig.Convert()
 	input["aks"] = args.DetectorConfig.AksConfig.Convert()
+	input["azurecontainerapps"] = args.DetectorConfig.AzureContainerAppsConfig.Convert()
 	input["consul"] = args.DetectorConfig.ConsulConfig.Convert()
 	input["docker"] = args.DetectorConfig.DockerConfig.Convert()
 	input["digitalocean"] = args.DetectorConfig.DigitalOceanConfig.Convert()

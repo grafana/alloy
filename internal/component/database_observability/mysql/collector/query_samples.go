@@ -21,9 +21,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT         = "wait_event"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -462,7 +459,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
-				OP_QUERY_SAMPLE,
+				database_observability.OP_QUERY_SAMPLE,
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
@@ -510,7 +507,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
-					OP_WAIT_EVENT_V2,
+					database_observability.OP_WAIT_EVENT_V2,
 					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
@@ -536,7 +533,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
-					OP_WAIT_EVENT,
+					database_observability.OP_WAIT_EVENT,
 					waitLogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
@@ -620,21 +617,21 @@ func isMySQLReplicationWaitEvent(name string) bool {
 
 func classifyMySQLWaitEventType(waitEventName string) string {
 	if isMySQLReplicationWaitEvent(waitEventName) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	rest, ok := strings.CutPrefix(waitEventName, "wait/")
 	if !ok {
-		return "Other Wait"
+		return database_observability.WAIT_EVENT_TYPE_OTHER
 	}
 	switch {
 	case strings.HasPrefix(rest, "io/file/"), strings.HasPrefix(rest, "io/table/"):
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	case strings.HasPrefix(rest, "io/socket/"):
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	case strings.HasPrefix(rest, "io/lock/"), strings.HasPrefix(rest, "lock/"):
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	case strings.HasPrefix(rest, "synch/"):
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	}
-	return "Other Wait"
+	return database_observability.WAIT_EVENT_TYPE_OTHER
 }

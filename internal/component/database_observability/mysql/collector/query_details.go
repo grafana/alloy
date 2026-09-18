@@ -18,9 +18,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 const selectQueryTablesSamples = `
@@ -153,7 +151,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
+			database_observability.OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
 		)
 
@@ -166,7 +164,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
+				database_observability.OP_QUERY_PARSED_TABLE_NAME,
 				fmt.Sprintf(`schema="%s" digest="%s" table="%s" validated="%t"`, schema, digest, resolvedTable, validated),
 			)
 		}

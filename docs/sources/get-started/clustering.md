@@ -125,7 +125,7 @@ Now that you understand how clustering works with {{< param "PRODUCT_NAME" >}} c
 For detailed configuration:
 
 - [`alloy run` command reference][run] - Configure clustering using command-line flags.
-- [Component reference][components] - Explore clustering-enabled components like `prometheus.scrape`, `pyroscope.scrape`, and `database_observability.mysql`.
+- [Component reference][components] - Explore clustering-enabled components like `prometheus.scrape`, `pyroscope.scrape`, `database_observability.mysql`, and `database_observability.postgres`.
 
 [run]: ../../reference/cli/run/#clustering
 [prometheus.scrape]: ../../reference/components/prometheus/prometheus.scrape/#clustering

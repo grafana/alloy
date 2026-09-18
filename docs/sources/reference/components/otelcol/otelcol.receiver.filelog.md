@@ -203,6 +203,12 @@ The following arguments are supported:
 | `regex`    | `string` | A regular expression to capture elements of log files to use in ordering calculations. | `""`    | no       |
 | `top_n`    | `int`    | The number of top log files to track when using file ordering.                         | `1`     | no       |
 
+`top_n` has three possible states:
+
+* Not set: track the default number of files (`1`).
+* Set to `0`: track all files.
+* Set to a positive number: track that many files.
+
 ### `sort_by`
 
 The `sort_by` repeatable block configures the way the fields parsed in the `ordering_criteria` block will be applied to sort the discovered log files.

@@ -21,8 +21,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 	QUERY_HASH_BYTE_LEN   = 8
 
 	// maxWaitOccurrencesPerRequest bounds the number of distinct wait episodes
@@ -549,7 +547,7 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		database_observability.OP_QUERY_SAMPLE,
 		c.buildQuerySampleLine(state.lastRow),
 		timestamp,
 	)
@@ -560,7 +558,7 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT_V2,
+			database_observability.OP_WAIT_EVENT_V2,
 			c.buildWaitEventLine(state.lastRow, wait),
 			timestamp,
 		)
@@ -682,21 +680,21 @@ func classifySQLServerWaitEventType(waitType string) string {
 	waitType = strings.ToUpper(waitType)
 
 	if hasAnyPrefix(waitType, replicationWaitEventPrefixes...) || hasAnyValue(waitType, replicationWaitEventNames...) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	if strings.HasPrefix(waitType, "LCK_M_") {
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	}
 	if hasAnyValue(waitType, networkWaitEventNames...) {
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	}
 	if hasAnyPrefix(waitType, ioWaitEventPrefixes...) || hasAnyValue(waitType, ioWaitEventNames...) {
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	}
 	if hasAnyPrefix(waitType, engineWaitEventPrefixes...) || hasAnyValue(waitType, engineWaitEventNames...) {
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	}
-	return "Other Wait"
+	return database_observability.WAIT_EVENT_TYPE_OTHER
 }
 
 func hasAnyPrefix(value string, prefixes ...string) bool {
