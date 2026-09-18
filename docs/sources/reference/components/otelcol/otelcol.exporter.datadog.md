@@ -27,6 +27,10 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 
 You can specify multiple `otelcol.exporter.datadog` components by giving them different labels.
 
+{{< admonition type="note" >}}
+`otelcol.exporter.datadog` now sets scope name and version using the `otel.scope.name` and `otel.scope.version` semantic conventions instead of the deprecated `otel.library.name` and `otel.library.version` tags. There's no configuration option to restore the previous behavior.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

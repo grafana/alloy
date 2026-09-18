@@ -80,6 +80,14 @@ Currently, only gzip compressed files are auto detected. This allows for mix of 
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
 
+{{< admonition type="note" >}}
+On Windows, matching patterns in `include` and `exclude` are now case-insensitive by default. This doesn't affect other operating systems.
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+Setting `delete_after_read` to `true` previously failed to load with an error requiring an upstream feature gate to be enabled. `delete_after_read` now works without any extra configuration.
+{{< /admonition >}}
+
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
 ### `operators`
@@ -225,6 +233,10 @@ The following arguments are supported:
 `sort_type` must be one of `numeric`, `lexicographic`, `timestamp`, or `mtime`.
 When using `numeric`, `lexicographic`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
 When using `mtime` `sort_type`, the file's modified time will be used to sort.
+
+{{< admonition type="note" >}}
+`mtime` `sort_type` previously failed to load with an error requiring an upstream feature gate to be enabled. `mtime` `sort_type` now works without any extra configuration.
+{{< /admonition >}}
 
 The `location` and `layout` arguments are only applicable when `sort_type` is `timestamp`.
 

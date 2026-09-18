@@ -124,6 +124,10 @@ You can use the following blocks with `otelcol.processor.k8sattributes`:
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+{{< admonition type="note" >}}
+The internal watcher telemetry metrics emitted through `debug_metrics` were renamed by default. Metrics such as `otelcol_otelsvc_k8s_pod_added` and `otelcol_otelsvc_k8s_pod_table_size` are replaced by `otelcol_k8s_watcher_pod_added` and `otelcol_k8s_watcher_pod_cache_size`, and similarly for the other Kubernetes resource kinds this processor watches. Update dashboards and alerts that reference the old metric names.
+{{< /admonition >}}
+
 ### `exclude`
 
 The `exclude` block configures which pods to exclude from the processor.
@@ -198,7 +202,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-The `deployment_name_from_replicaset` configuration was removed from the processor. The processor now always extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets. Setting `deployment_name_from_replicaset` to `false` no longer has any effect.
+The upstream OpenTelemetry Collector processor removed its underlying `deployment_name_from_replicaset` option and now always extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets. `otelcol.processor.k8sattributes` still accepts the `deployment_name_from_replicaset` attribute for backward compatibility, but setting it to `false` no longer has any effect.
 
 {{< admonition type="caution" >}}
 This processor's default attribute names changed to follow the [semantic conventions][], and `container.image.tag` is now a no-op:
@@ -271,6 +275,10 @@ The `pod_association` block configures rules on how to associate logs/traces/met
 The `pod_association` block doesn't support any arguments and is configured fully through child blocks.
 
 The `pod_association` block can be repeated multiple times, to configure additional rules.
+
+{{< admonition type="note" >}}
+Configuring two `pod_association` blocks with the same set of `source` blocks, regardless of order, fails to load with a `duplicate pod association` error.
+{{< /admonition >}}
 
 #### Example
 
