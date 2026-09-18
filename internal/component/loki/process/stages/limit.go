@@ -37,7 +37,6 @@ var (
 	_ Stage          = (*limitStage)(nil)
 	_ Stopper        = (*limitStage)(nil)
 	_ entryProcessor = (*limitStage)(nil)
-	_ stopper        = (*limitStage)(nil)
 )
 
 func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
@@ -126,13 +125,11 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 
-	sctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	stop := context.AfterFunc(m.ctx, cancel)
-	defer stop()
-
 	for _, e := range entries {
-		err := m.throttle(sctx, e.Labels)
+		// throttle blocks in the rate limiter until ctx is canceled. The stage
+		// deliberately has no cancellation of its own but it's up to the caller
+		// to cancel passed ctx.
+		err := m.throttle(ctx, e.Labels)
 		if err != nil {
 			if errors.Is(err, errLimitStageDropEntry) {
 				continue
@@ -151,14 +148,9 @@ func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	return m.next(ctx, entries[:dst])
 }
 
-// stop implements stopper.
-func (m *limitStage) stop() {
-	m.cancel()
-}
-
 // Stop implements Stopper
 func (m *limitStage) Stop() {
-	m.stop()
+	m.cancel()
 }
 
 // throttle applies the configured rate limit to the entry. It returns
