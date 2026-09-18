@@ -44,7 +44,11 @@ func prepareInstall(t *testing.T) (installerPath, uninstallerPath string) {
 	if os.Getenv(envVarStateful) == "true" {
 		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
 	} else {
-		t.Cleanup(func() { uninstallAlloy(t, uninstallerPath) })
+		t.Cleanup(func() {
+			if isAlloyInstalled(t, installDir) {
+				uninstallAlloy(t, uninstallerPath)
+			}
+		})
 	}
 
 	// Ensure no existing Alloy install; abort unless envVarCleanIfExists is set to "true".
