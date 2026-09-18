@@ -41,6 +41,40 @@ func TestCORSArguments_ConvertExposedHeaders(t *testing.T) {
 	})
 }
 
+func TestHTTPClientArguments_ConvertKeepalive(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.False(t, cfg.Keepalive.HasValue())
+	})
+
+	t.Run("set", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{
+			Keepalive: &otelcol.KeepaliveArguments{
+				IdleConnTimeout:     30 * time.Second,
+				MaxIdleConns:        50,
+				MaxIdleConnsPerHost: 10,
+			},
+		}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.True(t, cfg.Keepalive.HasValue())
+		ka := cfg.Keepalive.Get()
+		require.Equal(t, 30*time.Second, ka.IdleConnTimeout)
+		require.Equal(t, 50, ka.MaxIdleConns)
+		require.Equal(t, 10, ka.MaxIdleConnsPerHost)
+	})
+}
+
+func TestKeepaliveArguments_SetToDefault(t *testing.T) {
+	var args otelcol.KeepaliveArguments
+	args.SetToDefault()
+	require.Equal(t, otelcol.DefaultKeepaliveIdleConnTimeout, args.IdleConnTimeout)
+	require.Equal(t, otelcol.DefaultKeepaliveMaxIdleConns, args.MaxIdleConns)
+	require.Equal(t, 0, args.MaxIdleConnsPerHost)
+}
+
 func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 	args := &otelcol.HTTPServerArguments{
 		IdleTimeout:       2 * time.Minute,

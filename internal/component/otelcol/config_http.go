@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -176,6 +177,48 @@ type HTTPClientArguments struct {
 	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	Cookies *Cookies `alloy:"cookies,block,optional"`
+
+	// Keepalive configures HTTP keep-alive settings. When set, it takes
+	// precedence over the deprecated idle_conn_timeout, max_idle_conns, and
+	// max_idle_conns_per_host attributes above.
+	Keepalive *KeepaliveArguments `alloy:"keepalive,block,optional"`
+}
+
+// KeepaliveArguments configures HTTP keep-alive settings for an HTTP client.
+type KeepaliveArguments struct {
+	IdleConnTimeout     time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	MaxIdleConns        int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost int           `alloy:"max_idle_conns_per_host,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*KeepaliveArguments)(nil)
+
+// Default values match net/http.DefaultTransport, mirroring the exporter-level
+// defaults for the deprecated idle_conn_timeout/max_idle_conns attributes.
+const (
+	DefaultKeepaliveIdleConnTimeout = 90 * time.Second
+	DefaultKeepaliveMaxIdleConns    = 100
+)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *KeepaliveArguments) SetToDefault() {
+	*args = KeepaliveArguments{
+		IdleConnTimeout: DefaultKeepaliveIdleConnTimeout,
+		MaxIdleConns:    DefaultKeepaliveMaxIdleConns,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args *KeepaliveArguments) Convert() configoptional.Optional[otelconfighttp.KeepaliveClientConfig] {
+	if args == nil {
+		return configoptional.None[otelconfighttp.KeepaliveClientConfig]()
+	}
+
+	return configoptional.Some(otelconfighttp.KeepaliveClientConfig{
+		IdleConnTimeout:     args.IdleConnTimeout,
+		MaxIdleConns:        args.MaxIdleConns,
+		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+	})
 }
 
 // Convert converts args into the upstream type.
@@ -223,7 +266,8 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Auth: authentication,
 
-		Cookies: args.Cookies.Convert(),
+		Cookies:   args.Cookies.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 	}
 
 	if args.CompressionParams != nil {
