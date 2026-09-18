@@ -68,10 +68,13 @@ func (r *Record) IsEmpty() bool {
 
 func (r *Record) Reset() {
 	r.UserID = ""
-	if len(r.Series) > 0 {
-		r.Series = r.Series[:0]
-	}
 
+	// Zero out to avoid retaining series data.
+	clear(r.Series)
+	r.Series = r.Series[:0]
+
+	// Zero out to avoid retaining RefEntries data.
+	clear(r.RefEntries)
 	r.RefEntries = r.RefEntries[:0]
 }
 
