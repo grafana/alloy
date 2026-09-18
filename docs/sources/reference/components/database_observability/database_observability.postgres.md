@@ -77,6 +77,7 @@ You can use the following blocks with `database_observability.postgres`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance]                  | Define one database to monitor. Repeat the block to monitor several databases. | no       |
 | `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| [`clustering`][clustering]         | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -90,6 +91,7 @@ You can use the following blocks with `database_observability.postgres`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[clustering]: #clustering
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
@@ -192,6 +194,29 @@ loki.source.file "orders_db_logs" {
   forward_to = [database_observability.postgres.pool.logs_receivers["orders"]]
 }
 ```
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enables distributing databases with other cluster nodes. | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `database_observability.postgres` component instance opts-in to distributing its configured databases between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All component instances opting in to clustering use the instance key of each configured database, `postgresql://<host>:<port>/<dbname>`, and a consistent hashing algorithm to determine ownership of each database between the cluster peers.
+Each peer then only collects from the subset of databases it's responsible for, and only exports the targets of those databases, so `prometheus.scrape` components on the same node scrape exactly the databases the node owns.
+When a node joins or leaves the cluster, every peer recalculates ownership: expect a short gap or a brief duplicate collection for a database while its ownership moves.
+While the cluster isn't yet ready to admit traffic, for example while it's still forming and waiting for the minimum cluster size, the component doesn't collect from any database.
+
+Every node exports the logs receivers of all configured databases, whether it owns them or not: a node that doesn't own a database accepts and discards entries sent to that database's receiver.
+Log pipelines that forward PostgreSQL logs to the exported receivers therefore work unchanged on every node, but only the owning node processes the logs into error metrics.
+
+Clustering is also useful with a single database: when several cluster nodes run an identical configuration, exactly one node collects from the database at a time, which gives you a highly available setup without duplicate collection.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `database_observability.postgres` collects from every configured database.
+
+[using clustering]: ../../../../get-started/clustering/
 
 ### `query_details`
 
