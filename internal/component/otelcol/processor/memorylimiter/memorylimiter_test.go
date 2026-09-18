@@ -205,3 +205,16 @@ func TestGCIntervalArguments(t *testing.T) {
 		})
 	}
 }
+
+// check_interval has no Alloy-side rule; upstream's Validate is what rejects it.
+func TestCheckIntervalRejected(t *testing.T) {
+	cfg := `
+		check_interval = "0s"
+		limit          = "100MiB"
+		output {}
+	`
+
+	var args memorylimiter.Arguments
+	require.ErrorContains(t, syntax.Unmarshal([]byte(cfg), &args),
+		"'check_interval' must be greater than zero")
+}

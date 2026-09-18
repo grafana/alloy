@@ -79,10 +79,8 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	if args.CheckInterval <= 0 {
-		return fmt.Errorf("check_interval must be greater than zero")
-	}
-
+	// Only the rules upstream can't express in Alloy's own attribute names stay
+	// here; every accepted config ends up in validateUpstream.
 	if args.MemoryLimit > 0 && args.MemoryLimitPercentage > 0 {
 		return fmt.Errorf("either limit or limit_percentage must be set, but not both")
 	}
@@ -110,8 +108,7 @@ func (args *Arguments) Validate() error {
 	return fmt.Errorf("either limit or limit_percentage must be set to greater than zero")
 }
 
-// validateUpstream leaves the GC interval invariants to the collector rather than
-// restating them here.
+// validateUpstream runs the collector's own rules rather than restating them here.
 func (args Arguments) validateUpstream() error {
 	otelCfg, err := args.Convert()
 	if err != nil {
