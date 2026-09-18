@@ -66,9 +66,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	return &influxdbreceiver.Config{
-		ServerConfig: *serverConfig.Get(),
-	}, nil
+	cfg := influxdbreceiver.NewFactory().CreateDefaultConfig().(*influxdbreceiver.Config)
+	cfg.ServerConfig = *serverConfig.Get()
+	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.
