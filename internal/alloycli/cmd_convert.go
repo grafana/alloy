@@ -181,6 +181,10 @@ func hasErrorLevel(ds convert_diag.Diagnostics, sev convert_diag.Severity) bool 
 }
 
 func supportedFormatsList() string {
+	if len(converter.SupportedFormats) == 0 {
+		return `"alloy"`
+	}
+
 	var ret = make([]string, len(converter.SupportedFormats))
 	for i, f := range converter.SupportedFormats {
 		ret[i] = fmt.Sprintf("%q", f)

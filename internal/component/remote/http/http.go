@@ -12,25 +12,12 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	common_config "github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
 )
 
 var userAgent = useragent.Get()
-
-func init() {
-	component.Register(component.Registration{
-		Name:      "remote.http",
-		Stability: featuregate.StabilityGenerallyAvailable,
-		Args:      Arguments{},
-		Exports:   Exports{},
-		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts, args.(Arguments))
-		},
-	})
-}
 
 // Arguments control the remote.http component.
 type Arguments struct {
