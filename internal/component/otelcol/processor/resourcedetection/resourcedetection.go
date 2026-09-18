@@ -225,7 +225,8 @@ func (args *Arguments) SetToDefault() {
 	args.Retry.SetToDefault()
 }
 
-// RetryArguments configures retry and backoff for each detection attempt.
+// RetryArguments is otelcol.RetryArguments defaulted from the upstream
+// resourcedetection factory, whose values differ from the shared retry block's.
 type RetryArguments otelcol.RetryArguments
 
 var (
@@ -233,10 +234,7 @@ var (
 	_ syntax.Validator = (*RetryArguments)(nil)
 )
 
-// SetToDefault implements syntax.Defaulter. The values come from the upstream
-// factory rather than the shared retry block, whose defaults differ, and rather
-// than literals here, so a contrib bump carries through. A written `retry {}` runs
-// this too, which is what keeps an empty block and an omitted one in agreement.
+// SetToDefault implements syntax.Defaulter.
 func (args *RetryArguments) SetToDefault() {
 	upstream := resourcedetectionprocessor.NewFactory().CreateDefaultConfig().(*resourcedetectionprocessor.Config).Retry
 

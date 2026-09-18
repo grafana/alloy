@@ -39,10 +39,11 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-// defaultRetry is a canary for the upstream retry defaults our docs promise. If a
-// case fails on these, a contrib bump changed one: update the docs, then these
-// values. They are deliberately not read from the factory, so a change shows up.
-func defaultRetry() configretry.BackOffConfig {
+// documentedRetryDefaults is the canary for the upstream retry defaults our docs
+// promise. If this fails, a contrib bump changed one: update the docs, then these
+// values. Deliberately a literal, and deliberately used by one case only, so an
+// upstream change doesn't fail cases that aren't about retry.
+func documentedRetryDefaults() configretry.BackOffConfig {
 	return configretry.BackOffConfig{
 		Enabled:             true,
 		InitialInterval:     1 * time.Second,
@@ -53,6 +54,12 @@ func defaultRetry() configretry.BackOffConfig {
 	}
 }
 
+// upstreamRetryDefaults reads what the production path seeds from, for the cases
+// whose subject isn't the default values.
+func upstreamRetryDefaults() configretry.BackOffConfig {
+	return resourcedetectionprocessor.NewFactory().CreateDefaultConfig().(*resourcedetectionprocessor.Config).Retry
+}
+
 func TestRetryArguments(t *testing.T) {
 	tests := []struct {
 		testName string
@@ -60,21 +67,21 @@ func TestRetryArguments(t *testing.T) {
 		expected configretry.BackOffConfig
 	}{
 		{
-			testName: "omitted block applies the upstream defaults",
+			testName: "omitted block applies the documented upstream defaults",
 			cfg: `
 			detectors = ["env"]
 			output {}
 			`,
-			expected: defaultRetry(),
+			expected: documentedRetryDefaults(),
 		},
 		{
-			testName: "empty block applies the same defaults",
+			testName: "empty block matches an omitted one",
 			cfg: `
 			detectors = ["env"]
 			retry {}
 			output {}
 			`,
-			expected: defaultRetry(),
+			expected: upstreamRetryDefaults(),
 		},
 		{
 			testName: "explicit values",
@@ -88,14 +95,14 @@ func TestRetryArguments(t *testing.T) {
 			}
 			output {}
 			`,
-			expected: configretry.BackOffConfig{
-				Enabled:             true,
-				InitialInterval:     2 * time.Second,
-				RandomizationFactor: 0.5,
-				Multiplier:          3,
-				MaxInterval:         1 * time.Minute,
-				MaxElapsedTime:      5 * time.Minute,
-			},
+			expected: func() configretry.BackOffConfig {
+				want := upstreamRetryDefaults()
+				want.InitialInterval = 2 * time.Second
+				want.Multiplier = 3
+				want.MaxInterval = 1 * time.Minute
+				want.MaxElapsedTime = 5 * time.Minute
+				return want
+			}(),
 		},
 		{
 			testName: "disabled",
@@ -107,7 +114,7 @@ func TestRetryArguments(t *testing.T) {
 			output {}
 			`,
 			expected: func() configretry.BackOffConfig {
-				want := defaultRetry()
+				want := upstreamRetryDefaults()
 				want.Enabled = false
 				return want
 			}(),
@@ -3086,7 +3093,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			actual := actualPtr.(*resourcedetectionprocessor.Config)
 
-			expected := resourcedetectionprocessor.Config{Retry: defaultRetry()}
+			expected := resourcedetectionprocessor.Config{Retry: upstreamRetryDefaults()}
 			err = mapstructure.Decode(tc.expected, &expected)
 			require.NoError(t, err)
 
