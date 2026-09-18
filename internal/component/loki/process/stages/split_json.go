@@ -93,6 +93,10 @@ func (s *splitJSONStage) process(ctx context.Context, entries []Entry) error {
 		}
 	}
 
+	if len(out) == 0 {
+		return nil
+	}
+
 	return s.next(ctx, out)
 }
 
