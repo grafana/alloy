@@ -96,8 +96,8 @@ agent:
 ### Add resource attributes to the supervisor's own telemetry
 
 The supervisor emits its own logs and metrics, separate from the `{{< param "OTEL_ENGINE" >}}` it
-manages. To add resource attributes to that self-telemetry, add a `telemetry.resource` block to the
-supervisor configuration file:
+manages.
+To add resource attributes to that self-telemetry, add a `telemetry.resource` block to the supervisor configuration file:
 
 ```yaml
 telemetry:
@@ -107,8 +107,7 @@ telemetry:
         value: my-supervisor
 ```
 
-You can also enable an experimental, upstream resource detector (for example, to detect host resource
-attributes automatically) with `telemetry.resource.detection/development`:
+You can also enable an upstream resource detector with `telemetry.resource.detection/development`, for example to detect host resource attributes automatically:
 
 ```yaml
 telemetry:
@@ -118,5 +117,5 @@ telemetry:
         - host: {}
 ```
 
-This is currently only available in manual mode, through the supervisor configuration file. Simple
-mode's environment variables don't expose it.
+This is only available in manual mode, through the supervisor configuration file.
+Simple mode's environment variables don't expose it.
