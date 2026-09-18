@@ -165,7 +165,20 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 |--------------------------------|--------|--------------------------------------------------------------------------|---------|----------|
 | `enable_error_logs_processing` | `bool` | Emit per-query error telemetry by pairing error and statement log lines. | `false` | no       |
 
-The `logs` collector is always enabled and counts server errors from the PostgreSQL logs forwarded to `logs_receiver`. When `enable_error_logs_processing` is `true`, the collector additionally emits per-query error telemetry that associates each error with the query that caused it.
+The `logs` collector is always enabled and processes PostgreSQL logs received through the `logs_receiver` entry point.
+It counts server errors and exposes them as a Prometheus metric on the component's metrics endpoint.
+When `enable_error_logs_processing` is `true`, the collector also emits per-query error telemetry as Loki log entries, so each error can be associated with the query that caused it.
+
+The `logs_receiver` entry point must be fed by `loki` log source components, for example:
+
+- `loki.source.file`: to read and process PostgreSQL log files from a self-managed database instance
+- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
+
+PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
+
+{{< admonition type="note" >}}
+Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
+{{< /admonition >}}
 
 ### `health_check`
 
@@ -192,21 +205,6 @@ The following fields are exported and can be referenced by other components:
 ## Component health
 
 `database_observability.postgres` is reported as unhealthy if one or more collectors fail to start or if any database instance encounters connection or configuration errors. Otherwise, the component is reported as healthy.
-
-## `logs` collector
-
-The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point. It counts server errors and exposes them as a Prometheus metric on the component's metrics endpoint. When [`enable_error_logs_processing`](#logs) is `true`, it also emits per-query error telemetry as Loki log entries, so each error can be associated with the query that caused it.
-
-The `logs_receiver` entry point must be fed by `loki` log source components, for example:
-
-- `loki.source.file`: to read and process PostgreSQL log files from a self-managed database instance
-- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
-
-PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
-
-{{< admonition type="note" >}}
-Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
-{{< /admonition >}}
 
 ## Debug information
 
