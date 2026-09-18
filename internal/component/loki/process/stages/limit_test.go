@@ -185,5 +185,4 @@ func TestLimitStageShutdown(t *testing.T) {
 		t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
 	default:
 	}
-
 }
