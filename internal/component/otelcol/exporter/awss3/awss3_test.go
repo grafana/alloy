@@ -186,6 +186,27 @@ func TestSumoICMarshalerUpdate(t *testing.T) {
 	require.NoError(t, ctrl.Update(args2))
 }
 
+// TestDefaultRetryArguments is the canary for the upstream retry defaults our docs
+// promise. If this fails, a contrib bump changed one: update the docs, then these
+// values. Deliberately a literal, and deliberately the only case that is, so an
+// upstream change doesn't fail tests that aren't about retry.
+func TestDefaultRetryArguments(t *testing.T) {
+	var args awss3.Arguments
+	args.SetToDefault()
+
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+
+	require.Equal(t, configretry.BackOffConfig{
+		Enabled:             true,
+		InitialInterval:     5 * time.Second,
+		RandomizationFactor: 0.5,
+		Multiplier:          1.5,
+		MaxInterval:         30 * time.Second,
+		MaxElapsedTime:      5 * time.Minute,
+	}, cfg.(*awss3exporter.Config).BackOffConfig)
+}
+
 func TestConfig(t *testing.T) {
 	tests := []struct {
 		testName string
@@ -201,16 +222,7 @@ func TestConfig(t *testing.T) {
 			}
 			`,
 			expected: awss3exporter.Config{
-				// Canary for the upstream retry defaults our docs promise. If this fails, a
-				// contrib bump changed one: update the docs, then these values.
-				BackOffConfig: configretry.BackOffConfig{
-					Enabled:             true,
-					InitialInterval:     5 * time.Second,
-					RandomizationFactor: 0.5,
-					Multiplier:          1.5,
-					MaxInterval:         30 * time.Second,
-					MaxElapsedTime:      5 * time.Minute,
-				},
+				BackOffConfig: configretry.NewDefaultBackOffConfig(),
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 5 * time.Second,
 				},
@@ -260,16 +272,7 @@ func TestConfig(t *testing.T) {
 			}
 			`,
 			expected: awss3exporter.Config{
-				// Canary for the upstream retry defaults our docs promise. If this fails, a
-				// contrib bump changed one: update the docs, then these values.
-				BackOffConfig: configretry.BackOffConfig{
-					Enabled:             true,
-					InitialInterval:     5 * time.Second,
-					RandomizationFactor: 0.5,
-					Multiplier:          1.5,
-					MaxInterval:         30 * time.Second,
-					MaxElapsedTime:      5 * time.Minute,
-				},
+				BackOffConfig: configretry.NewDefaultBackOffConfig(),
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
@@ -315,14 +318,13 @@ func TestConfig(t *testing.T) {
 			}
 			`,
 			expected: awss3exporter.Config{
-				BackOffConfig: configretry.BackOffConfig{
-					Enabled:             true,
-					InitialInterval:     1 * time.Second,
-					RandomizationFactor: 0.5,
-					Multiplier:          1.5,
-					MaxInterval:         10 * time.Second,
-					MaxElapsedTime:      1 * time.Minute,
-				},
+				BackOffConfig: func() configretry.BackOffConfig {
+					want := configretry.NewDefaultBackOffConfig()
+					want.InitialInterval = 1 * time.Second
+					want.MaxInterval = 10 * time.Second
+					want.MaxElapsedTime = 1 * time.Minute
+					return want
+				}(),
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 5 * time.Second,
 				},
