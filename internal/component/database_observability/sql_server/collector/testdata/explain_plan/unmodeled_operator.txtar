@@ -1,0 +1,30 @@
+SQL Server showplan XML with a Bitmap operator (parallel bitmap filtering),
+which remains genuinely unmodeled after adding Update/Assert support -
+per alloy#6941's cross-referenced Showplan operator list, Bitmap, Segment,
+and Sequence Project are all still left as Unknown deliberately.
+
+The nested Table Scan is unreachable (no childrenOf call in the default
+branch), so it must not appear in the parsed output.
+
+-- unmodeled_operator.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Bitmap" LogicalOp="Bitmap Create" EstimateRows="50" EstimatedTotalSubtreeCost="0.03">
+              <Bitmap>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.1">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Bitmap>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>
