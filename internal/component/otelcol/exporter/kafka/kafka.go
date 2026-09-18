@@ -75,6 +75,7 @@ type Arguments struct {
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
 	PartitionLogsByResourceAttributes    bool          `alloy:"partition_logs_by_resource_attributes,attr,optional"`
 	PartitionLogsByTraceID               bool          `alloy:"partition_logs_by_trace_id,attr,optional"`
+	SignalHeader                         bool          `alloy:"signal_header,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 	ConnIdleTimeout                      time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 	IncludeMetadataKeys                  []string      `alloy:"include_metadata_keys,attr,optional"`
@@ -322,6 +323,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
 	result.PartitionLogsByResourceAttributes = args.PartitionLogsByResourceAttributes
 	result.PartitionLogsByTraceID = args.PartitionLogsByTraceID
+	result.SignalHeader = args.SignalHeader
 	result.IncludeMetadataKeys = args.IncludeMetadataKeys
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
