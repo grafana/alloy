@@ -56,6 +56,7 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 - `alibaba_ecs`
 - `aks`
 - `azure`
+- `azureappservice`
 - `azurecontainerapps`
 - `consul`
 - `digitalocean`
@@ -129,6 +130,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
 | [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                    | no       |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
+| [`azureappservice`][azureappservice]   | Queries the Azure App Service instance metadata to retrieve various resource attributes.                   | no       |
 | [`azurecontainerapps`][azurecontainerapps] | Queries the Azure Container Apps instance metadata to retrieve various resource attributes.            | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
 | [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
@@ -165,6 +167,7 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [lambda]: #lambda
 [azure]: #azure
 [aks]: #aks
+[azureappservice]: #azureappservice
 [azurecontainerapps]: #azurecontainerapps
 [consul]: #consul
 [digitalocean]: #digitalocean
@@ -258,6 +261,32 @@ The cluster name is detected if it doesn't contain underscores and if a custom i
 
 If accurate parsing can't be performed, the infrastructure resource group value is returned.
 This value can be used to uniquely identify the cluster, because Azure won't allow users to create multiple clusters with the same infrastructure resource group name.
+
+### `azureappservice`
+
+The `azureappservice` block queries the Azure App Service instance metadata to retrieve various resource attributes.
+
+The `azureappservice` block supports the following blocks:
+
+| Block                                                          | Description                                  | Required |
+| --------------------------------------------------------------- | -------------------------------------------- | -------- |
+| [`resource_attributes`](#azureappservice--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### `azureappservice` > `resource_attributes`
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                                       | Description                                                                                          | Required |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------- |
+| [`azure.app_service.instance.id`][res-attr-cfg] | Toggles the `azure.app_service.instance.id` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`azure.resource_group.name`][res-attr-cfg]     | Toggles the `azure.resource_group.name` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`cloud.account.id`][res-attr-cfg]              | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.platform`][res-attr-cfg]                | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`cloud.provider`][res-attr-cfg]                | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`cloud.region`][res-attr-cfg]                  | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`cloud.resource_id`][res-attr-cfg]             | Toggles the `cloud.resource_id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`deployment.environment.name`][res-attr-cfg]   | Toggles the `deployment.environment.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`service.name`][res-attr-cfg]                  | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                   | no       |
 
 ### `azurecontainerapps`
 
