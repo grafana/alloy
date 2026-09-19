@@ -584,3 +584,90 @@ func blockedEndpointArgs(t *testing.T, url string, walEnabled bool) Arguments {
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args
 }
+
+func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			firstReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			firstSrv := loki_util.NewRemoteWriteServer(firstReceived, http.StatusOK)
+			defer firstSrv.Close()
+
+			secondReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			secondSrv := loki_util.NewRemoteWriteServer(secondReceived, http.StatusOK)
+			defer secondSrv.Close()
+
+			firstEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, firstSrv.URL)
+
+			secondEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, secondSrv.URL)
+
+			var firstArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(firstEndpoint), &firstArgs))
+			firstArgs.WAL.Enabled = walEnabled
+
+			// Moves to the second server, but both endpoints hash to the same name so
+			// building the consumer fails.
+			var failingArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint+secondEndpoint), &failingArgs))
+			failingArgs.WAL.Enabled = walEnabled
+
+			var secondArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint), &secondArgs))
+			secondArgs.WAL.Enabled = walEnabled
+
+			ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+			require.NoError(t, err)
+
+			go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
+			require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+			recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})
+			waitForLine(t, firstReceived, "first")
+
+			require.Error(t, ctrl.Update(failingArgs))
+
+			// The failed update left the previous consumer in place.
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})
+			waitForLine(t, firstReceived, "second")
+
+			require.NoError(t, ctrl.Update(secondArgs))
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})
+			waitForLine(t, secondReceived, "third")
+		})
+	}
+}
+
+// waitForLine waits until an entry with the wanted line is received. Lines are matched
+// instead of asserting on the next request, a reload can re-deliver entries that the
+// previous consumer had already sent.
+func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want string) {
+	t.Helper()
+
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case req := <-received:
+			for _, stream := range req.Request.Streams {
+				for _, entry := range stream.Entries {
+					if entry.Line == want {
+						return
+					}
+				}
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for entry %q", want)
+		}
+	}
+}
