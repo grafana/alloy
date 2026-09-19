@@ -37,6 +37,9 @@ scrape_configs:
       label_structured_data: true
       use_incoming_timestamp: true
       syslog_format: rfc5424
+  - job_name: default_protocol
+    syslog:
+      listen_address: localhost:4000
   - job_name: test_raw
     syslog:
       listen_address: localhost:4000
