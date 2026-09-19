@@ -44,13 +44,28 @@ type ProfileBuilders struct {
 	Builders map[builderHashKey]*ProfileBuilder
 	opt      BuildersOptions
 
+	allocator      *profileAllocator
+	localAllocator profileAllocator
+}
+
+// Share allocation blocks across process profiles within an aggregated interval.
+// Otherwise every small process profile allocates three mostly empty blocks.
+type profileAllocator struct {
 	samples   batch[profile.Sample]
 	functions batch[profile.Function]
 	locations batch[profile.Location]
 }
 
 func NewProfileBuilders(options BuildersOptions) *ProfileBuilders {
-	return &ProfileBuilders{Builders: make(map[builderHashKey]*ProfileBuilder), opt: options}
+	return newProfileBuilders(options, nil)
+}
+
+func newProfileBuilders(options BuildersOptions, allocator *profileAllocator) *ProfileBuilders {
+	b := &ProfileBuilders{Builders: make(map[builderHashKey]*ProfileBuilder), opt: options, allocator: allocator}
+	if b.allocator == nil {
+		b.allocator = &b.localAllocator
+	}
+	return b
 }
 
 func (b *ProfileBuilders) BuilderForSample(
@@ -187,7 +202,7 @@ func (p *ProfileBuilder) Function(function, file libpf.String) *profile.Function
 	}
 
 	id := uint64(len(p.Profile.Function) + 1)
-	f = p.p.functions.pop()
+	f = p.p.allocator.functions.pop()
 	f.ID = id
 	f.Name = function.String()
 	f.Filename = file.String()
@@ -198,13 +213,17 @@ func (p *ProfileBuilder) Function(function, file libpf.String) *profile.Function
 }
 
 func (p *ProfileBuilder) Write(dst io.Writer) (int64, error) {
+	return writeProfile(dst, p.Profile)
+}
+
+func writeProfile(dst io.Writer, p *profile.Profile) (int64, error) {
 	gzipWriter := gzipWriterPool.Get().(*gzip.Writer)
 	gzipWriter.Reset(dst)
 	defer func() {
 		gzipWriter.Reset(io.Discard)
 		gzipWriterPool.Put(gzipWriter)
 	}()
-	err := p.Profile.WriteUncompressed(gzipWriter)
+	err := p.WriteUncompressed(gzipWriter)
 	if err != nil {
 		return 0, fmt.Errorf("ebpf profile encode %w", err)
 	}
@@ -216,7 +235,7 @@ func (p *ProfileBuilder) Write(dst io.Writer) (int64, error) {
 }
 
 func (p *ProfileBuilder) NewSample(locSize int) *profile.Sample {
-	sample := p.p.samples.pop()
+	sample := p.p.allocator.samples.pop()
 	sample.Value = []int64{0}
 	sample.Location = make([]*profile.Location, 0, locSize)
 	p.Profile.Sample = append(p.Profile.Sample, sample)
@@ -238,7 +257,7 @@ func (p *ProfileBuilder) Location(m *profile.Mapping, addr libpf.AddressOrLineno
 	if ok {
 		return loc, false
 	}
-	loc = p.p.locations.pop()
+	loc = p.p.allocator.locations.pop()
 	loc.ID = uint64(len(p.Profile.Location) + 1)
 	p.locations[key] = loc
 	p.Profile.Location = append(p.Profile.Location, loc)

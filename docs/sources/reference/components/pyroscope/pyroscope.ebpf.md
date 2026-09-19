@@ -72,6 +72,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | Name                          | Type                     | Description                                                                                                          | Default          | Required |
 | ----------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `forward_to`                  | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |                  | yes      |
+| `aggregate_profiles`          | `bool`                   | Combine process profiles with matching labels and profile types.                                                     | `false`          | no       |
 | `bpf_fs_root`                 | `string`                 | Root path of the BPF filesystem for pinned maps used in trace correlation.                                           | `"/sys/fs/bpf/"` | no       |
 | `build_id_cache_size`         | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`             | no       |
 | `cache_rounds`                | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |                  | no       |
@@ -117,6 +118,16 @@ Only the `forward_to` field is required.
 Omitted fields take their default values.
 
 Several arguments are marked as "Deprecated (no-op)". These arguments were previously used for configuring various cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
+
+When `aggregate_profiles` is `true`, `pyroscope.ebpf` combines profiles from each collection interval into one pprof per label set and profile type.
+Samples with identical stacks and sample labels have their values summed, including stacks from processes with different address layouts.
+Different services, profile types, and sample labels such as `comm`, `span_id`, and `trace_id` remain distinct.
+If all processes share the same labels and profile type, the result is one pprof.
+
+Aggregation requires `pid_label = false`.
+Aggregated profiles omit the internal `__process_pid__` label, so downstream relabeling rules can't use it.
+Setting both `aggregate_profiles` and `pid_label` to `true` is a configuration error.
+The component aggregates profiles before serialization and compression, retaining the uncompressed input profiles until merging completes.
 
 ## Blocks
 
