@@ -7,10 +7,15 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
 
+const (
+	grantTypeJWTBearer         = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	grantTypeClientCredentials = "client_credentials"
+)
 const bearerAuth string = "Bearer"
 
 // HTTPClientConfig mirrors config.HTTPClientConfig
@@ -402,11 +407,31 @@ type OAuth2Config struct {
 	ClientID         string            `alloy:"client_id,attr,optional"`
 	ClientSecret     alloytypes.Secret `alloy:"client_secret,attr,optional"`
 	ClientSecretFile string            `alloy:"client_secret_file,attr,optional"`
-	Scopes           []string          `alloy:"scopes,attr,optional"`
-	TokenURL         string            `alloy:"token_url,attr,optional"`
-	EndpointParams   map[string]string `alloy:"endpoint_params,attr,optional"`
-	ProxyConfig      *ProxyConfig      `alloy:",squash"`
-	TLSConfig        *TLSConfig        `alloy:"tls_config,block,optional"`
+
+	ClientCertificateKeyID   string            `alloy:"client_certificate_key_id,attr,optional"`
+	ClientCertificateKey     alloytypes.Secret `alloy:"client_certificate_key,attr,optional"`
+	ClientCertificateKeyFile string            `alloy:"client_certificate_key_file,attr,optional"`
+
+	GrantType          string            `alloy:"grant_type,attr,optional"`
+	SignatureAlgorithm string            `alloy:"signature_algorithm,attr,optional"`
+	Iss                string            `alloy:"iss,attr,optional"`
+	Audience           string            `alloy:"audience,attr,optional"`
+	Claims             map[string]any    `alloy:"claims,attr,optional"`
+	Scopes             []string          `alloy:"scopes,attr,optional"`
+	TokenURL           string            `alloy:"token_url,attr,optional"`
+	EndpointParams     map[string]string `alloy:"endpoint_params,attr,optional"`
+	ProxyConfig        *ProxyConfig      `alloy:",squash"`
+	TLSConfig          *TLSConfig        `alloy:"tls_config,block,optional"`
+}
+
+var DefaultOAuth2Config = OAuth2Config{
+	GrantType:          grantTypeClientCredentials,
+	SignatureAlgorithm: jwt.SigningMethodRS256.Name,
+}
+
+// SetToDefault implements the syntax.Defaulter
+func (o *OAuth2Config) SetToDefault() {
+	*o = DefaultOAuth2Config
 }
 
 // Convert converts our type to the native prometheus type
@@ -415,14 +440,28 @@ func (o *OAuth2Config) Convert() *config.OAuth2 {
 		return nil
 	}
 	oa := &config.OAuth2{
-		ClientID:         o.ClientID,
-		ClientSecret:     config.Secret(o.ClientSecret),
-		ClientSecretFile: o.ClientSecretFile,
-		Scopes:           o.Scopes,
-		TokenURL:         o.TokenURL,
-		EndpointParams:   o.EndpointParams,
-		ProxyConfig:      o.ProxyConfig.Convert(),
+		ClientID:                 o.ClientID,
+		ClientSecret:             config.Secret(o.ClientSecret),
+		ClientSecretFile:         o.ClientSecretFile,
+		ClientCertificateKey:     config.Secret(o.ClientCertificateKey),
+		ClientCertificateKeyFile: o.ClientCertificateKeyFile,
+		Iss:                      o.Iss,
+		Audience:                 o.Audience,
+		Claims:                   o.Claims,
+		Scopes:                   o.Scopes,
+		TokenURL:                 o.TokenURL,
+		EndpointParams:           o.EndpointParams,
+		ProxyConfig:              o.ProxyConfig.Convert(),
 	}
+
+	if o.GrantType != "" {
+		oa.GrantType = o.GrantType
+	}
+
+	if o.SignatureAlgorithm != "" {
+		oa.SignatureAlgorithm = o.SignatureAlgorithm
+	}
+
 	if o.TLSConfig != nil {
 		oa.TLSConfig = *o.TLSConfig.Convert()
 	}
@@ -437,14 +476,22 @@ func (o *OAuth2Config) Validate() error {
 	if len(o.ClientID) == 0 {
 		return fmt.Errorf("oauth2 client_id must be configured")
 	}
-	if len(o.ClientSecret) == 0 && len(o.ClientSecretFile) == 0 {
-		return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
-	}
 	if len(o.TokenURL) == 0 {
 		return fmt.Errorf("oauth2 token_url must be configured")
 	}
-	if len(o.ClientSecret) > 0 && len(o.ClientSecretFile) > 0 {
-		return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
+
+	switch o.GrantType {
+	case grantTypeJWTBearer:
+		if len(o.ClientCertificateKey) == 0 && len(o.ClientCertificateKeyFile) == 0 {
+			return fmt.Errorf("either oauth2 client_certificate_key or client_certificate_key_file must be configured")
+		}
+	case grantTypeClientCredentials:
+		if len(o.ClientSecret) == 0 && len(o.ClientSecretFile) == 0 {
+			return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
+		}
+		if len(o.ClientSecret) > 0 && len(o.ClientSecretFile) > 0 {
+			return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
+		}
 	}
 
 	return o.ProxyConfig.Validate()

@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2/testdata"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -118,6 +120,7 @@ func TestHTTPClientConfigOath2ClientSecret(t *testing.T) {
 
 	oauth2 {
 		client_id = "client_id"
+		grant_type = "client_credentials"
 		client_secret = "client_secret"
 		scopes = ["scope1", "scope2"]
 		token_url = "token_url"
@@ -147,6 +150,7 @@ func TestHTTPClientConfigOath2ClientSecretFile(t *testing.T) {
 
 	oauth2 {
 		client_id = "client_id"
+		grant_type = "client_credentials"
 		client_secret_file = "/path/to/file.oath2"
 		scopes = ["scope1", "scope2"]
 		token_url = "token_url"
@@ -154,6 +158,60 @@ func TestHTTPClientConfigOath2ClientSecretFile(t *testing.T) {
 		proxy_url = "http://0.0.0.0:11111"
 	}
 `
+
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.NoError(t, err)
+}
+
+func TestHTTPClientConfigOath2ClientCertificateKey(t *testing.T) {
+	var exampleAlloyConfig = fmt.Sprintf(`
+	proxy_url = "http://0.0.0.0:11111"
+	follow_redirects = true
+	enable_http2 = true
+
+	oauth2 {
+		client_id = "client_id"
+		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+		client_certificate_key = "%s"
+		scopes = ["scope1", "scope2"]
+		token_url = "token_url"
+		endpoint_params = {"param1" = "value1", "param2" = "value2"}
+		proxy_url = "http://0.0.0.0:11111"
+		tls_config {
+			ca_file = "/path/to/file.ca"
+			cert_file = "/path/to/file.cert"
+			key_file = "/path/to/file.key"
+			server_name = "server_name"
+			insecure_skip_verify = false
+			min_version = "TLS13"
+		}
+	}
+`, testdata.ClientKeyContent)
+
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.NoError(t, err)
+}
+
+func TestHTTPClientConfigOath2ClientCertificateKeyFile(t *testing.T) {
+	clientKeyNoPassPath := testdata.ClientKeyNoPassPath(t)
+
+	var exampleAlloyConfig = fmt.Sprintf(`
+	proxy_url = "http://0.0.0.0:11111"
+	follow_redirects = true
+	enable_http2 = true
+
+	oauth2 {
+		client_id = "client_id"
+		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+		client_certificate_key_file = "%s"
+		scopes = ["scope1", "scope2"]
+		token_url = "token_url"
+		endpoint_params = {"param1" = "value1", "param2" = "value2"}
+		proxy_url = "http://0.0.0.0:11111"
+	}
+`, clientKeyNoPassPath)
 
 	var httpClientConfig HTTPClientConfig
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
