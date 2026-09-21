@@ -5,17 +5,20 @@
 package windowsevent
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"io/fs"
 	"os"
 
-	"github.com/natefinch/atomic"
 	uberAtomic "go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/loki/source/windowsevent/win_eventlog"
+	"github.com/grafana/alloy/internal/util/atomicfile"
 )
+
+// bookmarkFileMode is used when the bookmark file has to be created. An
+// existing one keeps the permissions it already has.
+const bookmarkFileMode os.FileMode = 0600
 
 type bookMark struct {
 	handle win_eventlog.EvtHandle
@@ -97,5 +100,5 @@ func (b *bookMark) update(event win_eventlog.EvtHandle) error {
 
 // save Saves the bookmark at the current event position.
 func (b *bookMark) save() error {
-	return atomic.WriteFile(b.path, bytes.NewReader([]byte(b.bookmarkStr.Load())))
+	return atomicfile.Write(b.path, []byte(b.bookmarkStr.Load()), bookmarkFileMode)
 }

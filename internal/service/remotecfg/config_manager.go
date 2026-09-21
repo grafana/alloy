@@ -1,7 +1,6 @@
 package remotecfg
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -12,10 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/natefinch/atomic"
-
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util/atomicfile"
 	"github.com/grafana/alloy/internal/util/jitter"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -32,6 +30,10 @@ var errNotModified = errors.New("config not modified since last fetch")
 // effectiveConfigContentType is the MIME type used when sending the effective
 // Alloy configuration to the remote config service.
 const effectiveConfigContentType = "text/plain"
+
+// cachedConfigFileMode is used when the on-disk cache file has to be created.
+// An existing one keeps the permissions it already has.
+const cachedConfigFileMode os.FileMode = 0600
 
 // configManager is responsible for managing the configuration of the remotecfg service.
 type configManager struct {
@@ -141,7 +143,7 @@ func (cm *configManager) getCachedConfig() ([]byte, error) {
 // setCachedConfig writes b to the cache path atomically
 func (cm *configManager) setCachedConfig(b []byte) {
 	p := cm.getCachedConfigPath()
-	if err := atomic.WriteFile(p, bytes.NewReader(b)); err != nil {
+	if err := atomicfile.Write(p, b, cachedConfigFileMode); err != nil {
 		cm.logger.Error("failed to flush remote configuration contents the on-disk cache", "err", err)
 	}
 }

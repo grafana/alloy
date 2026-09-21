@@ -61,7 +61,6 @@ require (
 	github.com/google/dnsmasq_exporter v0.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/pprof v0.0.0-20260825171938-4d453200e7d9
-	github.com/google/renameio/v2 v2.0.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.12
