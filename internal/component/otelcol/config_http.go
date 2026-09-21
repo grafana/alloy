@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -225,6 +226,10 @@ func (args *KeepaliveArguments) Convert() configoptional.Optional[otelconfighttp
 func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error) {
 	if args == nil {
 		return nil, nil
+	}
+
+	if args.DisableKeepAlives && args.Keepalive != nil {
+		return nil, fmt.Errorf("disable_keep_alives can't be true when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// Configure the authentication if args.Auth is set.

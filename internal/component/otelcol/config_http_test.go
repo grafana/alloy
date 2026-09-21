@@ -65,6 +65,15 @@ func TestHTTPClientArguments_ConvertKeepalive(t *testing.T) {
 		require.Equal(t, 50, ka.MaxIdleConns)
 		require.Equal(t, 10, ka.MaxIdleConnsPerHost)
 	})
+
+	t.Run("disable_keep_alives conflicts with keepalive", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{
+			DisableKeepAlives: true,
+			Keepalive:         &otelcol.KeepaliveArguments{},
+		}
+		_, err := args.Convert()
+		require.Error(t, err)
+	})
 }
 
 func TestKeepaliveArguments_SetToDefault(t *testing.T) {
