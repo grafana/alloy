@@ -162,7 +162,7 @@ func newPipeline(
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {
 	// Seed extracted with labels. It is important to do it
 	// here since a nested pipeline within a match stage needs to
-	// seed it again whith any new labels.
+	// seed it again with any new labels.
 	for i := range entries {
 		for k, v := range entries[i].Labels {
 			entries[i].Extracted[string(k)] = string(v)
