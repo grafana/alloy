@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -39,6 +40,10 @@ type HTTPServerArguments struct {
 	ReadTimeout       time.Duration `alloy:"read_timeout,attr,optional"`
 	WriteTimeout      time.Duration `alloy:"write_timeout,attr,optional"`
 	ReadHeaderTimeout time.Duration `alloy:"read_header_timeout,attr,optional"`
+
+	// Keepalive configures HTTP keep-alive settings. When set, it takes
+	// precedence over the deprecated idle_timeout attribute above.
+	Keepalive *HTTPKeepaliveServerArguments `alloy:"keepalive,block,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
@@ -62,6 +67,10 @@ func copyStringSlice(s []string) []string {
 func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
 		return configoptional.None[otelconfighttp.ServerConfig](), nil
+	}
+
+	if args.KeepAlivesEnabled != nil && !*args.KeepAlivesEnabled && args.Keepalive != nil {
+		return configoptional.None[otelconfighttp.ServerConfig](), fmt.Errorf("keep_alives_enabled can't be false when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// If auth is set by the user retrieve the associated extension from the handler.
@@ -99,6 +108,7 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
+		Keepalive:             args.Keepalive.Convert(),
 	}), nil
 }
 
@@ -120,6 +130,35 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent
 		m[ext.ID] = ext.Extension
 	}
 	return m
+}
+
+// HTTPKeepaliveServerArguments configures HTTP keep-alive settings for an HTTP
+// server.
+type HTTPKeepaliveServerArguments struct {
+	IdleTimeout time.Duration `alloy:"idle_timeout,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*HTTPKeepaliveServerArguments)(nil)
+
+// DefaultKeepaliveServerIdleTimeout matches otelconfighttp.NewDefaultKeepaliveServerConfig().
+const DefaultKeepaliveServerIdleTimeout = 1 * time.Minute
+
+// SetToDefault implements syntax.Defaulter.
+func (args *HTTPKeepaliveServerArguments) SetToDefault() {
+	*args = HTTPKeepaliveServerArguments{
+		IdleTimeout: DefaultKeepaliveServerIdleTimeout,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args *HTTPKeepaliveServerArguments) Convert() configoptional.Optional[otelconfighttp.KeepaliveServerConfig] {
+	if args == nil {
+		return configoptional.None[otelconfighttp.KeepaliveServerConfig]()
+	}
+
+	return configoptional.Some(otelconfighttp.KeepaliveServerConfig{
+		IdleTimeout: args.IdleTimeout,
+	})
 }
 
 // CORSArguments holds shared CORS settings for components which launch HTTP
@@ -225,6 +264,10 @@ func (args *KeepaliveArguments) Convert() configoptional.Optional[otelconfighttp
 func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error) {
 	if args == nil {
 		return nil, nil
+	}
+
+	if args.DisableKeepAlives && args.Keepalive != nil {
+		return nil, fmt.Errorf("disable_keep_alives can't be true when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// Configure the authentication if args.Auth is set.
