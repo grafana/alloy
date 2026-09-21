@@ -401,6 +401,90 @@ func TestStorage_ExistingWAL_RefID(t *testing.T) {
 	require.Equal(t, uint64(len(payload)), s.nextRef.Load(), "cached ref ID should be equal to the number of series written")
 }
 
+// TestStorage_ExistingWAL_Metadata verifies that metadata written to the WAL
+// survives a real reopen of Storage (not the test-only walReplayer, which
+// already decoded record.Metadata and would mask a broken loadWAL).
+func TestStorage_ExistingWAL_Metadata(t *testing.T) {
+	lbls := labels.FromStrings("__name__", "metadata_series")
+	meta := metadata.Metadata{Type: "gauge", Help: "help text", Unit: "bytes"}
+
+	t.Run("no checkpoint", func(t *testing.T) {
+		walDir := t.TempDir()
+		s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
+		require.NoError(t, err)
+
+		app := s.Appender(t.Context())
+		ref, err := app.Append(0, lbls, 1, 1)
+		require.NoError(t, err)
+		_, err = app.UpdateMetadata(ref, lbls, meta)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		app = s.Appender(t.Context())
+		_, err = app.Append(ref, lbls, 2, 2)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		require.NoError(t, s.Close())
+		// We need to wait a little bit for the previous store to finish flushing.
+		time.Sleep(time.Millisecond * 150)
+
+		s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
+		require.NoError(t, err)
+		defer func() {
+			require.NoError(t, s.Close())
+		}()
+
+		series := s.series.GetByID(chunks.HeadSeriesRef(ref))
+		require.NotNil(t, series)
+		require.Equal(t, int64(2), series.lastTs, "lastTs should reflect the second sample after WAL replay")
+		require.NotNil(t, series.meta)
+		require.Equal(t, meta, *series.meta)
+	})
+
+	t.Run("checkpoint", func(t *testing.T) {
+		// Once a checkpoint exists, wlog.Checkpoint carries the metadata record
+		// forward, so a broken loadWAL fails inside the checkpoint branch instead
+		// of just the trailing segment: NewStorage returns an error rather than
+		// silently truncating.
+		walDir := t.TempDir()
+		s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
+		require.NoError(t, err)
+
+		app := s.Appender(t.Context())
+		ref, err := app.Append(0, lbls, 1, 1)
+		require.NoError(t, err)
+		_, err = app.UpdateMetadata(ref, lbls, meta)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+
+		// Forcefully create a bunch of new segments so when we truncate
+		// there's enough segments to be considered for checkpointing.
+		for i := 0; i < 5; i++ {
+			_, err := s.wal.NextSegmentSync()
+			require.NoError(t, err)
+		}
+
+		// mint of 0 keeps the series active, so it (and its metadata) is carried
+		// into the checkpoint rather than gc'ed.
+		require.NoError(t, s.Truncate(0))
+		require.NoError(t, s.Close())
+		time.Sleep(time.Millisecond * 150)
+
+		s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
+		require.NoError(t, err)
+		defer func() {
+			require.NoError(t, s.Close())
+		}()
+
+		series := s.series.GetByID(chunks.HeadSeriesRef(ref))
+		require.NotNil(t, series)
+		require.Equal(t, int64(1), series.lastTs)
+		require.NotNil(t, series.meta)
+		require.Equal(t, meta, *series.meta)
+	})
+}
+
 func TestStorage_Truncate(t *testing.T) {
 	// Same as before but now do the following:
 	// after writing all the data, forcefully create 4 more segments,
