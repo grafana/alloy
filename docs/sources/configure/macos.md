@@ -100,7 +100,7 @@ The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}}
 The `config.alloy` and `extra-args.txt` files apply only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses `config.yaml` and `otel-extra-args.txt` instead.
 
-Refer to [Run with service installation][OTelEngine] for the steps to switch engines.
+Refer to [Run the {{< param "OTEL_ENGINE" >}} with a service installation][OTelEngine] for the steps to switch engines.
 
 ## Expose the UI to other machines
 
@@ -117,6 +117,6 @@ To expose the UI to other machines, complete the following steps:
    To listen on all interfaces, replace `127.0.0.1` with `0.0.0.0`.
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
-[OTelEngine]: ../../set-up/otel_engine/#run-with-service-installation
+[OTelEngine]: ../../set-up/otel_engine/service-installation/
 [env_vars]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/environment-variables/
 [flags]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/

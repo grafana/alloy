@@ -193,7 +193,7 @@ Bundled components follow the upstream OpenTelemetry Collector [component lifecy
 When a component becomes deprecated or unmaintained upstream, {{< param "PRODUCT_NAME" >}} deprecates it and eventually removes it from the {{< param "OTEL_ENGINE" >}}.
 
 {{< admonition type="note" >}}
-{{< param "PRODUCT_NAME" >}} provides notice before it removes a component. You can keep using a removed component through a [custom OpenTelemetry Collector Builder (OCB) build](../../../set-up/otel_engine/#custom-builds-with-the-opentelemetry-collector-builder-ocb).
+{{< param "PRODUCT_NAME" >}} provides notice before it removes a component. You can keep using a removed component through a [custom OpenTelemetry Collector Builder (OCB) build](../../../set-up/otel_engine/custom-builds/).
 {{< /admonition >}}
 
 ## Related documentation

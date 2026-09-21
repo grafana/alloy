@@ -98,7 +98,7 @@ The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}}
 The `Arguments` registry value applies only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses the `OTelArguments` registry value instead.
 
-Refer to [Run with service installation][OTelEngine] for the steps to switch engines.
+Refer to [Run the {{< param "OTEL_ENGINE" >}} with a service installation][OTelEngine] for the steps to switch engines.
 
 ## Expose the UI to other machines
 
@@ -128,6 +128,6 @@ To expose the UI to other machines, complete the following steps:
 For guidance on running {{< param "PRODUCT_NAME" >}} with a dedicated service account, configuring Windows security group membership, and setting filesystem permissions, refer to [Access and permissions for {{< param "PRODUCT_NAME" >}} on Windows][access-windows].
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
-[OTelEngine]: ../../set-up/otel_engine/#run-with-service-installation
+[OTelEngine]: ../../set-up/otel_engine/service-installation/
 [environment]: ../../reference/cli/environment-variables/
 [access-windows]: ../../access_permissions/windows/
