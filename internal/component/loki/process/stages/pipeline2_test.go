@@ -13,9 +13,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // TestPipelineConsumerConcurrent runs every migrated stage in one pipeline from several
@@ -248,4 +250,31 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 	wg.Wait()
 	pc.Stop()
 	require.NoError(t, errors.Join(errs...))
+}
+
+func TestNewPipelineStopsOnFailure(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	cfgs := loadConfig(`
+	stage.regex {
+		expression = "[unclosed"
+	}
+	stage.match {
+		selector = "{app=\"x\"}"
+		action   = "keep"
+
+		stage.multiline {
+			firstline     = "^START"
+			max_wait_time = "10ms"
+		}
+	}
+	stage.multiline {
+		firstline     = "^START"
+		max_wait_time = "10ms"
+	}
+	`)
+
+	next := func(_ context.Context, _ []Entry) error { return nil }
+	_, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.Error(t, err)
 }
