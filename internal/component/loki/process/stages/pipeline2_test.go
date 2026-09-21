@@ -29,21 +29,29 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 
 	// One line shape per parser.
 	const (
-		ansiLine   = "\x1b[31mred\x1b[0m plain text"
-		arrayLine  = `[{"a":1},{"b":2}]`
-		criPartial = "2026-09-18T10:00:00.000000001Z stderr P a partial fragment "
-		criFull    = "2026-09-18T10:00:00.000000001Z stderr F user=bob token=4539148803436467 dur=1.5"
-		dockerLine = `{"log":"user=bob dur=1.5\n","stream":"stderr","time":"2026-09-18T10:00:00Z"}`
-		logfmtLine = "level=info user=bob token=4539148803436467 dur=1.5"
-		jsonLine   = `{"level":"info","ip":"1.2.3.4","ts":"2026-09-18T10:00:00Z","evt":"yay","msg":"user=bob token=4539148803436467 dur=1.5"}`
+		ansiLine       = "\x1b[31mred\x1b[0m plain text"
+		arrayLine      = `[{"a":1},{"b":2}]`
+		criPartial     = "2026-09-18T10:00:00.000000001Z stderr P a partial fragment "
+		criFull        = "2026-09-18T10:00:00.000000001Z stderr F user=bob token=4539148803436467 dur=1.5"
+		dockerLine     = `{"log":"user=bob dur=1.5\n","stream":"stderr","time":"2026-09-18T10:00:00Z"}`
+		logfmtLine     = "level=info user=bob token=4539148803436467 dur=1.5"
+		jsonLine       = `{"level":"info","ip":"1.2.3.4","ts":"2026-09-18T10:00:00Z","evt":"yay","msg":"user=bob token=4539148803436467 dur=1.5"}`
+		multilineStart = "START user=bob token=4539148803436467 dur=1.5"
+		multilineCont  = "\tat com.example.Foo.bar(Foo.java:42)"
 	)
 
-	lines := []string{criPartial, criFull, dockerLine, jsonLine, arrayLine, logfmtLine, ansiLine}
+	lines := []string{criPartial, criFull, dockerLine, jsonLine, arrayLine, logfmtLine, ansiLine, multilineStart, multilineCont}
 
 	cfg := loadConfig(`
 		stage.cri {}
 
 		stage.docker {}
+
+		stage.multiline {
+			firstline     = "^START"
+			max_lines     = 3
+			max_wait_time = "10ms"
+		}
 
 		stage.json {
 			expressions = {
