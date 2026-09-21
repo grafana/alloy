@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.11.1](https://img.shields.io/badge/Version-1.11.1-informational?style=flat-square) ![AppVersion: v1.18.1](https://img.shields.io/badge/AppVersion-v1.18.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.12.1](https://img.shields.io/badge/Version-1.12.1-informational?style=flat-square) ![AppVersion: v1.19.2](https://img.shields.io/badge/AppVersion-v1.19.2-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -69,7 +69,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
-| configReloader.image.tag | string | `"v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1"` | Tag of image to use for config reloading. |
+| configReloader.image.tag | string | `"v0.94.0@sha256:142a1f11df8dd165f00375b0b1826aecb9c9adeb05c39855893138d7c7575ff7"` | Tag of image to use for config reloading. |
 | configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
@@ -107,6 +107,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].maxAllowed | object | `{}` | The maximum allowed values for the pods. |
 | controller.autoscaling.vertical.resourcePolicy.containerPolicies[0].minAllowed | object | `{}` | Defines the min allowed resources for the pod |
 | controller.autoscaling.vertical.updatePolicy | string | `nil` | Configures the update policy for the Vertical Pod Autoscaler. |
+| controller.dnsConfig | object | `{}` | Configures the DNS config for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config |
 | controller.dnsPolicy | string | `"ClusterFirst"` | Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy |
 | controller.enableStatefulSetAutoDeletePVC | bool | `false` | Whether to enable automatic deletion of stale PVCs due to a scale down operation, when controller.type is 'statefulset'. |
 | controller.extraAnnotations | object | `{}` | Annotations to add to controller. |

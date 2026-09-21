@@ -787,7 +787,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_metric",
@@ -801,7 +801,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_trace",
@@ -815,7 +815,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "unknown_function_log",

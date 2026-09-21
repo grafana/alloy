@@ -2,6 +2,7 @@
 package k8sattributes
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -51,6 +52,10 @@ type Arguments struct {
 	// WatchSyncPeriod determines the resync period for the k8s informers. 0 disables periodic resync.
 	WatchSyncPeriod time.Duration `alloy:"watch_sync_period,attr,optional"`
 
+	// PodDeleteGracePeriod is how long to keep a Pod's metadata cached after receiving
+	// a delete event, so that in-flight telemetry can still be enriched.
+	PodDeleteGracePeriod time.Duration `alloy:"pod_delete_grace_period,attr,optional"`
+
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 
@@ -68,10 +73,27 @@ func (args *Arguments) SetToDefault() {
 			{Name: "jaeger-collector"},
 		},
 	}
-	args.WaitForMetadataTimeout = 10 * time.Second
-	args.WatchSyncPeriod = 5 * time.Minute
+	def := k8sattributesprocessor.NewFactory().CreateDefaultConfig().(*k8sattributesprocessor.Config)
+	args.WaitForMetadataTimeout = def.WaitForMetadataTimeout
+	args.WatchSyncPeriod = def.WatchSyncPeriod
+	args.PodDeleteGracePeriod = def.PodDeleteGracePeriod
 	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+}
+
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if !args.ExtractConfig.DeploymentNameFromReplicaSet {
+		logger.Warn(
+			"extract.deployment_name_from_replicaset is deprecated and is a no-op upstream; the deployment name is always extracted",
+			"deployment_name_from_replicaset", args.ExtractConfig.DeploymentNameFromReplicaSet,
+		)
+	}
 }
 
 // Validate implements syntax.Validator.
@@ -125,6 +147,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	// That way we don't have to convert a duration to a string.
 	result.WaitForMetadataTimeout = args.WaitForMetadataTimeout
 	result.WatchSyncPeriod = args.WatchSyncPeriod
+	result.PodDeleteGracePeriod = args.PodDeleteGracePeriod
 
 	return &result, nil
 }

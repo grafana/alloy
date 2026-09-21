@@ -61,9 +61,8 @@ type ConsumerArguments struct {
 }
 
 func (a Arguments) Convert() (collectorComponent.Config, error) {
-	cfg := &fluentforwardreceiver.Config{
-		ListenAddress: a.Endpoint,
-	}
+	cfg := fluentforwardreceiver.NewFactory().CreateDefaultConfig().(*fluentforwardreceiver.Config)
+	cfg.ListenAddress = a.Endpoint
 	return cfg, nil
 }
 

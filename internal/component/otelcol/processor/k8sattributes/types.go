@@ -23,7 +23,7 @@ type ExtractConfig struct {
 	Annotations                  []FieldExtractConfig `alloy:"annotation,block,optional"`
 	Labels                       []FieldExtractConfig `alloy:"label,block,optional"`
 	OtelAnnotations              bool                 `alloy:"otel_annotations,attr,optional"`
-	DeploymentNameFromReplicaSet bool                 `alloy:"deployment_name_from_replicaset,attr,optional"`
+	DeploymentNameFromReplicaSet bool                 `alloy:"deployment_name_from_replicaset,attr,optional"` // Deprecated: no-op, upstream removed the toggle and always extracts the deployment name now.
 }
 
 var _ syntax.Defaulter = (*ExtractConfig)(nil)

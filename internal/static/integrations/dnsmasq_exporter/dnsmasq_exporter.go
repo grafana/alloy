@@ -42,8 +42,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
-	return New(c)
+func (c *Config) NewIntegration(logger *slog.Logger) (integrations.Integration, error) {
+	return New(logger, c)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -61,7 +61,7 @@ func init() {
 
 // New creates a new dnsmasq_exporter integration. The integration scrapes metrics
 // from a dnsmasq server.
-func New(c *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	dnsmasqConfig := collector.Config{
 		DnsClient: &dns.Client{
 			SingleInflight: true,
@@ -72,5 +72,5 @@ func New(c *Config) (integrations.Integration, error) {
 	}
 	exporter := collector.New(dnsmasqConfig)
 
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(exporter)), nil
+	return integrations.NewCollectorIntegration(c.Name(), integrations.WithLogger(logger), integrations.WithCollectors(exporter)), nil
 }

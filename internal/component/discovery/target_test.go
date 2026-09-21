@@ -1166,6 +1166,10 @@ func (f *randomCluster) Ready() bool {
 	return true
 }
 
+func (f *randomCluster) Enabled() bool {
+	return true
+}
+
 func mapToLabelSet(m map[string]string) model.LabelSet {
 	r := make(model.LabelSet, len(m))
 	for k, v := range m {

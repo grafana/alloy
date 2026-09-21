@@ -13,6 +13,10 @@ otelcol.exporter.file "default" {
 	append      = true
 	compression = "zstd"
 
+	compression_params {
+		level = 6
+	}
+
 	group_by {
 		enabled            = true
 		resource_attribute = "svc.name"

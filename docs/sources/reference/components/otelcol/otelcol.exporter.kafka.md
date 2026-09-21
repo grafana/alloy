@@ -52,6 +52,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`              | no       |
+| `signal_header`                            | `bool`         | Whether to add an `otelcol.signal` header identifying the signal type to every outgoing Kafka record.                      | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
@@ -73,6 +74,8 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
 
+When `signal_header` is `true`, the `otelcol.signal` header key is reserved: it's an error to also include it in `include_metadata_keys`.
+
 [logs]: #logs
 [metrics]: #metrics
 [traces]: #traces
@@ -87,11 +90,11 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
 | `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
-| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
+| `authentication` > [`plaintext`][plaintext]             | (Deprecated) Authenticates against Kafka brokers with plaintext.               | no       |
 | `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                                 | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                 | no       |
-| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                            | no       |
-| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                          | no       |
+| `authentication` > [`tls`][tls]                         | (Deprecated) Configures TLS for connecting to the Kafka brokers.               | no       |
+| `authentication` > `tls` > [`tpm`][tpm]                 | (Deprecated) Configures TPM for the TLS `key_file`.                            | no       |
 | [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state.    | no       |
 | [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                                  | no       |
 | [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                        | no       |
@@ -215,20 +218,27 @@ The `producer` block configures how to retry retrieving metadata when retrieval 
 
 The following arguments are supported:
 
-| Name                 | Type     | Description                                         | Default   | Required |
-| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `compression`        | `string` | The level of compression to use on messages.        | `"none"`  | no       |
-| `flush_max_messages` | `number` | The maximum number of messages in one request.      | `10000`   | no       |
-| `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
-| `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
+| Name                     | Type       | Description                                                                | Default     | Required |
+| ------------------------ | ---------- | -------------------------------------------------------------------------- | ----------- | -------- |
+| `compression`            | `string`   | The compression algorithm to use on messages.                              | `"none"`    | no       |
+| `flush_max_messages`     | `number`   | The maximum number of messages in one request.                             | `10000`     | no       |
+| `linger`                 | `duration` | How long a topic partition waits for more records before building a request. | `"10ms"`    | no       |
+| `max_broker_write_bytes` | `number`   | The maximum permitted size of a single write to a broker in bytes.         | `104857600` | no       |
+| `max_message_bytes`      | `number`   | The maximum permitted size of a message in bytes.                          | `1000000`   | no       |
+| `required_acks`          | `number`   | Controls when a message is regarded as transmitted.                        | `1`         | no       |
 
-Refer to the [Go sarama documentation][RequiredAcks] for more information on `required_acks`.
+Refer to the [Kafka producer configuration documentation][RequiredAcks] for more information on `required_acks`.
+
+`max_broker_write_bytes` must be at least `104857600` (100 MiB), and `max_message_bytes` must be less than or equal to `max_broker_write_bytes`.
+Raise `max_broker_write_bytes` if you need a `max_message_bytes` larger than the default.
+
+Set `linger` to `"0s"` to send records as soon as they arrive, at the cost of less effective batching.
 
 `compression` could be set to either `none`, `gzip`, `snappy`, `lz4`, or `zstd`.
-Refer to the [Go sarama documentation][CompressionCodec] for more information.
+Refer to the [franz-go documentation][CompressionCodec] for more information.
 
-[RequiredAcks]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#RequiredAcks
-[CompressionCodec]: https://pkg.go.dev/github.com/IBM/sarama@v1.43.2#CompressionCodec
+[RequiredAcks]: https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
+[CompressionCodec]: https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#CompressionCodec
 
 ### `compression_params`
 

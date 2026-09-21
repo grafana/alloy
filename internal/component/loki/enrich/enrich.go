@@ -73,7 +73,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c.interceptor = loki.NewInterceptorConsumer(
 		opts.ID,
 		loki.NewNopConsumer(),
-		loki.WithConsumeHook(func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+		func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
 			c.mut.RLock()
 			defer c.mut.RUnlock()
 			if c.stopped {
@@ -86,18 +86,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 			})
 
 			return batch, nil
-		}),
-		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
-			c.mut.RLock()
-			defer c.mut.RUnlock()
-
-			if c.stopped {
-				return loki.Entry{}, false, loki.ErrConsumerStopped
-			}
-
-			entry.Labels = c.process(entry.Labels, true)
-			return entry, true, nil
-		}),
+		},
 	)
 
 	opts.OnStateChange(Exports{Receiver: c.receiver})

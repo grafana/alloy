@@ -31,11 +31,8 @@ const (
 	installDir   = `C:\Program Files\GrafanaLabs\Alloy`
 )
 
-// TestWindowsService runs the Alloy Windows installer, starts the Alloy service, and uninstalls.
-// Requires Administrator privileges and Windows.
-// Set envVarInstallerPath to the path of the Alloy installer.
-func TestWindowsService(t *testing.T) {
-	installerPath := os.Getenv(envVarInstallerPath)
+func prepareInstall(t *testing.T) (installerPath, uninstallerPath string) {
+	installerPath = os.Getenv(envVarInstallerPath)
 	if installerPath == "" {
 		t.Fatalf("%s not set; skipping Windows service integration test", envVarInstallerPath)
 	}
@@ -43,19 +40,20 @@ func TestWindowsService(t *testing.T) {
 		t.Fatalf("%s %q not found: %v", envVarInstallerPath, installerPath, err)
 	}
 
-	uninstallerPath := filepath.Join(installDir, "uninstall.exe")
-	cleanup := os.Getenv(envVarStateful) != "true"
-	if cleanup {
+	uninstallerPath = filepath.Join(installDir, "uninstall.exe")
+	if os.Getenv(envVarStateful) == "true" {
 		t.Logf("Stateful mode: skipping cleanup (service will remain installed) env=%s", envVarStateful)
 	} else {
-		defer uninstallAlloy(t, uninstallerPath)
+		t.Cleanup(func() {
+			if isAlloyInstalled(t, installDir) {
+				uninstallAlloy(t, uninstallerPath)
+			}
+		})
 	}
 
 	// Ensure no existing Alloy install; abort unless envVarCleanIfExists is set to "true".
 	if isAlloyInstalled(t, installDir) {
-		cleanIfExists := os.Getenv(envVarCleanIfExists) == "true"
-
-		if !cleanIfExists {
+		if os.Getenv(envVarCleanIfExists) != "true" {
 			t.Fatalf("Alloy already present on the system. Uninstall manually or set %s=true to remove and continue", envVarCleanIfExists)
 		}
 
@@ -69,6 +67,15 @@ func TestWindowsService(t *testing.T) {
 		// Brief pause after cleanup before installer runs
 		time.Sleep(1 * time.Second)
 	}
+
+	return installerPath, uninstallerPath
+}
+
+// TestWindowsService runs the Alloy Windows installer, starts the Alloy service, and uninstalls.
+// Requires Administrator privileges and Windows.
+// Set envVarInstallerPath to the path of the Alloy installer.
+func TestWindowsService(t *testing.T) {
+	installerPath, uninstallerPath := prepareInstall(t)
 
 	//TODO: Test also the "/D=" option with an obscure directory like something in TMP
 	installArgs := []string{"/S", "/D=" + installDir}
@@ -98,6 +105,64 @@ func TestWindowsService(t *testing.T) {
 	// Check Windows Event Log for Alloy start message
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		util.AssertEventLogLine(c, "msg=\"{^_^} Alloy is running\"")
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		v, err := util.RegistryStringValue(registryPath, "ALLOY_OTEL_MODE")
+		assert.NoError(c, err)
+		assert.Equal(c, "", v)
+
+		args, err := util.RegistryStringsValue(registryPath, "OTelArguments")
+		assert.NoError(c, err)
+		assert.Empty(c, args)
+	}, waitTimeout*waitAttempts, waitTimeout)
+}
+
+func TestWindowsServiceOtelModeToggle(t *testing.T) {
+	installerPath, uninstallerPath := prepareInstall(t)
+
+	// Install with the default engine, same as TestWindowsService.
+	installArgs := []string{"/S", "/D=" + installDir}
+
+	t.Logf("Running installer path=%s args=%v", installerPath, installArgs)
+	cmd := exec.Command(installerPath, installArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	require.NoError(t, cmd.Run(), "installer failed")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.True(c, isAlloyInstalled(t, installDir), "Alloy should be installed")
+		assert.FileExists(c, uninstallerPath, "uninstaller should exist after install")
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		util.EnsureServiceRunning(c, t, serviceName)
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	// Confirm the starting point is the default engine
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		util.AssertMetricsEndpoint(c, metricsURL, "alloy_build_info")
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	// Flip the toggle
+	require.NoError(t, util.SetRegistryStringValue(registryPath, "ALLOY_OTEL_MODE", "1"))
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		util.EnsureServiceStopped(c, t, serviceName)
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		util.EnsureServiceRunning(c, t, serviceName)
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		v, err := util.RegistryStringValue(registryPath, "ALLOY_OTEL_MODE")
+		assert.NoError(c, err)
+		assert.Equal(c, "1", v)
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		util.AssertMetricsEndpoint(c, "http://127.0.0.1:8888/metrics", "otelcol_")
 	}, waitTimeout*waitAttempts, waitTimeout)
 }
 

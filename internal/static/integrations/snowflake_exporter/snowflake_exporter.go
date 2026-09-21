@@ -76,6 +76,7 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 	col := collector.NewCollector(l, exporterConfig)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
+		integrations.WithLogger(l),
 		integrations.WithCollectors(col),
 	), nil
 }

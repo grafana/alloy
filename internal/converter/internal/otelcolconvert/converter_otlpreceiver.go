@@ -103,16 +103,17 @@ func toTLSServerArguments(cfg *configtls.ServerConfig) *otelcol.TLSServerArgumen
 
 func toTLSSetting(cfg configtls.Config) otelcol.TLSSetting {
 	return otelcol.TLSSetting{
-		CA:                       string(cfg.CAPem),
-		CAFile:                   cfg.CAFile,
-		Cert:                     string(cfg.CertPem),
-		CertFile:                 cfg.CertFile,
-		Key:                      alloytypes.Secret(cfg.KeyPem),
-		KeyFile:                  cfg.KeyFile,
-		MinVersion:               cfg.MinVersion,
-		MaxVersion:               cfg.MaxVersion,
-		ReloadInterval:           cfg.ReloadInterval,
-		IncludeSystemCACertsPool: cfg.IncludeSystemCACertsPool,
+		CA:                          string(cfg.CAPem),
+		CAFile:                      cfg.CAFile,
+		Cert:                        string(cfg.CertPem),
+		CertFile:                    cfg.CertFile,
+		Key:                         alloytypes.Secret(cfg.KeyPem),
+		KeyFile:                     cfg.KeyFile,
+		MinVersion:                  cfg.MinVersion,
+		MaxVersion:                  cfg.MaxVersion,
+		ReloadInterval:              cfg.ReloadInterval,
+		IncludeSystemCACertsPool:    cfg.IncludeSystemCACertsPool,
+		IncludeInsecureCipherSuites: cfg.IncludeInsecureCipherSuites,
 		//TODO(ptodev): Do we need to copy this slice?
 		CipherSuites: cfg.CipherSuites,
 	}
@@ -193,6 +194,8 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		CompressionAlgorithms: compressionAlgorithms,
 
+		// IdleTimeout is deprecated but remains the source of truth for an already-unmarshaled ServerConfig.
+		//nolint:staticcheck
 		IdleTimeout:       cfg.IdleTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
@@ -208,6 +211,7 @@ func toCORSArguments(cfg *confighttp.CORSConfig) *otelcol.CORSArguments {
 	return &otelcol.CORSArguments{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedHeaders: cfg.AllowedHeaders,
+		ExposedHeaders: cfg.ExposedHeaders,
 
 		MaxAge: cfg.MaxAge,
 	}

@@ -73,17 +73,22 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
 	return splunkhec_config.SplunkHecClientArguments{
-		Endpoint:            cfg.ClientConfig.Endpoint,
-		Timeout:             cfg.ClientConfig.Timeout,
-		ReadBufferSize:      cfg.ClientConfig.ReadBufferSize,
-		WriteBufferSize:     cfg.ClientConfig.WriteBufferSize,
-		MaxIdleConns:        cfg.ClientConfig.MaxIdleConns,
+		Endpoint:        cfg.ClientConfig.Endpoint,
+		Timeout:         cfg.ClientConfig.Timeout,
+		ReadBufferSize:  cfg.ClientConfig.ReadBufferSize,
+		WriteBufferSize: cfg.ClientConfig.WriteBufferSize,
+		// Deprecated fields remain the source of truth for an already-unmarshaled ClientConfig.
+		//nolint:staticcheck
+		MaxIdleConns: cfg.ClientConfig.MaxIdleConns,
+		//nolint:staticcheck
 		MaxIdleConnsPerHost: cfg.ClientConfig.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.ClientConfig.IdleConnTimeout,
-		DisableKeepAlives:   cfg.ClientConfig.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
-		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
+		//nolint:staticcheck
+		IdleConnTimeout: cfg.ClientConfig.IdleConnTimeout,
+		//nolint:staticcheck
+		DisableKeepAlives:  cfg.ClientConfig.DisableKeepAlives,
+		InsecureSkipVerify: cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:  cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 

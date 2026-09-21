@@ -34,15 +34,16 @@ type Arguments struct {
 	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	// Google Cloud Pub/Sub specific configuration settings
-	Project     string                                                           `alloy:"project,attr,optional"`
-	UserAgent   string                                                           `alloy:"user_agent,attr,optional"`
-	Topic       string                                                           `alloy:"topic,attr"`
-	Compression string                                                           `alloy:"compression,attr,optional"`
-	Watermark   googlecloudpubsubconfig.GoogleCloudPubSubWatermarkArguments      `alloy:"watermark,block,optional"`
-	Endpoint    string                                                           `alloy:"endpoint,attr,optional"`
-	Insecure    bool                                                             `alloy:"insecure,attr,optional"`
-	Ordering    googlecloudpubsubconfig.GoogleCloudPubSubOrderingConfigArguments `alloy:"ordering,block,optional"`
-	Timeout     time.Duration                                                    `alloy:"timeout,attr,optional"`
+	Project        string                                                           `alloy:"project,attr,optional"`
+	UserAgent      string                                                           `alloy:"user_agent,attr,optional"`
+	Topic          string                                                           `alloy:"topic,attr"`
+	Compression    string                                                           `alloy:"compression,attr,optional"`
+	Watermark      googlecloudpubsubconfig.GoogleCloudPubSubWatermarkArguments      `alloy:"watermark,block,optional"`
+	Endpoint       string                                                           `alloy:"endpoint,attr,optional"`
+	UniverseDomain string                                                           `alloy:"universe_domain,attr,optional"`
+	Insecure       bool                                                             `alloy:"insecure,attr,optional"`
+	Ordering       googlecloudpubsubconfig.GoogleCloudPubSubOrderingConfigArguments `alloy:"ordering,block,optional"`
+	Timeout        time.Duration                                                    `alloy:"timeout,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -69,7 +70,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var result googlecloudpubsubexporter.Config
+	result := *googlecloudpubsubexporter.NewFactory().CreateDefaultConfig().(*googlecloudpubsubexporter.Config)
 
 	result.BackOffConfig = *args.Retry.Convert()
 
@@ -85,6 +86,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Compression = args.Compression
 	result.Watermark = args.Watermark.Convert()
 	result.Endpoint = args.Endpoint
+	result.UniverseDomain = args.UniverseDomain
 	result.Insecure = args.Insecure
 	result.Ordering = args.Ordering.Convert()
 	result.TimeoutSettings.Timeout = args.Timeout

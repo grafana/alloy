@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.faro/
 description: Learn about otelcol.receiver.faro
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otelcol.receiver.faro
@@ -10,7 +10,7 @@ title: otelcol.receiver.faro
 
 # `otelcol.receiver.faro`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.faro` accepts telemetry data from the [Grafana Faro Web SDK][faro-sdk] and forwards it to other `otelcol.*` components.
 
@@ -56,6 +56,11 @@ You can use the following arguments with `otelcol.receiver.faro`:
 By default, `otelcol.receiver.faro` listens for HTTP connections on `localhost`.
 To expose the HTTP server to other machines on your network, configure `endpoint` with the IP address to listen on, or `0.0.0.0:8080` to listen on all network interfaces.
 
+{{< admonition type="note" >}}
+The upstream OpenTelemetry Collector promoted the stable resource attribute naming convention for deployment environment to the default behavior.
+As a result, `otelcol.receiver.faro` now emits the `deployment.environment.name` resource attribute instead of the deprecated `deployment.environment` attribute by default.
+{{< /admonition >}}
+
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.faro`:
@@ -65,6 +70,7 @@ You can use the following blocks with `otelcol.receiver.faro`:
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
+| [`keepalive`][keepalive]         | Configures keepalive settings for the HTTP server.                        | no       |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |
@@ -72,6 +78,7 @@ You can use the following blocks with `otelcol.receiver.faro`:
 
 [tls]: #tls
 [tpm]: #tpm
+[keepalive]: #keepalive
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -84,17 +91,24 @@ You can use the following blocks with `otelcol.receiver.faro`:
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `keepalive`
+
+The `keepalive` block configures HTTP keep-alive settings for the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `cors`
 
 The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-| Name              | Type           | Description                                              | Default                | Required |
-|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  | `[]`                   | no       |
-| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
-| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. | `0`                    | no       |
+| Name              | Type           | Description                                                     | Default                | Required |
+|-------------------|----------------|-----------------------------------------------------------------|------------------------|----------|
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                         | `[]`                   | no       |
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                            | `["X-Requested-With"]` | no       |
+| `exposed_headers` | `list(string)` | Configures the `Access-Control-Expose-Headers` response header. | `[]`                   | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header.        | `0`                    | no       |
 
 The `allowed_headers` argument specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:

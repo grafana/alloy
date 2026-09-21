@@ -80,15 +80,15 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &otlphttpexporter.Config{
-		ClientConfig:    *convertedClientArgs,
-		QueueConfig:     q,
-		RetryConfig:     *args.Retry.Convert(),
-		TracesEndpoint:  args.TracesEndpoint,
-		MetricsEndpoint: args.MetricsEndpoint,
-		LogsEndpoint:    args.LogsEndpoint,
-		Encoding:        otlphttpexporter.EncodingType(args.Encoding),
-	}, nil
+	cfg := otlphttpexporter.NewFactory().CreateDefaultConfig().(*otlphttpexporter.Config)
+	cfg.ClientConfig = *convertedClientArgs
+	cfg.QueueConfig = q
+	cfg.RetryConfig = *args.Retry.Convert()
+	cfg.TracesEndpoint = args.TracesEndpoint
+	cfg.MetricsEndpoint = args.MetricsEndpoint
+	cfg.LogsEndpoint = args.LogsEndpoint
+	cfg.Encoding = otlphttpexporter.EncodingType(args.Encoding)
+	return cfg, nil
 }
 
 // Extensions implements exporter.Arguments.

@@ -5,11 +5,13 @@ on:
       - main
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.chisel'
       - 'scripts/docker-containers'
       - '.github/workflows/check-linux-container.yml'
   pull_request:
     paths:
       - 'Dockerfile'
+      - 'Dockerfile.chisel'
       - 'scripts/docker-containers'
       - '.github/workflows/check-linux-container.yml'
 
@@ -33,4 +35,22 @@ jobs:
       id-token: write
     with:
       img-name: alloy-devel-boringcrypto
+      push: false
+
+  check-linux-distroless-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-distroless
+      push: false
+
+  check-linux-boringcrypto-distroless-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-boringcrypto-distroless
       push: false

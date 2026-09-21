@@ -3,14 +3,12 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 description: Learn about loki.secretfilter
 title: loki.secretfilter
 labels:
-  stage: public-preview
+  stage: general-availability
   products:
     - oss
 ---
 
 # `loki.secretfilter`
-
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `loki.secretfilter` receives log entries and redacts detected secrets from the log lines.
 The detection relies on regular expression patterns, defined in the Gitleaks configuration file embedded within the component.

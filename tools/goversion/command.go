@@ -107,7 +107,6 @@ func updateBuildImage(root string, version string) error {
 	paths := []string{
 		".github/workflows/create_build_image.yml",
 		".github/workflows/check-linux-build-image.yml",
-		"build-tools/build-image/windows/Dockerfile",
 	}
 
 	for _, path := range paths {
@@ -187,9 +186,13 @@ func bumpBuildImage(root string) error {
 	if err != nil {
 		return err
 	}
+	return updateBuildImageRefs(root, refs)
+}
 
+func updateBuildImageRefs(root string, refs *buildImageRefs) error {
 	var paths = []string{
 		"Dockerfile",
+		"Dockerfile.chisel",
 		".github/workflows/build.yml",
 		".github/workflows/release-publish-alloy-artifacts.yml",
 		".github/workflows/test_full.yml",

@@ -3,10 +3,12 @@ package integrations
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -17,6 +19,7 @@ type CollectorIntegration struct {
 	cs                     []prometheus.Collector
 	includeExporterMetrics bool
 	runner                 func(context.Context) error
+	logger                 *slog.Logger
 }
 
 // NewCollectorIntegration creates a basic integration that exposes metrics from multiple prometheus.Collector.
@@ -53,6 +56,14 @@ func WithRunner(runner func(context.Context) error) CollectorIntegrationConfig {
 	}
 }
 
+// WithLogger sets the logger used to report errors from the metrics handler.
+// Without it, the integrations may silently drop the reason for any failure.
+func WithLogger(logger *slog.Logger) CollectorIntegrationConfig {
+	return func(i *CollectorIntegration) {
+		i.logger = logger
+	}
+}
+
 // WithExporterMetricsIncluded can enable the exporter metrics if the flag provided is enabled.
 func WithExporterMetricsIncluded(included bool) CollectorIntegrationConfig {
 	return func(i *CollectorIntegration) {
@@ -75,12 +86,9 @@ func (i *CollectorIntegration) MetricsHandler() (http.Handler, error) {
 		return nil, fmt.Errorf("couldn't register %s: %w", i.name, err)
 	}
 
-	handler := promhttp.HandlerFor(
-		r,
-		promhttp.HandlerOpts{
-			ErrorHandling: promhttp.ContinueOnError,
-		},
-	)
+	handler := util.PromHTTPHandlerFor(r, i.logger, promhttp.HandlerOpts{
+		ErrorHandling: promhttp.ContinueOnError,
+	})
 
 	if i.includeExporterMetrics {
 		// Note that we have to use reg here to use the same promhttp metrics for

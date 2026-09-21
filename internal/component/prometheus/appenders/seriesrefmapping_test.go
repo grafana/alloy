@@ -456,7 +456,35 @@ func TestSeriesRefMapping_AppendAllChildrenZeroPassesThroughInputRef(t *testing.
 	require.Empty(t, store.cell.Refs)
 }
 
-func TestSeriesRefMapping_AppendSingleNonZeroChildReturnsChildRefDirectly(t *testing.T) {
+func TestSeriesRefMapping_AppendUnmappedNonZeroRefForwardsZeroToChildren(t *testing.T) {
+	store := newMockMappingStore()
+
+	// Children hand back their own refs regardless of what they're given.
+	child1 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 5001, nil
+	}}
+	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+		return 6002, nil
+	}}
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_unmapped_nonzero_latency", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_unmapped_nonzero_forwarded", Help: "test"})
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	// Ref 9999 has no mapping (e.g. a store ref whose mapping was cleaned or predates a
+	// topology change). It must not reach the children — they'd risk misattributing the
+	// sample to whichever of their own series happens to share that number.
+	ref, err := app.Append(9999, labels.FromStrings("job", "test"), 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+
+	require.Equal(t, []storage.SeriesRef{0}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0}, child2.appendRefs)
+	require.Len(t, store.createCalls, 1)
+	require.Equal(t, []storage.SeriesRef{5001, 6002}, store.createCalls[0].refs)
+}
+
+func TestSeriesRefMapping_AppendSingleNonZeroChildCreatesMapping(t *testing.T) {
 	store := newMockMappingStore()
 	child1 := &mockAppender{}
 	child2 := &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
@@ -467,12 +495,14 @@ func TestSeriesRefMapping_AppendSingleNonZeroChildReturnsChildRefDirectly(t *tes
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_single_nonzero_forwarded", Help: "test"})
 	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
 
-	// The single non-zero child ref is returned directly — no mapping created.
+	// A single allocating child still gets a mapping, so the series stays routable on
+	// later appends rather than being returned bare and unmapped.
 	ref, err := app.Append(0, labels.FromStrings("job", "test"), 1, 1)
 	require.NoError(t, err)
-	require.Equal(t, storage.SeriesRef(77), ref)
-	require.Len(t, store.createCalls, 0)
-	require.Empty(t, store.cell.Refs)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+	require.Len(t, store.createCalls, 1)
+	require.Equal(t, []storage.SeriesRef{0, 77}, store.createCalls[0].refs)
+	require.Equal(t, []storage.SeriesRef{1000}, store.cell.Refs)
 }
 
 func TestSeriesRefMapping_AppendSecondAppendUsesChildRefsFromMapping(t *testing.T) {

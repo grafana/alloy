@@ -1,0 +1,33 @@
+logging {
+  level = "debug"
+}
+
+prometheus.exporter.cadvisor "test" {
+  storage_duration = "1m"
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = prometheus.exporter.cadvisor.test.targets
+  forward_to      = [prometheus.relabel.cadvisor.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "cadvisor" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  // The k8s harness filters series on alloy_test_name.
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "cadvisor"
+  }
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+}

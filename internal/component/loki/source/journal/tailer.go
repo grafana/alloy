@@ -58,7 +58,9 @@ func newTailer(opts tailerOptions) (*tailer, error) {
 func newTailerWithJournal(opts tailerOptions, journal journal) *tailer {
 	labelMap := make(map[string]string, len(opts.labels)+1)
 	maps.Copy(labelMap, opts.labels)
-	labelMap["job"] = opts.id
+	if labelMap["job"] == "" {
+		labelMap["job"] = opts.id
+	}
 	lbls := labels.FromMap(labelMap)
 
 	ctx, cancel := context.WithCancel(context.Background())

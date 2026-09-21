@@ -1,0 +1,23 @@
+receivers:
+  kafka:
+    brokers:
+      - broker:9092
+    protocol_version: 2.0.0
+    # The plural form supersedes the deprecated group_rebalance_strategy. The
+    # converter must carry the ordered list across and leave the singular unset,
+    # since upstream rejects both being set.
+    group_rebalance_strategies:
+      - cooperative-sticky
+      - range
+
+exporters:
+  kafka:
+    brokers:
+      - redpanda:9092
+    protocol_version: 2.0.0
+
+service:
+  pipelines:
+    logs:
+      receivers: [kafka]
+      exporters: [kafka]

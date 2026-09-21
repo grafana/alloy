@@ -753,3 +753,14 @@ func Test_StatusOk(t *testing.T) {
 
 	testRunProcessor(t, cfg, processortest.NewTraceSignal(inputTrace, expectedOutputTrace))
 }
+
+func TestDefaultArguments(t *testing.T) {
+	var args span.Arguments
+	args.SetToDefault()
+
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
+	// bump added one: document it, then update these values.
+	require.Equal(t, &spanprocessor.Config{}, cfg)
+}

@@ -62,15 +62,16 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 	}
 
 	return &kafka.Arguments{
-		Brokers:                              cfg.ClientConfig.Brokers,
-		ProtocolVersion:                      cfg.ClientConfig.ProtocolVersion,
-		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		Brokers:         cfg.ClientConfig.Brokers,
+		ProtocolVersion: cfg.ClientConfig.ProtocolVersion,
+		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 		ClientID:                             cfg.ClientConfig.ClientID,
 		TopicFromAttribute:                   cfg.TopicFromAttribute,
 		PartitionTracesByID:                  cfg.PartitionTracesByID,
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
 		PartitionLogsByResourceAttributes:    cfg.PartitionLogsByResourceAttributes,
 		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
+		SignalHeader:                         cfg.SignalHeader,
 		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 		ConnIdleTimeout:                      cfg.ClientConfig.ConnIdleTimeout,
@@ -94,11 +95,13 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 func toKafkaProducer(cfg configkafka.ProducerConfig) kafka.Producer {
 	return kafka.Producer{
 		MaxMessageBytes:        cfg.MaxMessageBytes,
+		MaxBrokerWriteBytes:    cfg.MaxBrokerWriteBytes,
 		Compression:            cfg.Compression,
 		CompressionParams:      toKafkaCompressionParams(cfg.CompressionParams),
 		RequiredAcks:           int(cfg.RequiredAcks),
 		FlushMaxMessages:       cfg.FlushMaxMessages,
 		AllowAutoTopicCreation: cfg.AllowAutoTopicCreation,
+		Linger:                 cfg.Linger,
 	}
 }
 

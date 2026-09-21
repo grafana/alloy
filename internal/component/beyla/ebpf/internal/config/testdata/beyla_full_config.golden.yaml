@@ -443,7 +443,6 @@ javaagent:
     debug_instrumentation: true
     enabled: true
 jvm_runtime_metrics:
-    enabled: true
     sampling_interval: 1s
 log_level: x
 network:

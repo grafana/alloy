@@ -48,6 +48,8 @@ The following collectors are configurable:
 | `setup_actors`    | Check and update `performance_schema.setup_actors` settings. | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries.     | no                 |
 | `explain_plans`   | Collect explain plans information.                           | yes                |
+| `table_stats`     | Collect table-level index usage statistics.                  | no                 |
+| `index_stats`     | Collect per-index usage statistics.                          | no                 |
 
 ## Blocks
 

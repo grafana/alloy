@@ -1,0 +1,35 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT Name FROM ActiveCustomers
+UNION ALL
+SELECT Name FROM ArchivedCustomers
+```
+
+-- concatenation.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Concatenation" LogicalOp="Concatenation" EstimateRows="1500" EstimatedTotalSubtreeCost="1.1">
+              <Concat>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="1000" EstimatedTotalSubtreeCost="0.5">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[ActiveCustomers]" />
+                  </TableScan>
+                </RelOp>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="500" EstimatedTotalSubtreeCost="0.4">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[ArchivedCustomers]" />
+                  </TableScan>
+                </RelOp>
+              </Concat>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

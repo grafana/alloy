@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -79,8 +81,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 			Producer: configkafka.ProducerConfig{
-				MaxMessageBytes: 1000000,
-				// Not exposed by Alloy; inherited from the upstream factory default.
+				MaxMessageBytes:     1000000,
 				MaxBrokerWriteBytes: 104857600,
 				RequiredAcks:        1,
 				Compression:         "none",
@@ -89,8 +90,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				FlushMaxMessages:       10000,
 				AllowAutoTopicCreation: true,
-				// Not exposed by Alloy; inherited from the upstream factory default.
-				Linger: 10 * time.Millisecond,
+				Linger:                 10 * time.Millisecond,
 			},
 		}
 	}
@@ -202,6 +202,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				cfg.PartitionTracesByID = true
 				cfg.PartitionMetricsByResourceAttributes = true
 				cfg.PartitionLogsByTraceID = true
+				return cfg
+			}(),
+		},
+		{
+			testName: "Signal header",
+			cfg: `
+				protocol_version = "2.0.0"
+				signal_header = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.SignalHeader = true
 				return cfg
 			}(),
 		},
@@ -327,11 +339,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxElapsedTime:      11 * time.Minute,
 				},
 				ClientConfig: configkafka.ClientConfig{
-					Brokers:                              []string{"redpanda:123"},
-					ProtocolVersion:                      "2.0.0",
-					ClientID:                             "my-client",
-					ConnIdleTimeout:                      9 * time.Minute,
-					ResolveCanonicalBootstrapServersOnly: true,
+					Brokers:         []string{"redpanda:123"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "my-client",
+					ConnIdleTimeout: 9 * time.Minute,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
 						RefreshInterval: 14 * time.Second,
@@ -341,15 +352,15 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 					Authentication: configkafka.AuthenticationConfig{
-						PlainText: &configkafka.PlainTextConfig{
-							Username: "user",
-							Password: "pass",
+						SASL: &configkafka.SASLConfig{
+							Username:  "user",
+							Password:  "pass",
+							Mechanism: "PLAIN",
 						},
 					},
 				},
 				Producer: configkafka.ProducerConfig{
-					MaxMessageBytes: 2000001,
-					// Not exposed by Alloy; inherited from the upstream factory default.
+					MaxMessageBytes:     2000001,
 					MaxBrokerWriteBytes: 104857600,
 					RequiredAcks:        0,
 					Compression:         "gzip",
@@ -358,8 +369,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 					FlushMaxMessages:       101,
 					AllowAutoTopicCreation: true,
-					// Not exposed by Alloy; inherited from the upstream factory default.
-					Linger: 10 * time.Millisecond,
+					Linger:                 10 * time.Millisecond,
 				},
 				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
@@ -544,5 +554,128 @@ func TestGetSignalType(t *testing.T) {
 				require.Equal(t, expected, signalType)
 			})
 		}
+	}
+}
+
+func TestProducerNewFields(t *testing.T) {
+	convert := func(t *testing.T, cfg string) *kafkaexporter.Config {
+		var args kafka.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		converted, err := args.Convert()
+		require.NoError(t, err)
+		return converted.(*kafkaexporter.Config)
+	}
+
+	base := `
+		protocol_version = "2.0.0"
+	`
+
+	t.Run("defaults match the upstream factory", func(t *testing.T) {
+		upstream := configkafka.NewDefaultProducerConfig()
+		otelObj := convert(t, base)
+
+		require.Equal(t, upstream.MaxBrokerWriteBytes, otelObj.Producer.MaxBrokerWriteBytes)
+		require.Equal(t, upstream.Linger, otelObj.Producer.Linger)
+	})
+
+	t.Run("configured values are passed through", func(t *testing.T) {
+		otelObj := convert(t, base+`
+			producer {
+				max_broker_write_bytes = 209715200
+				linger                 = "0s"
+			}
+		`)
+
+		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+		require.Equal(t, time.Duration(0), otelObj.Producer.Linger)
+	})
+
+	t.Run("max_message_bytes above the default max_broker_write_bytes is rejected", func(t *testing.T) {
+		var args kafka.Arguments
+		err := syntax.Unmarshal([]byte(base+`
+			producer {
+				max_message_bytes = 209715200
+			}
+		`), &args)
+
+		require.ErrorContains(t, err, "max_message_bytes (209715200) cannot be greater than max_broker_write_bytes (104857600)")
+	})
+
+	t.Run("raising max_broker_write_bytes allows a larger max_message_bytes", func(t *testing.T) {
+		otelObj := convert(t, base+`
+			producer {
+				max_message_bytes      = 209715200
+				max_broker_write_bytes = 209715200
+			}
+		`)
+
+		require.Equal(t, 209715200, otelObj.Producer.MaxMessageBytes)
+		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
+	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
+
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
+
+	require.NotPanics(t, func() {
+		args.LogDeprecations(nil)
+	})
+}
+
+func TestArguments_SASLAndKerberosAreMutuallyExclusive(t *testing.T) {
+	tests := []struct {
+		testName string
+		cfg      string
+	}{
+		{
+			testName: "sasl and kerberos",
+			cfg: `
+				protocol_version = "2.0.0"
+
+				authentication {
+					sasl {
+						username  = "user"
+						password  = "pass"
+						mechanism = "PLAIN"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+			`,
+		},
+		{
+			// plaintext also converts to upstream's sasl field (see
+			// KafkaAuthenticationArguments.Convert), so it's rejected too.
+			testName: "plaintext and kerberos",
+			cfg: `
+				protocol_version = "2.0.0"
+
+				authentication {
+					plaintext {
+						username = "user"
+						password = "pass"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+			`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+
+			require.ErrorContains(t, err, "only one of sasl or kerberos authentication can be configured")
+		})
 	}
 }

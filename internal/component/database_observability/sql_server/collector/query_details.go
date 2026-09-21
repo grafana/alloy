@@ -19,9 +19,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 // selectQueryTextTemplate returns the query text for the tracked
@@ -50,6 +48,7 @@ type QueryTracker interface {
 type QueryDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
+	QueryTimeout    time.Duration
 	Tracker         QueryTracker
 	EntryHandler    loki.EntryHandler
 
@@ -59,6 +58,7 @@ type QueryDetailsArguments struct {
 type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
+	queryTimeout    time.Duration
 	entryHandler    loki.EntryHandler
 	tracker         QueryTracker
 	obfuscator      *sqllexer.Obfuscator
@@ -83,6 +83,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
+		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
 		entryHandler:    args.EntryHandler,
 		tracker:         args.Tracker,
 		obfuscator:      sqllexer.NewObfuscator(),
@@ -116,7 +117,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -143,19 +144,13 @@ func (c *QueryDetails) Stop() {
 	c.wg.Wait()
 }
 
-func (c *QueryDetails) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *QueryDetails) collect(ctx context.Context) error {
 	if c.tracker == nil {
 		c.logger.Error("no query tracker available, skipping collection")
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
@@ -172,12 +167,6 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		return err
 	}
 
-	rs, err := c.dbConnection.QueryContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to fetch query text: %w", err)
-	}
-	defer rs.Close()
-
 	now := c.now()
 
 	// seen collects every (database, query_hash) returned this cycle, including
@@ -185,37 +174,49 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 	// Store rather than those merely skipped by the throttle.
 	seen := map[queryMetricsKey]struct{}{}
 
-	for rs.Next() {
-		var hash []byte
-		var queryText string
-		if err := rs.Scan(&hash, &queryText); err != nil {
-			c.logger.Error("failed to scan query text row", "err", err)
-			continue
-		}
-
-		queryHash, err := formatQueryHash(hash)
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := c.dbConnection.QueryContext(queryCtx, query, args...)
 		if err != nil {
-			c.logger.Error("failed to format query hash", "err", err)
-			continue
+			return fmt.Errorf("failed to fetch query text: %w", err)
+		}
+		defer rs.Close()
+
+		for rs.Next() {
+			var hash []byte
+			var queryText string
+			if err := rs.Scan(&hash, &queryText); err != nil {
+				c.logger.Error("failed to scan query text row", "err", err)
+				continue
+			}
+
+			queryHash, err := formatQueryHash(hash)
+			if err != nil {
+				c.logger.Error("failed to format query hash", "err", err)
+				continue
+			}
+
+			key := queryMetricsKey{database: database, queryHash: queryHash}
+			if _, ok := seen[key]; ok {
+				// A query_hash can map to multiple query_text_id rows; emit once.
+				continue
+			}
+			seen[key] = struct{}{}
+
+			if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
+				continue
+			}
+
+			c.emit(database, queryHash, queryText)
+			c.lastEmittedAt[key] = now
 		}
 
-		key := queryMetricsKey{database: database, queryHash: queryHash}
-		if _, ok := seen[key]; ok {
-			// A query_hash can map to multiple query_text_id rows; emit once.
-			continue
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over query text result set: %w", err)
 		}
-		seen[key] = struct{}{}
-
-		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-			continue
-		}
-
-		c.emit(database, queryHash, queryText)
-		c.lastEmittedAt[key] = now
-	}
-
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over query text result set: %w", err)
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	c.pruneThrottle(seen)
@@ -236,7 +237,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_QUERY_ASSOCIATION,
+		database_observability.OP_QUERY_ASSOCIATION,
 		fmt.Sprintf(`database="%s" query_hash="%s" querytext=%q`, database, queryHash, normalized),
 	)
 
@@ -247,7 +248,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	for _, table := range metadata.Tables {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_PARSED_TABLE_NAME,
+			database_observability.OP_QUERY_PARSED_TABLE_NAME,
 			fmt.Sprintf(`database="%s" query_hash="%s" table="%s"`, database, queryHash, table),
 		)
 	}

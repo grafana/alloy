@@ -18,6 +18,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/lambda"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/appservice"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/containerapps"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/digitalocean"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
@@ -145,6 +147,45 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"vultr":            vultr.DefaultArguments.Convert(),
 				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
 				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "fail_on_missing_metadata_explicit",
+			cfg: `
+			fail_on_missing_metadata = true
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors":                []string{"env"},
+				"timeout":                  5 * time.Second,
+				"override":                 true,
+				"fail_on_missing_metadata": true,
+				"ec2":                      ec2.DefaultArguments.Convert(),
+				"ecs":                      ecs.DefaultArguments.Convert(),
+				"eks":                      eks.DefaultArguments.Convert(),
+				"elasticbeanstalk":         elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":                   lambda.DefaultArguments.Convert(),
+				"azure":                    azure.DefaultArguments.Convert(),
+				"aks":                      aks.DefaultArguments.Convert(),
+				"akamai":                   akamai.DefaultArguments.Convert(),
+				"consul":                   consul.DefaultArguments.Convert(),
+				"digitalocean":             digitalocean.DefaultArguments.Convert(),
+				"docker":                   docker.DefaultArguments.Convert(),
+				"gcp":                      gcp.DefaultArguments.Convert(),
+				"heroku":                   heroku.DefaultArguments.Convert(),
+				"hetzner":                  hetzner.DefaultArguments.Convert(),
+				"system":                   defaultArgs.Convert(),
+				"openshift":                openshift.DefaultArguments.Convert(),
+				"nova":                     openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":              oraclecloud.DefaultArguments.Convert(),
+				"k8snode":                  kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":                  kubeadm.DefaultArguments.Convert(),
+				"dynatrace":                dynatrace.DefaultArguments.Convert(),
+				"scaleway":                 scaleway.DefaultArguments.Convert(),
+				"upcloud":                  upcloud.DefaultArguments.Convert(),
+				"vultr":                    vultr.DefaultArguments.Convert(),
+				"tencent_cvm":              tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":              alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -816,6 +857,214 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
 				"lambda":           lambda.DefaultArguments.Convert(),
 				"azure":            azure.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "azurecontainerapps_defaults",
+			cfg: `
+			detectors = ["azurecontainerapps"]
+			azurecontainerapps {}
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors": []string{"azurecontainerapps"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"azurecontainerapps": map[string]any{
+					"resource_attributes": map[string]any{
+						"azure.container_app.instance.id": map[string]any{"enabled": true},
+						"cloud.platform":                  map[string]any{"enabled": true},
+						"cloud.provider":                  map[string]any{"enabled": true},
+						"service.name":                    map[string]any{"enabled": true},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "azureappservice_defaults",
+			cfg: `
+			detectors = ["azureappservice"]
+			azureappservice {}
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors": []string{"azureappservice"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"azureappservice": map[string]any{
+					"resource_attributes": map[string]any{
+						"azure.app_service.instance.id": map[string]any{"enabled": true},
+						"azure.resource_group.name":     map[string]any{"enabled": true},
+						"cloud.account.id":              map[string]any{"enabled": true},
+						"cloud.platform":                map[string]any{"enabled": true},
+						"cloud.provider":                map[string]any{"enabled": true},
+						"cloud.region":                  map[string]any{"enabled": true},
+						"cloud.resource_id":             map[string]any{"enabled": true},
+						"deployment.environment.name":   map[string]any{"enabled": true},
+						"service.name":                  map[string]any{"enabled": true},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "azurecontainerapps_explicit",
+			cfg: `
+			detectors = ["azurecontainerapps"]
+			azurecontainerapps {
+				resource_attributes {
+					cloud.platform { enabled = true }
+					cloud.provider { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors": []string{"azurecontainerapps"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"azurecontainerapps": map[string]any{
+					"resource_attributes": map[string]any{
+						"azure.container_app.instance.id": map[string]any{"enabled": true},
+						"cloud.platform":                  map[string]any{"enabled": true},
+						"cloud.provider":                  map[string]any{"enabled": false},
+						"service.name":                    map[string]any{"enabled": true},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
+				"consul":           consul.DefaultArguments.Convert(),
+				"docker":           docker.DefaultArguments.Convert(),
+				"gcp":              gcp.DefaultArguments.Convert(),
+				"heroku":           heroku.DefaultArguments.Convert(),
+				"system":           defaultArgs.Convert(),
+				"openshift":        openshift.DefaultArguments.Convert(),
+				"k8snode":          kubernetes_node.DefaultArguments.Convert(),
+				"kubeadm":          kubeadm.DefaultArguments.Convert(),
+				"dynatrace":        dynatrace.DefaultArguments.Convert(),
+				"akamai":           akamai.DefaultArguments.Convert(),
+				"digitalocean":     digitalocean.DefaultArguments.Convert(),
+				"hetzner":          hetzner.DefaultArguments.Convert(),
+				"nova":             openstacknova.DefaultArguments.Convert(),
+				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
+				"scaleway":         scaleway.DefaultArguments.Convert(),
+				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
+			},
+		},
+		{
+			testName: "azureappservice_explicit",
+			cfg: `
+			detectors = ["azureappservice"]
+			azureappservice {
+				resource_attributes {
+					cloud.platform { enabled = true }
+					cloud.provider { enabled = false }
+				}
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"detectors": []string{"azureappservice"},
+				"timeout":   5 * time.Second,
+				"override":  true,
+				"azureappservice": map[string]any{
+					"resource_attributes": map[string]any{
+						"azure.app_service.instance.id": map[string]any{"enabled": true},
+						"azure.resource_group.name":     map[string]any{"enabled": true},
+						"cloud.account.id":              map[string]any{"enabled": true},
+						"cloud.platform":                map[string]any{"enabled": true},
+						"cloud.provider":                map[string]any{"enabled": false},
+						"cloud.region":                  map[string]any{"enabled": true},
+						"cloud.resource_id":             map[string]any{"enabled": true},
+						"deployment.environment.name":   map[string]any{"enabled": true},
+						"service.name":                  map[string]any{"enabled": true},
+					},
+				},
+				"ec2":              ec2.DefaultArguments.Convert(),
+				"ecs":              ecs.DefaultArguments.Convert(),
+				"eks":              eks.DefaultArguments.Convert(),
+				"elasticbeanstalk": elasticbeanstalk.DefaultArguments.Convert(),
+				"lambda":           lambda.DefaultArguments.Convert(),
+				"azure":            azure.DefaultArguments.Convert(),
+				"aks":              aks.DefaultArguments.Convert(),
 				"consul":           consul.DefaultArguments.Convert(),
 				"docker":           docker.DefaultArguments.Convert(),
 				"gcp":              gcp.DefaultArguments.Convert(),
@@ -2945,6 +3194,13 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			require.NoError(t, err)
 
 			actual := actualPtr.(*resourcedetectionprocessor.Config)
+
+			if _, ok := tc.expected["azurecontainerapps"]; !ok {
+				tc.expected["azurecontainerapps"] = containerapps.DefaultArguments.Convert()
+			}
+			if _, ok := tc.expected["azureappservice"]; !ok {
+				tc.expected["azureappservice"] = appservice.DefaultArguments.Convert()
+			}
 
 			var expected resourcedetectionprocessor.Config
 			err = mapstructure.Decode(tc.expected, &expected)

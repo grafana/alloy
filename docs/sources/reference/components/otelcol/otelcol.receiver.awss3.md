@@ -31,9 +31,7 @@ The receiver supports the following encodings:
 - `otlp_json` (OpenTelemetry Protocol format represented as JSON) with a suffix of `.json`
 - `otlp_proto` (OpenTelemetry Protocol format represented as Protocol Buffers) with a suffix of `.binpb`
 
-{{< admonition type="note" >}}
-Currently, `otelcol.receiver.awss3` receiver doesn't support encoding extensions.
-{{< /admonition >}}
+You can use [`encoding`][encoding] blocks to decode additional formats with encoding extensions.
 
 You can specify multiple `otelcol.receiver.awss3` components by giving them different labels.
 
@@ -87,10 +85,12 @@ You can use the following blocks with `otelcol.receiver.awss3`:
 | ------------------------------ | ---------------------------------------------------------------------------- | ----------------------------------------- |
 | [`s3downloader`][s3downloader] | Configures S3 downloader.                                                    | yes                                       |
 | [`sqs`][sqs]                   | Configures SQS queue configuration for receiving object change notification. | Required if fetching by SQS notification. |
+| [`encoding`][encoding]         | Configures an encoding extension for S3 objects with matching key suffixes.  | no                                        |
 | [`output`][output]             | Configures where to send received telemetry data.                            | yes                                       |
 
 [s3downloader]: #s3downloader
 [sqs]: #sqs
+[encoding]: #encoding
 [output]: #output
 
 {{< /docs/alloy-config >}}
@@ -137,6 +137,26 @@ You must configure your S3 bucket to send event notifications to the SQS queue.
 Time-based configuration (`start_time`/`end_time`) and SQS configuration can't be used together.
 {{< /admonition >}}
 
+### `encoding`
+
+The `encoding` block maps an S3 object key suffix to an encoding extension.
+When an object key ends with the configured suffix, `otelcol.receiver.awss3` uses the extension to decode the object.
+You can specify multiple `encoding` blocks.
+
+The following arguments are supported:
+
+| Name        | Type                       | Description                                                                       | Default | Required |
+| ----------- | -------------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `extension` | `capsule(otelcol.Handler)` | Handler from an encoding extension component to use to decode matching S3 objects. |         | yes      |
+| `suffix`    | `string`                   | S3 object key suffix that selects the encoding extension.                         |         | yes      |
+
+Set `extension` to the `handler` exported by a compatible encoding extension component, such as [`otelcol.encoding.text`][] or [`otelcol.encoding.jsonlog`][].
+The `suffix` argument matches the end of the S3 object key.
+Specify the entire suffix, including a leading period when applicable, for example, `.txt`.
+
+[`otelcol.encoding.text`]: ../otelcol.encoding.text/
+[`otelcol.encoding.jsonlog`]: ../otelcol.encoding.jsonlog/
+
 ### `output`
 
 {{< badge text="Required" >}}
@@ -155,7 +175,9 @@ Time-based configuration (`start_time`/`end_time`) and SQS configuration can't b
 
 `otelcol.receiver.awss3` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
+
+### Receive traces
 
 This example forwards received traces through a batch processor before finally sending it to an OTLP-capable endpoint:
 
@@ -208,6 +230,39 @@ otelcol.exporter.otlphttp "default" {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
+```
+
+### Decode text logs
+
+This example uses `otelcol.encoding.text` to decode log records from S3 objects with keys that end in `.txt`.
+The receiver forwards the decoded logs to `otelcol.exporter.debug`:
+
+```alloy
+otelcol.encoding.text "default" {
+	encoding = "utf8"
+}
+
+otelcol.receiver.awss3 "logs" {
+	start_time = "2024-01-01 01:00"
+	end_time   = "2024-01-02"
+
+	s3downloader {
+		region    = "us-west-1"
+		s3_bucket = "mybucket"
+		s3_prefix = "logs"
+	}
+
+	encoding {
+		extension = otelcol.encoding.text.default.handler
+		suffix    = ".txt"
+	}
+
+	output {
+		logs = [otelcol.exporter.debug.default.input]
+	}
+}
+
+otelcol.exporter.debug "default" {}
 ```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->

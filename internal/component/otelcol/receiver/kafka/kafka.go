@@ -26,10 +26,8 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			a := args.(Arguments)
-			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
-			return receiver.New(opts, fact, a)
+			return receiver.New(opts, fact, args.(Arguments))
 		},
 	})
 }
@@ -49,24 +47,26 @@ type Arguments struct {
 	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
 	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
-	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 
-	Authentication   otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata         otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
-	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
-	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
-	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
-	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
+	Authentication      otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata            otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	AutoCommit          AutoCommitArguments                  `alloy:"autocommit,block,optional"`
+	MessageMarking      MessageMarkingArguments              `alloy:"message_marking,block,optional"`
+	HeaderExtraction    HeaderExtraction                     `alloy:"header_extraction,block,optional"`
+	PartitionProcessing PartitionProcessingArguments         `alloy:"partition_processing,block,optional"`
+	TLS                 *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
-	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
-	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
-	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
-	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
-	GroupRebalanceStrategy string        `alloy:"group_rebalance_strategy,attr,optional"`
-	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
-	RackID                 string        `alloy:"rack_id,attr,optional"`
-	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
-	ConnIdleTimeout        time.Duration `alloy:"conn_idle_timeout,attr,optional"`
+	MinFetchSize             int32         `alloy:"min_fetch_size,attr,optional"`
+	MaxFetchSize             int32         `alloy:"max_fetch_size,attr,optional"`
+	MaxPartitionFetchSize    int32         `alloy:"max_partition_fetch_size,attr,optional"`
+	MaxFetchWait             time.Duration `alloy:"max_fetch_wait,attr,optional"`
+	GroupRebalanceStrategy   string        `alloy:"group_rebalance_strategy,attr,optional"`
+	GroupRebalanceStrategies []string      `alloy:"group_rebalance_strategies,attr,optional"`
+	GroupInstanceID          string        `alloy:"group_instance_id,attr,optional"`
+	RackID                   string        `alloy:"rack_id,attr,optional"`
+	UseLeaderEpoch           bool          `alloy:"use_leader_epoch,attr,optional"`
+	ConnIdleTimeout          time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -85,20 +85,19 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-		Brokers:                []string{"localhost:9092"},
-		ClientID:               "otel-collector",
-		GroupID:                "otel-collector",
-		InitialOffset:          "latest",
-		SessionTimeout:         10 * time.Second,
-		HeartbeatInterval:      3 * time.Second,
-		MinFetchSize:           1,
-		MaxFetchSize:           1048576,
-		MaxPartitionFetchSize:  1048576,
-		MaxFetchWait:           250 * time.Millisecond,
-		GroupRebalanceStrategy: "range",
-		RackID:                 "",
-		UseLeaderEpoch:         true,
-		ConnIdleTimeout:        9 * time.Minute,
+		Brokers:               []string{"localhost:9092"},
+		ClientID:              "otel-collector",
+		GroupID:               "otel-collector",
+		InitialOffset:         "latest",
+		SessionTimeout:        10 * time.Second,
+		HeartbeatInterval:     3 * time.Second,
+		MinFetchSize:          1,
+		MaxFetchSize:          1048576,
+		MaxPartitionFetchSize: 1048576,
+		MaxFetchWait:          250 * time.Millisecond,
+		RackID:                "",
+		UseLeaderEpoch:        true,
+		ConnIdleTimeout:       9 * time.Minute,
 		Logs: KafkaReceiverTopicEncodingConfig{
 			Topics:   []string{"otlp_logs"},
 			Encoding: "otlp_proto",
@@ -116,6 +115,7 @@ func (args *Arguments) SetToDefault() {
 	args.AutoCommit.SetToDefault()
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
+	args.PartitionProcessing.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -131,13 +131,43 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	switch args.GroupRebalanceStrategy {
-	case "range", "roundrobin", "sticky", "cooperative-sticky":
-	default:
-		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	// Upstream rejects setting both forms, whatever their values.
+	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != "" {
+		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
+	}
+
+	// Upstream rejects configuring both sasl and kerberos authentication. plaintext also
+	// converts to upstream's sasl field (see KafkaAuthenticationArguments.Convert), so it
+	// counts as sasl here too.
+	if (args.Authentication.SASL != nil || args.Authentication.Plaintext != nil) && args.Authentication.Kerberos != nil {
+		return fmt.Errorf("authentication.sasl (or authentication.plaintext) and authentication.kerberos are mutually exclusive")
+	}
+
+	for _, strategy := range args.GroupRebalanceStrategies {
+		if err := validateGroupRebalanceStrategy(strategy); err != nil {
+			return err
+		}
+	}
+
+	// An empty singular means unset; Convert applies the default.
+	if args.GroupRebalanceStrategy != "" {
+		if err := validateGroupRebalanceStrategy(args.GroupRebalanceStrategy); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+const defaultGroupRebalanceStrategy = "range"
+
+func validateGroupRebalanceStrategy(strategy string) error {
+	switch strategy {
+	case "range", "roundrobin", "sticky", "cooperative-sticky":
+		return nil
+	default:
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	}
 }
 
 type KafkaReceiverTopicEncodingConfig struct {
@@ -147,7 +177,13 @@ type KafkaReceiverTopicEncodingConfig struct {
 	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
 }
 
-func (args Arguments) logDeprecations(logger *slog.Logger) {
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
 	for _, signal := range []struct {
 		name string
 		cfg  KafkaReceiverTopicEncodingConfig
@@ -164,6 +200,17 @@ func (args Arguments) logDeprecations(logger *slog.Logger) {
 			)
 		}
 	}
+
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	if args.GroupRebalanceStrategy != "" {
+		logger.Warn(
+			"group_rebalance_strategy is deprecated, use group_rebalance_strategies instead",
+			"group_rebalance_strategy", args.GroupRebalanceStrategy,
+		)
+	}
+	args.Authentication.LogDeprecations(logger)
 }
 
 func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {
@@ -208,7 +255,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
-	var result kafkareceiver.Config
+	result := *kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 	err := mapstructure.Decode(input, &result)
 	if err != nil {
 		return nil, err
@@ -223,16 +270,29 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ConsumerConfig.GroupID = args.GroupID
 	result.ClientConfig.ClientID = args.ClientID
 	result.ConsumerConfig.InitialOffset = args.InitialOffset
-	result.ClientConfig.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
+	// Do not set ResolveCanonicalBootstrapServersOnly - it is deprecated and no longer exists upstream.
 	result.ClientConfig.Metadata = args.Metadata.Convert()
 	result.ConsumerConfig.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
+	result.PartitionProcessing = args.PartitionProcessing.Convert()
 	result.ConsumerConfig.MinFetchSize = args.MinFetchSize
 	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
 	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
-	result.ConsumerConfig.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
+	// Upstream removed the singular GroupRebalanceStrategy field.
+	switch {
+	case len(args.GroupRebalanceStrategies) > 0:
+		strategies := make([]configkafka.GroupRebalanceStrategy, 0, len(args.GroupRebalanceStrategies))
+		for _, strategy := range args.GroupRebalanceStrategies {
+			strategies = append(strategies, configkafka.GroupRebalanceStrategy(strategy))
+		}
+		result.ConsumerConfig.GroupRebalanceStrategies = strategies
+	case args.GroupRebalanceStrategy != "":
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)}
+	default:
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{defaultGroupRebalanceStrategy}
+	}
 	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
 	result.ClientConfig.RackID = args.RackID
 	result.ClientConfig.UseLeaderEpoch = args.UseLeaderEpoch
@@ -310,6 +370,32 @@ func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 	return kafkareceiver.MessageMarking{
 		After:   args.AfterExecution,
 		OnError: args.IncludeUnsuccessful,
+	}
+}
+
+// PartitionProcessingArguments controls optional ordered, independent
+// processing of assigned Kafka partitions.
+type PartitionProcessingArguments struct {
+	// Independent enables ordered processing by independent partition workers.
+	Independent bool `alloy:"independent,attr,optional"`
+
+	// MaxBufferedBatches bounds the number of fetched batches waiting for each
+	// partition worker.
+	MaxBufferedBatches int `alloy:"max_buffered_batches,attr,optional"`
+}
+
+func (args *PartitionProcessingArguments) SetToDefault() {
+	*args = PartitionProcessingArguments{
+		Independent:        false,
+		MaxBufferedBatches: 1,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args PartitionProcessingArguments) Convert() kafkareceiver.PartitionProcessing {
+	return kafkareceiver.PartitionProcessing{
+		Independent:        args.Independent,
+		MaxBufferedBatches: args.MaxBufferedBatches,
 	}
 }
 

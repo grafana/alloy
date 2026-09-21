@@ -11,6 +11,7 @@ otelcol.receiver.awscloudwatch "default" {
 				names      = ["kube-apiserver-ea9c831555adca1815ae04b87661klasdj"]
 			}
 		}
+		initial_lookback = "45m0s"
 	}
 
 	output {

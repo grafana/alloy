@@ -66,6 +66,24 @@ jobs:
     with:
       img-name: alloy-boringcrypto
 
+  publish_linux_distroless_container:
+    needs: validate
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-distroless
+
+  publish_linux_boringcrypto_distroless_container:
+    needs: validate
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-boringcrypto-distroless
+
   publish_windows_container:
     needs: validate
     uses: ./.github/workflows/publish-alloy-windows.yml
@@ -78,7 +96,7 @@ jobs:
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -154,7 +172,7 @@ jobs:
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
-    container: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -226,7 +244,7 @@ jobs:
 
   upload_release_artifacts:
     name: Upload release artifacts
-    container: grafana/alloy-build-image:v0.1.34@sha256:4371598809230ffd7611367ba0dcb92bbc8b74bda88471293e5d478b48a0d186
+    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:

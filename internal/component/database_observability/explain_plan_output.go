@@ -15,6 +15,26 @@ const (
 	ExplainPlanOutputOperationAttachedSubquery     ExplainPlanOutputOperation = "Attached Subquery"
 	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
 	ExplainPlanOutputOperationUnknown              ExplainPlanOutputOperation = "Unknown"
+
+	// SQL Server showplan-specific operations with no equivalent among the operations above.
+	ExplainPlanOutputOperationComputeScalar ExplainPlanOutputOperation = "Compute Scalar"
+	ExplainPlanOutputOperationFilter        ExplainPlanOutputOperation = "Filter"
+	ExplainPlanOutputOperationTop           ExplainPlanOutputOperation = "Top"
+	ExplainPlanOutputOperationSpool         ExplainPlanOutputOperation = "Spool"
+	ExplainPlanOutputOperationParallelism   ExplainPlanOutputOperation = "Parallelism"
+
+	// Data modification statements (INSERT/UPDATE/DELETE/MERGE). SQL Server
+	// showplan wraps all four in the same <Update> XML element - LogicalOp is
+	// what actually distinguishes them - so these are split out individually
+	// rather than collapsed into one generic operation.
+	ExplainPlanOutputOperationInsert ExplainPlanOutputOperation = "Insert"
+	ExplainPlanOutputOperationUpdate ExplainPlanOutputOperation = "Update"
+	ExplainPlanOutputOperationDelete ExplainPlanOutputOperation = "Delete"
+	ExplainPlanOutputOperationMerge  ExplainPlanOutputOperation = "Merge"
+	// ExplainPlanOutputOperationAssert validates a condition (referential
+	// integrity, scalar subquery cardinality, etc.) and passes the row
+	// through unchanged if it holds.
+	ExplainPlanOutputOperationAssert ExplainPlanOutputOperation = "Assert"
 )
 
 type ExplainPlanAccessType string
@@ -127,8 +147,13 @@ type ExplainPlanOutput struct {
 }
 
 type ExplainPlanMetadataInfo struct {
-	DatabaseEngine  string `json:"databaseEngine"`
-	DatabaseVersion string `json:"databaseVersion"`
+	// DatabaseEngine/DatabaseVersion are omitempty because sql_server no
+	// longer populates them (grafana-dbo11y-app#3471 found no consumer ever
+	// read them, and the engine is now carried as a Loki label instead,
+	// which is queryable, unlike this field). mysql/postgres still set both
+	// unconditionally, so omitempty has no effect on their existing output.
+	DatabaseEngine  string `json:"databaseEngine,omitempty"`
+	DatabaseVersion string `json:"databaseVersion,omitempty"`
 	QueryIdentifier string `json:"queryIdentifier"`
 	GeneratedAt     string `json:"generatedAt"`
 
@@ -154,5 +179,14 @@ type ExplainPlanNodeDetails struct {
 	Condition     *string                   `json:"condition,omitempty"`
 	GroupByKeys   []string                  `json:"groupByKeys,omitempty"`
 	SortKeys      []string                  `json:"sortKeys,omitempty"`
-	Warning       *string                   `json:"warning,omitempty"`
+	// Warnings holds engine-reported plan warnings for this node (for example
+	// SQL Server's missing-statistics or no-join-predicate warnings). Unused by
+	// mysql/postgres today; a node can carry more than one simultaneously, hence
+	// a slice rather than a single string.
+	Warnings []string `json:"warnings,omitempty"`
+	// UnrecognizedOperator holds the engine-native operator name when Operation
+	// is ExplainPlanOutputOperationUnknown, so an unmodeled operator is
+	// diagnosable from the emitted output alone rather than requiring the raw
+	// plan. Never set when Operation is anything else.
+	UnrecognizedOperator *string `json:"unrecognizedOperator,omitempty"`
 }

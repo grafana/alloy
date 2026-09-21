@@ -1,10 +1,12 @@
 package otelcol
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
+	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -38,6 +40,10 @@ type HTTPServerArguments struct {
 	ReadTimeout       time.Duration `alloy:"read_timeout,attr,optional"`
 	WriteTimeout      time.Duration `alloy:"write_timeout,attr,optional"`
 	ReadHeaderTimeout time.Duration `alloy:"read_header_timeout,attr,optional"`
+
+	// Keepalive configures HTTP keep-alive settings. When set, it takes
+	// precedence over the deprecated idle_timeout attribute above.
+	Keepalive *HTTPKeepaliveServerArguments `alloy:"keepalive,block,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
@@ -61,6 +67,10 @@ func copyStringSlice(s []string) []string {
 func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
 		return configoptional.None[otelconfighttp.ServerConfig](), nil
+	}
+
+	if args.KeepAlivesEnabled != nil && !*args.KeepAlivesEnabled && args.Keepalive != nil {
+		return configoptional.None[otelconfighttp.ServerConfig](), fmt.Errorf("keep_alives_enabled can't be false when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// If auth is set by the user retrieve the associated extension from the handler.
@@ -98,6 +108,7 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
+		Keepalive:             args.Keepalive.Convert(),
 	}), nil
 }
 
@@ -121,11 +132,41 @@ func (args *HTTPServerArguments) Extensions() map[otelcomponent.ID]otelcomponent
 	return m
 }
 
+// HTTPKeepaliveServerArguments configures HTTP keep-alive settings for an HTTP
+// server.
+type HTTPKeepaliveServerArguments struct {
+	IdleTimeout time.Duration `alloy:"idle_timeout,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*HTTPKeepaliveServerArguments)(nil)
+
+// DefaultKeepaliveServerIdleTimeout matches otelconfighttp.NewDefaultKeepaliveServerConfig().
+const DefaultKeepaliveServerIdleTimeout = 1 * time.Minute
+
+// SetToDefault implements syntax.Defaulter.
+func (args *HTTPKeepaliveServerArguments) SetToDefault() {
+	*args = HTTPKeepaliveServerArguments{
+		IdleTimeout: DefaultKeepaliveServerIdleTimeout,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args *HTTPKeepaliveServerArguments) Convert() configoptional.Optional[otelconfighttp.KeepaliveServerConfig] {
+	if args == nil {
+		return configoptional.None[otelconfighttp.KeepaliveServerConfig]()
+	}
+
+	return configoptional.Some(otelconfighttp.KeepaliveServerConfig{
+		IdleTimeout: args.IdleTimeout,
+	})
+}
+
 // CORSArguments holds shared CORS settings for components which launch HTTP
 // servers.
 type CORSArguments struct {
 	AllowedOrigins []string `alloy:"allowed_origins,attr,optional"`
 	AllowedHeaders []string `alloy:"allowed_headers,attr,optional"`
+	ExposedHeaders []string `alloy:"exposed_headers,attr,optional"`
 
 	MaxAge int `alloy:"max_age,attr,optional"`
 }
@@ -139,6 +180,7 @@ func (args *CORSArguments) Convert() configoptional.Optional[otelconfighttp.CORS
 	return configoptional.Some(otelconfighttp.CORSConfig{
 		AllowedOrigins: copyStringSlice(args.AllowedOrigins),
 		AllowedHeaders: copyStringSlice(args.AllowedHeaders),
+		ExposedHeaders: copyStringSlice(args.ExposedHeaders),
 		MaxAge:         args.MaxAge,
 	})
 }
@@ -174,12 +216,58 @@ type HTTPClientArguments struct {
 	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	Cookies *Cookies `alloy:"cookies,block,optional"`
+
+	// Keepalive configures HTTP keep-alive settings. When set, it takes
+	// precedence over the deprecated idle_conn_timeout, max_idle_conns, and
+	// max_idle_conns_per_host attributes above.
+	Keepalive *KeepaliveArguments `alloy:"keepalive,block,optional"`
+}
+
+// KeepaliveArguments configures HTTP keep-alive settings for an HTTP client.
+type KeepaliveArguments struct {
+	IdleConnTimeout     time.Duration `alloy:"idle_conn_timeout,attr,optional"`
+	MaxIdleConns        int           `alloy:"max_idle_conns,attr,optional"`
+	MaxIdleConnsPerHost int           `alloy:"max_idle_conns_per_host,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*KeepaliveArguments)(nil)
+
+// Default values match net/http.DefaultTransport, mirroring the exporter-level
+// defaults for the deprecated idle_conn_timeout/max_idle_conns attributes.
+const (
+	DefaultKeepaliveIdleConnTimeout = 90 * time.Second
+	DefaultKeepaliveMaxIdleConns    = 100
+)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *KeepaliveArguments) SetToDefault() {
+	*args = KeepaliveArguments{
+		IdleConnTimeout: DefaultKeepaliveIdleConnTimeout,
+		MaxIdleConns:    DefaultKeepaliveMaxIdleConns,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args *KeepaliveArguments) Convert() configoptional.Optional[otelconfighttp.KeepaliveClientConfig] {
+	if args == nil {
+		return configoptional.None[otelconfighttp.KeepaliveClientConfig]()
+	}
+
+	return configoptional.Some(otelconfighttp.KeepaliveClientConfig{
+		IdleConnTimeout:     args.IdleConnTimeout,
+		MaxIdleConns:        args.MaxIdleConns,
+		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+	})
 }
 
 // Convert converts args into the upstream type.
 func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error) {
 	if args == nil {
 		return nil, nil
+	}
+
+	if args.DisableKeepAlives && args.Keepalive != nil {
+		return nil, fmt.Errorf("disable_keep_alives can't be true when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// Configure the authentication if args.Auth is set.
@@ -221,7 +309,8 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Auth: authentication,
 
-		Cookies: args.Cookies.Convert(),
+		Cookies:   args.Cookies.Convert(),
+		Keepalive: args.Keepalive.Convert(),
 	}
 
 	if args.CompressionParams != nil {
