@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -66,6 +67,10 @@ func copyStringSlice(s []string) []string {
 func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfighttp.ServerConfig], error) {
 	if args == nil {
 		return configoptional.None[otelconfighttp.ServerConfig](), nil
+	}
+
+	if args.KeepAlivesEnabled != nil && !*args.KeepAlivesEnabled && args.Keepalive != nil {
+		return configoptional.None[otelconfighttp.ServerConfig](), fmt.Errorf("keep_alives_enabled can't be false when keepalive is also configured; keepalive always re-enables keep-alives")
 	}
 
 	// If auth is set by the user retrieve the associated extension from the handler.

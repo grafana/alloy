@@ -94,6 +94,16 @@ func TestHTTPServerArguments_ConvertKeepalive(t *testing.T) {
 		require.True(t, cfg.Get().Keepalive.HasValue())
 		require.Equal(t, 30*time.Second, cfg.Get().Keepalive.Get().IdleTimeout)
 	})
+
+	t.Run("keep_alives_enabled false conflicts with keepalive", func(t *testing.T) {
+		disabled := false
+		args := &otelcol.HTTPServerArguments{
+			KeepAlivesEnabled: &disabled,
+			Keepalive:         &otelcol.HTTPKeepaliveServerArguments{},
+		}
+		_, err := args.Convert()
+		require.Error(t, err)
+	})
 }
 
 func TestHTTPKeepaliveServerArguments_SetToDefault(t *testing.T) {
