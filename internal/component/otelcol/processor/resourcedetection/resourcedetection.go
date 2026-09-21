@@ -79,6 +79,9 @@ type Arguments struct {
 	// HTTP client settings for the detector
 	// Timeout default is 5s
 	Timeout time.Duration `alloy:"timeout,attr,optional"`
+
+	// Retry controls retry and backoff for each detection attempt.
+	Retry RetryArguments `alloy:"retry,block,optional"`
 	// Client otelcol.HTTPClientArguments `alloy:",squash"`
 	//TODO: Uncomment this later, and remove Timeout?
 	//      Can we just get away with a timeout, or do we need all the http client settings?
@@ -229,6 +232,35 @@ func (args *Arguments) SetToDefault() {
 	}
 	args.DetectorConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	args.Retry.SetToDefault()
+}
+
+// RetryArguments is otelcol.RetryArguments defaulted from the upstream
+// resourcedetection factory, whose values differ from the shared retry block's.
+type RetryArguments otelcol.RetryArguments
+
+var (
+	_ syntax.Defaulter = (*RetryArguments)(nil)
+	_ syntax.Validator = (*RetryArguments)(nil)
+)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *RetryArguments) SetToDefault() {
+	upstream := resourcedetectionprocessor.NewFactory().CreateDefaultConfig().(*resourcedetectionprocessor.Config).Retry
+
+	*args = RetryArguments{
+		Enabled:             upstream.Enabled,
+		InitialInterval:     upstream.InitialInterval,
+		RandomizationFactor: upstream.RandomizationFactor,
+		Multiplier:          upstream.Multiplier,
+		MaxInterval:         upstream.MaxInterval,
+		MaxElapsedTime:      upstream.MaxElapsedTime,
+	}
+}
+
+// Validate implements syntax.Validator.
+func (args *RetryArguments) Validate() error {
+	return (*otelcol.RetryArguments)(args).Validate()
 }
 
 // Validate implements syntax.Validator.
@@ -274,7 +306,13 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	return nil
+	// Leave the retry invariants to the collector rather than restating them here.
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+
+	return otelCfg.(*resourcedetectionprocessor.Config).Validate()
 }
 
 func (args Arguments) ConvertDetectors() []string {
@@ -337,6 +375,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	result.Retry = *(*otelcol.RetryArguments)(&args.Retry).Convert()
 
 	return &result, nil
 }

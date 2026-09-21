@@ -113,7 +113,6 @@ The following fields are exported and can be referenced by other components:
 
 Each target includes the following labels:
 
-* `__meta_hetzner_datacenter`: The data center of the server
 * `__meta_hetzner_public_ipv4`: The public IPv4 address of the server.
 * `__meta_hetzner_public_ipv6_network`: The public IPv6 network (/64) of the server.
 * `__meta_hetzner_server_id`: The ID of the server.
@@ -143,7 +142,9 @@ The labels below are only available for targets with `role` set to `hcloud`:
 
 The labels below are only available for targets with `role` set to `robot`:
 
+* `__meta_hetzner_datacenter`: The data center of the server.
 * `__meta_hetzner_robot_cancelled`: The server cancellation status.
+* `__meta_hetzner_robot_datacenter`: The data center of the server. Duplicates `__meta_hetzner_datacenter`.
 * `__meta_hetzner_robot_product`: The product of the server.
 
 ## Component health

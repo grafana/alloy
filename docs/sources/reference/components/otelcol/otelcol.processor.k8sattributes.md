@@ -272,6 +272,10 @@ The `pod_association` block doesn't support any arguments and is configured full
 
 The `pod_association` block can be repeated multiple times, to configure additional rules.
 
+{{< admonition type="note" >}}
+Configuring two `pod_association` blocks with the same set of `source` blocks, regardless of order, fails to load with a `duplicate pod association` error.
+{{< /admonition >}}
+
 #### Example
 
 ```alloy
