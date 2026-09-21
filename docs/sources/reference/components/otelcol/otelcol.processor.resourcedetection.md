@@ -154,10 +154,12 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`upcloud`][upcloud]                   | Queries the UpCloud instance metadata API to retrieve various resource attributes.                         | no       |
 | [`vultr`][vultr]                       | Queries the Vultr instance metadata API to retrieve various resource attributes.                           | no       |
 | [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                         | no       |
+| [`retry`][retry]                       | Configures retry and backoff for each detection attempt.                                                   | no       |
 | [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                          | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+[retry]: #retry
 [akamai]: #akamai
 [alibaba_ecs]: #alibaba_ecs
 [ec2]: #ec2
@@ -188,6 +190,26 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [vultr]: #vultr
 
 {{< /docs/alloy-config >}}
+
+### `retry`
+
+The `retry` block configures retry and backoff for each detection attempt.
+A detector that fails is retried with exponential backoff until it succeeds or the budget runs out.
+
+The following arguments are supported:
+
+| Name                   | Type       | Description                                                                | Default | Required |
+|------------------------|------------|----------------------------------------------------------------------------|---------|----------|
+| `enabled`              | `bool`     | Enables retrying failed detection attempts.                                | `true`  | no       |
+| `initial_interval`     | `duration` | Initial time to wait before retrying a failed detection.                   | `"1s"`  | no       |
+| `max_elapsed_time`     | `duration` | Maximum time spent on a detection, including retries. `"0s"` is unbounded. | `"0s"`  | no       |
+| `max_interval`         | `duration` | Upper bound on the wait between retries.                                   | `"30s"` | no       |
+| `multiplier`           | `number`   | Factor to grow the wait by after each failed attempt.                      | `2`     | no       |
+| `randomization_factor` | `number`   | Jitter applied to the wait, as a fraction of the interval.                 | `0.5`   | no       |
+
+These defaults are more aggressive than the shared retry block the `otelcol` exporters use, because detection runs at startup rather than per request.
+
+When `max_elapsed_time` is `"0s"`, `timeout` bounds the whole detection instead, so one of the two must be greater than zero while `enabled` is `true`.
 
 ### `output`
 
