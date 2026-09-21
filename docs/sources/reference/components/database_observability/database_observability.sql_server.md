@@ -69,6 +69,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance] | Define one SQL Server instance to monitor. Repeat the block to monitor several instances. | no |
 | `database_instance` > [`cloud_provider`][cloud_provider] | Provide Cloud Provider information for one instance. | no |
+| [`clustering`][clustering]           | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no |
 | [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
@@ -80,6 +81,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[clustering]: #clustering
 [explain_plans]: #explain_plans
 [query_details]: #query_details
 [query_metrics]: #query_metrics
@@ -170,6 +172,26 @@ database_observability.sql_server "pool" {
   }
 }
 ```
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enables distributing instances with other cluster nodes.  | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `database_observability.sql_server` component instance opts-in to distributing its configured instances between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All component instances opting in to clustering use the instance key of each configured instance, `<host>:<port>/<database>`, and a consistent hashing algorithm to determine ownership of each instance between the cluster peers.
+Each peer then only collects from the subset of instances it's responsible for, and only exports the targets of those instances, so `prometheus.scrape` components on the same node scrape exactly the instances the node owns.
+When a node joins or leaves the cluster, every peer recalculates ownership: expect a short gap or a brief duplicate collection for an instance while its ownership moves.
+While the cluster isn't yet ready to admit traffic, for example while it's still forming and waiting for the minimum cluster size, the component doesn't collect from any instance.
+
+Clustering is also useful with a single instance: when several cluster nodes run an identical configuration, exactly one node collects from the instance at a time, which gives you a highly available setup without duplicate collection.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `database_observability.sql_server` collects from every configured instance.
+
+[using clustering]: ../../../../get-started/clustering/
 
 ### `explain_plans`
 
