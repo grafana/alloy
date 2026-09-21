@@ -13,4 +13,5 @@ The following arguments are supported:
 | `max_idle_conns_per_host` | `int`      | Limits the number of idle HTTP connections the host can keep open.     | `0`     | no       |
 
 When set, `keepalive` takes precedence over the deprecated `idle_conn_timeout`, `max_idle_conns`, and
-`max_idle_conns_per_host` arguments, which are then ignored.
+`max_idle_conns_per_host` arguments, which are then ignored. Setting `keepalive` always enables
+keep-alives, so it can't be combined with `disable_keep_alives = true`.
