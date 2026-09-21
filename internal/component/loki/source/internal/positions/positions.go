@@ -186,8 +186,9 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 // readLegacyFile reads and parses the legacy positions file.
 //
 // Returns (nil, nil) if the file doesn't exist or is empty. Returns (nil,
-// err) if it exists but a genuine I/O error (e.g. permission denied)
-// prevented reading it (#5493). Malformed YAML remains non-fatal.
+// err) if it exists but is not a regular file, or if a genuine I/O error
+// (e.g. permission denied) prevented reading it (#5493). Malformed YAML
+// remains non-fatal.
 func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 	oldFile, err := os.Stat(legacyPath)
 	if err != nil {
@@ -197,6 +198,13 @@ func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
 		}
 		// Real error, not "doesn't exist".
 		return nil, fmt.Errorf("error checking legacy positions file %q: %w", legacyPath, err)
+	}
+	// Reject anything that isn't a regular file before looking at the size. A
+	// directory reports a size of 0 on Windows but a non-zero one on Unix, so
+	// without this check the size test below would silently treat a directory
+	// as "no legacy file" on Windows while Unix failed loudly on the read.
+	if !oldFile.Mode().IsRegular() {
+		return nil, fmt.Errorf("legacy positions path %q is not a regular file", legacyPath)
 	}
 	if oldFile.Size() == 0 {
 		l.Info("no legacy positions file found", "path", legacyPath)

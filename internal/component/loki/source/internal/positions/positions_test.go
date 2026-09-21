@@ -115,8 +115,8 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 
 func TestLegacyConversionUnreadableFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	// A directory can't be read as a file, so this reliably forces a read
-	// error without relying on chmod/permission bits.
+	// A directory is not a regular file, so this reliably forces an error on
+	// every platform without relying on chmod/permission bits.
 	legacy := filepath.Join(tmpDir, "legacy")
 	require.NoError(t, os.Mkdir(legacy, 0750))
 
@@ -134,8 +134,8 @@ func TestLegacyConversionUnreadableFile(t *testing.T) {
 
 func TestConvertLegacyPositionsFileJournalUnreadableFile(t *testing.T) {
 	tmpDir := t.TempDir()
-	// A directory can't be read as a file, so this reliably forces a read
-	// error without relying on chmod/permission bits.
+	// A directory is not a regular file, so this reliably forces an error on
+	// every platform without relying on chmod/permission bits.
 	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
 	require.NoError(t, os.Mkdir(legacyFile, 0750))
 
