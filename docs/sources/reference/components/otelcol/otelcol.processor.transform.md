@@ -198,14 +198,9 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
 
-{{< admonition type="warning" >}}
-**EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
-Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
-
-[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-{{< /admonition >}}
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
 
 [OTTL Context]: #ottl-context
 
@@ -238,14 +233,9 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `metric_statements`, the top-level `error_mode` is applied.
 
-{{< admonition type="warning" >}}
-**EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
-Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
-
-[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-{{< /admonition >}}
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
 
 ### `statements`
 
@@ -317,14 +307,11 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `trace_statements`, the top-level `error_mode` is applied.
 
-{{< admonition type="warning" >}}
-**EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
-Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
-{{< /admonition >}}
 
 ### OTTL Context
 
