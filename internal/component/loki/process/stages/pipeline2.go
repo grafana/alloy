@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"slices"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -70,21 +69,12 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 	for _, stream := range batch.Streams() {
 		entries = slices.Grow(entries[:0], len(stream.Entries))
 
-		extracted := make(map[string]any, len(stream.Labels))
-		for k, v := range stream.Labels {
-			extracted[string(k)] = string(v)
-		}
-
-		for i, e := range stream.Entries {
+		for _, e := range stream.Entries {
 			// Stages modify labels in place and the batch is only borrowed, so every
 			// entry needs its own labels.
 			// FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
 			entry := loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e)
-			if i == len(stream.Entries)-1 {
-				entries = append(entries, Entry{Extracted: extracted, Entry: entry})
-			} else {
-				entries = append(entries, Entry{Extracted: maps.Clone(extracted), Entry: entry})
-			}
+			entries = append(entries, Entry{Extracted: make(map[string]any), Entry: entry})
 		}
 
 		if err := p.inner.process(ctx, entries); err != nil {
@@ -166,6 +156,14 @@ func newPipeline(
 }
 
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {
+	// Seed extracted with labels. It is important to do it
+	// here since a nested pipeline within a match stage needs to
+	// seed it again whith any new labels.
+	for i := range entries {
+		for k, v := range entries[i].Labels {
+			entries[i].Extracted[string(k)] = string(v)
+		}
+	}
 	return p.next(ctx, entries)
 }
 
