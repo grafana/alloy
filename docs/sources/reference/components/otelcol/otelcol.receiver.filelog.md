@@ -83,6 +83,10 @@ To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, s
 
 When `skip_unmodified_files` is `true`, a file whose path and modification time are unchanged since the previous poll is skipped without being opened, fingerprinted, or read. This trades pure fingerprint-based identification for a faster path and modification time check. Only enable it in environments where an unchanged modification time reliably means unchanged content.
 
+{{< admonition type="note" >}}
+On Windows, matching patterns in `include` and `exclude` are case-insensitive by default. This doesn't affect other operating systems.
+{{< /admonition >}}
+
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
 ### `operators`
