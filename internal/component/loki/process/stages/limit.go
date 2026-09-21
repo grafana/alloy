@@ -5,21 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"
 )
 
-// Configuration errors.
 var (
-	ErrLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
-	ErrLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
-	ratelimitDropReason             = "ratelimit_drop_stage"
+	errLimitStageDropEntry          = errors.New("entry dropped by limit stage")
+	errLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
+	errLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
 )
 
-// MinReasonableMaxDistinctLabels provides a sensible default.
-const MinReasonableMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB memory
+const (
+	// minReasonableMaxDistinctLabels provides a sensible default.
+	minReasonableMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB memory
+	ratelimitDropReason            = "ratelimit_drop_stage"
+)
 
 // LimitConfig sets up a Limit stage.
 type LimitConfig struct {
@@ -30,25 +33,32 @@ type LimitConfig struct {
 	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
 }
 
-func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {
+var (
+	_ Stage          = (*limitStage)(nil)
+	_ Stopper        = (*limitStage)(nil)
+	_ entryProcessor = (*limitStage)(nil)
+)
+
+func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
 	err := validateLimitConfig(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	logger = logger.With("stage", "limit")
-	if cfg.ByLabelName != "" && cfg.MaxDistinctLabels < MinReasonableMaxDistinctLabels {
-		logger.Warn(fmt.Sprintf("max_distinct_labels was adjusted up to the minimal reasonable value of %d", MinReasonableMaxDistinctLabels))
-		cfg.MaxDistinctLabels = MinReasonableMaxDistinctLabels
+	logger := opts.slogger.With("stage", "limit")
+	if cfg.ByLabelName != "" && cfg.MaxDistinctLabels < minReasonableMaxDistinctLabels {
+		logger.Warn(fmt.Sprintf("max_distinct_labels was adjusted up to the minimal reasonable value of %d", minReasonableMaxDistinctLabels))
+		cfg.MaxDistinctLabels = minReasonableMaxDistinctLabels
 	}
 
-	dropCount, err := getDropCountMetric(registerer)
+	dropCount, err := getDropCountMetric(opts.registerer)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	r := &limitStage{
+		next:      opts.next,
 		logger:    logger,
 		cfg:       cfg,
 		dropCount: dropCount,
@@ -57,13 +67,13 @@ func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.R
 	}
 
 	if cfg.ByLabelName != "" {
-		r.dropCountByLabel, err = getDropCountByLabelMetric(registerer)
+		r.dropCountByLabel, err = getDropCountByLabelMetric(opts.registerer)
 		if err != nil {
 			return nil, err
 		}
 		newRateLimiter := func() *rate.Limiter { return rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst) }
 		gcCb := func() { r.dropCountByLabel.Reset() }
-		r.rateLimiterByLabel = NewGenMap[model.LabelValue, *rate.Limiter](cfg.MaxDistinctLabels, newRateLimiter, gcCb)
+		r.rateLimiterByLabel = newGenMap[model.LabelValue, *rate.Limiter](cfg.MaxDistinctLabels, newRateLimiter, gcCb)
 	} else {
 		r.rateLimiter = rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst)
 	}
@@ -73,29 +83,29 @@ func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.R
 
 func validateLimitConfig(cfg LimitConfig) error {
 	if cfg.Rate <= 0 || cfg.Burst <= 0 {
-		return ErrLimitStageInvalidRateOrBurst
+		return errLimitStageInvalidRateOrBurst
 	}
 
 	if cfg.ByLabelName != "" && !cfg.Drop {
-		return ErrLimitStageByLabelMustDrop
+		return errLimitStageByLabelMustDrop
 	}
 	return nil
 }
 
 // limitStage applies Label matchers to determine if the include stages should be run
 type limitStage struct {
-	logger             *slog.Logger
-	cfg                LimitConfig
-	rateLimiter        *rate.Limiter
-	rateLimiterByLabel GenerationalMap[model.LabelValue, *rate.Limiter]
-	dropCount          *prometheus.CounterVec
-	dropCountByLabel   *prometheus.CounterVec
-	ctx                context.Context
-	cancel             context.CancelFunc
-}
+	next   nextFn
+	logger *slog.Logger
+	cfg    LimitConfig
 
-func (m *limitStage) Stop() {
-	m.cancel()
+	rateLimiter        *rate.Limiter
+	rateLimiterByLabel generationalMap[model.LabelValue, *rate.Limiter]
+
+	dropCount        *prometheus.CounterVec
+	dropCountByLabel *prometheus.CounterVec
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (m *limitStage) Run(in chan Entry) chan Entry {
@@ -103,54 +113,82 @@ func (m *limitStage) Run(in chan Entry) chan Entry {
 	go func() {
 		defer close(out)
 		for e := range in {
-			if !m.shouldThrottle(e.Labels) {
-				out <- e
+			if err := m.throttle(m.ctx, e.Labels); err != nil {
 				continue
 			}
+			out <- e
 		}
 	}()
 	return out
 }
 
-func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
+func (m *limitStage) process(ctx context.Context, entries []Entry) error {
+	var dst int
+
+	for _, e := range entries {
+		// throttle blocks in the rate limiter until ctx is canceled. The stage
+		// deliberately has no cancellation of its own but it's up to the caller
+		// to cancel passed ctx.
+		err := m.throttle(ctx, e.Labels)
+		if err != nil {
+			if errors.Is(err, errLimitStageDropEntry) {
+				continue
+			}
+			return err
+		}
+
+		entries[dst] = e
+		dst++
+	}
+
+	if dst == 0 {
+		return nil
+	}
+
+	return m.next(ctx, entries[:dst])
+}
+
+// Stop implements Stopper
+func (m *limitStage) Stop() {
+	m.cancel()
+}
+
+// throttle applies the configured rate limit to the entry. It returns
+// errLimitStageDropEntry when the entry is rate-limited and must be dropped.
+func (m *limitStage) throttle(ctx context.Context, labels model.LabelSet) error {
 	if m.cfg.ByLabelName != "" {
 		labelValue, ok := labels[model.LabelName(m.cfg.ByLabelName)]
 		if !ok {
-			return false // if no label found, dont ratelimit
+			// if no label found, dont ratelimit
+			return nil
 		}
-		rl := m.rateLimiterByLabel.GetOrCreate(labelValue)
+		rl := m.rateLimiterByLabel.getOrCreate(labelValue)
 		if rl.Allow() {
-			return false
+			return nil
 		}
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
 		m.dropCountByLabel.WithLabelValues(m.cfg.ByLabelName, string(labelValue)).Inc()
-		return true
+		return errLimitStageDropEntry
 	}
 
 	if m.cfg.Drop {
 		if m.rateLimiter.Allow() {
-			return false
+			return nil
 		}
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
-		return true
+		return errLimitStageDropEntry
 	}
-	return m.rateLimiter.Wait(m.ctx) != nil
+
+	return m.rateLimiter.Wait(ctx)
 }
 
 // Cleanup implements Stage.
-func (*limitStage) Cleanup() {
-	// no-op
-}
+func (*limitStage) Cleanup() {}
 
-func getDropCountByLabelMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
-	return registerCounterVec(registerer, "loki_process", "dropped_lines_by_label_total",
-		"A count of all log lines dropped as a result of a pipeline stage",
-		[]string{"label_name", "label_value"})
-}
-
-// GenerationalMap is ported from Loki's pkg/util package. It didn't exist
+// generationalMap is ported from Loki's pkg/util package. It didn't exist
 // in our dependency at the time, so I copied the implementation over.
-type GenerationalMap[K comparable, V any] struct {
+type generationalMap[K comparable, V any] struct {
+	mut    *sync.Mutex
 	oldgen map[K]V
 	newgen map[K]V
 
@@ -159,9 +197,10 @@ type GenerationalMap[K comparable, V any] struct {
 	gcCb    func()
 }
 
-// NewGenMap created which maintains at most maxSize recently used entries
-func NewGenMap[K comparable, V any](maxSize int, newV func() V, gcCb func()) GenerationalMap[K, V] {
-	return GenerationalMap[K, V]{
+// newGenMap created which maintains at most maxSize recently used entries
+func newGenMap[K comparable, V any](maxSize int, newV func() V, gcCb func()) generationalMap[K, V] {
+	return generationalMap[K, V]{
+		mut:     &sync.Mutex{},
 		newgen:  make(map[K]V),
 		maxSize: maxSize,
 		newV:    newV,
@@ -169,7 +208,9 @@ func NewGenMap[K comparable, V any](maxSize int, newV func() V, gcCb func()) Gen
 	}
 }
 
-func (m *GenerationalMap[K, T]) GetOrCreate(key K) T {
+func (m *generationalMap[K, T]) getOrCreate(key K) T {
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	v, ok := m.newgen[key]
 	if !ok {
 		if v, ok = m.oldgen[key]; !ok {
@@ -186,6 +227,12 @@ func (m *GenerationalMap[K, T]) GetOrCreate(key K) T {
 		}
 	}
 	return v
+}
+
+func getDropCountByLabelMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
+	return registerCounterVec(registerer, "loki_process", "dropped_lines_by_label_total",
+		"A count of all log lines dropped as a result of a pipeline stage",
+		[]string{"label_name", "label_value"})
 }
 
 func registerCounterVec(registerer prometheus.Registerer, namespace, name, help string, labels []string) (*prometheus.CounterVec, error) {
