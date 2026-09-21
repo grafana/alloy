@@ -24,8 +24,9 @@ var (
 		Labels: model.LabelSet{"foo": "bar"},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "test"},
 	}
-	oneEntrySize   = entry.Size()
-	twoEntriesSize = entry.Size() * 2
+	newStreamSize  = entry.Size() + labelSetSize(entry.Labels)
+	oneEntrySize   = newStreamSize
+	twoEntriesSize = newStreamSize + entry.Size()
 )
 
 func TestQueue_append(t *testing.T) {

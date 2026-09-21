@@ -43,7 +43,7 @@ type batch struct {
 	maxSize int
 	// maxStreams is the maximum number of streams in the batch. Zero means no limit.
 	maxStreams int
-	// size holds the total number of bytes across log lines in this batch.
+	// size holds the total number of bytes for all stream labels and entries.
 	size int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
@@ -86,7 +86,9 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		return fmt.Errorf("%w, streams: %d exceeds limit: %d, stream: '%s'", errMaxStreamsLimitExceeded, streams, b.maxStreams, labels)
 	}
 
-	size := entry.Size()
+	// This is a new stream, include the size of its labels in the batch size.
+	size := entry.Size() + len(labels)
+
 	// NOTE: We will always allow to add at least one entry to a batch
 	// even if that entry makes the size bigger than maxSize.
 	if streams != 0 && !b.canAdd(size) {
