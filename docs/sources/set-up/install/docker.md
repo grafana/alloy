@@ -83,7 +83,7 @@ Every release starting with version 1.10 includes BoringCrypto images:
 BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
 
-Distroless images use a Linux root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
+Distroless images are stripped-down container images containing only the essential runtime dependencies required by {{< param "PRODUCT_NAME" >}}.
 They use the same entrypoint, configuration path, and storage path as the standard image, so the `docker run` command is the same.
 
 Every release starting with version 1.20 includes distroless images:
