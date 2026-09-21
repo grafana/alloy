@@ -67,6 +67,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `preserve_leading_whitespaces`  | `bool`                     | Preserves leading whitespace in messages when set to `true`.                               | `false`   | no       |
 | `preserve_trailing_whitespaces` | `bool`                     | Preserves trailing whitespace in messages when set to `true`.                              | `false`   | no       |
 | `resource`                      | `map(string)`              | A map of resource attributes to associate with each log entry.                             | `{}`      | no       |
+| `skip_unmodified_files`         | `bool`                     | Skip a file whose path and modification time are unchanged since the previous poll.        | `false`   | no       |
 | `start_at`                      | `string`                   | The position to start reading the file from.                                               | `"end"`   | no       |
 | `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |           | no       |
 
@@ -79,6 +80,8 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 Currently, only gzip compressed files are auto detected. This allows for mix of compressed and uncompressed files to be ingested with the same filelogreceiver.
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
+
+When `skip_unmodified_files` is `true`, a file whose path and modification time are unchanged since the previous poll is skipped without being opened, fingerprinted, or read. This trades pure fingerprint-based identification for a faster path and modification time check. Only enable it in environments where an unchanged modification time reliably means unchanged content.
 
 {{< admonition type="note" >}}
 On Windows, matching patterns in `include` and `exclude` are case-insensitive by default. This doesn't affect other operating systems.

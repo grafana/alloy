@@ -56,6 +56,7 @@ type Arguments struct {
 	Compression             string                   `alloy:"compression,attr,optional"`
 	AcquireFSLock           bool                     `alloy:"acquire_fs_lock,attr,optional"`
 	FileCacheAdvise         bool                     `alloy:"file_cache_advise,attr,optional"`
+	SkipUnmodifiedFiles     bool                     `alloy:"skip_unmodified_files,attr,optional"`
 	MultilineConfig         *otelcol.MultilineConfig `alloy:"multiline,block,optional"`
 	TrimConfig              *otelcol.TrimConfig      `alloy:",squash"`
 	Header                  *HeaderConfig            `alloy:"header,block,optional"`
@@ -177,6 +178,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.Compression = args.Compression
 	cfg.InputConfig.AcquireFSLock = args.AcquireFSLock
 	cfg.InputConfig.FileCacheAdvise = args.FileCacheAdvise
+	cfg.InputConfig.SkipUnmodifiedFiles = args.SkipUnmodifiedFiles
 
 	if len(args.Attributes) > 0 {
 		cfg.InputConfig.Attributes = make(map[string]helper.ExprStringConfig, len(args.Attributes))
