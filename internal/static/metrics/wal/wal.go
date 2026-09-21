@@ -1150,10 +1150,12 @@ func (a *appender) log() error {
 	if len(a.pendingHistograms) > 0 {
 		var customBucketsHistograms []record.RefHistogramSample
 		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
 		if len(customBucketsHistograms) > 0 {
 			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, buf)
 			if err := a.w.wal.Log(buf); err != nil {
@@ -1166,10 +1168,12 @@ func (a *appender) log() error {
 	if len(a.pendingFloatHistograms) > 0 {
 		var customBucketsFloatHistograms []record.RefFloatHistogramSample
 		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
 		if len(customBucketsFloatHistograms) > 0 {
 			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, buf)
 			if err := a.w.wal.Log(buf); err != nil {

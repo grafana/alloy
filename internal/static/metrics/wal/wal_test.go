@@ -485,6 +485,46 @@ func TestStorage_ExistingWAL_Metadata(t *testing.T) {
 	})
 }
 
+// TestStorage_NHCBOnlyCommitDoesNotCorruptWAL verifies that a commit whose
+// only histograms use custom buckets (NHCB) does not corrupt the WAL for
+// records written after it. record.Encoder.HistogramSamples resets its
+// buffer to empty when every histogram in the batch is custom-bucket; if
+// that empty buffer is still logged, it decodes as an unrecognized record
+// type on replay and loadWAL treats everything after it as corrupt.
+func TestStorage_NHCBOnlyCommitDoesNotCorruptWAL(t *testing.T) {
+	walDir := t.TempDir()
+
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
+	require.NoError(t, err)
+
+	lbls := labels.FromStrings("__name__", "nhcb_series")
+
+	app := s.Appender(t.Context())
+	ref, err := app.AppendHistogram(0, lbls, 1, tsdbutil.GenerateTestCustomBucketsHistogram(0), nil)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// A second, ordinary commit after the NHCB-only one. Before the fix, this
+	// sample is lost because the corrupt record ahead of it truncates the WAL
+	// on replay.
+	app = s.Appender(t.Context())
+	_, err = app.Append(ref, lbls, 2, 42)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	require.NoError(t, s.Close())
+
+	s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	series := s.series.GetByID(chunks.HeadSeriesRef(ref))
+	require.NotNil(t, series, "series should have survived WAL replay")
+	require.Equal(t, int64(2), series.lastTs, "sample committed after the NHCB-only commit should have survived replay")
+}
+
 func TestStorage_Truncate(t *testing.T) {
 	// Same as before but now do the following:
 	// after writing all the data, forcefully create 4 more segments,
