@@ -83,15 +83,15 @@ Every release starting with version 1.10 includes BoringCrypto images:
 BoringCrypto variants of distroless images are only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
 
-Distroless images use an Ubuntu root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
+Distroless images use a Linux root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
 They use the same entrypoint, configuration path, and storage path as the standard image, so the `docker run` command is the same.
 
 Every release starting with version 1.20 includes distroless images:
 
-- The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
-- The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
-- The `grafana/alloy:boringcrypto-distroless` tag always points to the most recent stable BoringCrypto release.
-- The `grafana/alloy:<VERSION>-boringcrypto-distroless` tag pins a specific BoringCrypto version.
+- The `grafana/alloy:latest-distroless` tag always points to the most recent stable {{< param "PRODUCT_NAME" >}} version.
+- The `grafana/alloy:<VERSION>-distroless` tag pins a specific {{< param "PRODUCT_NAME" >}} version.
+- The `grafana/alloy:boringcrypto-distroless` tag always points to the most recent stable {{< param "PRODUCT_NAME" >}} version with BoringCrypto.
+- The `grafana/alloy:<VERSION>-boringcrypto-distroless` tag pins a specific {{< param "PRODUCT_NAME" >}} version with BoringCrypto.
 
 ## Run a Windows Docker container
 
@@ -143,8 +143,8 @@ If you don't pass this argument, the [debugging UI][debug] won't be available ou
 
 Every release includes Windows images:
 
-- The `grafana/alloy:windowsservercore-ltsc2022` tag always points to the most recent stable release.
-- The `grafana/alloy:<VERSION>-windowsservercore-ltsc2022` tag pins a specific version.
+- The `grafana/alloy:windowsservercore-ltsc2022` tag always points to the most recent stable {{< param "PRODUCT_NAME" >}} version.
+- The `grafana/alloy:<VERSION>-windowsservercore-ltsc2022` tag pins a specific {{< param "PRODUCT_NAME" >}} version.
 
 ## Verify
 
