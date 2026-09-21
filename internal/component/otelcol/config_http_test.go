@@ -84,6 +84,43 @@ func TestKeepaliveArguments_SetToDefault(t *testing.T) {
 	require.Equal(t, 0, args.MaxIdleConnsPerHost)
 }
 
+func TestHTTPServerArguments_ConvertKeepalive(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		args := &otelcol.HTTPServerArguments{}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.False(t, cfg.Get().Keepalive.HasValue())
+	})
+
+	t.Run("set", func(t *testing.T) {
+		args := &otelcol.HTTPServerArguments{
+			Keepalive: &otelcol.HTTPKeepaliveServerArguments{
+				IdleTimeout: 30 * time.Second,
+			},
+		}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.True(t, cfg.Get().Keepalive.HasValue())
+		require.Equal(t, 30*time.Second, cfg.Get().Keepalive.Get().IdleTimeout)
+	})
+
+	t.Run("keep_alives_enabled false conflicts with keepalive", func(t *testing.T) {
+		disabled := false
+		args := &otelcol.HTTPServerArguments{
+			KeepAlivesEnabled: &disabled,
+			Keepalive:         &otelcol.HTTPKeepaliveServerArguments{},
+		}
+		_, err := args.Convert()
+		require.Error(t, err)
+	})
+}
+
+func TestHTTPKeepaliveServerArguments_SetToDefault(t *testing.T) {
+	var args otelcol.HTTPKeepaliveServerArguments
+	args.SetToDefault()
+	require.Equal(t, otelcol.DefaultKeepaliveServerIdleTimeout, args.IdleTimeout)
+}
+
 func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 	args := &otelcol.HTTPServerArguments{
 		IdleTimeout:       2 * time.Minute,
