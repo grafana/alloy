@@ -6,6 +6,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"github.com/stretchr/testify/require"
@@ -948,4 +949,28 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
+}
+
+func TestArguments_ValidateStabilityLevel(t *testing.T) {
+	withSharedCache := transform.Arguments{
+		TraceStatements: transform.ContextStatementsSlice{{
+			Context:     "span",
+			Statements:  transform.Statements{`set(span.name, "test")`},
+			SharedCache: true,
+		}},
+	}
+
+	t.Run("shared_cache unset never requires experimental", func(t *testing.T) {
+		var args transform.Arguments
+		require.NoError(t, args.ValidateStabilityLevel(featuregate.StabilityGenerallyAvailable))
+	})
+
+	t.Run("shared_cache set rejects non-experimental stability", func(t *testing.T) {
+		require.Error(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityGenerallyAvailable))
+		require.Error(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityPublicPreview))
+	})
+
+	t.Run("shared_cache set allows experimental stability", func(t *testing.T) {
+		require.NoError(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityExperimental))
+	})
 }

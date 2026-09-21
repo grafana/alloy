@@ -31,6 +31,25 @@ func init() {
 	})
 }
 
+// ValidateStabilityLevel implements otelcol.StabilityValidator.
+func (args Arguments) ValidateStabilityLevel(minStability featuregate.Stability) error {
+	if usesSharedCache(args) && !minStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("shared_cache is experimental and requires setting the stability.level flag to experimental")
+	}
+	return nil
+}
+
+func usesSharedCache(args Arguments) bool {
+	for _, stmts := range [][]ContextStatements{args.TraceStatements, args.MetricStatements, args.LogStatements} {
+		for _, s := range stmts {
+			if s.SharedCache {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type ContextID string
 
 const (
