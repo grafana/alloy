@@ -62,13 +62,18 @@ func (f *File) LastMarkedSegment() int {
 }
 
 // MarkSegment stores segment as the last marked WAL segment.
-func (f *File) MarkSegment(segment int) {
+//
+// The returned error must not be ignored: a failed write leaves the marker
+// pointing at an older segment, so the caller has to keep treating that older
+// segment as the last marked one and retry.
+func (f *File) MarkSegment(segment int) error {
 	if err := f.atomicallyWriteMarker(encodeV1(uint64(segment))); err != nil {
 		f.logger.Error("could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
-		return
+		return fmt.Errorf("marking segment %d: %w", segment, err)
 	}
 
 	f.logger.Debug("updated segment marker file", "file", f.lastMarkedSegmentFilePath, "segment", segment)
+	return nil
 }
 
 // atomicallyWriteMarker attempts to perform an atomic write of the marker contents. This is delegated to

@@ -45,7 +45,7 @@ func TestFile(t *testing.T) {
 		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
-		fh.MarkSegment(12)
+		require.NoError(t, fh.MarkSegment(12))
 		require.Equal(t, 12, fh.LastMarkedSegment())
 	})
 
@@ -54,7 +54,7 @@ func TestFile(t *testing.T) {
 		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
-		fh.MarkSegment(12)
+		require.NoError(t, fh.MarkSegment(12))
 		// check folder first
 		stats, err := os.Stat(filepath.Join(dir, markerFolderName))
 		require.NoError(t, err)

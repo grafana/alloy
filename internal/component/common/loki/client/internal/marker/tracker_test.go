@@ -1,12 +1,27 @@
 package marker
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/util"
+)
+
+const (
+	// testFindInterval drives the tracker's find markable segment routine far
+	// faster than defaultFindInterval, so the tests don't have to wait a second
+	// for a forced run.
+	testFindInterval = 10 * time.Millisecond
+	// testMaxSegmentAge is short for the same reason: it's how long a segment
+	// with data still in flight has to go without updates to count as consumed.
+	testMaxSegmentAge = 100 * time.Millisecond
+	// eventuallyWait still leaves generous headroom over the intervals above, so
+	// a loaded CI runner doesn't fail the assertion.
+	eventuallyWait = 5 * time.Second
 )
 
 func TestTracker(t *testing.T) {
@@ -16,7 +31,7 @@ func TestTracker(t *testing.T) {
 	t.Run("returns last marked segment from file handler on start", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		require.NoError(t, f.MarkSegment(10))
 
 		st := NewSegmentTracker(f, time.Minute, logger, metrics)
 		defer st.Stop()
@@ -27,9 +42,9 @@ func TestTracker(t *testing.T) {
 	t.Run("last marked segment is updated when sends complete", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		require.NoError(t, f.MarkSegment(10))
 
-		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		st := newSegmentTracker(f, time.Minute, testFindInterval, logger, metrics)
 		defer st.Stop()
 
 		st.UpdateReceivedData(11, 10)
@@ -38,32 +53,67 @@ func TestTracker(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return st.LastMarkedSegment() == 11
-		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
+		}, eventuallyWait, testFindInterval, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
 	})
 
 	t.Run("last marked segment is updated when segment becomes old", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		require.NoError(t, f.MarkSegment(10))
 
-		st := NewSegmentTracker(f, 2*time.Second, logger, metrics)
+		st := newSegmentTracker(f, testMaxSegmentAge, testFindInterval, logger, metrics)
 		defer st.Stop()
 
-		// segment 11 has 5 pending data items, and will become old after 2 secs
+		// segment 11 has 5 pending data items, and will become old after
+		// testMaxSegmentAge
 		st.UpdateReceivedData(11, 10)
 		st.UpdateSentData(11, 5)
 
 		// wait until segment becomes old
-		time.Sleep(2*time.Second + time.Millisecond*100)
+		time.Sleep(testMaxSegmentAge + testFindInterval)
 
-		// send dummy data item to trigger find
+		// send a dummy data item, so the find also runs on a data update and not
+		// only on runFindTicker
 		st.UpdateReceivedData(12, 1)
 
 		require.Eventually(t, func() bool {
 			return st.LastMarkedSegment() == 11
-		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
+		}, eventuallyWait, testFindInterval, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
+	})
+
+	t.Run("retries marking a segment after a failed write", func(t *testing.T) {
+		dir := t.TempDir()
+		f, err := NewFile(logger, dir)
+		require.NoError(t, err)
+		require.NoError(t, f.MarkSegment(10))
+
+		st := newSegmentTracker(f, time.Minute, testFindInterval, logger, metrics)
+		defer st.Stop()
+
+		// Replace the marker folder with a regular file, so the atomic write can't
+		// create its temporary file and MarkSegment fails. Unlike permission bits,
+		// this behaves the same on every platform.
+		markerDir := filepath.Join(dir, markerFolderName)
+		require.NoError(t, os.RemoveAll(markerDir))
+		require.NoError(t, os.WriteFile(markerDir, []byte("not a directory"), 0o600))
+		require.Error(t, f.MarkSegment(11), "expected marking to fail while the folder is a file")
+
+		st.UpdateReceivedData(11, 10)
+		st.UpdateSentData(11, 10)
+
+		// The tracker must not report a segment it failed to persist.
+		time.Sleep(5 * testFindInterval)
+		require.NotEqual(t, 11, st.LastMarkedSegment())
+
+		// Once writing is possible again, the pending segment must still be marked.
+		require.NoError(t, os.Remove(markerDir))
+		require.NoError(t, os.MkdirAll(markerDir, markerFolderMode))
+
+		require.Eventually(t, func() bool {
+			return st.LastMarkedSegment() == 11
+		}, eventuallyWait, testFindInterval, "expected the tracker to retry marking segment 11")
 	})
 }
 
