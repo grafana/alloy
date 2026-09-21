@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 )
 
@@ -17,42 +18,37 @@ type StaticLabelsConfig struct {
 }
 
 var (
-	_ Stage          = (*staticLabelStage)(nil)
-	_ entryProcessor = (*staticLabelStage)(nil)
+	_ Stage            = (*staticLabelStage)(nil)
+	_ entryProcessor   = (*staticLabelStage)(nil)
+	_ syntax.Validator = (*StaticLabelsConfig)(nil)
 )
 
-func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) (*staticLabelStage, error) {
-	err := validateLabelStaticConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabelStage {
 	values := make([]string, 0, len(config.Values)*2)
 	for n, v := range config.Values {
 		if v == nil || *v == "" {
 			continue
 		}
-
-		value := *v
-		if !model.LabelValue(value).IsValid() {
-			return nil, fmt.Errorf("invalid label value: %s", value)
-		}
-
-		values = append(values, n, value)
+		values = append(values, n, *v)
 	}
 
-	return &staticLabelStage{opts.next, values}, nil
+	return &staticLabelStage{opts.next, values}
 }
 
-func validateLabelStaticConfig(c StaticLabelsConfig) error {
+func (c *StaticLabelsConfig) Validate() error {
 	if c.Values == nil {
 		return errEmptyStaticLabelStageConfig
 	}
-	for labelName := range c.Values {
+	for labelName, v := range c.Values {
 		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !model.LabelName(labelName).IsValid() {
+		if !model.UTF8Validation.IsValidLabelName(labelName) {
 			return fmt.Errorf(errInvalidLabelName, labelName)
+		}
+		if v == nil || *v == "" {
+			continue
+		}
+		if !model.LabelValue(*v).IsValid() {
+			return fmt.Errorf("invalid label value: %s", *v)
 		}
 	}
 	return nil
