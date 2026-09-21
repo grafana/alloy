@@ -67,7 +67,7 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 BoringCrypto support is in _Public preview_ and is only available for Linux containers on AMD64 and ARM64.
 {{< /admonition >}}
 
-Every release starting with version 1.1 includes BoringCrypto images:
+Every release starting with version 1.10 includes BoringCrypto images:
 
 - The `grafana/alloy:boringcrypto` tag always points to the most recent stable release.
 - The `grafana/alloy:<VERSION>-boringcrypto` tag pins a specific version, for example `grafana/alloy:v1.1.0-boringcrypto`.
@@ -86,7 +86,7 @@ BoringCrypto variants of distroless images are only available on AMD64 and ARM64
 Distroless images use an Ubuntu root filesystem that contains only the packages {{< param "PRODUCT_NAME" >}} needs at runtime.
 They use the same entrypoint, configuration path, and storage path as the standard image, so the `docker run` command is the same.
 
-Every release includes distroless images:
+Every release starting with version 1.20 includes distroless images:
 
 - The `grafana/alloy:latest-distroless` tag always points to the most recent stable release.
 - The `grafana/alloy:<VERSION>-distroless` tag pins a specific version.
