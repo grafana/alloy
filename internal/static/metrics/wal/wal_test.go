@@ -263,6 +263,71 @@ func TestStorage_Rollback(t *testing.T) {
 	require.Len(t, collector.floatHistograms, 0, "Native histograms should not be written on rollback")
 }
 
+// TestAppenderBufferResetAfterWALWriteError verifies that a failed wal.Log
+// call does not return a dirty buffer to the pool, which would splice the
+// next commit's record onto the tail of the failed one. It forces the
+// failure by closing the underlying WAL directly (bypassing Storage.Close,
+// which would set walClosed and make log/logSeries return early).
+func TestAppenderBufferResetAfterWALWriteError(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*appender)
+		log     func(*appender) error
+	}{
+		{
+			name: "log",
+			prepare: func(a *appender) {
+				a.pendingSamples = append(a.pendingSamples, record.RefSample{Ref: 1, T: 1, V: 1})
+			},
+			log: func(a *appender) error {
+				return a.log()
+			},
+		},
+		{
+			name: "logSeries",
+			prepare: func(a *appender) {
+				a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+					Ref:    1,
+					Labels: labels.FromStrings("__name__", "test_metric"),
+				})
+			},
+			log: func(a *appender) error {
+				return a.logSeries()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+			require.NoError(t, err)
+
+			app := s.Appender(t.Context()).(*appender)
+			test.prepare(app)
+
+			require.NoError(t, s.wal.Close())
+
+			for range 100 {
+				s.bufPool.New = func() any {
+					return make([]byte, 0, 1024)
+				}
+				require.Error(t, test.log(app))
+
+				// A pool may discard buffers, especially under -race. Disable New so
+				// a fresh buffer cannot satisfy the assertion.
+				s.bufPool.New = nil
+				buf := s.bufPool.Get()
+				if buf == nil {
+					continue
+				}
+				require.Empty(t, buf.([]byte))
+				return
+			}
+			t.Fatal("no buffer returned from pool after 100 attempts")
+		})
+	}
+}
+
 func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 	walDir := t.TempDir()
 
