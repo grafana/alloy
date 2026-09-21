@@ -65,7 +65,7 @@ The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}}
 The `CONFIG_FILE` and `CUSTOM_ARGS` settings apply only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses `OTEL_CONFIG_FILE` and `OTEL_CUSTOM_ARGS` instead.
 
-Refer to [Run the {{< param "OTEL_ENGINE" >}} with a service installation][OTelEngine] for the steps to switch engines.
+Refer to [Run the {{< param "OTEL_ENGINE" >}} with service installations][OTelEngine] for the steps to switch engines.
 
 ## Expose the UI to other machines
 
@@ -91,5 +91,5 @@ To expose the UI to other machines, complete the following steps:
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
 [run]:../../reference/cli/run/
-[OTelEngine]: ../../set-up/otel_engine/service-installation/
+[OTelEngine]: ../../set-up/otel_engine/service-installations/
 [UI]: ../../troubleshoot/debug/#alloy-ui

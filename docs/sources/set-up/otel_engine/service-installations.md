@@ -1,12 +1,12 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/service-installation/
+canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/service-installations/
 description: Learn how to run the OpenTelemetry Engine from an Alloy service installation on Linux, macOS, or Windows
-menuTitle: Service installation
-title: Run the OpenTelemetry Engine with a service installation
+menuTitle: Service installations
+title: Run the OpenTelemetry Engine with service installations
 weight: 400
 ---
 
-# Run the {{% param "OTEL_ENGINE" %}} with a service installation
+# Run the {{% param "OTEL_ENGINE" %}} with service installations
 
 The {{< param "PRODUCT_NAME" >}} service installations for Linux, macOS, and Windows can run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}.
 Set `ALLOY_OTEL_MODE` to `1` or `true` (case-insensitive) to run the {{< param "OTEL_ENGINE" >}}.
