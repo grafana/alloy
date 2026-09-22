@@ -120,8 +120,15 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 
 	t.Run("New Pipeline", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
-		var collected []Entry
+
+		var (
+			collected    []Entry
+			collectedMut sync.Mutex
+		)
+
 		next := func(_ context.Context, entries []Entry) error {
+			collectedMut.Lock()
+			defer collectedMut.Unlock()
 			collected = append(collected, entries...)
 			return nil
 		}
@@ -135,6 +142,8 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		}
 
 		p.stop()
+		collectedMut.Lock()
+		defer collectedMut.Unlock()
 		assertEntriesUnordered(t, expected, collected, check)
 
 		if check.metricsAfterCleanup != nil {
