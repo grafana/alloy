@@ -426,11 +426,11 @@ func TestMatchStageOrder(t *testing.T) {
 		})
 
 		require.Equal(t, []string{
-			"matched 1",
+			"match 1",
 			"other 2",
-			"matched 3",
+			"match 3",
 			"other 4",
-			"matched 5",
+			"match 5",
 			"other 6",
 		}, got)
 	})
