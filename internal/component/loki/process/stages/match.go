@@ -304,7 +304,7 @@ func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 	// In this case we should just set it to resulting entries from inner pipeline
 	// so that process can merged it back.
 	if buf, ok := fromMatchMerge(ctx); ok {
-		*buf = entries
+		*buf = append(*buf, entries...)
 		return nil
 	}
 
