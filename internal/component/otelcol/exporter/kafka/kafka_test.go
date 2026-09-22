@@ -206,6 +206,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}(),
 		},
 		{
+			testName: "Signal header",
+			cfg: `
+				protocol_version = "2.0.0"
+				signal_header = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.SignalHeader = true
+				return cfg
+			}(),
+		},
+		{
 			testName: "Message key from metadata key",
 			cfg: `
 				protocol_version = "2.0.0"

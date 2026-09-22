@@ -56,6 +56,8 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 - `alibaba_ecs`
 - `aks`
 - `azure`
+- `azureappservice`
+- `azurecontainerapps`
 - `consul`
 - `digitalocean`
 - `docker`
@@ -128,6 +130,8 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
 | [`alibaba_ecs`][alibaba_ecs]           | Queries the Alibaba Cloud ECS metadata service to retrieve various resource attributes.                    | no       |
 | [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
+| [`azureappservice`][azureappservice]   | Queries the Azure App Service instance metadata to retrieve various resource attributes.                   | no       |
+| [`azurecontainerapps`][azurecontainerapps] | Queries the Azure Container Apps instance metadata to retrieve various resource attributes.            | no       |
 | [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
 | [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                                 | no       |
@@ -150,10 +154,12 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 | [`upcloud`][upcloud]                   | Queries the UpCloud instance metadata API to retrieve various resource attributes.                         | no       |
 | [`vultr`][vultr]                       | Queries the Vultr instance metadata API to retrieve various resource attributes.                           | no       |
 | [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                         | no       |
+| [`retry`][retry]                       | Configures retry and backoff for each detection attempt.                                                   | no       |
 | [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                          | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+[retry]: #retry
 [akamai]: #akamai
 [alibaba_ecs]: #alibaba_ecs
 [ec2]: #ec2
@@ -163,6 +169,8 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [lambda]: #lambda
 [azure]: #azure
 [aks]: #aks
+[azureappservice]: #azureappservice
+[azurecontainerapps]: #azurecontainerapps
 [consul]: #consul
 [digitalocean]: #digitalocean
 [docker]: #docker
@@ -182,6 +190,26 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [vultr]: #vultr
 
 {{< /docs/alloy-config >}}
+
+### `retry`
+
+The `retry` block configures retry and backoff for each detection attempt.
+A detector that fails is retried with exponential backoff until it succeeds or the budget runs out.
+
+The following arguments are supported:
+
+| Name                   | Type       | Description                                                                | Default | Required |
+|------------------------|------------|----------------------------------------------------------------------------|---------|----------|
+| `enabled`              | `bool`     | Enables retrying failed detection attempts.                                | `true`  | no       |
+| `initial_interval`     | `duration` | Initial time to wait before retrying a failed detection.                   | `"1s"`  | no       |
+| `max_elapsed_time`     | `duration` | Maximum time spent on a detection, including retries. `"0s"` is unbounded. | `"0s"`  | no       |
+| `max_interval`         | `duration` | Upper bound on the wait between retries.                                   | `"30s"` | no       |
+| `multiplier`           | `number`   | Factor to grow the wait by after each failed attempt.                      | `2`     | no       |
+| `randomization_factor` | `number`   | Jitter applied to the wait, as a fraction of the interval.                 | `0.5`   | no       |
+
+These defaults are more aggressive than the shared retry block the `otelcol` exporters use, because detection runs at startup rather than per request.
+
+When `max_elapsed_time` is `"0s"`, `timeout` bounds the whole detection instead, so one of the two must be greater than zero while `enabled` is `true`.
 
 ### `output`
 
@@ -255,6 +283,53 @@ The cluster name is detected if it doesn't contain underscores and if a custom i
 
 If accurate parsing can't be performed, the infrastructure resource group value is returned.
 This value can be used to uniquely identify the cluster, because Azure won't allow users to create multiple clusters with the same infrastructure resource group name.
+
+### `azureappservice`
+
+The `azureappservice` block queries the Azure App Service instance metadata to retrieve various resource attributes.
+
+The `azureappservice` block supports the following blocks:
+
+| Block                                                          | Description                                  | Required |
+| --------------------------------------------------------------- | -------------------------------------------- | -------- |
+| [`resource_attributes`](#azureappservice--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### `azureappservice` > `resource_attributes`
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                                       | Description                                                                                          | Required |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------- |
+| [`azure.app_service.instance.id`][res-attr-cfg] | Toggles the `azure.app_service.instance.id` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`azure.resource_group.name`][res-attr-cfg]     | Toggles the `azure.resource_group.name` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`cloud.account.id`][res-attr-cfg]              | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.platform`][res-attr-cfg]                | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`cloud.provider`][res-attr-cfg]                | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`cloud.region`][res-attr-cfg]                  | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`cloud.resource_id`][res-attr-cfg]             | Toggles the `cloud.resource_id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`deployment.environment.name`][res-attr-cfg]   | Toggles the `deployment.environment.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`service.name`][res-attr-cfg]                  | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+
+### `azurecontainerapps`
+
+The `azurecontainerapps` block queries the Azure Container Apps instance metadata to retrieve various resource attributes.
+
+The `azurecontainerapps` block supports the following blocks:
+
+| Block                                                              | Description                                  | Required |
+| -------------------------------------------------------------------- | -------------------------------------------- | -------- |
+| [`resource_attributes`](#azurecontainerapps--resource_attributes) | Configures which resource attributes to add. | no       |
+
+#### `azurecontainerapps` > `resource_attributes`
+
+The `resource_attributes` block supports the following blocks:
+
+| Block                                             | Description                                                                                             | Required |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------- |
+| [`azure.container_app.instance.id`][res-attr-cfg] | Toggles the `azure.container_app.instance.id` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`][res-attr-cfg]                  | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`cloud.provider`][res-attr-cfg]                  | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`service.name`][res-attr-cfg]                    | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                     | no       |
 
 ### `azure`
 

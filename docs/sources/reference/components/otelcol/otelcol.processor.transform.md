@@ -179,8 +179,9 @@ Multiple `log_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -197,6 +198,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
 
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
+
 [OTTL Context]: #ottl-context
 
 ### `metric_statements`
@@ -208,8 +213,9 @@ Multiple `metric_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -226,6 +232,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `metric_statements`, the top-level `error_mode` is applied.
+
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
 
 ### `statements`
 
@@ -277,8 +287,9 @@ Multiple `trace_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -295,6 +306,12 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `trace_statements`, the top-level `error_mode` is applied.
+
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
+
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ### OTTL Context
 

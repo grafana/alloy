@@ -5,59 +5,81 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestLabelAllow(t *testing.T) {
-	tests := []struct {
-		name           string
-		config         *LabelAllowConfig
-		inputLabels    model.LabelSet
-		expectedLabels model.LabelSet
-	}{
+func TestLabelKeepStage(t *testing.T) {
+	now := time.Now()
+
+	type testCase struct {
+		name     string
+		cfg      LabelKeepConfig
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
 		{
-			name:   "allow single label",
-			config: &LabelAllowConfig{Values: []string{"testLabel1"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			name: "allow single label",
+			cfg:  LabelKeepConfig{Values: []string{"testLabel1"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel1": "testValue",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{
+					"testLabel1": "testValue",
+				}, "", now),
 			},
 		},
 		{
-			name:   "allow multiple labels",
-			config: &LabelAllowConfig{Values: []string{"testLabel1", "testLabel2"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
-				"testLabel3": "testValue",
+			name: "allow multiple labels",
+			cfg:  LabelKeepConfig{Values: []string{"testLabel1", "testLabel2"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+					"testLabel3": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+					"testLabel3": "testValue",
+				}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
 		},
 		{
-			name:   "allow non-existing label",
-			config: &LabelAllowConfig{Values: []string{"foobar"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
+			name: "allow non-existing label",
+			cfg:  LabelKeepConfig{Values: []string{"foobar"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
 			},
-			expectedLabels: model.LabelSet{},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{}, "", now),
+			},
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			st, err := newLabelAllowStage(*test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
-			out := processEntries(st, newEntry(nil, test.inputLabels, "", time.Now()))[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{LabelKeepConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }

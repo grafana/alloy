@@ -53,6 +53,7 @@ You can use the following arguments with `otelcol.processor.tail_sampling`:
 | `sample_on_first_match`             | `boolean`  | Make a sampling decision as soon as any policy matches.                                                                 | `false` | no       |
 | `drop_pending_traces_on_shutdown`   | `boolean`  | Drop pending traces on shutdown instead of deciding with partial data.                                                  | `false` | no       |
 | `maximum_trace_size_bytes`          | `int`      | Drop traces early when they exceed this size in bytes. `0` disables early dropping.                                     | `0`     | no       |
+| `num_shards`                        | `int`      | Number of parallel event loops processing traces. Must not exceed `256`.                                                | `1`     | no       |
 | `decision_cache`                    | `object`   | Configures caches for sampling decisions.                                                                               | `{}`    | no       |
 
 `decision_wait` determines the number of batches to maintain on a channel.
@@ -71,6 +72,12 @@ If `drop_pending_traces_on_shutdown` is `true`, the component drops traces that 
 If `decision_wait_after_root_received` is greater than `0`, the component can decide relative to root-span arrival time.
 
 If `maximum_trace_size_bytes` is greater than `0`, traces over this size are dropped before decision wait to limit memory usage.
+
+`num_shards` controls the number of parallel goroutine loops processing traces.
+Each shard runs an independent event loop with its own trace storage and decision batcher.
+Traces are routed to shards by a hash of the trace ID, so all spans for a given trace are processed by the same shard.
+Higher values reduce contention between trace ingestion and sampling decision evaluation under high load.
+`num_traces`, `expected_new_traces_per_sec`, and the `decision_cache` sizes are divided evenly across shards so aggregate behavior matches the configured values.
 
 `decision_cache` can contain two keys:
 

@@ -69,6 +69,7 @@ type QueryMetricsArguments struct {
 	DB              *sql.DB
 	Registry        *prometheus.Registry
 	CollectInterval time.Duration
+	QueryTimeout    time.Duration
 	Limit           int
 	Lookback        time.Duration
 	Logger          *slog.Logger
@@ -77,6 +78,7 @@ type QueryMetricsArguments struct {
 type QueryMetrics struct {
 	dbConnection    *sql.DB
 	registry        *prometheus.Registry
+	queryTimeout    time.Duration
 	collectInterval time.Duration
 	limit           int
 	lookback        time.Duration
@@ -122,6 +124,7 @@ func NewQueryMetrics(args QueryMetricsArguments) (*QueryMetrics, error) {
 		dbConnection:     args.DB,
 		registry:         args.Registry,
 		collectInterval:  args.CollectInterval,
+		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		limit:            args.Limit,
 		lookback:         args.Lookback,
 		logger:           args.Logger.With("collector", QueryMetricsCollector),
@@ -171,7 +174,7 @@ func (c *QueryMetrics) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -205,14 +208,8 @@ func (c *QueryMetrics) Stop() {
 	c.state.reset()
 }
 
-func (c *QueryMetrics) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *QueryMetrics) collect(ctx context.Context) error {
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		// Query Store is unavailable on the connected database, skip this cycle.
 		// Existing counters and baselines are preserved if this is a transient error.
@@ -229,40 +226,46 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 }
 
 func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
-	rows, err := c.dbConnection.QueryContext(
-		ctx, selectQueryMetrics,
-		sql.Named("limit", c.limit),
-		sql.Named("lookback_window", int(c.lookback/time.Second)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query Query Store metrics: %w", err)
-	}
-	defer rows.Close()
-
 	var sources []queryMetricSource
-	for rows.Next() {
-		var hash []byte
-		var executions, errorExecutions int64
-		var durationMicroseconds float64
-		if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
-			return nil, fmt.Errorf("failed to scan Query Store metrics: %w", err)
-		}
-
-		queryHash, err := formatQueryHash(hash)
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rows, err := c.dbConnection.QueryContext(
+			queryCtx, selectQueryMetrics,
+			sql.Named("limit", c.limit),
+			sql.Named("lookback_window", int(c.lookback/time.Second)),
+		)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("failed to query Query Store metrics: %w", err)
 		}
+		defer rows.Close()
 
-		sources = append(sources, queryMetricSource{
-			database:        database,
-			queryHash:       queryHash,
-			executions:      executions,
-			errors:          errorExecutions,
-			durationSeconds: durationMicroseconds / 1e6,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read Query Store metrics: %w", err)
+		for rows.Next() {
+			var hash []byte
+			var executions, errorExecutions int64
+			var durationMicroseconds float64
+			if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
+				return fmt.Errorf("failed to scan Query Store metrics: %w", err)
+			}
+
+			queryHash, err := formatQueryHash(hash)
+			if err != nil {
+				return err
+			}
+
+			sources = append(sources, queryMetricSource{
+				database:        database,
+				queryHash:       queryHash,
+				executions:      executions,
+				errors:          errorExecutions,
+				durationSeconds: durationMicroseconds / 1e6,
+			})
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to read Query Store metrics: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return sources, nil
