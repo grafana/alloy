@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -551,4 +553,107 @@ func TestValidateMatcherConfig(t *testing.T) {
 			require.ErrorIs(t, err, tt.err)
 		})
 	}
+}
+
+func BenchmarkMatchStage(b *testing.B) {
+	const numEntries = 50
+
+	b.Run("all entries match", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("no entries match", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"none\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("label matcher splits the batch", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		// Split across two streams so the batch still holds numEntries in
+		// total and stays comparable to the other cases.
+		matching := make([]push.Entry, numEntries/2)
+		for i := range matching {
+			matching[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		bypassed := make([]push.Entry, numEntries/2)
+		for i := range bypassed {
+			bypassed[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, matching...))
+		batch.Add(loki.NewStream(model.LabelSet{"app": "other"}, bypassed...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("line filter splits a stream", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |= \"match\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "other level=info user=bob dur=1.5"}
+			if i%2 == 0 {
+				entries[i].Line = "match level=info user=bob dur=1.5"
+			}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
 }
