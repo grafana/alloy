@@ -268,11 +268,15 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 		matched []Entry
 	)
 
-	for _, e := range entries {
+	for i, e := range entries {
 		if !matchLogQL(e, m.matchers, m.filter) {
 			entries[dst] = e
 			dst++
 			continue
+		}
+
+		if matched == nil {
+			matched = make([]Entry, 0, len(entries)-i)
 		}
 		matched = append(matched, e)
 	}
