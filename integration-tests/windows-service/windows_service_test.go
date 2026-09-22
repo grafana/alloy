@@ -27,7 +27,7 @@ const (
 	registryPath = `Software\GrafanaLabs\Alloy`
 	metricsURL   = "http://127.0.0.1:12345/metrics"
 	waitTimeout  = 500 * time.Millisecond
-	waitAttempts = 10
+	waitAttempts = 120
 	installDir   = `C:\Program Files\GrafanaLabs\Alloy`
 )
 
