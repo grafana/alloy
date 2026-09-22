@@ -1085,7 +1085,7 @@ func (a *appender) log() error {
 	var encoder record.Encoder
 	buf := a.w.bufPool.Get().([]byte)
 	defer func() {
-		a.w.bufPool.Put(buf) //nolint:staticcheck
+		a.w.bufPool.Put(buf[:0]) //nolint:staticcheck
 	}()
 
 	if len(a.pendingSeries) > 0 {
@@ -1227,7 +1227,7 @@ func (a *appender) logSeries() error {
 		var encoder record.Encoder
 		buf := a.w.bufPool.Get().([]byte)
 		defer func() {
-			a.w.bufPool.Put(buf) //nolint:staticcheck
+			a.w.bufPool.Put(buf[:0]) //nolint:staticcheck
 		}()
 
 		buf = encoder.Series(a.pendingSeries, buf)
