@@ -82,12 +82,6 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		check = checks[0]
 	}
 
-	for i := range entries {
-		for labelName, labelValue := range entries[i].Labels {
-			entries[i].Extracted[string(labelName)] = string(labelValue)
-		}
-	}
-
 	cloned := cloneEntries(entries)
 
 	t.Run("Pipeline", func(t *testing.T) {
