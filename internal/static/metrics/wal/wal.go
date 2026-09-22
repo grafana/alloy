@@ -208,6 +208,7 @@ type Storage struct {
 	walReplaySamplesPool         zeropool.Pool[[]record.RefSample]
 	walReplayHistogramsPool      zeropool.Pool[[]record.RefHistogramSample]
 	walReplayFloatHistogramsPool zeropool.Pool[[]record.RefFloatHistogramSample]
+	walReplayMetadataPool        zeropool.Pool[[]record.RefMetadata]
 
 	nextRef *atomic.Uint64
 	series  *stripeSeries
@@ -355,6 +356,7 @@ func (w *Storage) resetWALReplayResources() {
 	w.walReplaySamplesPool = zeropool.Pool[[]record.RefSample]{}
 	w.walReplayHistogramsPool = zeropool.Pool[[]record.RefHistogramSample]{}
 	w.walReplayFloatHistogramsPool = zeropool.Pool[[]record.RefFloatHistogramSample]{}
+	w.walReplayMetadataPool = zeropool.Pool[[]record.RefMetadata]{}
 }
 
 // loadWAL reads the WAL and populates the in-memory series.
@@ -375,9 +377,6 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 		defer close(decoded)
 		for r.Next() {
 			rec := r.Record()
-			// TODO: Also decode metadata. This could be particularly useful when
-			// calling UpdateMetadata on the first Commit after startup -
-			// right now each call will be logged as if the metadata changed.
 			switch dec.Type(rec) {
 			case record.Series:
 				series := w.walReplaySeriesPool.Get()[:0]
@@ -428,6 +427,18 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					return
 				}
 				decoded <- floatHistograms
+			case record.Metadata:
+				meta := w.walReplayMetadataPool.Get()[:0]
+				meta, err = dec.Metadata(rec, meta)
+				if err != nil {
+					errCh <- &wlog.CorruptionErr{
+						Err:     fmt.Errorf("decode metadata: %w", err),
+						Segment: r.Segment(),
+						Offset:  r.Offset(),
+					}
+					return
+				}
+				decoded <- meta
 			case record.Tombstones, record.Exemplars:
 				// We don't care about decoding tombstones or exemplars
 				// TODO: If decide to decode exemplars, we should make sure to prepopulate
@@ -548,6 +559,28 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 			}
 			clear(v) // Zero out to avoid retaining histogram data.
 			w.walReplayFloatHistogramsPool.Put(v[:0])
+		case []record.RefMetadata:
+			// Metadata is replayed unconditionally to preserve what was written to
+			// the WAL, matching TSDB Head replay.
+			for _, entry := range v {
+				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[entry.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[entry.Ref] = currentSegmentOrCheckpoint
+					}
+					entry.Ref = ref
+				}
+				series := w.series.GetByID(entry.Ref)
+				if series == nil {
+					nonExistentSeriesRefs.Inc()
+					continue
+				}
+
+				series.meta = &metadata.Metadata{Type: record.ToMetricType(entry.Type), Unit: entry.Unit, Help: entry.Help}
+			}
+			clear(v) // Zero out to avoid retaining metadata strings.
+			w.walReplayMetadataPool.Put(v[:0])
 		default:
 			panic(fmt.Errorf("unexpected decoded type: %T", d))
 		}
@@ -1117,10 +1150,12 @@ func (a *appender) log() error {
 	if len(a.pendingHistograms) > 0 {
 		var customBucketsHistograms []record.RefHistogramSample
 		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
 		if len(customBucketsHistograms) > 0 {
 			buf = encoder.CustomBucketsHistogramSamples(customBucketsHistograms, buf)
 			if err := a.w.wal.Log(buf); err != nil {
@@ -1133,10 +1168,12 @@ func (a *appender) log() error {
 	if len(a.pendingFloatHistograms) > 0 {
 		var customBucketsFloatHistograms []record.RefFloatHistogramSample
 		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
-		if err := a.w.wal.Log(buf); err != nil {
-			return err
+		if len(buf) > 0 {
+			if err := a.w.wal.Log(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
 		}
-		buf = buf[:0]
 		if len(customBucketsFloatHistograms) > 0 {
 			buf = encoder.CustomBucketsFloatHistogramSamples(customBucketsFloatHistograms, buf)
 			if err := a.w.wal.Log(buf); err != nil {
