@@ -2,15 +2,11 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 )
-
-// errEmptyStaticLabelStageConfig error returned if the config is empty.
-var errEmptyStaticLabelStageConfig = errors.New("static_labels stage config cannot be empty")
 
 var _ syntax.Validator = (*StaticLabelsConfig)(nil)
 
@@ -20,12 +16,10 @@ type StaticLabelsConfig struct {
 }
 
 func (c *StaticLabelsConfig) Validate() error {
-	if c.Values == nil {
-		return errEmptyStaticLabelStageConfig
-	}
 	for labelName, v := range c.Values {
 		// TODO: add support for different validation schemes.
-		if !model.UTF8Validation.IsValidLabelName(labelName) {
+		//nolint:staticcheck
+		if !model.LabelName(labelName).IsValid() {
 			return fmt.Errorf(errInvalidLabelName, labelName)
 		}
 		if v == nil || *v == "" {

@@ -94,11 +94,6 @@ func TestStaticLabelsConfig_Validate(t *testing.T) {
 			}},
 		},
 		{
-			name:    "nil values",
-			config:  StaticLabelsConfig{},
-			wantErr: errEmptyStaticLabelStageConfig.Error(),
-		},
-		{
 			name: "empty label name",
 			config: StaticLabelsConfig{Values: map[string]*string{
 				"": new("val"),
@@ -113,7 +108,7 @@ func TestStaticLabelsConfig_Validate(t *testing.T) {
 			wantErr: "invalid label name: \xfd",
 		},
 		{
-			name: "invalid UTF-8 label value",
+			name: "invalid label value",
 			config: StaticLabelsConfig{Values: map[string]*string{
 				"staticLabel": new("\xfd"),
 			}},
