@@ -362,13 +362,10 @@ func TestMultilineStageStreamsCleanup(t *testing.T) {
 		close(in)
 		<-done
 
-		require.Eventually(t, func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			return len(res) == 3
-		}, 2*time.Second, 20*time.Millisecond)
-
-		require.Equal(t, 0, len(ms.streams), "streams map should be empty after channel close")
+		mu.Lock()
+		defer mu.Unlock()
+		require.Equal(t, 3, len(res))
+		require.Equal(t, 0, len(ms.streams))
 	})
 
 	t.Run("New Pipeline", func(t *testing.T) {
@@ -402,17 +399,12 @@ func TestMultilineStageStreamsCleanup(t *testing.T) {
 
 		p.stop()
 
-		require.Eventually(t, func() bool {
-			mu.Lock()
-			defer mu.Unlock()
-			return len(res) == 3
-		}, 2*time.Second, 20*time.Millisecond)
-
+		require.Equal(t, 3, len(res))
 		var count int
-
 		for i := range ms.streamsStriped.stripes {
 			count += len(ms.streamsStriped.stripes[i].data)
 		}
+
 		require.Equal(t, 0, count, "streams should be empty after stop")
 	})
 }
