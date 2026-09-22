@@ -21,19 +21,9 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_TABLE_DETECTION     = "table_detection"
-	OP_CREATE_STATEMENT    = "create_statement"
 )
 
 const (
-	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
-	selectAllDatabases = `
-		SELECT datname
-		FROM pg_database
-		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')
-			AND datname NOT IN %s`
-
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
 	SELECT
@@ -242,6 +232,24 @@ func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*t
 	}
 }
 
+// SchemasForDatabase returns the known schema names for a database, or nil if the
+// database is unknown to the registry.
+func (tr *TableRegistry) SchemasForDatabase(database database) []string {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return nil
+	}
+
+	out := make([]string, 0, len(schemas))
+	for s := range schemas {
+		out = append(out, string(s))
+	}
+	return out
+}
+
 // IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry.
 // It also returns the resolved table name, which may differ from the input (e.g. lowercased due to PostgreSQL's identifier folding).
 func (tr *TableRegistry) IsValid(database database, parsedTableName string) (string, bool) {
@@ -415,29 +423,11 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
-	rows, err := c.initialConnection.QueryContext(ctx, query)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
-		return nil, fmt.Errorf("failed to discover databases: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var databases []string
-	for rows.Next() {
-		var datname string
-		if err := rows.Scan(&datname); err != nil {
-			c.logger.Error("failed to scan database name", "err", err)
-			continue
-		}
-		databases = append(databases, datname)
-	}
-
-	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating database rows", "err", err)
-		return nil, fmt.Errorf("error iterating database rows: %w", err)
-	}
-
 	return databases, nil
 }
 
@@ -501,7 +491,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 					logging.LevelInfo,
-					OP_TABLE_DETECTION,
+					database_observability.OP_TABLE_DETECTION,
 					fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
 				)
 			}
@@ -547,7 +537,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_CREATE_STATEMENT,
+			database_observability.OP_CREATE_STATEMENT,
 			fmt.Sprintf(
 				`datname="%s" schema="%s" table="%s" table_spec="%s"`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
@@ -597,31 +587,19 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	}
 
 	for _, dbName := range databases {
-		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
+		conn, closeConn, err := connectToDatabase(c.dbDSN, dbName, c.dbConnectionFactory, c.initialConnection)
 		if err != nil {
-			c.logger.Error("failed to create DSN for database", "datname", dbName, "err", err)
-			continue
-		}
-
-		conn, err := c.dbConnectionFactory(databaseDSN)
-		if err != nil {
-			c.logger.Error("failed to create connection to database", "datname", dbName, "err", err)
+			c.logger.Error("failed to connect to database", "datname", dbName, "err", err)
 			continue
 		}
 
 		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
 			c.logger.Error("failed to collect schema from database", "datname", dbName, "err", err)
-			if conn != c.initialConnection {
-				conn.Close()
-			}
+			closeConn()
 			continue
 		}
 
-		if conn != c.initialConnection {
-			if err := conn.Close(); err != nil {
-				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
-			}
-		}
+		closeConn()
 	}
 
 	// Drop throttle entries for databases that getAllDatabases no longer

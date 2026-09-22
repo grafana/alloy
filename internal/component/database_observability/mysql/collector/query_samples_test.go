@@ -18,6 +18,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
@@ -73,7 +74,7 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
@@ -116,7 +117,7 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01\"",
@@ -159,7 +160,7 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
@@ -202,7 +203,7 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
@@ -278,8 +279,8 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
@@ -323,7 +324,7 @@ func TestQuerySamples(t *testing.T) {
 				"457",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
@@ -566,9 +567,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
 
@@ -687,7 +688,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
@@ -906,15 +907,15 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[2].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[2].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[2].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[3].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[3].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[3].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[4].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[4].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[4].Line)
 	})
 
@@ -1065,11 +1066,11 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[2].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[2].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
 	})
 
@@ -1201,9 +1202,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
 
@@ -1322,7 +1323,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 	})
 
 	t.Run("wait event at or above wait_min_duration is collected", func(t *testing.T) {
@@ -1439,8 +1440,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"1.000000ms\"", lokiEntries[1].Line)
 	})
 
@@ -1557,8 +1558,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
 
@@ -1674,8 +1675,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
 		// Pins that wait_event_type is derived from the substituted (nested) name,
 		// not the outer wrapper.
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_event_type=\"IO Wait\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
@@ -1798,8 +1799,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"200\" wait_end_event_id=\"201\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"50.000000ms\"", lokiEntries[1].Line)
 	})
 }
@@ -1998,7 +1999,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 	})
 }
 
@@ -2130,7 +2131,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
@@ -2260,7 +2261,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
@@ -2381,7 +2382,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		// message_text can leak literal values, so it must not appear when redaction is enabled.
 		assert.NotContains(t, lokiEntries[0].Line, "message_text=")
@@ -2431,7 +2432,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"insert into users (email) values ('jdoe@example.com')\" message_text=\"Duplicate entry 'jdoe@example.com' for key 'users.email'\"", lokiEntries[0].Line)
 	})
 }
@@ -2722,7 +2723,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 			require.NoError(t, err)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 			require.Equal(t, tc.expectedLogOutput, lokiEntries[0].Line)
 		})
 	}
@@ -2879,7 +2880,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
@@ -3041,7 +3042,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
@@ -3187,7 +3188,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
@@ -3337,9 +3338,9 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 		require.Len(t, lokiClient.Received(), 2)
 
-		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time = timer_start
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiClient.Received()[1].Labels)
 		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
 	})
 
@@ -3446,7 +3447,7 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 
 		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
 
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, lokiClient.Received()[1].Labels)
 		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
 	})
 }
@@ -3561,7 +3562,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 		require.Len(t, lokiClient.Received(), 1)
 		assert.Equal(t, model.LabelSet{
-			"op": OP_QUERY_SAMPLE,
+			"op": database_observability.OP_QUERY_SAMPLE,
 		}, lokiClient.Received()[0].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"test_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
 	})
@@ -4296,7 +4297,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 // the counter delta for (digest, schema) equals the sum of wait_time on
 // every emitted wait_event_v2 line for that key.
 func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
-	waitOp := OP_WAIT_EVENT_V2
+	waitOp := database_observability.OP_WAIT_EVENT_V2
 	t.Run("wait_event_v2", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -4474,7 +4475,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 2)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.NotContains(t, lokiEntries[1].Line, "wait_event_type=")
 	})
 
@@ -4542,7 +4543,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 2)
-		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
 		assert.Contains(t, lokiEntries[1].Line, `wait_event_type="IO Wait"`)
 		// structured metadata labels should not contain wait_event_type
 		assert.NotContains(t, string(lokiEntries[1].Labels["wait_event_type"]), "IO Wait")

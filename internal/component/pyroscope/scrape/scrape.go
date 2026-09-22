@@ -320,7 +320,7 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 			c.mut.RUnlock()
 
-			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs)
+			ct := discovery.NewDistributedTargets(clusteringEnabled, c.cluster, tgs, discovery.TargetHashing{})
 			promTargets := discovery.ComponentTargetsToPromTargetGroupsForSingleJob(jobName, ct.LocalTargets())
 
 			select {

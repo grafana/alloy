@@ -1,10 +1,12 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -21,12 +23,12 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	writer, err := wal.NewWriter(walCfg, logger, reg)
+	writer, err := wal.NewWriter(walCfg, logger, reg, wal.NewWriterMetrics(reg))
 	if err != nil {
 		return nil, fmt.Errorf("error creating wal writer: %w", err)
 	}
 
-	m := &WALConsumer{
+	c := &WALConsumer{
 		writer: writer,
 		pairs:  make([]endpointWatcherPair, 0, len(cfgs)),
 	}
@@ -44,44 +46,85 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.C
 		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
 		name := getEndpointName(cfg)
 		if _, ok := endpointsCheck[name]; ok {
+			c.Stop()
 			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
 		endpointsCheck[name] = struct{}{}
 
-		markerFile, err := marker.NewFile(logger, walCfg.Dir)
+		pair, err := newEndpointWatcherPair(
+			name,
+			logger,
+			walCfg,
+			cfg,
+			writer,
+			metrics,
+			walMarkerMetrics,
+			walWatcherMetrics,
+			walEndpointMetrics,
+		)
 		if err != nil {
+			c.Stop()
 			return nil, err
 		}
-		tracker := marker.NewSegmentTracker(markerFile, walCfg.MaxSegmentAge, logger, walMarkerMetrics.CurryWithId(name))
 
-		endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
-		if err != nil {
-			return nil, fmt.Errorf("error starting endpoint: %w", err)
-		}
-
-		adapter := newWalEndpointAdapter(endpoint, logger, walEndpointMetrics.CurryWithId(name), tracker)
-
-		// subscribe watcher's wal.WriteTo to writer events. This will make the writer trigger the cleanup of the wal.WriteTo
-		// series cache whenever a segment is deleted.
-		writer.SubscribeCleanup(adapter)
-
-		watcher := wal.NewWatcher(walCfg.Dir, name, walWatcherMetrics, adapter, logger.With("component", name), walCfg.WatchConfig, tracker)
-
-		// subscribe watcher to wal write events
-		writer.SubscribeWrite(watcher)
-
-		logger.Debug("starting WAL watcher for endpoint", "endpoint", name)
-		watcher.Start()
-
-		m.pairs = append(m.pairs, endpointWatcherPair{
-			watcher:  watcher,
-			endpoint: adapter,
-		})
+		c.pairs = append(c.pairs, pair)
 	}
 
-	writer.Start(walCfg.MaxSegmentAge)
+	writer.Start()
 
-	return m, nil
+	return c, nil
+}
+
+func newEndpointWatcherPair(
+	name string,
+	logger *slog.Logger,
+	walCfg wal.Config,
+	cfg Config,
+	writer *wal.Writer,
+	metrics *metrics,
+	markerMetrics *marker.Metrics,
+	watcherMetrics *wal.WatcherMetrics,
+	endpointMetrics *walEndpointMetrics,
+) (endpointWatcherPair, error) {
+
+	markerFile, err := marker.NewFile(logger, walCfg.Dir)
+	if err != nil {
+		return endpointWatcherPair{}, err
+	}
+	tracker := marker.NewSegmentTracker(markerFile, walCfg.MaxSegmentAge, logger, markerMetrics.CurryWithId(name))
+
+	endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
+	if err != nil {
+		tracker.Stop()
+		return endpointWatcherPair{}, fmt.Errorf("error starting endpoint: %w", err)
+	}
+
+	adapter := newWalEndpointAdapter(endpoint, logger, endpointMetrics.CurryWithId(name), tracker)
+
+	// The adapter caches series per segment, so it has to be told when the writer deletes
+	// a segment to be able to reclaim them.
+	writer.SubscribeCleanup(adapter)
+
+	watcher := wal.NewWatcher(
+		walCfg.Dir,
+		name,
+		watcherMetrics,
+		adapter,
+		logger.With("component", name),
+		walCfg.WatchConfig,
+		tracker,
+	)
+
+	// subscribe watcher to wal write events
+	writer.SubscribeWrite(watcher)
+
+	logger.Debug("starting WAL watcher for endpoint", "endpoint", name)
+	watcher.Start()
+
+	return endpointWatcherPair{
+		watcher:  watcher,
+		endpoint: adapter,
+	}, nil
 }
 
 type endpointWatcherPair struct {
@@ -89,8 +132,8 @@ type endpointWatcherPair struct {
 	endpoint *walEndpointAdapter
 }
 
-// Stop will proceed to stop, in order, watcher and the endpoint.
-func (p endpointWatcherPair) Stop(drain bool) {
+// stop will proceed to stop, in order, watcher and the endpoint.
+func (p endpointWatcherPair) stop(drain bool) {
 	// If drain enabled, drain the WAL.
 	if drain {
 		p.watcher.Drain()
@@ -98,7 +141,7 @@ func (p endpointWatcherPair) Stop(drain bool) {
 	p.watcher.Stop()
 
 	// Subsequently stop the endpoint.
-	p.endpoint.Stop()
+	p.endpoint.stop()
 }
 
 var _ DrainableConsumer = (*WALConsumer)(nil)
@@ -108,8 +151,9 @@ type WALConsumer struct {
 	pairs  []endpointWatcherPair
 }
 
-func (m *WALConsumer) Chan() chan<- loki.Entry {
-	return m.writer.Chan()
+// ConsumeEntry implements DrainableConsumer.
+func (m *WALConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	return m.writer.WriteEntry(entry)
 }
 
 func (m *WALConsumer) Stop() {
@@ -132,7 +176,7 @@ func (m *WALConsumer) stop(drain bool) {
 	// endpoint config, each (watcher, queue) pair is stopped concurrently.
 	for _, pair := range m.pairs {
 		stopWG.Go(func() {
-			pair.Stop(drain)
+			pair.stop(drain)
 		})
 	}
 
@@ -193,52 +237,55 @@ func (c *walEndpointAdapter) StoreSeries(series []record.RefSeries, segment int)
 	}
 }
 
-func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) error {
+func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefEntries, segment int) error {
 	c.seriesLock.RLock()
 	l, ok := c.series[entries.Ref]
 	c.seriesLock.RUnlock()
 
 	var (
 		queuedEntries    int
-		maxSeenTimestamp int64 = -1
+		maxSeenTimestamp time.Time
 	)
 
-	if ok {
-		for i := range entries.Entries {
-			e := entries.EntryAt(l, i)
-			err := c.endpoint.enqueue(e, segment)
-			// We can receive errQueueIsFull if we have configured endpoint with BlockOnOverflow.
-			// Here we just skip the entry and try with the next one.
-			if errors.Is(err, errQueueIsFull) {
-				continue
-			}
-			// NOTE: The only other error that can be returned is context.Canceled and that happens
-			// if endpoint was stopped.
-			if err != nil {
-				return nil
-			}
-
-			queuedEntries += 1
-			if e.Timestamp.Unix() > maxSeenTimestamp {
-				maxSeenTimestamp = e.Timestamp.Unix()
-			}
-		}
-		// update marker with all successfully queued entries.
-		c.tracker.UpdateReceivedData(segment, queuedEntries)
-	} else {
+	if !ok {
 		// TODO(thepalbi): Add metric here
-		c.logger.Debug("series for entry not found")
+		c.logger.Debug("series for entries not found")
+		return nil
 	}
 
-	// It's safe to assume that upon an AppendEntries call, there will always be at least
-	// one entry.
-	c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp))
+	for i := range entries.Entries {
+		entry := entries.EntryAt(l, i)
+		err := c.endpoint.enqueue(ctx, entry, segment)
+
+		// If we get errQueueIsFull we skipped the entry and should
+		// not count it as queued and should move on to the next one.
+		if errors.Is(err, errQueueIsFull) {
+			continue
+		}
+
+		if err != nil {
+			return err
+		}
+
+		queuedEntries += 1
+
+		if entry.Timestamp.After(maxSeenTimestamp) {
+			maxSeenTimestamp = entry.Timestamp
+		}
+	}
+	// update tracker with all successfully queued entries.
+	c.tracker.UpdateReceivedData(segment, queuedEntries)
+
+	if queuedEntries > 0 {
+		c.metrics.lastReadTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp.Unix()))
+	}
+
 	return nil
 }
 
-// Stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
-// limited by a deadline, controlled by a configured drain timeout, which is global to the Stop call.
-func (c *walEndpointAdapter) Stop() {
+// stop the endpoint, enqueueing pending batches and draining the send queue accordingly. Both closing operations are
+// limited by a deadline, controlled by a configured drain timeout, which is global to the stop call.
+func (c *walEndpointAdapter) stop() {
 	c.endpoint.stop()
 	c.tracker.Stop()
 }

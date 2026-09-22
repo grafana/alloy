@@ -1,8 +1,12 @@
 package discovery
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/service/cluster"
 )
@@ -10,22 +14,52 @@ import (
 // DistributedTargets uses the node's Lookup method to distribute discovery
 // targets when a component runs in a cluster.
 type DistributedTargets struct {
-	localTargets []Target
-	// localTargetKeys is used to cache the key hash computation. Improves time performance by ~20%.
-	localTargetKeys  []shard.Key
-	remoteTargetKeys map[shard.Key]struct{}
+	localTargets        []Target               // Targets assigned to this instance.
+	remoteOwnershipKeys map[shard.Key]struct{} // Ownership hashes assigned to other instances.
+	targetCount         int                    // Number of distinct target identities across all instances.
+	ownershipHash       func(Target) uint64    // Current ownership hash function, also used to detect handoffs.
 }
 
-// NewDistributedTargets creates the abstraction that allows components to
-// dynamically shard targets between components.
-func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target) *DistributedTargets {
-	return NewDistributedTargetsWithCustomLabels(clusteringEnabled, cluster, allTargets, nil)
+// TargetHashing separates target identity from cluster ownership.
+// Functions must be deterministic, and equal identities must have equal ownership
+// hashes. Prefer the presets below when selecting or excluding labels.
+type TargetHashing struct {
+	Identity  func(Target) uint64 // Deduplication hash; defaults to NonMetaLabelsHash.
+	Ownership func(Target) uint64 // Cluster ownership hash; defaults to the identity hash.
 }
 
-// NewDistributedTargetsWithCustomLabels creates the abstraction that allows components to
-// dynamically shard targets between components. Passing in labels will limit the sharding to only use those labels for computing the hash key.
-// Passing in nil or empty array means look at all labels.
-func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target, labels []string) *DistributedTargets {
+// IdentityLabels uses selected labels for both identity and ownership, including
+// any selected __meta_* labels. An empty list uses the default non-meta labels.
+func IdentityLabels(labels []string) TargetHashing {
+	if len(labels) == 0 {
+		return TargetHashing{}
+	}
+	labels = slices.Clone(labels)
+	return TargetHashing{Identity: func(target Target) uint64 {
+		return target.SpecificLabelsHash(labels)
+	}}
+}
+
+// ExcludeOwnershipLabels excludes exact label names from the non-meta ownership
+// hash, while preserving the default identity hash and original targets.
+func ExcludeOwnershipLabels(labels []string) TargetHashing {
+	if len(labels) == 0 {
+		return TargetHashing{}
+	}
+	labels = slices.Clone(labels)
+	return TargetHashing{Ownership: func(target Target) uint64 {
+		return target.HashLabelsWithPredicate(func(name string) bool {
+			return !strings.HasPrefix(name, model.MetaLabelPrefix) && !slices.Contains(labels, name)
+		})
+	}}
+}
+
+// NewDistributedTargets distributes targets using the supplied hashing rules.
+// A zero TargetHashing uses all non-meta labels for both identity and ownership.
+func NewDistributedTargets(clusteringEnabled bool, cluster cluster.Cluster, allTargets []Target, hashing TargetHashing) *DistributedTargets {
+	if hashing.Identity == nil {
+		hashing.Identity = Target.NonMetaLabelsHash
+	}
 	if !clusteringEnabled || cluster == nil {
 		cluster = disabledCluster{}
 	}
@@ -40,45 +74,45 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 	}
 
 	localTargets := make([]Target, 0, localCap)
-	localTargetKeys := make([]shard.Key, 0, localCap)
-	remoteTargetKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
+	remoteOwnershipKeys := make(map[shard.Key]struct{}, len(allTargets)-localCap)
 
 	// Need to handle duplicate entries.
 	unique := make(map[shard.Key]struct{})
 	for _, tgt := range allTargets {
-		var targetKey shard.Key
-		// If we have no custom labels check all non-meta labels.
-		if len(labels) == 0 {
-			targetKey = keyFor(tgt)
-		} else {
-			targetKey = keyForLabels(tgt, labels)
-		}
+		targetKey := shard.Key(hashing.Identity(tgt))
 
 		// check if we have already seen this target
 		if _, ok := unique[targetKey]; ok {
 			continue
 		}
 		unique[targetKey] = struct{}{}
+		ownershipKey := targetKey
+		if hashing.Ownership != nil {
+			ownershipKey = shard.Key(hashing.Ownership(tgt))
+		}
 
 		// Determine if target belongs locally. Make sure it doesn't if cluster not ready.
 		belongsToLocal := false
 		if cluster.Ready() {
-			peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
+			peers, err := cluster.Lookup(ownershipKey, 1, shard.OpReadWrite)
 			belongsToLocal = err != nil || len(peers) == 0 || peers[0].Self
 		}
 
 		if belongsToLocal {
 			localTargets = append(localTargets, tgt)
-			localTargetKeys = append(localTargetKeys, targetKey)
 		} else {
-			remoteTargetKeys[targetKey] = struct{}{}
+			remoteOwnershipKeys[ownershipKey] = struct{}{}
 		}
 	}
 
+	if hashing.Ownership == nil {
+		hashing.Ownership = hashing.Identity
+	}
 	return &DistributedTargets{
-		localTargets:     localTargets,
-		localTargetKeys:  localTargetKeys,
-		remoteTargetKeys: remoteTargetKeys,
+		localTargets:        localTargets,
+		remoteOwnershipKeys: remoteOwnershipKeys,
+		targetCount:         len(unique),
+		ownershipHash:       hashing.Ownership,
 	}
 }
 
@@ -88,33 +122,25 @@ func (dt *DistributedTargets) LocalTargets() []Target {
 }
 
 func (dt *DistributedTargets) TargetCount() int {
-	return len(dt.localTargetKeys) + len(dt.remoteTargetKeys)
+	return dt.targetCount
 }
 
-// MovedToRemoteInstance returns the set of local targets from prev
-// that are no longer local in dt, indicating an active target has moved.
-// Only targets which exist in both prev and dt are returned. If prev
-// contains an empty list of targets, no targets are returned.
+// MovedToRemoteInstance returns previous local targets whose ownership group is
+// now remote. This includes targets that disappeared from a group that moved,
+// preferring to suppress staleness over marking a potentially active series stale.
 func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []Target {
-	if prev == nil {
+	if prev == nil || len(dt.remoteOwnershipKeys) == 0 {
 		return nil
 	}
 	var movedAwayTargets []Target
-	for i := 0; i < len(prev.localTargets); i++ {
-		key := prev.localTargetKeys[i]
-		if _, exist := dt.remoteTargetKeys[key]; exist {
-			movedAwayTargets = append(movedAwayTargets, prev.localTargets[i])
+	for _, target := range prev.localTargets {
+		// Use the current rules so a configuration reload can also move targets.
+		key := shard.Key(dt.ownershipHash(target))
+		if _, exist := dt.remoteOwnershipKeys[key]; exist {
+			movedAwayTargets = append(movedAwayTargets, target)
 		}
 	}
 	return movedAwayTargets
-}
-
-func keyFor(tgt Target) shard.Key {
-	return shard.Key(tgt.NonMetaLabelsHash())
-}
-
-func keyForLabels(tgt Target, lbls []string) shard.Key {
-	return shard.Key(tgt.SpecificLabelsHash(lbls))
 }
 
 type disabledCluster struct{}
@@ -131,4 +157,8 @@ func (l disabledCluster) Peers() []peer.Peer {
 
 func (l disabledCluster) Ready() bool {
 	return true
+}
+
+func (l disabledCluster) Enabled() bool {
+	return false
 }

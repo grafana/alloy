@@ -186,6 +186,7 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		// Don't include the collector metrics if the default metrics are disabled.
 		return integrations.NewCollectorIntegration(
 			cfg.Name(),
+			integrations.WithLogger(logger),
 			integrations.WithCollectors(e),
 			integrations.WithRunner(run),
 		), nil
@@ -222,6 +223,7 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 
 	return integrations.NewCollectorIntegration(
 		cfg.Name(),
+		integrations.WithLogger(logger),
 		integrations.WithCollectors(e, c),
 		integrations.WithRunner(run),
 	), nil

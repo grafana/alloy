@@ -1,11 +1,14 @@
 package client
 
-import "github.com/grafana/alloy/internal/component/common/loki"
+import (
+	"context"
 
-// Consumer is an interface for consuming Loki log entries. It provides a channel
-// to send entries to and a method to stop the consumer.
+	"github.com/grafana/alloy/internal/component/common/loki"
+)
+
+// Consumer is an interface for consuming Loki log entries.
 type Consumer interface {
-	Chan() chan<- loki.Entry
+	ConsumeEntry(ctx context.Context, entry loki.Entry) error
 	Stop()
 }
 

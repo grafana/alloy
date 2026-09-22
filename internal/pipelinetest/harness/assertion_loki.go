@@ -1,0 +1,259 @@
+package harness
+
+import (
+	"fmt"
+	"reflect"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
+)
+
+// LokiEntryCount returns an Assertion that passes when exactly want Loki
+// entries match all provided matchers. When no matchers are provided, all
+// entries are counted.
+func LokiEntryCount(want int, matchers ...EntryMatcher) Assertion {
+	return func(s snapshot) error {
+		var got int
+		for _, entry := range s.loki {
+			if entryMatches(entry, matchers...) {
+				got++
+			}
+		}
+
+		if got == want {
+			return nil
+		}
+
+		message := fmt.Sprintf("want %d, got %d", want, got)
+		if conditions := matcherConditions(matchers); len(conditions) > 0 {
+			message += " for " + conditions
+		}
+
+		return AssertionError{
+			Kind:    "loki.count",
+			Message: message,
+		}
+	}
+}
+
+// LokiContainsEntry returns an Assertion that passes when the snapshot contains
+// at least one Loki entry matched by all provided matchers.
+func LokiContainsEntry(matchers ...EntryMatcher) Assertion {
+	return func(s snapshot) error {
+		for _, entry := range s.loki {
+			if entryMatches(entry, matchers...) {
+				return nil
+			}
+		}
+
+		message := "no matching entry found"
+		if conditions := matcherConditions(matchers); len(conditions) > 0 {
+			message += " for " + conditions
+		}
+
+		return AssertionError{
+			Kind:    "loki.contains",
+			Message: message,
+		}
+	}
+}
+
+func matcherConditions(matchers []EntryMatcher) string {
+	conditions := make([]string, 0, len(matchers))
+	for _, matcher := range matchers {
+		if matcher.text == "" {
+			continue
+		}
+		conditions = append(conditions, matcher.text)
+	}
+	return strings.Join(conditions, ", ")
+}
+
+func entryMatches(entry loki.Entry, matchers ...EntryMatcher) bool {
+	for _, matcher := range matchers {
+		if !matcher.match(entry) {
+			return false
+		}
+	}
+	return true
+}
+
+type EntryMatcher struct {
+	match func(entry loki.Entry) bool
+	text  string
+}
+
+// LokiEntryLine returns an EntryMatcher that matches the Loki entry line
+// exactly.
+func LokiEntryLine(line string) EntryMatcher {
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return entry.Line == line
+		},
+		text: renderLine(line),
+	}
+}
+
+// LokiEntryLabels returns an EntryMatcher for Loki entry labels. When partial
+// is false, labels must match exactly. When partial is true, the entry labels
+// must contain at least the provided labels.
+func LokiEntryLabels(labels model.LabelSet, partial bool) EntryMatcher {
+	var match func(entry loki.Entry) bool
+	if partial {
+		match = func(entry loki.Entry) bool {
+			return labelSetContains(entry.Labels, labels)
+		}
+	} else {
+		match = func(entry loki.Entry) bool {
+			return reflect.DeepEqual(entry.Labels, labels)
+		}
+	}
+
+	return EntryMatcher{
+		match: match,
+		text:  renderLabelSet(labels),
+	}
+}
+
+// LokiEntryStructuredMetadata returns an EntryMatcher for Loki entry
+// structured metadata. When partial is false, structured metadata must match
+// exactly. When partial is true, the entry metadata must contain at least the
+// provided labels.
+func LokiEntryStructuredMetadata(metadata push.LabelsAdapter, partial bool) EntryMatcher {
+	var match func(entry loki.Entry) bool
+	if partial {
+		match = func(entry loki.Entry) bool {
+			return structuredMetadataContains(entry.StructuredMetadata, metadata)
+		}
+	} else {
+		match = func(entry loki.Entry) bool {
+			return structuredMetadataEqual(entry.StructuredMetadata, metadata)
+		}
+	}
+
+	return EntryMatcher{
+		match: match,
+		text:  renderStructuredMetadata(metadata),
+	}
+}
+
+// LokiEntryTimestamp returns an EntryMatcher that matches the Loki entry
+// timestamp exactly.
+func LokiEntryTimestamp(ts time.Time) EntryMatcher {
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return entry.Timestamp.Equal(ts)
+		},
+		text: renderTimestamp(ts),
+	}
+}
+
+func renderLokiEntries(entries []loki.Entry) string {
+	var builder strings.Builder
+	_, _ = fmt.Fprintf(&builder, "loki entries (%d):\n", len(entries))
+	for _, entry := range entries {
+		builder.WriteString("- ")
+		builder.WriteString(renderLokiEntry(entry))
+		builder.WriteByte('\n')
+	}
+
+	return strings.TrimSuffix(builder.String(), "\n")
+}
+
+func renderLokiEntry(entry loki.Entry) string {
+	parts := []string{
+		renderLabelSet(entry.Labels),
+		renderLine(entry.Line),
+		renderTimestamp(entry.Timestamp),
+		renderStructuredMetadata(entry.StructuredMetadata),
+	}
+	return strings.Join(parts, " ")
+}
+
+func renderLine(line string) string {
+	return fmt.Sprintf("line = %q", line)
+}
+
+func renderLabelSet(labels model.LabelSet) string {
+	if len(labels) == 0 {
+		return "labels = {}"
+	}
+
+	keys := make([]string, 0, len(labels))
+	for name := range labels {
+		keys = append(keys, string(name))
+	}
+	slices.Sort(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, key, labels[model.LabelName(key)]))
+	}
+
+	return "labels = {" + strings.Join(parts, ", ") + "}"
+}
+
+func renderStructuredMetadata(labels push.LabelsAdapter) string {
+	if len(labels) == 0 {
+		return "structured_metadata = {}"
+	}
+
+	parts := make([]string, 0, len(labels))
+	for _, label := range sortStructuredMetadata(labels) {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, label.Name, label.Value))
+	}
+
+	return "structured_metadata = {" + strings.Join(parts, ", ") + "}"
+}
+
+func structuredMetadataEqual(got, want push.LabelsAdapter) bool {
+	if len(got) != len(want) {
+		return false
+	}
+
+	return slices.EqualFunc(sortStructuredMetadata(got), sortStructuredMetadata(want), func(a, b push.LabelAdapter) bool {
+		return a.Name == b.Name && a.Value == b.Value
+	})
+}
+
+func sortStructuredMetadata(labels push.LabelsAdapter) push.LabelsAdapter {
+	cloned := slices.Clone(labels)
+	slices.SortFunc(cloned, func(a, b push.LabelAdapter) int {
+		if cmp := strings.Compare(a.Name, b.Name); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a.Value, b.Value)
+	})
+	return cloned
+}
+
+func labelSetContains(got, want model.LabelSet) bool {
+	for name, value := range want {
+		if got[name] != value {
+			return false
+		}
+	}
+	return true
+}
+
+func structuredMetadataContains(got, want push.LabelsAdapter) bool {
+	if len(want) == 0 {
+		return true
+	}
+
+	gotMap := make(map[string]string, len(got))
+	for _, label := range got {
+		gotMap[label.Name] = label.Value
+	}
+
+	for _, label := range want {
+		if gotMap[label.Name] != label.Value {
+			return false
+		}
+	}
+	return true
+}

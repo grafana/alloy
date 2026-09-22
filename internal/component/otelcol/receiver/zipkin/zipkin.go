@@ -60,10 +60,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &zipkinreceiver.Config{
-		ParseStringTags: args.ParseStringTags,
-		ServerConfig:    *httpServerConfig,
-	}, nil
+	cfg := zipkinreceiver.NewFactory().CreateDefaultConfig().(*zipkinreceiver.Config)
+	cfg.ParseStringTags = args.ParseStringTags
+	cfg.ServerConfig = *httpServerConfig
+	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.

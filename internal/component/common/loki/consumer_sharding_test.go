@@ -15,7 +15,10 @@ import (
 
 func TestShardingConsumer_Consume(t *testing.T) {
 	t.Run("splits batch into streams", func(t *testing.T) {
-		const created = int64(1234)
+		const (
+			created1 = int64(1234)
+			created2 = int64(1234)
+		)
 
 		first := model.LabelSet{"job": "first"}
 		second := model.LabelSet{"job": "second"}
@@ -24,9 +27,9 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		sharding := NewShardingConsumer(2, c)
 		defer sharding.Stop()
 
-		original := NewBatchWithCreatedUnixMicro(created)
-		original.Add(NewStream(first, push.Entry{Line: "1"}))
-		original.Add(NewStream(second, push.Entry{Line: "2"}))
+		original := NewBatch()
+		original.Add(NewStreamWithCreatedUnixMicro(first, created1, push.Entry{Line: "1"}))
+		original.Add(NewStreamWithCreatedUnixMicro(second, created2, push.Entry{Line: "2"}))
 
 		err := sharding.Consume(t.Context(), original)
 		require.NoError(t, err)
@@ -42,8 +45,8 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		gotFirst := got[first.String()]
 		require.Equal(t, 1, gotFirst.StreamLen())
 		require.Equal(t, 1, gotFirst.EntryLen())
-		_ = gotFirst.ConsumeStreams(func(stream Stream, created int64) error {
-			require.Equal(t, original.Created(), created)
+		_ = gotFirst.ConsumeStreams(func(stream Stream) error {
+			require.Equal(t, original.streams[0].Created(), stream.Created())
 			require.Equal(t, first, stream.Labels)
 			require.Equal(t, "1", stream.Entries[0].Line)
 			return nil
@@ -52,8 +55,8 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		gotSecond := got[second.String()]
 		require.Equal(t, 1, gotSecond.StreamLen())
 		require.Equal(t, 1, gotSecond.EntryLen())
-		_ = gotSecond.ConsumeStreams(func(stream Stream, created int64) error {
-			require.Equal(t, original.Created(), created)
+		_ = gotSecond.ConsumeStreams(func(stream Stream) error {
+			require.Equal(t, original.streams[1].Created(), stream.Created())
 			require.Equal(t, second, stream.Labels)
 			require.Equal(t, "2", stream.Entries[0].Line)
 			return nil
@@ -81,7 +84,7 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		got := batches[0]
 		require.Equal(t, 1, got.StreamLen())
 		require.Equal(t, 2, got.EntryLen())
-		_ = got.ConsumeStreams(func(stream Stream, _ int64) error {
+		_ = got.ConsumeStreams(func(stream Stream) error {
 			require.Equal(t, labels, stream.Labels)
 			require.Equal(t, "1", stream.Entries[0].Line)
 			require.Equal(t, "2", stream.Entries[1].Line)

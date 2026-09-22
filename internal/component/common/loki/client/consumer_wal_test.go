@@ -19,6 +19,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
@@ -31,7 +32,6 @@ import (
 func TestWALConsumer(t *testing.T) {
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
-		Enabled:       true,
 		MaxSegmentAge: time.Second * 10,
 		WatchConfig:   wal.DefaultWatchConfig,
 	}
@@ -58,13 +58,19 @@ func TestWALConsumer(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	require.Eventually(t, func() bool {
@@ -90,7 +96,6 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 
 	walConfig := wal.Config{
 		Dir:           t.TempDir(),
-		Enabled:       true,
 		WatchConfig:   wal.DefaultWatchConfig,
 		MaxSegmentAge: time.Second * 10,
 	}
@@ -125,13 +130,17 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				}),
+		)
 	}
 
 	// times 2 due to endpoint being run
@@ -286,7 +295,7 @@ func TestWALEndpoint(t *testing.T) {
 					},
 				}, 0)
 
-				_ = adapter.AppendEntries(wal.RefEntries{
+				_ = adapter.AppendEntries(t.Context(), wal.RefEntries{
 					Ref:     chunks.HeadSeriesRef(mod),
 					Created: time.Now().UnixMicro(),
 					Entries: []push.Entry{{
@@ -305,7 +314,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			adapter.Stop()
+			adapter.stop()
 			close(receivedReqsChan)
 		})
 	}
@@ -431,7 +440,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 				},
 			}, 0)
 
-			_ = adapter.AppendEntries(wal.RefEntries{
+			_ = adapter.AppendEntries(b.Context(), wal.RefEntries{
 				Ref:     chunks.HeadSeriesRef(seriesId),
 				Created: time.Now().UnixMicro(),
 				Entries: []push.Entry{{
@@ -450,7 +459,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	adapter.Stop()
+	adapter.stop()
 	close(receivedReqsChan)
 }
 
@@ -512,7 +521,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
-			endpoint.enqueue(loki.Entry{
+			endpoint.enqueue(b.Context(), loki.Entry{
 				Labels: model.LabelSet{
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
@@ -535,4 +544,98 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	// Stop the endpoint: it waits until the current batch is sent
 	endpoint.stop()
 	close(receivedReqsChan)
+}
+
+func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
+	const (
+		drainTimeout = time.Second
+	)
+
+	server, blocked, release := newBlockedServer()
+	defer server.Close()
+	defer release()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	walConfig := wal.Config{
+		Dir:           t.TempDir(),
+		MaxSegmentAge: time.Minute,
+		WatchConfig: wal.WatchConfig{
+			MinReadFrequency: 10 * time.Millisecond,
+			MaxReadFrequency: 50 * time.Millisecond,
+			DrainTimeout:     drainTimeout,
+		},
+	}
+
+	endpointConfig := Config{
+		Name: "test-client",
+		URL:  flagext.URLValue{URL: serverURL},
+		// Long enough that the in-flight request stays parked for the whole test.
+		Timeout:   time.Minute,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	}
+
+	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, endpointConfig)
+	require.NoError(t, err)
+
+	feedUntilBlocked(t, blocked, consumer)
+
+	stopped := make(chan struct{})
+	go func() {
+		consumer.StopAndDrain()
+		close(stopped)
+	}()
+
+	// A healthy shutdown costs at most the WAL drain timeout plus the queue drain timeout.
+	select {
+	case <-stopped:
+	case <-time.After(5 * (drainTimeout + drainTimeout)):
+		release()
+		t.Fatal("StopAndDrain did not finish in time")
+	}
+}
+
+func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	host, err := url.Parse("http://localhost:3100")
+	require.NoError(t, err)
+
+	walConfig := wal.Config{
+		Dir:           t.TempDir(),
+		MaxSegmentAge: time.Second * 10,
+		WatchConfig:   wal.DefaultWatchConfig,
+	}
+	var (
+		cfg = Config{URL: flagext.URLValue{URL: host}}
+		// HTTPClientConfig.Validate allows at most one bearer token source, so
+		// creating the endpoint for this config fails.
+		invalidClientCfg = Config{
+			URL: flagext.URLValue{URL: host},
+			Client: config.HTTPClientConfig{
+				BearerToken:     "my-token",
+				BearerTokenFile: "my-token-file",
+			},
+		}
+	)
+
+	// Using same config twice.
+	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, cfg, cfg)
+	require.Error(t, err)
+
+	// Using two different configs but endpoint cannot be created by the second one.
+	_, err = NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, cfg, invalidClientCfg)
+	require.Error(t, err)
 }

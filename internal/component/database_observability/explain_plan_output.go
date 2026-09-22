@@ -22,6 +22,19 @@ const (
 	ExplainPlanOutputOperationTop           ExplainPlanOutputOperation = "Top"
 	ExplainPlanOutputOperationSpool         ExplainPlanOutputOperation = "Spool"
 	ExplainPlanOutputOperationParallelism   ExplainPlanOutputOperation = "Parallelism"
+
+	// Data modification statements (INSERT/UPDATE/DELETE/MERGE). SQL Server
+	// showplan wraps all four in the same <Update> XML element - LogicalOp is
+	// what actually distinguishes them - so these are split out individually
+	// rather than collapsed into one generic operation.
+	ExplainPlanOutputOperationInsert ExplainPlanOutputOperation = "Insert"
+	ExplainPlanOutputOperationUpdate ExplainPlanOutputOperation = "Update"
+	ExplainPlanOutputOperationDelete ExplainPlanOutputOperation = "Delete"
+	ExplainPlanOutputOperationMerge  ExplainPlanOutputOperation = "Merge"
+	// ExplainPlanOutputOperationAssert validates a condition (referential
+	// integrity, scalar subquery cardinality, etc.) and passes the row
+	// through unchanged if it holds.
+	ExplainPlanOutputOperationAssert ExplainPlanOutputOperation = "Assert"
 )
 
 type ExplainPlanAccessType string
@@ -171,4 +184,9 @@ type ExplainPlanNodeDetails struct {
 	// mysql/postgres today; a node can carry more than one simultaneously, hence
 	// a slice rather than a single string.
 	Warnings []string `json:"warnings,omitempty"`
+	// UnrecognizedOperator holds the engine-native operator name when Operation
+	// is ExplainPlanOutputOperationUnknown, so an unmodeled operator is
+	// diagnosable from the emitted output alone rather than requiring the raw
+	// plan. Never set when Operation is anything else.
+	UnrecognizedOperator *string `json:"unrecognizedOperator,omitempty"`
 }

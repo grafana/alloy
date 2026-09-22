@@ -1,9 +1,14 @@
 package stages
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
+	"reflect"
+	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -43,9 +48,9 @@ func processEntries(s Stage, entries ...Entry) []Entry {
 	return res
 }
 
-func loadConfig(yml string) []StageConfig {
+func loadConfig(cfg string) []StageConfig {
 	var config Configs
-	err := syntax.Unmarshal([]byte(yml), &config)
+	err := syntax.Unmarshal([]byte(cfg), &config)
 	if err != nil {
 		panic(err)
 	}
@@ -54,6 +59,247 @@ func loadConfig(yml string) []StageConfig {
 
 func newPipelineFromConfig(cfg string) (*Pipeline, error) {
 	return NewPipeline(logging.NewSlogNop(), loadConfig(cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+}
+
+type entryCheckFNs struct {
+	metrics             func(reg *prometheus.Registry) error
+	metricsAfterCleanup func(reg *prometheus.Registry) error
+	timestamp           func(expected, actual time.Time) bool
+	extracted           func(expected, actual map[string]any) bool
+	structuredMetadata  func(expected, actual push.LabelsAdapter) bool
+}
+
+// runPipelineTest builds a pipeline for cfgs using both the old and new
+// pipeline implementations, runs entries through each, and asserts the
+// result matches expected. checks is optional and lets a caller override how
+// individual fields are compared.
+// metrics checks the registry once entries have been processed, and
+// metricsAfterCleanup checks it again after the pipeline's Cleanup() has run.
+// Both are skipped when nil.
+func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected []Entry, checks ...entryCheckFNs) {
+	var check entryCheckFNs
+	if len(checks) > 0 {
+		check = checks[0]
+	}
+
+	// Pipeline.Run seeds the extracted map with each entry's initial labels
+	// before running any stage. process, called directly below, does not.
+	// Seed it here once so both pipeline implementations start from the same
+	// state.
+	for i := range entries {
+		for labelName, labelValue := range entries[i].Labels {
+			entries[i].Extracted[string(labelName)] = string(labelValue)
+		}
+	}
+
+	cloneEntries := func(entries []Entry) []Entry {
+		out := make([]Entry, len(entries))
+		for i, e := range entries {
+			out[i] = Entry{
+				Extracted: maps.Clone(e.Extracted),
+				Entry:     e.Entry.Clone(),
+			}
+		}
+		return out
+	}
+
+	cloned := cloneEntries(entries)
+
+	t.Run("Pipeline", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
+		require.NoError(t, err)
+
+		out := p.Run(withInboundEntries(cloned...))
+		var collected []Entry
+		for e := range out {
+			collected = append(collected, e)
+		}
+
+		assertEntriesUnordered(t, expected, collected, check)
+		if check.metrics != nil {
+			require.NoError(t, check.metrics(registry))
+		}
+
+		p.Stop()
+		p.Cleanup()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
+		}
+	})
+
+	t.Run("New Pipeline", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+
+		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		require.NoError(t, p.process(context.Background(), entries))
+
+		assertEntriesUnordered(t, expected, collected, check)
+		if check.metrics != nil {
+			require.NoError(t, check.metrics(registry))
+		}
+
+		p.stop()
+		if check.metricsAfterCleanup != nil {
+			require.NoError(t, check.metricsAfterCleanup(registry))
+		}
+	})
+}
+
+func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch) {
+	distribute := func(n int, batches []loki.Batch, work func(worker, iters int)) {
+		var (
+			wg         sync.WaitGroup
+			numWorkers = len(batches)
+		)
+		itersPerWorker, remainder := n/numWorkers, n%numWorkers
+		for w := 0; w < numWorkers; w++ {
+			iters := itersPerWorker
+			if w < remainder {
+				iters++
+			}
+			wg.Go(func() {
+				work(w, iters)
+			})
+		}
+		wg.Wait()
+	}
+
+	b.Run("Pipeline", func(b *testing.B) {
+		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+		require.NoError(b, err)
+
+		in := make(chan loki.Entry)
+		out := make(chan loki.Entry)
+		handler := p.Start(in, out)
+
+		defer close(out)
+		defer handler.Stop()
+
+		go func() {
+			for range out {
+			}
+		}()
+
+		workerEntries := make([][]loki.Entry, len(batches))
+		for w, batch := range batches {
+			clone := batch.Clone()
+			entries := make([]loki.Entry, 0, clone.EntryLen())
+			_ = clone.ConsumeStreams(func(stream loki.Stream) error {
+				for _, e := range stream.Entries {
+					entries = append(entries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e))
+				}
+				return nil
+			})
+			workerEntries[w] = entries
+		}
+
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		distribute(b.N, batches, func(worker, iters int) {
+			entries := workerEntries[worker]
+			for i := 0; i < iters; i++ {
+				for _, e := range entries {
+					handler.Chan() <- e.Clone()
+				}
+			}
+		})
+	})
+
+	b.Run("New Pipeline", func(b *testing.B) {
+		consumer := loki.NewNopConsumer()
+		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, consumer)
+		require.NoError(b, err)
+		defer pc.Stop()
+
+		b.ResetTimer()
+		b.ReportAllocs()
+
+		distribute(b.N, batches, func(worker, iters int) {
+			batch := batches[worker]
+			for i := 0; i < iters; i++ {
+				_ = pc.Consume(context.Background(), batch.Clone())
+			}
+		})
+	})
+}
+
+// assertEntriesUnordered asserts that actual contains exactly the entries in
+// expected, ignoring order.
+func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks entryCheckFNs) {
+	require.Len(t, actual, len(expected))
+
+	entriesEqual := func(expected, actual Entry) bool {
+		if expected.Line != actual.Line {
+			return false
+		}
+
+		if checks.timestamp != nil {
+			if !checks.timestamp(expected.Timestamp, actual.Timestamp) {
+				return false
+			}
+		} else {
+			if expected.Timestamp.UnixNano() != actual.Timestamp.UnixNano() {
+				return false
+			}
+		}
+
+		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
+			return false
+		}
+
+		if checks.extracted != nil {
+			if !checks.extracted(expected.Extracted, actual.Extracted) {
+				return false
+			}
+		} else {
+			if !reflect.DeepEqual(expected.Extracted, actual.Extracted) {
+				return false
+			}
+		}
+
+		var (
+			expectedStructured = slices.Clone(expected.StructuredMetadata)
+			actualStructured   = slices.Clone(actual.StructuredMetadata)
+		)
+
+		sortLabelAdapters := func(s []push.LabelAdapter) {
+			slices.SortFunc(s, func(a, b push.LabelAdapter) int {
+				if a.Name != b.Name {
+					return strings.Compare(a.Name, b.Name)
+				}
+				return strings.Compare(a.Value, b.Value)
+			})
+		}
+		sortLabelAdapters(expectedStructured)
+		sortLabelAdapters(actualStructured)
+
+		if checks.structuredMetadata != nil {
+			return checks.structuredMetadata(expectedStructured, actualStructured)
+		}
+		return reflect.DeepEqual(expectedStructured, actualStructured)
+	}
+
+	remaining := append([]Entry(nil), actual...)
+	for _, exp := range expected {
+		found := -1
+		for i, got := range remaining {
+			if entriesEqual(exp, got) {
+				found = i
+				break
+			}
+		}
+
+		require.NotEqual(t, -1, found, "no matching entry found for expected entry: %+v", exp)
+		remaining = append(remaining[:found], remaining[found+1:]...)
+	}
 }
 
 // TODO(@tpaschalis) Comment these out until we port over the remaining

@@ -34,6 +34,7 @@ func TestEmittedConfigMatchesSchema(t *testing.T) {
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal(schemaBytes, &schema))
 	denyUnknownKeys(schema)
+	stripPatterns(schema)
 
 	result, err := gojsonschema.Validate(gojsonschema.NewGoLoader(schema), gojsonschema.NewGoLoader(cfg))
 	require.NoError(t, err)
@@ -69,5 +70,24 @@ func denyUnknownKeys(v any) {
 	}
 	for _, child := range m {
 		denyUnknownKeys(child)
+	}
+}
+
+// stripPatterns removes the "pattern" keyword from every schema node. Some of
+// Beyla's upstream patterns (e.g. the log-enricher field-name charset) use
+// \uXXXX escapes, which are valid PCRE/JS regex syntax but not the RE2 syntax
+// Go's regexp package implements. gojsonschema compiles every "pattern" while
+// loading the schema, so one such pattern fails schema loading outright rather
+// than just a later match. Dropping "pattern" is safe here: this test only
+// checks key existence (see the doc comment above), and pattern mismatches are
+// already filtered out of the reported errors.
+func stripPatterns(v any) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return
+	}
+	delete(m, "pattern")
+	for _, child := range m {
+		stripPatterns(child)
 	}
 }
