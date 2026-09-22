@@ -1,5 +1,3 @@
-//go:build windows
-
 package positions
 
 // This code is copied from Promtail. The positions package allows logging
@@ -7,11 +5,14 @@ package positions
 // same place in case of a restart.
 
 import (
-	"bytes"
+	"os"
 
-	"github.com/natefinch/atomic"
 	yaml "gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/util/atomicfile"
 )
+
+const positionFileMode os.FileMode = 0600
 
 func writePositionFile(filename string, positions map[Entry]string) error {
 	buf, err := yaml.Marshal(File{
@@ -20,6 +21,6 @@ func writePositionFile(filename string, positions map[Entry]string) error {
 	if err != nil {
 		return err
 	}
-	return atomic.WriteFile(filename, bytes.NewReader(buf))
 
+	return atomicfile.Write(filename, buf, positionFileMode)
 }

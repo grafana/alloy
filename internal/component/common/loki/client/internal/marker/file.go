@@ -1,13 +1,12 @@
 package marker
 
 import (
-	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 
-	"github.com/natefinch/atomic"
+	"github.com/grafana/alloy/internal/util/atomicfile"
 )
 
 const (
@@ -71,10 +70,10 @@ func (f *File) MarkSegment(segment int) {
 	f.logger.Debug("updated segment marker file", "file", f.lastMarkedSegmentFilePath, "segment", segment)
 }
 
-// atomicallyWriteMarker attempts to perform an atomic write of the marker contents. This is delegated to
-// https://github.com/natefinch/atomic/blob/master/atomic.go, that first handles atomic file renaming for UNIX and
-// Windows systems. Also, atomic.WriteFile will first write the contents to a temporal file, and then perform the atomic
-// rename, swapping the marker, or not at all.
+// atomicallyWriteMarker replaces the marker file with bs in a single step, by
+// writing the contents to a temporary file next to it and moving that over the
+// marker. A reader sees either the previous segment or the new one, and an
+// interrupted write does not leave a truncated marker behind.
 func (f *File) atomicallyWriteMarker(bs []byte) error {
-	return atomic.WriteFile(f.lastMarkedSegmentFilePath, bytes.NewReader(bs))
+	return atomicfile.Write(f.lastMarkedSegmentFilePath, bs, markerFileMode)
 }
