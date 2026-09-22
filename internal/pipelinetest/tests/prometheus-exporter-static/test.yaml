@@ -30,6 +30,12 @@ config: |
   prometheus.remote_write "default" {
     endpoint {
       url = pipelinetest.prometheus.url
+
+      // The test writes too few series to fill a batch, so without a short
+      // deadline every send waits out the 5s default.
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
    }
   }
 
