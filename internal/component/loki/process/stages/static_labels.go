@@ -12,27 +12,11 @@ import (
 // errEmptyStaticLabelStageConfig error returned if the config is empty.
 var errEmptyStaticLabelStageConfig = errors.New("static_labels stage config cannot be empty")
 
+var _ syntax.Validator = (*StaticLabelsConfig)(nil)
+
 // StaticLabelsConfig contains a map of static labels to be set.
 type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
-}
-
-var (
-	_ Stage            = (*staticLabelStage)(nil)
-	_ entryProcessor   = (*staticLabelStage)(nil)
-	_ syntax.Validator = (*StaticLabelsConfig)(nil)
-)
-
-func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabelStage {
-	values := make([]string, 0, len(config.Values)*2)
-	for n, v := range config.Values {
-		if v == nil || *v == "" {
-			continue
-		}
-		values = append(values, n, *v)
-	}
-
-	return &staticLabelStage{opts.next, values}
 }
 
 func (c *StaticLabelsConfig) Validate() error {
@@ -52,6 +36,23 @@ func (c *StaticLabelsConfig) Validate() error {
 		}
 	}
 	return nil
+}
+
+var (
+	_ Stage          = (*staticLabelStage)(nil)
+	_ entryProcessor = (*staticLabelStage)(nil)
+)
+
+func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabelStage {
+	values := make([]string, 0, len(config.Values)*2)
+	for n, v := range config.Values {
+		if v == nil || *v == "" {
+			continue
+		}
+		values = append(values, n, *v)
+	}
+
+	return &staticLabelStage{opts.next, values}
 }
 
 // staticLabelStage implements Stage.
