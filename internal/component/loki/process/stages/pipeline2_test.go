@@ -55,6 +55,24 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 			max_wait_time = "10ms"
 		}
 
+		stage.match {
+			selector = "{app=\"app-0\"}"
+
+			stage.multiline {
+				firstline     = "^START"
+				max_lines     = 2
+				max_wait_time = "10ms"
+			}
+
+			stage.decolorize {}
+		}
+
+		stage.match {
+			selector            = "{instance=\"stream-0\"}"
+			action              = "drop"
+			drop_counter_reason = "race_test_match_drop"
+		}
+
 		stage.json {
 			expressions = {
 				level = "level",
