@@ -70,7 +70,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var result googlecloudpubsubexporter.Config
+	result := *googlecloudpubsubexporter.NewFactory().CreateDefaultConfig().(*googlecloudpubsubexporter.Config)
 
 	result.BackOffConfig = *args.Retry.Convert()
 

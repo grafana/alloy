@@ -373,7 +373,7 @@ func NewDefaultArguments() Arguments {
 		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
 
-		// undocumented
+		// Keep internal tuning defaults here; these options are intentionally undocumented.
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,

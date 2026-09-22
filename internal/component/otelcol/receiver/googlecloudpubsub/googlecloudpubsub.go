@@ -97,26 +97,25 @@ func (args *Arguments) Validate() error {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	otelConfig := &googlecloudpubsubreceiver.Config{
-		ProjectID:           args.ProjectID,
-		UserAgent:           args.UserAgent,
-		Endpoint:            args.Endpoint,
-		UniverseDomain:      args.UniverseDomain,
-		Insecure:            args.Insecure,
-		Subscription:        args.Subscription,
-		Encoding:            args.Encoding,
-		Compression:         args.Compression,
-		IgnoreEncodingError: args.IgnoreEncodingError,
-		ClientID:            args.ClientID,
-		TimeoutSettings: exporterhelper.TimeoutConfig{
-			Timeout: args.Timeout,
-		},
-		FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
-			TriggerAckBatchDuration: args.FlowControl.TriggerAckBatchDuration,
-			StreamAckDeadline:       args.FlowControl.StreamAckDeadline,
-			MaxOutstandingMessages:  args.FlowControl.MaxOutstandingMessages,
-			MaxOutstandingBytes:     args.FlowControl.MaxOutstandingBytes,
-		},
+	otelConfig := googlecloudpubsubreceiver.NewFactory().CreateDefaultConfig().(*googlecloudpubsubreceiver.Config)
+	otelConfig.ProjectID = args.ProjectID
+	otelConfig.UserAgent = args.UserAgent
+	otelConfig.Endpoint = args.Endpoint
+	otelConfig.UniverseDomain = args.UniverseDomain
+	otelConfig.Insecure = args.Insecure
+	otelConfig.Subscription = args.Subscription
+	otelConfig.Encoding = args.Encoding
+	otelConfig.Compression = args.Compression
+	otelConfig.IgnoreEncodingError = args.IgnoreEncodingError
+	otelConfig.ClientID = args.ClientID
+	otelConfig.TimeoutSettings = exporterhelper.TimeoutConfig{
+		Timeout: args.Timeout,
+	}
+	otelConfig.FlowControlConfig = googlecloudpubsubreceiver.FlowControlConfig{
+		TriggerAckBatchDuration: args.FlowControl.TriggerAckBatchDuration,
+		StreamAckDeadline:       args.FlowControl.StreamAckDeadline,
+		MaxOutstandingMessages:  args.FlowControl.MaxOutstandingMessages,
+		MaxOutstandingBytes:     args.FlowControl.MaxOutstandingBytes,
 	}
 
 	return otelConfig, nil

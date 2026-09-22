@@ -43,6 +43,7 @@ You can use the following arguments with `otelcol.receiver.tcplog`:
 |----------------------|----------|-------------------------------------------------------------------------------------------------------------|-----------|----------|
 | `listen_address`     | `string` | The `<HOST:PORT>` address to listen to for logs messages.                                                   |           | yes      |
 | `add_attributes`     | `bool`   | Add `net.*` attributes to log messages according to [OpenTelemetry semantic conventions][net-semconv].      | `false`   | no       |
+| `auth`               | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to authenticate each accepted TCP connection.        |           | no       |
 | `encoding`           | `string` | The encoding of the log messages.                                                                           | `"utf-8"` | no       |
 | `max_log_size`       | `string` | The maximum size of a log entry to read before failing.                                                     | `"1MiB"`  | no       |
 | `one_log_per_packet` | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false`   | no       |

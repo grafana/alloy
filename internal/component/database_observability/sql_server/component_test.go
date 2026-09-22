@@ -187,6 +187,35 @@ func TestQueryMetricsDefaults(t *testing.T) {
 	assert.Equal(t, 1*time.Hour, args.QueryMetricsArguments.StatementsLookback)
 }
 
+func TestQueryTimeout(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+
+		assert.Equal(t, 10*time.Second, args.QueryTimeout)
+	})
+
+	t.Run("configuration is parsed", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+			query_timeout    = "15s"
+		`
+
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		assert.Equal(t, 15*time.Second, args.QueryTimeout)
+	})
+
+	t.Run("non-positive value is rejected", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433?database=app"
+		args.QueryTimeout = 0
+		require.EqualError(t, args.Validate(), "query_timeout must be greater than zero")
+	})
+}
+
 func TestQueryMetricsEnabledByDefault(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
@@ -385,7 +414,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(selectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("alloy_monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, configured, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"app_reader", "alloy_monitor"}, effective)
 		assert.Equal(t, []string{"app_reader"}, configured)
@@ -400,7 +429,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(selectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("Alloy_Monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, []string{"alloy_monitor"}, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"alloy_monitor", "Alloy_Monitor"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -411,7 +440,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		effective, err := resolveExcludeUsers(context.Background(), db, []string{"app_reader"}, false)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"app_reader"}, false)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"app_reader"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -423,7 +452,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		defer db.Close()
 
 		mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
-		_, err = resolveExcludeUsers(context.Background(), db, nil, true)
+		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, true)
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -440,10 +469,11 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 			AddRow("server", "machine", "16.0"))
 	mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
+	var args Arguments
+	args.SetToDefault()
+	args.ExcludeCurrentUser = true
 	c := &Component{
-		args: Arguments{
-			ExcludeCurrentUser: true,
-		},
+		args: args,
 		openSQL: func(_, _ string) (*sql.DB, error) {
 			return db, nil
 		},

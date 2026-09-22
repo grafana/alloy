@@ -35,26 +35,6 @@ type Stopper interface {
 	Stop()
 }
 
-// stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
-type stageProcessor struct {
-	Processor
-}
-
-func (s stageProcessor) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
-		return e
-	})
-}
-
-func toStage(p Processor) Stage {
-	return &stageProcessor{
-		Processor: p,
-	}
-}
-
-func (*stageProcessor) Cleanup() {}
-
 // newStage creates a new stage for the given type and configuration.
 func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	return newStageWithOpts(cfg, stageOpts{
@@ -83,59 +63,56 @@ func newStageWithOpts(
 	)
 	switch {
 	case cfg.DockerConfig != nil:
-		s, err = NewDocker(opts.slogger, opts.registerer, opts.minStability)
-		if err != nil {
-			return nil, err
-		}
+		s = newDockerStage(opts)
 	case cfg.CRIConfig != nil:
 		s = newCRIStage(*cfg.CRIConfig, opts)
 	case cfg.JSONConfig != nil:
-		s, err = newJSONStage(opts.slogger, *cfg.JSONConfig)
+		s, err = newJSONStage(*cfg.JSONConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LogfmtConfig != nil:
-		s, err = newLogfmtStage(opts.slogger, *cfg.LogfmtConfig)
+		s, err = newLogfmtStage(*cfg.LogfmtConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LuhnFilterConfig != nil:
-		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig)
+		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(opts.slogger, *cfg.MetricsConfig, opts.registerer)
+		s, err = newMetricStage(*cfg.MetricsConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(opts.slogger, *cfg.LabelsConfig)
+		s, err = newLabelStage(*cfg.LabelsConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadata != nil:
-		s, err = newStructuredMetadataStage(opts.slogger, *cfg.StructuredMetadata)
+		s, err = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s, err = newStructuredMetadataDropStage(opts.slogger, *cfg.StructuredMetadataDropConfig)
+		s, err = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(opts.slogger, *cfg.RegexConfig)
+		s, err = newRegexStage(*cfg.RegexConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TimestampConfig != nil:
-		s, err = newTimestampStage(opts.slogger, *cfg.TimestampConfig)
+		s, err = newTimestampStage(*cfg.TimestampConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(opts.slogger, *cfg.OutputConfig)
+		s, err = newOutputStage(*cfg.OutputConfig, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -145,27 +122,27 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s, err = newTemplateStage(opts.slogger, *cfg.TemplateConfig)
+		s, err = newTemplateStage(*cfg.TemplateConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(opts.slogger, *cfg.TenantConfig)
+		s, err = newTenantStage(*cfg.TenantConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(opts.slogger, *cfg.ReplaceConfig)
+		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LimitConfig != nil:
-		s, err = newLimitStage(opts.slogger, *cfg.LimitConfig, opts.registerer)
+		s, err = newLimitStage(*cfg.LimitConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.DropConfig != nil:
-		s, err = newDropStage(opts.slogger, *cfg.DropConfig, opts.registerer)
+		s, err = newDropStage(*cfg.DropConfig, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -175,53 +152,50 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.PackConfig != nil:
-		s, err = newPackStage(opts.slogger, *cfg.PackConfig, opts.registerer)
+		s, err = newPackStage(*cfg.PackConfig, opts)
 		if err != nil {
 			return nil, err
 		}
-	case cfg.LabelAllowConfig != nil:
-		s, err = newLabelAllowStage(*cfg.LabelAllowConfig)
+	case cfg.LabelKeepConfig != nil:
+		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LabelDropConfig != nil:
-		s, err = newLabelDropStage(*cfg.LabelDropConfig)
+		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig)
+		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.GeoIPConfig != nil:
-		s, err = newGeoIPStage(opts.slogger, *cfg.GeoIPConfig)
+		s, err = newGeoIPStage(*cfg.GeoIPConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.DecolorizeConfig != nil:
-		s, err = newDecolorizeStage(*cfg.DecolorizeConfig)
-		if err != nil {
-			return nil, err
-		}
+		s = newDecolorizeStage(*cfg.DecolorizeConfig, opts)
 	case cfg.SamplingConfig != nil:
-		s, err = newSamplingStage(opts.slogger, *cfg.SamplingConfig, opts.registerer)
+		s, err = newSamplingStage(*cfg.SamplingConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.EventLogMessageConfig != nil:
-		s = newEventLogMessageStage(opts.slogger, cfg.EventLogMessageConfig)
+		s = newEventLogMessageStage(cfg.EventLogMessageConfig, opts)
 	case cfg.WindowsEventConfig != nil:
-		s = newWindowsEventStage(opts.slogger, cfg.WindowsEventConfig)
+		s = newWindowsEventStage(cfg.WindowsEventConfig, opts)
 	case cfg.PatternConfig != nil:
-		s, err = newPatternStage(opts.slogger, *cfg.PatternConfig)
+		s, err = newPatternStage(*cfg.PatternConfig, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s = newTruncateStage(opts.slogger, *cfg.TruncateConfig, opts.registerer)
+		s = newTruncateStage(*cfg.TruncateConfig, opts)
 	case cfg.SplitJSONConfig != nil:
-		s = newSplitJSONStage(opts.slogger, *cfg.SplitJSONConfig)
+		s = newSplitJSONStage(*cfg.SplitJSONConfig, opts)
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}

@@ -71,11 +71,12 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 
 		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 
-		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
-		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
-		AutoCommit:       toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
-		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
-		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
+		Authentication:      toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:            toKafkaMetadata(cfg.ClientConfig.Metadata),
+		AutoCommit:          toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
+		MessageMarking:      toKafkaMessageMarking(cfg.MessageMarking),
+		HeaderExtraction:    toKafkaHeaderExtraction(cfg.HeaderExtraction),
+		PartitionProcessing: toKafkaPartitionProcessing(cfg.PartitionProcessing),
 
 		TLS: tlsCfgPtr,
 
@@ -240,6 +241,13 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	return kafka.HeaderExtraction{
 		ExtractHeaders: cfg.ExtractHeaders,
 		Headers:        cfg.Headers,
+	}
+}
+
+func toKafkaPartitionProcessing(cfg kafkareceiver.PartitionProcessing) kafka.PartitionProcessingArguments {
+	return kafka.PartitionProcessingArguments{
+		Independent:        cfg.Independent,
+		MaxBufferedBatches: cfg.MaxBufferedBatches,
 	}
 }
 

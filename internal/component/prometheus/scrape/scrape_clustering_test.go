@@ -46,13 +46,67 @@ var (
 
 type testCase struct {
 	name                        string
+	excludedLabels              []string
+	expectedOwnershipLabels     []string
+	rotateCredentials           bool
 	initialTargetsAssignment    map[peer.Peer][]int
 	updatedTargetsAssignment    map[peer.Peer][]int
 	expectedStalenessInjections []int
+	expectedNoStaleness         []int
 	expectedMovedTargetsTotal   int
 }
 
 var testCases = []testCase{
+	{
+		name:                    "credentials rotate during ownership handoff",
+		excludedLabels:          []string{"__param_sig"},
+		expectedOwnershipLabels: []string{"__address__"},
+		rotateCredentials:       true,
+		initialTargetsAssignment: map[peer.Peer][]int{
+			peer1Self: {1},
+		},
+		updatedTargetsAssignment: map[peer.Peer][]int{
+			peer2: {1},
+		},
+		expectedNoStaleness:       []int{1},
+		expectedMovedTargetsTotal: 1,
+	},
+	{
+		name:                    "entire ownership group disappears",
+		excludedLabels:          []string{"__address__"},
+		expectedOwnershipLabels: []string{},
+		initialTargetsAssignment: map[peer.Peer][]int{
+			peer1Self: {1, 2},
+		},
+		updatedTargetsAssignment:    map[peer.Peer][]int{},
+		expectedStalenessInjections: []int{1, 2},
+	},
+	{
+		name:                    "grouped targets move without staleness",
+		excludedLabels:          []string{"__address__"},
+		expectedOwnershipLabels: []string{},
+		initialTargetsAssignment: map[peer.Peer][]int{
+			peer1Self: {1, 2, 3},
+		},
+		updatedTargetsAssignment: map[peer.Peer][]int{
+			peer2: {1, 2, 3},
+		},
+		expectedNoStaleness:       []int{1, 2, 3},
+		expectedMovedTargetsTotal: 3,
+	},
+	{
+		name:                    "group moves while one member disappears",
+		excludedLabels:          []string{"__address__"},
+		expectedOwnershipLabels: []string{},
+		initialTargetsAssignment: map[peer.Peer][]int{
+			peer1Self: {1, 2, 3},
+		},
+		updatedTargetsAssignment: map[peer.Peer][]int{
+			peer2: {1, 2},
+		},
+		expectedNoStaleness:       []int{1, 2, 3},
+		expectedMovedTargetsTotal: 3,
+	},
 	{
 		name: "no targets move",
 		initialTargetsAssignment: map[peer.Peer][]int{
@@ -138,6 +192,7 @@ func TestDetectingMovedTargets(t *testing.T) {
 			}
 			opts := testOptions(t, alloyMetricsReg, fakeCluster)
 			args := testArgs()
+			args.Clustering.ExcludedLabels = tc.excludedLabels
 
 			appender := testappender.NewCollectingAppender()
 			args.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
@@ -147,7 +202,10 @@ func TestDetectingMovedTargets(t *testing.T) {
 
 			// Set initial targets
 			args.Targets = getActiveTargets(tc.initialTargetsAssignment, testTargets)
-			setUpClusterLookup(fakeCluster, tc.initialTargetsAssignment, testTargets)
+			if tc.rotateCredentials {
+				args.Targets = withSignature(args.Targets, "old")
+			}
+			setUpClusterLookup(fakeCluster, tc.initialTargetsAssignment, testTargets, tc.expectedOwnershipLabels)
 
 			// Create and start the component
 			promManagerMutex.Lock()
@@ -169,7 +227,10 @@ func TestDetectingMovedTargets(t *testing.T) {
 
 			// Update targets
 			args.Targets = getActiveTargets(tc.updatedTargetsAssignment, testTargets)
-			setUpClusterLookup(fakeCluster, tc.updatedTargetsAssignment, testTargets)
+			if tc.rotateCredentials {
+				args.Targets = withSignature(args.Targets, "new")
+			}
+			setUpClusterLookup(fakeCluster, tc.updatedTargetsAssignment, testTargets, tc.expectedOwnershipLabels)
 			require.NoError(t, s.Update(args))
 
 			// Verify metrics and scraping of the right targets
@@ -179,11 +240,40 @@ func TestDetectingMovedTargets(t *testing.T) {
 
 			// Verify staleness injections
 			waitForStalenessInjections(t, appender, tc.expectedStalenessInjections)
+			if len(tc.expectedNoStaleness) > 0 {
+				// Wait for the scrape manager to stop the old loops, then observe
+				// beyond their delayed stale-marker window before cancelling Run.
+				require.Eventually(t, func() bool {
+					return len(s.scraper.TargetsActive()[opts.ID]) == len(tc.updatedTargetsAssignment[peer1Self])
+				}, testTimeout, 10*time.Millisecond)
+				require.Never(t, func() bool {
+					for _, id := range tc.expectedNoStaleness {
+						sample := appender.LatestSampleFor(fmt.Sprintf(`{__name__="test_counter", instance="%d", job="prometheus.scrape.test"}`, id))
+						if sample != nil && value.IsStaleNaN(sample.Value) {
+							return true
+						}
+					}
+					return false
+				}, 5*args.ScrapeInterval, 10*time.Millisecond)
+			}
 
 			cancelRun()
 			require.NoError(t, <-runErr)
+			for _, id := range tc.expectedNoStaleness {
+				verifyTestTargetExposed(t, id, appender)
+			}
 		})
 	}
+}
+
+func withSignature(targets []discovery.Target, signature string) []discovery.Target {
+	result := make([]discovery.Target, 0, len(targets))
+	for _, target := range targets {
+		builder := discovery.NewTargetBuilderFrom(target)
+		builder.Set("__param_sig", signature)
+		result = append(result, builder.Target())
+	}
+	return result
 }
 
 func testArgs() Arguments {
@@ -264,13 +354,21 @@ func createTestTargets(tc testCase) (map[int]*testtarget.TestTarget, func()) {
 	return testTargets, shutdownTargets
 }
 
-func setUpClusterLookup(fakeCluster *fakeCluster, assignment map[peer.Peer][]int, targets map[int]*testtarget.TestTarget) {
-	fakeCluster.lookupMap = make(map[shard.Key][]peer.Peer)
+func setUpClusterLookup(fakeCluster *fakeCluster, assignment map[peer.Peer][]int, targets map[int]*testtarget.TestTarget, ownershipLabels []string) {
+	lookup := make(map[shard.Key][]peer.Peer)
 	for owningPeer, ownedTargets := range assignment {
 		for _, id := range ownedTargets {
-			fakeCluster.lookupMap[shard.Key(targets[id].Target().NonMetaLabelsHash())] = []peer.Peer{owningPeer}
+			target := targets[id].Target()
+			key := target.NonMetaLabelsHash()
+			if ownershipLabels != nil {
+				key = target.SpecificLabelsHash(ownershipLabels)
+			}
+			lookup[shard.Key(key)] = []peer.Peer{owningPeer}
 		}
 	}
+	fakeCluster.mut.Lock()
+	fakeCluster.lookupMap = lookup
+	fakeCluster.mut.Unlock()
 }
 
 func waitForTargetsToBeScraped(t *testing.T, appender testappender.CollectingAppender, targets []int) {
@@ -368,11 +466,18 @@ func verifyStalenessInjectedForTarget(t assert.TestingT, targetId int, appender 
 }
 
 type fakeCluster struct {
+	mut       sync.RWMutex
 	lookupMap map[shard.Key][]peer.Peer
 	peers     []peer.Peer
+	onLookup  func(shard.Key)
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	if f.onLookup != nil {
+		f.onLookup(key)
+	}
 	return f.lookupMap[key], nil
 }
 

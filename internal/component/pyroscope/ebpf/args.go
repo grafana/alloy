@@ -34,7 +34,7 @@ type Arguments struct {
 	NoKernelVersionCheck     bool                   `alloy:"no_kernel_version_check,attr,optional"`
 	DeprecatedArguments      DeprecatedArguments    `alloy:",squash"`
 
-	// undocumented
+	// The next four options are intentionally undocumented: internal tuning knobs that may change without notice.
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
 	SymbCachePath                   string `alloy:"symb_cache_path,attr,optional"`
 	SymbCacheSizeEntries            int    `alloy:"symb_cache_size,attr,optional"`
@@ -43,6 +43,7 @@ type Arguments struct {
 	Comm                            string `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
 	KernelFrames                    bool   `alloy:"kernel_frames,attr,optional"`
 
+	// Intentionally undocumented: the experimental debug-info feature may change or be removed.
 	DebugInfoArguments debuginfo.Arguments `alloy:"debug_info,block,optional"`
 }
 

@@ -108,6 +108,7 @@ const (
 type SchemaDetailsArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
+	QueryTimeout     time.Duration
 	ExcludeSchemas   []string
 	ExcludeDatabases []string
 	EntryHandler     loki.EntryHandler
@@ -118,6 +119,7 @@ type SchemaDetailsArguments struct {
 type SchemaDetails struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
+	queryTimeout     time.Duration
 	excludeSchemas   []string
 	excludeDatabases []string
 	entryHandler     loki.EntryHandler
@@ -181,6 +183,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
+		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		excludeSchemas:   args.ExcludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
@@ -259,7 +262,12 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		c.logger.Info("no databases detected")
 	} else {
 		// Pin one connection for the whole cycle as USE mutates session state
-		conn, err := c.dbConnection.Conn(ctx)
+		var conn *sql.Conn
+		err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+			var err error
+			conn, err = c.dbConnection.Conn(queryCtx)
+			return err
+		})
 		if err != nil {
 			return fmt.Errorf("failed to acquire database connection: %w", err)
 		}
@@ -267,7 +275,11 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 
 		for _, db := range databases {
 			discovered[db.name] = struct{}{}
-			if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE %s", db.quoted)); err != nil {
+			err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+				_, err := conn.ExecContext(queryCtx, fmt.Sprintf("USE %s", db.quoted))
+				return err
+			})
+			if err != nil {
 				c.logger.Error("failed to switch database context, skipping", "database", db.name, "err", err)
 				continue
 			}
@@ -294,22 +306,28 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 
 func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
 	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(c.excludeDatabases))
-	rs, err := c.dbConnection.QueryContext(ctx, query)
+	var databases []databaseName
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := c.dbConnection.QueryContext(queryCtx, query)
+		if err != nil {
+			return err
+		}
+		defer rs.Close()
+
+		for rs.Next() {
+			var name, quoted string
+			if err := rs.Scan(&name, &quoted); err != nil {
+				return fmt.Errorf("failed to scan database row: %w", err)
+			}
+			databases = append(databases, databaseName{name: name, quoted: quoted})
+		}
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over databases result set: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rs.Close()
-
-	var databases []databaseName
-	for rs.Next() {
-		var name, quoted string
-		if err := rs.Scan(&name, &quoted); err != nil {
-			return nil, fmt.Errorf("failed to scan database row: %w", err)
-		}
-		databases = append(databases, databaseName{name: name, quoted: quoted})
-	}
-	if err := rs.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate over databases result set: %w", err)
 	}
 	return databases, nil
 }
@@ -322,12 +340,6 @@ func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, erro
 // evict entries for tables we simply did not observe this cycle.
 func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.Conn, dbName string, now time.Time) error {
 	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
-	rs, err := conn.QueryContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("failed to query tables: %w", err)
-	}
-	defer rs.Close()
-
 	tables := []*tableInfo{}
 	// scanComplete tracks whether we iterated the tables result set without
 	// bailing out early. If false we have a partial view and must skip the
@@ -335,29 +347,41 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 	// did not get to scan this round.
 	scanComplete := true
 
-	for rs.Next() {
-		var database, schema, tableName, tableType string
-		if err := rs.Scan(&database, &schema, &tableName, &tableType); err != nil {
-			c.logger.Error("failed to scan tables", "database", dbName, "err", err)
-			scanComplete = false
-			break
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := conn.QueryContext(queryCtx, query)
+		if err != nil {
+			return fmt.Errorf("failed to query tables: %w", err)
 		}
-		tables = append(tables, &tableInfo{
-			database:  database,
-			schema:    schema,
-			tableName: tableName,
-			tableType: tableType,
-		})
+		defer rs.Close()
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_TABLE_DETECTION,
-			fmt.Sprintf(`database="%s" schema="%s" table="%s"`, database, schema, tableName),
-		)
-	}
+		for rs.Next() {
+			var database, schema, tableName, tableType string
+			if err := rs.Scan(&database, &schema, &tableName, &tableType); err != nil {
+				c.logger.Error("failed to scan tables", "database", dbName, "err", err)
+				scanComplete = false
+				break
+			}
+			tables = append(tables, &tableInfo{
+				database:  database,
+				schema:    schema,
+				tableName: tableName,
+				tableType: tableType,
+			})
 
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over tables result set: %w", err)
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				database_observability.OP_TABLE_DETECTION,
+				fmt.Sprintf(`database="%s" schema="%s" table="%s"`, database, schema, tableName),
+			)
+		}
+
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over tables result set: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	if len(tables) == 0 {
@@ -494,120 +518,138 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, conn *sql.Conn, sc
 		return s
 	}
 
-	colRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
-	if err != nil {
-		c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
-		return nil, err
-	}
-	defer colRS.Close()
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		colRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
+			return err
+		}
+		defer colRS.Close()
 
-	for colRS.Next() {
-		var tableName, columnName, columnType string
-		var isNullable, isIdentity, isPrimaryKey bool
-		var defaultValue sql.NullString
-		if err := colRS.Scan(&tableName, &columnName, &columnType, &isNullable, &isIdentity, &defaultValue, &isPrimaryKey); err != nil {
-			c.logger.Error("failed to scan schema columns", "schema", schema, "err", err)
-			return nil, err
+		for colRS.Next() {
+			var tableName, columnName, columnType string
+			var isNullable, isIdentity, isPrimaryKey bool
+			var defaultValue sql.NullString
+			if err := colRS.Scan(&tableName, &columnName, &columnType, &isNullable, &isIdentity, &defaultValue, &isPrimaryKey); err != nil {
+				c.logger.Error("failed to scan schema columns", "schema", schema, "err", err)
+				return err
+			}
+
+			defaultVal := ""
+			if defaultValue.Valid {
+				defaultVal = defaultValue.String
+			}
+
+			spec := specOf(tableName)
+			spec.Columns = append(spec.Columns, columnSpec{
+				Name:          columnName,
+				Type:          columnType,
+				NotNull:       !isNullable,
+				AutoIncrement: isIdentity,
+				PrimaryKey:    isPrimaryKey,
+				DefaultValue:  defaultVal,
+			})
 		}
 
-		defaultVal := ""
-		if defaultValue.Valid {
-			defaultVal = defaultValue.String
+		if err := colRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema columns result set", "schema", schema, "err", err)
+			return err
 		}
-
-		spec := specOf(tableName)
-		spec.Columns = append(spec.Columns, columnSpec{
-			Name:          columnName,
-			Type:          columnType,
-			NotNull:       !isNullable,
-			AutoIncrement: isIdentity,
-			PrimaryKey:    isPrimaryKey,
-			DefaultValue:  defaultVal,
-		})
-	}
-
-	if err := colRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema columns result set", "schema", schema, "err", err)
-		return nil, err
-	}
-
-	idxRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		return nil
+	})
 	if err != nil {
-		c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
 	}
-	defer idxRS.Close()
 
 	// Track the table whose last appended index we may merge into. When the
 	// table changes we always treat the next index row as a new index, even if
 	// the index name happens to match.
 	var lastTable string
-	for idxRS.Next() {
-		var tableName, indexName, columnName, indexType string
-		var seqInIndex int
-		var isUnique, isNullable bool
-		if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &indexType, &isUnique, &isNullable); err != nil {
-			c.logger.Error("failed to scan schema indexes", "schema", schema, "err", err)
-			return nil, err
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		idxRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
+			return err
 		}
+		defer idxRS.Close()
 
-		spec := specOf(tableName)
+		for idxRS.Next() {
+			var tableName, indexName, columnName, indexType string
+			var seqInIndex int
+			var isUnique, isNullable bool
+			if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &indexType, &isUnique, &isNullable); err != nil {
+				c.logger.Error("failed to scan schema indexes", "schema", schema, "err", err)
+				return err
+			}
 
-		// Append column to the last index if it's the same as the previous one
-		// within the same table (i.e. multi-column index).
-		if tableName == lastTable {
-			if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
-				lastIndex := &spec.Indexes[nIndexes-1]
-				if len(lastIndex.Columns) != seqInIndex-1 {
-					c.logger.Error("unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns))
+			spec := specOf(tableName)
+
+			// Append column to the last index if it's the same as the previous one
+			// within the same table (i.e. multi-column index).
+			if tableName == lastTable {
+				if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
+					lastIndex := &spec.Indexes[nIndexes-1]
+					if len(lastIndex.Columns) != seqInIndex-1 {
+						c.logger.Error("unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns))
+						continue
+					}
+					lastIndex.Columns = append(lastIndex.Columns, columnName)
+					lastIndex.Nullable = lastIndex.Nullable || isNullable
 					continue
 				}
-				lastIndex.Columns = append(lastIndex.Columns, columnName)
-				lastIndex.Nullable = lastIndex.Nullable || isNullable
-				continue
 			}
+
+			spec.Indexes = append(spec.Indexes, indexSpec{
+				Name:     indexName,
+				Type:     indexType,
+				Unique:   isUnique,
+				Nullable: isNullable,
+				Columns:  []string{columnName},
+			})
+			lastTable = tableName
 		}
 
-		spec.Indexes = append(spec.Indexes, indexSpec{
-			Name:     indexName,
-			Type:     indexType,
-			Unique:   isUnique,
-			Nullable: isNullable,
-			Columns:  []string{columnName},
-		})
-		lastTable = tableName
-	}
-
-	if err := idxRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema indexes result set", "schema", schema, "err", err)
-		return nil, err
-	}
-
-	fkRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err := idxRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema indexes result set", "schema", schema, "err", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
 	}
-	defer fkRS.Close()
 
-	for fkRS.Next() {
-		var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
-		if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			c.logger.Error("failed to scan schema foreign keys", "schema", schema, "err", err)
-			return nil, err
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		fkRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
+			return err
+		}
+		defer fkRS.Close()
+
+		for fkRS.Next() {
+			var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
+			if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+				c.logger.Error("failed to scan schema foreign keys", "schema", schema, "err", err)
+				return err
+			}
+
+			spec := specOf(tableName)
+			spec.ForeignKeys = append(spec.ForeignKeys, foreignKey{
+				Name:                 constraintName,
+				ColumnName:           columnName,
+				ReferencedTableName:  referencedTableName,
+				ReferencedColumnName: referencedColumnName,
+			})
 		}
 
-		spec := specOf(tableName)
-		spec.ForeignKeys = append(spec.ForeignKeys, foreignKey{
-			Name:                 constraintName,
-			ColumnName:           columnName,
-			ReferencedTableName:  referencedTableName,
-			ReferencedColumnName: referencedColumnName,
-		})
-	}
-
-	if err := fkRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
+		if err := fkRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 

@@ -52,6 +52,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`              | no       |
+| `signal_header`                            | `bool`         | Whether to add an `otelcol.signal` header identifying the signal type to every outgoing Kafka record.                      | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
@@ -72,6 +73,8 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
+
+When `signal_header` is `true`, the `otelcol.signal` header key is reserved: it's an error to also include it in `include_metadata_keys`.
 
 [logs]: #logs
 [metrics]: #metrics

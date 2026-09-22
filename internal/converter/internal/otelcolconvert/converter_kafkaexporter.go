@@ -71,6 +71,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		PartitionMetricsByResourceAttributes: cfg.PartitionMetricsByResourceAttributes,
 		PartitionLogsByResourceAttributes:    cfg.PartitionLogsByResourceAttributes,
 		PartitionLogsByTraceID:               cfg.PartitionLogsByTraceID,
+		SignalHeader:                         cfg.SignalHeader,
 		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 		ConnIdleTimeout:                      cfg.ClientConfig.ConnIdleTimeout,
