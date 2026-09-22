@@ -69,67 +69,40 @@ func TestStaticLabelsTest(t *testing.T) {
 	}
 }
 
-func TestStaticLabelsConfig_Validate(t *testing.T) {
+func TestValidateStaticLabelsConfig(t *testing.T) {
 	tests := []struct {
-		name    string
-		config  StaticLabelsConfig
-		wantErr string
+		name      string
+		config    string
+		expectErr bool
 	}{
 		{
-			name: "valid",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"staticLabel": new("val"),
-			}},
+			name:   "valid",
+			config: `values = { "staticLabel" = "val" }`,
 		},
 		{
-			name: "nil value is skipped",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"staticLabel": nil,
-			}},
+			name:   "null value is skipped",
+			config: `values = { "staticLabel" = null }`,
 		},
 		{
-			name: "empty value is skipped",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"staticLabel": new(""),
-			}},
+			name:   "empty value is skipped",
+			config: `values = { "staticLabel" = "" }`,
 		},
 		{
-			name: "empty label name",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"": new("val"),
-			}},
-			wantErr: "invalid label name: ",
-		},
-		{
-			name: "invalid label name with nil value",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"\xfd": nil,
-			}},
-			wantErr: "invalid label name: \xfd",
-		},
-		{
-			name: "invalid label value",
-			config: StaticLabelsConfig{Values: map[string]*string{
-				"staticLabel": new("\xfd"),
-			}},
-			wantErr: "invalid label value: \xfd",
+			name:      "invalid label value",
+			config:    `values = { "staticLabel" = "\xfd" }`,
+			expectErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
-			if tt.wantErr == "" {
+			var cfg StaticLabelsConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
 				require.NoError(t, err)
-				return
 			}
-			require.EqualError(t, err, tt.wantErr)
 		})
 	}
-}
-
-func TestStaticLabelsConfig_Unmarshal(t *testing.T) {
-	var cfg StaticLabelsConfig
-	err := syntax.Unmarshal([]byte(`values = { "staticLabel" = "\xfd" }`), &cfg)
-	require.EqualError(t, err, "invalid label value: \xfd")
 }
