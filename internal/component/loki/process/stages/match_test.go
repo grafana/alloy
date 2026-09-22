@@ -376,6 +376,92 @@ func TestMatchStageNestedPipelineError(t *testing.T) {
 	})
 }
 
+// TestMatchStageOrder asserts that entries are forwarded in timestamp order
+// even though the stage runs the nested pipeline on only a subset of the batch.
+func TestMatchStageOrder(t *testing.T) {
+	now := time.Now()
+
+	run := func(t *testing.T, cfgs []StageConfig, entries []Entry) []string {
+		logger := util.TestAlloyLogger(t)
+
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+
+		p, err := newPipeline(logger.Slog(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		require.NoError(t, p.process(context.Background(), entries))
+		p.stop()
+
+		got := make([]string, 0, len(collected))
+		for _, e := range collected {
+			got = append(got, e.Line)
+		}
+		return got
+	}
+
+	t.Run("line filter selector restores timestamp order", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.replace {
+				expression = "match"
+				replace    = "matched"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 3", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 4", now.Add(3*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 5", now.Add(4*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 6", now.Add(5*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"matched 1",
+			"other 2",
+			"matched 3",
+			"other 4",
+			"matched 5",
+			"other 6",
+		}, got)
+	})
+
+	t.Run("label matcher selector restores timestamp order", func(t *testing.T) {
+		// The nested stage rewrites app, so matched and bypassed entries end up
+		// in the same stream even though the selector has no line filter.
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"}"
+
+			stage.static_labels {
+				values = { "app" = "other" }
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "line 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "line 2", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "line 3", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "line 4", now.Add(3*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"line 1",
+			"line 2",
+			"line 3",
+			"line 4",
+		}, got)
+	})
+}
+
 func TestValidateMatcherConfig(t *testing.T) {
 	type testCase struct {
 		name string
