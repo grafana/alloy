@@ -307,7 +307,12 @@ func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 	// In this case we should just set it to resulting entries from inner pipeline
 	// so that process can merged it back.
 	if buf, ok := fromMatchMerge(ctx); ok {
-		*buf = append(*buf, entries...)
+
+		if *buf == nil {
+			*buf = entries
+		} else {
+			*buf = append(*buf, entries...)
+		}
 		return nil
 	}
 
@@ -326,6 +331,8 @@ func matchLogQL(e Entry, matchers []*labels.Matcher, filter logql.Filter) bool {
 		}
 	}
 
+	// FIXME(kalleep): With a line filter this converts every line to bytes, one
+	// allocation per entry. We should change logql.Filter to take a string instead.
 	if filter == nil || filter([]byte(e.Line)) {
 		return true
 	}
