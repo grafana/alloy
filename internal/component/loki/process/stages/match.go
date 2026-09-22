@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -283,12 +284,14 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 		if err := m.pipeline2.process(withMatchMerge(ctx, &buf), matched); err != nil {
 			return err
 		}
-		// Matching entries end up after the non matching ones, which reorders a
-		// single stream whenever the selector has a line filter. Run reorders
-		// here too by racing the inner pipeline against the entries bypassing
-		// it, so this is at least deterministic.
 		entries = append(entries[:dst], buf...)
 		dst += len(buf)
+
+		// Entries that took different branches can still share a stream so we need to
+		// make sure they are sorted to prevent OOO.
+		slices.SortStableFunc(entries[:dst], func(x, y Entry) int {
+			return x.Timestamp.Compare(y.Timestamp)
+		})
 	}
 
 	if dst == 0 {
