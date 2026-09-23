@@ -649,6 +649,47 @@ func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
 	}
 }
 
+func TestUpdateTogglesWAL(t *testing.T) {
+	received := make(chan loki_util.RemoteWriteRequest, 100)
+	srv := loki_util.NewRemoteWriteServer(received, http.StatusOK)
+	defer srv.Close()
+
+	endpoint := fmt.Sprintf(`
+		endpoint {
+			url        = "%s"
+			batch_wait = "10ms"
+		}
+	`, srv.URL)
+
+	var walArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &walArgs))
+	walArgs.WAL.Enabled = true
+
+	var noWalArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &noWalArgs))
+
+	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+	require.NoError(t, err)
+
+	go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
+	require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+	recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})
+	waitForLine(t, received, "with wal")
+
+	require.NoError(t, ctrl.Update(noWalArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})
+	waitForLine(t, received, "without wal")
+
+	require.NoError(t, ctrl.Update(walArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})
+	waitForLine(t, received, "with wal again")
+}
+
 // waitForLine waits until an entry with the wanted line is received. Lines are matched
 // instead of asserting on the next request, a reload can re-deliver entries that the
 // previous consumer had already sent.
