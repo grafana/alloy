@@ -328,8 +328,8 @@ func (m *matchKeepStage) stop() {
 }
 
 func matchLogQL(e Entry, matchers []*labels.Matcher, filter logql.Filter) bool {
-	for _, filter := range matchers {
-		if !filter.Matches(string(e.Labels[model.LabelName(filter.Name)])) {
+	for _, m := range matchers {
+		if !m.Matches(string(e.Labels[model.LabelName(m.Name)])) {
 			return false
 		}
 	}
