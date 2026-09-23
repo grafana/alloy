@@ -34,6 +34,12 @@ otelcol.receiver.filelog "default" {
 			regex_key = "severity"
 			ascending = true
 		}
+
+		sort_by {
+			sort_type = "lexicographic"
+			regex_key = "severity"
+			ascending = true
+		}
 		group_by = "severity"
 	}
 	poll_interval              = "10s"
