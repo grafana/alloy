@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/sql_server/collector"
+	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -473,14 +474,103 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 	args.SetToDefault()
 	args.ExcludeCurrentUser = true
 	c := &Component{
-		args:     args,
-		instance: &dbInstance{},
+		args: args,
 		openSQL: func(_, _ string) (*sql.DB, error) {
 			return db, nil
 		},
 	}
+	inst := &dbInstance{}
+	c.storeInstances([]*dbInstance{inst})
 
-	err = c.connectAndStartCollectors(context.Background())
+	err = c.connectAndStartCollectors(context.Background(), inst)
 	require.ErrorContains(t, err, "failed to resolve current login for query_samples user exclusion")
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestValidateDatabaseInstance(t *testing.T) {
+	t.Run("multiple database_instance blocks with distinct servers is valid", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@host-one:1433?database=db1"
+		}
+		database_instance "two" {
+			data_source_name = "sqlserver://user:pass@host-two:1433?database=db2"
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, args.Validate())
+		require.Len(t, args.Databases, 2)
+	})
+
+	t.Run("legacy single-DSN form without database_instance blocks is still valid", func(t *testing.T) {
+		cfg := `
+		data_source_name = "sqlserver://user:pass@localhost:1433"
+		forward_to = []
+		targets = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, args.Validate())
+	})
+
+	t.Run("top-level data_source_name and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		args := Arguments{
+			DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1",
+			Databases: []DatabaseArguments{
+				{Name: "one", DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), "data_source_name and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("top-level targets and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		args := Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"foo": "bar"})},
+			Databases: []DatabaseArguments{
+				{Name: "one", DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), "targets and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("top-level cloud_provider and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		args := Arguments{
+			CloudProvider: &CloudProvider{AWS: &AWSCloudProviderInfo{ARN: "some-arn"}},
+			Databases: []DatabaseArguments{
+				{Name: "one", DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), "cloud_provider and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("duplicate database_instance labels are rejected", func(t *testing.T) {
+		args := Arguments{
+			Databases: []DatabaseArguments{
+				{Name: "one", DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1"},
+				{Name: "one", DataSourceName: "sqlserver://user:pass@host-two:1433?database=db2"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), `duplicate database_instance block label "one"`)
+	})
+
+	t.Run("database_instance blocks resolving to the same server are rejected", func(t *testing.T) {
+		args := Arguments{
+			Databases: []DatabaseArguments{
+				{Name: "one", DataSourceName: "sqlserver://user:pass@same-host:1433?database=same-db"},
+				{Name: "two", DataSourceName: "sqlserver://user:pass@same-host:1433?database=same-db"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), `resolve to the same server`)
+	})
+
+	t.Run("invalid database_instance label is rejected", func(t *testing.T) {
+		args := Arguments{
+			Databases: []DatabaseArguments{
+				{Name: "1-invalid", DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1"},
+			},
+		}
+		require.ErrorContains(t, args.Validate(), "must be a valid identifier")
+	})
 }
