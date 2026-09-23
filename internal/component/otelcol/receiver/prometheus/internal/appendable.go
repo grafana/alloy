@@ -27,7 +27,7 @@ type appendable struct {
 	obsrecv  *receiverhelper.ObsReport
 }
 
-// NewAppendable returns a storage.Appendable instance that emits metrics to the sink.
+// NewAppendable returns a storage.AppendableV2 instance that emits metrics to the sink.
 func NewAppendable(
 	sink consumer.Metrics,
 	set receiver.Settings,
@@ -36,7 +36,7 @@ func NewAppendable(
 	useMetadata bool,
 	externalLabels labels.Labels,
 	trimSuffixes bool,
-) (storage.Appendable, error) {
+) (storage.AppendableV2, error) {
 	obsrecv, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{ReceiverID: set.ID, Transport: transport, ReceiverCreateSettings: set})
 	if err != nil {
 		return nil, err
@@ -56,4 +56,14 @@ func NewAppendable(
 
 func (o *appendable) Appender(ctx context.Context) storage.Appender {
 	return newTransaction(ctx, o.sink, o.externalLabels, o.settings, o.obsrecv, o.trimSuffixes, o.useMetadata)
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration step 5): migrate the otelcol.receiver.prometheus
+// transaction to use AppenderV2 natively. It currently panics because
+// nothing calls it in production yet; all active append paths still go
+// through Appender (V1). See https://github.com/grafana/alloy/issues/6896
+func (o *appendable) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not yet implemented for otelcol.receiver.prometheus")
 }

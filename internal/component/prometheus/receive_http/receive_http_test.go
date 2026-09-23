@@ -365,14 +365,14 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			shouldRestart: false,
 		},
@@ -383,7 +383,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -401,7 +401,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -418,7 +418,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -547,7 +547,7 @@ func verifyExpectations(
 	}
 }
 
-func testAppendable(actualSamples chan testSample) []storage.Appendable {
+func testAppendable(actualSamples chan testSample) []storage.AppendableV2 {
 	hookFn := func(
 		ref storage.SeriesRef,
 		l labels.Labels,
@@ -560,7 +560,7 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 		return ref, nil
 	}
 
-	return []storage.Appendable{alloyprom.NewInterceptor(
+	return []storage.AppendableV2{alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithAppendHook(
 			hookFn))}
@@ -845,7 +845,7 @@ type testMetadata struct {
 	unit       string
 }
 
-func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata chan testMetadata) []storage.Appendable {
+func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata chan testMetadata) []storage.AppendableV2 {
 	appendHook := func(
 		ref storage.SeriesRef,
 		l labels.Labels,
@@ -875,7 +875,7 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		return ref, nil
 	}
 
-	return []storage.Appendable{alloyprom.NewInterceptor(
+	return []storage.AppendableV2{alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithAppendHook(appendHook),
 		alloyprom.WithMetadataHook(metadataHook),
@@ -947,7 +947,7 @@ func TestAcceptedRemoteWriteProtobufMessages(t *testing.T) {
 					},
 					GRPC: testGRPCConfig(),
 				},
-				ForwardTo:                           []storage.Appendable{alloyprom.NewFanout(nil, "", prometheus.NewRegistry(), nil)},
+				ForwardTo:                           []storage.AppendableV2{alloyprom.NewFanout(nil, "", prometheus.NewRegistry(), nil)},
 				AcceptedRemoteWriteProtobufMessages: tc.acceptedRemoteWriteProtobufMessages,
 			}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/scrape"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -121,7 +122,7 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 			model.LabelSet{},
 			model.LabelSet{},
 		))
-		app := exports.Receiver.Appender(ctx)
+		app := exports.Receiver.(storage.Appendable).Appender(ctx)
 
 		// 1. Send a gauge metric
 		gaugeLabels := labels.New(
@@ -455,7 +456,7 @@ func TestDuplicateLabelNamesError(t *testing.T) {
 		model.LabelSet{},
 		model.LabelSet{},
 	))
-	app := exports.Receiver.Appender(ctx)
+	app := exports.Receiver.(storage.Appendable).Appender(ctx)
 
 	ts := time.Now().Unix()
 

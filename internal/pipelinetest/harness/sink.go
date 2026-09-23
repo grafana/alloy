@@ -49,7 +49,7 @@ type SinkExports struct {
 	LokiPushUrl              string             `alloy:"loki_push_url,attr"`
 	LokiReceiver             loki.LogsReceiver  `alloy:"loki_receiver,attr"`
 	PrometheusRemoteWriteURL string             `alloy:"prometheus_remote_write_url,attr"`
-	PrometheusReceiver       storage.Appendable `alloy:"prometheus_receiver,attr"`
+	PrometheusReceiver       storage.AppendableV2 `alloy:"prometheus_receiver,attr"`
 }
 
 // PrometheusSample is one sample captured by the sink. Histogram is set only for
@@ -67,7 +67,7 @@ type Sink struct {
 
 	server   *httptest.Server
 	lokirecv loki.LogsReceiver
-	promrecv storage.Appendable
+	promrecv storage.AppendableV2
 
 	mux         sync.Mutex
 	lokiEntries []loki.Entry
@@ -83,7 +83,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 
 	// An Interceptor with no next Appendable terminates the chain, so appended
 	// samples land in the snapshot and go no further.
-	s.promrecv = alloyprom.NewInterceptor(
+	promrecv := alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithComponentID(opts.ID),
 		alloyprom.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, _ storage.Appender) (storage.SeriesRef, error) {
@@ -103,6 +103,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 			return 0, nil
 		}),
 	)
+	s.promrecv = promrecv
 
 	router := mux.NewRouter()
 	router.HandleFunc(lokiPushPath, func(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +144,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 		promremote.NewWriteHandler(
 			opts.Logger,
 			prometheus.NewRegistry(),
-			s.promrecv, acceptedMsgs,
+			promrecv, acceptedMsgs,
 			ingestSTZeroSample,
 			enableTypeAndUnitLabels,
 			appendMetadata,
