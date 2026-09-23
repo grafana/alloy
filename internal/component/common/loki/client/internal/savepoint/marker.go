@@ -68,9 +68,6 @@ func decodeMarker(bs []byte) (uint64, error) {
 // shared marker left off. It must run before the savepoint file is loaded.
 // It does nothing if dir already holds a savepoint file, or if there is no
 // marker file to migrate.
-//
-// The marker file is left in place, so a failed migration is retried on the
-// next call.
 func MigrateLegacyMarker(dir string, keys []string) error {
 	if len(keys) == 0 {
 		return nil

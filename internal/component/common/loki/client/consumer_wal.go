@@ -314,10 +314,8 @@ func (c *walEndpointAdapter) stop() {
 	c.tracker.Stop()
 }
 
-// getStableEndpointName computes the name of an endpoint config. The name is either the configured Name setting in
-// Config, or a hash of the fields that identify where data is sent. Tuning, credentials and headers are left out on
-// purpose: the name is the key an endpoint stores its savepoint under, so changing any of them must not rename the
-// endpoint and lose its progress.
+// getStableEndpointName computes the name of an endpoint config. The name is either the configured name
+// or a hash of the fields that identify where data is sent.
 func getStableEndpointName(cfg Config) string {
 	if cfg.Name != "" {
 		return cfg.Name
