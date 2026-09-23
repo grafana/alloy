@@ -1,0 +1,17 @@
+otelcol.receiver.kubernetes_rollouts "default" {
+	cluster_name = sys.env("K8S_CLUSTER_NAME")
+
+	output {
+		logs = [otelcol.exporter.otlphttp.rollout_api.input]
+	}
+}
+
+otelcol.exporter.otlphttp "rollout_api" {
+	client {
+		endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
+	}
+
+	retry_on_failure {
+		max_elapsed_time = "0s"
+	}
+}

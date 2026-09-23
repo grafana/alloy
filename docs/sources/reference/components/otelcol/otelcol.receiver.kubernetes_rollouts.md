@@ -226,8 +226,8 @@ Runtime Kubernetes API and downstream delivery errors are logged and retried.
 
 ## Examples
 
-The following examples show how to send rollout events to a local debug exporter or a Grafana Cloud
-OTLP/HTTP endpoint.
+The following examples show how to send rollout events to a local debug exporter, a custom
+OTLP/HTTP endpoint, or a Grafana Cloud OTLP/HTTP endpoint.
 
 ### Log events locally
 
@@ -250,6 +250,50 @@ otelcol.exporter.debug "rollouts" {
   verbosity = "detailed"
 }
 ```
+
+### Send events to a custom OTLP/HTTP endpoint
+
+This example sends only rollout events to a configurable OTLP/HTTP endpoint:
+
+```alloy
+otelcol.receiver.kubernetes_rollouts "default" {
+  cluster_name = sys.env("K8S_CLUSTER_NAME")
+
+  output {
+    logs = [otelcol.exporter.otlphttp.rollout_api.input]
+  }
+}
+
+otelcol.exporter.otlphttp "rollout_api" {
+  client {
+    endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
+  }
+
+  retry_on_failure {
+    max_elapsed_time = "0s"
+  }
+}
+```
+
+Set `ROLLOUT_OTLP_ENDPOINT` to the base URL of an API that accepts OTLP/HTTP logs.
+The exporter sends requests to `<ROLLOUT_OTLP_ENDPOINT>/v1/logs`.
+To use a different path, set the exporter's `logs_endpoint` argument to the complete URL.
+
+The endpoint is scoped to the `rollout_api` exporter.
+Only the rollout receiver is connected to that exporter, so the endpoint doesn't affect other
+telemetry pipelines in the same {{< param "PRODUCT_NAME" >}} configuration.
+
+When {{< param "PRODUCT_NAME" >}} runs in Kubernetes, the endpoint must be reachable from the
+{{< param "PRODUCT_NAME" >}} Pod.
+An endpoint on `localhost` refers to the Pod itself, not to the workstation running `kubectl`.
+
+The component watches resources in all namespaces regardless of the namespace where
+{{< param "PRODUCT_NAME" >}} runs.
+The service account must have the cluster-scoped permissions described in
+[Kubernetes permissions](#kubernetes-permissions).
+
+For a complete custom endpoint configuration, use
+`example/kubernetes-rollouts/local-api.alloy`.
 
 ### Send events to Grafana Cloud
 
