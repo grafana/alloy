@@ -102,7 +102,7 @@ func TestPodSpecsUseSameImages(t *testing.T) {
 	require.False(t, podSpecsUseSameImages(left, right))
 }
 
-func TestBuildEventBatch(t *testing.T) {
+func TestBuildDeploymentScopedEventBatch(t *testing.T) {
 	deployment := testDeployment()
 	rs := testReplicaSet(deployment)
 	image := imageData{
@@ -110,9 +110,13 @@ func TestBuildEventBatch(t *testing.T) {
 		imageName: "registry.example.com/team/api", tag: "1.2.5",
 		imageID: "registry.example.com/team/api@sha256:bbbb", digest: "sha256:bbbb",
 	}
+	sidecar := imageData{
+		container: "sidecar", reference: "registry.example.com/team/sidecar:2.0.0",
+		imageName: "registry.example.com/team/sidecar", tag: "2.0.0",
+	}
 	data := eventData{
 		clusterUID: "cluster-uid", clusterName: "production", deployment: deployment,
-		replicaSet: rs, revision: "7", phase: phaseStarted, images: []imageData{image},
+		replicaSet: rs, revision: "7", phase: phaseStarted, images: []imageData{image, sidecar},
 	}
 
 	first := buildEventBatch(data).logs
@@ -123,15 +127,51 @@ func TestBuildEventBatch(t *testing.T) {
 	requireAttributeString(t, firstResource, "k8s.namespace.name", "payments")
 	requireAttributeString(t, firstResource, "k8s.deployment.name", "checkout")
 
-	record := first.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	records := first.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	require.Equal(t, 1, records.Len())
+	record := records.At(0)
 	require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.started", record.EventName())
-	requireAttributeString(t, record.Attributes(), "container.image.name", "registry.example.com/team/api")
-	requireAttributeString(t, record.Attributes(), "container.image.id", image.imageID)
-	requireAttributeString(t, record.Attributes(), "grafana.sdlc.container.image.reference", image.reference)
+	containersValue, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
+	require.True(t, ok)
+	require.Len(t, containersValue.Slice().AsRaw(), 2)
+	container := containersValue.Slice().At(0).Map()
+	requireAttributeString(t, container, "name", "api")
+	requireAttributeString(t, container, "image.name", "registry.example.com/team/api")
+	requireAttributeString(t, container, "image.id", image.imageID)
+	requireAttributeString(t, container, "image.reference", image.reference)
 
 	firstID, _ := record.Attributes().Get("grafana.sdlc.event.id")
 	secondID, _ := second.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes().Get("grafana.sdlc.event.id")
 	require.Equal(t, firstID.Str(), secondID.Str())
+}
+
+func TestBuildImageResolvedEventBatch(t *testing.T) {
+	deployment := testDeployment()
+	images := []imageData{
+		{
+			container: "api", reference: "registry.example.com/team/api:1.2.5",
+			imageName: "registry.example.com/team/api", tag: "1.2.5", digest: "sha256:aaaa",
+		},
+		{
+			container: "sidecar", reference: "registry.example.com/team/sidecar:2.0.0",
+			imageName: "registry.example.com/team/sidecar", tag: "2.0.0", digest: "sha256:bbbb",
+		},
+	}
+	data := eventData{
+		clusterUID: "cluster-uid", deployment: deployment, revision: "7",
+		phase: phaseImageResolved, images: images,
+	}
+
+	records := buildEventBatch(data).logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	require.Equal(t, 2, records.Len())
+	for i, image := range images {
+		record := records.At(i)
+		require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.image_resolved", record.EventName())
+		requireAttributeString(t, record.Attributes(), "k8s.container.name", image.container)
+		requireAttributeString(t, record.Attributes(), "container.image.name", image.imageName)
+		_, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
+		require.False(t, ok)
+	}
 }
 
 func TestBuildObservedInventoryEvent(t *testing.T) {

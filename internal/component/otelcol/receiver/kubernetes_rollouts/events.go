@@ -184,12 +184,12 @@ func buildEventBatch(data eventData) eventBatch {
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
 	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.kubernetes_rollouts")
 	records := scopeLogs.LogRecords()
-	images := data.images
-	if len(images) == 0 {
-		images = []imageData{{}}
-	}
-	for _, image := range images {
-		appendEventRecord(records, data, image)
+	if data.phase == phaseImageResolved {
+		for i := range data.images {
+			appendEventRecord(records, data, &data.images[i])
+		}
+	} else {
+		appendEventRecord(records, data, nil)
 	}
 	return eventBatch{logs: logs}
 }
@@ -295,13 +295,16 @@ func inventoryFingerprint(data eventData) string {
 	return stableID(parts...)
 }
 
-func appendEventRecord(records plog.LogRecordSlice, data eventData, image imageData) {
+func appendEventRecord(records plog.LogRecordSlice, data eventData, image *imageData) {
 	generation := data.generation
 	if generation == 0 {
 		generation = data.deployment.Generation
 	}
 	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), fmt.Sprint(generation))
-	eventID := stableID(rolloutID, string(data.phase), image.container, image.digest)
+	eventIDParts := []string{rolloutID, string(data.phase)}
+	if image != nil {
+		eventIDParts = append(eventIDParts, image.container, image.digest)
+	}
 	record := records.AppendEmpty()
 	record.SetEventName("grafana.sdlc.k8s.deployment.rollout." + string(data.phase))
 	now := pcommon.NewTimestampFromTime(time.Now())
@@ -314,7 +317,7 @@ func appendEventRecord(records plog.LogRecordSlice, data eventData, image imageD
 	attrs.PutStr("deployment.id", rolloutID)
 	attrs.PutStr("deployment.name", data.deployment.Name)
 	attrs.PutStr("deployment.status", string(data.phase))
-	attrs.PutStr("grafana.sdlc.event.id", eventID)
+	attrs.PutStr("grafana.sdlc.event.id", stableID(eventIDParts...))
 	attrs.PutStr("grafana.sdlc.deployment.revision", data.revision)
 	attrs.PutInt("grafana.sdlc.deployment.generation", generation)
 	attrs.PutStr("grafana.sdlc.rollout.phase", string(data.phase))
@@ -326,7 +329,9 @@ func appendEventRecord(records plog.LogRecordSlice, data eventData, image imageD
 		attrs.PutStr("k8s.replicaset.name", data.replicaSet.Name)
 		attrs.PutStr("k8s.replicaset.uid", string(data.replicaSet.UID))
 	}
-	if image.container != "" {
+	if image == nil {
+		putInventoryContainers(attrs.PutEmptySlice("grafana.sdlc.deployment.containers"), data.images)
+	} else {
 		attrs.PutStr("k8s.container.name", image.container)
 		attrs.PutBool("grafana.sdlc.container.init", image.init)
 		attrs.PutStr("grafana.sdlc.container.image.reference", image.reference)

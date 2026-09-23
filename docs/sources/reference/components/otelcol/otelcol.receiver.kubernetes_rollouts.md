@@ -179,7 +179,9 @@ They should remove that entry when they receive the corresponding `deleted` even
 
 ### Rollout lifecycle events
 
-The component emits one log record for each container image in a rollout lifecycle event.
+The component emits one log record for each Deployment rollout lifecycle event, except for `image_resolved`.
+Each Deployment-scoped event contains a `grafana.sdlc.deployment.containers` array with the configured reference and available resolved image information for every regular and init container.
+The component emits `image_resolved` once for each newly observed combination of container and digest.
 
 Event names have the form `grafana.sdlc.k8s.deployment.rollout.<PHASE>`.
 The supported phases are:
@@ -198,10 +200,11 @@ Every record contains these resource attributes:
 * `k8s.deployment.name`
 * `k8s.deployment.uid`
 
-Image records include `k8s.container.name`, `container.image.name`, `container.image.tags`, `container.image.id`, and `container.image.repo_digests` when those values are available.
-The original image reference is available as `grafana.sdlc.container.image.reference`.
+`image_resolved` records include `k8s.container.name`, `container.image.name`, `container.image.tags`, `container.image.id`, and `container.image.repo_digests` when those values are available.
+The original image reference for an `image_resolved` record is available as `grafana.sdlc.container.image.reference`.
 
-`grafana.sdlc.event.id` is deterministic for a rollout phase, container, and digest.
+`grafana.sdlc.event.id` is deterministic for a rollout and phase.
+For `image_resolved`, it is deterministic for the rollout, container, and digest.
 For `observed`, it is deterministic for the complete inventory snapshot.
 For `deleted`, it is deterministic for the Deployment UID.
 Consumers can use it as a deduplication key.

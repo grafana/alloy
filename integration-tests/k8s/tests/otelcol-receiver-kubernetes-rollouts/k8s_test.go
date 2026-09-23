@@ -221,10 +221,10 @@ spec:
 		requirePhaseOrder(t, events, "started", "superseded", "started")
 
 		superseded := requireEventWithGeneration(t, events, "superseded", firstStarted.generation)
-		requireMapString(t, superseded.attributes, "grafana.sdlc.container.image.reference", "unavailable.invalid/app:first")
+		requireContainerImageReference(t, superseded.attributes, "app", "unavailable.invalid/app:first")
 
 		secondStarted := requireEventAfterGeneration(t, events, "started", firstStarted.generation)
-		requireMapString(t, secondStarted.attributes, "grafana.sdlc.container.image.reference", "unavailable.invalid/app:second")
+		requireContainerImageReference(t, secondStarted.attributes, "app", "unavailable.invalid/app:second")
 	})
 }
 
