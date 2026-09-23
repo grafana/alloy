@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -384,15 +385,13 @@ func TestMatchStageOrder(t *testing.T) {
 	now := time.Now()
 
 	run := func(t *testing.T, cfgs []StageConfig, entries []Entry) []string {
-		logger := util.TestAlloyLogger(t)
-
 		var collected []Entry
 		next := func(_ context.Context, entries []Entry) error {
 			collected = append(collected, entries...)
 			return nil
 		}
 
-		p, err := newPipeline(logger.Slog(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
 		require.NoError(t, err)
 		require.NoError(t, p.process(context.Background(), entries))
 		p.stop()
@@ -410,7 +409,7 @@ func TestMatchStageOrder(t *testing.T) {
 			selector = "{app=\"loki\"} |= \"match\""
 
 			stage.replace {
-				expression = "match"
+				expression = "(match)"
 				replace    = "matched"
 			}
 		}
@@ -426,11 +425,11 @@ func TestMatchStageOrder(t *testing.T) {
 		})
 
 		require.Equal(t, []string{
-			"match 1",
+			"matched 1",
 			"other 2",
-			"match 3",
+			"matched 3",
 			"other 4",
-			"match 5",
+			"matched 5",
 			"other 6",
 		}, got)
 	})
@@ -460,6 +459,63 @@ func TestMatchStageOrder(t *testing.T) {
 			"line 2",
 			"line 3",
 			"line 4",
+		}, got)
+	})
+
+	t.Run("sorts entries when inner pipeline changes timestamp", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.regex {
+				expression = "ts=(?P<ts>[0-9]+)"
+			}
+			stage.timestamp {
+				source = "ts"
+				format = "Unix"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match ts=2000", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 1", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match ts=1000", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now.Add(3*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"match ts=1000",
+			"match ts=2000",
+			"other 1",
+			"other 2",
+		}, got)
+	})
+
+	t.Run("entries sharing a timestamp keep bypassed before matched", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.replace {
+				expression = "(match)"
+				replace    = "matched"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 3", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 4", now.Add(1*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"other 2",
+			"matched 1",
+			"other 3",
+			"matched 4",
 		}, got)
 	})
 }
