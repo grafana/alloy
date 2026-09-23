@@ -182,4 +182,16 @@ func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
 	return c.Inner
 }
 
-var _ storage.Appendable = &ConstantAppendable{}
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration): ConstantAppendable is a test helper; it currently
+// panics because nothing calls it in production yet, and no test exercises
+// the V2 append path yet either. See https://github.com/grafana/alloy/issues/6896
+func (c ConstantAppendable) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented for ConstantAppendable")
+}
+
+var (
+	_ storage.Appendable   = &ConstantAppendable{}
+	_ storage.AppendableV2 = &ConstantAppendable{}
+)

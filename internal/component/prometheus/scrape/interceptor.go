@@ -15,7 +15,7 @@ import (
 
 // NewInterceptor creates a new Prometheus storage.Appendable interceptor proxies calls to the provided appendable publishing
 // live debugging data using the provided debugDataPublisher if live debugging is active.
-func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.Appendable) *prometheus.Interceptor {
+func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.AppendableV2) *prometheus.Interceptor {
 	return prometheus.NewInterceptor(appendable,
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.Append(globalRef, l, t, v)
