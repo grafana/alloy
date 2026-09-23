@@ -61,7 +61,7 @@ To see the list of valid command-line flags that can be passed to the service, r
 
 ## Run the {{% param "OTEL_ENGINE" %}}
 
-The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you set `ALLOY_OTEL_MODE` in the environment file.
+The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you enable `ALLOY_OTEL_MODE` in the environment file.
 The `CONFIG_FILE` and `CUSTOM_ARGS` settings apply only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses `OTEL_CONFIG_FILE` and `OTEL_CUSTOM_ARGS` instead.
 

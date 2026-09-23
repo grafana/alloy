@@ -96,7 +96,7 @@ For example, you can add the following command line flag in `$(brew --prefix)/et
 
 ## Run the {{% param "OTEL_ENGINE" %}}
 
-The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you set `ALLOY_OTEL_MODE` in `$(brew --prefix)/etc/alloy/config.env`.
+The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you enable `ALLOY_OTEL_MODE` in `$(brew --prefix)/etc/alloy/config.env`.
 The `config.alloy` and `extra-args.txt` files apply only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses `config.yaml` and `otel-extra-args.txt` instead.
 

@@ -94,7 +94,7 @@ To change the environment variables used by {{< param "PRODUCT_NAME" >}}, perfor
 
 ## Run the {{% param "OTEL_ENGINE" %}}
 
-The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you set the `ALLOY_OTEL_MODE` registry value.
+The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you enable the `ALLOY_OTEL_MODE` registry value.
 The `Arguments` registry value applies only to the {{< param "DEFAULT_ENGINE" >}}.
 The {{< param "OTEL_ENGINE" >}} uses the `OTelArguments` registry value instead.
 
