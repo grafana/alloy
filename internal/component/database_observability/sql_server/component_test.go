@@ -330,6 +330,29 @@ func TestExplainPlansConfigParsing(t *testing.T) {
 	assert.Equal(t, 5*time.Minute, args.ExplainPlansArguments.CollectInterval)
 }
 
+func TestHealthCheckDefaults(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+
+	assert.Equal(t, 1*time.Hour, args.HealthCheckArguments.CollectInterval)
+}
+
+func TestHealthCheckConfigParsing(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "sqlserver://user:pass@localhost:1433"
+		forward_to       = []
+		targets          = []
+		health_check {
+			collect_interval = "5m"
+		}
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+	assert.Equal(t, 5*time.Minute, args.HealthCheckArguments.CollectInterval)
+}
+
 func TestQuerySamplesDefaults(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
