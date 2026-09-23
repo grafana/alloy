@@ -221,6 +221,11 @@ func (a *Arguments) Validate() error {
 		}
 	}
 
+	// health_check is always enabled, so this isn't gated by enableOrDisableCollectors.
+	if a.HealthCheckArguments.CollectInterval <= 0 {
+		return fmt.Errorf("health_check.collect_interval must be greater than zero")
+	}
+
 	if a.CloudProvider != nil {
 		count := 0
 		if a.CloudProvider.AWS != nil {

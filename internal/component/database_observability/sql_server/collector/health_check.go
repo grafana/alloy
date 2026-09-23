@@ -248,40 +248,39 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 		}
 	}
 
-	if len(missingGrants) > 0 {
-		sort.Strings(missingGrants)
+	if v := formatDatabaseList("missing grants on: ", "", missingGrants); v != "" {
 		grantsResult.result = false
-		grantsResult.value = fmt.Sprintf("missing grants on: %s", strings.Join(missingGrants, ", "))
+		grantsResult.value = v
 	}
 
-	if len(queryStoreDisabled) > 0 {
-		sort.Strings(queryStoreDisabled)
+	if v := formatDatabaseList("query store not enabled on: ", "", queryStoreDisabled); v != "" {
 		queryStoreEnabledResult.result = false
-		queryStoreEnabledResult.value = fmt.Sprintf("query store not enabled on: %s", strings.Join(queryStoreDisabled, ", "))
+		queryStoreEnabledResult.value = v
 	}
 
 	queryStoreHasRowsResult.result = hasRows
 
-	if note := skippedNote(skippedDatabases, grantsCheckSkipped); note != "" {
+	if note := formatDatabaseList(" (could not check: ", ")", skippedDatabases, grantsCheckSkipped); note != "" {
 		grantsResult.value += note
 	}
-	if note := skippedNote(skippedDatabases, queryStoreCheckSkipped); note != "" {
+	if note := formatDatabaseList(" (could not check: ", ")", skippedDatabases, queryStoreCheckSkipped); note != "" {
 		queryStoreEnabledResult.value += note
 	}
-	if note := skippedNote(skippedDatabases); note != "" {
+	if note := formatDatabaseList(" (could not check: ", ")", skippedDatabases); note != "" {
 		queryStoreHasRowsResult.value += note
 	}
 
 	return []healthCheckResult{grantsResult, queryStoreEnabledResult, queryStoreHasRowsResult}, nil
 }
 
-// skippedNote formats the "could not check" suffix appended to a check's
-// value field for databases whose check-execution failed outright (as
-// opposed to genuinely failing the check). Returns "" if databases is empty.
-func skippedNote(databaseLists ...[]string) string {
+// formatDatabaseList dedupes and sorts database names across all of lists,
+// joins them, and wraps the result in prefix/suffix. Returns "" if every
+// list is empty, so callers can use that to decide whether to apply the
+// result at all (e.g. leaving a result's default value/status untouched).
+func formatDatabaseList(prefix, suffix string, lists ...[]string) string {
 	unique := map[string]struct{}{}
 	var deduped []string
-	for _, databases := range databaseLists {
+	for _, databases := range lists {
 		for _, db := range databases {
 			if _, ok := unique[db]; !ok {
 				unique[db] = struct{}{}
@@ -293,7 +292,7 @@ func skippedNote(databaseLists ...[]string) string {
 		return ""
 	}
 	sort.Strings(deduped)
-	return fmt.Sprintf(" (could not check: %s)", strings.Join(deduped, ", "))
+	return prefix + strings.Join(deduped, ", ") + suffix
 }
 
 // hasRequiredPermissions checks that the login has requiredSchemaPermission
@@ -339,13 +338,7 @@ func hasRequiredPermissions(ctx context.Context, conn *sql.Conn, queryTimeout ti
 // It mirrors the "usable" definition used by the query_metrics preflight in
 // checkQueryStoreState (query_store.go), rather than the raw ON/OFF state.
 func isQueryStoreEnabled(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
-	var database, actualState, captureMode sql.NullString
-	var readonlyReason sql.NullInt64
-
-	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
-		return conn.QueryRowContext(queryCtx, selectQueryStoreState).
-			Scan(&database, &actualState, &captureMode, &readonlyReason)
-	})
+	_, actualState, _, _, err := queryStoreState(ctx, conn, queryTimeout)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
