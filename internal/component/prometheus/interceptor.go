@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -21,16 +22,19 @@ type Interceptor struct {
 	onAppendSTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)
 
 	// next is the next appendable to pass in the chain.
-	next storage.Appendable
+	next storage.AppendableV2
 
 	componentID string
 }
 
-var _ storage.Appendable = (*Interceptor)(nil)
+var (
+	_ storage.Appendable   = (*Interceptor)(nil)
+	_ storage.AppendableV2 = (*Interceptor)(nil)
+)
 
 // NewInterceptor creates a new Interceptor storage.Appendable. Options can be
 // provided to NewInterceptor to install custom hooks for different methods.
-func NewInterceptor(next storage.Appendable, opts ...InterceptorOption) *Interceptor {
+func NewInterceptor(next storage.AppendableV2, opts ...InterceptorOption) *Interceptor {
 	i := &Interceptor{
 		next: next,
 	}
@@ -97,9 +101,23 @@ func (i *Interceptor) Appender(ctx context.Context) storage.Appender {
 		interceptor: i,
 	}
 	if i.next != nil {
-		app.child = i.next.Appender(ctx)
+		// NOTE(appenderv2 migration): see the equivalent comment in Fanout.Appender.
+		v1, ok := i.next.(storage.Appendable)
+		if !ok {
+			panic(fmt.Sprintf("interceptor next %T does not implement storage.Appendable", i.next))
+		}
+		app.child = v1.Appender(ctx)
 	}
 	return app
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration step 2): implement AppenderV2 for real. It currently
+// panics because nothing calls it in production yet; all active append
+// paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
+func (i *Interceptor) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not yet implemented for Interceptor")
 }
 
 func (i *Interceptor) String() string {
