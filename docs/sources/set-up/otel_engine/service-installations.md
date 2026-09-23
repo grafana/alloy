@@ -10,7 +10,7 @@ weight: 400
 # Run the {{% param "FULL_OTEL_ENGINE" %}} with service installations
 
 The {{< param "PRODUCT_NAME" >}} service installations for Linux, macOS, and Windows can run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}.
-Set `ALLOY_OTEL_MODE` to `1` or `true` to run the {{< param "OTEL_ENGINE" >}}.
+Set `ALLOY_OTEL_MODE` to `1`, `true`, `yes`, or `on` to run the {{< param "OTEL_ENGINE" >}}.
 Matching isn't case-sensitive.
 If you don't set `ALLOY_OTEL_MODE`, or you set it to any other value, {{< param "PRODUCT_NAME" >}} runs the {{< param "DEFAULT_ENGINE" >}}.
 
@@ -48,10 +48,10 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 1. Optional: Set `OTEL_CUSTOM_ARGS` to pass additional command-line flags to the {{< param "OTEL_ENGINE" >}}.
    This setting works the same way as `CUSTOM_ARGS` does for the {{< param "DEFAULT_ENGINE" >}}.
 
-1. Check the configuration:
+1. Check the configuration, replacing `<OTEL_CONFIG_FILE>` with the path configured above:
 
    ```shell
-   alloy otel validate --config=/etc/alloy/config.yaml
+   alloy otel validate --config=<OTEL_CONFIG_FILE>
    ```
 
 1. Restart the service:
