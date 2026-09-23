@@ -9,11 +9,17 @@ weight: 400
 # Run the {{% param "OTEL_ENGINE" %}} with service installations
 
 The {{< param "PRODUCT_NAME" >}} service installations for Linux, macOS, and Windows can run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}.
-Set `ALLOY_OTEL_MODE` to `1` or `true` (case-insensitive) to run the {{< param "OTEL_ENGINE" >}}.
+Set `ALLOY_OTEL_MODE` to `1` or `true` to run the {{< param "OTEL_ENGINE" >}}.
+Matching isn't case-sensitive.
 Leaving it unset keeps the {{< param "DEFAULT_ENGINE" >}} running.
 
-None of the service installers currently expose an install-time flag for this setting.
-Set it using the platform-specific mechanism below, then restart the service.
+No service installer exposes an install-time flag for this setting.
+Set it with the platform-specific mechanism below, then restart the service.
+
+## Before you begin
+
+Make sure you have {{< param "PRODUCT_NAME" >}} installed as a service.
+Refer to [Install {{< param "FULL_PRODUCT_NAME" >}}][Install] for more information.
 
 ## Linux
 
@@ -29,7 +35,8 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 
 1. Set `ALLOY_OTEL_MODE=1`.
 
-1. Edit the sample OpenTelemetry Collector configuration the package installs at `/etc/alloy/config.yaml`, or set `OTEL_CONFIG_FILE` to point at a different file.
+1. Edit the sample OpenTelemetry Collector configuration the package installs at `/etc/alloy/config.yaml`.
+   To use a different file, set `OTEL_CONFIG_FILE` to its path.
 
 1. Optional: Set `OTEL_CUSTOM_ARGS` to pass additional command-line flags to the {{< param "OTEL_ENGINE" >}}.
    This setting works the same way as `CUSTOM_ARGS` does for the {{< param "DEFAULT_ENGINE" >}}.
@@ -38,6 +45,12 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 
    ```shell
    sudo systemctl restart alloy
+   ```
+
+1. Confirm the {{< param "OTEL_ENGINE" >}} is running:
+
+   ```shell
+   curl http://localhost:8888/metrics
    ```
 
 Refer to [Pass additional command-line flags][ConfigureLinux] for more information about the environment file.
@@ -54,6 +67,8 @@ To run the {{< param "OTEL_ENGINE" >}} on macOS:
 1. Set `ALLOY_OTEL_MODE=1`.
 
 1. Create your OpenTelemetry Collector configuration at `$(brew --prefix)/etc/alloy/config.yaml`.
+   To use a different file, add `--config=<PATH>` to `$(brew --prefix)/etc/alloy/otel-extra-args.txt`.
+   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so it takes precedence.
 
 1. Optional: Add command-line flags for the {{< param "OTEL_ENGINE" >}} to `$(brew --prefix)/etc/alloy/otel-extra-args.txt`.
    This file works the same way as `extra-args.txt` does for the {{< param "DEFAULT_ENGINE" >}}.
@@ -62,6 +77,12 @@ To run the {{< param "OTEL_ENGINE" >}} on macOS:
 
    ```shell
    brew services restart grafana/grafana/alloy
+   ```
+
+1. Confirm the {{< param "OTEL_ENGINE" >}} is running:
+
+   ```shell
+   curl http://localhost:8888/metrics
    ```
 
 Refer to [Configure environment variables][ConfigureMacOS] for more information about the environment file.
@@ -78,11 +99,19 @@ To run the {{< param "OTEL_ENGINE" >}} on Windows:
 1. Set the string value `ALLOY_OTEL_MODE` to `1`.
 
 1. Edit the sample OpenTelemetry Collector configuration the installer creates at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.yaml`.
+   To use a different file, add `--config=<PATH>` to the multi-string value `OTelArguments`.
+   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so it takes precedence.
 
 1. Optional: Add command-line flags for the {{< param "OTEL_ENGINE" >}} to the multi-string value `OTelArguments`.
    This value works the same way as `Arguments` does for the {{< param "DEFAULT_ENGINE" >}}.
 
 1. Restart the **{{< param "PRODUCT_NAME" >}}** service from the Windows Services manager.
+
+1. Confirm the {{< param "OTEL_ENGINE" >}} is running:
+
+   ```powershell
+   Invoke-WebRequest http://localhost:8888/metrics -UseBasicParsing
+   ```
 
 Refer to [Service configuration][ConfigureWindows] for more information about the registry values {{< param "PRODUCT_NAME" >}} uses.
 
@@ -92,3 +121,4 @@ Refer to [Service configuration][ConfigureWindows] for more information about th
 [ConfigureLinux]: ../../../configure/linux/#pass-additional-command-line-flags
 [ConfigureMacOS]: ../../../configure/macos/#configure-environment-variables
 [ConfigureWindows]: ../../install/windows/#service-configuration
+[Install]: ../../install/
