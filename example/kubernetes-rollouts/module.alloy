@@ -1,0 +1,33 @@
+declare "deployment_rollouts" {
+	argument "cluster_name" {
+		optional = true
+		default  = ""
+	}
+
+	argument "cluster_uid" {
+		optional = true
+		default  = ""
+	}
+
+	argument "clustering_enabled" {
+		optional = true
+		default  = true
+	}
+
+	argument "logs_output" {
+		comment = "List of OpenTelemetry log consumers that receive rollout events."
+	}
+
+	otelcol.receiver.kubernetes_rollouts "default" {
+		cluster_name = argument.cluster_name.value
+		cluster_uid  = argument.cluster_uid.value
+
+		clustering {
+			enabled = argument.clustering_enabled.value
+		}
+
+		output {
+			logs = argument.logs_output.value
+		}
+	}
+}

@@ -1,0 +1,16 @@
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+
+rbac:
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]

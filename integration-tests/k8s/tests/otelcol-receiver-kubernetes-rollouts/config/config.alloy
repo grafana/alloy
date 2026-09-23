@@ -1,0 +1,14 @@
+otelcol.exporter.file "rollouts" {
+  path           = "/tmp/kubernetes-rollouts.json"
+  append         = true
+  flush_interval = "100ms"
+}
+
+otelcol.receiver.kubernetes_rollouts "test" {
+  cluster_name = "kind-integration-test"
+  cluster_uid  = "kind-integration-test-uid"
+
+  output {
+    logs = [otelcol.exporter.file.rollouts.input]
+  }
+}
