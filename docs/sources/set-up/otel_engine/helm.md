@@ -1,16 +1,18 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/helm/
-description: Learn how to run the OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
+description: Learn how to run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 menuTitle: Helm chart
-title: Run the OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
+review_date: 2026-09-23
+title: Run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 weight: 300
 ---
 
-# Run the {{% param "OTEL_ENGINE" %}} with the OpenTelemetry Collector Helm chart
+# Run the {{% param "FULL_OTEL_ENGINE" %}} with the OpenTelemetry Collector Helm chart
 
-Use the upstream [OpenTelemetry Collector Helm chart][Chart] to run the {{< param "OTEL_ENGINE" >}}.
-This approach delivers an identical upstream collector experience.
-It also ensures you get improvements, bug fixes, and security updates as they're released.
+Use the upstream [OpenTelemetry Collector Helm chart][Chart] to run the {{< param "OTEL_ENGINE" >}} on Kubernetes.
+The chart deploys the {{< param "PRODUCT_NAME" >}} image with the standard upstream chart values, so you configure it the same way you configure any OpenTelemetry Collector deployment.
+
+{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 
@@ -34,7 +36,7 @@ Make sure you have the following:
    ```yaml
    image:
      repository: grafana/alloy
-     tag: latest
+     tag: <ALLOY_VERSION>
 
    command:
      name: "bin/otelcol"
@@ -90,15 +92,21 @@ Make sure you have the following:
 
    Replace the following:
 
+   - _`<ALLOY_VERSION>`_: The {{< param "PRODUCT_NAME" >}} release you want to run, for example `v1.19.0`.
    - _`<USERNAME>`_: Your Grafana Cloud instance ID.
    - _`<PASSWORD>`_: Your Grafana Cloud API token.
    - _`<URL>`_: Your Grafana Cloud OTLP endpoint URL.
 
-   The `command.name` key points at `/bin/otelcol`, a compatibility entrypoint in the {{< param "PRODUCT_NAME" >}} image that runs `alloy otel`.
-   The Helm chart doesn't expose custom commands, so this setting is necessary.
+   For more information about where to find the Grafana Cloud values, refer to [Send data using OpenTelemetry Protocol][SendOTLP].
 
-   Binding port `8888` to `0.0.0.0` makes the metrics endpoint listen on all interfaces inside the Pod.
-   This lets other Pods in the cluster reach it without using `kubectl port-forward`.
+   The chart runs `/<COMMAND_NAME>` as the container command, so `bin/otelcol` resolves to `/bin/otelcol`.
+   This path is a compatibility entrypoint in the {{< param "PRODUCT_NAME" >}} image that runs `alloy otel`.
+   Without this setting, the chart runs the image's default entrypoint, which starts the {{< param "DEFAULT_ENGINE" >}}.
+
+   The chart's default configuration doesn't apply when you set `alternateConfig`, so this example declares every component it needs, including the `health_check` extension.
+   The example also sets the metrics endpoint host to `0.0.0.0` so it listens on all interfaces inside the Pod.
+   This lets other Pods in the cluster reach it without `kubectl port-forward`.
+   Set `ports.metrics.enabled` to `true` to expose port `8888` on the Pod and the Service.
 
 1. Install the chart:
 
@@ -114,18 +122,22 @@ Make sure you have the following:
    kubectl get pods
    ```
 
+   The Pod reaches `Running` status once the {{< param "OTEL_ENGINE" >}} starts.
+
 ## Configuration options
 
-The Helm chart ships with a default OpenTelemetry Collector configuration in the `config` field.
-The upstream Helm chart [documentation][ChartConfig] describes this field.
-If you want to completely override that default configuration, use the `alternateConfig` field.
-In the example, the `alternateConfig` field ensures the configuration matches the other {{< param "OTEL_ENGINE" >}} examples and doesn't inherit any of the chart's defaults.
-Alternatively, you can omit both `config` and `alternateConfig` to use the default configuration as-is.
-You can also provide your own `config` block that merges with the chart's default configuration.
+The Helm chart includes a default OpenTelemetry Collector configuration in the `config` field.
+The [Helm chart documentation][ChartConfig] describes this field.
+You have three ways to configure the {{< param "OTEL_ENGINE" >}}:
 
-Refer to the [upstream documentation][ChartDocs] for more information about how to configure the Helm chart to work for your use case.
+- **Replace the defaults**: Set `alternateConfig`, as the preceding example does. The chart ignores `config` entirely and uses only what you provide. You must supply the `health_check` extension yourself, because the chart's `readinessProbe` and `livenessProbe` checks depend on it.
+- **Merge with the defaults**: Set `config`. The chart merges your values into its default configuration. Maps merge key by key, and lists replace the default list.
+- **Remove a default**: Set a default key to `null` within `config`. This works when you install the chart directly, but not when you use it as a subchart.
+
+Refer to the [upstream documentation][ChartDocs] for more information about configuring the Helm chart for your use case.
 
 [Chart]: https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-collector
 [ChartConfig]: https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/#configuration
 [ChartDocs]: https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/
 [CLICloud]: ../cli/#send-data-to-grafana-cloud
+[SendOTLP]: https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/

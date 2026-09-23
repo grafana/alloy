@@ -1,16 +1,24 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/cli/
-description: Learn how to run the OpenTelemetry Engine with the Alloy CLI
+description: Learn how to run the Alloy OpenTelemetry Engine with the Alloy CLI
 menuTitle: CLI
-title: Run the OpenTelemetry Engine with the CLI
+review_date: 2026-09-23
+title: Run the Alloy OpenTelemetry Engine with the CLI
 weight: 100
 ---
 
-# Run the {{% param "OTEL_ENGINE" %}} with the CLI
+# Run the {{% param "FULL_OTEL_ENGINE" %}} with the CLI
 
 The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" >}} `otel` command.
-The CLI is the easiest way to experiment locally or on a single host.
+Use the CLI to experiment locally or to run the {{< param "OTEL_ENGINE" >}} on a single host.
 Refer to the [`otel`][OTelCommand] reference documentation for more information.
+
+{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+## Before you begin
+
+Make sure you have {{< param "PRODUCT_NAME" >}} installed.
+Refer to [Install {{< param "FULL_PRODUCT_NAME" >}}][Install] for more information.
 
 ## Run the {{% param "OTEL_ENGINE" %}}
 
@@ -63,7 +71,8 @@ Refer to the [`otel`][OTelCommand] reference documentation for more information.
 
 {{< param "PRODUCT_NAME" >}} then accepts incoming OTLP data on `0.0.0.0:4317` for gRPC and `0.0.0.0:4318` for HTTP requests.
 Metrics are also available on the default collector port and endpoint at `0.0.0.0:8888/metrics`.
-Since the {{< param "DEFAULT_ENGINE" >}} isn't running, the UI and metrics aren't available at `0.0.0.0:12345/metrics`.
+
+The {{< param "DEFAULT_ENGINE" >}} isn't running, so its UI at `0.0.0.0:12345` and its metrics at `0.0.0.0:12345/metrics` aren't available.
 
 ## Send data to Grafana Cloud
 
@@ -118,6 +127,7 @@ The supervisor starts {{< param "PRODUCT_NAME" >}} and receives OpenTelemetry Co
 Refer to [`otel-supervisor`][OTelSupervisor] for setup instructions and required environment variables.
 
 [OTLP]: https://opentelemetry.io/docs/specs/otel/protocol/
+[Install]: ../../install/
 [OTelCommand]: ../../../reference/cli/otel/
 [OTelSupervisor]: ../../../reference/cli/otel-supervisor/
 [SendOTLP]: https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/

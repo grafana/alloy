@@ -1,20 +1,23 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/service-installations/
-description: Learn how to run the OpenTelemetry Engine from an Alloy service installation on Linux, macOS, or Windows
+description: Learn how to run the Alloy OpenTelemetry Engine from an Alloy service installation on Linux, macOS, or Windows
 menuTitle: Service installations
-title: Run the OpenTelemetry Engine with service installations
+review_date: 2026-09-23
+title: Run the Alloy OpenTelemetry Engine with service installations
 weight: 400
 ---
 
-# Run the {{% param "OTEL_ENGINE" %}} with service installations
+# Run the {{% param "FULL_OTEL_ENGINE" %}} with service installations
 
 The {{< param "PRODUCT_NAME" >}} service installations for Linux, macOS, and Windows can run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}.
 Set `ALLOY_OTEL_MODE` to `1` or `true` to run the {{< param "OTEL_ENGINE" >}}.
 Matching isn't case-sensitive.
-Leaving it unset keeps the {{< param "DEFAULT_ENGINE" >}} running.
+If you don't set `ALLOY_OTEL_MODE`, or you set it to any other value, {{< param "PRODUCT_NAME" >}} runs the {{< param "DEFAULT_ENGINE" >}}.
 
 No service installer exposes an install-time flag for this setting.
 Set it with the platform-specific mechanism below, then restart the service.
+
+{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 
@@ -30,8 +33,8 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 
 1. Edit the environment file for the service:
 
-   - Debian or Ubuntu: edit `/etc/default/alloy`
-   - RHEL/Fedora or SUSE/openSUSE: edit `/etc/sysconfig/alloy`
+   - Debian or Ubuntu: Edit `/etc/default/alloy`
+   - RHEL/Fedora or SUSE/openSUSE: Edit `/etc/sysconfig/alloy`
 
 1. Set `ALLOY_OTEL_MODE=1`.
 
@@ -68,7 +71,7 @@ To run the {{< param "OTEL_ENGINE" >}} on macOS:
 
 1. Create your OpenTelemetry Collector configuration at `$(brew --prefix)/etc/alloy/config.yaml`.
    To use a different file, add `--config=<PATH>` to `$(brew --prefix)/etc/alloy/otel-extra-args.txt`.
-   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so it takes precedence.
+   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so its values override the installer's default where they overlap.
 
 1. Optional: Add command-line flags for the {{< param "OTEL_ENGINE" >}} to `$(brew --prefix)/etc/alloy/otel-extra-args.txt`.
    This file works the same way as `extra-args.txt` does for the {{< param "DEFAULT_ENGINE" >}}.
@@ -100,7 +103,7 @@ To run the {{< param "OTEL_ENGINE" >}} on Windows:
 
 1. Edit the sample OpenTelemetry Collector configuration the installer creates at `%PROGRAMFILES%\GrafanaLabs\Alloy\config.yaml`.
    To use a different file, add `--config=<PATH>` to the multi-string value `OTelArguments`.
-   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so it takes precedence.
+   {{< param "PRODUCT_NAME" >}} applies this flag after the default, so its values override the installer's default where they overlap.
 
 1. Optional: Add command-line flags for the {{< param "OTEL_ENGINE" >}} to the multi-string value `OTelArguments`.
    This value works the same way as `Arguments` does for the {{< param "DEFAULT_ENGINE" >}}.

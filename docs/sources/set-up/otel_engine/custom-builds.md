@@ -1,12 +1,13 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/custom-builds/
-description: Learn how to build a customized Alloy binary with the OpenTelemetry Collector Builder
+description: Learn how to build a customized Grafana Alloy binary with the OpenTelemetry Collector Builder
 menuTitle: Custom builds
-title: Custom builds with the OpenTelemetry Collector Builder (OCB)
+review_date: 2026-09-23
+title: Build a custom Grafana Alloy binary with the OpenTelemetry Collector Builder (OCB)
 weight: 500
 ---
 
-# Custom builds with the OpenTelemetry Collector Builder (OCB)
+# Build a custom {{% param "FULL_PRODUCT_NAME" %}} binary with the OpenTelemetry Collector Builder (OCB)
 
 Grafana builds the {{< param "OTEL_ENGINE" >}} from a declarative [OpenTelemetry Collector Builder (OCB)][OCB] manifest.
 If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
@@ -15,15 +16,18 @@ If you need additional components or want to remove bundled components, edit the
 Grafana doesn't offer commercial support for custom builds.
 {{< /admonition >}}
 
+{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ## Before you begin
 
 Make sure you have the following tools:
 
+- Git
 - Go 1.26.7 or later
 - Node.js
 - Docker, if you want to build the container image
 
-## Build a custom {{% param "PRODUCT_NAME" %}} binary
+## Build a custom binary
 
 1. Clone the {{< param "PRODUCT_NAME" >}} repository and change to the repository root.
    The following steps assume you run commands from this directory.
@@ -54,6 +58,7 @@ Make sure you have the following tools:
    make alloy
    ```
 
+   This command regenerates the collector distribution from the manifest before it builds, so your manifest edits take effect.
    The binary in `build/` behaves like a standard `alloy` build.
    To skip the UI build when the UI assets already exist, run `SKIP_UI_BUILD=1 make alloy`.
    Use [`alloy otel`][OTelCommand] to run collector YAML against your custom bundle.
@@ -64,9 +69,9 @@ Make sure you have the following tools:
    ./build/alloy otel components
    ```
 
-   The command lists each bundled component with its module path and version.
+   The command lists each bundled component with its module path, version, and stability level.
 
-1. Build the {{< param "PRODUCT_NAME" >}} Docker image.
+1. Optional: Build the {{< param "PRODUCT_NAME" >}} Docker image.
 
    ```shell
    make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>:<TAG>
