@@ -4,19 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/sql_server/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/cluster"
+	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -573,4 +580,313 @@ func TestValidateDatabaseInstance(t *testing.T) {
 		}
 		require.ErrorContains(t, args.Validate(), "must be a valid identifier")
 	})
+}
+
+// testGetServiceData stubs the services the component requests: HTTP service
+// data and a single-node mock cluster.
+func testGetServiceData(name string) (any, error) {
+	switch name {
+	case cluster.ServiceName:
+		return cluster.Mock(), nil
+	default:
+		return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+	}
+}
+
+// fakeCluster is a cluster.Cluster implementation with controllable
+// readiness and per-key ownership.
+type fakeCluster struct {
+	ready bool
+	owned map[shard.Key]bool
+	err   error
+}
+
+func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []peer.Peer{{Name: "peer", Self: f.owned[key]}}, nil
+}
+
+func (f *fakeCluster) Peers() []peer.Peer { return nil }
+
+func (f *fakeCluster) Ready() bool { return f.ready }
+
+func (f *fakeCluster) Enabled() bool { return true }
+
+var (
+	clusterKeyDB1 = shard.StringKey("127.0.0.1:1433/db1")
+	clusterKeyDB2 = shard.StringKey("127.0.0.1:1433/db2")
+)
+
+func clusteringTestOptions(t *testing.T, fake *fakeCluster, gotExports *cmp.Exports) cmp.Options {
+	t.Helper()
+
+	return cmp.Options{
+		ID:     "test.sql_server",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			if name == cluster.ServiceName {
+				return fake, nil
+			}
+			return testGetServiceData(name)
+		},
+		OnStateChange: func(e cmp.Exports) { *gotExports = e },
+	}
+}
+
+// clusteringTestArgs returns a two-database config with all collectors
+// disabled (so connecting needs nothing beyond a ping and the server-info
+// query) and clustering enabled.
+func clusteringTestArgs() Arguments {
+	return Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db1", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db1"},
+			{Name: "db2", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db2"},
+		},
+		QueryTimeout:      10 * time.Second,
+		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		Clustering:        cluster.ComponentBlock{Enabled: true},
+	}
+}
+
+// clusteringTestMockDB returns a *sql.DB that satisfies exactly what
+// connectAndStartCollectors needs when every collector is disabled: a
+// successful ping and the server-info query. The always-on ConnectionInfo
+// collector issues no queries of its own.
+func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
+	t.Helper()
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	mock.ExpectPing()
+	mock.ExpectQuery(selectServerInfo).
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
+			AddRow(serverName, "machine", "16.0"))
+	return db
+}
+
+func TestSqlServer_Clustering_DistributesDatabases(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := clusteringTestMockDB(t, "system-a")
+	var connected []string
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		connected = append(connected, dsn)
+		return dbA, nil
+	})
+	require.NoError(t, err)
+
+	// Only the owned database runs and connects.
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "127.0.0.1:1433/db1", instances[0].instanceKey)
+	require.Len(t, connected, 1)
+	assert.Contains(t, connected[0], "database=db1")
+
+	// Only the owned database exports its target.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "127.0.0.1:1433/db1", instance)
+}
+
+func TestSqlServer_Clustering_NotReadyOwnsNothing(t *testing.T) {
+	// The hash owns both databases, so only the readiness gate can produce
+	// zero instances: this pins the Ready() check specifically.
+	fake := &fakeCluster{ready: false, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true}}
+	var gotExports cmp.Exports
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while the cluster is not ready")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+}
+
+func TestSqlServer_Clustering_DisabledOwnsEverything(t *testing.T) {
+	// The cluster owns nothing locally, but with the clustering block
+	// disabled the component must ignore it entirely.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Clustering.Enabled = false
+
+	dbA := clusteringTestMockDB(t, "system-a")
+	dbB := clusteringTestMockDB(t, "system-b")
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "database=db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestSqlServer_Clustering_ReconcileOnOwnershipChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := clusteringTestMockDB(t, "system-a")
+	dbB := clusteringTestMockDB(t, "system-b")
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "database=db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 1)
+	require.Equal(t, "127.0.0.1:1433/db1", before[0].instanceKey)
+
+	// Unchanged ownership: reconciling is a no-op that keeps the same instances.
+	c.reconcileCluster()
+	after := c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Same(t, before[0], after[0])
+
+	// Ownership moves to db2: the db1 instance stops and db2 starts.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.reconcileCluster()
+
+	after = c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Equal(t, "127.0.0.1:1433/db2", after[0].instanceKey)
+	assert.Empty(t, before[0].collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "127.0.0.1:1433/db2", instance)
+}
+
+func TestSqlServer_Clustering_NotifyClusterChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := clusteringTestMockDB(t, "system-a")
+	dbB := clusteringTestMockDB(t, "system-b")
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "database=db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		_ = c.Run(ctx)
+	}()
+
+	// The channel send in NotifyClusterChange orders this write before the
+	// reconcile goroutine's read of the fake cluster.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.NotifyClusterChange()
+
+	require.Eventually(t, func() bool {
+		instances := c.loadInstances()
+		return len(instances) == 1 && instances[0].instanceKey == "127.0.0.1:1433/db2"
+	}, 5*time.Second, 10*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not exit after context cancellation")
+	}
+}
+
+func TestSqlServer_Clustering_UpdateRecomputesOwnership(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("127.0.0.1:1433/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}}
+	var gotExports cmp.Exports
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "database=db3"):
+			return clusteringTestMockDB(t, "system-c"), nil
+		default:
+			return clusteringTestMockDB(t, "system-a"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Len(t, c.loadInstances(), 1)
+
+	// A config reload re-applies the ownership filter to the new database set.
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "db3", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db3"})
+	require.NoError(t, c.Update(args))
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 2)
+	assert.ElementsMatch(t,
+		[]string{"127.0.0.1:1433/db1", "127.0.0.1:1433/db3"},
+		[]string{instances[0].instanceKey, instances[1].instanceKey})
+}
+
+func TestSqlServer_Clustering_LookupErrorFailsOpen(t *testing.T) {
+	// Ownership lookup errors fail open to local ownership, so a broken
+	// cluster degrades to collecting everything rather than nothing.
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "database=db1"):
+			return clusteringTestMockDB(t, "system-a"), nil
+		default:
+			return clusteringTestMockDB(t, "system-b"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
+	// The single-DSN form participates in clustering too: a node that
+	// doesn't own the database goes standby instead of collecting.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{shard.StringKey("127.0.0.1:1433/db"): false}}
+	var gotExports cmp.Exports
+
+	args := Arguments{
+		DataSourceName:    "sqlserver://user:pass@127.0.0.1:1433?database=db",
+		QueryTimeout:      10 * time.Second,
+		Clustering:        cluster.ComponentBlock{Enabled: true},
+		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+	}
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection on a non-owning node")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
 }
