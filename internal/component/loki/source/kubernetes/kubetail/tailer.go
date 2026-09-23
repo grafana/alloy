@@ -266,12 +266,6 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
-//
-// sinceTime is the time the stream was opened from. The API server applies
-// SinceTime with second precision, so the head of the stream can repeat lines
-// that were already shipped; those are the only lines skipped. Lines are never
-// compared against the previous line: the container runtime stamps stdout and
-// stderr independently, so a live stream is not ordered by timestamp.
 func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
@@ -285,8 +279,9 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			// Skip only if the timestamp is strictly before sinceTime, so that
-			// lines sharing the resume timestamp are still processed.
+			// Skip only lines the API server re-sent from before the resume point
+			// (SinceTime has second precision). Do not compare against the previous
+			// line: stdout and stderr are stamped independently by the runtime.
 			if entryTimestamp.Before(sinceTime) {
 				continue
 			}
