@@ -24,35 +24,32 @@ type File struct {
 	logger *slog.Logger
 	path   string
 
-	mut     sync.Mutex
-	entries map[string]entry
+	initialLoad sync.Once
+	mut         sync.Mutex
+	entries     map[string]entry
 }
 
-// NewFile loads the savepoints stored in dir. Keys without a stored savepoint report -1.
+// NewFile returns the savepoint file in dir, creating its folder if needed. Keys
+// without a stored savepoint report -1.
 func NewFile(logger *slog.Logger, dir string) (*File, error) {
 	folder := filepath.Join(dir, folderName)
 	if err := os.MkdirAll(folder, folderMode); err != nil {
 		return nil, fmt.Errorf("error creating savepoint folder %q: %w", folder, err)
 	}
 
-	f := &File{
+	return &File{
 		logger: logger,
 		path:   filepath.Join(folder, fileName),
-	}
-
-	f.entries = f.load()
-	if f.entries == nil {
-		f.entries = make(map[string]entry)
-	}
-
-	return f, nil
+	}, nil
 }
 
 // LastStoredSegment returns key's last consumed segment, or -1 if it has
-// none. The watcher resumes at the first segment greater than this.
+// none.
 func (f *File) LastStoredSegment(key string) int {
 	f.mut.Lock()
 	defer f.mut.Unlock()
+
+	f.ensureLoaded()
 
 	e, ok := f.entries[key]
 	if !ok {
@@ -66,6 +63,8 @@ func (f *File) StoreSegment(key string, segment int) {
 	f.mut.Lock()
 	defer f.mut.Unlock()
 
+	f.ensureLoaded()
+
 	f.entries[key] = entry{Segment: segment}
 
 	// A savepoint that cannot be persisted costs a replay on the next restart,
@@ -78,24 +77,26 @@ func (f *File) StoreSegment(key string, segment int) {
 	f.logger.Debug("updated savepoint file", "file", f.path, "endpoint", key, "segment", segment)
 }
 
-// load reads the stored savepoints. A missing, unreadable or corrupt file
-// reports no savepoints.
-func (f *File) load() map[string]entry {
-	bs, err := os.ReadFile(f.path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	} else if err != nil {
-		f.logger.Error("could not read savepoint file, continuing without savepoints", "file", f.path, "err", err)
-		return nil
-	}
+// ensureLoaded reads the stored savepoints on first use. Callers must hold mut.
+func (f *File) ensureLoaded() {
+	f.initialLoad.Do(func() {
+		file, err := os.ReadFile(f.path)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				f.logger.Error("could not read savepoint file, continuing without savepoints", "file", f.path, "err", err)
+			}
+			f.entries = make(map[string]entry)
+			return
+		}
 
-	entries, err := decode(bs)
-	if err != nil {
-		f.logger.Error("could not decode savepoint file, continuing without savepoints", "file", f.path, "err", err)
-		return nil
-	}
-
-	return entries
+		entries, err := decode(file)
+		if err != nil {
+			f.logger.Error("could not decode savepoint file, continuing without savepoints", "file", f.path, "err", err)
+			f.entries = make(map[string]entry)
+			return
+		}
+		f.entries = entries
+	})
 }
 
 // write persists all savepoints. Callers must hold mut.
