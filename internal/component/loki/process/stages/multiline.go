@@ -75,7 +75,7 @@ var (
 	_ stopper        = (*multilineStage)(nil)
 )
 
-// newMultilineStage creates a mulitlineStage from config
+// newMultilineStage creates a multilineStage from config
 func newMultilineStage(config MultilineConfig, opts stageOpts) (*multilineStage, error) {
 	regex, err := validateMultilineConfig(config)
 	if err != nil {
