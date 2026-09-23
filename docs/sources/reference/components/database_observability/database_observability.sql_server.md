@@ -149,7 +149,7 @@ This keeps log volume low and ensures a fresh entry at least every 30 minutes.
 |--------------------|------------|---------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to run health checks. | `"1h"`  | no       |
 
-The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION` and `VIEW DATABASE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
+The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
 
 `RequiredGrantsPresent` and `QueryStoreEnabled` pass only when true on every database the login can access; when they fail, the log entry's value lists the non-compliant databases. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 

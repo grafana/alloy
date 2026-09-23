@@ -23,11 +23,17 @@ const (
 	HealthCheckCollector = "health_check"
 )
 
-// requiredDatabasePermissions are the database-scoped permissions the
-// monitoring login must hold on every non-excluded database, per the grants
-// provisioned by deployment_tools' setup/sqlserver.libsonnet: VIEW DEFINITION
-// (schema introspection) and VIEW DATABASE STATE (Query Store).
-var requiredDatabasePermissions = []string{"VIEW DEFINITION", "VIEW DATABASE STATE"}
+// requiredSchemaPermission is the database-scoped permission the monitoring
+// login must hold on every non-excluded database for schema introspection,
+// per the grants provisioned by deployment_tools' setup/sqlserver.libsonnet.
+const requiredSchemaPermission = "VIEW DEFINITION"
+
+// queryStoreAccessPermissions are the database-scoped permissions that grant
+// Query Store access; either satisfies the requirement. VIEW DATABASE STATE
+// is required on SQL Server 2019 and earlier; VIEW DATABASE PERFORMANCE
+// STATE is the SQL Server 2022+ least-privilege equivalent and is reported
+// as a distinct permission name by sys.fn_my_permissions.
+var queryStoreAccessPermissions = []string{"VIEW DATABASE STATE", "VIEW DATABASE PERFORMANCE STATE"}
 
 const selectMyPermissionsQuery = `SELECT permission_name FROM sys.fn_my_permissions(NULL, 'DATABASE')`
 
@@ -198,6 +204,7 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 	defer conn.Close()
 
 	var missingGrants, queryStoreDisabled, skippedDatabases []string
+	var grantsCheckSkipped, queryStoreCheckSkipped []string
 	hasRows := false
 
 	for _, db := range databases {
@@ -214,8 +221,11 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 		}
 
 		if ok, err := hasRequiredPermissions(ctx, conn, c.queryTimeout); err != nil {
+			// A query error here (e.g. a timeout) means we couldn't evaluate
+			// the grant, not that the grant is missing — don't conflate the
+			// two, or a transient failure reads as a persistent setup problem.
 			c.logger.Error("failed to check permissions", "database", db.name, "err", err)
-			missingGrants = append(missingGrants, db.name)
+			grantsCheckSkipped = append(grantsCheckSkipped, db.name)
 		} else if !ok {
 			missingGrants = append(missingGrants, db.name)
 		}
@@ -223,7 +233,7 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 		enabled, err := isQueryStoreEnabled(ctx, conn, c.queryTimeout)
 		if err != nil {
 			c.logger.Error("failed to check Query Store state", "database", db.name, "err", err)
-			queryStoreDisabled = append(queryStoreDisabled, db.name)
+			queryStoreCheckSkipped = append(queryStoreCheckSkipped, db.name)
 		} else if !enabled {
 			queryStoreDisabled = append(queryStoreDisabled, db.name)
 		}
@@ -252,19 +262,43 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 
 	queryStoreHasRowsResult.result = hasRows
 
-	if len(skippedDatabases) > 0 {
-		sort.Strings(skippedDatabases)
-		skippedNote := fmt.Sprintf(" (could not check: %s)", strings.Join(skippedDatabases, ", "))
-		grantsResult.value += skippedNote
-		queryStoreEnabledResult.value += skippedNote
-		queryStoreHasRowsResult.value += skippedNote
+	if note := skippedNote(skippedDatabases, grantsCheckSkipped); note != "" {
+		grantsResult.value += note
+	}
+	if note := skippedNote(skippedDatabases, queryStoreCheckSkipped); note != "" {
+		queryStoreEnabledResult.value += note
+	}
+	if note := skippedNote(skippedDatabases); note != "" {
+		queryStoreHasRowsResult.value += note
 	}
 
 	return []healthCheckResult{grantsResult, queryStoreEnabledResult, queryStoreHasRowsResult}, nil
 }
 
-// hasRequiredPermissions checks the requiredDatabasePermissions against the
-// database currently active on conn (set via a prior USE statement).
+// skippedNote formats the "could not check" suffix appended to a check's
+// value field for databases whose check-execution failed outright (as
+// opposed to genuinely failing the check). Returns "" if databases is empty.
+func skippedNote(databaseLists ...[]string) string {
+	unique := map[string]struct{}{}
+	var deduped []string
+	for _, databases := range databaseLists {
+		for _, db := range databases {
+			if _, ok := unique[db]; !ok {
+				unique[db] = struct{}{}
+				deduped = append(deduped, db)
+			}
+		}
+	}
+	if len(deduped) == 0 {
+		return ""
+	}
+	sort.Strings(deduped)
+	return fmt.Sprintf(" (could not check: %s)", strings.Join(deduped, ", "))
+}
+
+// hasRequiredPermissions checks that the login has requiredSchemaPermission
+// and at least one of queryStoreAccessPermissions, on the database currently
+// active on conn (set via a prior USE statement).
 func hasRequiredPermissions(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
 	granted := map[string]bool{}
 
@@ -288,12 +322,16 @@ func hasRequiredPermissions(ctx context.Context, conn *sql.Conn, queryTimeout ti
 		return false, err
 	}
 
-	for _, required := range requiredDatabasePermissions {
-		if !granted[required] {
-			return false, nil
+	if !granted[requiredSchemaPermission] {
+		return false, nil
+	}
+
+	for _, alternative := range queryStoreAccessPermissions {
+		if granted[alternative] {
+			return true, nil
 		}
 	}
-	return true, nil
+	return false, nil
 }
 
 // isQueryStoreEnabled checks whether Query Store is usable (READ_WRITE) on

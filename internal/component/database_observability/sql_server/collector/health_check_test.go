@@ -137,6 +137,64 @@ func TestHealthCheck(t *testing.T) {
 		require.True(t, byName["QueryStoreHasRows"].result)
 	})
 
+	t.Run("VIEW DATABASE PERFORMANCE STATE (SQL Server 2022+) satisfies the Query Store grant requirement", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE PERFORMANCE STATE")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.True(t, byName["RequiredGrantsPresent"].result)
+	})
+
+	t.Run("permission or query-store-state check errors are noted separately, not reported as missing grants or disabled query store", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "db_a", "db_b")
+		expectUseDatabase(mock, "db_a")
+		mock.ExpectQuery(selectMyPermissionsQuery).WithoutArgs().WillReturnError(fmt.Errorf("query timeout"))
+		mock.ExpectQuery(selectQueryStoreState).WithoutArgs().WillReturnError(fmt.Errorf("query timeout"))
+		expectQueryStoreHasRows(mock, false)
+		expectUseDatabase(mock, "db_b")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
+		expectQueryStoreState(mock, "db_b", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		// db_a's checks errored out, but db_b is fully compliant, so the
+		// aggregate checks pass rather than falsely reporting db_a as
+		// non-compliant with grants or Query Store.
+		require.True(t, byName["RequiredGrantsPresent"].result)
+		require.NotContains(t, byName["RequiredGrantsPresent"].value, "missing grants")
+		require.Contains(t, byName["RequiredGrantsPresent"].value, "could not check: db_a")
+		require.True(t, byName["QueryStoreEnabled"].result)
+		require.NotContains(t, byName["QueryStoreEnabled"].value, "not enabled")
+		require.Contains(t, byName["QueryStoreEnabled"].value, "could not check: db_a")
+	})
+
 	t.Run("USE failure is noted separately, not reported as missing grants or disabled query store", func(t *testing.T) {
 		t.Parallel()
 
