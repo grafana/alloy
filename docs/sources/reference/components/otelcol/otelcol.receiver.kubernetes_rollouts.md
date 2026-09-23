@@ -224,7 +224,12 @@ Runtime Kubernetes API and downstream delivery errors are logged and retried.
 
 `otelcol.receiver.kubernetes_rollouts` doesn't expose component-specific debug metrics.
 
-## Example
+## Examples
+
+The following examples show how to send rollout events to a local debug exporter or a Grafana Cloud
+OTLP/HTTP endpoint.
+
+### Log events locally
 
 This example logs rollout events with the OpenTelemetry debug exporter:
 
@@ -246,5 +251,68 @@ otelcol.exporter.debug "rollouts" {
 }
 ```
 
+### Send events to Grafana Cloud
+
+This example sends rollout events to a Grafana Cloud API that accepts OTLP/HTTP logs at `/v1/logs`:
+
+```alloy
+otelcol.receiver.kubernetes_rollouts "default" {
+  cluster_name = sys.env("K8S_CLUSTER_NAME")
+
+  clustering {
+    enabled = true
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana_cloud.handler
+  }
+
+  retry_on_failure {
+    max_elapsed_time = "0s"
+  }
+
+  sending_queue {
+    block_on_overflow = true
+    num_consumers     = 1
+    storage           = otelcol.storage.file.rollouts.handler
+  }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  client_auth {
+    username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+    password = sys.env("GRAFANA_CLOUD_API_KEY")
+  }
+}
+
+otelcol.storage.file "rollouts" {
+  fsync = true
+}
+```
+
+Set the following environment variables:
+
+* `K8S_CLUSTER_NAME`: Human-readable name of the Kubernetes cluster.
+* `GRAFANA_CLOUD_OTLP_ENDPOINT`: Base URL of the OTLP/HTTP endpoint without `/v1/logs`.
+  `otelcol.exporter.otlphttp` appends `/v1/logs` when it sends log records.
+* `GRAFANA_CLOUD_INSTANCE_ID`: Grafana Cloud stack or instance ID used as the basic authentication
+  username.
+* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token authorized to write to the endpoint.
+
+The exporter retries failed requests until they succeed because `max_elapsed_time` is `"0s"`.
+The sending queue uses one consumer to preserve request order and applies backpressure when the queue is full.
+The queue uses `otelcol.storage.file` with `fsync` enabled so accepted batches survive an
+{{< param "PRODUCT_NAME" >}} process restart.
+When you run {{< param "PRODUCT_NAME" >}} in Kubernetes, mount the storage path on persistent storage
+if batches must also survive Pod replacement or rescheduling.
+
 For a reusable opt-in custom component, use the module in `example/kubernetes-rollouts/module.alloy`.
 Importing the file only defines the custom component; instantiate `deployment_rollouts` to start the watcher.
+For a complete Grafana Cloud configuration, use `example/kubernetes-rollouts/grafana-cloud.alloy`.

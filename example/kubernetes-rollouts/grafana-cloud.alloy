@@ -1,0 +1,39 @@
+otelcol.receiver.kubernetes_rollouts "default" {
+	cluster_name = sys.env("K8S_CLUSTER_NAME")
+
+	clustering {
+		enabled = true
+	}
+
+	output {
+		logs = [otelcol.exporter.otlphttp.grafana_cloud.input]
+	}
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+	client {
+		endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+		auth     = otelcol.auth.basic.grafana_cloud.handler
+	}
+
+	retry_on_failure {
+		max_elapsed_time = "0s"
+	}
+
+	sending_queue {
+		block_on_overflow = true
+		num_consumers     = 1
+		storage           = otelcol.storage.file.rollouts.handler
+	}
+}
+
+otelcol.auth.basic "grafana_cloud" {
+	client_auth {
+		username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+		password = sys.env("GRAFANA_CLOUD_API_KEY")
+	}
+}
+
+otelcol.storage.file "rollouts" {
+	fsync = true
+}
