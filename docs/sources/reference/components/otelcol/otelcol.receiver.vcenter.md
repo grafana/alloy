@@ -133,7 +133,10 @@ You can use the following blocks with `otelcol.receiver.vcenter`:
 | `vcenter.host.disk.latency.avg`            | [`metric`][] | Enables the `vcenter.host.disk.latency.avg` metric.            | `true`  | no       |
 | `vcenter.host.disk.latency.max`            | [`metric`][] | Enables the `vcenter.host.disk.latency.max` metric.            | `true`  | no       |
 | `vcenter.host.disk.throughput`             | [`metric`][] | Enables the `vcenter.host.disk.throughput` metric.             | `true`  | no       |
+| `vcenter.host.memory.active`               | [`metric`][] | Enables the `vcenter.host.memory.active` metric.               | `false` | no       |
+| `vcenter.host.memory.ballooned`            | [`metric`][] | Enables the `vcenter.host.memory.ballooned` metric.            | `false` | no       |
 | `vcenter.host.memory.capacity`             | [`metric`][] | Enables the `vcenter.host.memory.capacity` metric.             | `false` | no       |
+| `vcenter.host.memory.granted`              | [`metric`][] | Enables the `vcenter.host.memory.granted` metric.              | `false` | no       |
 | `vcenter.host.memory.usage`                | [`metric`][] | Enables the `vcenter.host.memory.usage` metric.                | `true`  | no       |
 | `vcenter.host.memory.utilization`          | [`metric`][] | Enables the `vcenter.host.memory.utilization` metric.          | `true`  | no       |
 | `vcenter.host.network.packet.drop.rate`    | [`metric`][] | Enables the `vcenter.host.network.packet.drop.rate` metric.    | `true`  | no       |

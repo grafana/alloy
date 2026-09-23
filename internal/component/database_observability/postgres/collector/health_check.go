@@ -19,7 +19,6 @@ import (
 
 const (
 	HealthCheckCollector = "health_check"
-	OP_HEALTH_STATUS     = "health_status"
 )
 
 const (
@@ -161,7 +160,7 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 		msg := fmt.Sprintf(`check="%s" result="%v" value="%s"`, result.name, result.result, result.value)
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_HEALTH_STATUS,
+			database_observability.OP_HEALTH_STATUS,
 			msg,
 		)
 	}

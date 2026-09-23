@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,12 @@ SELECT
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
 
+const (
+	selectOriginalLogin    = `SELECT ORIGINAL_LOGIN()`
+	defaultQueryTimeout    = collector.DefaultQueryTimeout
+	databaseConnectTimeout = 10 * time.Second
+)
+
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -63,17 +70,23 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
-	ExcludeSchemas    []string            `alloy:"exclude_schemas,attr,optional"`
-	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
+	DataSourceName alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets        []discovery.Target  `alloy:"targets,attr,optional"`
+
+	QueryTimeout time.Duration `alloy:"query_timeout,attr,optional"`
+
+	EnableCollectors   []string `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors  []string `alloy:"disable_collectors,attr,optional"`
+	ExcludeSchemas     []string `alloy:"exclude_schemas,attr,optional"`
+	ExcludeDatabases   []string `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers       []string `alloy:"exclude_users,attr,optional"`
+	ExcludeCurrentUser bool     `alloy:"exclude_current_user,attr,optional"`
 
 	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
+	QuerySamplesArguments  QuerySamplesArguments  `alloy:"query_samples,block,optional"`
 	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
 }
@@ -112,14 +125,23 @@ type QueryDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type QuerySamplesArguments struct {
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+}
+
 type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:   database_observability.DefaultExcludedSchemas(),
-		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
+		QueryTimeout: defaultQueryTimeout,
+
+		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
+		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
@@ -133,6 +155,10 @@ func defaultArguments() Arguments {
 
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
+		},
+
+		QuerySamplesArguments: QuerySamplesArguments{
+			CollectInterval: 10 * time.Second,
 		},
 
 		ExplainPlansArguments: ExplainPlansArguments{
@@ -151,6 +177,10 @@ func (a *Arguments) Validate() error {
 		return err
 	}
 
+	if a.QueryTimeout <= 0 {
+		return fmt.Errorf("query_timeout must be greater than zero")
+	}
+
 	if enableOrDisableCollectors(*a)[collector.QueryMetricsCollector] {
 		if a.QueryMetricsArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_metrics.collect_interval must be greater than zero")
@@ -167,6 +197,12 @@ func (a *Arguments) Validate() error {
 	if enableOrDisableCollectors(*a)[collector.QueryDetailsCollector] {
 		if a.QueryDetailsArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_details.collect_interval must be greater than zero")
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.QuerySamplesCollector] {
+		if a.QuerySamplesArguments.CollectInterval <= 0 {
+			return fmt.Errorf("query_samples.collect_interval must be greater than zero")
 		}
 	}
 
@@ -279,7 +315,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 	var (
 		wg                 sync.WaitGroup
-		consumeCtx, cancel = context.WithCancel(context.Background())
+		consumeCtx, cancel = context.WithCancel(ctx)
 	)
 
 	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
@@ -380,23 +416,30 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		return fmt.Errorf("nil DB connection")
 	}
 
-	if err = dbConnection.Ping(); err != nil {
+	connectCtx, cancelConnect := context.WithTimeout(ctx, databaseConnectTimeout)
+	err = dbConnection.PingContext(connectCtx)
+	cancelConnect()
+	if err != nil {
 		dbConnection.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	c.dbConnection = dbConnection
 
-	rs := c.dbConnection.QueryRowContext(ctx, selectServerInfo)
-	if err = rs.Err(); err != nil {
-		return fmt.Errorf("failed to query engine version: %w", err)
-	}
-
+	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
 	var serverName, machineName, engineVersion sql.NullString
-	if err := rs.Scan(&serverName, &machineName, &engineVersion); err != nil {
-		return fmt.Errorf("failed to scan engine version: %w", err)
+	err = c.dbConnection.QueryRowContext(queryCtx, selectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	cancelQuery()
+	if err != nil {
+		return fmt.Errorf("failed to query server information: %w", err)
 	}
 
-	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverName.String, machineName.String))))
+	excludeCurrentUser := c.args.ExcludeCurrentUser && enableOrDisableCollectors(c.args)[collector.QuerySamplesCollector]
+	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, c.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, excludeCurrentUser)
+	if err != nil {
+		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
+	}
+
+	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s", serverName.String, machineName.String)))
 
 	var cp *database_observability.CloudProvider
 	if c.args.CloudProvider != nil {
@@ -431,7 +474,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedServerID, engineVersion.String, cp); err != nil {
+	if err := c.startCollectors(ctx, generatedServerID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -442,6 +485,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.SchemaDetailsCollector: true,
 		collector.QueryMetricsCollector:  true,
+		collector.QuerySamplesCollector:  true,
 		collector.QueryDetailsCollector:  true,
 		collector.ExplainPlansCollector:  true,
 	}
@@ -461,7 +505,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
-func (c *Component) startCollectors(serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
+func (c *Component) startCollectors(ctx context.Context, serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -477,6 +521,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:               c.dbConnection,
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
+			QueryTimeout:     c.args.QueryTimeout,
 			ExcludeSchemas:   c.args.ExcludeSchemas,
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			EntryHandler:     entryHandler,
@@ -485,7 +530,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
-			if err := stCollector.Start(context.Background()); err != nil {
+			if err := stCollector.Start(ctx); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, stCollector)
@@ -497,6 +542,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		qmCollector, err := collector.NewQueryMetrics(collector.QueryMetricsArguments{
 			DB:              c.dbConnection,
 			Registry:        c.registry,
+			QueryTimeout:    c.args.QueryTimeout,
 			CollectInterval: c.args.QueryMetricsArguments.CollectInterval,
 			Limit:           c.args.QueryMetricsArguments.StatementsLimit,
 			Lookback:        c.args.QueryMetricsArguments.StatementsLookback,
@@ -506,10 +552,36 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 			logStartError(collector.QueryMetricsCollector, "create", err)
 		} else {
 			queryMetricsCollector = qmCollector
-			if err := qmCollector.Start(context.Background()); err != nil {
+			if err := qmCollector.Start(ctx); err != nil {
 				logStartError(collector.QueryMetricsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, qmCollector)
+		}
+	}
+
+	if collectors[collector.QuerySamplesCollector] {
+		qsArgs := collector.QuerySamplesArguments{
+			DB:                    c.dbConnection,
+			CollectInterval:       c.args.QuerySamplesArguments.CollectInterval,
+			QueryTimeout:          c.args.QueryTimeout,
+			EntryHandler:          entryHandler,
+			Logger:                c.opts.Logger,
+			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
+			ExcludeDatabases:      c.args.ExcludeDatabases,
+			ExcludeUsers:          effectiveExcludeUsers,
+		}
+		if queryMetricsCollector != nil {
+			qsArgs.Tracker = queryMetricsCollector.Tracker()
+		}
+
+		qsCollector, err := collector.NewQuerySamples(qsArgs)
+		if err != nil {
+			logStartError(collector.QuerySamplesCollector, "create", err)
+		} else {
+			if err := qsCollector.Start(ctx); err != nil {
+				logStartError(collector.QuerySamplesCollector, "start", err)
+			}
+			c.collectors = append(c.collectors, qsCollector)
 		}
 	}
 
@@ -517,6 +589,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		qdArgs := collector.QueryDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			QueryTimeout:    c.args.QueryTimeout,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		}
@@ -531,7 +604,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
 		} else {
-			if err := qdCollector.Start(context.Background()); err != nil {
+			if err := qdCollector.Start(ctx); err != nil {
 				logStartError(collector.QueryDetailsCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, qdCollector)
@@ -542,6 +615,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		epArgs := collector.ExplainPlansArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.ExplainPlansArguments.CollectInterval,
+			QueryTimeout:    c.args.QueryTimeout,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		}
@@ -558,7 +632,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)
 		} else {
-			if err := epCollector.Start(context.Background()); err != nil {
+			if err := epCollector.Start(ctx); err != nil {
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			c.collectors = append(c.collectors, epCollector)
@@ -576,7 +650,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
 	} else {
-		if err := ciCollector.Start(context.Background()); err != nil {
+		if err := ciCollector.Start(ctx); err != nil {
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.collectors = append(c.collectors, ciCollector)
@@ -587,6 +661,34 @@ func (c *Component) startCollectors(serverID string, engineVersion string, cloud
 	}
 
 	return nil
+}
+
+// resolveExcludeUsers merges the configured user exclusions with Alloy's own
+// connecting login (when excludeCurrentUser is set) so query_samples can drop
+// Alloy's own monitoring sessions.
+//
+// ORIGINAL_LOGIN() pairs with the sys.dm_exec_sessions.original_login_name
+// column that the query_samples filter matches against.
+func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configured []string, excludeCurrentUser bool) ([]string, error) {
+	effective := slices.Clone(configured)
+	if !excludeCurrentUser {
+		return effective, nil
+	}
+
+	queryCtx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+
+	var originalLogin sql.NullString
+	if err := db.QueryRowContext(queryCtx, selectOriginalLogin).Scan(&originalLogin); err != nil {
+		return nil, fmt.Errorf("failed to query original login: %w", err)
+	}
+	if !originalLogin.Valid || originalLogin.String == "" {
+		return nil, fmt.Errorf("failed to query original login: empty result")
+	}
+	if !slices.Contains(effective, originalLogin.String) {
+		effective = append(effective, originalLogin.String)
+	}
+	return effective, nil
 }
 
 func (c *Component) Handler() http.Handler {

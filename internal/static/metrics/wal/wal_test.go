@@ -263,6 +263,71 @@ func TestStorage_Rollback(t *testing.T) {
 	require.Len(t, collector.floatHistograms, 0, "Native histograms should not be written on rollback")
 }
 
+// TestAppenderBufferResetAfterWALWriteError verifies that a failed wal.Log
+// call does not return a dirty buffer to the pool, which would splice the
+// next commit's record onto the tail of the failed one. It forces the
+// failure by closing the underlying WAL directly (bypassing Storage.Close,
+// which would set walClosed and make log/logSeries return early).
+func TestAppenderBufferResetAfterWALWriteError(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*appender)
+		log     func(*appender) error
+	}{
+		{
+			name: "log",
+			prepare: func(a *appender) {
+				a.pendingSamples = append(a.pendingSamples, record.RefSample{Ref: 1, T: 1, V: 1})
+			},
+			log: func(a *appender) error {
+				return a.log()
+			},
+		},
+		{
+			name: "logSeries",
+			prepare: func(a *appender) {
+				a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+					Ref:    1,
+					Labels: labels.FromStrings("__name__", "test_metric"),
+				})
+			},
+			log: func(a *appender) error {
+				return a.logSeries()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+			require.NoError(t, err)
+
+			app := s.Appender(t.Context()).(*appender)
+			test.prepare(app)
+
+			require.NoError(t, s.wal.Close())
+
+			for range 100 {
+				s.bufPool.New = func() any {
+					return make([]byte, 0, 1024)
+				}
+				require.Error(t, test.log(app))
+
+				// A pool may discard buffers, especially under -race. Disable New so
+				// a fresh buffer cannot satisfy the assertion.
+				s.bufPool.New = nil
+				buf := s.bufPool.Get()
+				if buf == nil {
+					continue
+				}
+				require.Empty(t, buf.([]byte))
+				return
+			}
+			t.Fatal("no buffer returned from pool after 100 attempts")
+		})
+	}
+}
+
 func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 	walDir := t.TempDir()
 
@@ -372,33 +437,116 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	require.Equal(t, expectedExemplars, actualExemplars)
 }
 
-func TestStorage_ExistingWAL_RefID(t *testing.T) {
-	l := util.TestAlloyLogger(t)
-
-	walDir := t.TempDir()
-
-	s, err := NewStorage(l.Slog(), nil, walDir)
-	require.NoError(t, err)
-
-	app := s.Appender(t.Context())
-	payload := buildSeries([]string{"foo", "bar", "baz", "blerg"})
-
-	// Write all the samples
-	for _, metric := range payload {
-		metric.Write(t, app)
+// TestStorage_ExistingWAL_Replay covers what a reopened Storage recovers from
+// the WAL. Every case goes through NewStorage rather than the test-only
+// walReplayer, which decodes record types loadWAL does not and so hides gaps
+// between what the appender writes and what replay accepts.
+func TestStorage_ExistingWAL_Replay(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload func() seriesList
+		// checkpoint forces enough segments that Truncate writes a checkpoint,
+		// which carries series and metadata records forward.
+		checkpoint bool
+		// extraCommit runs against the same Storage after the payload commit.
+		extraCommit func(t *testing.T, s *Storage, payload seriesList)
+		verify      func(t *testing.T, s *Storage, payload seriesList)
+	}{
+		{
+			name:       "plain samples",
+			payload:    func() seriesList { return buildSeries([]string{"foo", "bar", "baz", "blerg"}) },
+			checkpoint: true,
+			verify: func(t *testing.T, s *Storage, payload seriesList) {
+				require.Equal(t, uint64(len(payload)), s.nextRef.Load(), "cached ref ID should be equal to the number of series written")
+			},
+		},
+		{
+			name:    "mixed types with metadata",
+			payload: func() seriesList { return buildMixedTypeSeries(0) },
+			verify:  requireMetadataReplayed,
+		},
+		{
+			name:       "mixed types with metadata, after checkpoint",
+			payload:    func() seriesList { return buildMixedTypeSeries(0) },
+			checkpoint: true,
+			verify:     requireMetadataReplayed,
+		},
+		{
+			name:    "custom buckets histograms only",
+			payload: func() seriesList { return buildCustomBucketsSeries(0) },
+			extraCommit: func(t *testing.T, s *Storage, payload seriesList) {
+				// A plain sample in its own commit after the custom-buckets-only
+				// one, which is the commit that used to write an empty record.
+				app := s.Appender(t.Context())
+				lbls := labels.FromStrings("__name__", payload[0].name)
+				_, err := app.Append(*payload[0].ref, lbls, 500, 5)
+				require.NoError(t, err)
+				require.NoError(t, app.Commit())
+			},
+			verify: func(t *testing.T, s *Storage, payload seriesList) {
+				series := s.series.GetByID(chunks.HeadSeriesRef(*payload[0].ref))
+				require.NotNil(t, series, "series should have survived replay")
+				require.Equal(t, int64(500), series.lastTs, "sample committed after the custom-buckets-only commit should have survived replay")
+			},
+		},
 	}
-	require.NoError(t, app.Commit())
 
-	// Truncate the WAL to force creation of a new segment.
-	require.NoError(t, s.Truncate(0))
-	require.NoError(t, s.Close())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			walDir := t.TempDir()
+			payload := tc.payload()
 
-	// Create a new storage and see what the ref ID is initialized to.
-	s, err = NewStorage(l.Slog(), nil, walDir)
-	require.NoError(t, err)
-	defer require.NoError(t, s.Close())
+			s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
+			require.NoError(t, err)
 
-	require.Equal(t, uint64(len(payload)), s.nextRef.Load(), "cached ref ID should be equal to the number of series written")
+			app := s.Appender(t.Context())
+			for _, metric := range payload {
+				metric.Write(t, app)
+			}
+			require.NoError(t, app.Commit())
+
+			if tc.extraCommit != nil {
+				tc.extraCommit(t, s, payload)
+			}
+
+			if tc.checkpoint {
+				for i := 0; i < 5; i++ {
+					_, err := s.wal.NextSegmentSync()
+					require.NoError(t, err)
+				}
+				// A mint of 0 keeps every series active so it lands in the checkpoint.
+				require.NoError(t, s.Truncate(0))
+			}
+
+			require.NoError(t, s.Close())
+			// We need to wait a little bit for the previous store to finish flushing.
+			time.Sleep(time.Millisecond * 150)
+
+			s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
+			require.NoError(t, err)
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
+
+			tc.verify(t, s, payload)
+		})
+	}
+}
+
+// requireMetadataReplayed asserts every series in the payload came back from
+// replay with the metadata it was written with.
+func requireMetadataReplayed(t *testing.T, s *Storage, payload seriesList) {
+	t.Helper()
+
+	for _, p := range payload {
+		expected := p.samples[len(p.samples)-1].meta
+		require.NotNil(t, expected, "fixture series %q carries no metadata", p.name)
+
+		series := s.series.GetByID(chunks.HeadSeriesRef(*p.ref))
+		require.NotNil(t, series, "series %q missing after replay", p.name)
+		require.NotNil(t, series.meta, "series %q lost its metadata on replay", p.name)
+		require.Equal(t, *expected, *series.meta, "series %q", p.name)
+	}
 }
 
 func TestStorage_Truncate(t *testing.T) {
@@ -946,6 +1094,19 @@ func buildMixedTypeSeries(baseTs int64) seriesList {
 				{Labels: labels.FromStrings("foobar", "barfoo"), Value: float64(10.0), Ts: baseTs + 3, HasTs: true},
 				{Labels: labels.FromStrings("lorem", "ipsum"), Value: float64(100.0), Ts: baseTs + 30, HasTs: true},
 			},
+		},
+	}
+}
+
+// buildCustomBucketsSeries returns a payload whose histograms all use custom
+// buckets, so committing it encodes no plain histogram record at all.
+func buildCustomBucketsSeries(baseTs int64) seriesList {
+	return seriesList{
+		{
+			name: "custom_buckets_series",
+			samples: []sample{
+				{baseTs + 1, -1, tsdbutil.GenerateTestCustomBucketsHistogram(1), nil, nil},
+				{baseTs + 10, -1, tsdbutil.GenerateTestCustomBucketsHistogram(100), nil, nil}},
 		},
 	}
 }

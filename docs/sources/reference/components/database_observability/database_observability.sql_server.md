@@ -35,8 +35,15 @@ You can use the following arguments with `database_observability.sql_server`:
 | `targets`           | `list(map(string))`  | List of external targets to scrape.                                      |         | no       |
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
+| `exclude_current_user` | `bool`            | Exclude query samples from sessions opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
+
+The `query_timeout` applies separately to each SQL statement.
+The timeout includes waiting for an available connection and reading the statement results.
+A collection cycle can run multiple statements and can take longer than `query_timeout`.
 
 The following collectors are configurable:
 
@@ -45,6 +52,7 @@ The following collectors are configurable:
 | `explain_plans`   | Collect and parse query execution plans already captured by Query Store.      | yes                |
 | `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
 | `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `query_samples`   | Collect query samples and wait events for tracked queries.                    | yes                |
 | `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 
 ## Blocks
@@ -62,6 +70,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 
 [cloud_provider]: #cloud_provider
@@ -71,6 +80,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [explain_plans]: #explain_plans
 [query_details]: #query_details
 [query_metrics]: #query_metrics
+[query_samples]: #query_samples
 [schema_details]: #schema_details
 
 {{< /docs/alloy-config >}}
@@ -154,6 +164,20 @@ When the connected database is a system database such as `master`, or Query Stor
 The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
 
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
+
+### `query_samples`
+
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect query samples.                      | `"10s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+
+The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+
+The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
+For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
+
+The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
 
 ### `schema_details`
 

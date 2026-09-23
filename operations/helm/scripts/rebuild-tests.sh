@@ -23,11 +23,11 @@ for chart_file in $(find ./* -name Chart.yaml -print | sort); do
       if [[ "${TESTNAME}" == *"vertical"* ]]; then
         # shellcheck disable=SC2016 
 		#'$chart_tests' is a literal Helm value key, not a shell variable.
-        helm template --namespace default --kube-version 1.26 --debug "${CHART_NAME}" "${CHART_DIR}" -f "${FILE_PATH}" --output-dir "${TEST_DIR}/${TESTNAME}" --set '$chart_tests=true' --api-versions autoscaling.k8s.io/v1
+        helm template --namespace default --kube-version 1.34 --debug "${CHART_NAME}" "${CHART_DIR}" -f "${FILE_PATH}" --output-dir "${TEST_DIR}/${TESTNAME}" --set '$chart_tests=true' --api-versions autoscaling.k8s.io/v1
       else
         # shellcheck disable=SC2016
 		#'$chart_tests' is a literal Helm value key, not a shell variabl.
-        helm template --namespace default --kube-version 1.26 --debug "${CHART_NAME}" "${CHART_DIR}" -f "${FILE_PATH}" --output-dir "${TEST_DIR}/${TESTNAME}" --set '$chart_tests=true'
+        helm template --namespace default --kube-version 1.34 --debug "${CHART_NAME}" "${CHART_DIR}" -f "${FILE_PATH}" --output-dir "${TEST_DIR}/${TESTNAME}" --set '$chart_tests=true'
       fi
     done
   fi

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 )
@@ -21,17 +22,23 @@ const (
 // WatcherState is a holder for the state the Watcher is in. It provides handy methods for checking it it's stopping, getting
 // the current state, or blocking until it has stopped.
 type WatcherState struct {
-	current        int
-	mut            sync.RWMutex
-	stoppingSignal chan struct{}
-	logger         *slog.Logger
+	current int
+	mut     sync.RWMutex
+	logger  *slog.Logger
+
+	// ctx is canceled when the state transitions to StateStopping.
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewWatcherState(logger *slog.Logger) *WatcherState {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &WatcherState{
-		current:        StateRunning,
-		stoppingSignal: make(chan struct{}),
-		logger:         logger,
+		current: StateRunning,
+		logger:  logger,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -42,10 +49,9 @@ func (s *WatcherState) Transition(next int) {
 
 	s.logger.Debug("watcher transitioning state", "currentState", printState(s.current), "nextState", printState(next))
 
-	// only perform channel close if the state is not already stopping
-	// expect s.s to be either draining ro running to perform a close
+	// only cancel context if the state is not already StateStopping.
 	if next == StateStopping && s.current != next {
-		close(s.stoppingSignal)
+		s.cancel()
 	}
 
 	// update state
@@ -66,9 +72,9 @@ func (s *WatcherState) IsStopping() bool {
 	return s.current == StateStopping
 }
 
-// WaitForStopping returns a channel in which the called can read, effectively waiting until the state changes to stopping.
-func (s *WatcherState) WaitForStopping() <-chan struct{} {
-	return s.stoppingSignal
+// StoppingContext returns a context that will be canceled when state is transitioned to StateStopping.
+func (s *WatcherState) StoppingContext() context.Context {
+	return s.ctx
 }
 
 // printState prints a user-friendly name of the possible Watcher states.

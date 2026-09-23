@@ -20,8 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-const OP_ERROR_MESSAGE = "error_message"
-
 const (
 	LogsCollector         = "logs"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
@@ -180,7 +178,7 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
+		[]string{"severity", "sqlstate", "sqlstate_class", labelDatname, "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
@@ -600,7 +598,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	select {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_ERROR_MESSAGE,
+		database_observability.OP_ERROR_MESSAGE,
 		body,
 		ts.UnixNano(),
 	):

@@ -15,12 +15,11 @@ const (
 	reasonGeneric       = "ingester_error"
 	reasonRateLimited   = "rate_limited"
 	reasonStreamLimited = "stream_limited"
-	reasonLineTooLong   = "line_too_long"
 	reasonQueueIsFull   = "queue_is_full"
 	reasonBatchTooLarge = "batch_too_large"
 )
 
-var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong, reasonQueueIsFull}
+var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonQueueIsFull, reasonBatchTooLarge}
 
 type metrics struct {
 	sentBytes                    *prometheus.CounterVec

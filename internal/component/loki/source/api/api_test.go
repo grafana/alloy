@@ -110,14 +110,13 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
-	select {
-	case lokiClient.Chan() <- loki.Entry{
-		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  push.Entry{Timestamp: now, Line: "hello world!"},
-	}:
-	case <-ctx.Done():
-		t.Fatalf("timed out while sending test entries via loki client")
-	}
+	require.NoError(t, lokiClient.ConsumeEntry(
+		ctx,
+		loki.NewEntry(
+			model.LabelSet{"source": "test"},
+			push.Entry{Timestamp: now, Line: "hello world!"},
+		),
+	))
 
 	require.Eventually(
 		t,
@@ -156,14 +155,13 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
-	select {
-	case lokiClient.Chan() <- loki.Entry{
-		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  push.Entry{Timestamp: now, Line: "hello world!"},
-	}:
-	case <-ctx.Done():
-		t.Fatalf("timed out while sending test entries via loki client")
-	}
+	require.NoError(t, lokiClient.ConsumeEntry(
+		ctx,
+		loki.NewEntry(
+			model.LabelSet{"source": "test"},
+			push.Entry{Timestamp: now, Line: "hello world!"},
+		),
+	))
 
 	require.Eventually(
 		t,
@@ -186,14 +184,14 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 
 	receiver.Clear()
 
-	select {
-	case lokiClient.Chan() <- loki.Entry{
-		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  push.Entry{Timestamp: now, Line: "hello brave new world!"},
-	}:
-	case <-ctx.Done():
-		t.Fatalf("timed out while sending test entries via loki client")
-	}
+	require.NoError(t, lokiClient.ConsumeEntry(
+		ctx,
+		loki.NewEntry(
+			model.LabelSet{"source": "test"},
+			push.Entry{Timestamp: now, Line: "hello brave new world!"},
+		),
+	))
+
 	require.Eventually(
 		t,
 		func() bool { return len(receiver.Received()) == 1 },
@@ -238,15 +236,13 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 	const messagesCount = 100
 	for i := range messagesCount {
-		entry := loki.Entry{
-			Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-			Entry:  push.Entry{Line: fmt.Sprintf("test message #%d", i)},
-		}
-		select {
-		case lokiClient.Chan() <- entry:
-		case <-ctx.Done():
-			t.Log("timed out while sending test entries via loki client")
-		}
+		require.NoError(t, lokiClient.ConsumeEntry(
+			ctx,
+			loki.NewEntry(
+				model.LabelSet{"source": "test"},
+				push.Entry{Line: fmt.Sprintf("test message #%d", i)},
+			),
+		))
 	}
 
 	require.Eventually(
@@ -380,14 +376,17 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
-	select {
-	case lokiClient.Chan() <- loki.Entry{
-		Labels: map[model.LabelName]model.LabelValue{"source": "test"},
-		Entry:  push.Entry{Timestamp: now, Line: "hello world over TLS!"},
-	}:
-	case <-ctx.Done():
-		t.Fatalf("timed out while sending test entries via TLS loki client")
-	}
+
+	require.NoError(
+		t,
+		lokiClient.ConsumeEntry(
+			ctx,
+			loki.NewEntry(
+				model.LabelSet{"source": "test"},
+				push.Entry{Timestamp: now, Line: "hello world over TLS!"},
+			),
+		),
+	)
 
 	require.Eventually(
 		t,

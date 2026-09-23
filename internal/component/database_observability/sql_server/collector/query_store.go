@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 )
 
 // selectQueryStoreState reads the connected database's Query Store state
@@ -20,12 +21,14 @@ const selectQueryStoreState = `
 // checkQueryStoreState reports whether Query Store is readable on the connected
 // database and returns that database's name. It mirrors the preflight used by
 // query_metrics so query_details skips cleanly when Query Store is unavailable.
-func checkQueryStoreState(ctx context.Context, db *sql.DB, logger *slog.Logger) (string, bool) {
+func checkQueryStoreState(ctx context.Context, db *sql.DB, queryTimeout time.Duration, logger *slog.Logger) (string, bool) {
 	var database, actualState, captureMode sql.NullString
 	var readonlyReason sql.NullInt64
 
-	err := db.QueryRowContext(ctx, selectQueryStoreState).
-		Scan(&database, &actualState, &captureMode, &readonlyReason)
+	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
+		return db.QueryRowContext(queryCtx, selectQueryStoreState).
+			Scan(&database, &actualState, &captureMode, &readonlyReason)
+	})
 
 	if errors.Is(err, sql.ErrNoRows) {
 		logger.Warn("Query Store options are unavailable: the login may lack VIEW DATABASE STATE, or the connected database has no Query Store")

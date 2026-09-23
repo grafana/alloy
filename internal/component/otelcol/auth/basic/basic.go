@@ -110,7 +110,7 @@ func (args Arguments) Validate() error {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	c := &basicauthextension.Config{}
+	c := basicauthextension.NewFactory().CreateDefaultConfig().(*basicauthextension.Config)
 	// If the client config is specified, ignore the deprecated
 	// username and password attributes.
 	if args.ClientAuth != nil {
@@ -127,8 +127,10 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 
 // ConvertServer implements auth.Arguments.
 func (args Arguments) ConvertServer() (otelcomponent.Config, error) {
-	c := &basicauthextension.Config{
-		Htpasswd: &basicauthextension.HtpasswdSettings{},
+	c := basicauthextension.NewFactory().CreateDefaultConfig().(*basicauthextension.Config)
+	if c.Htpasswd == nil {
+		// The inline append below needs a non-nil Htpasswd.
+		c.Htpasswd = &basicauthextension.HtpasswdSettings{}
 	}
 	if args.Htpasswd != nil {
 		c.Htpasswd = args.Htpasswd.convert()

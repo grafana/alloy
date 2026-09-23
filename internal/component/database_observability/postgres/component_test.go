@@ -4,11 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -23,10 +29,22 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
+
+// testGetServiceData stubs the services the component requests: HTTP service
+// data and a single-node mock cluster.
+func testGetServiceData(name string) (any, error) {
+	switch name {
+	case cluster.ServiceName:
+		return cluster.Mock(), nil
+	default:
+		return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
+	}
+}
 
 func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
 	t.Helper()
@@ -48,22 +66,24 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		},
 	}
 	c := &Component{
-		opts:         opts,
-		args:         args,
-		fanout:       loki.NewFanout(args.ForwardTo),
-		handler:      loki.NewLogsReceiver(),
-		openSQL:      openSQL,
-		logsReceiver: loki.NewLogsReceiver(),
-		instance: &dbInstance{
-			instanceKey: "test-instance",
-			baseTarget: discovery.NewTargetFromMap(map[string]string{
-				"instance": "test-instance",
-				"job":      "database_observability",
-			}),
-			registry:  prometheus.NewRegistry(),
-			healthErr: atomic.NewString(""),
-		},
+		opts:          opts,
+		args:          args,
+		fanout:        loki.NewFanout(args.ForwardTo),
+		handler:       loki.NewLogsReceiver(),
+		openSQL:       openSQL,
+		logsReceivers: map[string]*receiverPump{},
 	}
+	c.storeInstances([]*dbInstance{{
+		cfg:         databaseConfig{dsn: args.DataSourceName},
+		instanceKey: "test-instance",
+		baseTarget: discovery.NewTargetFromMap(map[string]string{
+			"instance": "test-instance",
+			"job":      "database_observability",
+		}),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		logsReceiver: loki.NewLogsReceiver(),
+	}})
 	return c
 }
 
@@ -117,6 +137,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -139,6 +161,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -161,6 +185,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -184,6 +210,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -207,6 +235,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -229,6 +259,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -251,6 +283,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -273,6 +307,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  true,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 
@@ -295,6 +331,8 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.QuerySamplesCollector:  false,
 			collector.SchemaDetailsCollector: true,
 			collector.ExplainPlanCollector:   true,
+			collector.TableStatsCollector:    false,
+			collector.IndexStatsCollector:    false,
 		}, actualCollectors)
 	})
 }
@@ -409,7 +447,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c.args.ExcludeCurrentUser = true
 		c.args.ExcludeUsers = []string{"rdsadmin"}
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -426,7 +464,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = false
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -444,7 +482,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = true
 
-		err = c.connectAndStartCollectors(context.Background())
+		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to query current_user")
 	})
@@ -513,7 +551,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin', 'alloy_monitor'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -529,7 +567,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -545,7 +583,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -562,7 +600,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -579,7 +617,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -597,7 +635,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 }
@@ -666,12 +704,10 @@ func Test_addLokiLabels(t *testing.T) {
 func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
-		ID:            "test.postgres",
-		Logger:        logging.NewSlogNop(),
-		OnStateChange: func(e cmp.Exports) {},
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
-		},
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(e cmp.Exports) {},
+		GetServiceData: testGetServiceData,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -679,6 +715,112 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
 	assert.NotEmpty(t, h.Message)
+}
+
+// runWithTimeout waits for wg, failing the test if it doesn't finish within
+// 5 seconds. sync.WaitGroup has no channel of its own to select on, so this
+// wraps it in one.
+func runWithTimeout(t *testing.T, wg *sync.WaitGroup, timeoutMsg string) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal(timeoutMsg)
+	}
+}
+
+// TestPostgres_Update_RemovesStalePumps guards against a goroutine leak: a
+// renamed or removed database_instance block must stop and drop its receiver
+// pump, not just stop exporting it. See ensurePumps/removeStalePumps.
+func TestPostgres_Update_RemovesStalePumps(t *testing.T) {
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(e cmp.Exports) {},
+		GetServiceData: testGetServiceData,
+	}
+
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db1", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	c.mut.RLock()
+	pump, ok := c.logsReceivers["db1"]
+	c.mut.RUnlock()
+	require.True(t, ok, "pump for db1 should exist after the initial Update")
+
+	// Rename the block: db1 -> db2.
+	renamed := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db2", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	require.NoError(t, c.Update(renamed))
+
+	c.mut.RLock()
+	_, staleStillTracked := c.logsReceivers["db1"]
+	_, hasNew := c.logsReceivers["db2"]
+	c.mut.RUnlock()
+	assert.False(t, staleStillTracked, "db1's pump should be removed once its database_instance block is renamed away")
+	assert.True(t, hasNew, "db2 should get its own pump")
+
+	// pump.stop is closed synchronously by removeStalePumps inside Update, so
+	// checking it would only prove the signal was sent, not that the pump's
+	// goroutine actually received it and returned. Wait on pump.wg instead:
+	// it's only Done once run() itself returns.
+	runWithTimeout(t, &pump.wg, "db1's orphaned pump was never stopped: its goroutine leaks")
+}
+
+// TestPostgres_StopPumps_StopsLivePumps guards the final-teardown path:
+// stopPumps must stop and join every pump still tracked in c.logsReceivers,
+// not just the ones removeStalePumps already removed during Updates.
+func TestPostgres_StopPumps_StopsLivePumps(t *testing.T) {
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(e cmp.Exports) {},
+		GetServiceData: testGetServiceData,
+	}
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "db1", DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"},
+		},
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	c.mut.RLock()
+	pump, ok := c.logsReceivers["db1"]
+	c.mut.RUnlock()
+	require.True(t, ok, "pump for db1 should exist after the initial Update")
+
+	stopPumpsReturned := make(chan struct{})
+	go func() {
+		c.stopPumps()
+		close(stopPumpsReturned)
+	}()
+
+	select {
+	case <-stopPumpsReturned:
+		// Expected: stopPumps closed db1's pump and waited for it to exit.
+	case <-time.After(5 * time.Second):
+		t.Fatal("stopPumps never returned: it isn't stopping/joining a live pump")
+	}
+
+	// Independently confirm db1's pump goroutine itself is done, rather than
+	// only trusting that stopPumps returned: a version that silently skipped
+	// this pump (e.g. built the wrong slice to wait on) would still return
+	// without hanging.
+	runWithTimeout(t, &pump.wg, "stopPumps returned without db1's pump goroutine having exited")
 }
 
 func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testing.T) {
@@ -835,14 +977,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 		OnStateChange: func(e cmp.Exports) {
 			exports = e.(Exports)
 		},
-		GetServiceData: func(name string) (any, error) {
-			return http_service.Data{
-				HTTPListenAddr:   "localhost:12345",
-				MemoryListenAddr: "",
-				BaseHTTPPath:     "/",
-				DialFunc:         nil,
-			}, nil
-		},
+		GetServiceData: testGetServiceData,
 	}
 
 	args := Arguments{
@@ -855,25 +990,19 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, exports.LogsReceiver, "LogsReceiver should be exported immediately")
-	require.NotNil(t, c.logsReceiver, "component should have logsReceiver initialized")
-	assert.Equal(t, c.logsReceiver, exports.LogsReceiver)
+	require.NotNil(t, c.logsReceivers[""], "component should have a receiver pump for the single-DSN form")
+	assert.Equal(t, c.logsReceivers[""].exported, exports.LogsReceiver)
+	assert.Empty(t, exports.LogsReceivers, "logs_receivers should be empty in the single-DSN form")
 }
 
 func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test-component",
-			Logger:        logging.NewSlogNop(),
-			Registerer:    nil,
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
-			},
+			ID:             "test-component",
+			Logger:         logging.NewSlogNop(),
+			Registerer:     nil,
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -886,7 +1015,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify that connectAndStartCollectors returns an error
-		err = c.connectAndStartCollectors(context.Background())
+		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
 		assert.Error(t, err, "should return error when connection fails")
 		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
 	})
@@ -895,18 +1024,11 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		// This test verifies that connectAndStartCollectors properly closes
 		// an existing connection before attempting a new one
 		opts := cmp.Options{
-			ID:            "test-component",
-			Logger:        logging.NewSlogNop(),
-			Registerer:    nil,
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{
-					HTTPListenAddr:   "localhost:12345",
-					MemoryListenAddr: "",
-					BaseHTTPPath:     "/",
-					DialFunc:         nil,
-				}, nil
-			},
+			ID:             "test-component",
+			Logger:         logging.NewSlogNop(),
+			Registerer:     nil,
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -919,10 +1041,10 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		require.NoError(t, err)
 
 		// The component should handle nil dbConnection gracefully
-		assert.Nil(t, c.instance.dbConnection, "dbConnection should be nil initially after failed connection")
+		assert.Nil(t, c.loadInstances()[0].dbConnection, "dbConnection should be nil initially after failed connection")
 
 		// Calling connectAndStartCollectors again should not panic
-		err = c.connectAndStartCollectors(context.Background())
+		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
 		assert.Error(t, err, "should return error for unreachable database")
 	})
 }
@@ -950,17 +1072,15 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		collector := newFakeClosableCollector("test_cleanup_exporter_collectors_closable")
 		require.NoError(t, registry.Register(collector))
 
-		c := &Component{
-			instance: &dbInstance{
-				registry:           registry,
-				exporterCollectors: []prometheus.Collector{collector},
-			},
+		inst := &dbInstance{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
 		}
 
-		c.cleanupExporterCollectors()
+		inst.cleanupExporterCollectors()
 
 		assert.Equal(t, 1, collector.closeCalls)
-		assert.Nil(t, c.instance.exporterCollectors)
+		assert.Nil(t, inst.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 
@@ -973,16 +1093,14 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 		collector.Set(1)
 		require.NoError(t, registry.Register(collector))
 
-		c := &Component{
-			instance: &dbInstance{
-				registry:           registry,
-				exporterCollectors: []prometheus.Collector{collector},
-			},
+		inst := &dbInstance{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
 		}
 
-		c.cleanupExporterCollectors()
+		inst.cleanupExporterCollectors()
 
-		assert.Nil(t, c.instance.exporterCollectors)
+		assert.Nil(t, inst.exporterCollectors)
 		assert.False(t, registry.Unregister(collector))
 	})
 }
@@ -990,12 +1108,10 @@ func TestComponent_cleanupExporterCollectors(t *testing.T) {
 func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
-			ID:            "test",
-			Logger:        logging.NewSlogNop(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
+			ID:             "test",
+			Logger:         logging.NewSlogNop(),
+			OnStateChange:  func(e cmp.Exports) {},
+			GetServiceData: testGetServiceData,
 		}
 
 		args := Arguments{
@@ -1007,11 +1123,11 @@ func TestPostgres_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.instance.healthErr.Store("initial error")
+		c.loadInstances()[0].healthErr.Store("initial error")
 
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.instance.healthErr.Load())
+		assert.NotEmpty(t, c.loadInstances()[0].healthErr.Load())
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -1027,7 +1143,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.instance.healthErr.Load())
+		assert.NotEmpty(t, c.loadInstances()[0].healthErr.Load())
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1042,14 +1158,15 @@ func TestPostgres_Reconnection(t *testing.T) {
 		// Second attempt: connection succeeds and clears error
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.instance.healthErr.Load())
+		assert.Empty(t, c.loadInstances()[0].healthErr.Load())
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
+		inst := c.loadInstances()[0]
 		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
-		require.NoError(t, c.instance.registry.Register(oldCollector))
-		c.instance.exporterCollectors = []prometheus.Collector{oldCollector}
+		require.NoError(t, inst.registry.Register(oldCollector))
+		inst.exporterCollectors = []prometheus.Collector{oldCollector}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -1058,8 +1175,8 @@ func TestPostgres_Reconnection(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, oldCollector.closeCalls)
-		assert.Nil(t, c.instance.exporterCollectors)
-		assert.False(t, c.instance.registry.Unregister(oldCollector))
+		assert.Nil(t, inst.exporterCollectors)
+		assert.False(t, inst.registry.Unregister(oldCollector))
 	})
 }
 
@@ -1117,4 +1234,718 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
 	})
+}
+
+func Test_databaseInstanceBlocks(t *testing.T) {
+	t.Run("parse database blocks", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+				cloud_provider {
+					aws {
+						arn = "arn:aws:rds:us-east-1:123456789012:db:orders"
+					}
+				}
+			}
+			database_instance "billing" {
+				data_source_name = "postgres://user:pass@localhost:5432/billing"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+
+		require.Len(t, args.Databases, 2)
+		assert.Equal(t, "orders", args.Databases[0].Name)
+		assert.Equal(t, alloytypes.Secret("postgres://user:pass@localhost:5432/orders"), args.Databases[0].DataSourceName)
+		require.NotNil(t, args.Databases[0].CloudProvider)
+		assert.Equal(t, "arn:aws:rds:us-east-1:123456789012:db:orders", args.Databases[0].CloudProvider.AWS.ARN)
+		assert.Equal(t, "billing", args.Databases[1].Name)
+	})
+
+	t.Run("data_source_name and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgres://user:pass@localhost:5432/db"
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "data_source_name and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("targets and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			targets = [{"__address__" = "localhost:9187"}]
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "targets and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("cloud_provider and database_instance blocks are mutually exclusive", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			cloud_provider {
+				aws {
+					arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+				}
+			}
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "cloud_provider and database_instance blocks are mutually exclusive")
+	})
+
+	t.Run("duplicate database_instance block labels", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+			}
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/billing"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `duplicate database_instance block label "orders"`)
+	})
+
+	t.Run("invalid database block label", func(t *testing.T) {
+		// The syntax parser rejects non-identifier labels itself; the Validate
+		// check is a backstop for programmatically constructed Arguments.
+		args := Arguments{
+			Databases: []DatabaseArguments{
+				{Name: "bad name", DataSourceName: "postgres://user:pass@localhost:5432/orders"},
+			},
+		}
+		err := args.Validate()
+		require.ErrorContains(t, err, "must be a valid identifier")
+	})
+
+	t.Run("database blocks resolving to the same server", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+			}
+			database_instance "orders_replica" {
+				data_source_name = "postgres://other:pass@localhost:5432/orders"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "resolve to the same server")
+	})
+
+	t.Run("targets is not a valid attribute of database_instance blocks", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+				targets = [{"__address__" = "localhost:9187"}]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `unrecognized attribute name "targets"`)
+	})
+}
+
+func multiDatabaseTestMockDB(t *testing.T, systemID string) *sql.DB {
+	t.Helper()
+
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+
+	mock.MatchExpectationsInOrder(false)
+	mock.ExpectPing()
+	mock.ExpectPing()
+	mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
+		WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+			AddRow(systemID, "127.0.0.1", "5432", "14.0"))
+	return db
+}
+
+func multiDatabaseTestArgs() Arguments {
+	return Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "a", DataSourceName: "postgres://user:pass@127.0.0.1:5432/db1?sslmode=disable"},
+			{Name: "b", DataSourceName: "postgres://user:pass@127.0.0.1:5432/db2?sslmode=disable"},
+		},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+}
+
+func TestPostgres_MultipleDatabases(t *testing.T) {
+	args := multiDatabaseTestArgs()
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
+	}
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	dbB := multiDatabaseTestMockDB(t, "system-b")
+
+	c, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	instanceA, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instanceA)
+	pathA, _ := exported.Targets[0].Get(model.MetricsPathLabel)
+	assert.True(t, strings.HasSuffix(pathA, "/db/a/metrics"), "unexpected metrics path %q", pathA)
+
+	instanceB, _ := exported.Targets[1].Get("instance")
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db2", instanceB)
+	pathB, _ := exported.Targets[1].Get(model.MetricsPathLabel)
+	assert.True(t, strings.HasSuffix(pathB, "/db/b/metrics"), "unexpected metrics path %q", pathB)
+
+	// Each database gets its own exported logs receiver; the legacy
+	// single-DSN logs_receiver is not exported.
+	assert.Nil(t, exported.LogsReceiver)
+	require.Len(t, exported.LogsReceivers, 2)
+	require.Contains(t, exported.LogsReceivers, "a")
+	require.Contains(t, exported.LogsReceivers, "b")
+	assert.NotEqual(t, exported.LogsReceivers["a"], exported.LogsReceivers["b"])
+
+	// Each database is served on its own metrics path.
+	for _, path := range []string{"/db/a/metrics", "/db/b/metrics"} {
+		rec := httptest.NewRecorder()
+		c.Handler().ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Contains(t, rec.Body.String(), "database_observability_connection_info")
+	}
+
+	// The single-database /metrics path is not served when database_instance blocks are used.
+	rec := httptest.NewRecorder()
+	c.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+func TestPostgres_MultipleDatabases_PartialFailure(t *testing.T) {
+	args := multiDatabaseTestArgs()
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
+	}
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+
+	dbB, mockB, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { dbB.Close() })
+	mockB.ExpectPing().WillReturnError(assert.AnError)
+
+	c, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeUnhealthy, h.Health)
+	assert.Contains(t, h.Message, `database "b"`)
+
+	// Only the connected database exports targets, but both databases export
+	// their logs receiver: the receiver of an unreachable database accepts
+	// (and discards) entries instead of blocking its upstream components.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instance)
+
+	require.Len(t, exported.LogsReceivers, 2)
+	require.Contains(t, exported.LogsReceivers, "b")
+}
+
+// TestPostgres_Update_FailedRebuildKeepsOldInstances tests that when Update
+// can't build the new instances, it returns an error and the previous
+// instances keep running untouched.
+func TestPostgres_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
+	failGetServiceData := false
+	opts := cmp.Options{
+		ID:     "test.postgres",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			if failGetServiceData {
+				return nil, assert.AnError
+			}
+			return testGetServiceData(name)
+		},
+		OnStateChange: func(e cmp.Exports) {},
+	}
+	args := Arguments{
+		DataSourceName:    "postgres://user:pass@127.0.0.1:5432/db?sslmode=disable",
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	db := multiDatabaseTestMockDB(t, "system-1")
+
+	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 1)
+	require.NotEmpty(t, before[0].collectors)
+
+	failGetServiceData = true
+	err = c.Update(args)
+	require.Error(t, err)
+
+	after := c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Same(t, before[0], after[0])
+	assert.NotEmpty(t, after[0].collectors)
+	assert.Equal(t, cmp.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
+// TestPostgres_ExportedReceiversStableAcrossUpdates tests that an Update
+// doesn't replace the exported logs receivers, so downstream components keep
+// a valid reference across config reloads.
+func TestPostgres_ExportedReceiversStableAcrossUpdates(t *testing.T) {
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "a", DataSourceName: "postgres://user:pass@127.0.0.1:5432/db1?sslmode=disable"},
+		},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+	mock.MatchExpectationsInOrder(false)
+	for range 2 {
+		mock.ExpectPing()
+		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("system-1", "127.0.0.1", "5432", "14.0"))
+	}
+
+	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+	require.NoError(t, err)
+
+	first, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Contains(t, first.LogsReceivers, "a")
+
+	require.NoError(t, c.Update(args))
+
+	second, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Contains(t, second.LogsReceivers, "a")
+	assert.Same(t, first.LogsReceivers["a"], second.LogsReceivers["a"])
+}
+
+// fakeCluster is a cluster.Cluster implementation with controllable
+// readiness and per-key ownership.
+type fakeCluster struct {
+	ready bool
+	owned map[shard.Key]bool
+	err   error
+}
+
+func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []peer.Peer{{Name: "peer", Self: f.owned[key]}}, nil
+}
+
+func (f *fakeCluster) Peers() []peer.Peer { return nil }
+
+func (f *fakeCluster) Ready() bool { return f.ready }
+
+func (f *fakeCluster) Enabled() bool { return true }
+
+var (
+	clusterKeyDB1 = shard.StringKey("postgresql://127.0.0.1:5432/db1")
+	clusterKeyDB2 = shard.StringKey("postgresql://127.0.0.1:5432/db2")
+)
+
+func clusteringTestOptions(t *testing.T, fake *fakeCluster, gotExports *cmp.Exports) cmp.Options {
+	t.Helper()
+
+	return cmp.Options{
+		ID:     "test.postgres",
+		Logger: logging.NewSlogNop(),
+		GetServiceData: func(name string) (any, error) {
+			if name == cluster.ServiceName {
+				return fake, nil
+			}
+			return testGetServiceData(name)
+		},
+		OnStateChange: func(e cmp.Exports) { *gotExports = e },
+	}
+}
+
+func clusteringTestArgs() Arguments {
+	args := multiDatabaseTestArgs()
+	args.Clustering = cluster.ComponentBlock{Enabled: true}
+	return args
+}
+
+func TestPostgres_Clustering_DistributesDatabases(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	var connected []string
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		connected = append(connected, dsn)
+		return dbA, nil
+	})
+	require.NoError(t, err)
+
+	// Only the owned database runs and connects.
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instances[0].instanceKey)
+	require.Len(t, connected, 1)
+	assert.Contains(t, connected[0], "/db1")
+
+	// Only the owned database exports its target.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instance)
+
+	// Both databases still export their logs receiver.
+	require.Len(t, exported.LogsReceivers, 2)
+}
+
+func TestPostgres_Clustering_NotReadyOwnsNothing(t *testing.T) {
+	// The hash owns both databases, so only the readiness gate can produce
+	// zero instances: this pins the Ready() check specifically.
+	fake := &fakeCluster{ready: false, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true}}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while the cluster is not ready")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+}
+
+func TestPostgres_Clustering_DisabledOwnsEverything(t *testing.T) {
+	// The cluster owns nothing locally, but with the clustering block
+	// disabled the component must ignore it entirely.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Clustering.Enabled = false
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	dbB := multiDatabaseTestMockDB(t, "system-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestPostgres_Clustering_ReconcileOnOwnershipChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	dbB := multiDatabaseTestMockDB(t, "system-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 1)
+	require.Equal(t, "postgresql://127.0.0.1:5432/db1", before[0].instanceKey)
+
+	// Unchanged ownership: reconciling is a no-op that keeps the same instances.
+	c.reconcileCluster()
+	after := c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Same(t, before[0], after[0])
+
+	// Ownership moves to db2: the db1 instance stops and db2 starts.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.reconcileCluster()
+
+	after = c.loadInstances()
+	require.Len(t, after, 1)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db2", after[0].instanceKey)
+	assert.Empty(t, before[0].collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 1)
+	instance, _ := exported.Targets[0].Get("instance")
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db2", instance)
+}
+
+func TestPostgres_Clustering_NotifyClusterChange(t *testing.T) {
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	dbB := multiDatabaseTestMockDB(t, "system-b")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		_ = c.Run(ctx)
+	}()
+
+	// The channel send in NotifyClusterChange orders this write before the
+	// reconcile goroutine's read of the fake cluster.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: false, clusterKeyDB2: true}
+	c.NotifyClusterChange()
+
+	require.Eventually(t, func() bool {
+		instances := c.loadInstances()
+		return len(instances) == 1 && instances[0].instanceKey == "postgresql://127.0.0.1:5432/db2"
+	}, 5*time.Second, 10*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Run did not exit after context cancellation")
+	}
+}
+
+func TestPostgres_Clustering_SingleDatabaseStandby(t *testing.T) {
+	// The single-DSN form participates in clustering too: a node that
+	// doesn't own the database goes standby instead of collecting.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{shard.StringKey("postgresql://127.0.0.1:5432/db"): false}}
+	var gotExports cmp.Exports
+
+	args := Arguments{
+		DataSourceName:    "postgres://user:pass@127.0.0.1:5432/db?sslmode=disable",
+		Clustering:        cluster.ComponentBlock{Enabled: true},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection on a non-owning node")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	// The standby node still exports the logs receiver and discards entries
+	// sent to it, so upstream components don't block on a non-owning node.
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.NotNil(t, exported.LogsReceiver)
+	select {
+	case exported.LogsReceiver.Chan() <- pumpTestEntry("dropped on standby"):
+	case <-time.After(5 * time.Second):
+		t.Fatal("send to the standby node's logs receiver blocked")
+	}
+}
+
+func TestPostgres_Clustering_UpdateRecomputesOwnership(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("postgresql://127.0.0.1:5432/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db3"):
+			return multiDatabaseTestMockDB(t, "system-c"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "system-a"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Len(t, c.loadInstances(), 1)
+
+	// A config reload re-applies the ownership filter to the new database set.
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "c", DataSourceName: "postgres://user:pass@127.0.0.1:5432/db3?sslmode=disable"})
+	require.NoError(t, c.Update(args))
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 2)
+	assert.ElementsMatch(t,
+		[]string{"postgresql://127.0.0.1:5432/db1", "postgresql://127.0.0.1:5432/db3"},
+		[]string{instances[0].instanceKey, instances[1].instanceKey})
+}
+
+func TestPostgres_Clustering_LookupErrorFailsOpen(t *testing.T) {
+	// Ownership lookup errors fail open to local ownership, so a broken
+	// cluster degrades to collecting everything rather than nothing.
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "system-a"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "system-b"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	assert.Len(t, c.loadInstances(), 2)
+}
+
+func TestPostgres_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
+	clusterKeyDB3 := shard.StringKey("postgresql://127.0.0.1:5432/db3")
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: true, clusterKeyDB3: false}}
+	var gotExports cmp.Exports
+
+	args := clusteringTestArgs()
+	args.Databases = append(args.Databases, DatabaseArguments{Name: "c", DataSourceName: "postgres://user:pass@127.0.0.1:5432/db3?sslmode=disable"})
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "system-a"), nil
+		case strings.Contains(dsn, "/db2"):
+			return multiDatabaseTestMockDB(t, "system-b"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "system-c"), nil
+		}
+	})
+	require.NoError(t, err)
+
+	before := c.loadInstances()
+	require.Len(t, before, 2)
+	instA, instB := before[0], before[1]
+	require.Equal(t, "postgresql://127.0.0.1:5432/db1", instA.instanceKey)
+	require.Equal(t, "postgresql://127.0.0.1:5432/db2", instB.instanceKey)
+
+	// db2 moves away and db3 moves in: db1 must keep running untouched.
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}
+	c.reconcileCluster()
+
+	after := c.loadInstances()
+	require.Len(t, after, 2)
+	assert.Same(t, instA, after[0])
+	assert.NotEmpty(t, instA.collectors)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db3", after[1].instanceKey)
+	assert.NotEmpty(t, after[1].collectors)
+	assert.Empty(t, instB.collectors)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+	first, _ := exported.Targets[0].Get("instance")
+	second, _ := exported.Targets[1].Get("instance")
+	assert.Equal(t, []string{"postgresql://127.0.0.1:5432/db1", "postgresql://127.0.0.1:5432/db3"}, []string{first, second})
+}
+
+func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
+	// A node that doesn't own a database still exports that database's logs
+	// receiver and discards entries sent to it, so the cloud log pipelines
+	// that fan out to every node can't block on non-owning nodes.
+	fake := &fakeCluster{ready: true, owned: map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}}
+	var gotExports cmp.Exports
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		return dbA, nil
+	})
+	require.NoError(t, err)
+	require.Len(t, c.loadInstances(), 1)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.LogsReceivers, 2)
+	require.Contains(t, exported.LogsReceivers, "b")
+
+	for range 3 {
+		select {
+		case exported.LogsReceivers["b"].Chan() <- pumpTestEntry("dropped on non-owner"):
+		case <-time.After(5 * time.Second):
+			t.Fatal("send to a non-owned database's logs receiver blocked")
+		}
+	}
 }

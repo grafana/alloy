@@ -194,6 +194,8 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		CompressionAlgorithms: compressionAlgorithms,
 
+		// IdleTimeout is deprecated but remains the source of truth for an already-unmarshaled ServerConfig.
+		//nolint:staticcheck
 		IdleTimeout:       cfg.IdleTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,

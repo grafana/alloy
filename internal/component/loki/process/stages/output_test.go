@@ -1,90 +1,111 @@
 package stages
 
 import (
-	"bytes"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
-var testOutputAlloy = `
-stage.json {
-    expressions = { "out" = "message" }
-}
-stage.output {
-    source = "out"
-}
-`
+func TestOutputStage(t *testing.T) {
+	var (
+		now         = time.Now()
+		jsonLogLine = `
+		{
+			"time":"2012-11-01T22:08:41+00:00",
+			"app":"loki",
+			"component": ["parser","type"],
+			"level" : "WARN",
+			"nested" : {"child":"value"},
+			"message" : "this is a log line"
+		}`
+		jsonLogLineWithMissingKey = `
+		{
+			"time":"2012-11-01T22:08:41+00:00",
+			"app":"loki",
+			"component": ["parser","type"],
+			"level" : "WARN",
+			"nested" : {"child":"value"}
+		}`
+	)
 
-var testOutputLogLine = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"],
-	"level" : "WARN",
-	"nested" : {"child":"value"},
-	"message" : "this is a log line"
-}
-`
-var testOutputLogLineWithMissingKey = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"],
-	"level" : "WARN",
-	"nested" : {"child":"value"}
-}
-`
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
+	}
 
-func TestPipeline_Output(t *testing.T) {
-	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
+	tests := []testCase{
+		{
+			name: "output set from extracted source",
+			config: `
+			stage.output {
+				source = "out"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{
+					"something": "notimportant",
+					"out":       "outmessage",
+				}, model.LabelSet{}, "replaceme", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"something": "notimportant",
+					"out":       "outmessage",
+				}, model.LabelSet{}, "outmessage", now),
+			},
+		},
+		{
+			name: "output set from json expression",
+			config: `
+			stage.json {
+				expressions = { "out" = "message" }
+			}
+			stage.output {
+				source = "out"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, jsonLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"out": "this is a log line",
+				}, model.LabelSet{}, "this is a log line", now),
+			},
+		},
+		{
+			name: "missing extracted source from json expression leaves line unchanged",
+			config: `
+			stage.json {
+				expressions = { "out" = "message" }
+			}
+			stage.output {
+				source = "out"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, jsonLogLineWithMissingKey, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"out": nil}, model.LabelSet{}, jsonLogLineWithMissingKey, now),
+			},
+		},
+	}
 
-	out := processEntries(pl, newEntry(nil, nil, testOutputLogLine, time.Now()))[0]
-	assert.Equal(t, "this is a log line", out.Line)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestPipelineWithMissingKey_Output(t *testing.T) {
-	var buf bytes.Buffer
-	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
-	require.NoError(t, err)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	require.NoError(t, err)
-
-	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug msg=\"extracted output could not be converted to a string\" stage=output err=\"can't convert <nil> to string\" type=<nil>"
-	if !(strings.Contains(buf.String(), expectedLog)) {
-		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
+		})
 	}
 }
 
-func TestOutputValidation(t *testing.T) {
+func TestValidateOutputConfig(t *testing.T) {
 	emptyConfig := OutputConfig{Source: ""}
-	_, err := newOutputStage(logging.NewSlogNop(), emptyConfig)
-	require.Equal(t, err, ErrOutputSourceRequired)
-}
-
-func TestOutputStage_Process(t *testing.T) {
-	cfg := OutputConfig{
-		Source: "out",
-	}
-	extractedValues := map[string]any{
-		"something": "notimportant",
-		"out":       "outmessage",
-	}
-	wantOutput := "outmessage"
-
-	st, err := newOutputStage(logging.NewSlogNop(), cfg)
-	require.NoError(t, err)
-	out := processEntries(st, newEntry(extractedValues, nil, "replaceme", time.Time{}))[0]
-
-	assert.Equal(t, wantOutput, out.Line)
+	require.Equal(t, validateOutputConfig(emptyConfig), errOutputSourceRequired)
 }
