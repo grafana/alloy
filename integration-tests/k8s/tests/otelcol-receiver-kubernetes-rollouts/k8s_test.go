@@ -40,6 +40,45 @@ func TestKubernetesRollouts(t *testing.T) {
 	})
 	harness.Setup(t, harness.Options{Dependencies: []harness.Dependency{namespace, alloy}})
 
+	t.Run("single clustered watcher", func(t *testing.T) {
+		applyDeployment(t, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clustered
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 60
+  selector:
+    matchLabels:
+      app: clustered
+  template:
+    metadata:
+      labels:
+        app: clustered
+    spec:
+      containers:
+        - name: app
+          image: unavailable.invalid/app:clustered
+          imagePullPolicy: Never
+`)
+
+		waitForPhases(t, "clustered", "started")
+		require.Never(t, func() bool {
+			eventsByPod, err := readDeploymentEventsByPod("clustered")
+			if err != nil {
+				return true
+			}
+			return countPhase(eventsByPod, "started") != 1
+		}, 5*time.Second, 250*time.Millisecond, "expected exactly one clustered Alloy pod to emit started")
+
+		eventsByPod, err := readDeploymentEventsByPod("clustered")
+		require.NoError(t, err)
+		require.Len(t, eventsByPod, 3)
+		require.Equal(t, 1, countPhase(eventsByPod, "started"))
+		require.Len(t, podsWithPhase(eventsByPod, "started"), 1)
+	})
+
 	t.Run("successful rollout", func(t *testing.T) {
 		applyDeployment(t, `
 apiVersion: apps/v1
@@ -189,14 +228,48 @@ func waitForSupersededSequence(t *testing.T, deployment string, firstGeneration 
 }
 
 func readDeploymentEvents(deployment string) ([]rolloutEvent, error) {
-	contents, err := harness.RunCommandOutput(
-		"kubectl", "--namespace", testNamespace, "exec", "deployment/"+alloyRelease,
-		"--container", "alloy", "--", "cat", "/tmp/kubernetes-rollouts.json",
+	eventsByPod, err := readDeploymentEventsByPod(deployment)
+	if err != nil {
+		return nil, err
+	}
+
+	var events []rolloutEvent
+	for _, podEvents := range eventsByPod {
+		events = append(events, podEvents...)
+	}
+	return events, nil
+}
+
+func readDeploymentEventsByPod(deployment string) (map[string][]rolloutEvent, error) {
+	podOutput, err := harness.RunCommandOutput(
+		"kubectl", "--namespace", testNamespace, "get", "pods",
+		"--selector", "app.kubernetes.io/instance="+alloyRelease,
+		"--output", `jsonpath={range .items[*]}{.metadata.name}{"\n"}{end}`,
 	)
 	if err != nil {
 		return nil, err
 	}
 
+	eventsByPod := make(map[string][]rolloutEvent)
+	for _, pod := range strings.Fields(podOutput) {
+		contents, readErr := harness.RunCommandOutput(
+			"kubectl", "--namespace", testNamespace, "exec", "pod/"+pod,
+			"--container", "alloy", "--", "sh", "-c",
+			"if [ -f /tmp/kubernetes-rollouts.json ]; then cat /tmp/kubernetes-rollouts.json; fi",
+		)
+		if readErr != nil {
+			return nil, fmt.Errorf("read rollout events from Alloy pod %s: %w", pod, readErr)
+		}
+		podEvents, decodeErr := decodeDeploymentEvents(contents, deployment)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("decode rollout events from Alloy pod %s: %w", pod, decodeErr)
+		}
+		eventsByPod[pod] = podEvents
+	}
+	return eventsByPod, nil
+}
+
+func decodeDeploymentEvents(contents, deployment string) ([]rolloutEvent, error) {
 	var events []rolloutEvent
 	for lineNumber, line := range strings.Split(strings.TrimSpace(contents), "\n") {
 		if strings.TrimSpace(line) == "" {
@@ -228,6 +301,28 @@ func readDeploymentEvents(deployment string) ([]rolloutEvent, error) {
 		}
 	}
 	return events, nil
+}
+
+func countPhase(eventsByPod map[string][]rolloutEvent, phase string) int {
+	count := 0
+	for _, events := range eventsByPod {
+		for _, event := range events {
+			if event.name == phase {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func podsWithPhase(eventsByPod map[string][]rolloutEvent, phase string) []string {
+	var pods []string
+	for pod, events := range eventsByPod {
+		if containsPhase(events, phase) {
+			pods = append(pods, pod)
+		}
+	}
+	return pods
 }
 
 func containsPhase(events []rolloutEvent, phase string) bool {
