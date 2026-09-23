@@ -2,6 +2,9 @@
 package cloudflare
 
 import (
+	"errors"
+
+	"github.com/alecthomas/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -13,6 +16,8 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 )
+
+const defaultMaxRequestBodySize = 20 * units.MiB
 
 var (
 	_ receiver.Arguments = Arguments{}
@@ -33,13 +38,14 @@ func init() {
 }
 
 type Arguments struct {
-	Endpoint        string                      `alloy:"endpoint,attr"`
-	Secret          string                      `alloy:"secret,attr,optional"`
-	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`
-	TimestampFormat string                      `alloy:"timestamp_format,attr,optional"`
-	Separator       string                      `alloy:"separator,attr,optional"`
-	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
-	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
+	Endpoint           string                      `alloy:"endpoint,attr"`
+	Secret             string                      `alloy:"secret,attr,optional"`
+	TimestampField     string                      `alloy:"timestamp_field,attr,optional"`
+	TimestampFormat    string                      `alloy:"timestamp_format,attr,optional"`
+	Separator          string                      `alloy:"separator,attr,optional"`
+	Attributes         map[string]string           `alloy:"attributes,attr,optional"`
+	MaxRequestBodySize units.Base2Bytes            `alloy:"max_request_body_size,attr,optional"`
+	TLS                *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -49,9 +55,10 @@ type Arguments struct {
 func (args *Arguments) SetToDefault() {
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
 	*args = Arguments{
-		TimestampField:  cfg.Logs.TimestampField,
-		TimestampFormat: cfg.Logs.TimestampFormat,
-		Separator:       cfg.Logs.Separator,
+		TimestampField:     cfg.Logs.TimestampField,
+		TimestampFormat:    cfg.Logs.TimestampFormat,
+		Separator:          cfg.Logs.Separator,
+		MaxRequestBodySize: defaultMaxRequestBodySize,
 	}
 }
 
@@ -65,11 +72,15 @@ func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	cfg.Logs.TimestampField = args.TimestampField
 	cfg.Logs.TimestampFormat = args.TimestampFormat
 	cfg.Logs.Separator = args.Separator
+	cfg.Logs.MaxRequestBodySize = int64(args.MaxRequestBodySize)
 	return cfg
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	if args.MaxRequestBodySize <= 0 {
+		return errors.New("max_request_body_size must be greater than 0")
+	}
 	otelCfg := args.receiverConfig()
 	return otelCfg.Validate()
 }

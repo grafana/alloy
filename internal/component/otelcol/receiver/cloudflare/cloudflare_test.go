@@ -15,6 +15,7 @@ import (
 // so a case only spells out what it actually overrides.
 func expectedConfig(override func(logs *cloudflarereceiver.LogsConfig)) cloudflarereceiver.Config {
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	cfg.Logs.MaxRequestBodySize = 20 * 1024 * 1024
 	override(&cfg.Logs)
 	return *cfg
 }
@@ -35,10 +36,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
-					Endpoint:        "localhost:8080/webhook",
-					TimestampField:  "EdgeStartTimestamp",
-					TimestampFormat: "rfc3339",
-					Separator:       ".",
+					Endpoint:           "localhost:8080/webhook",
+					TimestampField:     "EdgeStartTimestamp",
+					TimestampFormat:    "rfc3339",
+					Separator:          ".",
+					MaxRequestBodySize: 20 * 1024 * 1024,
 				},
 			},
 		},
@@ -90,6 +92,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					},
 				}
 				logs.TimestampFormat = "unixnano"
+			}),
+		},
+		{
+			testName: "configuration with custom max request body size",
+			cfg: `
+				endpoint = "localhost:8080/webhook"
+				max_request_body_size = "5MiB"
+				output {}
+			`,
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Endpoint = "localhost:8080/webhook"
+				logs.MaxRequestBodySize = 5 * 1024 * 1024
 			}),
 		},
 		{
@@ -164,6 +178,15 @@ func TestArguments_Validate(t *testing.T) {
 				output {}
 			`,
 			expectedError: "tls was configured, but no key file was specified",
+		},
+		{
+			testName: "zero max request body size",
+			cfg: `
+				endpoint = "localhost:8080/webhook"
+				max_request_body_size = "0"
+				output {}
+			`,
+			expectedError: "max_request_body_size must be greater than 0",
 		},
 		{
 			testName: "missing output",

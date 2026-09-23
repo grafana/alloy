@@ -39,14 +39,15 @@ otelcol.receiver.cloudflare "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.cloudflare`:
 
-| Name               | Type                | Description                                                                                                | Default                | Required |
-| ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
-| `endpoint`         | `string`            | The `<HOST:PORT>` endpoint address on which the receiver awaits requests from Cloudflare.                  |                        | yes      |
-| `secret`           | `string`            | If this value is set, the receiver expects to see it in any valid requests under the `X-CF-Secret` header. |                        | no       |
-| `attributes`       | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer, or float fields can be mapped.     |                        | no       |
-| `separator`        | `string`            | The separator to join nested fields in the log message when setting attributes.                            | `"."`                  | no       |
-| `timestamp_field`  | `string`            | Log field name that contains timestamp.                                                                    | `"EdgeStartTimestamp"` | no       |
-| `timestamp_format` | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.        | `"rfc3339"`            | no       |
+| Name                    | Type                | Description                                                                                                                   | Default                | Required |
+| ----------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
+| `endpoint`              | `string`            | The `<HOST:PORT>` endpoint address on which the receiver awaits requests from Cloudflare.                                     |                        | yes      |
+| `max_request_body_size` | `string`            | Maximum request body size the receiver accepts. The receiver rejects larger requests with HTTP 422. Must be greater than `0`. | `"20MiB"`              | no       |
+| `secret`                | `string`            | If this value is set, the receiver expects to see it in any valid requests under the `X-CF-Secret` header.                    |                        | no       |
+| `attributes`            | `map[string]string` | Sets log attributes from message fields. Only string, boolean, integer, or float fields can be mapped.                        |                        | no       |
+| `separator`             | `string`            | The separator to join nested fields in the log message when setting attributes.                                               | `"."`                  | no       |
+| `timestamp_field`       | `string`            | Log field name that contains timestamp.                                                                                       | `"EdgeStartTimestamp"` | no       |
+| `timestamp_format`      | `string`            | One of `unix`, `unixnano`, or `rfc3339`, matching how your LogPush job encodes the timestamp field.                           | `"rfc3339"`            | no       |
 
 When the `attributes` configuration is empty, the receiver will automatically ingest all fields from the log messages as attributes, using the original field names as attribute names.
 
