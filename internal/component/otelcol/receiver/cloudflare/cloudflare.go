@@ -17,7 +17,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-const defaultMaxRequestBodySize = 20 * units.MiB
+const DefaultMaxRequestBodySize = 20 * units.MiB
 
 var (
 	_ receiver.Arguments = Arguments{}
@@ -58,7 +58,7 @@ func (args *Arguments) SetToDefault() {
 		TimestampField:     cfg.Logs.TimestampField,
 		TimestampFormat:    cfg.Logs.TimestampFormat,
 		Separator:          cfg.Logs.Separator,
-		MaxRequestBodySize: defaultMaxRequestBodySize,
+		MaxRequestBodySize: DefaultMaxRequestBodySize,
 	}
 }
 
