@@ -50,6 +50,13 @@ type eventData struct {
 
 type eventBatch struct{ logs plog.Logs }
 
+type inventoryEvent string
+
+const (
+	inventoryObserved inventoryEvent = "observed"
+	inventoryDeleted  inventoryEvent = "deleted"
+)
+
 func deploymentPhase(deployment *appsv1.Deployment) rolloutPhase {
 	for _, condition := range deployment.Status.Conditions {
 		progressDeadlineExceeded := condition.Type == appsv1.DeploymentProgressing &&
@@ -172,14 +179,7 @@ func digestKeys(images []imageData) map[string]struct{} {
 func buildEventBatch(data eventData) eventBatch {
 	logs := plog.NewLogs()
 	resourceLogs := logs.ResourceLogs().AppendEmpty()
-	resource := resourceLogs.Resource().Attributes()
-	resource.PutStr("k8s.cluster.uid", data.clusterUID)
-	if data.clusterName != "" {
-		resource.PutStr("k8s.cluster.name", data.clusterName)
-	}
-	resource.PutStr("k8s.namespace.name", data.deployment.Namespace)
-	resource.PutStr("k8s.deployment.name", data.deployment.Name)
-	resource.PutStr("k8s.deployment.uid", string(data.deployment.UID))
+	putDeploymentResource(resourceLogs.Resource().Attributes(), data)
 
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
 	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.kubernetes_rollouts")
@@ -192,6 +192,107 @@ func buildEventBatch(data eventData) eventBatch {
 		appendEventRecord(records, data, image)
 	}
 	return eventBatch{logs: logs}
+}
+
+func buildInventoryEventBatch(data eventData, event inventoryEvent, fingerprint string) eventBatch {
+	logs := plog.NewLogs()
+	resourceLogs := logs.ResourceLogs().AppendEmpty()
+	putDeploymentResource(resourceLogs.Resource().Attributes(), data)
+
+	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
+	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.kubernetes_rollouts")
+	record := scopeLogs.LogRecords().AppendEmpty()
+	record.SetEventName("grafana.sdlc.k8s.deployment." + string(event))
+	now := pcommon.NewTimestampFromTime(time.Now())
+	record.SetTimestamp(now)
+	record.SetObservedTimestamp(now)
+	record.SetSeverityNumber(plog.SeverityNumberInfo)
+	record.Body().SetStr(fmt.Sprintf("Kubernetes Deployment %s", event))
+
+	attrs := record.Attributes()
+	eventIDParts := []string{data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), string(event)}
+	if event == inventoryObserved {
+		eventIDParts = append(eventIDParts, fingerprint)
+	}
+	attrs.PutStr("grafana.sdlc.event.id", stableID(eventIDParts...))
+	attrs.PutInt("grafana.sdlc.deployment.generation", data.deployment.Generation)
+	attrs.PutStr("grafana.sdlc.deployment.revision", data.revision)
+
+	if event == inventoryObserved {
+		attrs.PutStr("deployment.status", string(data.phase))
+		attrs.PutStr("grafana.sdlc.inventory.version", fingerprint)
+		attrs.PutInt("grafana.sdlc.rollout.desired_replicas", int64(desiredReplicas(data.deployment)))
+		attrs.PutInt("grafana.sdlc.rollout.replicas", int64(data.deployment.Status.Replicas))
+		attrs.PutInt("grafana.sdlc.rollout.updated_replicas", int64(data.deployment.Status.UpdatedReplicas))
+		attrs.PutInt("grafana.sdlc.rollout.ready_replicas", int64(data.deployment.Status.ReadyReplicas))
+		attrs.PutInt("grafana.sdlc.rollout.available_replicas", int64(data.deployment.Status.AvailableReplicas))
+		attrs.PutInt("grafana.sdlc.rollout.unavailable_replicas", int64(data.deployment.Status.UnavailableReplicas))
+		putStringMap(attrs.PutEmptyMap("grafana.sdlc.k8s.deployment.labels"), data.deployment.Labels)
+		putInventoryContainers(attrs.PutEmptySlice("grafana.sdlc.deployment.containers"), data.images)
+	}
+
+	return eventBatch{logs: logs}
+}
+
+func putDeploymentResource(resource pcommon.Map, data eventData) {
+	resource.PutStr("k8s.cluster.uid", data.clusterUID)
+	if data.clusterName != "" {
+		resource.PutStr("k8s.cluster.name", data.clusterName)
+	}
+	resource.PutStr("k8s.namespace.name", data.deployment.Namespace)
+	resource.PutStr("k8s.deployment.name", data.deployment.Name)
+	resource.PutStr("k8s.deployment.uid", string(data.deployment.UID))
+}
+
+func putStringMap(destination pcommon.Map, values map[string]string) {
+	for key, value := range values {
+		destination.PutStr(key, value)
+	}
+}
+
+func putInventoryContainers(destination pcommon.Slice, images []imageData) {
+	for _, image := range images {
+		container := destination.AppendEmpty().SetEmptyMap()
+		container.PutStr("name", image.container)
+		container.PutBool("init", image.init)
+		container.PutStr("image.reference", image.reference)
+		container.PutStr("image.name", image.imageName)
+		if image.tag != "" {
+			container.PutEmptySlice("image.tags").AppendEmpty().SetStr(image.tag)
+		}
+		if image.imageID != "" {
+			container.PutStr("image.id", image.imageID)
+		}
+		if image.digest != "" {
+			container.PutEmptySlice("image.repo_digests").AppendEmpty().SetStr(image.imageName + "@" + image.digest)
+		}
+	}
+}
+
+func inventoryFingerprint(data eventData) string {
+	parts := []string{
+		fmt.Sprint(data.deployment.Generation),
+		data.revision,
+		string(data.phase),
+		fmt.Sprint(desiredReplicas(data.deployment)),
+		fmt.Sprint(data.deployment.Status.Replicas),
+		fmt.Sprint(data.deployment.Status.UpdatedReplicas),
+		fmt.Sprint(data.deployment.Status.ReadyReplicas),
+		fmt.Sprint(data.deployment.Status.AvailableReplicas),
+		fmt.Sprint(data.deployment.Status.UnavailableReplicas),
+	}
+	labelKeys := make([]string, 0, len(data.deployment.Labels))
+	for key := range data.deployment.Labels {
+		labelKeys = append(labelKeys, key)
+	}
+	sort.Strings(labelKeys)
+	for _, key := range labelKeys {
+		parts = append(parts, "label", key, data.deployment.Labels[key])
+	}
+	for _, image := range data.images {
+		parts = append(parts, "image", image.container, fmt.Sprint(image.init), image.reference, image.imageID, image.digest)
+	}
+	return stableID(parts...)
 }
 
 func appendEventRecord(records plog.LogRecordSlice, data eventData, image imageData) {

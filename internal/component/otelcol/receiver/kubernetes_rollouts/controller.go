@@ -50,6 +50,7 @@ type rolloutState struct {
 	generation int64
 	revision   string
 	phase      rolloutPhase
+	inventory  string
 	digests    map[string]struct{}
 	images     []imageData
 	deployment *appsv1.Deployment
@@ -179,17 +180,16 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 	deployment, err := c.deployments.Deployments(namespace).Get(name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			c.forgetDeployment(key)
-			return nil
+			return c.deleteDeployment(ctx, clusterUID, key)
 		}
 
 		return err
 	}
 
-	c.stateMu.Lock()
-	if oldUID, ok := c.keys[key]; ok && oldUID != deployment.UID {
-		delete(c.states, oldUID)
+	if err := c.deleteReplacedDeployment(ctx, clusterUID, key, deployment.UID); err != nil {
+		return err
 	}
+	c.stateMu.Lock()
 	c.keys[key] = deployment.UID
 	c.stateMu.Unlock()
 
@@ -226,6 +226,11 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 	if activeRS != nil {
 		current.replicaSet = activeRS.DeepCopy()
 	}
+	inventoryData := eventData{
+		clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: deployment,
+		replicaSet: activeRS, revision: revision, phase: phase, images: images,
+	}
+	current.inventory = inventoryFingerprint(inventoryData)
 	c.stateMu.Unlock()
 
 	if seen && previous.generation != deployment.Generation && previous.phase == phaseStarted {
@@ -271,19 +276,67 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 			return err
 		}
 	}
+	if !seen || previous.inventory != current.inventory {
+		if err := c.opts.emit(ctx, func() eventBatch {
+			return buildInventoryEventBatch(inventoryData, inventoryObserved, current.inventory)
+		}); err != nil {
+			return err
+		}
+	}
 	c.stateMu.Lock()
 	c.states[deployment.UID] = current
 	c.stateMu.Unlock()
 	return nil
 }
 
-func (c *controller) forgetDeployment(key string) {
+func (c *controller) deleteDeployment(ctx context.Context, clusterUID, key string) error {
 	c.stateMu.Lock()
-	defer c.stateMu.Unlock()
-	if uid, ok := c.keys[key]; ok {
-		delete(c.states, uid)
-		delete(c.keys, key)
+	uid, ok := c.keys[key]
+	state, seen := c.states[uid]
+	c.stateMu.Unlock()
+	if !ok || !seen {
+		if ok {
+			c.stateMu.Lock()
+			delete(c.keys, key)
+			c.stateMu.Unlock()
+		}
+		return nil
 	}
+	if err := c.emitDeleted(ctx, clusterUID, state); err != nil {
+		return err
+	}
+	c.stateMu.Lock()
+	delete(c.states, uid)
+	delete(c.keys, key)
+	c.stateMu.Unlock()
+	return nil
+}
+
+func (c *controller) deleteReplacedDeployment(ctx context.Context, clusterUID, key string, currentUID types.UID) error {
+	c.stateMu.Lock()
+	oldUID, ok := c.keys[key]
+	state, seen := c.states[oldUID]
+	c.stateMu.Unlock()
+	if !ok || oldUID == currentUID || !seen {
+		return nil
+	}
+	if err := c.emitDeleted(ctx, clusterUID, state); err != nil {
+		return err
+	}
+	c.stateMu.Lock()
+	delete(c.states, oldUID)
+	delete(c.keys, key)
+	c.stateMu.Unlock()
+	return nil
+}
+
+func (c *controller) emitDeleted(ctx context.Context, clusterUID string, state rolloutState) error {
+	return c.opts.emit(ctx, func() eventBatch {
+		return buildInventoryEventBatch(eventData{
+			clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: state.deployment,
+			replicaSet: state.replicaSet, revision: state.revision, phase: state.phase, images: state.images,
+		}, inventoryDeleted, "")
+	})
 }
 
 func selectReplicaSet(deployment *appsv1.Deployment, replicaSets []*appsv1.ReplicaSet) (string, *appsv1.ReplicaSet) {

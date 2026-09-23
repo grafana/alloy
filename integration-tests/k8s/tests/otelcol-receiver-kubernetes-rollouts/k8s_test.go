@@ -17,7 +17,8 @@ import (
 const (
 	testNamespace = "test-kubernetes-rollouts"
 	alloyRelease  = "alloy-test-kubernetes-rollouts"
-	eventPrefix   = "grafana.sdlc.k8s.deployment.rollout."
+	rolloutPrefix = "grafana.sdlc.k8s.deployment.rollout."
+	deployPrefix  = "grafana.sdlc.k8s.deployment."
 )
 
 type rolloutEvent struct {
@@ -77,6 +78,47 @@ spec:
 		require.Len(t, eventsByPod, 3)
 		require.Equal(t, 1, countPhase(eventsByPod, "started"))
 		require.Len(t, podsWithPhase(eventsByPod, "started"), 1)
+	})
+
+	t.Run("deployment inventory", func(t *testing.T) {
+		applyDeployment(t, `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  labels:
+    app.kubernetes.io/name: inventory
+    team: platform
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 60
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      containers:
+        - name: app
+          image: unavailable.invalid/app:inventory
+          imagePullPolicy: Never
+`)
+
+		events := waitForPhases(t, "inventory", "observed")
+		observed := requireEvent(t, events, "observed")
+		requireMapString(t, observed.resource, "k8s.cluster.uid", "kind-integration-test-uid")
+		requireMapString(t, observed.resource, "k8s.namespace.name", testNamespace)
+		requireMapString(t, observed.resource, "k8s.deployment.name", "inventory")
+		requireNestedMapString(t, observed.attributes, "grafana.sdlc.k8s.deployment.labels", "team", "platform")
+		requireContainerImageReference(t, observed.attributes, "app", "unavailable.invalid/app:inventory")
+
+		require.NoError(t, harness.RunCommand(
+			"kubectl", "--namespace", testNamespace, "delete", "deployment/inventory", "--wait=true",
+		))
+		events = waitForPhases(t, "inventory", "deleted")
+		requireEvent(t, events, "deleted")
 	})
 
 	t.Run("successful rollout", func(t *testing.T) {
@@ -290,8 +332,12 @@ func decodeDeploymentEvents(contents, deployment string) ([]rolloutEvent, error)
 				for k := 0; k < records.Len(); k++ {
 					record := records.At(k)
 					generation, _ := record.Attributes().Get("grafana.sdlc.deployment.generation")
+					name := strings.TrimPrefix(record.EventName(), deployPrefix)
+					if strings.HasPrefix(record.EventName(), rolloutPrefix) {
+						name = strings.TrimPrefix(record.EventName(), rolloutPrefix)
+					}
 					events = append(events, rolloutEvent{
-						name:       strings.TrimPrefix(record.EventName(), eventPrefix),
+						name:       name,
 						generation: generation.Int(),
 						resource:   resourceLogs.Resource().Attributes(),
 						attributes: record.Attributes(),
@@ -425,4 +471,26 @@ func requireMapSliceStringPrefix(t *testing.T, attributes pcommon.Map, key, pref
 	require.Positive(t, value.Slice().Len(), "attribute %q is empty", key)
 	require.True(t, strings.HasPrefix(value.Slice().At(0).Str(), prefix),
 		"%q does not start with %q", value.Slice().At(0).Str(), prefix)
+}
+
+func requireNestedMapString(t *testing.T, attributes pcommon.Map, key, nestedKey, expected string) {
+	t.Helper()
+	value, ok := attributes.Get(key)
+	require.True(t, ok, "missing attribute %q", key)
+	requireMapString(t, value.Map(), nestedKey, expected)
+}
+
+func requireContainerImageReference(t *testing.T, attributes pcommon.Map, name, reference string) {
+	t.Helper()
+	value, ok := attributes.Get("grafana.sdlc.deployment.containers")
+	require.True(t, ok, "missing deployment containers")
+	for i := 0; i < value.Slice().Len(); i++ {
+		container := value.Slice().At(i).Map()
+		containerName, hasName := container.Get("name")
+		imageReference, hasReference := container.Get("image.reference")
+		if hasName && hasReference && containerName.Str() == name && imageReference.Str() == reference {
+			return
+		}
+	}
+	require.FailNow(t, "container image not found", "name %q reference %q", name, reference)
 }

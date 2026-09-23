@@ -134,6 +134,47 @@ func TestBuildEventBatch(t *testing.T) {
 	require.Equal(t, firstID.Str(), secondID.Str())
 }
 
+func TestBuildObservedInventoryEvent(t *testing.T) {
+	deployment := testDeployment()
+	deployment.Labels = map[string]string{"app.kubernetes.io/name": "checkout", "team": "payments"}
+	deployment.Status.UpdatedReplicas = 1
+	image := imageData{
+		container: "api", reference: "registry.example.com/team/api:1.2.5",
+		imageName: "registry.example.com/team/api", tag: "1.2.5",
+		imageID: "registry.example.com/team/api@sha256:bbbb", digest: "sha256:bbbb",
+	}
+	data := eventData{
+		clusterUID: "cluster-uid", clusterName: "production", deployment: deployment,
+		revision: "7", phase: phaseStarted, images: []imageData{image},
+	}
+	fingerprint := inventoryFingerprint(data)
+	first := buildInventoryEventBatch(data, inventoryObserved, fingerprint).logs
+	second := buildInventoryEventBatch(data, inventoryObserved, fingerprint).logs
+	record := first.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	require.Equal(t, "grafana.sdlc.k8s.deployment.observed", record.EventName())
+	requireAttributeString(t, record.Attributes(), "grafana.sdlc.inventory.version", fingerprint)
+	labels, ok := record.Attributes().Get("grafana.sdlc.k8s.deployment.labels")
+	require.True(t, ok)
+	requireAttributeString(t, labels.Map(), "team", "payments")
+
+	containerValue, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
+	require.True(t, ok)
+	containers := containerValue.Slice()
+	require.Len(t, containers.AsRaw(), 1)
+	container := containers.At(0).Map()
+	requireAttributeString(t, container, "name", "api")
+	requireAttributeString(t, container, "image.reference", image.reference)
+	requireAttributeString(t, container, "image.name", image.imageName)
+	repoDigests, ok := container.Get("image.repo_digests")
+	require.True(t, ok)
+	require.Equal(t, image.imageName+"@"+image.digest, repoDigests.Slice().At(0).Str())
+
+	firstID, _ := record.Attributes().Get("grafana.sdlc.event.id")
+	secondRecord := second.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	secondID, _ := secondRecord.Attributes().Get("grafana.sdlc.event.id")
+	require.Equal(t, firstID.Str(), secondID.Str())
+}
+
 func TestReconcileLifecycleAndRetry(t *testing.T) {
 	deployment := testDeployment()
 	rs := testReplicaSet(deployment)
@@ -176,6 +217,7 @@ func TestReconcileLifecycleAndRetry(t *testing.T) {
 	require.Equal(t, []string{
 		"grafana.sdlc.k8s.deployment.rollout.started",
 		"grafana.sdlc.k8s.deployment.rollout.image_resolved",
+		"grafana.sdlc.k8s.deployment.observed",
 	}, eventNames)
 
 	eventNames = nil
@@ -188,7 +230,10 @@ func TestReconcileLifecycleAndRetry(t *testing.T) {
 	deployment.Status.AvailableReplicas = 1
 	require.NoError(t, deploymentIndexer.Update(deployment))
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.rollout.succeeded"}, eventNames)
+	require.Equal(t, []string{
+		"grafana.sdlc.k8s.deployment.rollout.succeeded",
+		"grafana.sdlc.k8s.deployment.observed",
+	}, eventNames)
 }
 
 func TestReconcileRevisionUpdateDoesNotDuplicateStart(t *testing.T) {
@@ -221,7 +266,7 @@ func TestReconcileRevisionUpdateDoesNotDuplicateStart(t *testing.T) {
 	rs.Annotations[deploymentRevisionAnnotation] = "8"
 	require.NoError(t, replicaSetIndexer.Update(rs))
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
+	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
 }
 
 func TestReconcileForgetsDeletedDeployment(t *testing.T) {
@@ -234,7 +279,20 @@ func TestReconcileForgetsDeletedDeployment(t *testing.T) {
 	require.NoError(t, deploymentIndexer.Add(deployment))
 	require.NoError(t, replicaSetIndexer.Add(rs))
 
-	ctrl := newController(controllerOptions{emit: func(_ context.Context, _ func() eventBatch) error { return nil }})
+	var eventNames []string
+	failDelete := true
+	ctrl := newController(controllerOptions{emit: func(_ context.Context, batch func() eventBatch) error {
+		records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+		for i := 0; i < records.Len(); i++ {
+			name := records.At(i).EventName()
+			if name == "grafana.sdlc.k8s.deployment.deleted" && failDelete {
+				failDelete = false
+				return errors.New("export unavailable")
+			}
+			eventNames = append(eventNames, name)
+		}
+		return nil
+	}})
 	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
 	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
 	ctrl.pods = corelisters.NewPodLister(podIndexer)
@@ -242,7 +300,11 @@ func TestReconcileForgetsDeletedDeployment(t *testing.T) {
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
 	require.Contains(t, ctrl.states, deployment.UID)
 	require.NoError(t, deploymentIndexer.Delete(deployment))
+	require.EqualError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"), "export unavailable")
+	require.Contains(t, ctrl.states, deployment.UID)
+	require.Contains(t, ctrl.keys, "payments/checkout")
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Contains(t, eventNames, "grafana.sdlc.k8s.deployment.deleted")
 	require.Empty(t, ctrl.states)
 	require.Empty(t, ctrl.keys)
 }

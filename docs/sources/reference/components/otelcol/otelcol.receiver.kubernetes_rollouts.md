@@ -10,8 +10,9 @@ title: otelcol.receiver.kubernetes_rollouts
 
 # `otelcol.receiver.kubernetes_rollouts`
 
-`otelcol.receiver.kubernetes_rollouts` watches Kubernetes Deployments and emits OpenTelemetry log events when rollouts start, finish, stall, or are superseded.
-The component also emits an event when a container image digest becomes available from Pod status.
+`otelcol.receiver.kubernetes_rollouts` watches Kubernetes Deployments and emits OpenTelemetry log events for deployment inventory and rollout activity.
+The component reports the current state of Deployments, their deletion, and when rollouts start, finish, stall, or are superseded.
+It also emits an event when a container image digest becomes available from Pod status.
 
 The component is opt-in.
 It doesn't watch Kubernetes resources unless you add it to the {{< param "PRODUCT_NAME" >}} configuration.
@@ -158,8 +159,27 @@ The `namespaces` permission isn't required when you configure `cluster_uid`.
 
 ## Event schema
 
-The component emits one log record for each container image in a rollout.
 It uses OpenTelemetry semantic convention attributes where applicable and uses the `grafana.sdlc.*` namespace for experimental fields.
+
+### Deployment inventory events
+
+The component emits these inventory events:
+
+* `grafana.sdlc.k8s.deployment.observed`: An idempotent snapshot for a Deployment.
+  The component emits this event during the initial informer listing and when relevant replica status, labels, revision, rollout phase, or image information changes.
+* `grafana.sdlc.k8s.deployment.deleted`: A tombstone for a Deployment that no longer exists.
+
+An `observed` event contains one log record for the Deployment.
+The `grafana.sdlc.deployment.containers` attribute is an array containing the configured reference and available resolved image information for each regular and init container.
+The `grafana.sdlc.k8s.deployment.labels` attribute contains the Deployment labels.
+Replica counts, generation, revision, and current rollout status are included in the same record.
+
+Consumers can materialize the latest `observed` event for each combination of tenant, `k8s.cluster.uid`, and `k8s.deployment.uid`.
+They should remove that entry when they receive the corresponding `deleted` event.
+
+### Rollout lifecycle events
+
+The component emits one log record for each container image in a rollout lifecycle event.
 
 Event names have the form `grafana.sdlc.k8s.deployment.rollout.<PHASE>`.
 The supported phases are:
@@ -182,6 +202,8 @@ Image records include `k8s.container.name`, `container.image.name`, `container.i
 The original image reference is available as `grafana.sdlc.container.image.reference`.
 
 `grafana.sdlc.event.id` is deterministic for a rollout phase, container, and digest.
+For `observed`, it is deterministic for the complete inventory snapshot.
+For `deleted`, it is deterministic for the Deployment UID.
 Consumers can use it as a deduplication key.
 
 ## Future scope
@@ -204,7 +226,8 @@ The component updates its local rollout state only after downstream consumers ac
 If delivery fails, it retries the Deployment through a rate-limited work queue.
 
 State is held in memory.
-After a restart or cluster ownership change, the component reconstructs current state from Kubernetes informer caches and can emit duplicate events.
+After a restart or cluster ownership change, the component reconstructs current state from Kubernetes informer caches and emits current `observed` snapshots again.
+It can also emit duplicate rollout events.
 Downstream consumers should deduplicate using `grafana.sdlc.event.id`.
 
 ## Exported fields
