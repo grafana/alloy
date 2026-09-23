@@ -18,8 +18,9 @@ The chart deploys the {{< param "PRODUCT_NAME" >}} image with the standard upstr
 
 Make sure you have the following:
 
-- A Kubernetes cluster
-- Helm 3
+- [Helm][] installed on your computer
+- A Kubernetes cluster that you can use for {{< param "PRODUCT_NAME" >}}
+- A local Kubernetes context that points at the cluster
 
 ## Run the {{% param "OTEL_ENGINE" %}}
 
@@ -92,7 +93,7 @@ Make sure you have the following:
 
    Replace the following:
 
-   - _`<ALLOY_VERSION>`_: The {{< param "PRODUCT_NAME" >}} release you want to run, for example `v1.19.0`.
+   - _`<ALLOY_VERSION>`_: The {{< param "PRODUCT_NAME" >}} release you want to run, for example {{< param "ALLOY_RELEASE" >}}.
    - _`<USERNAME>`_: Your Grafana Cloud instance ID.
    - _`<PASSWORD>`_: Your Grafana Cloud API token.
    - _`<URL>`_: Your Grafana Cloud OTLP endpoint URL.
@@ -130,9 +131,14 @@ The Helm chart includes a default OpenTelemetry Collector configuration in the `
 The [Helm chart documentation][ChartConfig] describes this field.
 You have three ways to configure the {{< param "OTEL_ENGINE" >}}:
 
-- **Replace the defaults**: Set `alternateConfig`, as the preceding example does. The chart ignores `config` entirely and uses only what you provide. You must supply the `health_check` extension yourself, because the chart's `readinessProbe` and `livenessProbe` checks depend on it.
-- **Merge with the defaults**: Set `config`. The chart merges your values into its default configuration. Maps merge key by key, and lists replace the default list.
-- **Remove a default**: Set a default key to `null` within `config`. This works when you install the chart directly, but not when you use it as a subchart.
+- Replace the defaults: Set `alternateConfig`, as the preceding example does.
+  The chart ignores `config` entirely and uses only what you provide.
+  You must supply the `health_check` extension yourself, because the chart's `readinessProbe` and `livenessProbe` checks depend on it.
+- Merge with the defaults: Set `config`.
+  The chart merges your values into its default configuration.
+  Maps merge key by key, and lists replace the default list.
+- Remove a default: Set a default key to `null` within `config`.
+  This works when you install the chart directly, but not when you use it as a subchart.
 
 Refer to the [upstream documentation][ChartDocs] for more information about configuring the Helm chart for your use case.
 
@@ -140,4 +146,5 @@ Refer to the [upstream documentation][ChartDocs] for more information about conf
 [ChartConfig]: https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/#configuration
 [ChartDocs]: https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/
 [CLICloud]: ../cli/#send-data-to-grafana-cloud
+[Helm]: https://helm.sh
 [SendOTLP]: https://grafana.com/docs/grafana-cloud/send-data/otlp/send-data-otlp/
