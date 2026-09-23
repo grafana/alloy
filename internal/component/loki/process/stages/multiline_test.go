@@ -323,7 +323,7 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 	})
 }
 
-// TestMultilineStageStreamsCleaned verifies that the streams is empty after the stopping.
+// TestMultilineStageStreamsCleanup verifies that the streams is empty after the stopping.
 func TestMultilineStageStreamsCleanup(t *testing.T) {
 	cfgs := loadConfig(`
 	stage.multiline {
