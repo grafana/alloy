@@ -60,11 +60,12 @@ type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
 
-	mu         sync.RWMutex
-	args       Arguments
-	restConfig *rest.Config
-	logsSink   consumer.Logs
-	restart    chan struct{}
+	mu             sync.RWMutex
+	args           Arguments
+	restConfig     *rest.Config
+	logsSink       consumer.Logs
+	restart        chan struct{}
+	clusterChanged chan struct{}
 }
 
 var (
@@ -80,9 +81,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:    opts,
-		cluster: clusterData.(cluster.Cluster),
-		restart: make(chan struct{}, 1),
+		opts:           opts,
+		cluster:        clusterData.(cluster.Cluster),
+		restart:        make(chan struct{}, 1),
+		clusterChanged: make(chan struct{}, 1),
 	}
 	if err := c.update(args, false); err != nil {
 		return nil, err
@@ -92,58 +94,89 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+generationLoop:
 	for {
+		c.mu.RLock()
+		args := c.args
+		restConfig := rest.CopyConfig(c.restConfig)
+		c.mu.RUnlock()
+
+		watch, ownershipErr := c.shouldWatch(args)
 		generationCtx, cancel := context.WithCancel(ctx)
 		done := make(chan error, 1)
-		go func() { done <- c.runGeneration(generationCtx) }()
-
-		select {
-		case <-ctx.Done():
-			cancel()
-			<-done
-			return nil
-		case <-c.restart:
-			cancel()
-			<-done
-			continue
-		case err := <-done:
-			cancel()
-			if err == nil || ctx.Err() != nil {
-				return nil
+		go func() {
+			if ownershipErr != nil {
+				done <- ownershipErr
+				return
 			}
-			c.opts.Logger.Error("Kubernetes workload watcher stopped; retrying", "err", err)
-			timer := time.NewTimer(time.Second)
+			done <- c.runGeneration(generationCtx, args, restConfig, watch)
+		}()
+
+		for {
 			select {
 			case <-ctx.Done():
-				timer.Stop()
+				cancel()
+				<-done
 				return nil
 			case <-c.restart:
-				timer.Stop()
-			case <-timer.C:
+				cancel()
+				<-done
+				continue generationLoop
+			case <-c.clusterChanged:
+				nextWatch, err := c.shouldWatch(args)
+				if err != nil {
+					c.requestRestart()
+					continue
+				}
+				if nextWatch == watch {
+					continue
+				}
+				cancel()
+				<-done
+				continue generationLoop
+			case err := <-done:
+				cancel()
+				if err == nil || ctx.Err() != nil {
+					return nil
+				}
+				c.opts.Logger.Error("Kubernetes workload watcher stopped; retrying", "err", err)
+				timer := time.NewTimer(time.Second)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return nil
+				case <-c.restart:
+					timer.Stop()
+				case <-c.clusterChanged:
+					timer.Stop()
+				case <-timer.C:
+				}
+				continue generationLoop
 			}
 		}
 	}
 }
 
-func (c *Component) runGeneration(ctx context.Context) error {
-	c.mu.RLock()
-	args := c.args
-	restConfig := rest.CopyConfig(c.restConfig)
-	c.mu.RUnlock()
-
+func (c *Component) shouldWatch(args Arguments) (bool, error) {
 	if args.Clustering.Enabled {
 		if !c.cluster.Ready() {
-			<-ctx.Done()
-			return nil
+			return false, nil
 		}
 		owners, err := c.cluster.Lookup(shard.StringKey(c.opts.ID), 1, shard.OpReadWrite)
 		if err != nil {
-			return fmt.Errorf("determining rollout watcher ownership: %w", err)
+			return false, fmt.Errorf("determining workload watcher ownership: %w", err)
 		}
 		if len(owners) != 1 || !owners[0].Self {
-			<-ctx.Done()
-			return nil
+			return false, nil
 		}
+	}
+	return true, nil
+}
+
+func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfig *rest.Config, watch bool) error {
+	if !watch {
+		<-ctx.Done()
+		return nil
 	}
 
 	client, err := kubernetes.NewForConfig(restConfig)
@@ -200,7 +233,10 @@ func (c *Component) NotifyClusterChange() {
 	enabled := c.args.Clustering.Enabled
 	c.mu.RUnlock()
 	if enabled {
-		c.requestRestart()
+		select {
+		case c.clusterChanged <- struct{}{}:
+		default:
+		}
 	}
 }
 
