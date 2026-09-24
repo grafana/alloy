@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
@@ -21,12 +22,21 @@ type AlloyOptions struct {
 	ConfigPath string
 	// ValuesPath is an optional helm values file applied to the Alloy chart.
 	ValuesPath string
+	// PortForward makes Alloy's HTTP server reachable from the test via Endpoint.
+	PortForward bool
+	// HTTPPort must match alloy.listenPort when ValuesPath overrides it.
+	HTTPPort int
 }
 
 type Alloy struct {
-	opts      AlloyOptions
-	installed bool
+	opts            AlloyOptions
+	installed       bool
+	localPort       string
+	stopPortForward func()
 }
+
+// defaultAlloyHTTPPort is the chart's alloy.listenPort default.
+const defaultAlloyHTTPPort = 12345
 
 func NewAlloy(opts AlloyOptions) *Alloy {
 	return &Alloy{opts: opts}
@@ -93,6 +103,20 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	}
 	a.installed = true
 
+	if a.opts.PortForward {
+		port := a.opts.HTTPPort
+		if port == 0 {
+			port = defaultAlloyHTTPPort
+		}
+		localPort, stop, pfErr := startPortForwardWithRetries(a.opts.Namespace, a.opts.Release, 5, strconv.Itoa(port))
+		if pfErr != nil {
+			a.Cleanup()
+			return pfErr
+		}
+		a.localPort = localPort
+		a.stopPortForward = stop
+	}
+
 	ctx.AddDiagnosticHook("alloy logs", func(c context.Context) error {
 		return harness.RunDiagnosticCommands(c, [][]string{
 			{"kubectl", "--namespace", a.opts.Namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
@@ -101,7 +125,15 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	return nil
 }
 
+// Endpoint returns a URL for path on Alloy's HTTP server. Requires PortForward.
+func (a *Alloy) Endpoint(path string) string {
+	return "http://localhost:" + a.localPort + path
+}
+
 func (a *Alloy) Cleanup() {
+	if a.stopPortForward != nil {
+		a.stopPortForward()
+	}
 	if !a.installed {
 		return
 	}
