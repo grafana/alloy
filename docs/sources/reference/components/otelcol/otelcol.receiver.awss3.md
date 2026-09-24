@@ -12,7 +12,7 @@ title: otelcol.receiver.awss3
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](./otelcol.exporter.awss3.md).
+`otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](../otelcol.exporter.awss3/).
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.awss3` is a wrapper over the upstream OpenTelemetry Collector [`awss3`][] receiver.
