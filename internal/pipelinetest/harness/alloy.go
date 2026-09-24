@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloyruntime "github.com/grafana/alloy/internal/runtime"
@@ -38,6 +40,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
 		Logger:       logger,
 		DataPath:     cfg.DataPath,
+		Reg:          prometheus.DefaultRegisterer,
 		MinStability: featuregate.StabilityExperimental,
 		Services:     defaultServices(logger),
 	})
