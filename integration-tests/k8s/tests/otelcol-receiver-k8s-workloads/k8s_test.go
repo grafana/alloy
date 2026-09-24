@@ -68,7 +68,7 @@ spec:
 		require.Never(t, func() bool {
 			eventsByPod, err := readDeploymentEventsByPod("clustered")
 			if err != nil {
-				return true
+				return false
 			}
 			return countPhase(eventsByPod, "started") != 1
 		}, 5*time.Second, 250*time.Millisecond, "expected exactly one clustered Alloy pod to emit started")

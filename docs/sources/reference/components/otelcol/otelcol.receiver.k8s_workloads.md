@@ -394,3 +394,18 @@ if batches must also survive Pod replacement or rescheduling.
 For a reusable opt-in custom component, use the module in `example/k8s-workloads/module.alloy`.
 Importing the file only defines the custom component; instantiate `deployment_rollouts` to start the watcher.
 For a complete Grafana Cloud configuration, use `example/k8s-workloads/grafana-cloud.alloy`.
+<!-- START GENERATED COMPATIBLE COMPONENTS -->
+
+## Compatible components
+
+`otelcol.receiver.k8s_workloads` can accept arguments from the following components:
+
+- Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
+
+
+{{< admonition type="note" >}}
+Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
+Refer to the linked documentation for more details.
+{{< /admonition >}}
+
+<!-- END GENERATED COMPATIBLE COMPONENTS -->
