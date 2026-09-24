@@ -43,7 +43,27 @@ find dist/ -type f \
   -name 'alloy-installer-windows-*.exe' \
   -exec zip -j "{}.zip" "{}" \;
 
-# Generate SHA256 checksums for all release assets.
+# Generate a static SPDX SBOM for the release dist tree (issue #4307).
+# Prefer syft when available in the build image; fall back to gh/syft install is not required
+# for local dry-runs of this script if syft is missing (release CI image should ship or install it).
+SBOM_FILE="dist/alloy-${RELEASE_TAG}.spdx.json"
+if command -v syft >/dev/null 2>&1; then
+  syft dir:dist -o spdx-json="${SBOM_FILE}"
+elif command -v docker >/dev/null 2>&1; then
+  # Pin a known syft image for reproducible SBOMs when the host has no syft binary.
+  docker run --rm -v "${PWD}/dist:/dist" anchore/syft:v1.27.1 \
+    dir:/dist -o spdx-json=/dist/"alloy-${RELEASE_TAG}.spdx.json"
+else
+  echo "Error: syft (or docker to run anchore/syft) is required to generate the release SBOM"
+  exit 1
+fi
+
+if [ ! -f "${SBOM_FILE}" ]; then
+  echo "Error: expected SBOM at ${SBOM_FILE}"
+  exit 1
+fi
+
+# Generate SHA256 checksums for all release assets (includes SBOM).
 pushd dist && sha256sum -- * > SHA256SUMS && popd
 
 # Upload all assets to the existing GitHub release.
