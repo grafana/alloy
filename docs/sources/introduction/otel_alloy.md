@@ -113,6 +113,8 @@ It also provides Grafana-specific collection features that don't yet have OpenTe
 Use the `alloyengine` extension when one process needs both standard Collector components and {{< param "DEFAULT_ENGINE" >}} components.
 This approach can simplify small deployments.
 
+{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 For large workloads, run the engines in separate processes so you can scale and troubleshoot them independently.
 Push-based OTLP gateways and pull-based Prometheus scrapers have different load and scaling characteristics.
 
