@@ -39,12 +39,13 @@ To configure Loki pipeline resiliency, you:
 ## Understand the default behavior during an outage
 
 When `loki.write` can't reach its configured endpoint, it retries each batch with exponential backoff.
-The wait starts at `min_backoff_period` and doubles toward `max_backoff_period`, for at most `max_backoff_retries` attempts.
+`max_backoff_retries` bounds how many retries follow the initial request.
+Each wait starts at `min_backoff_period` and doubles toward `max_backoff_period`.
 
-With the defaults of `"500ms"`, `"5m"`, and `10`, the configured waits add up to 511.5 seconds, or about 8.5 minutes.
-Elapsed time runs longer than that total for two reasons.
+With the defaults of `"500ms"`, `"5m"`, and `10`, the configured backoff schedule adds up to 511.5 seconds, or about 8.5 minutes.
+Elapsed time varies from that figure for two reasons.
 `loki.write` randomizes each wait within the current backoff range.
-Each attempt can also take up to `remote_timeout`, which defaults to `"10s"`.
+Each request can also take up to `remote_timeout`, which defaults to `"10s"`.
 What happens upstream while that retry loop runs depends on which component is feeding it:
 
 - **`loki.source.file`**: stops reading new lines from the tailed file while the pipeline is stalled.
@@ -65,7 +66,7 @@ The result is a silent, incremental loss of log lines proportional to how long t
 
 ## Choose an approach
 
-Three configurations trade off differently between ingestion stalls, durability, and exposure to the ingestion-age limits Loki applies:
+Four configurations trade off differently between ingestion stalls, durability, and exposure to the ingestion-age limits Loki applies:
 
 | Configuration                          | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect? |
 | -------------------------------------- | ----------------- | --------------------------------------------------- | ----------------------------------- |
@@ -80,7 +81,7 @@ Set `max_backoff_retries` to `0` alongside the WAL to hold data for the full `ma
 
 ## Tune the retry behavior
 
-By default, `loki.write` gives up on a batch after `max_backoff_retries` attempts and drops it.
+By default, `loki.write` gives up on a batch once it exhausts `max_backoff_retries` and drops it.
 You can trade that behavior for unbounded retry, which stops the slow trickle of dropped lines.
 
 To tune the retry behavior of a `loki.write` endpoint, complete the following steps:
@@ -122,9 +123,15 @@ This means:
   This is true for a component with a single `endpoint` block.
   All endpoints in one `loki.write` component share a single WAL marker file.
   With more than one endpoint, a restart can overwrite the recorded read position.
+- The WAL is only as durable as the storage behind it.
+  `loki.write` discards the error when a WAL write fails.
+  A full or unwritable storage path drops the entry after the source component has already advanced its read position.
+  Watch the {{< param "PRODUCT_NAME" >}} logs for the `failed to write entry` message, which is the only signal that this happened.
 - The WAL doesn't extend the retry window on its own.
   An endpoint that exhausts `max_backoff_retries` drops the batch and reports that data as consumed, which lets the WAL reclaim the segment.
-  Pair the WAL with `max_backoff_retries = 0` so that no batch is ever abandoned.
+  Pair the WAL with `max_backoff_retries = 0` to remove that particular limit.
+  Other drop paths still apply, including non-retryable responses, oversized batches, `max_streams`, and queue overflow.
+  Refer to [Monitor for dropped log entries](#monitor-for-dropped-log-entries) for the full list.
 - The `queue_config` block, when used without the WAL, bounds the in-memory send queue by size in bytes.
   The `capacity` argument defaults to `10MiB` per shard, so the send-queue budget is `capacity` multiplied by `min_shards`.
   It doesn't add durability, and changing any `queue_config` argument requires `--stability.level=experimental`.
@@ -227,40 +234,51 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    Exhausted retries are only one of the drop paths.
    The `reason` label identifies which one applied.
 
-   | `reason`          | Cause                                                                                             |
-   | ----------------- | ------------------------------------------------------------------------------------------------- |
-   | `batch_too_large` | Loki rejected the batch as too large on the final attempt.                                        |
-   | `ingester_error`  | The endpoint exhausted `max_backoff_retries`, or the batch couldn't be built.                     |
-   | `queue_is_full`   | The send queue was full and `block_on_overflow` is `false`.                                       |
-   | `rate_limited`    | Loki rate-limited the batch, either on the final attempt or immediately when `retry_on_http_429` is `false`. |
-   | `stream_limited`  | The entry would have exceeded `max_streams`.                                                      |
+   | `reason`          | Cause                                                                                                             |
+   | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+   | `batch_too_large` | Loki rejected the batch as too large on the final attempt.                                                        |
+   | `ingester_error`  | The final send attempt failed, either by exhausting `max_backoff_retries` or by returning a non-retryable status. |
+   | `queue_is_full`   | The send queue was full and `block_on_overflow` is `false`.                                                       |
+   | `rate_limited`    | Loki rate-limited the batch, either on the final attempt or immediately when `retry_on_http_429` is `false`.      |
+   | `stream_limited`  | The entry would have exceeded `max_streams`.                                                                      |
 
    Alert on any increase in the two dropped-data counters, because a healthy pipeline never increments them.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
 
-1. Search the {{< param "PRODUCT_NAME" >}} logs for the `final error sending batch, no retries left, dropping data` message.
-   This message confirms a batch reached the end of its retry schedule and that `loki.write` discarded it.
+1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
+   Two of these loss paths don't increment any drop counter, so the logs are the only signal.
+
+   | Message                                                     | Meaning                                                                                      |
+   | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+   | `error encoding batch`                                      | A batch couldn't be encoded and was discarded. No drop counter increments.                   |
+   | `failed to write entry`                                     | A WAL write failed, so the entry was lost after the source advanced its position. No drop counter increments. |
+   | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.  |
 
 ## Practical limits, even with the WAL
 
 Data buffered during an outage only helps if Loki accepts it once connectivity is restored.
-Two limits determine how much outage a WAL-backed pipeline can actually ride out:
+Two separate Loki limits reject old entries, and they're configured independently:
 
-- Loki, including Grafana Cloud, rejects entries with `entry too far behind` outside a per-stream, out-of-order acceptance window.
-  On Grafana Cloud, automatic time-based stream sharding is enabled by default specifically to keep this window from becoming user-visible in normal operation.
-  If you're seeing this error regularly, that's a signal worth raising with support rather than an expected outcome of a long outage.
-- Regardless of sharding behavior, Loki applies a hard outer bound on entry age.
-  That bound is on the order of days, not hours.
+- **Out-of-order window**: Loki rejects an entry older than half of `max_chunk_age` for its stream, with `reason=too_far_behind`.
+  The default `max_chunk_age` of `2h` gives a one hour window, and this setting is global rather than per tenant.
+  On Grafana Cloud, automatic time-based stream sharding is enabled by default to keep this window from becoming user-visible.
+  If you see this rejection regularly, raise it with support rather than treating it as expected.
+- **Absolute sample age**: Loki rejects an entry older than `reject_old_samples_max_age`, with `reason=greater_than_max_sample_age`.
+  This limit applies while `reject_old_samples` is `true`, which is the default, and the maximum age defaults to one week.
+  You can configure both settings per tenant through the Loki runtime overrides file.
 
-In practice, two independent limits apply, and the shorter one decides the outcome.
+In practice, three limits apply, and the shortest one decides the outcome.
 {{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`, and only when you pair the WAL with `max_backoff_retries = 0`.
-Loki accepts the replayed entries only if they still fall inside its acceptance window.
+Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
-An outage shorter than `max_segment_age` can still end with rejected entries when that acceptance window is shorter.
-With the default retry settings, the effective limit is the retry window instead, which is shorter than both.
+Compare `max_segment_age` against the effective `max_chunk_age` and `reject_old_samples_max_age` values for your tenant.
+Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
 
-The acceptance window isn't controlled from the {{< param "PRODUCT_NAME" >}} side.
-Refer to [Automatic stream sharding][loki-ooo] in the Loki documentation for your specific Loki or Grafana Cloud tenant configuration.
+Neither limit is controlled from the {{< param "PRODUCT_NAME" >}} side.
+Refer to [limits_config][loki-limits] for the effective values in your Loki or Grafana Cloud tenant.
+
+Refer to [Enforce rate limits and push request validation][loki-validation] for what each rejection reason means.
+Refer to [Automatic stream sharding][loki-ooo] for how Grafana Cloud keeps the out-of-order window from surfacing.
 
 ## Resource consumption during an outage
 
@@ -306,7 +324,9 @@ Three factors determine whether that drain succeeds:
 
 [component_metrics]: ../../troubleshoot/component_metrics/
 [logs-in-kubernetes]: ../logs-in-kubernetes/
+[loki-limits]: https://grafana.com/docs/loki/latest/configure/#limits_config
 [loki-ooo]: https://grafana.com/docs/loki/latest/operations/automatic-stream-sharding/
+[loki-validation]: https://grafana.com/docs/loki/latest/operations/request-validation-rate-limits/
 [loki.source.api]: ../../reference/components/loki/loki.source.api/
 [loki.source.file]: ../../reference/components/loki/loki.source.file/
 [loki.write]: ../../reference/components/loki/loki.write/
