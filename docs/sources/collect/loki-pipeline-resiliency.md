@@ -175,7 +175,8 @@ To enable it, complete the following steps:
    - _`<LOKI_URL>`_: The full URL of the Loki endpoint where you send logs.
    - _`<MAX_SEGMENT_AGE>`_: How long a WAL segment can live before {{< param "PRODUCT_NAME" >}} deletes it.
      The default is `1h`.
-     Set this value to cover the longest outage you need to survive.
+     Set this value to cover the longest outage you need to survive, bounded by what Loki still accepts.
+     Refer to [Practical limits, even with the WAL](#practical-limits-even-with-the-wal) for that upper bound.
      {{< param "PRODUCT_NAME" >}} deletes segments older than this threshold whether or not Loki accepted them, apart from the highest-numbered segment.
 
    The `max_backoff_retries = 0` setting is required for the WAL to hold data for the full `max_segment_age` window.
@@ -188,14 +189,15 @@ To enable it, complete the following steps:
 1. Confirm that the WAL is active after {{< param "PRODUCT_NAME" >}} reloads the configuration.
    {{< param "PRODUCT_NAME" >}} exports the following metrics only while the WAL is enabled, so their presence confirms the block took effect.
 
-   | Metric                                         | Description                                                                           |
-   | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
-   | `loki_write_wal_watcher_running`               | Number of WAL watchers running. A value of `0` means the WAL isn't active.            |
-   | `loki_write_wal_writer_last_written_timestamp` | Latest timestamp written to the WAL. This value advances while entries arrive.        |
-   | `loki_write_last_read_timestamp`               | Latest timestamp read from the WAL and queued for delivery, labeled by endpoint `id`. |
+   | Metric                                         | Description                                                                                    |
+   | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+   | `loki_write_wal_watcher_running`               | Number of WAL watchers running. A value of `0` means the WAL isn't active.                     |
+   | `loki_write_wal_writer_last_written_timestamp` | Timestamp of the newest log entry written to the WAL.                                          |
+   | `loki_write_last_read_timestamp`               | Timestamp of the newest log entry read from the WAL and queued for delivery, by endpoint `id`. |
 
-   During an outage the written timestamp keeps advancing while the read timestamp stalls.
-   The gap between the two is the size of your backlog in time.
+   Both gauges report log entry timestamps rather than wall-clock times, so the gap between them approximates the backlog rather than measuring it exactly.
+   During an outage the written timestamp keeps advancing.
+   The read timestamp advances until the endpoint queue fills, and stalls after that.
 
 The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout`.
 There's no argument for the WAL directory and no maximum size argument.
@@ -260,11 +262,11 @@ To monitor the pipeline for dropped log entries, complete the following steps:
 1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
    Two of these loss paths don't increment any drop counter, so the logs are the only signal.
 
-   | Message                                                     | Meaning                                                                                      |
-   | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-   | `error encoding batch`                                      | A batch couldn't be encoded and was discarded. No drop counter increments.                   |
+   | Message                                                     | Meaning                                                                                                       |
+   | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+   | `error encoding batch`                                      | A batch couldn't be encoded and was discarded. No drop counter increments.                                    |
    | `failed to write entry`                                     | A WAL write failed, so the entry was lost after the source advanced its position. No drop counter increments. |
-   | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.  |
+   | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.                   |
 
 ## Practical limits, even with the WAL
 
@@ -284,7 +286,10 @@ In practice, three limits apply, and the shortest one decides the outcome.
 That's true only when you pair the WAL with `max_backoff_retries = 0` and one endpoint per component.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
-Compare `max_segment_age` against the cluster `max_chunk_age` and the effective `reject_old_samples_max_age` for your tenant.
+Compare the outage duration plus the drain time against half of `max_chunk_age`, and against the effective `reject_old_samples_max_age` for your tenant.
+With the default `max_chunk_age` of `2h`, an entry has to reach Loki within one hour of the newest entry in its stream.
+Raising `max_segment_age` beyond that only retains entries that Loki rejects.
+
 Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
 
 Neither limit is controlled from the {{< param "PRODUCT_NAME" >}} side.
