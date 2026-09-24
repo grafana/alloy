@@ -22,8 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/common"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -74,94 +76,18 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-
 			// Start a test HTTP server that serves Prometheus metrics
 			metricsServer, serverAddr := startTestMetricsServer(t)
 			defer metricsServer.Close()
 
-			// Create fake kubernetes client
-			fakeK8s := fake.NewClientset()
-
-			// Set up test appender to collect metrics
-			appender := testappender.NewCollectingAppender()
-			mockAppendable := testappender.ConstantAppendable{Inner: appender}
-
-			// Create a synchronized log buffer to capture logs for detecting "informers started"
-			logBuffer := &syncbuffer.Buffer{}
-
-			// Create a logger that writes to both the buffer and stderr
-			multiWriter := io.MultiWriter(logBuffer, os.Stderr)
-			logger, err := logging.New(multiWriter, logging.Options{
-				Level:  logging.LevelDebug,
-				Format: logging.FormatLogfmt,
-			})
-			require.NoError(t, err)
-
-			// Create component options
-			opts := component.Options{
-				ID:         "prometheus.operator.servicemonitors.test",
-				Logger:     logger.Slog(),
-				Registerer: prometheus_client.NewRegistry(),
-				GetServiceData: func(name string) (any, error) {
-					switch name {
-					case http_service.ServiceName:
-						return http_service.Data{
-							HTTPListenAddr:   "localhost:12345",
-							MemoryListenAddr: "alloy.internal:1245",
-							BaseHTTPPath:     "/",
-							DialFunc:         (&net.Dialer{}).DialContext,
-						}, nil
-					case cluster.ServiceName:
-						return cluster.Mock(), nil
-					case labelstore.ServiceName:
-						return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
-					default:
-						return nil, fmt.Errorf("service %q does not exist", name)
-					}
-				},
-			}
-
 			// Create component arguments
 			var args operator.Arguments
 			args.SetToDefault()
-			args.ForwardTo = []storage.Appendable{mockAppendable}
 			args.Namespaces = []string{"monitoring"}
 			args.Scrape = tc.scrapeOptions
 			args.Scrape.HonorMetadata = tc.honorMetadata
 
-			// Create the component
-			comp, err := common.New(opts, args, common.ServiceMonitorOptions(common.DefaultServiceMonitorSettings))
-			require.NoError(t, err)
-
-			// Create a test factory that provides access to internal components
-			testFactory := &common.TestCrdManagerFactory{
-				K8sClient: fakeK8s,
-				LogBuffer: logBuffer,
-			}
-
-			// Inject our test factory
-			common.SetCrdManagerFactory(comp, testFactory)
-
-			// Run the component in a goroutine
-			var wg sync.WaitGroup
-			var runErr error
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				runErr = comp.Run(ctx)
-			}()
-
-			// Ensure we wait for the goroutine to exit before test completes
-			defer func() {
-				cancel() // Signal the component to stop
-				wg.Wait()
-				require.NoError(t, runErr)
-			}()
-
-			// Trigger an update to start the crdManager
-			err = comp.Update(args)
-			require.NoError(t, err)
+			testFactory, appender := startServiceMonitorComponent(t, args)
 
 			// Create a ServiceMonitor (similar to mimir tests adding AlertmanagerConfig to indexer)
 			serviceMonitor := &promopv1.ServiceMonitor{
@@ -256,6 +182,140 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			}, 30*time.Second, 500*time.Millisecond, "timed out waiting for metrics to be forwarded")
 		})
 	}
+}
+
+// TestServiceMonitorScrapeClassEndToEnd verifies that a scrape class defined on
+// the component reaches the scrape configuration generated for a ServiceMonitor
+// that references it by name.
+func TestServiceMonitorScrapeClassEndToEnd(t *testing.T) {
+	metricsServer, serverAddr := startTestMetricsServer(t)
+	defer metricsServer.Close()
+
+	var args operator.Arguments
+	args.SetToDefault()
+	args.Namespaces = []string{"monitoring"}
+	args.ScrapeClasses = []operator.ScrapeClass{{
+		Name: "annotated",
+		MetricRelabelings: []*alloy_relabel.Config{
+			{TargetLabel: "scrape_class", Replacement: "annotated"},
+		},
+	}}
+
+	testFactory, appender := startServiceMonitorComponent(t, args)
+
+	serviceMonitor := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "test-service-monitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			ScrapeClassName: ptr.To("annotated"),
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "test-app",
+				},
+			},
+			Endpoints: []promopv1.Endpoint{
+				{
+					Port:          "metrics",
+					Interval:      promopv1.Duration("1s"),
+					ScrapeTimeout: promopv1.Duration("500ms"),
+				},
+			},
+		},
+	}
+
+	require.Eventually(t, func() bool {
+		return testFactory.TriggerServiceMonitorAdd(serviceMonitor)
+	}, 10*time.Second, 100*time.Millisecond, "Timeout waiting for manager to be ready")
+
+	require.Eventually(t, func() bool {
+		return len(testFactory.GetScrapeConfigJobNames()) == 1
+	}, 5*time.Second, 100*time.Millisecond, "Expected 1 scrape config to be registered")
+
+	jobName := "serviceMonitor/monitoring/test-service-monitor/0"
+	ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
+	require.True(t, ready, "Manager should be ready after TriggerServiceMonitorAdd succeeded")
+	require.NoError(t, err)
+
+	// The metric relabeling rule from the scrape class labels every forwarded sample.
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		sample := findSampleByName(appender.CollectedSamples(), "test_gauge")
+		if !assert.NotNil(ct, sample, "Expected to find test_gauge metric") {
+			return
+		}
+		assert.Equal(ct, "annotated", sample.Labels.Get("scrape_class"))
+	}, 30*time.Second, 500*time.Millisecond, "timed out waiting for metrics to be forwarded")
+}
+
+// startServiceMonitorComponent runs a prometheus.operator.servicemonitors component
+// against a fake Kubernetes client. It returns the factory used to drive the
+// component's crdManager and the appender collecting forwarded metrics.
+func startServiceMonitorComponent(t *testing.T, args operator.Arguments) (*common.TestCrdManagerFactory, testappender.CollectingAppender) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	appender := testappender.NewCollectingAppender()
+	args.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
+
+	// A synchronized log buffer lets the factory detect "informers started".
+	logBuffer := &syncbuffer.Buffer{}
+	logger, err := logging.New(io.MultiWriter(logBuffer, os.Stderr), logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	opts := component.Options{
+		ID:         "prometheus.operator.servicemonitors.test",
+		Logger:     logger.Slog(),
+		Registerer: prometheus_client.NewRegistry(),
+		GetServiceData: func(name string) (any, error) {
+			switch name {
+			case http_service.ServiceName:
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "alloy.internal:1245",
+					BaseHTTPPath:     "/",
+					DialFunc:         (&net.Dialer{}).DialContext,
+				}, nil
+			case cluster.ServiceName:
+				return cluster.Mock(), nil
+			case labelstore.ServiceName:
+				return labelstore.New(nil, prometheus_client.DefaultRegisterer), nil
+			default:
+				return nil, fmt.Errorf("service %q does not exist", name)
+			}
+		},
+	}
+
+	comp, err := common.New(opts, args, common.ServiceMonitorOptions(common.DefaultServiceMonitorSettings))
+	require.NoError(t, err)
+
+	testFactory := &common.TestCrdManagerFactory{
+		K8sClient: fake.NewClientset(),
+		LogBuffer: logBuffer,
+	}
+	common.SetCrdManagerFactory(comp, testFactory)
+
+	var wg sync.WaitGroup
+	var runErr error
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runErr = comp.Run(ctx)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		wg.Wait()
+		require.NoError(t, runErr)
+	})
+
+	// Trigger an update to start the crdManager.
+	require.NoError(t, comp.Update(args))
+
+	return testFactory, appender
 }
 
 // startTestMetricsServer starts an HTTP server that serves Prometheus metrics.
