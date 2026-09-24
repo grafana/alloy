@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -29,43 +28,6 @@ func init() {
 			return New(opts, args.(Arguments))
 		},
 	})
-}
-
-// Arguments holds values which are used to configure the loki.write component.
-type Arguments struct {
-	Endpoints      []EndpointOptions `alloy:"endpoint,block,optional"`
-	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
-	MaxStreams     int               `alloy:"max_streams,attr,optional"`
-	WAL            WalArguments      `alloy:"wal,block,optional"`
-}
-
-// WalArguments holds the settings for configuring the Write-Ahead Log (WAL) used
-// by the underlying remote write client.
-type WalArguments struct {
-	Enabled          bool          `alloy:"enabled,attr,optional"`
-	MaxSegmentAge    time.Duration `alloy:"max_segment_age,attr,optional"`
-	MinReadFrequency time.Duration `alloy:"min_read_frequency,attr,optional"`
-	MaxReadFrequency time.Duration `alloy:"max_read_frequency,attr,optional"`
-	DrainTimeout     time.Duration `alloy:"drain_timeout,attr,optional"`
-}
-
-func (wa *WalArguments) Validate() error {
-	if wa.MinReadFrequency >= wa.MaxReadFrequency {
-		return fmt.Errorf("WAL min read frequency should be lower than max read frequency")
-	}
-	return nil
-}
-
-func (wa *WalArguments) SetToDefault() {
-	// todo(thepalbi): Once we are in a good state: replay implemented, and a better cleanup mechanism
-	// make WAL enabled the default
-	*wa = WalArguments{
-		Enabled:          false,
-		MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-		MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-		MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-		DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-	}
 }
 
 // Exports holds the receiver that is used to send log entries to the
@@ -205,7 +167,7 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
 	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
 	for _, e := range args.Endpoints {
-		if e.QueueConfig != defaultQueueConfig && !canUseExperimentalConfig {
+		if e.QueueConfig != defaultQueueConfigArguments && !canUseExperimentalConfig {
 			return errors.New("changing queue_config requires stability.level flag to be experimental")
 		}
 	}
