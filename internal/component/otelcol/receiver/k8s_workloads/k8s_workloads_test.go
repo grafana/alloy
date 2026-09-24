@@ -1,4 +1,4 @@
-package kubernetes_rollouts
+package k8s_workloads
 
 import (
 	"testing"

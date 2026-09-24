@@ -1,4 +1,4 @@
-package otelcolreceiverkubernetesrollouts
+package otelcolreceiverk8sworkloads
 
 import (
 	"fmt"
@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	testNamespace = "test-kubernetes-rollouts"
-	alloyRelease  = "alloy-test-kubernetes-rollouts"
+	testNamespace = "test-k8s-workloads"
+	alloyRelease  = "alloy-test-k8s-workloads"
 	rolloutPrefix = "grafana.sdlc.k8s.deployment.rollout."
 	deployPrefix  = "grafana.sdlc.k8s.deployment."
 )
@@ -28,7 +28,7 @@ type rolloutEvent struct {
 	attributes pcommon.Map
 }
 
-func TestKubernetesRollouts(t *testing.T) {
+func TestK8sWorkloads(t *testing.T) {
 	namespace := deps.NewNamespace(deps.NamespaceOptions{
 		Name:   testNamespace,
 		Labels: map[string]string{"alloy-integration-test": "true"},
@@ -145,10 +145,10 @@ spec:
           imagePullPolicy: Never
 `)
 
-		events := waitForPhases(t, "successful", "started", "image_resolved", "succeeded")
-		requirePhaseOrder(t, events, "started", "image_resolved", "succeeded")
+		events := waitForPhases(t, "successful", "started", "container.image_resolved", "succeeded")
+		requirePhaseOrder(t, events, "started", "container.image_resolved", "succeeded")
 
-		resolved := requireEvent(t, events, "image_resolved")
+		resolved := requireEvent(t, events, "container.image_resolved")
 		requireMapString(t, resolved.resource, "k8s.cluster.uid", "kind-integration-test-uid")
 		requireMapString(t, resolved.resource, "k8s.cluster.name", "kind-integration-test")
 		requireMapString(t, resolved.resource, "k8s.namespace.name", testNamespace)
@@ -297,7 +297,7 @@ func readDeploymentEventsByPod(deployment string) (map[string][]rolloutEvent, er
 		contents, readErr := harness.RunCommandOutput(
 			"kubectl", "--namespace", testNamespace, "exec", "pod/"+pod,
 			"--container", "alloy", "--", "sh", "-c",
-			"if [ -f /tmp/kubernetes-rollouts.json ]; then cat /tmp/kubernetes-rollouts.json; fi",
+			"if [ -f /tmp/k8s-workloads.json ]; then cat /tmp/k8s-workloads.json; fi",
 		)
 		if readErr != nil {
 			return nil, fmt.Errorf("read rollout events from Alloy pod %s: %w", pod, readErr)

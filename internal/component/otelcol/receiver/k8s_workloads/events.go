@@ -1,4 +1,4 @@
-package kubernetes_rollouts
+package k8s_workloads
 
 import (
 	"crypto/sha256"
@@ -20,12 +20,13 @@ import (
 type rolloutPhase string
 
 const (
-	phaseStarted       rolloutPhase = "started"
-	phaseSucceeded     rolloutPhase = "succeeded"
-	phaseStalled       rolloutPhase = "stalled"
-	phaseSuperseded    rolloutPhase = "superseded"
-	phaseImageResolved rolloutPhase = "image_resolved"
+	phaseStarted    rolloutPhase = "started"
+	phaseSucceeded  rolloutPhase = "succeeded"
+	phaseStalled    rolloutPhase = "stalled"
+	phaseSuperseded rolloutPhase = "superseded"
 )
+
+const imageResolvedEventName = "grafana.sdlc.k8s.deployment.rollout.container.image_resolved"
 
 type imageData struct {
 	container string
@@ -182,14 +183,20 @@ func buildEventBatch(data eventData) eventBatch {
 	putDeploymentResource(resourceLogs.Resource().Attributes(), data)
 
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
-	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.kubernetes_rollouts")
-	records := scopeLogs.LogRecords()
-	if data.phase == phaseImageResolved {
-		for i := range data.images {
-			appendEventRecord(records, data, &data.images[i])
-		}
-	} else {
-		appendEventRecord(records, data, nil)
+	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
+	appendEventRecord(scopeLogs.LogRecords(), data)
+	return eventBatch{logs: logs}
+}
+
+func buildImageResolvedEventBatch(data eventData) eventBatch {
+	logs := plog.NewLogs()
+	resourceLogs := logs.ResourceLogs().AppendEmpty()
+	putDeploymentResource(resourceLogs.Resource().Attributes(), data)
+
+	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
+	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
+	for i := range data.images {
+		appendImageResolvedEventRecord(scopeLogs.LogRecords(), data, &data.images[i])
 	}
 	return eventBatch{logs: logs}
 }
@@ -200,7 +207,7 @@ func buildInventoryEventBatch(data eventData, event inventoryEvent, fingerprint 
 	putDeploymentResource(resourceLogs.Resource().Attributes(), data)
 
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
-	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.kubernetes_rollouts")
+	scopeLogs.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
 	record := scopeLogs.LogRecords().AppendEmpty()
 	record.SetEventName("grafana.sdlc.k8s.deployment." + string(event))
 	now := pcommon.NewTimestampFromTime(time.Now())
@@ -295,16 +302,13 @@ func inventoryFingerprint(data eventData) string {
 	return stableID(parts...)
 }
 
-func appendEventRecord(records plog.LogRecordSlice, data eventData, image *imageData) {
+func appendEventRecord(records plog.LogRecordSlice, data eventData) {
 	generation := data.generation
 	if generation == 0 {
 		generation = data.deployment.Generation
 	}
 	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), fmt.Sprint(generation))
 	eventIDParts := []string{rolloutID, string(data.phase)}
-	if image != nil {
-		eventIDParts = append(eventIDParts, image.container, image.digest)
-	}
 	record := records.AppendEmpty()
 	record.SetEventName("grafana.sdlc.k8s.deployment.rollout." + string(data.phase))
 	now := pcommon.NewTimestampFromTime(time.Now())
@@ -329,22 +333,49 @@ func appendEventRecord(records plog.LogRecordSlice, data eventData, image *image
 		attrs.PutStr("k8s.replicaset.name", data.replicaSet.Name)
 		attrs.PutStr("k8s.replicaset.uid", string(data.replicaSet.UID))
 	}
-	if image == nil {
-		putInventoryContainers(attrs.PutEmptySlice("grafana.sdlc.deployment.containers"), data.images)
-	} else {
-		attrs.PutStr("k8s.container.name", image.container)
-		attrs.PutBool("grafana.sdlc.container.init", image.init)
-		attrs.PutStr("grafana.sdlc.container.image.reference", image.reference)
-		attrs.PutStr("container.image.name", image.imageName)
-		if image.tag != "" {
-			attrs.PutEmptySlice("container.image.tags").AppendEmpty().SetStr(image.tag)
-		}
-		if image.imageID != "" {
-			attrs.PutStr("container.image.id", image.imageID)
-		}
-		if image.digest != "" {
-			attrs.PutEmptySlice("container.image.repo_digests").AppendEmpty().SetStr(image.imageName + "@" + image.digest)
-		}
+	putInventoryContainers(attrs.PutEmptySlice("grafana.sdlc.deployment.containers"), data.images)
+}
+
+func appendImageResolvedEventRecord(records plog.LogRecordSlice, data eventData, image *imageData) {
+	generation := data.generation
+	if generation == 0 {
+		generation = data.deployment.Generation
+	}
+	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), fmt.Sprint(generation))
+	record := records.AppendEmpty()
+	record.SetEventName(imageResolvedEventName)
+	now := pcommon.NewTimestampFromTime(time.Now())
+	record.SetTimestamp(now)
+	record.SetObservedTimestamp(now)
+	record.SetSeverityNumber(plog.SeverityNumberInfo)
+	record.Body().SetStr("Kubernetes Deployment rollout container image resolved")
+
+	attrs := record.Attributes()
+	attrs.PutStr("deployment.id", rolloutID)
+	attrs.PutStr("deployment.name", data.deployment.Name)
+	attrs.PutStr("grafana.sdlc.event.id", stableID(rolloutID, imageResolvedEventName, image.container, image.digest))
+	attrs.PutStr("grafana.sdlc.deployment.revision", data.revision)
+	attrs.PutInt("grafana.sdlc.deployment.generation", generation)
+	attrs.PutInt("grafana.sdlc.rollout.desired_replicas", int64(desiredReplicas(data.deployment)))
+	attrs.PutInt("grafana.sdlc.rollout.updated_replicas", int64(data.deployment.Status.UpdatedReplicas))
+	attrs.PutInt("grafana.sdlc.rollout.available_replicas", int64(data.deployment.Status.AvailableReplicas))
+	attrs.PutInt("grafana.sdlc.rollout.unavailable_replicas", int64(data.deployment.Status.UnavailableReplicas))
+	if data.replicaSet != nil {
+		attrs.PutStr("k8s.replicaset.name", data.replicaSet.Name)
+		attrs.PutStr("k8s.replicaset.uid", string(data.replicaSet.UID))
+	}
+	attrs.PutStr("k8s.container.name", image.container)
+	attrs.PutBool("grafana.sdlc.container.init", image.init)
+	attrs.PutStr("grafana.sdlc.container.image.reference", image.reference)
+	attrs.PutStr("container.image.name", image.imageName)
+	if image.tag != "" {
+		attrs.PutEmptySlice("container.image.tags").AppendEmpty().SetStr(image.tag)
+	}
+	if image.imageID != "" {
+		attrs.PutStr("container.image.id", image.imageID)
+	}
+	if image.digest != "" {
+		attrs.PutEmptySlice("container.image.repo_digests").AppendEmpty().SetStr(image.imageName + "@" + image.digest)
 	}
 }
 

@@ -1,4 +1,4 @@
-package kubernetes_rollouts
+package k8s_workloads
 
 import (
 	"context"
@@ -268,9 +268,9 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 		}
 		resolvedImage := image
 		if err := c.opts.emit(ctx, func() eventBatch {
-			return buildEventBatch(eventData{
+			return buildImageResolvedEventBatch(eventData{
 				clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: deployment,
-				replicaSet: activeRS, revision: revision, phase: phaseImageResolved, images: []imageData{resolvedImage},
+				replicaSet: activeRS, revision: revision, images: []imageData{resolvedImage},
 			})
 		}); err != nil {
 			return err

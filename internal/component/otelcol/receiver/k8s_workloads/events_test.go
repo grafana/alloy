@@ -1,4 +1,4 @@
-package kubernetes_rollouts
+package k8s_workloads
 
 import (
 	"context"
@@ -159,17 +159,21 @@ func TestBuildImageResolvedEventBatch(t *testing.T) {
 	}
 	data := eventData{
 		clusterUID: "cluster-uid", deployment: deployment, revision: "7",
-		phase: phaseImageResolved, images: images,
+		images: images,
 	}
 
-	records := buildEventBatch(data).logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	records := buildImageResolvedEventBatch(data).logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
 	require.Equal(t, 2, records.Len())
 	for i, image := range images {
 		record := records.At(i)
-		require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.image_resolved", record.EventName())
+		require.Equal(t, imageResolvedEventName, record.EventName())
 		requireAttributeString(t, record.Attributes(), "k8s.container.name", image.container)
 		requireAttributeString(t, record.Attributes(), "container.image.name", image.imageName)
 		_, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
+		require.False(t, ok)
+		_, ok = record.Attributes().Get("deployment.status")
+		require.False(t, ok)
+		_, ok = record.Attributes().Get("grafana.sdlc.rollout.phase")
 		require.False(t, ok)
 	}
 }
@@ -256,7 +260,7 @@ func TestReconcileLifecycleAndRetry(t *testing.T) {
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
 	require.Equal(t, []string{
 		"grafana.sdlc.k8s.deployment.rollout.started",
-		"grafana.sdlc.k8s.deployment.rollout.image_resolved",
+		imageResolvedEventName,
 		"grafana.sdlc.k8s.deployment.observed",
 	}, eventNames)
 

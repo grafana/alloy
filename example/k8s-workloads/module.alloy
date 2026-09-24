@@ -18,7 +18,7 @@ declare "deployment_rollouts" {
 		comment = "List of OpenTelemetry log consumers that receive rollout events."
 	}
 
-	otelcol.receiver.kubernetes_rollouts "default" {
+	otelcol.receiver.k8s_workloads "default" {
 		cluster_name = argument.cluster_name.value
 		cluster_uid  = argument.cluster_uid.value
 

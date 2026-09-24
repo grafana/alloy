@@ -1,4 +1,4 @@
-otelcol.receiver.kubernetes_rollouts "default" {
+otelcol.receiver.k8s_workloads "default" {
 	cluster_name = sys.env("K8S_CLUSTER_NAME")
 
 	output {

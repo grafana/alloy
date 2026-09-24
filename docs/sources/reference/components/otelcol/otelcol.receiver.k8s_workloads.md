@@ -1,16 +1,16 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.kubernetes_rollouts/
-description: Learn about otelcol.receiver.kubernetes_rollouts
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.k8s_workloads/
+description: Learn about otelcol.receiver.k8s_workloads
 labels:
   stage: experimental
   products:
     - oss
-title: otelcol.receiver.kubernetes_rollouts
+title: otelcol.receiver.k8s_workloads
 ---
 
-# `otelcol.receiver.kubernetes_rollouts`
+# `otelcol.receiver.k8s_workloads`
 
-`otelcol.receiver.kubernetes_rollouts` watches Kubernetes Deployments and emits OpenTelemetry log events for deployment inventory and rollout activity.
+`otelcol.receiver.k8s_workloads` watches Kubernetes Deployments and emits OpenTelemetry log events for deployment inventory and rollout activity.
 The component reports the current state of Deployments, their deletion, and when rollouts start, finish, stall, or are superseded.
 It also emits an event when a container image digest becomes available from Pod status.
 
@@ -24,7 +24,7 @@ This component is experimental and its event schema can change without notice.
 ## Usage
 
 ```alloy
-otelcol.receiver.kubernetes_rollouts "<LABEL>" {
+otelcol.receiver.k8s_workloads "<LABEL>" {
   output {
     logs = <OTEL_LOG_CONSUMER_LIST>
   }
@@ -33,7 +33,7 @@ otelcol.receiver.kubernetes_rollouts "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.receiver.kubernetes_rollouts`:
+You can use the following arguments with `otelcol.receiver.k8s_workloads`:
 
 | Name           | Type     | Description                                      | Default | Required |
 | -------------- | -------- | ------------------------------------------------ | ------- | -------- |
@@ -44,7 +44,7 @@ When `cluster_uid` is empty, the component uses the UID of the `kube-system` Nam
 
 ## Blocks
 
-You can use the following blocks with `otelcol.receiver.kubernetes_rollouts`:
+You can use the following blocks with `otelcol.receiver.k8s_workloads`:
 
 {{< docs/alloy-config >}}
 
@@ -142,7 +142,7 @@ Grant its service account the following permissions:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: alloy-kubernetes-rollouts
+  name: alloy-k8s-workloads
 rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
@@ -179,9 +179,8 @@ They should remove that entry when they receive the corresponding `deleted` even
 
 ### Rollout lifecycle events
 
-The component emits one log record for each Deployment rollout lifecycle event, except for `image_resolved`.
+The component emits one log record for each Deployment rollout lifecycle event.
 Each Deployment-scoped event contains a `grafana.sdlc.deployment.containers` array with the configured reference and available resolved image information for every regular and init container.
-The component emits `image_resolved` once for each newly observed combination of container and digest.
 
 Event names have the form `grafana.sdlc.k8s.deployment.rollout.<PHASE>`.
 The supported phases are:
@@ -190,7 +189,6 @@ The supported phases are:
 * `succeeded`: All desired replicas for the generation are updated and available.
 * `stalled`: Kubernetes reports `ProgressDeadlineExceeded` or `ReplicaSetCreateError`.
 * `superseded`: A new generation replaces a rollout that was still in progress.
-* `image_resolved`: Pod status exposes a digest that wasn't previously observed for the rollout.
 
 Every record contains these resource attributes:
 
@@ -200,14 +198,22 @@ Every record contains these resource attributes:
 * `k8s.deployment.name`
 * `k8s.deployment.uid`
 
-`image_resolved` records include `k8s.container.name`, `container.image.name`, `container.image.tags`, `container.image.id`, and `container.image.repo_digests` when those values are available.
-The original image reference for an `image_resolved` record is available as `grafana.sdlc.container.image.reference`.
-
 `grafana.sdlc.event.id` is deterministic for a rollout and phase.
-For `image_resolved`, it is deterministic for the rollout, container, and digest.
 For `observed`, it is deterministic for the complete inventory snapshot.
 For `deleted`, it is deterministic for the Deployment UID.
 Consumers can use it as a deduplication key.
+
+### Container image resolution events
+
+The component emits a `grafana.sdlc.k8s.deployment.rollout.container.image_resolved` event once for each newly observed combination of container and digest in a rollout.
+The event remains associated with the rollout through `deployment.id`, `grafana.sdlc.deployment.generation`, and `grafana.sdlc.deployment.revision`.
+Image resolution isn't a rollout phase, so the event doesn't set `deployment.status` or `grafana.sdlc.rollout.phase`.
+
+Each image resolution event contains the same Kubernetes resource attributes as the rollout lifecycle events.
+It also includes `k8s.container.name`, `container.image.name`, `container.image.tags`, `container.image.id`, and `container.image.repo_digests` when those values are available.
+The original image reference is available as `grafana.sdlc.container.image.reference`.
+
+The `grafana.sdlc.event.id` attribute is deterministic for the rollout, container, and digest.
 
 ## Future scope
 
@@ -235,20 +241,20 @@ Downstream consumers should deduplicate using `grafana.sdlc.event.id`.
 
 ## Exported fields
 
-`otelcol.receiver.kubernetes_rollouts` doesn't export any fields.
+`otelcol.receiver.k8s_workloads` doesn't export any fields.
 
 ## Component health
 
-`otelcol.receiver.kubernetes_rollouts` is reported as unhealthy if its configuration is invalid.
+`otelcol.receiver.k8s_workloads` is reported as unhealthy if its configuration is invalid.
 Runtime Kubernetes API and downstream delivery errors are logged and retried.
 
 ## Debug information
 
-`otelcol.receiver.kubernetes_rollouts` doesn't expose component-specific debug information.
+`otelcol.receiver.k8s_workloads` doesn't expose component-specific debug information.
 
 ## Debug metrics
 
-`otelcol.receiver.kubernetes_rollouts` doesn't expose component-specific debug metrics.
+`otelcol.receiver.k8s_workloads` doesn't expose component-specific debug metrics.
 
 ## Examples
 
@@ -260,7 +266,7 @@ OTLP/HTTP endpoint, or a Grafana Cloud OTLP/HTTP endpoint.
 This example logs rollout events with the OpenTelemetry debug exporter:
 
 ```alloy
-otelcol.receiver.kubernetes_rollouts "default" {
+otelcol.receiver.k8s_workloads "default" {
   cluster_name = "production-eu"
 
   clustering {
@@ -282,7 +288,7 @@ otelcol.exporter.debug "rollouts" {
 This example sends only rollout events to a configurable OTLP/HTTP endpoint:
 
 ```alloy
-otelcol.receiver.kubernetes_rollouts "default" {
+otelcol.receiver.k8s_workloads "default" {
   cluster_name = sys.env("K8S_CLUSTER_NAME")
 
   output {
@@ -319,14 +325,14 @@ The service account must have the cluster-scoped permissions described in
 [Kubernetes permissions](#kubernetes-permissions).
 
 For a complete custom endpoint configuration, use
-`example/kubernetes-rollouts/local-api.alloy`.
+`example/k8s-workloads/local-api.alloy`.
 
 ### Send events to Grafana Cloud
 
 This example sends rollout events to a Grafana Cloud API that accepts OTLP/HTTP logs at `/v1/logs`:
 
 ```alloy
-otelcol.receiver.kubernetes_rollouts "default" {
+otelcol.receiver.k8s_workloads "default" {
   cluster_name = sys.env("K8S_CLUSTER_NAME")
 
   clustering {
@@ -383,6 +389,6 @@ The queue uses `otelcol.storage.file` with `fsync` enabled so accepted batches s
 When you run {{< param "PRODUCT_NAME" >}} in Kubernetes, mount the storage path on persistent storage
 if batches must also survive Pod replacement or rescheduling.
 
-For a reusable opt-in custom component, use the module in `example/kubernetes-rollouts/module.alloy`.
+For a reusable opt-in custom component, use the module in `example/k8s-workloads/module.alloy`.
 Importing the file only defines the custom component; instantiate `deployment_rollouts` to start the watcher.
-For a complete Grafana Cloud configuration, use `example/kubernetes-rollouts/grafana-cloud.alloy`.
+For a complete Grafana Cloud configuration, use `example/k8s-workloads/grafana-cloud.alloy`.

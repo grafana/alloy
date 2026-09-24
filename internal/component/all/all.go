@@ -123,8 +123,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/googlecloudpubsub"       // Import otelcol.receiver.googlecloudpubsub
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/influxdb"                // Import otelcol.receiver.influxdb
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/jaeger"                  // Import otelcol.receiver.jaeger
+	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/k8s_workloads"           // Import otelcol.receiver.k8s_workloads
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"                   // Import otelcol.receiver.kafka
-	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/kubernetes_rollouts"     // Import otelcol.receiver.kubernetes_rollouts
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/loki"                    // Import otelcol.receiver.loki
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/nginx"                   // Import otelcol.receiver.nginx
 	_ "github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"                    // Import otelcol.receiver.otlp

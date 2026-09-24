@@ -1,5 +1,5 @@
-// Package kubernetes_rollouts provides the otelcol.receiver.kubernetes_rollouts component.
-package kubernetes_rollouts
+// Package k8s_workloads provides the otelcol.receiver.k8s_workloads component.
+package k8s_workloads
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelcol.receiver.kubernetes_rollouts",
+		Name:      "otelcol.receiver.k8s_workloads",
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -32,7 +32,7 @@ func init() {
 	})
 }
 
-// Arguments configures otelcol.receiver.kubernetes_rollouts.
+// Arguments configures otelcol.receiver.k8s_workloads.
 type Arguments struct {
 	ClusterName string `alloy:"cluster_name,attr,optional"`
 	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
@@ -72,7 +72,7 @@ var (
 	_ cluster.Component   = (*Component)(nil)
 )
 
-// New creates a new otelcol.receiver.kubernetes_rollouts component.
+// New creates a new otelcol.receiver.k8s_workloads component.
 func New(opts component.Options, args Arguments) (*Component, error) {
 	clusterData, err := opts.GetServiceData(cluster.ServiceName)
 	if err != nil {
@@ -111,7 +111,7 @@ func (c *Component) Run(ctx context.Context) error {
 			if err == nil || ctx.Err() != nil {
 				return nil
 			}
-			c.opts.Logger.Error("Kubernetes rollout watcher stopped; retrying", "err", err)
+			c.opts.Logger.Error("Kubernetes workload watcher stopped; retrying", "err", err)
 			timer := time.NewTimer(time.Second)
 			select {
 			case <-ctx.Done():
