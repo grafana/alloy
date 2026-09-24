@@ -40,9 +40,11 @@ To configure Loki pipeline resiliency, you:
 
 When `loki.write` can't reach its configured endpoint, it retries each batch with exponential backoff.
 The wait starts at `min_backoff_period` and doubles toward `max_backoff_period`, for at most `max_backoff_retries` attempts.
-`loki.write` randomizes each wait within the current backoff range, so the total isn't fixed.
 
-With the defaults of `"500ms"`, `"5m"`, and `10`, `loki.write` retries a batch for roughly 9 to 13 minutes, then drops it.
+With the defaults of `"500ms"`, `"5m"`, and `10`, the configured waits add up to 511.5 seconds, or about 8.5 minutes.
+Elapsed time runs longer than that total for two reasons.
+`loki.write` randomizes each wait within the current backoff range.
+Each attempt can also take up to `remote_timeout`, which defaults to `"10s"`.
 What happens upstream while that retry loop runs depends on which component is feeding it:
 
 - **`loki.source.file`**: stops reading new lines from the tailed file while the pipeline is stalled.
@@ -65,13 +67,16 @@ The result is a silent, incremental loss of log lines proportional to how long t
 
 Three configurations trade off differently between ingestion stalls, durability, and exposure to the ingestion-age limits Loki applies:
 
-| Configuration                     | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect? |
-| --------------------------------- | ----------------- | --------------------------------------------------- | ----------------------------------- |
-| Default backoff, no WAL           | Yes               | No                                                  | N/A, data already dropped           |
-| `max_backoff_retries = 0`, no WAL | Yes, indefinitely | No                                                  | Yes                                 |
-| WAL enabled                       | No                | Yes, within `max_segment_age`                       | Yes                                 |
+| Configuration                          | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect? |
+| -------------------------------------- | ----------------- | --------------------------------------------------- | ----------------------------------- |
+| Default backoff, no WAL                | Yes               | No                                                  | N/A, data already dropped           |
+| `max_backoff_retries = 0`, no WAL      | Yes, indefinitely | No                                                  | Yes                                 |
+| WAL enabled, default backoff           | No                | Only until retries are exhausted                    | Yes                                 |
+| WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`                       | Yes                                 |
 
-The WAL is the only configuration that keeps ingestion moving and survives a restart.
+The WAL alone doesn't guarantee durability.
+When an endpoint exhausts `max_backoff_retries`, `loki.write` drops the batch and marks that data consumed in the WAL, so the WAL never replays it.
+Set `max_backoff_retries` to `0` alongside the WAL to hold data for the full `max_segment_age` window.
 
 ## Tune the retry behavior
 
@@ -117,8 +122,11 @@ This means:
   This is true for a component with a single `endpoint` block.
   All endpoints in one `loki.write` component share a single WAL marker file.
   With more than one endpoint, a restart can overwrite the recorded read position.
+- The WAL doesn't extend the retry window on its own.
+  An endpoint that exhausts `max_backoff_retries` drops the batch and reports that data as consumed, which lets the WAL reclaim the segment.
+  Pair the WAL with `max_backoff_retries = 0` so that no batch is ever abandoned.
 - The `queue_config` block, when used without the WAL, bounds the in-memory send queue by size in bytes.
-  The `capacity` argument defaults to `10MiB` per shard, so the total ceiling is `capacity` multiplied by `min_shards`.
+  The `capacity` argument defaults to `10MiB` per shard, so the send-queue budget is `capacity` multiplied by `min_shards`.
   It doesn't add durability, and changing any `queue_config` argument requires `--stability.level=experimental`.
   The WAL is the piece that removes the stall and drop behavior, not `queue_config` on its own.
 
@@ -131,6 +139,8 @@ To enable it, complete the following steps:
    loki.write "<LABEL>" {
      endpoint {
        url = "<LOKI_URL>"
+
+       max_backoff_retries = 0
      }
 
      wal {
@@ -149,9 +159,24 @@ To enable it, complete the following steps:
      Set this value to cover the longest outage you need to survive.
      {{< param "PRODUCT_NAME" >}} deletes segments older than this threshold whether or not Loki accepted them.
 
+   The `max_backoff_retries = 0` setting is required for the WAL to hold data for the full `max_segment_age` window.
+   Leave `retry_on_http_429` at its default of `true` so that rate-limited batches are retried instead of dropped.
+
 1. Confirm that the storage path {{< param "PRODUCT_NAME" >}} uses has room for `max_segment_age` worth of logs at your normal ingest rate.
    At an ingest rate of 5 MB/s with `max_segment_age` set to `4h`, budget roughly 72 GB.
    The WAL directory lives inside a component-specific directory relative to that path, and you can't configure it separately.
+
+1. Confirm that the WAL is active after {{< param "PRODUCT_NAME" >}} reloads the configuration.
+   {{< param "PRODUCT_NAME" >}} exports the following metrics only while the WAL is enabled, so their presence confirms the block took effect.
+
+   | Metric                                         | Description                                                                           |
+   | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+   | `loki_write_wal_watcher_running`               | Number of WAL watchers running. A value of `0` means the WAL isn't active.            |
+   | `loki_write_wal_writer_last_written_timestamp` | Latest timestamp written to the WAL. This value advances while entries arrive.        |
+   | `loki_write_last_read_timestamp`               | Latest timestamp read from the WAL and queued for delivery, labeled by endpoint `id`. |
+
+   During an outage the written timestamp keeps advancing while the read timestamp stalls.
+   The gap between the two is the size of your backlog in time.
 
 The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout`.
 There's no argument for the WAL directory and no maximum size argument.
@@ -174,6 +199,10 @@ loki.write "default" {
 }
 ```
 
+Replace the following:
+
+- _`<LOKI_URL>`_: The full URL of the Loki endpoint where you send logs.
+
 The WAL doesn't remove the ingestion limits Loki applies to old data.
 Refer to [Practical limits, even with the WAL](#practical-limits-even-with-the-wal) for details.
 
@@ -191,9 +220,20 @@ To monitor the pipeline for dropped log entries, complete the following steps:
 
    | Metric                             | Description                                                                                    |
    | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-   | `loki_write_dropped_entries_total` | Number of log entries dropped after all retries failed, labeled by `reason`.                   |
-   | `loki_write_dropped_bytes_total`   | Number of bytes dropped after all retries failed, labeled by `reason`.                         |
+   | `loki_write_dropped_entries_total` | Number of log entries dropped, labeled by `reason`.                                            |
+   | `loki_write_dropped_bytes_total`   | Number of bytes dropped, labeled by `reason`.                                                  |
    | `loki_write_batch_retries_total`   | Number of batch send retries. A sustained increase means the endpoint is becoming unreachable. |
+
+   Exhausted retries are only one of the drop paths.
+   The `reason` label identifies which one applied.
+
+   | `reason`          | Cause                                                                                             |
+   | ----------------- | ------------------------------------------------------------------------------------------------- |
+   | `batch_too_large` | Loki rejected the batch as too large on the final attempt.                                        |
+   | `ingester_error`  | The endpoint exhausted `max_backoff_retries`, or the batch couldn't be built.                     |
+   | `queue_is_full`   | The send queue was full and `block_on_overflow` is `false`.                                       |
+   | `rate_limited`    | Loki rate-limited the batch, either on the final attempt or immediately when `retry_on_http_429` is `false`. |
+   | `stream_limited`  | The entry would have exceeded `max_streams`.                                                      |
 
    Alert on any increase in the two dropped-data counters, because a healthy pipeline never increments them.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
@@ -212,7 +252,12 @@ Two limits determine how much outage a WAL-backed pipeline can actually ride out
 - Regardless of sharding behavior, Loki applies a hard outer bound on entry age.
   That bound is on the order of days, not hours.
 
-In practice, the WAL buys you resiliency across ingestion stalls and outages shorter than `max_segment_age`.
+In practice, two independent limits apply, and the shorter one decides the outcome.
+{{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`, and only when you pair the WAL with `max_backoff_retries = 0`.
+Loki accepts the replayed entries only if they still fall inside its acceptance window.
+
+An outage shorter than `max_segment_age` can still end with rejected entries when that acceptance window is shorter.
+With the default retry settings, the effective limit is the retry window instead, which is shorter than both.
 
 The acceptance window isn't controlled from the {{< param "PRODUCT_NAME" >}} side.
 Refer to [Automatic stream sharding][loki-ooo] in the Loki documentation for your specific Loki or Grafana Cloud tenant configuration.
@@ -220,16 +265,18 @@ Refer to [Automatic stream sharding][loki-ooo] in the Loki documentation for you
 ## Resource consumption during an outage
 
 What `loki.write` consumes during an outage depends on whether you enable the WAL.
-The WAL trades in-memory buffering for disk usage, and each has its own ceiling:
+The WAL trades in-memory buffering for disk usage, and the two are bounded differently:
 
 - **Disk**: the WAL doesn't grow for the full length of an outage.
   A cleanup routine deletes any segment older than `max_segment_age`, whether or not Loki accepted it.
   The disk footprint settles at roughly `max_segment_age` worth of logs at your ingest rate.
   Age is the only eviction policy available.
   There's no maximum size argument and no ring buffer.
-- **Memory**: without the WAL, `queue_config` bounds the in-memory send queue by size in bytes.
-  `capacity` defaults to `10MiB` and `min_shards` defaults to `1`, so the default ceiling is `10MiB`.
-  Raising `min_shards` multiplies that ceiling, because each shard gets its own queue.
+- **Memory**: without the WAL, `queue_config` bounds the send queue rather than process memory as a whole.
+  `capacity` defaults to `10MiB` and `min_shards` defaults to `1`, so the default send-queue budget is `10MiB`.
+  Raising `min_shards` multiplies that budget, because each shard gets its own queue.
+  Each shard also holds one in-progress batch per tenant outside that budget, so memory grows with the number of tenants.
+  Every shard keeps reusable encoding buffers sized from `batch_size` as well.
   The default `block_on_overflow` value of `true` makes `loki.write` wait for space once the queue is full, which slows the components feeding it.
   Setting `block_on_overflow` to `false` instead drops each newly arriving entry while the queue stays full.
   Nothing evicts entries that are already queued.
@@ -243,7 +290,8 @@ Three factors determine whether that drain succeeds:
   Drain speed matters, not just buffering capacity.
 - **Rate limiting**: a burst of buffered data replayed all at once can trip per-tenant ingestion limits.
   Watch for rate-limiting responses from Loki during backlog drain.
-  Some of the "successfully buffered" data is then rejected anyway.
+  Leave `retry_on_http_429` at its default of `true`, because setting it to `false` drops rate-limited batches immediately.
+  A dropped batch is reported as consumed, so the WAL doesn't replay it.
 - **Drain rate**: `loki.write` has no control over the rate at which it drains a backlog.
   Drain speed follows from the retry and backoff arguments and from `min_shards`, which sets how many shards send concurrently.
   `min_shards` is a `queue_config` argument, so changing it requires the experimental stability level.
