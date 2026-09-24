@@ -199,6 +199,21 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
+// defaultEnabledCollectors is a replacement allowlist, not additive, so this is the only collector enabled by default here.
+var defaultEnabledCollectors = []string{"stat_statements"}
+
+// resolveExporterArgs injects defaultEnabledCollectors after decoding, since SetToDefault runs before the user's block is decoded onto it.
+func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgres.Arguments {
+	exporterArgs := exporter_postgres.DefaultArguments
+	if userBlock != nil {
+		exporterArgs = exporter_postgres.Arguments(*userBlock)
+	}
+	if !exporterArgs.DisableDefaultMetrics && len(exporterArgs.EnabledCollectors) == 0 {
+		exporterArgs.EnabledCollectors = defaultEnabledCollectors
+	}
+	return exporterArgs
+}
+
 func (a *Arguments) SetToDefault() {
 	*a = defaultArguments()
 }
@@ -647,10 +662,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := exporter_postgres.DefaultArguments
-		if c.args.PrometheusExporter != nil {
-			exporterArgs = exporter_postgres.Arguments(*c.args.PrometheusExporter)
-		}
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
 		dsn := string(inst.cfg.dsn)
 
 		e := pg_exporter.NewExporter(
