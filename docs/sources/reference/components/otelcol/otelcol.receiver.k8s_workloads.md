@@ -50,13 +50,13 @@ You can use the following blocks with `otelcol.receiver.k8s_workloads`:
 
 | Block                                       | Description                                                  | Required |
 | ------------------------------------------- | ------------------------------------------------------------ | -------- |
-| [`client`][client]                          | Configures the Kubernetes client.                            | no       |
-| `client` > [`authorization`][authorization] | Configures generic authorization to the endpoint.            | no       |
-| `client` > [`basic_auth`][basic_auth]       | Configures basic authentication to the endpoint.             | no       |
-| `client` > [`oauth2`][oauth2]               | Configures OAuth 2.0 authentication to the endpoint.         | no       |
-| `client` > [`tls_config`][tls_config]       | Configures TLS settings for connecting to the endpoint.      | no       |
-| [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher. | no       |
-| [`output`][output]                          | Configures where to send rollout events.                     | yes      |
+| [`client`][client]                          | Configures the Kubernetes client.                                      | no       |
+| `client` > [`authorization`][authorization] | Configures generic authorization for Kubernetes API requests.          | no       |
+| `client` > [`basic_auth`][basic_auth]       | Configures basic authentication for Kubernetes API requests.           | no       |
+| `client` > [`oauth2`][oauth2]               | Configures OAuth 2.0 authentication for Kubernetes API requests.       | no       |
+| `client` > [`tls_config`][tls_config]       | Configures TLS for connections to the Kubernetes API server.           | no       |
+| [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
+| [`output`][output]                          | Configures where to send rollout events.                               | yes      |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -72,6 +72,8 @@ You can use the following blocks with `otelcol.receiver.k8s_workloads`:
 
 The `client` block configures the Kubernetes client.
 If the `client` block isn't provided, the component uses in-cluster configuration and the service account of the {{< param "PRODUCT_NAME" >}} Pod.
+The `authorization`, `basic_auth`, `oauth2`, and `tls_config` blocks described in the following sections must be nested inside `client`.
+They configure requests to the Kubernetes API server and don't configure the component's `output` destination.
 
 The following arguments are supported:
 
@@ -99,19 +101,19 @@ At most one of the following can be provided:
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `authorization`
+#### `authorization`
 
 {{< docs/shared lookup="reference/components/authorization-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `basic_auth`
+#### `basic_auth`
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `oauth2`
+#### `oauth2`
 
 {{< docs/shared lookup="reference/components/oauth2-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-### `tls_config`
+#### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
