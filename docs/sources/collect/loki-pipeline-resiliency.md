@@ -55,17 +55,22 @@ What happens upstream while that retry loop runs depends on which component is f
   If the file rotates twice during the stall, the file created by the first rotation is replaced before {{< param "PRODUCT_NAME" >}} ever opens it.
   The lines written to that file are lost.
   There's no buffering of file-read position beyond the entries already handed to the pipeline.
-- **Request-accepting components**: components such as `loki.source.api` hand each batch to the pipeline over an unbuffered channel.
+- **Request-accepting components**: components such as `loki.source.api` hand each batch directly to the pipeline, with no buffer in between.
   While `loki.write` is stalled, that handoff blocks and the HTTP request stays open.
   The component returns a `503` status once the request context ends, which happens when the client disconnects or gives up.
   Senders see slow requests and eventual failures rather than accepted writes.
 
-In both cases, if `loki.write` exhausts its retries and drops a batch, the read position has already advanced.
-Positions advance when a line enters the pipeline, not when it's confirmed delivered.
-`loki.source.file` flushes the position to disk periodically rather than on every line.
+The pipeline has no mechanism to report delivery failure back to the source component, so what a dropped batch costs you depends on the source.
 
-The pipeline has no mechanism to report delivery failure back to the source component.
-The result is a silent, incremental loss of log lines proportional to how long the outage lasts, rather than an all-or-nothing failure.
+For file tailers, a dropped batch is unrecoverable and invisible.
+`loki.source.file` advances its read position when a line enters the pipeline, not when Loki confirms delivery, and it flushes that position to disk periodically.
+By the time `loki.write` gives up, the position has already moved past those lines.
+The result is a silent, incremental loss proportional to how long the outage lasts, rather than an all-or-nothing failure.
+
+For request-accepting components, there's no stored position, and the sender holds the data.
+A sender that receives a `503` knows the write didn't land and can retry it.
+A sender that receives a success response has no such signal, because the component answers as soon as the pipeline accepts the batch.
+`loki.write` can still drop that batch afterward, so treat an accepted write as queued rather than delivered.
 
 ## Choose an approach
 
@@ -76,7 +81,7 @@ Four configurations trade off differently between ingestion stalls, durability, 
 | Default backoff, no WAL                | Yes               | No                                                  | N/A, data already dropped           |
 | `max_backoff_retries = 0`, no WAL      | Yes, indefinitely | No                                                  | Yes                                 |
 | WAL enabled, default backoff           | No                | Only until retries are exhausted                    | Yes                                 |
-| WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`                       | Yes                                 |
+| WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`, single endpoint only | Yes                                 |
 
 The WAL alone doesn't guarantee durability.
 When an endpoint exhausts `max_backoff_retries`, `loki.write` drops the batch and marks that data consumed in the WAL, so the WAL never replays it.
@@ -108,6 +113,8 @@ To tune the retry behavior of a `loki.write` endpoint, complete the following st
    - _`<LOKI_URL>`_: The full URL of the Loki endpoint where you send logs.
 
 1. If you have more than one endpoint to write logs to, repeat the `endpoint` block for additional endpoints.
+   If you also plan to enable the WAL, define a separate `loki.write` component for each endpoint instead.
+   Refer to [Enable the write-ahead log](#enable-the-write-ahead-log) for the reason.
 
 Unbounded retry doesn't buffer to disk.
 If {{< param "PRODUCT_NAME" >}} restarts during the outage, in-memory data is still lost.
@@ -123,9 +130,11 @@ This means:
 - Ingestion into the pipeline never stalls waiting on the remote endpoint.
   `loki.source.*` components keep reading and advancing normally.
 - Buffered entries survive an {{< param "PRODUCT_NAME" >}} process restart during the outage, because they're on disk rather than only in memory.
-  This is true for a component with a single `endpoint` block.
-  All endpoints in one `loki.write` component share a single WAL marker file.
-  With more than one endpoint, a restart can overwrite the recorded read position.
+  This holds only for a component with a single `endpoint` block.
+  All endpoints in one `loki.write` component share a single WAL marker file, and each endpoint advances it from its own delivery progress alone.
+  A healthy endpoint can therefore mark a segment that still holds entries an unreachable endpoint hasn't sent.
+  After a restart, the watcher for the unreachable endpoint resumes after the marked segment and never replays those entries.
+  Define one WAL-enabled `loki.write` component per endpoint so that each one keeps its own marker.
 - The WAL is only as durable as the storage behind it.
   `loki.write` discards the error when a WAL write fails.
   A storage path that's full or otherwise unavailable drops the entry after the source component has already advanced its read position.
@@ -271,7 +280,8 @@ Two separate Loki limits reject old entries, and they're configured independentl
   You can override `reject_old_samples` and `reject_old_samples_max_age` per tenant through the Loki runtime overrides file.
 
 In practice, three limits apply, and the shortest one decides the outcome.
-{{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`, and only when you pair the WAL with `max_backoff_retries = 0`.
+{{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`.
+That's true only when you pair the WAL with `max_backoff_retries = 0` and one endpoint per component.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
 Compare `max_segment_age` against the cluster `max_chunk_age` and the effective `reject_old_samples_max_age` for your tenant.
