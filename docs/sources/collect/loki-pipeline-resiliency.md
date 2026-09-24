@@ -330,8 +330,8 @@ Three factors determine whether that drain succeeds:
   Watch for rate-limiting responses from Loki during backlog drain.
   Leave `retry_on_http_429` at its default of `true`, because setting it to `false` drops rate-limited batches immediately.
   A dropped batch is reported as consumed, so the WAL doesn't replay it.
-- **Drain rate**: `loki.write` has no control over the rate at which it drains a backlog.
-  Drain speed follows from the retry and backoff arguments and from `min_shards`, which sets how many shards send concurrently.
+- **Drain rate**: `loki.write` has no dedicated throttle for WAL replay.
+  Drain throughput still follows from the retry and backoff arguments, from `batch_wait` and `batch_size`, and from `min_shards`, which sets how many shards send concurrently.
   `min_shards` is a `queue_config` argument, so changing it requires the experimental stability level.
   The `drain_timeout` arguments on the `wal` and `queue_config` blocks both default to `"15s"`.
   They cap how long a drain may take at shutdown rather than throttling a drain in normal operation.
