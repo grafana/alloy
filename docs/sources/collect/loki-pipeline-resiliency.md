@@ -19,7 +19,7 @@ To configure Loki pipeline resiliency, you:
 
 > **EXPERIMENTAL**: The WAL feature of `loki.write` is [experimental][].
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+> The `wal` block itself isn't gated behind the `stability.level` [flag][], but changing any `queue_config` argument is.
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 [experimental]: https://grafana.com/docs/release-life-cycle/
@@ -55,7 +55,10 @@ What happens upstream while that retry loop runs depends on which component is f
   If the file rotates twice during the stall, the file created by the first rotation is replaced before {{< param "PRODUCT_NAME" >}} ever opens it.
   The lines written to that file are lost.
   There's no buffering of file-read position beyond the entries already handed to the pipeline.
-- **Request-accepting components**: components such as `loki.source.api` start timing out incoming requests once they can no longer hand data off to a stalled `loki.write`.
+- **Request-accepting components**: components such as `loki.source.api` hand each batch to the pipeline over an unbuffered channel.
+  While `loki.write` is stalled, that handoff blocks and the HTTP request stays open.
+  The component returns a `503` status once the request context ends, which happens when the client disconnects or gives up.
+  Senders see slow requests and eventual failures rather than accepted writes.
 
 In both cases, if `loki.write` exhausts its retries and drops a batch, the read position has already advanced.
 Positions advance when a line enters the pipeline, not when it's confirmed delivered.
@@ -125,7 +128,7 @@ This means:
   With more than one endpoint, a restart can overwrite the recorded read position.
 - The WAL is only as durable as the storage behind it.
   `loki.write` discards the error when a WAL write fails.
-  A full or unwritable storage path drops the entry after the source component has already advanced its read position.
+  A storage path that's full or otherwise unavailable drops the entry after the source component has already advanced its read position.
   Watch the {{< param "PRODUCT_NAME" >}} logs for the `failed to write entry` message, which is the only signal that this happened.
 - The WAL doesn't extend the retry window on its own.
   An endpoint that exhausts `max_backoff_retries` drops the batch and reports that data as consumed, which lets the WAL reclaim the segment.
@@ -164,14 +167,14 @@ To enable it, complete the following steps:
    - _`<MAX_SEGMENT_AGE>`_: How long a WAL segment can live before {{< param "PRODUCT_NAME" >}} deletes it.
      The default is `1h`.
      Set this value to cover the longest outage you need to survive.
-     {{< param "PRODUCT_NAME" >}} deletes segments older than this threshold whether or not Loki accepted them.
+     {{< param "PRODUCT_NAME" >}} deletes segments older than this threshold whether or not Loki accepted them, apart from the highest-numbered segment.
 
    The `max_backoff_retries = 0` setting is required for the WAL to hold data for the full `max_segment_age` window.
    Leave `retry_on_http_429` at its default of `true` so that rate-limited batches are retried instead of dropped.
 
 1. Confirm that the storage path {{< param "PRODUCT_NAME" >}} uses has room for `max_segment_age` worth of logs at your normal ingest rate.
    At an ingest rate of 5 MB/s with `max_segment_age` set to `4h`, budget roughly 72 GB.
-   The WAL directory lives inside a component-specific directory relative to that path, and you can't configure it separately.
+   The WAL directory sits inside a component-specific directory relative to that path, and you can't configure it separately.
 
 1. Confirm that the WAL is active after {{< param "PRODUCT_NAME" >}} reloads the configuration.
    {{< param "PRODUCT_NAME" >}} exports the following metrics only while the WAL is enabled, so their presence confirms the block took effect.
@@ -265,17 +268,18 @@ Two separate Loki limits reject old entries, and they're configured independentl
   If you see this rejection regularly, raise it with support rather than treating it as expected.
 - **Absolute sample age**: Loki rejects an entry older than `reject_old_samples_max_age`, with `reason=greater_than_max_sample_age`.
   This limit applies while `reject_old_samples` is `true`, which is the default, and the maximum age defaults to one week.
-  You can configure both settings per tenant through the Loki runtime overrides file.
+  You can override `reject_old_samples` and `reject_old_samples_max_age` per tenant through the Loki runtime overrides file.
 
 In practice, three limits apply, and the shortest one decides the outcome.
 {{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`, and only when you pair the WAL with `max_backoff_retries = 0`.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
-Compare `max_segment_age` against the effective `max_chunk_age` and `reject_old_samples_max_age` values for your tenant.
+Compare `max_segment_age` against the cluster `max_chunk_age` and the effective `reject_old_samples_max_age` for your tenant.
 Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
 
 Neither limit is controlled from the {{< param "PRODUCT_NAME" >}} side.
-Refer to [limits_config][loki-limits] for the effective values in your Loki or Grafana Cloud tenant.
+`reject_old_samples_max_age` is set in [`limits_config`][loki-limits], so a tenant override can change it.
+`max_chunk_age` is set in the Loki `ingester` block and applies to the whole cluster.
 
 Refer to [Enforce rate limits and push request validation][loki-validation] for what each rejection reason means.
 Refer to [Automatic stream sharding][loki-ooo] for how Grafana Cloud keeps the out-of-order window from surfacing.
@@ -286,8 +290,9 @@ What `loki.write` consumes during an outage depends on whether you enable the WA
 The WAL trades in-memory buffering for disk usage, and the two are bounded differently:
 
 - **Disk**: the WAL doesn't grow for the full length of an outage.
-  A cleanup routine deletes any segment older than `max_segment_age`, whether or not Loki accepted it.
-  The disk footprint settles at roughly `max_segment_age` worth of logs at your ingest rate.
+  A cleanup routine deletes segments older than `max_segment_age`, whether or not Loki accepted them.
+  The routine never deletes the highest-numbered segment, because the watcher may still be reading it, so one segment always survives regardless of age.
+  The disk footprint settles at roughly `max_segment_age` worth of logs at your ingest rate, plus that retained segment.
   Age is the only eviction policy available.
   There's no maximum size argument and no ring buffer.
 - **Memory**: without the WAL, `queue_config` bounds the send queue rather than process memory as a whole.
