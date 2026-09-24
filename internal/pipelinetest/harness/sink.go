@@ -201,6 +201,10 @@ func (s *Sink) appendPrometheusSample(sample PrometheusSample) {
 func (s *Sink) storePrometheusMetadata(l labels.Labels, m metadata.Metadata) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
+
+	// For simplicity metadata is keyed by full series labels, which is what
+	// scrape and remote write v2 send. Metadata written per family, like
+	// otelcol.exporter.prometheus does, will not match any sample.
 	s.promMetadata[l.String()] = m
 }
 

@@ -22,9 +22,9 @@ type PrometheusAssertionSchema struct {
 // PrometheusMatchSchema describes Prometheus sample fields used by declarative
 // assertions. Match a metric by name through the __name__ label.
 type PrometheusMatchSchema struct {
-	Labels    MapMatchSchema `yaml:"labels,omitempty"`
-	Value     *float64       `yaml:"value,omitempty"`
-	Timestamp string         `yaml:"timestamp,omitempty"`
+	Labels    MapMatchSchema            `yaml:"labels,omitempty"`
+	Value     *float64                  `yaml:"value,omitempty"`
+	Timestamp string                    `yaml:"timestamp,omitempty"`
 	Histogram *bool                     `yaml:"histogram,omitempty"`
 	Metadata  *PrometheusMetadataSchema `yaml:"metadata,omitempty"`
 }
