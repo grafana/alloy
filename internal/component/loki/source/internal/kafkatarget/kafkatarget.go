@@ -60,7 +60,7 @@ type KafkaTarget struct {
 	details              ConsumerDetails
 	claim                sarama.ConsumerGroupClaim
 	session              sarama.ConsumerGroupSession
-	client               loki.EntryHandler
+	recv                 loki.LogsReceiver
 	relabelConfig        []*relabel.Config
 	useIncomingTimestamp bool
 	messageParser        MessageParser
@@ -72,7 +72,7 @@ func NewKafkaTarget(
 	claim sarama.ConsumerGroupClaim,
 	discoveredLabels, lbs model.LabelSet,
 	relabelConfig []*relabel.Config,
-	client loki.EntryHandler,
+	recv loki.LogsReceiver,
 	useIncomingTimestamp bool,
 	messageParser MessageParser,
 ) *KafkaTarget {
@@ -84,7 +84,7 @@ func NewKafkaTarget(
 		details:              newDetails(session, claim),
 		claim:                claim,
 		session:              session,
-		client:               client,
+		recv:                 recv,
 		relabelConfig:        relabelConfig,
 		useIncomingTimestamp: useIncomingTimestamp,
 		messageParser:        messageParser,
@@ -98,7 +98,6 @@ const (
 )
 
 func (t *KafkaTarget) run() {
-	defer t.client.Stop()
 	for message := range t.claim.Messages() {
 		mk := string(message.Key)
 		if len(mk) == 0 {
@@ -121,7 +120,7 @@ func (t *KafkaTarget) run() {
 			t.logger.Error("message parsing error", "err", err)
 		} else {
 			for _, entry := range entries {
-				t.client.Chan() <- entry
+				t.recv.Chan() <- entry
 			}
 		}
 

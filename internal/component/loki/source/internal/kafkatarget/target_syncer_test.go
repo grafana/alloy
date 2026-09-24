@@ -77,9 +77,12 @@ func Test_TopicDiscovery(t *testing.T) {
 }
 
 func Test_NewTarget(t *testing.T) {
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
 	ts := &TargetSyncer{
 		logger: logging.NewSlogNop(),
-		client: loki.NewCollectingHandler(),
+		recv:   handler.Receiver(),
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
 				{

@@ -29,7 +29,7 @@ type TopicManager interface {
 type TargetSyncer struct {
 	logger *slog.Logger
 	cfg    Config
-	client loki.EntryHandler
+	recv   loki.LogsReceiver
 
 	topicManager TopicManager
 	consumer
@@ -45,7 +45,7 @@ type TargetSyncer struct {
 func NewSyncer(
 	logger *slog.Logger,
 	cfg Config,
-	pushClient loki.EntryHandler,
+	recv loki.LogsReceiver,
 	messageParser MessageParser,
 ) (*TargetSyncer, error) {
 
@@ -93,7 +93,7 @@ func NewSyncer(
 		cancel:       cancel,
 		topicManager: topicManager,
 		cfg:          cfg,
-		client:       pushClient,
+		recv:         recv,
 		close: func() error {
 			if err := group.Close(); err != nil {
 				logger.Warn("error while closing consumer group", "err", err)
@@ -295,7 +295,7 @@ func (ts *TargetSyncer) NewTarget(session sarama.ConsumerGroupSession, claim sar
 		discoveredLabels,
 		labelOut,
 		ts.cfg.RelabelConfigs,
-		ts.client,
+		ts.recv,
 		ts.cfg.KafkaConfig.UseIncomingTimestamp,
 		ts.messageParser,
 	)
