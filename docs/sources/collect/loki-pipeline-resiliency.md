@@ -62,10 +62,16 @@ What happens upstream while that retry loop runs depends on which component is f
 
 The pipeline has no mechanism to report delivery failure back to the source component, so what a dropped batch costs you depends on the source.
 
-For file tailers, a dropped batch is unrecoverable and invisible.
-`loki.source.file` advances its read position when a line enters the pipeline, not when Loki confirms delivery, and it flushes that position to disk periodically.
-By the time `loki.write` gives up, the position has already moved past those lines.
+For file tailers, a dropped batch is invisible, and in most cases unrecoverable.
+`loki.source.file` advances its read position when a line enters the pipeline, not when Loki confirms delivery.
+It flushes that position to disk every 10 seconds, so by the time `loki.write` gives up, the position has already moved past those lines.
+
 The result is a silent, incremental loss proportional to how long the outage lasts, rather than an all-or-nothing failure.
+A graceful shutdown flushes the position before exiting, which makes that loss permanent.
+
+One case recovers some of the data.
+If {{< param "PRODUCT_NAME" >}} terminates unexpectedly, the positions file still holds the offset from the last flush.
+The tailer resumes from there and rereads every line written since, including lines that Loki already stored.
 
 For request-accepting components, there's no stored position, and the sender holds the data.
 A sender that receives a `503` knows the write didn't land and can retry it.
@@ -183,17 +189,25 @@ To enable it, complete the following steps:
    Leave `retry_on_http_429` at its default of `true` so that rate-limited batches are retried instead of dropped.
 
 1. Confirm that the storage path {{< param "PRODUCT_NAME" >}} uses has room for `max_segment_age` worth of logs at your normal ingest rate.
-   At an ingest rate of 5 MB/s with `max_segment_age` set to `4h`, budget roughly 72 GB.
+   At an ingest rate of 5 MB/s with `max_segment_age` set to `4h`, the raw log volume is roughly 72 GB.
+   That figure is the uncompressed log volume rather than the size of the WAL on disk.
+
+   {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
+   Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
+   Measure the ratio for your own logs and leave headroom rather than provisioning exactly 72 GB.
+
+   A WAL write that fails on a full disk loses the entry, and the only signal is a `failed to write entry` log message.
    The WAL directory sits inside a component-specific directory relative to that path, and you can't configure it separately.
 
 1. Confirm that the WAL is active after {{< param "PRODUCT_NAME" >}} reloads the configuration.
-   {{< param "PRODUCT_NAME" >}} exports the following metrics only while the WAL is enabled, so their presence confirms the block took effect.
+   Check the value of `loki_write_wal_watcher_running` rather than checking whether the metric exists.
+   {{< param "PRODUCT_NAME" >}} keeps the metrics registry for the component's lifetime, so these metrics remain exported after a reload turns the WAL off.
 
-   | Metric                                         | Description                                                                                    |
-   | ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-   | `loki_write_wal_watcher_running`               | Number of WAL watchers running. A value of `0` means the WAL isn't active.                     |
-   | `loki_write_wal_writer_last_written_timestamp` | Timestamp of the newest log entry written to the WAL.                                          |
-   | `loki_write_last_read_timestamp`               | Timestamp of the newest log entry read from the WAL and queued for delivery, by endpoint `id`. |
+   | Metric                                         | Description                                                                                                                             |
+   | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+   | `loki_write_wal_watcher_running`               | Number of WAL watchers running. {{< param "PRODUCT_NAME" >}} decrements it when a watcher stops, so a value of `0` means the WAL isn't active. |
+   | `loki_write_wal_writer_last_written_timestamp` | Timestamp of the newest log entry written to the WAL.                                                                                   |
+   | `loki_write_last_read_timestamp`               | Timestamp of the newest log entry read from the WAL and queued for delivery, by endpoint `id`.                                          |
 
    Both gauges report log entry timestamps rather than wall-clock times, so the gap between them approximates the backlog rather than measuring it exactly.
    During an outage the written timestamp keeps advancing.
