@@ -1,5 +1,6 @@
-// WARNING: This configuration is for integration testing only.
-// It is not intended to represent a recommended production configuration.
+logging {
+  level = "debug"
+}
 
 prometheus.exporter.postgres "postgres" {
   data_source_names = ["postgresql://monitoring_user:monitoring_password@postgres:5432/testdb?sslmode=disable"]
@@ -7,7 +8,7 @@ prometheus.exporter.postgres "postgres" {
 
 database_observability.postgres "test" {
   data_source_name = "postgresql://monitoring_user:monitoring_password@postgres:5432/testdb?sslmode=disable"
-  forward_to       = [loki.write.default.receiver]
+  forward_to       = [loki.write.loki.receiver]
   targets          = prometheus.exporter.postgres.postgres.targets
 
   query_samples {
@@ -33,23 +34,25 @@ database_observability.postgres "test" {
 
 prometheus.scrape "postgres" {
   targets         = database_observability.postgres.test.targets
-  forward_to      = [prometheus.remote_write.default.receiver]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
 }
 
-prometheus.remote_write "default" {
+prometheus.remote_write "mimir" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
   }
   external_labels = {
-    test_name = "database_observability_postgres",
+    alloy_test_name = "database-observability-postgres",
   }
 }
 
-loki.write "default" {
+loki.write "loki" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
   }
   external_labels = {
-    test_name = "database_observability_postgres",
+    alloy_test_name = "database-observability-postgres",
   }
 }
