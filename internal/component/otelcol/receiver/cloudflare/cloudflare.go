@@ -17,6 +17,9 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
+// Upstream leaves the factory default at zero and applies 20MiB in Validate().
+// Set it explicitly here because Alloy validates a separate config:
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/3f8455d8038a985398861171e5310bc9b4e988b2/receiver/cloudflarereceiver/config.go#L54-L56
 const DefaultMaxRequestBodySize = 20 * units.MiB
 
 var (
