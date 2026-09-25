@@ -110,8 +110,8 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
 		}
-		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(entry.Size()))
-		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Inc()
+		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, reason).Add(float64(entry.Size()))
+		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, reason).Inc()
 	}
 
 	return true
@@ -228,7 +228,6 @@ func newShards(metrics *metrics, logger *slog.Logger, tracker sentDataTracker, c
 		metrics: metrics,
 		client:  client,
 		tracker: tracker,
-		tenants: make(map[string]struct{}),
 	}, nil
 }
 
@@ -252,9 +251,8 @@ type shards struct {
 	client  *http.Client
 	tracker sentDataTracker
 
-	mut     sync.Mutex
-	tenants map[string]struct{}
-	queues  []*queue
+	mut    sync.Mutex
+	queues []*queue
 
 	// running is used to track the number of running shards.
 	running  atomic.Int32
@@ -290,9 +288,24 @@ func (s *shards) start(n int) {
 	s.onceDone = sync.Once{}
 	s.done = make(chan struct{})
 	s.softShutdown = make(chan struct{})
+	s.initMetrics()
 
 	for i := range n {
 		go s.runShard(s.queues[i])
+	}
+}
+
+func (s *shards) initMetrics() {
+	// Initialize counters to 0 so the metrics are exported before the first
+	// occurrence of incrementing to avoid missing metrics.
+	for _, counter := range s.metrics.countersWithHostReason {
+		for _, reason := range reasons {
+			counter.WithLabelValues(s.cfg.URL.Host, reason).Add(0)
+		}
+	}
+
+	for _, counter := range s.metrics.countersWithHost {
+		counter.WithLabelValues(s.cfg.URL.Host).Add(0)
 	}
 }
 
@@ -383,11 +396,6 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) erro
 	default:
 	}
 
-	if _, ok := s.tenants[tenantID]; !ok {
-		s.tenants[tenantID] = struct{}{}
-		s.initBatchMetrics(tenantID)
-	}
-
 	fingerprint := entry.Labels.FastFingerprint()
 	shard := uint64(fingerprint) % uint64(len(s.queues))
 
@@ -395,20 +403,6 @@ func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) erro
 		return errQueueIsFull
 	}
 	return nil
-}
-
-func (s *shards) initBatchMetrics(tenantID string) {
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range s.metrics.countersWithHostTenantReason {
-		for _, reason := range reasons {
-			counter.WithLabelValues(s.cfg.URL.Host, tenantID, reason).Add(0)
-		}
-	}
-
-	for _, counter := range s.metrics.countersWithHostTenant {
-		counter.WithLabelValues(s.cfg.URL.Host, tenantID).Add(0)
-	}
 }
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
@@ -419,14 +413,14 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		if !shutdown {
 			batch.reportAsSentData(
 				s.tracker,
-				s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID),
+				s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host),
 			)
 		}
 	}()
 
 	// batch.size is the uncompressed size of the log lines, which is what's
 	// compared against the configured batch_size when filling the batch.
-	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(float64(batch.size))
+	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host).Observe(float64(batch.size))
 
 	r, entriesCount := batch.request()
 
@@ -444,7 +438,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	}
 
 	bufBytes := float64(len(buf))
-	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(bufBytes)
+	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host).Observe(bufBytes)
 
 	backoff := backoff.New(s.ctx, s.cfg.BackoffConfig)
 	var status int
@@ -453,19 +447,19 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		// We pass s.ctx so that all inflight requests are canceled when we are doing a hard shutdown.
 		status, err = s.send(s.ctx, tenantID, buf)
 
-		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
+		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if s.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
 			s.logger.Warn("dropping batch due to rate limiting applied at ingester")
-			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(bufBytes)
-			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(float64(entriesCount))
+			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, reasonRateLimited).Add(bufBytes)
+			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, reasonRateLimited).Add(float64(entriesCount))
 			return
 		}
 
 		if err == nil {
-			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
-			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host, tenantID).Add(float64(entriesCount))
+			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host).Add(bufBytes)
+			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host).Add(float64(entriesCount))
 			return
 		}
 
@@ -475,7 +469,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		}
 
 		s.logger.Debug("error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
-		s.metrics.batchRetries.WithLabelValues(s.cfg.URL.Host, tenantID).Inc()
+		s.metrics.batchRetries.WithLabelValues(s.cfg.URL.Host).Inc()
 		backoff.Wait()
 
 		// Make sure it sends at least once before checking for retry.
@@ -494,8 +488,8 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	} else if batchIsTooLarge(status) {
 		dropReason = reasonBatchTooLarge
 	}
-	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, dropReason).Add(bufBytes)
+	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, dropReason).Add(float64(entriesCount))
 }
 
 var userAgent = useragent.Get()
