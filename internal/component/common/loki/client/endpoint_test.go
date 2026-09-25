@@ -81,14 +81,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                                # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                                # TYPE loki_write_sent_entries_total counter
-                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 3.0
+                               loki_write_sent_entries_total{host="__HOST__"} 3.0
                                # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                                # TYPE loki_write_dropped_entries_total counter
-                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-							   loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                        `,
 		},
 		{
@@ -122,14 +122,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 2.0
+                              loki_write_sent_entries_total{host="__HOST__"} 2.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                        `,
 		},
 		{
@@ -157,14 +157,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 1
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 1
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
+                              loki_write_sent_entries_total{host="__HOST__"} 0
                        `,
 		},
 		{
@@ -184,14 +184,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 1
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 1
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
+                              loki_write_sent_entries_total{host="__HOST__"} 0
                        `,
 		},
 		{
@@ -219,14 +219,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 1
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 1
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
+                              loki_write_sent_entries_total{host="__HOST__"} 0
                        `,
 		},
 		{
@@ -247,14 +247,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant=""} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant=""} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant=""} 1
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant=""} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 1
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
+                              loki_write_sent_entries_total{host="__HOST__"} 0
                        `,
 		},
 		{
@@ -275,14 +275,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-default"} 2.0
+                              loki_write_sent_entries_total{host="__HOST__"} 2.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__", reason="batch_too_large", tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__", reason="ingester_error", tenant="tenant-default"} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__", reason="rate_limited", tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                        `,
 		},
 		{
@@ -311,26 +311,14 @@ func TestEndpoint(t *testing.T) {
 			expectedMetrics: `
                               # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
                               # TYPE loki_write_sent_entries_total counter
-                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-1"} 2.0
-                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-2"} 1.0
-                              loki_write_sent_entries_total{host="__HOST__",tenant="tenant-default"} 1.0
+                              loki_write_sent_entries_total{host="__HOST__"} 4.0
                               # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
                               # TYPE loki_write_dropped_entries_total counter
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant="tenant-1"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant="tenant-2"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-1"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-2"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error",tenant="tenant-default"} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-1"} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-2"} 0
-							  loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full",tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-1"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-2"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited",tenant="tenant-default"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-1"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-2"} 0
-                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited",tenant="tenant-default"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                        `,
 		},
 	}

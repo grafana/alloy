@@ -64,8 +64,8 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 		}
 
 		if errors.Is(err, errQueueIsFull) && !e.cfg.QueueConfig.BlockOnOverflow {
-			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
-			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
+			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Inc()
+			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
 		}
 
