@@ -9,6 +9,8 @@ type WriterMetrics struct {
 	lastReclaimedSegment             *prometheus.GaugeVec
 	lastWrittenTimestamp             *prometheus.GaugeVec
 	reclaimedOldSegmentsSpaceCounter *prometheus.CounterVec
+	failedEntries                    *prometheus.CounterVec
+	failedBytes                      *prometheus.CounterVec
 }
 
 func NewWriterMetrics(reg prometheus.Registerer) *WriterMetrics {
@@ -31,13 +33,31 @@ func NewWriterMetrics(reg prometheus.Registerer) *WriterMetrics {
 			Name:      "reclaimed_space",
 			Help:      "Number of bytes reclaimed from storage.",
 		}, []string{}),
+		failedEntries: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "loki_write",
+			Subsystem: "wal_writer",
+			Name:      "failed_entries_total",
+			Help:      "Number of log entries that failed to be written to the WAL.",
+		}, []string{}),
+		failedBytes: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "loki_write",
+			Subsystem: "wal_writer",
+			Name:      "failed_bytes_total",
+			Help:      "Number of bytes that failed to be written to the WAL.",
+		}, []string{}),
 	}
 
 	if reg != nil {
 		m.lastReclaimedSegment = util.MustRegisterOrGet(reg, m.lastReclaimedSegment).(*prometheus.GaugeVec)
 		m.lastWrittenTimestamp = util.MustRegisterOrGet(reg, m.lastWrittenTimestamp).(*prometheus.GaugeVec)
 		m.reclaimedOldSegmentsSpaceCounter = util.MustRegisterOrGet(reg, m.reclaimedOldSegmentsSpaceCounter).(*prometheus.CounterVec)
+		m.failedEntries = util.MustRegisterOrGet(reg, m.failedEntries).(*prometheus.CounterVec)
+		m.failedBytes = util.MustRegisterOrGet(reg, m.failedBytes).(*prometheus.CounterVec)
 	}
+
+	// Export the failure counters before the first failure so that alerts can use them.
+	m.failedEntries.WithLabelValues().Add(0)
+	m.failedBytes.WithLabelValues().Add(0)
 
 	return m
 }
