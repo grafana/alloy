@@ -64,7 +64,7 @@ What happens upstream while that retry loop runs depends on which component is f
   While `loki.write` is stalled, that handoff blocks and the HTTP request stays open.
   The component returns a `503` status once the request context ends, which happens when the client disconnects or gives up.
   Senders see slow requests and eventual failures rather than accepted writes.
-- **`otelcol.exporter.loki`**: converts each OpenTelemetry log record, then forwards the entries to `loki.write` one at a time with no buffer in between.
+- **`otelcol.exporter.loki`**: converts the entire OpenTelemetry batch into an in-memory slice, then forwards the entries to `loki.write` one at a time.
   While `loki.write` is stalled, that forwarding blocks, and the block propagates back through the OpenTelemetry pipeline to the receiver.
   If the request context ends while the exporter is blocked, it stops forwarding and returns no error.
   The entries it hadn't forwarded yet are lost, and no drop counter increments.
