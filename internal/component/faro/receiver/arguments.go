@@ -116,8 +116,15 @@ type LocationArguments struct {
 // OutputArguments configures where to send emitted logs and traces. Metrics
 // emitted by app_agent_receiver are exported as targets to be scraped.
 type OutputArguments struct {
-	Logs   []loki.LogsReceiver `alloy:"logs,attr,optional"`
-	Traces []otelcol.Consumer  `alloy:"traces,attr,optional"`
+	Logs            []loki.LogsReceiver `alloy:"logs,attr,optional"`
+	Traces          []otelcol.Consumer  `alloy:"traces,attr,optional"`
+	LogsSendTimeout time.Duration       `alloy:"logs_send_timeout,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*OutputArguments)(nil)
+
+func (o *OutputArguments) SetToDefault() {
+	o.LogsSendTimeout = 2 * time.Second
 }
 
 type LogFormat string
