@@ -2,658 +2,286 @@ package k8s_workloads
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	appslisters "k8s.io/client-go/listers/apps/v1"
-	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
-func TestDeploymentPhase(t *testing.T) {
-	replicas := int32(2)
-	base := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Generation: 3},
-		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
-	}
-
-	tests := []struct {
-		name   string
-		mutate func(*appsv1.Deployment)
-		want   rolloutPhase
-	}{
-		{name: "started", mutate: func(*appsv1.Deployment) {}, want: phaseStarted},
-		{name: "succeeded", mutate: func(d *appsv1.Deployment) {
-			d.Status.ObservedGeneration = 3
-			d.Status.UpdatedReplicas = 2
-			d.Status.Replicas = 2
-			d.Status.AvailableReplicas = 2
-		}, want: phaseSucceeded},
-		{name: "stalled", mutate: func(d *appsv1.Deployment) {
-			d.Status.Conditions = []appsv1.DeploymentCondition{{
-				Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded",
-			}}
-		}, want: phaseStalled},
-		{name: "replica failure", mutate: func(d *appsv1.Deployment) {
-			d.Status.Conditions = []appsv1.DeploymentCondition{{
-				Type: appsv1.DeploymentReplicaFailure, Status: corev1.ConditionTrue, Reason: "FailedCreate",
-			}}
-		}, want: phaseStalled},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			deployment := base.DeepCopy()
-			tt.mutate(deployment)
-			require.Equal(t, tt.want, deploymentPhase(deployment))
-		})
-	}
+type capture struct {
+	mu   sync.Mutex
+	logs []plog.Logs
+	fail bool
 }
 
-func TestImageMetadata(t *testing.T) {
-	image := newImageData("api", "registry.example.com/team/api:1.2.5", false)
-	require.Equal(t, "registry.example.com/team/api", image.imageName)
-	require.Equal(t, "1.2.5", image.tag)
-	require.Empty(t, image.digest)
-
-	pinned := newImageData("api", "registry.example.com/team/api:1.2.5@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", false)
-	require.Equal(t, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", pinned.digest)
-
-	require.Equal(t, "sha256:bbbb", imageDigest("containerd://registry.example.com/team/api@sha256:bbbb"))
-	require.Equal(t, "sha256:cccc", imageDigest("containerd://sha256:cccc"))
-	require.Empty(t, imageDigest("containerd://opaque-id"))
-}
-
-func TestCollectImagesPreservesDistinctDigests(t *testing.T) {
-	deployment := testDeployment()
-	rs := testReplicaSet(deployment)
-	firstPod := testPod(rs)
-	secondPod := testPod(rs)
-	secondPod.Name = "checkout-abc-2"
-	secondPod.Status.ContainerStatuses[0].ImageID = "containerd://sha256:cccc"
-	podIndexer := namespacedIndexer()
-	require.NoError(t, podIndexer.Add(firstPod))
-	require.NoError(t, podIndexer.Add(secondPod))
-
-	images := collectImages(deployment.Spec.Template.Spec, rs, corelisters.NewPodLister(podIndexer))
-	require.Len(t, images, 2)
-	require.Equal(t, "sha256:cccc", images[0].digest)
-	require.Equal(t, "sha256:bbbb", images[1].digest)
-}
-
-func TestPodSpecsUseSameImages(t *testing.T) {
-	left := corev1.PodSpec{
-		Containers:     []corev1.Container{{Name: "api", Image: "example/api:1"}},
-		InitContainers: []corev1.Container{{Name: "migrate", Image: "example/migrate:1"}},
+func (s *capture) emit(_ context.Context, batch func() eventBatch) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	logs := batch().logs
+	if s.fail {
+		return errors.New("unavailable")
 	}
-	right := corev1.PodSpec{
-		Containers:     []corev1.Container{{Name: "api", Image: "example/api:1"}},
-		InitContainers: []corev1.Container{{Name: "migrate", Image: "example/migrate:1"}},
+	s.logs = append(s.logs, logs)
+	return nil
+}
+func (s *capture) records() []plog.LogRecord {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := []plog.LogRecord{}
+	for _, logs := range s.logs {
+		out = append(out, logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0))
 	}
-	require.True(t, podSpecsUseSameImages(left, right))
-
-	right.Containers[0].Image = "example/api:2"
-	require.False(t, podSpecsUseSameImages(left, right))
+	return out
 }
-
-func TestBuildDeploymentScopedEventBatch(t *testing.T) {
-	deployment := testDeployment()
-	rs := testReplicaSet(deployment)
-	image := imageData{
-		container: "api", reference: "registry.example.com/team/api:1.2.5",
-		imageName: "registry.example.com/team/api", tag: "1.2.5",
-		imageID: "registry.example.com/team/api@sha256:bbbb", digest: "sha256:bbbb",
-	}
-	sidecar := imageData{
-		container: "sidecar", reference: "registry.example.com/team/sidecar:2.0.0",
-		imageName: "registry.example.com/team/sidecar", tag: "2.0.0",
-	}
-	data := eventData{
-		clusterUID: "cluster-uid", clusterName: "production", deployment: deployment,
-		replicaSet: rs, revision: "7", phase: phaseStarted, images: []imageData{image, sidecar},
-	}
-
-	first := buildEventBatch(data).logs
-	second := buildEventBatch(data).logs
-	firstResource := first.ResourceLogs().At(0).Resource().Attributes()
-	requireAttributeString(t, firstResource, "k8s.cluster.uid", "cluster-uid")
-	requireAttributeString(t, firstResource, "k8s.cluster.name", "production")
-	requireAttributeString(t, firstResource, "k8s.namespace.name", "payments")
-	requireAttributeString(t, firstResource, "k8s.deployment.name", "checkout")
-
-	records := first.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-	require.Equal(t, 1, records.Len())
-	record := records.At(0)
-	require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.started", record.EventName())
-	containersValue, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
-	require.True(t, ok)
-	require.Len(t, containersValue.Slice().AsRaw(), 2)
-	container := containersValue.Slice().At(0).Map()
-	requireAttributeString(t, container, "name", "api")
-	requireAttributeString(t, container, "image.name", "registry.example.com/team/api")
-	requireAttributeString(t, container, "image.id", image.imageID)
-	requireAttributeString(t, container, "image.reference", image.reference)
-
-	firstID, _ := record.Attributes().Get("grafana.sdlc.event.id")
-	secondID, _ := second.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes().Get("grafana.sdlc.event.id")
-	require.Equal(t, firstID.Str(), secondID.Str())
-}
-
-func TestBuildImageResolvedEventBatch(t *testing.T) {
-	deployment := testDeployment()
-	images := []imageData{
-		{
-			container: "api", reference: "registry.example.com/team/api:1.2.5",
-			imageName: "registry.example.com/team/api", tag: "1.2.5", digest: "sha256:aaaa",
-		},
-		{
-			container: "sidecar", reference: "registry.example.com/team/sidecar:2.0.0",
-			imageName: "registry.example.com/team/sidecar", tag: "2.0.0", digest: "sha256:bbbb",
-		},
-	}
-	data := eventData{
-		clusterUID: "cluster-uid", deployment: deployment, revision: "7",
-		images: images,
-	}
-
-	records := buildImageResolvedEventBatch(data).logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-	require.Equal(t, 2, records.Len())
-	for i, image := range images {
-		record := records.At(i)
-		require.Equal(t, imageResolvedEventName, record.EventName())
-		requireAttributeString(t, record.Attributes(), "k8s.container.name", image.container)
-		requireAttributeString(t, record.Attributes(), "container.image.name", image.imageName)
-		_, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
-		require.False(t, ok)
-		_, ok = record.Attributes().Get("deployment.status")
-		require.False(t, ok)
-		_, ok = record.Attributes().Get("grafana.sdlc.rollout.phase")
-		require.False(t, ok)
-	}
-}
-
-func TestBuildObservedInventoryEvent(t *testing.T) {
-	deployment := testDeployment()
-	deployment.Labels = map[string]string{"app.kubernetes.io/name": "checkout", "team": "payments"}
-	deployment.Status.UpdatedReplicas = 1
-	image := imageData{
-		container: "api", reference: "registry.example.com/team/api:1.2.5",
-		imageName: "registry.example.com/team/api", tag: "1.2.5",
-		imageID: "registry.example.com/team/api@sha256:bbbb", digest: "sha256:bbbb",
-	}
-	data := eventData{
-		clusterUID: "cluster-uid", clusterName: "production", deployment: deployment,
-		revision: "7", phase: phaseStarted, images: []imageData{image},
-	}
-	fingerprint := inventoryFingerprint(data)
-	first := buildInventoryEventBatch(data, inventoryObserved, fingerprint).logs
-	second := buildInventoryEventBatch(data, inventoryObserved, fingerprint).logs
-	record := first.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	require.Equal(t, "grafana.sdlc.k8s.deployment.observed", record.EventName())
-	requireAttributeString(t, record.Attributes(), "grafana.sdlc.inventory.version", fingerprint)
-	labels, ok := record.Attributes().Get("grafana.sdlc.k8s.deployment.labels")
-	require.True(t, ok)
-	requireAttributeString(t, labels.Map(), "team", "payments")
-
-	containerValue, ok := record.Attributes().Get("grafana.sdlc.deployment.containers")
-	require.True(t, ok)
-	containers := containerValue.Slice()
-	require.Len(t, containers.AsRaw(), 1)
-	container := containers.At(0).Map()
-	requireAttributeString(t, container, "name", "api")
-	requireAttributeString(t, container, "image.reference", image.reference)
-	requireAttributeString(t, container, "image.name", image.imageName)
-	repoDigests, ok := container.Get("image.repo_digests")
-	require.True(t, ok)
-	require.Equal(t, image.imageName+"@"+image.digest, repoDigests.Slice().At(0).Str())
-
-	firstID, _ := record.Attributes().Get("grafana.sdlc.event.id")
-	secondRecord := second.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	secondID, _ := secondRecord.Attributes().Get("grafana.sdlc.event.id")
-	require.Equal(t, firstID.Str(), secondID.Str())
-}
-
-func TestReconcileLifecycleAndRetry(t *testing.T) {
-	deployment := testDeployment()
-	rs := testReplicaSet(deployment)
-	pod := testPod(rs)
-
-	deploymentIndexer := namespacedIndexer()
-	replicaSetIndexer := namespacedIndexer()
-	podIndexer := namespacedIndexer()
-	require.NoError(t, deploymentIndexer.Add(deployment))
-	require.NoError(t, replicaSetIndexer.Add(rs))
-	require.NoError(t, podIndexer.Add(pod))
-
-	var eventNames []string
-	failNext := true
-	ctrl := newController(controllerOptions{
-		clusterName: "production",
-		emit: func(_ context.Context, batch func() eventBatch) error {
-			if failNext {
-				failNext = false
-				return errors.New("export unavailable")
-			}
-			records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-			for i := 0; i < records.Len(); i++ {
-				eventNames = append(eventNames, records.At(i).EventName())
-			}
-			return nil
-		},
-	})
-	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
-	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
-	ctrl.pods = corelisters.NewPodLister(podIndexer)
-	images := collectImages(deployment.Spec.Template.Spec, rs, ctrl.pods)
-	require.Len(t, images, 1)
-	require.Equal(t, "sha256:bbbb", images[0].digest)
-
-	err := ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout")
-	require.EqualError(t, err, "export unavailable")
-
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{
-		"grafana.sdlc.k8s.deployment.rollout.started",
-		imageResolvedEventName,
-		"grafana.sdlc.k8s.deployment.observed",
-	}, eventNames)
-
-	eventNames = nil
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
-
-	deployment.Status.ObservedGeneration = deployment.Generation
-	deployment.Status.UpdatedReplicas = 1
-	deployment.Status.Replicas = 1
-	deployment.Status.AvailableReplicas = 1
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{
-		"grafana.sdlc.k8s.deployment.rollout.succeeded",
-		"grafana.sdlc.k8s.deployment.observed",
-	}, eventNames)
-}
-
-func TestReconcileRevisionUpdateDoesNotDuplicateStart(t *testing.T) {
-	deployment := testDeployment()
-	rs := testReplicaSet(deployment)
-
-	deploymentIndexer := namespacedIndexer()
-	replicaSetIndexer := namespacedIndexer()
-	podIndexer := namespacedIndexer()
-	require.NoError(t, deploymentIndexer.Add(deployment))
-	require.NoError(t, replicaSetIndexer.Add(rs))
-
-	var eventNames []string
-	ctrl := newController(controllerOptions{emit: func(_ context.Context, batch func() eventBatch) error {
-		records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-		for i := 0; i < records.Len(); i++ {
-			eventNames = append(eventNames, records.At(i).EventName())
-		}
-		return nil
-	}})
-	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
-	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
-	ctrl.pods = corelisters.NewPodLister(podIndexer)
-
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	eventNames = nil
-
-	deployment.Annotations[deploymentRevisionAnnotation] = "8"
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	rs.Annotations[deploymentRevisionAnnotation] = "8"
-	require.NoError(t, replicaSetIndexer.Update(rs))
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
-}
-
-func TestReconcileAutoscalingDebouncesInventoryWithoutRolloutEvents(t *testing.T) {
-	deployment := testDeployment()
-	deployment.Status.ObservedGeneration = deployment.Generation
-	deployment.Status.UpdatedReplicas = 1
-	deployment.Status.Replicas = 1
-	deployment.Status.ReadyReplicas = 1
-	deployment.Status.AvailableReplicas = 1
-	rs := testReplicaSet(deployment)
-	pod := testPod(rs)
-
-	deploymentIndexer := namespacedIndexer()
-	replicaSetIndexer := namespacedIndexer()
-	podIndexer := namespacedIndexer()
-	require.NoError(t, deploymentIndexer.Add(deployment))
-	require.NoError(t, replicaSetIndexer.Add(rs))
-	require.NoError(t, podIndexer.Add(pod))
-
-	now := time.Date(2026, time.September, 24, 12, 0, 0, 0, time.UTC)
-	var eventNames []string
-	var observedDesired, observedReady int64
-	var scheduled []time.Duration
-	ctrl := newController(controllerOptions{
-		now:               func() time.Time { return now },
-		inventoryDebounce: 2 * time.Second,
-		enqueueAfter:      func(_ string, delay time.Duration) { scheduled = append(scheduled, delay) },
-		emit: func(_ context.Context, batch func() eventBatch) error {
-			records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-			for i := 0; i < records.Len(); i++ {
-				record := records.At(i)
-				eventNames = append(eventNames, record.EventName())
-				if record.EventName() == "grafana.sdlc.k8s.deployment.observed" {
-					desired, _ := record.Attributes().Get("grafana.sdlc.rollout.desired_replicas")
-					ready, _ := record.Attributes().Get("grafana.sdlc.rollout.ready_replicas")
-					observedDesired = desired.Int()
-					observedReady = ready.Int()
-				}
-			}
-			return nil
-		},
-	})
-	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
-	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
-	ctrl.pods = corelisters.NewPodLister(podIndexer)
-
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{
-		"grafana.sdlc.k8s.deployment.rollout.succeeded",
-		imageResolvedEventName,
-		"grafana.sdlc.k8s.deployment.observed",
-	}, eventNames)
-	eventNames = nil
-
-	*deployment.Spec.Replicas = 3
-	deployment.Generation++
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
-	require.Equal(t, []time.Duration{2 * time.Second}, scheduled)
-
-	deployment.Status.ObservedGeneration = deployment.Generation
-	deployment.Status.UpdatedReplicas = 3
-	deployment.Status.Replicas = 3
-	deployment.Status.ReadyReplicas = 2
-	deployment.Status.AvailableReplicas = 2
-	deployment.Status.UnavailableReplicas = 1
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	now = now.Add(time.Second)
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
-	require.Equal(t, []time.Duration{2 * time.Second, 2 * time.Second}, scheduled)
-
-	// The delaying queue retains the earliest scheduled wakeup. It must be
-	// rescheduled if a later update has extended the debounce deadline.
-	now = now.Add(time.Second)
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
-	require.Equal(t, time.Second, scheduled[len(scheduled)-1])
-	now = now.Add(time.Second)
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
-	require.Equal(t, int64(3), observedDesired)
-	require.Equal(t, int64(2), observedReady)
-	eventNames = nil
-
-	deployment.Status.ReadyReplicas = 3
-	deployment.Status.AvailableReplicas = 3
-	deployment.Status.UnavailableReplicas = 0
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
-	require.Equal(t, int64(3), observedReady)
-	eventNames = nil
-
-	now = now.Add(2 * time.Second)
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Empty(t, eventNames)
-}
-
-func TestReconcilePodTemplateChangeStartsNewRollout(t *testing.T) {
-	deployment := testDeployment()
-	deployment.Status.ObservedGeneration = deployment.Generation
-	deployment.Status.UpdatedReplicas = 1
-	deployment.Status.Replicas = 1
-	deployment.Status.ReadyReplicas = 1
-	deployment.Status.AvailableReplicas = 1
-	rs := testReplicaSet(deployment)
-
-	deploymentIndexer := namespacedIndexer()
-	replicaSetIndexer := namespacedIndexer()
-	podIndexer := namespacedIndexer()
-	require.NoError(t, deploymentIndexer.Add(deployment))
-	require.NoError(t, replicaSetIndexer.Add(rs))
-
-	var eventNames []string
-	ctrl := newController(controllerOptions{
-		enqueueAfter: func(string, time.Duration) {},
-		emit: func(_ context.Context, batch func() eventBatch) error {
-			records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-			for i := 0; i < records.Len(); i++ {
-				eventNames = append(eventNames, records.At(i).EventName())
-			}
-			return nil
-		},
-	})
-	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
-	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
-	ctrl.pods = corelisters.NewPodLister(podIndexer)
-
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	eventNames = nil
-
-	deployment.Generation++
-	deployment.Annotations[deploymentRevisionAnnotation] = "8"
-	deployment.Spec.Template.Spec.Containers[0].Image = "registry.example.com/team/api:2.0.0"
-	require.NoError(t, deploymentIndexer.Update(deployment))
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Equal(t, []string{
-		"grafana.sdlc.k8s.deployment.rollout.started",
-		"grafana.sdlc.k8s.deployment.observed",
-	}, eventNames)
-}
-
-// HPA changes the Deployment scale target. These tests simulate those updates,
-// including the generation increment performed by the API server.
-func TestAutoscalerEventSequences(t *testing.T) {
-	for _, tc := range []struct {
-		name            string
-		initial, target int32
-		rolling         bool
-	}{
-		{name: "scale up", initial: 2, target: 10},
-		{name: "scale down", initial: 10, target: 2},
-		{name: "scale during rollout", initial: 2, target: 10, rolling: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			d := testDeployment()
-			*d.Spec.Replicas = tc.initial
-			converge := func() {
-				n := *d.Spec.Replicas
-				d.Status = appsv1.DeploymentStatus{ObservedGeneration: d.Generation,
-					Replicas: n, UpdatedReplicas: n, ReadyReplicas: n, AvailableReplicas: n}
-			}
-			converge()
-			if tc.rolling {
-				d.Status.AvailableReplicas = 1
-			}
-			rs := testReplicaSet(d)
-			deployments, replicaSets, pods := namespacedIndexer(), namespacedIndexer(), namespacedIndexer()
-			require.NoError(t, deployments.Add(d.DeepCopy()))
-			require.NoError(t, replicaSets.Add(rs))
-			require.NoError(t, pods.Add(testPod(rs)))
-			var records []plog.LogRecord
-			ctrl := newController(controllerOptions{
-				enqueueAfter: func(string, time.Duration) {},
-				emit: func(_ context.Context, batch func() eventBatch) error {
-					logs := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-					for i := 0; i < logs.Len(); i++ {
-						r := plog.NewLogRecord()
-						logs.At(i).CopyTo(r)
-						records = append(records, r)
-					}
-					return nil
-				},
-			})
-			t.Cleanup(ctrl.queue.ShutDown)
-			ctrl.deployments = appslisters.NewDeploymentLister(deployments)
-			ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSets)
-			ctrl.pods = corelisters.NewPodLister(pods)
-			reconcile := func() {
-				t.Helper()
-				require.NoError(t, deployments.Update(d.DeepCopy()))
-				require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-			}
-			reconcile()
-			require.Len(t, records, 3)
-			phase := "succeeded"
-			if tc.rolling {
-				phase = "started"
-			}
-			require.Equal(t, "grafana.sdlc.k8s.deployment.rollout."+phase, records[0].EventName())
-			id, ok := records[0].Attributes().Get("deployment.id")
-			require.True(t, ok)
-			rolloutID := id.Str()
-			require.NotEmpty(t, rolloutID)
-			require.Equal(t, imageResolvedEventName, records[1].EventName())
-			requireAttributeString(t, records[1].Attributes(), "deployment.id", rolloutID)
-			require.Equal(t, "grafana.sdlc.k8s.deployment.observed", records[2].EventName())
-			records = nil
-
-			*d.Spec.Replicas = tc.target
-			d.Generation++
-			reconcile()
-			require.Empty(t, records, "scaling must not restart or supersede a rollout")
-			converge()
-			reconcile()
-			if tc.rolling {
-				require.Len(t, records, 2)
-				require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.succeeded", records[0].EventName())
-				requireAttributeString(t, records[0].Attributes(), "deployment.id", rolloutID)
-				records = records[1:]
-			}
-			require.Len(t, records, 1)
-			require.Equal(t, "grafana.sdlc.k8s.deployment.observed", records[0].EventName())
-			requireAttributeString(t, records[0].Attributes(), "deployment.status", "succeeded")
-			for _, field := range []string{"desired_replicas", "ready_replicas", "available_replicas"} {
-				value, found := records[0].Attributes().Get("grafana.sdlc.rollout." + field)
-				require.True(t, found)
-				require.Equal(t, int64(tc.target), value.Int())
-			}
-			records = nil
-			reconcile()
-			require.Empty(t, records)
-		})
-	}
-}
-
-func TestReconcileForgetsDeletedDeployment(t *testing.T) {
-	deployment := testDeployment()
-	rs := testReplicaSet(deployment)
-
-	deploymentIndexer := namespacedIndexer()
-	replicaSetIndexer := namespacedIndexer()
-	podIndexer := namespacedIndexer()
-	require.NoError(t, deploymentIndexer.Add(deployment))
-	require.NoError(t, replicaSetIndexer.Add(rs))
-
-	var eventNames []string
-	failDelete := true
-	ctrl := newController(controllerOptions{emit: func(_ context.Context, batch func() eventBatch) error {
-		records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
-		for i := 0; i < records.Len(); i++ {
-			name := records.At(i).EventName()
-			if name == "grafana.sdlc.k8s.deployment.deleted" && failDelete {
-				failDelete = false
-				return errors.New("export unavailable")
-			}
-			eventNames = append(eventNames, name)
-		}
-		return nil
-	}})
-	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
-	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
-	ctrl.pods = corelisters.NewPodLister(podIndexer)
-
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Contains(t, ctrl.states, deployment.UID)
-	require.NoError(t, deploymentIndexer.Delete(deployment))
-	require.EqualError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"), "export unavailable")
-	require.Contains(t, ctrl.states, deployment.UID)
-	require.Contains(t, ctrl.keys, "payments/checkout")
-	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
-	require.Contains(t, eventNames, "grafana.sdlc.k8s.deployment.deleted")
-	require.Empty(t, ctrl.states)
-	require.Empty(t, ctrl.keys)
-}
-
-func testDeployment() *appsv1.Deployment {
-	replicas := int32(1)
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "checkout", Namespace: "payments", UID: types.UID("deployment-uid"), Generation: 5,
-			Annotations: map[string]string{deploymentRevisionAnnotation: "7"},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{
-				Name: "api", Image: "registry.example.com/team/api:1.2.5",
-			}}}},
-		},
-	}
-}
-
-func namespacedIndexer() cache.Indexer {
-	return cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{
-		cache.NamespaceIndex: cache.MetaNamespaceIndexFunc,
-	})
-}
-
-func testReplicaSet(deployment *appsv1.Deployment) *appsv1.ReplicaSet {
-	controller := true
-	return &appsv1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "checkout-abc", Namespace: deployment.Namespace, UID: types.UID("replicaset-uid"),
-			Annotations: map[string]string{deploymentRevisionAnnotation: "7"},
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: "apps/v1", Kind: "Deployment", Name: deployment.Name, UID: deployment.UID, Controller: &controller,
-			}},
-		},
-		Spec: appsv1.ReplicaSetSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "checkout"}},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "checkout"}},
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{
-					Name: "api", Image: "registry.example.com/team/api:1.2.5",
-				}}},
-			},
-		},
-	}
-}
-
-func testPod(rs *appsv1.ReplicaSet) *corev1.Pod {
-	controller := true
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "checkout-abc-1", Namespace: rs.Namespace, Labels: map[string]string{"app": "checkout"},
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: "apps/v1", Kind: "ReplicaSet", Name: rs.Name, UID: rs.UID, Controller: &controller,
-			}},
-		},
-		Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
-			Name: "api", Image: "registry.example.com/team/api:1.2.5",
-			ImageID: "registry.example.com/team/api@sha256:bbbb",
-		}}},
-	}
-}
-
-func requireAttributeString(t *testing.T, attrs pcommon.Map, key, expected string) {
+func body(t *testing.T, r plog.LogRecord) map[string]any {
 	t.Helper()
-	value, ok := attrs.Get(key)
-	require.True(t, ok)
-	require.Equal(t, expected, value.Str())
+	var out map[string]any
+	require.NoError(t, json.Unmarshal([]byte(r.Body().Str()), &out))
+	return out
+}
+func fixture() (*corev1.Namespace, *appsv1.Deployment, *appsv1.ReplicaSet, *corev1.Pod) {
+	yes := true
+	n := int32(1)
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "demo", UID: "ns-1"}}
+	d := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: ns.Name, UID: "d-1", Generation: 1}, Spec: appsv1.DeploymentSpec{Replicas: &n, Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "nginx:1.27"}}}}}, Status: appsv1.DeploymentStatus{ObservedGeneration: 1, Replicas: 1, UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1}}
+	rs := &appsv1.ReplicaSet{ObjectMeta: metav1.ObjectMeta{Name: "web-rs", Namespace: ns.Name, UID: "rs-1", OwnerReferences: []metav1.OwnerReference{{UID: d.UID, Controller: &yes}}}}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: ns.Name, UID: "p-1", OwnerReferences: []metav1.OwnerReference{{UID: rs.UID, Controller: &yes}}}, Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{Name: "app", ImageID: "containerd://sha256:abcd"}}}}
+	return ns, d, rs, pod
+}
+func testController(t *testing.T, objects ...runtime.Object) (*controller, *capture, *fake.Clientset) {
+	t.Helper()
+	sink := &capture{}
+	client := fake.NewClientset(objects...)
+	c := newController(controllerOptions{client: client, clusterUID: "cluster", emit: sink.emit, now: func() time.Time { return time.Unix(100, 0) }})
+	t.Cleanup(c.queue.ShutDown)
+	return c, sink, client
+}
+func TestCompleteSnapshotsAndImages(t *testing.T) {
+	ns, d, rs, pod := fixture()
+	empty := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "empty", UID: "ns-2"}}
+	c, sink, _ := testController(t, ns, d, rs, pod, empty)
+	c.collect(t.Context())
+	records := sink.records()
+	require.Len(t, records, 3)
+	require.Equal(t, eventPrefix+"namespace.snapshot", records[0].EventName())
+	require.Len(t, body(t, records[0])["namespaces"], 2)
+	entries := body(t, records[1])["deployments"].([]any)
+	require.Len(t, entries, 1)
+	entry := entries[0].(map[string]any)
+	require.Equal(t, "healthy", entry["status"])
+	require.Equal(t, "d-1", entry["uid"])
+	image := entry["containers"].([]any)[0].(map[string]any)
+	require.Equal(t, "nginx:1.27", image["image"])
+	require.Equal(t, "sha256:abcd", image["resolved"].([]any)[0].(map[string]any)["digest"])
+	require.Equal(t, []any{}, body(t, records[2])["deployments"])
+	require.Equal(t, true, body(t, records[1])["complete"])
+	// A second scan emits even unchanged state, with a new collection timestamp.
+	c.now = func() time.Time { return time.Unix(160, 0) }
+	c.collect(t.Context())
+	records = sink.records()
+	require.Len(t, records, 6)
+	first, _ := records[1].Attributes().Get("grafana.sdlc.event.id")
+	second, _ := records[4].Attributes().Get("grafana.sdlc.event.id")
+	require.NotEqual(t, first.Str(), second.Str())
+}
+func TestEmptyClusterAndCollectionFailures(t *testing.T) {
+	c, sink, client := testController(t)
+	c.collect(t.Context())
+	require.Equal(t, []any{}, body(t, sink.records()[0])["namespaces"])
+	client.PrependReactor("list", "namespaces", func(ktesting.Action) (bool, runtime.Object, error) { return true, nil, errors.New("forbidden") })
+	c.collect(t.Context())
+	records := sink.records()
+	require.Len(t, records, 2)
+	require.Equal(t, errorEventName, records[1].EventName())
+	require.Equal(t, "collection_failed", body(t, records[1])["reason"])
+}
+func TestEnrichmentFailureNeverPublishesPartialInventory(t *testing.T) {
+	ns, d, _, _ := fixture()
+	c, sink, client := testController(t, ns, d)
+	client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) { return true, nil, errors.New("forbidden") })
+	c.collect(t.Context())
+	records := sink.records()
+	require.Len(t, records, 2)
+	require.Equal(t, eventPrefix+"namespace.snapshot", records[0].EventName())
+	require.Equal(t, errorEventName, records[1].EventName())
+}
+func TestPayloadLimitAtBoundary(t *testing.T) {
+	c, sink, _ := testController(t)
+	event := makeEvent("cluster", "", "demo", "ns", "", "snapshot", "deployment", c.now(), map[string]any{"deployments": []any{}, "padding": strings.Repeat("a", 9000)})
+	raw, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
+	require.NoError(t, err)
+	protobuf, err := (&plog.ProtoMarshaler{}).MarshalLogs(event.logs)
+	require.NoError(t, err)
+	size := max(len(raw), len(protobuf))
+	c.opts.snapshots.MaxSizeBytes = size
+	require.NoError(t, c.deliver(t.Context(), event))
+	require.Len(t, sink.records(), 1)
+	errorRecord := sink.records()[0]
+	require.Equal(t, errorEventName, errorRecord.EventName())
+	require.Equal(t, float64(size), body(t, errorRecord)["measured_bytes"])
+	require.NotContains(t, errorRecord.Body().Str(), "padding")
+	c.opts.snapshots.MaxSizeBytes = size + 1
+	require.NoError(t, c.deliver(t.Context(), event))
+	require.Len(t, sink.records(), 2)
+	require.Equal(t, eventPrefix+"deployment.snapshot", sink.records()[1].EventName())
+}
+func TestFailedDeliveryRetainsOriginalPayload(t *testing.T) {
+	c, sink, _ := testController(t)
+	sink.fail = true
+	event := makeEvent("cluster", "", "demo", "ns", "d", "created", "deployment", c.now(), map[string]any{"uid": "d"})
+	before, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
+	require.NoError(t, err)
+	require.Error(t, c.deliver(t.Context(), event))
+	// Error reporting failure must not recurse or enqueue more error events.
+	c.report(t.Context(), event, "delivery_failed", "Delivery failed", 0, 0)
+	require.Empty(t, sink.records())
+	sink.fail = false
+	c.now = func() time.Time { return time.Unix(999, 0) }
+	require.NoError(t, c.deliver(t.Context(), event))
+	after, err := (&plog.JSONMarshaler{}).MarshalLogs(sink.logs[0])
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+}
+func TestNamespaceRecreationDoesNotProduceWrongScopeSnapshot(t *testing.T) {
+	ns, _, _, _ := fixture()
+	c, sink, client := testController(t, ns)
+	client.PrependReactor("get", "namespaces", func(ktesting.Action) (bool, runtime.Object, error) {
+		copy := ns.DeepCopy()
+		copy.UID = "new-uid"
+		return true, copy, nil
+	})
+	c.collect(t.Context())
+	require.Equal(t, errorEventName, sink.records()[1].EventName())
+}
+func TestNotificationsAndTombstones(t *testing.T) {
+	ns, d, _, _ := fixture()
+	c, _, _ := testController(t)
+	for _, tc := range []struct {
+		kind string
+		obj  any
+	}{{"namespace", ns}, {"deployment", d}} {
+		for _, operation := range []string{"created", "deleted"} {
+			obj := tc.obj
+			if operation == "deleted" {
+				obj = cache.DeletedFinalStateUnknown{Obj: obj}
+			}
+			c.notify(tc.kind, operation, obj)
+			item, shutdown := c.queue.Get()
+			require.False(t, shutdown)
+			require.Equal(t, eventPrefix+tc.kind+"."+operation, item.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).EventName())
+			c.queue.Done(item)
+		}
+	}
+}
+func TestStartupTickAndWatchEvents(t *testing.T) {
+	ns, d, _, _ := fixture()
+	c, sink, client := testController(t, ns, d)
+	c.opts.snapshots.Interval = 50 * time.Millisecond
+	c.now = time.Now
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- c.run(ctx) }()
+	require.Eventually(t, func() bool { return len(sink.records()) >= 4 }, 3*time.Second, 10*time.Millisecond)
+	for _, r := range sink.records() {
+		require.True(t, strings.HasSuffix(r.EventName(), ".snapshot"), "initial list must not invent created notifications")
+	}
+	created := ns.DeepCopy()
+	created.Name = "new"
+	created.UID = types.UID("new-ns")
+	_, err := client.CoreV1().Namespaces().Create(ctx, created, metav1.CreateOptions{})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		for _, r := range sink.records() {
+			if r.EventName() == eventPrefix+"namespace.created" {
+				return true
+			}
+		}
+		return false
+	}, time.Second, 10*time.Millisecond)
+	require.NoError(t, client.AppsV1().Deployments(ns.Name).Delete(ctx, d.Name, metav1.DeleteOptions{}))
+	require.Eventually(t, func() bool {
+		for _, r := range sink.records() {
+			if r.EventName() == eventPrefix+"deployment.deleted" {
+				return true
+			}
+		}
+		return false
+	}, time.Second, 10*time.Millisecond)
+	cancel()
+	require.NoError(t, <-done)
+}
+func TestDeploymentStatus(t *testing.T) {
+	_, d, _, _ := fixture()
+	require.Equal(t, "healthy", deploymentStatus(d))
+	d.Status.Conditions = []appsv1.DeploymentCondition{{Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded"}}
+	require.Equal(t, "stalled", deploymentStatus(d))
+	d.Generation++
+	require.Equal(t, "progressing", deploymentStatus(d))
+	d.Spec.Paused = true
+	require.Equal(t, "paused", deploymentStatus(d))
+	now := metav1.Now()
+	d.DeletionTimestamp = &now
+	require.Equal(t, "terminating", deploymentStatus(d))
+}
+
+func TestRestartRecoversMissedDeploymentAndNamespaceDeletions(t *testing.T) {
+	ns, d, _, _ := fixture()
+	other := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other", UID: "other-uid"}}
+	c, sink, client := testController(t, ns, d, other)
+	c.collect(t.Context())
+	require.NoError(t, client.AppsV1().Deployments(ns.Name).Delete(t.Context(), d.Name, metav1.DeleteOptions{}))
+	require.NoError(t, client.CoreV1().Namespaces().Delete(t.Context(), other.Name, metav1.DeleteOptions{}))
+	restarted := newController(c.opts)
+	t.Cleanup(restarted.queue.ShutDown)
+	restarted.now = func() time.Time { return time.Unix(200, 0) }
+	before := len(sink.records())
+	restarted.collect(t.Context())
+	records := sink.records()[before:]
+	require.Len(t, records, 2)
+	require.Len(t, body(t, records[0])["namespaces"], 1)
+	require.Equal(t, []any{}, body(t, records[1])["deployments"])
+}
+
+func TestOversizedNamespaceDoesNotBlockOtherSnapshots(t *testing.T) {
+	ns, d, _, _ := fixture()
+	d.Labels = map[string]string{"large": strings.Repeat("x", 9000)}
+	empty := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "other", UID: "other-uid"}}
+	c, sink, _ := testController(t, ns, d, empty)
+	c.opts.snapshots.MaxSizeBytes = 8192
+	c.collect(t.Context())
+	records := sink.records()
+	require.Len(t, records, 3)
+	require.Equal(t, errorEventName, records[1].EventName())
+	require.Equal(t, []any{}, body(t, records[2])["deployments"])
+}
+
+func TestImagesAcrossReplicaSetsAndInitContainers(t *testing.T) {
+	_, d, rs, pod := fixture()
+	d.Spec.Template.Spec.InitContainers = []corev1.Container{{Name: "init", Image: "example/init@sha256:pinned"}}
+	secondRS := rs.DeepCopy()
+	secondRS.UID = "rs-2"
+	secondPod := pod.DeepCopy()
+	secondPod.Name = "second"
+	secondPod.OwnerReferences[0].UID = secondRS.UID
+	secondPod.Status.ContainerStatuses[0].ImageID = "containerd://sha256:other"
+	secondPod.Status.InitContainerStatuses = []corev1.ContainerStatus{{Name: "init", ImageID: "containerd://sha256:init"}}
+	entry := describeDeployment(d, []appsv1.ReplicaSet{*rs, *secondRS}, []corev1.Pod{*pod, *secondPod})
+	require.Len(t, entry.Containers, 2)
+	require.Len(t, entry.Containers[0].Resolved, 2)
+	require.True(t, entry.Containers[1].Init)
+	require.Equal(t, "sha256:init", entry.Containers[1].Resolved[0].Digest)
 }

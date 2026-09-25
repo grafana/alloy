@@ -135,3 +135,21 @@ func (f *fakeCluster) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
 func (f *fakeCluster) Peers() []peer.Peer { return f.owners }
 func (f *fakeCluster) Ready() bool        { return f.ready }
 func (f *fakeCluster) Enabled() bool      { return true }
+
+func TestSnapshotArguments(t *testing.T) {
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`output {}`), &args))
+	require.Equal(t, time.Minute, args.Snapshots.Interval)
+	require.Equal(t, 512*1024, args.Snapshots.MaxSizeBytes)
+	require.NoError(t, syntax.Unmarshal([]byte(`snapshots {
+ interval = "5s"
+ max_size_bytes = 8192
+}
+output {}`), &args))
+	require.Equal(t, 5*time.Second, args.Snapshots.Interval)
+	for _, config := range []string{`snapshots { interval = "0s" }
+output {}`, `snapshots { max_size_bytes = 0 }
+output {}`} {
+		require.Error(t, syntax.Unmarshal([]byte(config), &args))
+	}
+}

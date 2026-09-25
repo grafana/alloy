@@ -37,6 +37,7 @@ type Arguments struct {
 	ClusterName string `alloy:"cluster_name,attr,optional"`
 	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
 
+	Snapshots  SnapshotArguments          `alloy:"snapshots,block,optional"`
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
 	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -45,6 +46,7 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{Client: commonk8s.DefaultClientArguments}
+	args.Snapshots.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -52,13 +54,32 @@ func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
 	}
+	return args.Snapshots.Validate()
+}
+
+type SnapshotArguments struct {
+	Interval     time.Duration `alloy:"interval,attr,optional"`
+	MaxSizeBytes int           `alloy:"max_size_bytes,attr,optional"`
+}
+
+func (args *SnapshotArguments) SetToDefault() {
+	*args = SnapshotArguments{Interval: time.Minute, MaxSizeBytes: 512 * 1024}
+}
+func (args *SnapshotArguments) Validate() error {
+	if args.Interval <= 0 {
+		return fmt.Errorf("snapshots.interval must be positive")
+	}
+	if args.MaxSizeBytes < 8192 {
+		return fmt.Errorf("snapshots.max_size_bytes must be at least 8192")
+	}
 	return nil
 }
 
-// Component watches Kubernetes Deployment rollouts and emits OpenTelemetry events.
+// Component watches Kubernetes inventory and emits snapshots and existence notifications.
 type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
+	metrics *reportingMetrics
 
 	mu             sync.RWMutex
 	args           Arguments
@@ -83,6 +104,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:           opts,
 		cluster:        clusterData.(cluster.Cluster),
+		metrics:        newReportingMetrics(opts.Registerer),
 		restart:        make(chan struct{}, 1),
 		clusterChanged: make(chan struct{}, 1),
 	}
@@ -189,6 +211,8 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		clusterName: args.ClusterName,
 		clusterUID:  args.ClusterUID,
 		emit:        c.emit,
+		snapshots:   args.Snapshots,
+		metrics:     c.metrics,
 	})
 	return ctrl.run(ctx)
 }
@@ -199,8 +223,8 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) update(args Arguments, signal bool) error {
-	if args.Output == nil {
-		return fmt.Errorf("output block is required")
+	if err := args.Validate(); err != nil {
+		return err
 	}
 	restConfig, err := args.Client.BuildRESTConfig(c.opts.Logger)
 	if err != nil {
