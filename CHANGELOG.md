@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.1](https://github.com/grafana/alloy/compare/v1.20.0...v1.20.1) (2026-09-25)
+
+
+### Bug Fixes 🐛
+
+* **prometheus.remote_write:** Tolerate unknown WAL record types on replay [backport] ([#7237](https://github.com/grafana/alloy/issues/7237)) ([a613be5](https://github.com/grafana/alloy/commit/a613be532ebd9cfa247039c5bee9c2c2ef185625))
+
 ## [1.20.0](https://github.com/grafana/alloy/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
