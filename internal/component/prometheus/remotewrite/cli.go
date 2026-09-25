@@ -188,17 +188,16 @@ deletion but then comes back at some point).`,
 			fmt.Printf("\nPer-target stats:\n")
 
 			table := tablewriter.NewWriter(os.Stdout)
-			defer table.Render()
-
-			table.SetHeader([]string{"Job", "Instance", "Series", "Samples"})
+			table.Header("Job", "Instance", "Series", "Samples")
 
 			sort.Sort(waltools.BySeriesCount(stats.Targets))
 
 			for _, t := range stats.Targets {
 				seriesStr := fmt.Sprintf("%d", t.Series)
 				samplesStr := fmt.Sprintf("%d", t.Samples)
-				table.Append([]string{t.Job, t.Instance, seriesStr, samplesStr})
+				must(table.Append(t.Job, t.Instance, seriesStr, samplesStr))
 			}
+			must(table.Render())
 		},
 	}
 }
