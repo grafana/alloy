@@ -43,6 +43,7 @@ type eventData struct {
 	clusterName string
 	deployment  *appsv1.Deployment
 	replicaSet  *appsv1.ReplicaSet
+	rolloutKey  string
 	generation  int64
 	revision    string
 	phase       rolloutPhase
@@ -302,12 +303,28 @@ func inventoryFingerprint(data eventData) string {
 	return stableID(parts...)
 }
 
+func inventoryStructureFingerprint(data eventData) string {
+	parts := []string{data.rolloutKey, data.revision}
+	labelKeys := make([]string, 0, len(data.deployment.Labels))
+	for key := range data.deployment.Labels {
+		labelKeys = append(labelKeys, key)
+	}
+	sort.Strings(labelKeys)
+	for _, key := range labelKeys {
+		parts = append(parts, "label", key, data.deployment.Labels[key])
+	}
+	for _, image := range data.images {
+		parts = append(parts, "image", image.container, fmt.Sprint(image.init), image.reference, image.imageID, image.digest)
+	}
+	return stableID(parts...)
+}
+
 func appendEventRecord(records plog.LogRecordSlice, data eventData) {
 	generation := data.generation
 	if generation == 0 {
 		generation = data.deployment.Generation
 	}
-	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), fmt.Sprint(generation))
+	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), data.rolloutKey)
 	eventIDParts := []string{rolloutID, string(data.phase)}
 	record := records.AppendEmpty()
 	record.SetEventName("grafana.sdlc.k8s.deployment.rollout." + string(data.phase))
@@ -341,7 +358,7 @@ func appendImageResolvedEventRecord(records plog.LogRecordSlice, data eventData,
 	if generation == 0 {
 		generation = data.deployment.Generation
 	}
-	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), fmt.Sprint(generation))
+	rolloutID := stableID(data.clusterUID, data.deployment.Namespace, string(data.deployment.UID), data.rolloutKey)
 	record := records.AppendEmpty()
 	record.SetEventName(imageResolvedEventName)
 	now := pcommon.NewTimestampFromTime(time.Now())

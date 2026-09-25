@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -311,6 +313,242 @@ func TestReconcileRevisionUpdateDoesNotDuplicateStart(t *testing.T) {
 	require.NoError(t, replicaSetIndexer.Update(rs))
 	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
 	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
+}
+
+func TestReconcileAutoscalingDebouncesInventoryWithoutRolloutEvents(t *testing.T) {
+	deployment := testDeployment()
+	deployment.Status.ObservedGeneration = deployment.Generation
+	deployment.Status.UpdatedReplicas = 1
+	deployment.Status.Replicas = 1
+	deployment.Status.ReadyReplicas = 1
+	deployment.Status.AvailableReplicas = 1
+	rs := testReplicaSet(deployment)
+	pod := testPod(rs)
+
+	deploymentIndexer := namespacedIndexer()
+	replicaSetIndexer := namespacedIndexer()
+	podIndexer := namespacedIndexer()
+	require.NoError(t, deploymentIndexer.Add(deployment))
+	require.NoError(t, replicaSetIndexer.Add(rs))
+	require.NoError(t, podIndexer.Add(pod))
+
+	now := time.Date(2026, time.September, 24, 12, 0, 0, 0, time.UTC)
+	var eventNames []string
+	var observedDesired, observedReady int64
+	var scheduled []time.Duration
+	ctrl := newController(controllerOptions{
+		now:               func() time.Time { return now },
+		inventoryDebounce: 2 * time.Second,
+		enqueueAfter:      func(_ string, delay time.Duration) { scheduled = append(scheduled, delay) },
+		emit: func(_ context.Context, batch func() eventBatch) error {
+			records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+			for i := 0; i < records.Len(); i++ {
+				record := records.At(i)
+				eventNames = append(eventNames, record.EventName())
+				if record.EventName() == "grafana.sdlc.k8s.deployment.observed" {
+					desired, _ := record.Attributes().Get("grafana.sdlc.rollout.desired_replicas")
+					ready, _ := record.Attributes().Get("grafana.sdlc.rollout.ready_replicas")
+					observedDesired = desired.Int()
+					observedReady = ready.Int()
+				}
+			}
+			return nil
+		},
+	})
+	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
+	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
+	ctrl.pods = corelisters.NewPodLister(podIndexer)
+
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Equal(t, []string{
+		"grafana.sdlc.k8s.deployment.rollout.succeeded",
+		imageResolvedEventName,
+		"grafana.sdlc.k8s.deployment.observed",
+	}, eventNames)
+	eventNames = nil
+
+	*deployment.Spec.Replicas = 3
+	deployment.Generation++
+	require.NoError(t, deploymentIndexer.Update(deployment))
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Empty(t, eventNames)
+	require.Equal(t, []time.Duration{2 * time.Second}, scheduled)
+
+	deployment.Status.ObservedGeneration = deployment.Generation
+	deployment.Status.UpdatedReplicas = 3
+	deployment.Status.Replicas = 3
+	deployment.Status.ReadyReplicas = 2
+	deployment.Status.AvailableReplicas = 2
+	deployment.Status.UnavailableReplicas = 1
+	require.NoError(t, deploymentIndexer.Update(deployment))
+	now = now.Add(time.Second)
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Empty(t, eventNames)
+	require.Equal(t, []time.Duration{2 * time.Second, 2 * time.Second}, scheduled)
+
+	// The delaying queue retains the earliest scheduled wakeup. It must be
+	// rescheduled if a later update has extended the debounce deadline.
+	now = now.Add(time.Second)
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Empty(t, eventNames)
+	require.Equal(t, time.Second, scheduled[len(scheduled)-1])
+	now = now.Add(time.Second)
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
+	require.Equal(t, int64(3), observedDesired)
+	require.Equal(t, int64(2), observedReady)
+	eventNames = nil
+
+	deployment.Status.ReadyReplicas = 3
+	deployment.Status.AvailableReplicas = 3
+	deployment.Status.UnavailableReplicas = 0
+	require.NoError(t, deploymentIndexer.Update(deployment))
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Equal(t, []string{"grafana.sdlc.k8s.deployment.observed"}, eventNames)
+	require.Equal(t, int64(3), observedReady)
+	eventNames = nil
+
+	now = now.Add(2 * time.Second)
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Empty(t, eventNames)
+}
+
+func TestReconcilePodTemplateChangeStartsNewRollout(t *testing.T) {
+	deployment := testDeployment()
+	deployment.Status.ObservedGeneration = deployment.Generation
+	deployment.Status.UpdatedReplicas = 1
+	deployment.Status.Replicas = 1
+	deployment.Status.ReadyReplicas = 1
+	deployment.Status.AvailableReplicas = 1
+	rs := testReplicaSet(deployment)
+
+	deploymentIndexer := namespacedIndexer()
+	replicaSetIndexer := namespacedIndexer()
+	podIndexer := namespacedIndexer()
+	require.NoError(t, deploymentIndexer.Add(deployment))
+	require.NoError(t, replicaSetIndexer.Add(rs))
+
+	var eventNames []string
+	ctrl := newController(controllerOptions{
+		enqueueAfter: func(string, time.Duration) {},
+		emit: func(_ context.Context, batch func() eventBatch) error {
+			records := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+			for i := 0; i < records.Len(); i++ {
+				eventNames = append(eventNames, records.At(i).EventName())
+			}
+			return nil
+		},
+	})
+	ctrl.deployments = appslisters.NewDeploymentLister(deploymentIndexer)
+	ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSetIndexer)
+	ctrl.pods = corelisters.NewPodLister(podIndexer)
+
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	eventNames = nil
+
+	deployment.Generation++
+	deployment.Annotations[deploymentRevisionAnnotation] = "8"
+	deployment.Spec.Template.Spec.Containers[0].Image = "registry.example.com/team/api:2.0.0"
+	require.NoError(t, deploymentIndexer.Update(deployment))
+	require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+	require.Equal(t, []string{
+		"grafana.sdlc.k8s.deployment.rollout.started",
+		"grafana.sdlc.k8s.deployment.observed",
+	}, eventNames)
+}
+
+// HPA changes the Deployment scale target. These tests simulate those updates,
+// including the generation increment performed by the API server.
+func TestAutoscalerEventSequences(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		initial, target int32
+		rolling         bool
+	}{
+		{name: "scale up", initial: 2, target: 10},
+		{name: "scale down", initial: 10, target: 2},
+		{name: "scale during rollout", initial: 2, target: 10, rolling: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := testDeployment()
+			*d.Spec.Replicas = tc.initial
+			converge := func() {
+				n := *d.Spec.Replicas
+				d.Status = appsv1.DeploymentStatus{ObservedGeneration: d.Generation,
+					Replicas: n, UpdatedReplicas: n, ReadyReplicas: n, AvailableReplicas: n}
+			}
+			converge()
+			if tc.rolling {
+				d.Status.AvailableReplicas = 1
+			}
+			rs := testReplicaSet(d)
+			deployments, replicaSets, pods := namespacedIndexer(), namespacedIndexer(), namespacedIndexer()
+			require.NoError(t, deployments.Add(d.DeepCopy()))
+			require.NoError(t, replicaSets.Add(rs))
+			require.NoError(t, pods.Add(testPod(rs)))
+			var records []plog.LogRecord
+			ctrl := newController(controllerOptions{
+				enqueueAfter: func(string, time.Duration) {},
+				emit: func(_ context.Context, batch func() eventBatch) error {
+					logs := batch().logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+					for i := 0; i < logs.Len(); i++ {
+						r := plog.NewLogRecord()
+						logs.At(i).CopyTo(r)
+						records = append(records, r)
+					}
+					return nil
+				},
+			})
+			t.Cleanup(ctrl.queue.ShutDown)
+			ctrl.deployments = appslisters.NewDeploymentLister(deployments)
+			ctrl.replicaSets = appslisters.NewReplicaSetLister(replicaSets)
+			ctrl.pods = corelisters.NewPodLister(pods)
+			reconcile := func() {
+				t.Helper()
+				require.NoError(t, deployments.Update(d.DeepCopy()))
+				require.NoError(t, ctrl.reconcile(t.Context(), "cluster-uid", "payments/checkout"))
+			}
+			reconcile()
+			require.Len(t, records, 3)
+			phase := "succeeded"
+			if tc.rolling {
+				phase = "started"
+			}
+			require.Equal(t, "grafana.sdlc.k8s.deployment.rollout."+phase, records[0].EventName())
+			id, ok := records[0].Attributes().Get("deployment.id")
+			require.True(t, ok)
+			rolloutID := id.Str()
+			require.NotEmpty(t, rolloutID)
+			require.Equal(t, imageResolvedEventName, records[1].EventName())
+			requireAttributeString(t, records[1].Attributes(), "deployment.id", rolloutID)
+			require.Equal(t, "grafana.sdlc.k8s.deployment.observed", records[2].EventName())
+			records = nil
+
+			*d.Spec.Replicas = tc.target
+			d.Generation++
+			reconcile()
+			require.Empty(t, records, "scaling must not restart or supersede a rollout")
+			converge()
+			reconcile()
+			if tc.rolling {
+				require.Len(t, records, 2)
+				require.Equal(t, "grafana.sdlc.k8s.deployment.rollout.succeeded", records[0].EventName())
+				requireAttributeString(t, records[0].Attributes(), "deployment.id", rolloutID)
+				records = records[1:]
+			}
+			require.Len(t, records, 1)
+			require.Equal(t, "grafana.sdlc.k8s.deployment.observed", records[0].EventName())
+			requireAttributeString(t, records[0].Attributes(), "deployment.status", "succeeded")
+			for _, field := range []string{"desired_replicas", "ready_replicas", "available_replicas"} {
+				value, found := records[0].Attributes().Get("grafana.sdlc.rollout." + field)
+				require.True(t, found)
+				require.Equal(t, int64(tc.target), value.Int())
+			}
+			records = nil
+			reconcile()
+			require.Empty(t, records)
+		})
+	}
 }
 
 func TestReconcileForgetsDeletedDeployment(t *testing.T) {

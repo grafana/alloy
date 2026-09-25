@@ -171,6 +171,11 @@ The component emits these inventory events:
   The component emits this event during the initial informer listing and when relevant replica status, labels, revision, rollout phase, or image information changes.
 * `grafana.sdlc.k8s.deployment.deleted`: A tombstone for a Deployment that no longer exists.
 
+The component waits two seconds before it emits changes that only affect replica counts.
+If more replica count changes arrive during that interval, the component restarts the interval and emits only the latest snapshot.
+The component emits the snapshot immediately when the Deployment converges.
+It also emits snapshots immediately when labels, revisions, rollout identity, or image information changes.
+
 An `observed` event contains one log record for the Deployment.
 The `grafana.sdlc.deployment.containers` attribute is an array containing the configured reference and available resolved image information for each regular and init container.
 The `grafana.sdlc.k8s.deployment.labels` attribute contains the Deployment labels.
@@ -187,10 +192,13 @@ Each Deployment-scoped event contains a `grafana.sdlc.deployment.containers` arr
 Event names have the form `grafana.sdlc.k8s.deployment.rollout.<PHASE>`.
 The supported phases are:
 
-* `started`: The component observes a new Deployment generation that hasn't completed.
-* `succeeded`: All desired replicas for the generation are updated and available.
+* `started`: The component observes a new pod template that hasn't completed its rollout.
+* `succeeded`: All desired replicas for the rollout are updated and available.
 * `stalled`: Kubernetes reports `ProgressDeadlineExceeded` or `ReplicaSetCreateError`.
-* `superseded`: A new generation replaces a rollout that was still in progress.
+* `superseded`: A new pod template replaces a rollout that was still in progress.
+
+The component identifies a new rollout when the Deployment pod template changes.
+Changing only the replica count, including changes made by a HorizontalPodAutoscaler, doesn't create rollout lifecycle or container image resolution events.
 
 Every record contains these resource attributes:
 

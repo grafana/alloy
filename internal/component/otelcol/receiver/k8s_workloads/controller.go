@@ -2,15 +2,18 @@ package k8s_workloads
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -23,23 +26,32 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-const deploymentRevisionAnnotation = "deployment.kubernetes.io/revision"
+const (
+	deploymentRevisionAnnotation = "deployment.kubernetes.io/revision"
+	defaultInventoryDebounce     = 2 * time.Second
+)
 
 type controllerOptions struct {
-	logger      *slog.Logger
-	client      kubernetes.Interface
-	clusterName string
-	clusterUID  string
-	emit        func(context.Context, func() eventBatch) error
+	logger            *slog.Logger
+	client            kubernetes.Interface
+	clusterName       string
+	clusterUID        string
+	emit              func(context.Context, func() eventBatch) error
+	now               func() time.Time
+	enqueueAfter      func(string, time.Duration)
+	inventoryDebounce time.Duration
 }
 
 type controller struct {
 	opts controllerOptions
 
-	deployments appslisters.DeploymentLister
-	replicaSets appslisters.ReplicaSetLister
-	pods        corelisters.PodLister
-	queue       workqueue.TypedRateLimitingInterface[string]
+	deployments       appslisters.DeploymentLister
+	replicaSets       appslisters.ReplicaSetLister
+	pods              corelisters.PodLister
+	queue             workqueue.TypedRateLimitingInterface[string]
+	now               func() time.Time
+	enqueueAfter      func(string, time.Duration)
+	inventoryDebounce time.Duration
 
 	stateMu sync.Mutex
 	states  map[types.UID]rolloutState
@@ -47,22 +59,43 @@ type controller struct {
 }
 
 type rolloutState struct {
-	generation int64
-	revision   string
-	phase      rolloutPhase
-	inventory  string
-	digests    map[string]struct{}
-	images     []imageData
-	deployment *appsv1.Deployment
-	replicaSet *appsv1.ReplicaSet
+	generation         int64
+	revision           string
+	phase              rolloutPhase
+	inventory          string
+	inventoryStructure string
+	emittedInventory   string
+	pendingInventoryAt time.Time
+	rolloutKey         string
+	lifecyclePhase     rolloutPhase
+	digests            map[string]struct{}
+	images             []imageData
+	deployment         *appsv1.Deployment
+	replicaSet         *appsv1.ReplicaSet
 }
 
 func newController(opts controllerOptions) *controller {
+	queue := workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
+	now := opts.now
+	if now == nil {
+		now = time.Now
+	}
+	debounce := opts.inventoryDebounce
+	if debounce <= 0 {
+		debounce = defaultInventoryDebounce
+	}
+	enqueueAfter := opts.enqueueAfter
+	if enqueueAfter == nil {
+		enqueueAfter = queue.AddAfter
+	}
 	return &controller{
-		opts:   opts,
-		queue:  workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]()),
-		states: make(map[types.UID]rolloutState),
-		keys:   make(map[string]types.UID),
+		opts:              opts,
+		queue:             queue,
+		now:               now,
+		enqueueAfter:      enqueueAfter,
+		inventoryDebounce: debounce,
+		states:            make(map[types.UID]rolloutState),
+		keys:              make(map[string]types.UID),
 	}
 }
 
@@ -215,10 +248,16 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 
 	c.stateMu.Lock()
 	previous, seen := c.states[deployment.UID]
+	rolloutChanged := seen && !podTemplatesEqual(previous.deployment.Spec.Template, deployment.Spec.Template)
+	currentRolloutKey := newRolloutKey(deployment, revision)
+	if seen && !rolloutChanged {
+		currentRolloutKey = previous.rolloutKey
+	}
 	current := rolloutState{
 		generation: deployment.Generation,
 		revision:   revision,
 		phase:      phase,
+		rolloutKey: currentRolloutKey,
 		digests:    digestKeys(images),
 		images:     append([]imageData(nil), images...),
 		deployment: deployment.DeepCopy(),
@@ -228,16 +267,23 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 	}
 	inventoryData := eventData{
 		clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: deployment,
-		replicaSet: activeRS, revision: revision, phase: phase, images: images,
+		replicaSet: activeRS, rolloutKey: currentRolloutKey, revision: revision, phase: phase, images: images,
 	}
 	current.inventory = inventoryFingerprint(inventoryData)
+	current.inventoryStructure = inventoryStructureFingerprint(inventoryData)
+	if seen {
+		current.emittedInventory = previous.emittedInventory
+		current.pendingInventoryAt = previous.pendingInventoryAt
+		current.lifecyclePhase = previous.lifecyclePhase
+	}
 	c.stateMu.Unlock()
 
-	if seen && previous.generation != deployment.Generation && previous.phase == phaseStarted {
+	if rolloutChanged && previous.lifecyclePhase == phaseStarted {
 		if err := c.opts.emit(ctx, func() eventBatch {
 			return buildEventBatch(eventData{
 				clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: previous.deployment,
-				replicaSet: previous.replicaSet, generation: previous.generation, revision: previous.revision,
+				replicaSet: previous.replicaSet, rolloutKey: previous.rolloutKey,
+				generation: previous.generation, revision: previous.revision,
 				phase: phaseSuperseded, images: previous.images,
 			})
 		}); err != nil {
@@ -245,15 +291,17 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 		}
 	}
 
-	if !seen || previous.generation != deployment.Generation || previous.phase != phase {
+	emitLifecycle := !seen || rolloutChanged || (previous.lifecyclePhase != phaseSucceeded && previous.lifecyclePhase != phase)
+	if emitLifecycle {
 		if err := c.opts.emit(ctx, func() eventBatch {
 			return buildEventBatch(eventData{
 				clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: deployment,
-				replicaSet: activeRS, revision: revision, phase: phase, images: images,
+				replicaSet: activeRS, rolloutKey: currentRolloutKey, revision: revision, phase: phase, images: images,
 			})
 		}); err != nil {
 			return err
 		}
+		current.lifecyclePhase = phase
 	}
 
 	for _, image := range images {
@@ -261,7 +309,7 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 			continue
 		}
 		digestKey := image.container + "\x00" + image.digest
-		if seen && previous.generation == deployment.Generation {
+		if seen && !rolloutChanged {
 			if _, ok := previous.digests[digestKey]; ok {
 				continue
 			}
@@ -270,18 +318,37 @@ func (c *controller) reconcile(ctx context.Context, clusterUID, key string) erro
 		if err := c.opts.emit(ctx, func() eventBatch {
 			return buildImageResolvedEventBatch(eventData{
 				clusterUID: clusterUID, clusterName: c.opts.clusterName, deployment: deployment,
-				replicaSet: activeRS, revision: revision, images: []imageData{resolvedImage},
+				replicaSet: activeRS, rolloutKey: currentRolloutKey, revision: revision, images: []imageData{resolvedImage},
 			})
 		}); err != nil {
 			return err
 		}
 	}
-	if !seen || previous.inventory != current.inventory {
+	emitInventory := !seen || current.inventoryStructure != previous.inventoryStructure ||
+		(phase == phaseSucceeded && previous.phase != phaseSucceeded)
+	if !emitInventory && current.inventory != current.emittedInventory {
+		now := c.now()
+		if previous.inventory != current.inventory {
+			current.pendingInventoryAt = now.Add(c.inventoryDebounce)
+			c.enqueueAfter(key, c.inventoryDebounce)
+		} else if !current.pendingInventoryAt.IsZero() && !now.Before(current.pendingInventoryAt) {
+			emitInventory = true
+		} else if !current.pendingInventoryAt.IsZero() {
+			// The delaying queue retains the earliest wakeup for a key.
+			c.enqueueAfter(key, current.pendingInventoryAt.Sub(now))
+		}
+	}
+	if current.inventory == current.emittedInventory {
+		current.pendingInventoryAt = time.Time{}
+	}
+	if emitInventory && current.inventory != current.emittedInventory {
 		if err := c.opts.emit(ctx, func() eventBatch {
 			return buildInventoryEventBatch(inventoryData, inventoryObserved, current.inventory)
 		}); err != nil {
 			return err
 		}
+		current.emittedInventory = current.inventory
+		current.pendingInventoryAt = time.Time{}
 	}
 	c.stateMu.Lock()
 	c.states[deployment.UID] = current
@@ -364,6 +431,15 @@ func selectReplicaSet(deployment *appsv1.Deployment, replicaSets []*appsv1.Repli
 
 func podSpecsUseSameImages(left, right corev1.PodSpec) bool {
 	return containerImages(left.Containers, left.InitContainers) == containerImages(right.Containers, right.InitContainers)
+}
+
+func podTemplatesEqual(left, right corev1.PodTemplateSpec) bool {
+	return apiequality.Semantic.DeepEqual(left, right)
+}
+
+func newRolloutKey(deployment *appsv1.Deployment, revision string) string {
+	template, _ := json.Marshal(deployment.Spec.Template)
+	return stableID(revision, string(template))
 }
 
 func containerImages(containers, initContainers []corev1.Container) string {
