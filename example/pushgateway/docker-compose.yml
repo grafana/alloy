@@ -1,0 +1,8 @@
+services:
+  vmsingle:
+    image: victoriametrics/victoria-metrics:v1.151.0-scratch
+    network_mode: host
+    command:
+      - --httpListenAddr=:8428
+      - --retentionPeriod=1d
+      - --selfScrapeInterval=0s
