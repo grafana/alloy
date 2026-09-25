@@ -21,6 +21,8 @@ import (
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
+	"github.com/prometheus/prometheus/tsdb/wlog"
+	"github.com/prometheus/prometheus/util/compression"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -450,7 +452,10 @@ func TestStorage_ExistingWAL_Replay(t *testing.T) {
 		checkpoint bool
 		// extraCommit runs against the same Storage after the payload commit.
 		extraCommit func(t *testing.T, s *Storage, payload seriesList)
-		verify      func(t *testing.T, s *Storage, payload seriesList)
+		// injectAfterClose writes directly to the WAL once the Storage is closed,
+		// for records the appender cannot produce.
+		injectAfterClose func(t *testing.T, walDir string, payload seriesList)
+		verify           func(t *testing.T, s *Storage, payload seriesList)
 	}{
 		{
 			name:       "plain samples",
@@ -489,6 +494,29 @@ func TestStorage_ExistingWAL_Replay(t *testing.T) {
 				require.Equal(t, int64(500), series.lastTs, "sample committed after the custom-buckets-only commit should have survived replay")
 			},
 		},
+		{
+			// A record type loadWAL does not know must not cost us the records
+			// that follow it. Alloy v1.11.0 through v1.19.2 wrote such records.
+			name:    "unknown record type",
+			payload: func() seriesList { return buildSeries([]string{"foo"}) },
+			injectAfterClose: func(t *testing.T, walDir string, payload seriesList) {
+				w, err := wlog.New(nil, nil, SubDirectory(walDir), compression.Snappy)
+				require.NoError(t, err)
+
+				var enc record.Encoder
+				ref := chunks.HeadSeriesRef(*payload[0].ref)
+				// The unknown record has to precede a real one, or there is
+				// nothing left for replay to lose.
+				require.NoError(t, w.Log([]byte{99}))
+				require.NoError(t, w.Log(enc.Samples([]record.RefSample{{Ref: ref, T: 900, V: 9}}, nil)))
+				require.NoError(t, w.Close())
+			},
+			verify: func(t *testing.T, s *Storage, payload seriesList) {
+				series := s.series.GetByID(chunks.HeadSeriesRef(*payload[0].ref))
+				require.NotNil(t, series, "series %q missing after replay", payload[0].name)
+				require.Equal(t, int64(900), series.lastTs, "sample written after the unknown record should have survived replay")
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -521,6 +549,10 @@ func TestStorage_ExistingWAL_Replay(t *testing.T) {
 			require.NoError(t, s.Close())
 			// We need to wait a little bit for the previous store to finish flushing.
 			time.Sleep(time.Millisecond * 150)
+
+			if tc.injectAfterClose != nil {
+				tc.injectAfterClose(t, walDir, payload)
+			}
 
 			s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
 			require.NoError(t, err)
