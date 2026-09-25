@@ -2,16 +2,14 @@ package client
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 type endpoint struct {
@@ -21,10 +19,10 @@ type endpoint struct {
 	shards  *shards
 }
 
-func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
+func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, tracker savepoint.Tracker) (*endpoint, error) {
 	logger = logger.With("component", "endpoint", "host", cfg.URL.Host)
 
-	shards, err := newShards(metrics, logger, markerHandler, cfg)
+	shards, err := newShards(metrics, logger, tracker, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +79,6 @@ func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int
 // entries to be sent before canceling in-flight requests.
 func (e *endpoint) stop() {
 	e.shards.stop()
-}
-
-// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
-// or a hash of the config as whole, this allows us to detect repeated configs.
-func getEndpointName(cfg Config) string {
-	if cfg.Name != "" {
-		return cfg.Name
-	}
-
-	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "%v", cfg)
-	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }
 
 func getTenantID(cfg Config, e loki.Entry) string {

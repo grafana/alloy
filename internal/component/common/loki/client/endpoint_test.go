@@ -23,7 +23,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
@@ -360,7 +360,7 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
-			e, err := newEndpoint(m, tt.endpointConfig, logging.NewSlogNop(), marker.NewNopTracker())
+			e, err := newEndpoint(m, tt.endpointConfig, logging.NewSlogNop(), savepoint.NewNopTracker())
 			require.NoError(t, err)
 			e.start()
 
@@ -418,7 +418,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: false,
 			},
-		}, logging.NewSlogNop(), marker.NewNopTracker())
+		}, logging.NewSlogNop(), savepoint.NewNopTracker())
 		require.NoError(t, err)
 		e.start()
 		defer e.stop()
@@ -459,7 +459,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: true,
 			},
-		}, logging.NewSlogNop(), marker.NewNopTracker())
+		}, logging.NewSlogNop(), savepoint.NewNopTracker())
 		require.NoError(t, err)
 		e.start()
 		defer e.stop()
@@ -506,7 +506,7 @@ func TestEndpointBatchSizeMetric(t *testing.T) {
 		Client:        config.DefaultHTTPClientConfig,
 		BackoffConfig: backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: 2 * time.Millisecond, MaxRetries: 3},
 		QueueConfig:   QueueConfig{Capacity: int(10 * units.MiB), MinShards: 1, BlockOnOverflow: true, DrainTimeout: 30 * time.Second},
-	}, logging.NewSlogNop(), marker.NewNopTracker())
+	}, logging.NewSlogNop(), savepoint.NewNopTracker())
 	require.NoError(t, err)
 	e.start()
 
@@ -538,7 +538,7 @@ func TestEndpointCallerCancel(t *testing.T) {
 		var url flagext.URLValue
 		require.NoError(t, url.Set(server.URL))
 
-		e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{URL: url}, logging.NewSlogNop(), marker.NewNopTracker())
+		e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{URL: url}, logging.NewSlogNop(), savepoint.NewNopTracker())
 		require.NoError(t, err)
 		e.start()
 		defer e.stop()
@@ -574,7 +574,7 @@ func TestEndpointCallerCancel(t *testing.T) {
 				DrainTimeout:    1 * time.Second,
 				BlockOnOverflow: true,
 			},
-		}, logging.NewSlogNop(), marker.NewNopTracker())
+		}, logging.NewSlogNop(), savepoint.NewNopTracker())
 		require.NoError(t, err)
 		e.start()
 		defer e.stop()
@@ -611,7 +611,7 @@ func TestEndpointStopped(t *testing.T) {
 
 	e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{
 		URL: url,
-	}, logging.NewSlogNop(), marker.NewNopTracker())
+	}, logging.NewSlogNop(), savepoint.NewNopTracker())
 	require.NoError(t, err)
 	e.start()
 	e.stop()
