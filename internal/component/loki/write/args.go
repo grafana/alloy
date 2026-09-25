@@ -17,10 +17,11 @@ import (
 
 // Arguments holds values which are used to configure the loki.write component.
 type Arguments struct {
-	Endpoints      []EndpointArguments `alloy:"endpoint,block,optional"`
-	ExternalLabels map[string]string   `alloy:"external_labels,attr,optional"`
-	MaxStreams     int                 `alloy:"max_streams,attr,optional"`
-	WAL            WalArguments        `alloy:"wal,block,optional"`
+	Endpoints          []EndpointArguments `alloy:"endpoint,block,optional"`
+	ExternalLabels     map[string]string   `alloy:"external_labels,attr,optional"`
+	MaxStreams         int                 `alloy:"max_streams,attr,optional"`
+	DisableTenantLabel bool                `alloy:"disable_tenant_label,attr,optional"`
+	WAL                WalArguments        `alloy:"wal,block,optional"`
 }
 
 func (a *Arguments) Validate() error {
@@ -166,6 +167,7 @@ func (args Arguments) convertEndpointConfigs() []client.Config {
 			},
 			Timeout:                cfg.RemoteTimeout,
 			TenantID:               cfg.TenantID,
+			DisableTenantLabel:     args.DisableTenantLabel,
 			MaxStreams:             args.MaxStreams,
 			DropRateLimitedBatches: !cfg.RetryOnHTTP429,
 			QueueConfig: client.QueueConfig{

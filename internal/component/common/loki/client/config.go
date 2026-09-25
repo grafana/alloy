@@ -25,6 +25,9 @@ type Config struct {
 	// single tenant mode)
 	TenantID string
 
+	// DisableTenantLabel omits the tenant label from loki_write metrics.
+	DisableTenantLabel bool
+
 	// Max number of streams that can be added to a batch.
 	MaxStreams int
 

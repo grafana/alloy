@@ -34,6 +34,7 @@ You can use the following arguments with `loki.write`:
 | ----------------- | ------------- | -------------------------------------------- | -------------- | -------- |
 | `external_labels` | `map(string)` | Labels to add to logs sent over the network. | `{}`           | no       |
 | `max_streams`     | `int`         | Maximum number of active streams.            | `0` (no limit) | no       |
+| `disable_tenant_label` | `bool` | Omits the tenant label from `loki.write` metrics. Tenant routing remains enabled. | `false` | no |
 
 ## Blocks
 
@@ -196,6 +197,8 @@ The following fields are exported and can be referenced by other components:
 `loki.write` doesn't expose any component-specific debug information.
 
 ## Debug metrics
+
+Set `disable_tenant_label = true` to omit the `tenant` label from `loki.write` metrics. Metrics then aggregate across tenants for each remaining label set. This doesn't change the tenant used to send logs to Loki.
 
 * `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
 * `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.

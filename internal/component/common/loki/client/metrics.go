@@ -22,6 +22,7 @@ const (
 var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonQueueIsFull, reasonBatchTooLarge}
 
 type metrics struct {
+	disableTenantLabel           bool
 	sentBytes                    *prometheus.CounterVec
 	droppedBytes                 *prometheus.CounterVec
 	sentEntries                  *prometheus.CounterVec
@@ -35,25 +36,34 @@ type metrics struct {
 	countersWithHostTenantReason []*prometheus.CounterVec
 }
 
-func newMetrics(reg prometheus.Registerer) *metrics {
-	var m metrics
+func newMetrics(reg prometheus.Registerer, disableTenantLabel ...bool) *metrics {
+	m := metrics{}
+	if len(disableTenantLabel) > 0 {
+		m.disableTenantLabel = disableTenantLabel[0]
+	}
+	hostTenantLabels := []string{labelHost, labelTenant}
+	hostTenantReasonLabels := []string{labelHost, labelTenant, labelReason}
+	if m.disableTenantLabel {
+		hostTenantLabels = []string{labelHost}
+		hostTenantReasonLabels = []string{labelHost, labelReason}
+	}
 
 	m.sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_bytes_total",
 		Help: "Number of bytes sent.",
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_bytes_total",
 		Help: "Number of bytes dropped because failed to be sent to the ingester after all retries.",
-	}, []string{labelHost, labelTenant, labelReason})
+	}, hostTenantReasonLabels)
 	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_entries_total",
 		Help: "Number of log entries sent to the ingester.",
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_entries_total",
 		Help: "Number of log entries dropped because failed to be sent to the ingester after all retries.",
-	}, []string{labelHost, labelTenant, labelReason})
+	}, hostTenantReasonLabels)
 
 	const (
 		KiB = 1024
@@ -67,7 +77,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 	m.batchSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_batch_size_bytes",
 		Help:                            "Number of uncompressed bytes of log lines in a batch when it's sent, to be compared against the configured batch_size.",
@@ -75,7 +85,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_request_size_bytes",
 		Help:                            "Number of bytes for requests.",
@@ -83,7 +93,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_request_duration_seconds",
 		Help:                            "Duration of send requests.",
@@ -91,11 +101,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,
-	}, []string{"status_code", labelHost, labelTenant})
+	}, append([]string{"status_code"}, hostTenantLabels...))
 	m.batchRetries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_batch_retries_total",
 		Help: "Number of times batches has had to be retried.",
-	}, []string{labelHost, labelTenant})
+	}, hostTenantLabels)
 
 	m.countersWithHostTenant = []*prometheus.CounterVec{
 		m.batchRetries, m.sentBytes, m.sentEntries,
@@ -118,6 +128,20 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	return &m
+}
+
+func (m *metrics) hostTenantLabels(host, tenant string) []string {
+	if m.disableTenantLabel {
+		return []string{host}
+	}
+	return []string{host, tenant}
+}
+
+func (m *metrics) hostTenantReasonLabels(host, tenant, reason string) []string {
+	if m.disableTenantLabel {
+		return []string{host, reason}
+	}
+	return []string{host, tenant, reason}
 }
 
 type walEndpointMetrics struct {

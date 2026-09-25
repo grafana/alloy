@@ -23,7 +23,7 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 	}
 
 	var (
-		metrics        = newMetrics(reg)
+		metrics        = newMetrics(reg, cfgs[0].DisableTenantLabel)
 		endpointsCheck = make(map[string]struct{})
 	)
 
