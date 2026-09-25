@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -43,7 +44,13 @@ func newReportingMetrics(reg prometheus.Registerer) *reportingMetrics {
 	return m
 }
 
+type terminalState struct {
+	template corev1.PodTemplateSpec
+	status   string
+}
+
 type controller struct {
+	terminals map[string]terminalState
 	opts      controllerOptions
 	queue     workqueue.TypedRateLimitingInterface[*eventBatch]
 	now       func() time.Time
@@ -63,7 +70,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.metrics == nil {
 		opts.metrics = newReportingMetrics(nil)
 	}
-	return &controller{opts: opts, now: opts.now, lastError: map[string]time.Time{}, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{terminals: map[string]terminalState{}, opts: opts, now: opts.now, lastError: map[string]time.Time{}, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -87,6 +94,14 @@ func (c *controller) run(ctx context.Context) error {
 			AddFunc: func(obj any, initial bool) {
 				if !initial {
 					c.notify(kind, "created", obj)
+				}
+				if d, ok := obj.(*appsv1.Deployment); ok {
+					c.observeTerminal(d, initial)
+				}
+			},
+			UpdateFunc: func(_, obj any) {
+				if d, ok := obj.(*appsv1.Deployment); ok {
+					c.observeTerminal(d, false)
 				}
 			},
 			DeleteFunc: func(obj any) { c.notify(kind, "deleted", obj) },
@@ -137,6 +152,33 @@ func (c *controller) run(ctx context.Context) error {
 	}
 }
 
+// Informer handlers serialize access to this state. Remember the last terminal
+// result per Pod template, so HPA replica changes do not repeat success events.
+// Startup seeds the state silently; snapshots repair notifications missed while down.
+func (c *controller) observeTerminal(d *appsv1.Deployment, initial bool) {
+	uid := string(d.UID)
+	previous, exists := c.terminals[uid]
+	if !exists || !equality.Semantic.DeepEqual(previous.template, d.Spec.Template) {
+		previous = terminalState{template: *d.Spec.Template.DeepCopy()}
+	}
+	status := deploymentStatus(d)
+	operation := status
+	if status == "healthy" {
+		operation = "succeeded"
+	}
+	if operation == "succeeded" || operation == "stalled" {
+		if !initial && previous.status != operation {
+			now := c.now()
+			c.queue.Add(makeEvent(c.opts.clusterUID, c.opts.clusterName, d.Namespace, "", uid, operation, "deployment", now, map[string]any{
+				"name": d.Name, "uid": uid, "collected_at": now.UTC().Format(time.RFC3339Nano),
+				"status": status, "generation": d.Generation, "observed_generation": d.Status.ObservedGeneration,
+			}))
+		}
+		previous.status = operation
+	}
+	c.terminals[uid] = previous
+}
+
 func (c *controller) notify(kind, operation string, obj any) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
@@ -152,6 +194,9 @@ func (c *controller) notify(kind, operation string, obj any) {
 		name = value.Name
 		namespace = value.Namespace
 		uid = string(value.UID)
+		if operation == "deleted" {
+			delete(c.terminals, uid)
+		}
 	default:
 		return
 	}

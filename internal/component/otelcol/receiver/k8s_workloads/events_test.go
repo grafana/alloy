@@ -285,3 +285,64 @@ func TestImagesAcrossReplicaSetsAndInitContainers(t *testing.T) {
 	require.True(t, entry.Containers[1].Init)
 	require.Equal(t, "sha256:init", entry.Containers[1].Resolved[0].Digest)
 }
+
+func TestTerminalNotifications(t *testing.T) {
+	_, d, _, _ := fixture()
+	c, _, _ := testController(t)
+	take := func(operation string, generation int64) {
+		t.Helper()
+		require.Equal(t, 1, c.queue.Len())
+		event, _ := c.queue.Get()
+		defer c.queue.Done(event)
+		record := event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+		require.Equal(t, eventPrefix+"deployment."+operation, record.EventName())
+		payload := body(t, record)
+		require.Equal(t, string(d.UID), payload["uid"])
+		require.Equal(t, float64(generation), payload["generation"])
+		require.NotContains(t, payload, "containers")
+	}
+	// Initial terminal state is represented by the startup snapshot.
+	c.observeTerminal(d, true)
+	c.observeTerminal(d, false)
+	require.Zero(t, c.queue.Len())
+	// HPA updates generation, but not the Pod template.
+	d.Generation++
+	*d.Spec.Replicas = 2
+	c.observeTerminal(d, false)
+	d.Status.ObservedGeneration = d.Generation
+	d.Status.Replicas, d.Status.UpdatedReplicas, d.Status.AvailableReplicas = 2, 2, 2
+	c.observeTerminal(d, false)
+	require.Zero(t, c.queue.Len())
+	// A new template must not inherit success from stale controller status.
+	d.Generation++
+	d.Spec.Template.Spec.Containers[0].Image = "nginx:1.28"
+	c.observeTerminal(d, false)
+	require.Zero(t, c.queue.Len())
+	d.Status.ObservedGeneration = d.Generation
+	c.observeTerminal(d, false)
+	take("succeeded", 3)
+	c.observeTerminal(d, false)
+	require.Zero(t, c.queue.Len())
+	// A stalled rollout and its recovery are distinct terminal transitions.
+	d.Status.Conditions = []appsv1.DeploymentCondition{{Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded"}}
+	c.observeTerminal(d, false)
+	take("stalled", 3)
+	c.observeTerminal(d, false)
+	require.Zero(t, c.queue.Len())
+	d.Status.Conditions = nil
+	c.observeTerminal(d, false)
+	take("succeeded", 3)
+	c.notify("deployment", "deleted", d)
+	require.NotContains(t, c.terminals, string(d.UID))
+}
+
+func TestProgressingStartupEmitsTerminalNotification(t *testing.T) {
+	_, d, _, _ := fixture()
+	c, _, _ := testController(t)
+	d.Status.AvailableReplicas = 0
+	c.observeTerminal(d, true)
+	require.Zero(t, c.queue.Len())
+	d.Status.AvailableReplicas = 1
+	c.observeTerminal(d, false)
+	require.Equal(t, 1, c.queue.Len())
+}

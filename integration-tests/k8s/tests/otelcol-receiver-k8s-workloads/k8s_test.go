@@ -46,6 +46,9 @@ func TestK8sWorkloads(t *testing.T) {
 			d := findDeployment(e, "web")
 			return d != nil && d["status"] == "healthy" && len(d["containers"].([]any)[0].(map[string]any)["resolved"].([]any)) > 0
 		})
+		waitEvent(t, func(e inventoryEvent) bool {
+			return e.name == "deployment.succeeded" && e.body["name"] == "web" && e.namespace == inventoryNamespace
+		})
 		d := findDeployment(e, "web")
 		require.NotEmpty(t, d["uid"])
 		require.Equal(t, true, e.body["complete"])
@@ -64,25 +67,32 @@ func TestK8sWorkloads(t *testing.T) {
 		events, err := readEvents()
 		require.NoError(t, err)
 		owners := map[string]bool{}
-		created := 0
+		created, succeeded := 0, 0
 		for _, e := range events {
 			require.NotContains(t, e.name, "rollout")
 			require.NotContains(t, e.name, "observed")
 			if e.name == "deployment.created" && e.body["name"] == "web" && e.namespace == inventoryNamespace {
 				created++
 			}
+			if e.name == "deployment.succeeded" && e.body["name"] == "web" && e.namespace == inventoryNamespace {
+				succeeded++
+			}
 			if e.name == "deployment.snapshot" && e.namespace == inventoryNamespace {
 				owners[e.pod] = true
 			}
 		}
 		require.Equal(t, 1, created)
+		require.Equal(t, 1, succeeded, "scaling must not repeat success")
 		require.Len(t, owners, 1)
 	})
-	t.Run("stalled snapshot", func(t *testing.T) {
+	t.Run("stalled notification and snapshot", func(t *testing.T) {
 		require.NoError(t, harness.RunCommand("kubectl", "-n", inventoryNamespace, "set", "image", "deployment/web", "app=unavailable.invalid/app:test"))
 		waitEvent(t, func(e inventoryEvent) bool {
 			d := findDeployment(e, "web")
 			return d != nil && d["status"] == "stalled"
+		})
+		waitEvent(t, func(e inventoryEvent) bool {
+			return e.name == "deployment.stalled" && e.body["name"] == "web" && e.namespace == inventoryNamespace
 		})
 	})
 	t.Run("deletion and complete empty inventory", func(t *testing.T) {

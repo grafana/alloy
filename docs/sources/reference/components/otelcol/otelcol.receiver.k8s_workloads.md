@@ -11,7 +11,7 @@ title: otelcol.receiver.k8s_workloads
 # `otelcol.receiver.k8s_workloads`
 
 `otelcol.receiver.k8s_workloads` emits complete Kubernetes namespace and Deployment inventories as OpenTelemetry log events.
-It collects inventory on startup and at a configurable interval, and emits immediate namespace and Deployment created/deleted notifications.
+It collects inventory on startup and at a configurable interval, and emits immediate namespace and Deployment created/deleted notifications plus Deployment succeeded/stalled notifications.
 ReplicaSet and Pod data enrich Deployment snapshots with runtime image IDs and digests; they don't produce separate events.
 
 The component is opt-in.
@@ -195,6 +195,7 @@ The record includes `grafana.sdlc.event.id`, `grafana.sdlc.schema.version=1`, an
 | `grafana.sdlc.k8s.deployment.snapshot` | Namespace | `complete`, `collected_at`, `resource_version`, and a `deployments` array. |
 | `grafana.sdlc.k8s.namespace.created` / `.deleted` | Namespace | `name`, `uid`, and `collected_at`. |
 | `grafana.sdlc.k8s.deployment.created` / `.deleted` | Deployment | `name`, `uid`, and `collected_at`. |
+| `grafana.sdlc.k8s.deployment.succeeded` / `.stalled` | Deployment | `name`, `uid`, `collected_at`, `status`, `generation`, and `observed_generation`. |
 | `grafana.sdlc.reporting.error` | Failed operation's scope | `operation`, `entity_kind`, `attempt_id`, `reason`, `message`, and `failed_collected_at`. |
 
 Namespace snapshots contain each namespace's UID, name, labels, phase, creation time, and optional deletion timestamp.
@@ -213,13 +214,21 @@ If any required list fails, the component emits an error instead of a partial De
 An empty collection is valid and contains `namespaces: []` or `deployments: []` with `complete: true`.
 
 Created notifications exclude objects returned by the initial watch listing: startup snapshots represent those objects.
+Deployment `succeeded` notifications report the derived `healthy` status; `stalled` notifications report `stalled`.
+The watcher remembers the last terminal result for each Deployment UID and Pod template.
+A new Pod template resets that result, and changes between terminal results emit notifications.
+Replica-only scaling and repeated status updates don't repeat the same terminal result.
+The initial watch listing seeds this state without emitting terminal notifications; a Deployment initially progressing can emit a notification when it finishes.
+This state is held in memory and doesn't provide durable notification deduplication across restarts.
 Notifications are best-effort hints for responsiveness; snapshots repair missed notifications.
+Only Deployment snapshots contain container images and resolved runtime image IDs/digests.
+Created, deleted, succeeded, and stalled notifications don't contain image enrichment.
 This schema replaces the earlier experimental `deployment.observed`, rollout phase, and image-resolution event schema.
 Consumers of that schema must migrate to namespace-scoped snapshot bodies.
 
 ### Reporting errors
 
-The shared `reporting.error` event applies to snapshots and created/deleted notifications.
+The shared `reporting.error` event applies to snapshots and created/deleted/succeeded/stalled notifications.
 Reasons include `payload_too_large`, `collection_failed`, and `delivery_failed`.
 Size failures include `measured_bytes` and `limit_bytes`.
 The component logs errors with a per-scope rate limit and increments an error counter.
