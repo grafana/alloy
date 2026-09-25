@@ -56,7 +56,7 @@ func (args *Arguments) SetToDefault() {
 // Exports are the set of fields exposed by the otelcol.receiver.prometheus
 // component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 // Component is the otelcol.receiver.prometheus component.
@@ -65,7 +65,7 @@ type Component struct {
 
 	mut        sync.RWMutex
 	cfg        Arguments
-	appendable storage.Appendable
+	appendable storage.AppendableV2
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }

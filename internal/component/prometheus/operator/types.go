@@ -22,7 +22,7 @@ type Arguments struct {
 	// Client settings to connect to Kubernetes.
 	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
 
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 
 	// Namespaces to search for monitor resources. Empty implies All namespaces
 	Namespaces []string `alloy:"namespaces,attr,optional"`
