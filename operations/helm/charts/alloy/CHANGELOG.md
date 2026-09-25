@@ -10,11 +10,15 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.13.0 (2026-09-25)
+----------
+
 ### Enhancements
 
 - Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
 - Update the `prometheus-config-reloader` image from v0.91.0 to v0.94.0. (@ptodev)
 - Allow setting `trafficDistribution` in the service spec. (@agermel)
+- Update to Grafana Alloy v1.20.0 (@ptodev)
 
 1.12.1 (2026-08-26)
 ----------
