@@ -10,12 +10,24 @@ title: otelcol.receiver.k8s_workloads
 
 # `otelcol.receiver.k8s_workloads`
 
-`otelcol.receiver.k8s_workloads` emits complete Kubernetes namespace and Deployment inventories as OpenTelemetry log events.
-It collects inventory on startup and at a configurable interval, and emits immediate namespace and Deployment created/deleted notifications plus Deployment succeeded/stalled notifications.
-ReplicaSet and Pod data enrich Deployment snapshots with runtime image IDs and digests; they don't produce separate events.
+`otelcol.receiver.k8s_workloads` emits Kubernetes inventory and change events as OpenTelemetry logs.
 
-The component is opt-in.
-It doesn't watch Kubernetes resources unless you add it to the {{< param "PRODUCT_NAME" >}} configuration.
+For namespaces, it emits three [events](#namespace-events):
+
+- `snapshot`: A complete list of namespaces, collected at startup and at the interval configured in the [`snapshots` block](#snapshots).
+- `created`: A namespace is created after the initial watch listing.
+- `deleted`: A namespace is deleted.
+
+For Deployments, it emits five [events](#deployment-events):
+
+- `snapshot`: A complete list of Deployments in each namespace, including container images, collected on the same [snapshot schedule](#snapshots).
+- `created`: A Deployment is created after the initial watch listing.
+- `deleted`: A Deployment is deleted.
+- `succeeded`: A Deployment reaches the derived `healthy` status.
+- `stalled`: A Deployment reports that its progress deadline has been exceeded.
+
+The shared [`grafana.sdlc.reporting.error` event](#error-reports) reports collection and delivery failures, including events that reach the [maximum payload size](#snapshots).
+ReplicaSets and Pods enrich Deployment snapshots but don't produce separate events.
 
 {{< admonition type="caution" >}}
 This component is experimental and its event schema can change without notice.
@@ -57,7 +69,7 @@ You can use the following blocks with `otelcol.receiver.k8s_workloads`:
 | `client` > [`tls_config`][tls_config]       | Configures TLS for connections to the Kubernetes API server.           | no       |
 | [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
 | [`snapshots`][snapshots] | Configures scan frequency and the serialized event size limit. | no |
-| [`output`][output]                          | Configures where to send inventory events.                               | yes      |
+| [`output`][output]                          | Configures where to send workload events.                               | yes      |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -72,7 +84,7 @@ You can use the following blocks with `otelcol.receiver.k8s_workloads`:
 
 ### `snapshots`
 
-The optional `snapshots` block configures the authoritative inventories:
+The optional `snapshots` block configures the inventory scan interval and the size limit for inventory and notification events:
 
 | Name | Type | Description | Default | Required |
 | --- | --- | --- | --- | --- |
@@ -81,14 +93,12 @@ The optional `snapshots` block configures the authoritative inventories:
 
 The component performs its first scan after the namespace and Deployment watches synchronize.
 It performs subsequent scans serially and coalesces ticks if collection takes longer than the interval.
-Updates, status transitions, and image resolution don't trigger extra snapshots.
+Resource changes don't trigger extra snapshots.
 Unchanged and empty inventories still produce snapshots.
 
-The component checks both OTLP protobuf and OTLP JSON envelope sizes before delivery.
-An event at or above `max_size_bytes` is replaced with a bounded `reporting.error` event; the component never truncates inventories or splits them into multiple records.
-Error events have an independent 8192-byte JSON limit and don't include the rejected payload.
-Keep downstream HTTP request and Kafka limits large enough for these envelopes and any exporter batching or gateway encoding overhead.
-A gateway must check its own final Kafka serialization if it changes encoding.
+The component checks the sizes of OTLP envelopes encoded as Protocol Buffers or JSON before delivery.
+An event at or above `max_size_bytes` produces an [error report](#error-reports) instead of the original event.
+The component never truncates or splits an inventory.
 
 ### `client`
 
@@ -141,6 +151,8 @@ At most one of the following can be provided:
 
 ### `clustering`
 
+The `clustering` block assigns collection to one {{< param "PRODUCT_NAME" >}} cluster member:
+
 | Name      | Type   | Description                                               | Default | Required |
 | --------- | ------ | --------------------------------------------------------- | ------- | -------- |
 | `enabled` | `bool` | Assign the watcher to one {{< param "PRODUCT_NAME" >}} cluster member. | `false` | yes      |
@@ -180,25 +192,45 @@ Namespace get/list/watch permissions are required even when you configure `clust
 
 ## Event schema
 
-It uses OpenTelemetry semantic convention attributes where applicable and uses the `grafana.sdlc.*` namespace for experimental fields.
+Events use OpenTelemetry semantic convention attributes where applicable and the `grafana.sdlc.*` namespace for experimental fields.
 
 ### Inventory and notification events
 
-Each event is one OTLP log record. Its body is a JSON string, so an OTLP gateway can split log records without splitting the inventory inside a record.
-The resource attributes identify `k8s.cluster.uid`, optional `k8s.cluster.name`, and the namespace name/UID when applicable.
-Deployment notifications additionally identify `k8s.deployment.uid`.
-The record includes `grafana.sdlc.event.id`, `grafana.sdlc.schema.version=1`, and a collection timestamp in `timeUnixNano`.
+Each event is one OTLP log record with a JSON string body.
+Resource attributes include `k8s.cluster.uid` and, when configured, `k8s.cluster.name`.
+Namespace notifications and Deployment snapshots include `k8s.namespace.name` and `k8s.namespace.uid`.
+Deployment notifications include `k8s.namespace.name` and `k8s.deployment.uid`, but not the namespace UID.
+Each record has a `grafana.sdlc.event.id`, `grafana.sdlc.schema.version` set to `1`, and its collection or observation timestamp in `timeUnixNano`.
+
+The component reads membership from the Kubernetes API instead of a local cache that might be out of sync.
+Created notifications exclude objects returned by the initial watch listing: startup snapshots represent those objects.
+Notifications describe changes observed by the watcher; snapshots contain the current inventory.
+
+#### Namespace events
+
+Namespace events describe the namespace inventory, creation, and deletion.
 
 | Event name | Scope | JSON body |
 | --- | --- | --- |
 | `grafana.sdlc.k8s.namespace.snapshot` | Cluster | `complete`, `collected_at`, `resource_version`, and a `namespaces` array. |
-| `grafana.sdlc.k8s.deployment.snapshot` | Namespace | `complete`, `collected_at`, `resource_version`, and a `deployments` array. |
-| `grafana.sdlc.k8s.namespace.created` / `.deleted` | Namespace | `name`, `uid`, and `collected_at`. |
-| `grafana.sdlc.k8s.deployment.created` / `.deleted` | Deployment | `name`, `uid`, and `collected_at`. |
-| `grafana.sdlc.k8s.deployment.succeeded` / `.stalled` | Deployment | `name`, `uid`, `collected_at`, `status`, `generation`, and `observed_generation`. |
-| `grafana.sdlc.reporting.error` | Failed operation's scope | `operation`, `entity_kind`, `attempt_id`, `reason`, `message`, and `failed_collected_at`. |
+| `grafana.sdlc.k8s.namespace.created` | Namespace | `name`, `uid`, and `collected_at`. |
+| `grafana.sdlc.k8s.namespace.deleted` | Namespace | `name`, `uid`, and `collected_at`. |
 
-Namespace snapshots contain each namespace's UID, name, labels, phase, creation time, and optional deletion timestamp.
+Namespace snapshots contain the UID, name, labels, phase, creation time, and optional deletion timestamp of each namespace.
+An empty namespace collection is valid and contains `namespaces: []` with `complete: true`.
+
+#### Deployment events
+
+Deployment events describe the Deployment inventory, creation, deletion, and terminal results.
+
+| Event name | Scope | JSON body |
+| --- | --- | --- |
+| `grafana.sdlc.k8s.deployment.snapshot` | Namespace | `complete`, `collected_at`, `resource_version`, and a `deployments` array. |
+| `grafana.sdlc.k8s.deployment.created` | Deployment | `name`, `uid`, and `collected_at`. |
+| `grafana.sdlc.k8s.deployment.deleted` | Deployment | `name`, `uid`, and `collected_at`. |
+| `grafana.sdlc.k8s.deployment.succeeded` | Deployment | `name`, `uid`, `collected_at`, `status`, `generation`, and `observed_generation`. |
+| `grafana.sdlc.k8s.deployment.stalled` | Deployment | `name`, `uid`, `collected_at`, `status`, `generation`, and `observed_generation`. |
+
 Deployment snapshots contain UID, name, labels, creation/deletion times, resource version, generation, observed generation, paused state, replica counts, Kubernetes conditions, and container information.
 Container entries include `name`, `init`, configured `image`, parsed `image_name`/`tag`, and a `resolved` array with runtime `id`, `digest` when available, and `replicaset_uid`.
 The resolved array can be empty, or contain multiple images from ReplicaSets running during an update.
@@ -208,64 +240,46 @@ These are presentation labels, not native Kubernetes phases.
 Use the original conditions and counters when you need more detail.
 A Deployment whose controller hasn't observed its current generation is `progressing`.
 
-Membership is read from the Kubernetes API, not an unsynchronized local cache.
 ReplicaSets and Pods are separate enrichment reads, so their fields aren't an atomic cross-resource view.
 If any required list fails, the component emits an error instead of a partial Deployment inventory.
-An empty collection is valid and contains `namespaces: []` or `deployments: []` with `complete: true`.
+An empty Deployment collection is valid and contains `deployments: []` with `complete: true`.
 
-Created notifications exclude objects returned by the initial watch listing: startup snapshots represent those objects.
-Deployment `succeeded` notifications report the derived `healthy` status; `stalled` notifications report `stalled`.
-The watcher remembers the last terminal result for each Deployment UID and Pod template.
-A new Pod template resets that result, and changes between terminal results emit notifications.
-Replica-only scaling and repeated status updates don't repeat the same terminal result.
-The initial watch listing seeds this state without emitting terminal notifications; a Deployment initially progressing can emit a notification when it finishes.
-This state is held in memory and doesn't provide durable notification deduplication across restarts.
-Notifications are best-effort hints for responsiveness; snapshots repair missed notifications.
-Only Deployment snapshots contain container images and resolved runtime image IDs/digests.
-Created, deleted, succeeded, and stalled notifications don't contain image enrichment.
-This schema replaces the earlier experimental `deployment.observed`, rollout phase, and image-resolution event schema.
-Consumers of that schema must migrate to namespace-scoped snapshot bodies.
+A `succeeded` notification reports `healthy`: the controller has observed the current generation, all desired replicas are updated and available, and none are unavailable.
+A `stalled` notification reports a `Progressing=False` condition with reason `ProgressDeadlineExceeded` after the controller observes the current generation.
+Paused or terminating Deployments don't emit these notifications.
+The watcher remembers the last result for each Deployment UID and Pod template, so repeated updates and replica-only scaling don't repeat the same result.
+A new Pod template resets this state; a change between `succeeded` and `stalled` emits a new notification.
+The initial watch listing records existing results without emitting notifications, and this state doesn't survive restarts.
+Only snapshots include container images; notifications don't.
 
-### Reporting errors
+### Error reports
 
-The shared `reporting.error` event applies to snapshots and created/deleted/succeeded/stalled notifications.
-Reasons include `payload_too_large`, `collection_failed`, and `delivery_failed`.
-Size failures include `measured_bytes` and `limit_bytes`.
-The component logs errors with a per-scope rate limit and increments an error counter.
-If delivering an error itself fails, the component logs the failure without generating another error event.
-The error path shares the output transport, so it cannot guarantee notification during an outage.
+The shared `grafana.sdlc.reporting.error` event reports failures to collect or deliver namespace and Deployment events.
 
-Consumers must retain the last successful inventory when reporting fails.
-Error events aren't workload statuses, complete inventories, or evidence of deletion.
+| Event name | Scope | JSON body |
+| --- | --- | --- |
+| `grafana.sdlc.reporting.error` | Failed operation's scope | `operation`, `entity_kind`, `attempt_id`, `reason`, `message`, and `failed_collected_at`. |
 
-## Ordering and reconciliation contract
+The `reason` field identifies the failure:
 
-Collection timestamps provide prototype ordering under a single active collector per cluster and observation scope.
-The minute-scale scan interval is expected to exceed typical node clock skew, but clock rollback during restart or rescheduling can temporarily cause fresh snapshots to compare older.
-A durable monotonic epoch/sequence would provide stronger failover guarantees.
-Don't numerically compare Kubernetes resource versions as a replacement for this ordering contract.
+- `payload_too_large`: The event reaches or exceeds `snapshots.max_size_bytes`. The error includes `measured_bytes` and `limit_bytes`.
+- `collection_failed`: A required Kubernetes API read fails, or the namespace disappears or is recreated during collection.
+- `delivery_failed`: A configured output returns an error. The component retries the original event.
 
-A future consumer should persist the latest accepted timestamp separately for cluster namespace inventories and each namespace UID's Deployment inventory.
-Apply only newer complete snapshots; deduplicate event IDs and ignore older deliveries.
-Increment an entity's missing counter only when a newer accepted parent inventory omits its UID, and reset it when present.
-Missing messages, failed scans, duplicates, and stale snapshots don't advance deletion counters.
-Confirming a namespace's deletion also removes its Deployments.
-Retain explicit deletion tombstones so late snapshots can't resurrect deleted UIDs.
-These consumer behaviors aren't implemented by this receiver or the prototype forwarding ingester.
+Error events omit the rejected payload and have a separate 8192-byte JSON envelope limit.
+They use the same output as other events, so delivery isn't guaranteed during an outage.
+The component logs failures and increments an error counter; failure to send an error produces only a log message.
 
 ## Delivery semantics
 
-The component retains failed deliveries in memory and retries the original payload, ID, and collection timestamp.
-It copies pdata for each delivery attempt so downstream mutation doesn't change a retry.
-Oversized payloads aren't retried unchanged; the next scheduled scan retries collection.
-Failed snapshot deliveries can arrive after newer ones, so consumers must enforce timestamp ordering.
-Queued events don't survive a process restart unless the downstream exporter has accepted them into durable storage.
+The component retries failed deliveries in memory, preserving the original payload, event ID, and timestamp.
+Events at or above the size limit aren't retried; the next scan collects a new snapshot.
+Queued events don't survive a process restart.
+Retries can be emitted after newer events, and changes in cluster ownership can produce duplicate notifications.
+Event timestamps use the collector's local clock.
 
-Restarting or acquiring cluster ownership synchronizes watches and immediately collects fresh inventories.
-A missed Deployment deletion is repaired by its absence from namespace inventory; a missed namespace deletion is repaired by cluster inventory.
-Neither recovery requires remembering the deleted object's name inside Alloy.
-Run one collection owner for each scope; clustering selects one peer, but doesn't provide strict fencing during a partition.
-Without clustering, prevent overlapping collectors during Pod replacement, for example with a Deployment `Recreate` strategy.
+Clustering selects one collection owner but doesn't prevent overlapping collectors during a network partition.
+Without clustering, each configured instance watches the Kubernetes cluster independently.
 
 ## Exported fields
 
@@ -274,7 +288,8 @@ Without clustering, prevent overlapping collectors during Pod replacement, for e
 ## Component health
 
 `otelcol.receiver.k8s_workloads` is reported as unhealthy if its configuration is invalid.
-Runtime failures produce reporting errors and logs. Failed deliveries retry; collection retries on the next scan.
+Collection and delivery failures produce error reports and logs.
+Watcher startup failures are logged and retried.
 
 ## Debug information
 
@@ -285,16 +300,16 @@ Runtime failures produce reporting errors and logs. Failed deliveries retry; col
 The component exposes these metrics:
 
 * `k8s_workloads_reporting_errors_total`: Reporting failures labeled by operation and reason.
-* `k8s_workloads_snapshot_last_success_timestamp_seconds`: Last snapshot accepted by the downstream pipeline, labeled by entity kind and namespace. Acceptance doesn't imply Kafka or application acknowledgment.
+* `k8s_workloads_snapshot_last_success_timestamp_seconds`: Time of the last snapshot for which all configured outputs returned successfully, labeled by entity kind and namespace.
 
 ## Examples
 
-The following examples show how to send inventory events to a local debug exporter, a custom
+The following examples show how to send workload events to a local debug exporter, a custom
 OTLP/HTTP endpoint, or a Grafana Cloud OTLP/HTTP endpoint.
 
 ### Log events locally
 
-This example logs inventory events with the OpenTelemetry debug exporter:
+This example logs workload events with the OpenTelemetry debug exporter:
 
 ```alloy
 otelcol.receiver.k8s_workloads "default" {
@@ -316,7 +331,7 @@ otelcol.exporter.debug "rollouts" {
 
 ### Send events to a custom OTLP/HTTP endpoint
 
-This example sends only inventory events to a configurable OTLP/HTTP endpoint:
+This example sends workload events to a configurable OTLP/HTTP endpoint:
 
 ```alloy
 otelcol.receiver.k8s_workloads "default" {
@@ -343,7 +358,7 @@ The exporter sends requests to `<ROLLOUT_OTLP_ENDPOINT>/v1/logs`.
 To use a different path, set the exporter's `logs_endpoint` argument to the complete URL.
 
 The endpoint is scoped to the `rollout_api` exporter.
-Only the inventory receiver is connected to that exporter, so the endpoint doesn't affect other
+Only this receiver is connected to that exporter, so the endpoint doesn't affect other
 telemetry pipelines in the same {{< param "PRODUCT_NAME" >}} configuration.
 
 When {{< param "PRODUCT_NAME" >}} runs in Kubernetes, the endpoint must be reachable from the
@@ -360,7 +375,7 @@ For a complete custom endpoint configuration, use
 
 ### Send events to Grafana Cloud
 
-This example sends inventory events to a Grafana Cloud API that accepts OTLP/HTTP logs at `/v1/logs`:
+This example sends workload events to a Grafana Cloud API that accepts OTLP/HTTP logs at `/v1/logs`:
 
 ```alloy
 otelcol.receiver.k8s_workloads "default" {
@@ -413,12 +428,8 @@ Set the following environment variables:
   username.
 * `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token authorized to write to the endpoint.
 
-The exporter retries failed requests until they succeed because `max_elapsed_time` is `"0s"`.
-The sending queue uses one consumer to preserve request order and applies backpressure when the queue is full.
-The queue uses `otelcol.storage.file` with `fsync` enabled so accepted batches survive an
-{{< param "PRODUCT_NAME" >}} process restart.
-When you run {{< param "PRODUCT_NAME" >}} in Kubernetes, mount the storage path on persistent storage
-if batches must also survive Pod replacement or rescheduling.
+This example configures retries and a persistent sending queue in the exporter.
+For exporter options, refer to [`otelcol.exporter.otlphttp`](../otelcol.exporter.otlphttp/).
 
 For a reusable opt-in custom component, use the module in `example/k8s-workloads/module.alloy`.
 Importing the file only defines the custom component; instantiate `deployment_rollouts` to start the watcher.
