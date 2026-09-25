@@ -440,6 +440,9 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	buf, err := encode(r, size, *protoBuf, *snappyBuf)
 	if err != nil {
 		s.logger.Error("error encoding batch", "error", err)
+		// There's no encoded buffer, so count the uncompressed size.
+		s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonEncodingFailed).Add(float64(batch.size))
+		s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonEncodingFailed).Add(float64(entriesCount))
 		return
 	}
 
