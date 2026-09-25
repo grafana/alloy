@@ -266,9 +266,10 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
-func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
+	lastReadTime := sinceTime
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -278,13 +279,12 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			// Skip only if the timestamp is strictly before lastReadTime.
-			// This allows multiple log lines with the same timestamp to be processed,
-			// which is common in Windows containers that log rapidly.
-			if entryTimestamp.Before(lastReadTime) {
+			// Skip only lines the API server re-sent from before the resume point
+			// (SinceTime has second precision). Do not compare against the previous
+			// line: stdout and stderr are stamped independently by the runtime.
+			if entryTimestamp.Before(sinceTime) {
 				continue
 			}
-			lastReadTime = entryTimestamp
 
 			entry := loki.NewEntry(t.lset.Clone(), push.Entry{
 				Timestamp: entryTimestamp,
@@ -295,9 +295,14 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			case <-ctx.Done():
 				return nil
 			case ch <- entry:
-				// Save position after it's been sent over the channel.
-				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, entryTimestamp.UnixMicro())
-				t.target.Report(entryTimestamp, nil)
+				// Save position after it's been sent over the channel. The saved
+				// position seeds sinceTime for the next tail, so it never moves
+				// backwards even when the stream is out of order.
+				if entryTimestamp.After(lastReadTime) {
+					lastReadTime = entryTimestamp
+				}
+				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
+				t.target.Report(lastReadTime, nil)
 			}
 		}
 
