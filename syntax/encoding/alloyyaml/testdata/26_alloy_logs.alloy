@@ -1,0 +1,846 @@
+livedebugging {
+	enabled = true
+}
+
+// Setup discovery for all pods on the node alloy is running on.
+discovery.kubernetes "pods" {
+	role = "pod"
+	// Limit discovery to pods on the same node.
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+// Pods using "name" label.
+discovery.relabel "pods_name" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_name"]
+		target_label  = "__service__"
+	}
+}
+
+// Pods using "app" label.
+// Drop pods using "name" label.
+discovery.relabel "pods_app" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_name"]
+		regex         = ".+"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_app"]
+		target_label  = "__service__"
+	}
+}
+
+// Pods using a direct controller e.g. StatefulSet.
+// Drop pods using either "name" or "app" label or if the are unsing indirect controller.
+discovery.relabel "pods_direct_controllers" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_name", "__meta_kubernetes_pod_label_app"]
+		separator     = ""
+		regex         = ".+"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_controller_name"]
+		regex         = "[0-9a-z-.]+-[0-9a-f]{8,10}"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_controller_name"]
+		target_label  = "__service__"
+	}
+}
+
+// Pods using a indirect controller e.g. Deployments (Deployments -> ReplicaSet -> Pods).
+// Drop pods using either "name" or "app" label or if they are using direct controller.
+discovery.relabel "pods_indirect_controllers" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_name", "__meta_kubernetes_pod_label_app"]
+		separator     = ""
+		regex         = ".+"
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_controller_name"]
+		regex         = "[0-9a-z-.]+-[0-9a-f]{8,10}"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_controller_name"]
+		regex         = "([0-9a-z-.]+)-[0-9a-f]{8,10}"
+		target_label  = "__service__"
+	}
+}
+
+// Any control plane static pods (e.g. kube-apiserver, etcd, kube-controller-manager & kube-scheduler)
+discovery.relabel "pods_static" {
+	targets = discovery.kubernetes.pods.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_annotation_kubernetes_io_config_mirror"]
+		regex         = ""
+		action        = "drop"
+	}
+
+	// FIXME(kalleep): These are using "__meta_kubernetes_pod_annotation_kubernetes_io_config_mirror" instead of
+	// "__meta_kubernetes_pod_uid" when creating the path, not sure if its ok to overwrite "__meta_kubernetes_pod_uid" here.
+	rule {
+		source_labels = ["__meta_kubernetes_pod_annotation_kubernetes_io_config_mirror"]
+		target_label  = "__meta_kubernetes_pod_uid"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_component"]
+		target_label  = "__service__"
+	}
+}
+
+discovery.relabel "default" {
+	targets = array.concat(
+		discovery.relabel.pods_name.output,
+		discovery.relabel.pods_app.output,
+		discovery.relabel.pods_static.output,
+		discovery.relabel.pods_direct_controllers.output,
+		discovery.relabel.pods_indirect_controllers.output,
+	)
+
+	rule {
+		source_labels = ["__service__"]
+		regex         = ""
+		action        = "drop"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_node_name"]
+		target_label  = "__host__"
+	}
+
+	rule {
+		regex  = "__meta_kubernetes_pod_label_(.+)"
+		action = "labelmap"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace", "__service__"]
+		separator     = "/"
+		target_label  = "job"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_namespace"]
+		target_label  = "namespace"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "pod"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_name"]
+		target_label  = "container"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+		separator     = "/"
+		target_label  = "__path__"
+		replacement   = "/var/log/pods/*$1/*.log"
+	}
+}
+
+loki.source.file "logs" {
+	targets               = discovery.relabel.default.output
+	forward_to            = [loki.process.logs.receiver]
+
+	file_match {
+		enabled = true
+	}
+}
+
+loki.process "logs" {
+	forward_to = [loki.write.logs.receiver]
+
+	stage.cri {
+		max_partial_line_size          = 262142
+		max_partial_line_size_truncate = true
+	}
+
+	stage.match {
+		selector = "{job=~\"loki-.*/ingester.*\"} |= \"metrics.go\""
+		action   = "drop"
+	}
+
+	stage.drop {
+		longer_than = "262142B"
+	}
+
+	stage.regex {
+		expression = "(level|lvl|severity)=(?P<debug>debug)"
+	}
+
+	stage.drop {
+		drop_counter_reason = "noisy_logs_from_querier"
+		expression          = "caching_index_client.go:308.*caching index entries"
+	}
+
+	stage.template {
+		source   = "debug"
+		template = "true"
+	}
+
+	stage.labels {
+		values = {
+			debug = "",
+		}
+	}
+
+	stage.metrics {
+		metric.counter {
+			prefix            = "promtail_custom_"
+			name              = "byte_count_total"
+			description       = "A running counter of all bytes per stream with their corresponding labels"
+			action            = "add"
+			match_all         = true
+			count_entry_bytes = true
+		}
+
+		metric.counter {
+			prefix      = "promtail_custom_"
+			name        = "line_count_total"
+			description = "A running counter of all lines with their corresponding labels"
+			action      = "inc"
+			match_all   = true
+		}
+	}
+
+	stage.regex {
+		expression = "(?P<panic>panic:)"
+	}
+
+	stage.regex {
+		expression = "(?i)(?P<bad_words>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)"
+	}
+
+	stage.metrics {
+		metric.counter {
+			prefix      = "promtail_custom_"
+			name        = "bad_words_total"
+			description = "total count of bad words found in log lines"
+			action      = "inc"
+			source      = "bad_words"
+		}
+
+		metric.counter {
+			prefix      = "promtail_custom_"
+			name        = "panic_total"
+			description = "total count of panic: found in log lines"
+			action      = "inc"
+			source      = "panic"
+		}
+	}
+
+	stage.match {
+		selector = "{container=\"ingress-nginx\"} |= \"hosted-grafana-\""
+
+		stage.template {
+			source   = "service"
+			template = "hosted-grafana"
+		}
+
+		stage.labels {
+			values = {
+				service = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{name=\"eventrouter\"}"
+
+		stage.json {
+			expressions = {
+				component   = "event.source.component",
+				host        = "event.source.host",
+				message     = "event.message",
+				namespace   = "event.metadata.namespace",
+				object_kind = "event.involvedObject.kind",
+				object_name = "event.involvedObject.name",
+				reason      = "event.reason",
+				type        = "event.type",
+			}
+		}
+
+		stage.labels {
+			values = {
+				namespace = "",
+			}
+		}
+
+		stage.template {
+			source   = "newoutput"
+			template = "test"
+		}
+
+		stage.output {
+			source = "newoutput"
+		}
+	}
+
+	stage.match {
+		selector = "{name=\"kube-diff-logger\"}"
+
+		stage.json {
+			expressions = {
+				timestamp = "timestamp",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+	}
+
+	stage.match {
+		selector = "{container=\"loki-canary\",stream=\"stdout\"}"
+
+		stage.regex {
+			expression = "(?P<ts>\\d+) p+"
+		}
+
+		stage.timestamp {
+			source            = "ts"
+			format            = "UnixNs"
+			action_on_failure = "skip"
+		}
+	}
+
+	stage.label_drop {
+		values = ["filename"]
+	}
+
+	stage.match {
+		selector = "{name=\"amixr-engine\"}"
+
+		stage.multiline {
+			firstline     = "^\\d{4}-\\d{2}-\\d{2} \\d{1,2}:\\d{2}:\\d{2}"
+		}
+	}
+
+	stage.match {
+		selector = "{name=~\"amixr-engine-celery-.*\"}"
+
+		stage.multiline {
+			firstline     = "^\\d{4}-\\d{2}-\\d{2} \\d{1,2}:\\d{2}:\\d{2}"
+		}
+	}
+
+	stage.match {
+		selector = "{container=\"cortex-gw\"} |= \"agent id\""
+
+		stage.static_labels {
+			values = {
+				agent_log = "id",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{container=\"cortex-gw\"} |= \"sample remote write\""
+
+		stage.static_labels {
+			values = {
+				agent_log = "write",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=~\".*(alertmanager|amixr|cortex|fire|ge-metrics|grafana|loki|mimir|tempo).*\"} |~ \"(insight_logs|insight|insights)=true\""
+
+		stage.static_labels {
+			values = {
+				insight = "true",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"asserts\", container=~\"api-server|assertion-detector|model-builder\"}"
+
+		stage.multiline {
+			firstline     = "^[A-Z]{4,5}[ ]{1,2}\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}"
+		}
+
+		stage.regex {
+			expression = "^(?P<log_level>\\S+)\\s+\\S+\\s+\\S+\\s+(?P<thread_name>\\S+)\\s+(?P<logger_name>\\S+)(\\s+)?(?:.*tenantId=(?P<tenant_id>\\d+))?"
+		}
+
+		stage.labels {
+			values = {
+				level      = "log_level",
+				loggerName = "logger_name",
+				tenantId   = "tenant_id",
+				threadName = "thread_name",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=~\".*(grafana|loki|cortex|mimir|tempo|pyroscope|phlare|fire|profiles|ge-logs|ge-metrics|ge-traces|promtail|machine-learning|agent|amixir|asserts|chatops|faro|incident).*\"}"
+
+		stage.regex {
+			expression = ".*(?P<team>grafana|loki|cortex|mimir|tempo|pyroscope|phlare|fire|profiles|ge-logs|ge-metrics|ge-traces|promtail|machine-learning|agent|amixir|asserts|chatops|faro|incident).*"
+			source     = "namespace"
+		}
+
+		stage.template {
+			source   = "team"
+			template = "loki"
+		}
+
+		stage.template {
+			source   = "service_name"
+			template = "loki/container"
+		}
+
+		stage.labels {
+			values = {
+				service_name = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"machine-learning\",container=~\"modelapi|worker\"}"
+
+		stage.multiline {
+			firstline     = "^({\"text|\\[\\d{4})"
+		}
+	}
+
+	stage.match {
+		selector = "{name=~\"hosted-grafana-api|grafana\"}"
+
+		stage.logfmt {
+			mapping = {
+				instance_audit = "",
+			}
+		}
+
+		stage.labels {
+			values = {
+				instance_audit = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"securityops\",job=\"securityops/cloudtrail-exporter-workloads-prod\"}"
+
+		stage.json {
+			expressions = {
+				eventCategory = "event.eventCategory",
+				eventName     = "event.eventName",
+				eventSource   = "event.eventSource",
+				timestamp     = "time",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				eventCategory = "",
+				eventName     = "",
+				eventSource   = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				container         = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"securityops\",job=\"securityops/cloudtrail-exporter-workloads-ops\"}"
+
+		stage.json {
+			expressions = {
+				eventCategory = "event.eventCategory",
+				eventName     = "event.eventName",
+				eventSource   = "event.eventSource",
+				timestamp     = "time",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				eventCategory = "",
+				eventName     = "",
+				eventSource   = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				container         = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"securityops\",job=\"securityops/cloudtrail-exporter-workloads-dev\"}"
+
+		stage.json {
+			expressions = {
+				eventCategory = "event.eventCategory",
+				eventName     = "event.eventName",
+				eventSource   = "event.eventSource",
+				timestamp     = "time",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				eventCategory = "",
+				eventName     = "",
+				eventSource   = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				container         = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"securityops\",job=\"securityops/gh-audit-logs\"}"
+
+		stage.json {
+			expressions = {
+				action        = "event.action",
+				actorIsBot    = "event.actor_is_bot",
+				eventType     = "event.event",
+				operationType = "event.operation_type",
+				repo          = "event.repo",
+				repoId        = "event.repo_id",
+				timestamp     = "time",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				action        = "",
+				actorIsBot    = "",
+				eventType     = "",
+				operationType = "",
+				repo          = "",
+				repoId        = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				container         = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{job=\"notification-historian/notification-historian\"}"
+
+		stage.json {
+			expressions = {
+				alerts            = "alerts",
+				commonAnnotations = "commonAnnotations",
+				commonLabels      = "commonLabels",
+				externalURL       = "externalURL",
+				groupKey          = "groupKey",
+				groupLabels       = "groupLabels",
+				level             = "level",
+				message           = "message",
+				orgID             = "orgID",
+				receiver          = "receiver",
+				state             = "state",
+				status            = "status",
+				timestamp         = "time",
+				title             = "title",
+				truncatedAlerts   = "truncatedAlerts",
+				version           = "version",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				alertname = "",
+				level     = "",
+				orgID     = "",
+				receiver  = "",
+				state     = "",
+				status    = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				alerts            = "",
+				commonAnnotations = "",
+				commonLabels      = "",
+				container         = "",
+				externalURL       = "",
+				groupKey          = "",
+				groupLabels       = "",
+				message           = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+				title             = "",
+				truncatedAlerts   = "",
+				version           = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{job=\"default/tetragon\"}"
+
+		stage.json {
+			expressions = {
+				processExecArguments    = "process_exec.process.arguments",
+				processExecBinary       = "process_exec.process.binary",
+				processExecPodNamespace = "process_exec.process.pod.namespace",
+			}
+		}
+
+		stage.labels {
+			values = {
+				processExecPodNamespace = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				processExecArguments = "",
+				processExecBinary    = "",
+			}
+		}
+
+		stage.label_drop {
+			values = ["pod", "container", "stream"]
+		}
+	}
+
+	stage.match {
+		selector = "{name=\"okta-logs\"}"
+
+		stage.json {
+			expressions = {
+				alternateId = "event.actor.alternateId",
+				eventType   = "event.eventType",
+				ipAddress   = "event.client.ipAddress",
+				level       = "event.severity",
+				timestamp   = "time",
+			}
+		}
+
+		stage.timestamp {
+			source = "timestamp"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				eventType = "",
+				level     = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				alternateId       = "",
+				container         = "",
+				ipAddress         = "",
+				pod               = "",
+				pod_template_hash = "",
+				stream            = "",
+			}
+		}
+
+		stage.label_drop {
+			values = ["pod", "pod_template_hash", "container", "stream"]
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"hosted-grafana\", app=\"grafana\"}"
+
+		stage.structured_metadata {
+			values = {
+				pod               = "",
+				pod_template_hash = "",
+				resource_version  = "",
+			}
+		}
+
+		stage.label_drop {
+			values = ["pod", "resource_version", "pod_template_hash"]
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=~\"loki.*\"}"
+
+		stage.structured_metadata {
+			values = {
+				controller_revision_hash = "",
+				pod                      = "",
+				pod_template_hash        = "",
+			}
+		}
+
+		stage.label_drop {
+			values = ["pod", "pod_template_hash", "controller_revision_hash"]
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=~\"(loki-live|loki-dev-.*|loki-prod.*|loki-ops.*)\", container!~\"memcached|static-exporter|archiver-operator|cortex-gw|eventrouter|loki-canary|rollout-operator\"}"
+
+		stage.logfmt {
+			mapping = {
+				orgID   = "",
+				org_id  = "",
+				traceID = "",
+				user_id = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				orgID   = "",
+				org_id  = "",
+				traceID = "",
+				user_id = "",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{job=~\"cicd-o11y/grafana-.*\"} |= \"service=bench\""
+
+		stage.static_labels {
+			values = {
+				bench = "true",
+			}
+		}
+	}
+
+	stage.match {
+		selector = "{namespace=\"hosted-grafana-cd\"} |= \"service=bench\""
+
+		stage.static_labels {
+			values = {
+				bench = "true",
+			}
+		}
+	}
+}
+
+discovery.relabel "systemd_journal" {
+	targets = []
+
+	rule {
+		source_labels = ["__journal__hostname"]
+		target_label  = "nodename"
+	}
+
+	rule {
+		source_labels = ["__journal_syslog_identifier"]
+		target_label  = "syslog_identifier"
+	}
+
+	rule {
+		source_labels = ["__journal_priority_keyword"]
+		target_label  = "priority"
+	}
+}
+
+loki.source.journal "logs_default_systemd_journal" {
+	path          = "/var/log/journal"
+	relabel_rules = discovery.relabel.systemd_journal.rules
+	forward_to    = [loki.write.logs.receiver]
+	labels        = {
+		job     = "default/systemd-journal",
+	}
+}
+
+loki.write "logs" {
+	endpoint {
+		url = "https://logs-us-central1.grafana.net/loki/api/v1/push"
+		basic_auth {
+			username = sys.env("TENANT_ID")
+			password = sys.env("API_KEY")
+		}
+	}
+
+	external_labels = {
+		cluster   = sys.env("CLUSTER_NAME"),
+	}
+}
