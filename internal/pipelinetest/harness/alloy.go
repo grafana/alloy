@@ -38,8 +38,11 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 	}
 
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
-		Logger:       logger,
-		DataPath:     cfg.DataPath,
+		Logger:   logger,
+		DataPath: cfg.DataPath,
+		// Using DefaultRegisterer prevents us from running pipeline tests in
+		// parallel. It is required because prometheus.exporter.self only serves
+		// the default registry.
 		Reg:          prometheus.DefaultRegisterer,
 		MinStability: featuregate.StabilityExperimental,
 		Services:     defaultServices(logger),
