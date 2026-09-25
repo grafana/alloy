@@ -1,0 +1,403 @@
+package source
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"regexp"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/alecthomas/units"
+	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/syntax/alloytypes"
+)
+
+// Arguments configures the infinity.source component.
+type Arguments struct {
+	Interval        time.Duration           `alloy:"interval,attr,optional"`
+	Timeout         time.Duration           `alloy:"timeout,attr,optional"`
+	MaxResponseSize units.Base2Bytes        `alloy:"max_response_size,attr,optional"`
+	Client          config.HTTPClientConfig `alloy:"client,block,optional"`
+	Clustering      cluster.ComponentBlock  `alloy:"clustering,block,optional"`
+	Queries         []QueryBlock            `alloy:"query,block"`
+	ForwardTo       ForwardTo               `alloy:"forward_to,block,optional"`
+	Output          Output                  `alloy:"output,block,optional"`
+}
+
+// ForwardTo holds the Alloy-native receivers.
+type ForwardTo struct {
+	Metrics []storage.Appendable `alloy:"metrics,attr,optional"`
+	Logs    []loki.LogsReceiver  `alloy:"logs,attr,optional"`
+}
+
+// Output holds the OTel consumers.
+type Output struct {
+	Metrics []otelcol.Consumer `alloy:"metrics,attr,optional"`
+	Logs    []otelcol.Consumer `alloy:"logs,attr,optional"`
+}
+
+// QueryBlock is one Infinity query.
+type QueryBlock struct {
+	Name                string           `alloy:",label"`
+	Type                string           `alloy:"type,attr,optional"`
+	Parser              string           `alloy:"parser,attr,optional"`
+	Format              string           `alloy:"format,attr,optional"`
+	Source              string           `alloy:"source,attr,optional"`
+	URL                 string           `alloy:"url,attr,optional"`
+	Data                string           `alloy:"data,attr,optional"`
+	RootSelector        string           `alloy:"root_selector,attr,optional"`
+	FilterExpression    string           `alloy:"filter_expression,attr,optional"`
+	SummarizeExpression string           `alloy:"summarize_expression,attr,optional"`
+	SummarizeBy         string           `alloy:"summarize_by,attr,optional"`
+	SummarizeAlias      string           `alloy:"summarize_alias,attr,optional"`
+	CSVOptions          CSVOptions       `alloy:"csv_options,block,optional"`
+	URLOptions          URLOptions       `alloy:"url_options,block,optional"`
+	Columns             []Column         `alloy:"column,block,optional"`
+	ComputedColumns     []ComputedColumn `alloy:"computed_column,block,optional"`
+	Transforms          []Transform      `alloy:"transform,enum,optional"`
+	Metrics             *MetricsBlock    `alloy:"metrics,block,optional"`
+	Logs                *LogsBlock       `alloy:"logs,block,optional"`
+}
+
+// CSVOptions holds the options that csvframer supports.
+type CSVOptions struct {
+	Delimiter          string `alloy:"delimiter,attr,optional"`
+	SkipLinesWithError bool   `alloy:"skip_lines_with_error,attr,optional"`
+	RelaxColumnCount   bool   `alloy:"relax_column_count,attr,optional"`
+	Columns            string `alloy:"columns,attr,optional"`
+	Comment            string `alloy:"comment,attr,optional"`
+}
+
+// URLOptions configures the HTTP request.
+type URLOptions struct {
+	Method               string                       `alloy:"method,attr,optional"`
+	Headers              map[string]alloytypes.Secret `alloy:"headers,attr,optional"`
+	Params               map[string]alloytypes.Secret `alloy:"params,attr,optional"`
+	BodyType             string                       `alloy:"body_type,attr,optional"`
+	Body                 alloytypes.OptionalSecret    `alloy:"body,attr,optional"`
+	BodyContentType      string                       `alloy:"body_content_type,attr,optional"`
+	BodyForm             map[string]alloytypes.Secret `alloy:"body_form,attr,optional"`
+	BodyGraphQLQuery     alloytypes.OptionalSecret    `alloy:"body_graphql_query,attr,optional"`
+	BodyGraphQLVariables string                       `alloy:"body_graphql_variables,attr,optional"`
+}
+
+// Column selects one field from the response.
+type Column struct {
+	Selector        string `alloy:"selector,attr"`
+	Text            string `alloy:"text,attr,optional"`
+	Type            string `alloy:"type,attr,optional"`
+	TimestampFormat string `alloy:"timestamp_format,attr,optional"`
+}
+
+// ComputedColumn adds a field from an expression.
+type ComputedColumn struct {
+	Selector string `alloy:"selector,attr"`
+	Text     string `alloy:"text,attr"`
+}
+
+// Transform is one element of the ordered transform list. The enum decoder
+// sets exactly one field for each element.
+type Transform struct {
+	Limit          *LimitTransform          `alloy:"limit,block,optional"`
+	Filter         *FilterTransform         `alloy:"filter,block,optional"`
+	Summarize      *SummarizeTransform      `alloy:"summarize,block,optional"`
+	ComputedColumn *ComputedColumnTransform `alloy:"computed_column,block,optional"`
+}
+
+type LimitTransform struct {
+	Limit int `alloy:"limit,attr"`
+}
+
+type FilterTransform struct {
+	Expression string `alloy:"expression,attr"`
+}
+
+type SummarizeTransform struct {
+	Expression string `alloy:"expression,attr"`
+	By         string `alloy:"by,attr,optional"`
+	Alias      string `alloy:"alias,attr,optional"`
+}
+
+type ComputedColumnTransform struct {
+	Expression string `alloy:"expression,attr"`
+	Alias      string `alloy:"alias,attr"`
+}
+
+// MetricsBlock holds settings for format "table".
+type MetricsBlock struct {
+	Prefix      string `alloy:"prefix,attr,optional"`
+	SeriesLimit int    `alloy:"series_limit,attr,optional"`
+}
+
+// LogsBlock holds settings for format "logs".
+type LogsBlock struct {
+	LineColumn                string   `alloy:"line_column,attr,optional"`
+	LabelColumns              []string `alloy:"label_columns,attr,optional"`
+	StructuredMetadataColumns []string `alloy:"structured_metadata_columns,attr,optional"`
+	EntryLimit                int      `alloy:"entry_limit,attr,optional"`
+}
+
+// DefaultArguments holds the component defaults.
+var DefaultArguments = Arguments{
+	Interval:        60 * time.Second,
+	Timeout:         10 * time.Second,
+	MaxResponseSize: 10 * units.MiB,
+	Client:          config.DefaultHTTPClientConfig,
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (a *Arguments) SetToDefault() {
+	*a = DefaultArguments
+}
+
+var (
+	supportedTypes       = []string{"json", "csv", "tsv", "xml", "html", "graphql"}
+	supportedParsers     = []string{"backend", "jq-backend"}
+	supportedFormats     = []string{"table", "logs"}
+	supportedSources     = []string{"url", "inline"}
+	supportedMethods     = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
+	supportedBodyTypes   = []string{"raw", "form-data", "x-www-form-urlencoded", "graphql"}
+	supportedColumnTypes = []string{"string", "number", "boolean", "timestamp", "timestamp_epoch", "timestamp_epoch_s"}
+
+	metricPrefixRE = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
+)
+
+// Validate implements syntax.Validator. It also applies query defaults,
+// because labeled blocks do not get a Defaulter call before the label is set.
+func (a *Arguments) Validate() error {
+	var errs []error
+	if a.Interval <= 0 {
+		errs = append(errs, errors.New("interval must be greater than 0"))
+	}
+	if a.Timeout <= 0 {
+		errs = append(errs, errors.New("timeout must be greater than 0"))
+	}
+	if a.Timeout > a.Interval {
+		errs = append(errs, errors.New("timeout must be less than or equal to interval"))
+	}
+	if a.MaxResponseSize <= 0 {
+		errs = append(errs, errors.New("max_response_size must be greater than 0"))
+	}
+	if err := a.Client.Validate(); err != nil {
+		errs = append(errs, fmt.Errorf("client: %w", err))
+	}
+	if len(a.Queries) == 0 {
+		errs = append(errs, errors.New("at least one query block is required"))
+	}
+
+	clientHeaders := map[string]struct{}{}
+	if a.Client.HTTPHeaders != nil {
+		for k := range a.Client.HTTPHeaders.Headers {
+			clientHeaders[http.CanonicalHeaderKey(k)] = struct{}{}
+		}
+	}
+
+	seen := map[string]struct{}{}
+	for i := range a.Queries {
+		q := &a.Queries[i]
+		q.applyDefaults()
+		if _, dup := seen[q.Name]; dup {
+			errs = append(errs, fmt.Errorf("duplicate query name %q", q.Name))
+		}
+		seen[q.Name] = struct{}{}
+		if err := q.validate(clientHeaders); err != nil {
+			errs = append(errs, fmt.Errorf("query %q: %w", q.Name, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (q *QueryBlock) applyDefaults() {
+	if q.Type == "" {
+		q.Type = "json"
+	}
+	if q.Parser == "" {
+		q.Parser = "backend"
+	}
+	if q.Format == "" {
+		q.Format = "table"
+	}
+	if q.Source == "" {
+		q.Source = "url"
+	}
+	q.URLOptions.Method = strings.ToUpper(strings.TrimSpace(q.URLOptions.Method))
+	if q.URLOptions.Method == "" {
+		q.URLOptions.Method = http.MethodGet
+		if q.Type == "graphql" {
+			q.URLOptions.Method = http.MethodPost
+		}
+	}
+	if q.URLOptions.BodyType == "" {
+		q.URLOptions.BodyType = "raw"
+		if q.Type == "graphql" {
+			q.URLOptions.BodyType = "graphql"
+		}
+	}
+	if q.Logs != nil && q.Logs.LineColumn == "" {
+		q.Logs.LineColumn = "body"
+	}
+}
+
+func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
+	var errs []error
+
+	if !slices.Contains(supportedTypes, q.Type) {
+		switch q.Type {
+		case "uql", "groq", "google-sheets":
+			errs = append(errs, fmt.Errorf("type %q is not supported in Alloy", q.Type))
+		default:
+			errs = append(errs, fmt.Errorf("unknown type %q, must be one of %s", q.Type, strings.Join(supportedTypes, ", ")))
+		}
+	}
+	if !slices.Contains(supportedParsers, q.Parser) {
+		switch q.Parser {
+		case "simple", "uql", "groq":
+			errs = append(errs, fmt.Errorf("parser %q is frontend-only in Infinity and is not supported in Alloy", q.Parser))
+		default:
+			errs = append(errs, fmt.Errorf("unknown parser %q, must be one of %s", q.Parser, strings.Join(supportedParsers, ", ")))
+		}
+	}
+	if !slices.Contains(supportedFormats, q.Format) {
+		if q.Format == "timeseries" {
+			errs = append(errs, errors.New(`format "timeseries" is not supported, use "table" for current-state metrics`))
+		} else {
+			errs = append(errs, fmt.Errorf("unknown format %q, must be one of %s", q.Format, strings.Join(supportedFormats, ", ")))
+		}
+	}
+
+	switch q.Source {
+	case "url":
+		if q.Data != "" {
+			errs = append(errs, errors.New(`data must be empty when source is "url"`))
+		}
+		u, err := url.Parse(q.URL)
+		if q.URL == "" || err != nil || !u.IsAbs() || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+			errs = append(errs, errors.New("url must be an absolute http or https URL"))
+		} else {
+			existing := u.Query()
+			for k := range q.URLOptions.Params {
+				if existing.Has(k) {
+					errs = append(errs, fmt.Errorf("url_options.params key %q is also in the url query", k))
+				}
+			}
+		}
+	case "inline":
+		if q.Data == "" {
+			errs = append(errs, errors.New(`data is required when source is "inline"`))
+		}
+	case "azure-blob", "reference", "expression", "random-walk":
+		errs = append(errs, fmt.Errorf("source %q is not supported in Alloy", q.Source))
+	default:
+		errs = append(errs, fmt.Errorf("unknown source %q, must be one of %s", q.Source, strings.Join(supportedSources, ", ")))
+	}
+
+	if q.Metrics != nil {
+		if q.Format != "table" {
+			errs = append(errs, errors.New(`metrics block requires format "table"`))
+		}
+		if q.Metrics.SeriesLimit < 0 {
+			errs = append(errs, errors.New("metrics.series_limit must not be negative"))
+		}
+		if q.Metrics.Prefix != "" && !metricPrefixRE.MatchString(q.Metrics.Prefix) {
+			errs = append(errs, fmt.Errorf("metrics.prefix %q is not a valid metric name prefix", q.Metrics.Prefix))
+		}
+	}
+	if q.Logs != nil {
+		if q.Format != "logs" {
+			errs = append(errs, errors.New(`logs block requires format "logs"`))
+		}
+		if q.Logs.EntryLimit < 0 {
+			errs = append(errs, errors.New("logs.entry_limit must not be negative"))
+		}
+		for _, c := range q.Logs.LabelColumns {
+			if slices.Contains(q.Logs.StructuredMetadataColumns, c) {
+				errs = append(errs, fmt.Errorf("column %q is in both label_columns and structured_metadata_columns", c))
+			}
+		}
+	}
+
+	for _, c := range q.Columns {
+		if c.Type != "" && !slices.Contains(supportedColumnTypes, c.Type) {
+			errs = append(errs, fmt.Errorf("column %q: unknown type %q", c.Selector, c.Type))
+		}
+		if c.TimestampFormat != "" && c.Type != "timestamp" {
+			errs = append(errs, fmt.Errorf("column %q: timestamp_format requires type \"timestamp\"", c.Selector))
+		}
+	}
+	for i, t := range q.Transforms {
+		if t.kinds() != 1 {
+			errs = append(errs, fmt.Errorf("transform %d must set exactly one kind", i))
+		}
+	}
+
+	errs = append(errs, q.URLOptions.validate(q.Type, clientHeaders)...)
+	return errors.Join(errs...)
+}
+
+func (t Transform) kinds() int {
+	n := 0
+	for _, set := range []bool{t.Limit != nil, t.Filter != nil, t.Summarize != nil, t.ComputedColumn != nil} {
+		if set {
+			n++
+		}
+	}
+	return n
+}
+
+func (o *URLOptions) validate(queryType string, clientHeaders map[string]struct{}) []error {
+	var errs []error
+	if !slices.Contains(supportedMethods, o.Method) {
+		errs = append(errs, fmt.Errorf("unknown method %q, must be one of %s", o.Method, strings.Join(supportedMethods, ", ")))
+	}
+	if !slices.Contains(supportedBodyTypes, o.BodyType) {
+		errs = append(errs, fmt.Errorf("unknown body_type %q, must be one of %s", o.BodyType, strings.Join(supportedBodyTypes, ", ")))
+	}
+	hasBody := o.Body.Value != "" || len(o.BodyForm) > 0 || o.BodyGraphQLQuery.Value != ""
+	if o.Method == http.MethodGet && hasBody {
+		errs = append(errs, errors.New("a request body is not allowed with method GET"))
+	}
+	if queryType == "graphql" {
+		if o.Method != http.MethodPost {
+			errs = append(errs, errors.New(`type "graphql" requires method "POST"`))
+		}
+		if o.BodyType != "graphql" {
+			errs = append(errs, errors.New(`type "graphql" requires body_type "graphql"`))
+		}
+	}
+	if o.BodyGraphQLVariables != "" && !json.Valid([]byte(o.BodyGraphQLVariables)) {
+		errs = append(errs, errors.New("body_graphql_variables must be valid JSON"))
+	}
+	for k := range o.Headers {
+		if _, ok := clientHeaders[http.CanonicalHeaderKey(k)]; ok {
+			errs = append(errs, fmt.Errorf("url_options.headers key %q is also in client.http_headers", k))
+		}
+	}
+	return errs
+}
+
+// validateOutputs checks that each query has an output for its signal.
+// It is separate from Validate because config text in unit tests cannot hold
+// capsule values. New and Update call it, so it still fails at config load.
+func validateOutputs(a Arguments) error {
+	hasMetrics := len(a.ForwardTo.Metrics) > 0 || len(a.Output.Metrics) > 0
+	hasLogs := len(a.ForwardTo.Logs) > 0 || len(a.Output.Logs) > 0
+	var errs []error
+	for _, q := range a.Queries {
+		if q.Format == "table" && !hasMetrics {
+			errs = append(errs, fmt.Errorf(`query %q: format "table" needs forward_to.metrics or output.metrics`, q.Name))
+		}
+		if q.Format == "logs" && !hasLogs {
+			errs = append(errs, fmt.Errorf(`query %q: format "logs" needs forward_to.logs or output.logs`, q.Name))
+		}
+	}
+	return errors.Join(errs...)
+}
