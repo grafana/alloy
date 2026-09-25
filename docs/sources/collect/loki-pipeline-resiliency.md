@@ -204,7 +204,7 @@ To enable it, complete the following steps:
    ```promql
    max(
      max_over_time(
-       sum by (<INSTANCE_LABEL>) (rate(loki_write_sent_bytes_total[5m]))[7d:5m]
+       sum by (<INSTANCE_LABEL>) (rate(loki_write_batch_size_bytes_sum[5m]))[7d:5m]
      )
    ) * <MAX_SEGMENT_AGE_HOURS> * 3600
    ```
@@ -222,7 +222,7 @@ To enable it, complete the following steps:
 
    ```promql
    sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_wal_writer_reclaimed_space[6h]))
-     / sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_sent_bytes_total[6h]))
+     / sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_batch_size_bytes_sum[6h]))
    ```
 
    Multiply the sizing result by that ratio, then leave headroom on top.
