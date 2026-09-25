@@ -9,9 +9,9 @@ weight: 255
 # Configure Loki pipeline resiliency
 
 The endpoint that `loki.write` sends to can become unreachable during an outage or a network failure.
-You can configure {{< param "FULL_PRODUCT_NAME" >}} to keep accepting logs while that endpoint recovers, instead of stalling or dropping them.
+What {{< param "PRODUCT_NAME" >}} does next depends on how you configure the component.
 
-To configure Loki pipeline resiliency, you:
+To mitigate the effects of service interruptions and improve Loki pipeline resiliency, you:
 
 1. Tune the retry behavior of a `loki.write` endpoint.
 1. Enable the write-ahead log, or WAL, so ingestion doesn't stall.
@@ -29,12 +29,14 @@ To configure Loki pipeline resiliency, you:
 - [`loki.source.api`][loki.source.api]
 - [`loki.source.file`][loki.source.file]
 - [`loki.write`][loki.write]
+- [`otelcol.exporter.loki`][otelcol.exporter.loki]
 
 ## Before you begin
 
-- Ensure you have a pipeline that forwards logs through one or more `loki.source.*` components into a `loki.write` component.
-- Identify how long an endpoint outage you need the pipeline to survive.
-  This value determines how you size the WAL.
+- Ensure you have a pipeline that forwards logs into a `loki.write` component.
+  The source can be one or more `loki.source.*` components, or an OpenTelemetry pipeline that ends at `otelcol.exporter.loki`.
+- Identify your log throughput and the disk space available to {{< param "PRODUCT_NAME" >}}.
+  The WAL configuration and your throughput together determine how long a service interruption the pipeline can support.
 - Identify the label that names a single {{< param "PRODUCT_NAME" >}} process in your metrics.
   Every query uses _`<INSTANCE_LABEL>`_ for it.
   Standard Prometheus scrape configurations set `instance`, and Kubernetes deployments often use `pod`.
@@ -62,6 +64,10 @@ What happens upstream while that retry loop runs depends on which component is f
   While `loki.write` is stalled, that handoff blocks and the HTTP request stays open.
   The component returns a `503` status once the request context ends, which happens when the client disconnects or gives up.
   Senders see slow requests and eventual failures rather than accepted writes.
+- **`otelcol.exporter.loki`**: converts each OpenTelemetry log record, then forwards the entries to `loki.write` one at a time with no buffer in between.
+  While `loki.write` is stalled, that forwarding blocks, and the block propagates back through the OpenTelemetry pipeline to the receiver.
+  If the request context ends while the exporter is blocked, it stops forwarding and returns no error.
+  The entries it hadn't forwarded yet are lost, and no drop counter increments.
 
 The pipeline has no mechanism to report delivery failure back to the source component, so what a dropped batch costs you depends on the source.
 
@@ -72,7 +78,6 @@ It flushes that position to disk every 10 seconds, so by the time `loki.write` g
 The result is a silent, incremental loss proportional to how long the outage lasts, rather than an all-or-nothing failure.
 A graceful shutdown flushes the position before exiting, which makes that loss permanent.
 
-One case recovers some of the data.
 If {{< param "PRODUCT_NAME" >}} terminates unexpectedly, the positions file still holds the offset from the last flush.
 The tailer resumes from there and rereads every line written since, including lines that Loki already stored.
 
@@ -80,6 +85,10 @@ For request-accepting components, there's no stored position, and the sender hol
 A sender that receives a `503` knows the write didn't land and can retry it.
 A sender that receives a success response has no such signal, because the component answers as soon as the pipeline accepts the batch.
 `loki.write` can still drop that batch afterward, so treat an accepted write as queued rather than delivered.
+
+The OpenTelemetry path gives the weakest signal of the three.
+`otelcol.exporter.loki` returns no error when its context ends mid-batch, so the rest of the OpenTelemetry pipeline treats a partial forward as a success.
+The exporter counts entries it converted rather than entries `loki.write` accepted, so its counters can't confirm delivery either.
 
 ## Choose an approach
 
@@ -99,7 +108,7 @@ Set `max_backoff_retries` to `0` alongside the WAL to hold data for the full `ma
 ## Tune the retry behavior
 
 By default, `loki.write` gives up on a batch once it exhausts `max_backoff_retries` and drops it.
-You can trade that behavior for unbounded retry, which stops the slow trickle of dropped lines.
+You can trade that behavior for unbounded retry, which removes the possibility of a slow trickle of dropped lines during a service interruption.
 
 To tune the retry behavior of a `loki.write` endpoint, complete the following steps:
 
@@ -125,11 +134,8 @@ To tune the retry behavior of a `loki.write` endpoint, complete the following st
    If you also plan to enable the WAL, define a separate `loki.write` component for each endpoint instead.
    Refer to [Enable the write-ahead log](#enable-the-write-ahead-log) for the reason.
 
-Unbounded retry doesn't buffer to disk.
-If {{< param "PRODUCT_NAME" >}} restarts during the outage, in-memory data is still lost.
-
-This isn't equivalent to WAL-backed durability.
-It only changes how long `loki.write` keeps retrying before giving up.
+Unbounded retry keeps data in memory rather than on disk, so an {{< param "PRODUCT_NAME" >}} restart still loses whatever was queued.
+Setting `max_backoff_retries` to `0` changes how long `loki.write` keeps trying, not whether that data survives.
 
 ## Enable the write-ahead log
 
@@ -212,7 +218,7 @@ To enable it, complete the following steps:
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
 
-   Once the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes:
+   After the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes:
 
    ```promql
    sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_wal_writer_reclaimed_space[6h]))
@@ -243,7 +249,7 @@ To enable it, complete the following steps:
    time() - loki_write_last_read_timestamp
    ```
 
-The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout`.
+The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout` arguments.
 There's no argument for the WAL directory and no maximum size argument.
 Age is the only eviction policy.
 
@@ -278,16 +284,16 @@ Use them to confirm your configuration holds up during a real outage.
 
 To monitor the pipeline for dropped log entries, complete the following steps:
 
-1. Collect the {{< param "PRODUCT_NAME" >}} metrics.
+1. Collect the {{< param "PRODUCT_NAME" >}} self-monitoring metrics.
    Refer to [Monitor components][component_metrics] for the available options.
 
 1. Alert on the following metrics.
 
-   | Metric                             | Description                                                                                    |
-   | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-   | `loki_write_dropped_entries_total` | Number of log entries dropped, labeled by `reason`.                                            |
-   | `loki_write_dropped_bytes_total`   | Number of bytes dropped, labeled by `reason`.                                                  |
-   | `loki_write_batch_retries_total`   | Number of batch send retries. A sustained increase means the endpoint is becoming unreachable. |
+   | Metric                             | Description                                                                                       |
+   | ---------------------------------- | ------------------------------------------------------------------------------------------------- |
+   | `loki_write_dropped_entries_total` | Number of log entries dropped, labeled by `reason`.                                               |
+   | `loki_write_dropped_bytes_total`   | Number of bytes dropped, labeled by `reason`. Increments on the same events as the entry counter. |
+   | `loki_write_batch_retries_total`   | Number of batch send retries. A sustained increase means the endpoint is becoming unreachable.    |
 
    Exhausted retries are only one of the drop paths.
    The `reason` label identifies which one applied.
@@ -300,7 +306,8 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    | `rate_limited`    | Loki rate-limited the batch, either on the final attempt or immediately when `retry_on_http_429` is `false`.      |
    | `stream_limited`  | The entry would have exceeded `max_streams`.                                                                      |
 
-   Alert on any increase in the two dropped-data counters, because a healthy pipeline never increments them.
+   Alert on any increase in `loki_write_dropped_entries_total`, because a healthy pipeline never increments it.
+   `loki_write_dropped_bytes_total` increments on the same events, so it tells you how much data you lost rather than whether you lost any.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
 
    This query lists every drop path that's currently active:
@@ -322,8 +329,12 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    | Message                                                     | Meaning                                                                                                       |
    | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
    | `error encoding batch`                                      | A batch couldn't be encoded and was discarded. No drop counter increments.                                    |
+   | `failed to convert log to loki entry`                       | `otelcol.exporter.loki` skipped an OpenTelemetry record it couldn't translate.                                |
    | `failed to write entry`                                     | A WAL write failed, so the entry was lost after the source advanced its position. No drop counter increments. |
    | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.                   |
+
+   When an OpenTelemetry pipeline feeds `loki.write`, also track `otelcol_exporter_loki_entries_failed`, which counts skipped records.
+   Compare `otelcol_exporter_loki_entries_processed` against the `loki.write` counters rather than reading it as a delivery count.
 
 ## Practical limits, even with the WAL
 
@@ -332,15 +343,14 @@ Two separate Loki limits reject old entries, and they're configured independentl
 
 - **Out-of-order window**: Loki rejects an entry older than half of `max_chunk_age` for its stream, with `reason=too_far_behind`.
   The default `max_chunk_age` of `2h` gives a one hour window, and this setting is global rather than per tenant.
-  On Grafana Cloud, automatic time-based stream sharding is enabled by default to keep this window from becoming user-visible.
-  If you see this rejection regularly, raise it with support rather than treating it as expected.
+  Grafana Cloud enables automatic stream sharding by default, which reduces how often streams reach this window.
+  Regular `too_far_behind` errors should be investigated with your Loki administrator or Grafana Cloud support.
 - **Absolute sample age**: Loki rejects an entry older than `reject_old_samples_max_age`, with `reason=greater_than_max_sample_age`.
   This limit applies while `reject_old_samples` is `true`, which is the default, and the maximum age defaults to one week.
   You can override `reject_old_samples` and `reject_old_samples_max_age` per tenant through the Loki runtime overrides file.
 
-In practice, three limits apply, and the shortest one decides the outcome.
+In practice, three limits apply, and the shortest one will decide if data is dropped.
 {{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`.
-That's true only when you pair the WAL with `max_backoff_retries = 0` and one endpoint per component.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
 With the default `max_chunk_age` of `2h`, an entry has to reach Loki within one hour of the newest entry in its stream.
@@ -356,12 +366,12 @@ time() - loki_write_last_read_timestamp > 1800
 
 Set the threshold below your own window, which is half of the cluster `max_chunk_age` expressed in seconds.
 
-Neither limit is controlled from the {{< param "PRODUCT_NAME" >}} side.
+Neither limit is controlled from {{< param "PRODUCT_NAME" >}}.
 `reject_old_samples_max_age` is set in [`limits_config`][loki-limits], so a tenant override can change it.
 `max_chunk_age` is set in the Loki `ingester` block and applies to the whole cluster.
 
 Refer to [Enforce rate limits and push request validation][loki-validation] for what each rejection reason means.
-Refer to [Automatic stream sharding][loki-ooo] for how Grafana Cloud keeps the out-of-order window from surfacing.
+Refer to [Automatic stream sharding][loki-ooo] for details.
 
 ## Resource consumption during an outage
 
@@ -379,7 +389,7 @@ The WAL trades in-memory buffering for disk usage, and the two are bounded diffe
   Raising `min_shards` multiplies that budget, because each shard gets its own queue.
   Each shard also holds one in-progress batch per tenant outside that budget, so memory grows with the number of tenants.
   Every shard keeps reusable encoding buffers sized from `batch_size` as well.
-  The default `block_on_overflow` value of `true` makes `loki.write` wait for space once the queue is full, which slows the components feeding it.
+  The default `block_on_overflow` value of `true` makes `loki.write` wait for space once the queue is full, which stalls the components feeding it.
   Setting `block_on_overflow` to `false` instead drops each newly arriving entry while the queue stays full.
   Nothing evicts entries that are already queued.
 
@@ -398,7 +408,7 @@ Three factors determine whether that drain succeeds:
   Drain throughput still follows from the retry and backoff arguments, from `batch_wait` and `batch_size`, and from `min_shards`, which sets how many shards send concurrently.
   `min_shards` is a `queue_config` argument, so changing it requires the experimental stability level.
   The `drain_timeout` arguments on the `wal` and `queue_config` blocks both default to `"15s"`.
-  They cap how long a drain may take at shutdown rather than throttling a drain in normal operation.
+  They cap how long a drain may take at shutdown and do not affect drain in normal operation.
 
 ## Next steps
 
@@ -414,3 +424,4 @@ Three factors determine whether that drain succeeds:
 [loki.source.api]: ../../reference/components/loki/loki.source.api/
 [loki.source.file]: ../../reference/components/loki/loki.source.file/
 [loki.write]: ../../reference/components/loki/loki.write/
+[otelcol.exporter.loki]: ../../reference/components/otelcol/otelcol.exporter.loki/
