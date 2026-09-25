@@ -20,7 +20,11 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/useragent"
 )
+
+// userAgent is the User-Agent this component sends on every HTTP request.
+var userAgent = useragent.Get()
 
 func init() {
 	component.Register(component.Registration{
@@ -153,7 +157,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err := validateOutputs(args); err != nil {
 		return err
 	}
-	client, err := config.NewClientFromConfig(*args.Client.Convert(), c.opts.ID)
+	client, err := config.NewClientFromConfig(*args.Client.Convert(), c.opts.ID, config.WithUserAgent(userAgent))
 	if err != nil {
 		return err
 	}
@@ -169,9 +173,16 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		name string
 		qs   *queryState
 	}
+	// pendingSpec is a query whose spec must be set once c.mut is free. A
+	// poll can hold qs.mut for a long time, and c.mut must never wait on it.
+	type pendingSpec struct {
+		qs   *queryState
+		spec querySpec
+	}
 	var (
 		toStop  []*loop
 		removed []removedQuery
+		pending []pendingSpec
 	)
 
 	c.mut.Lock()
@@ -198,10 +209,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 			qs = &queryState{tracker: newTracker()}
 			c.queries[name] = qs
 		}
-		// A poll holds qs.mut but never waits for c.mut, so this cannot deadlock.
-		qs.mut.Lock()
-		qs.spec = spec
-		qs.mut.Unlock()
+		pending = append(pending, pendingSpec{qs: qs, spec: spec})
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
@@ -211,6 +219,16 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	for _, l := range toStop {
 		l.stop()
+	}
+
+	// Set each query's spec now that c.mut is free. A query whose loop was
+	// just stopped above has no poll in flight, so this cannot block for
+	// long; a query that kept running can still be mid-poll, but that only
+	// blocks this one query's spec update, not c.mut or any other query.
+	for _, p := range pending {
+		p.qs.mut.Lock()
+		p.qs.spec = p.spec
+		p.qs.mut.Unlock()
 	}
 
 	cfg := c.snapshot()
@@ -277,6 +295,9 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 			qs.tracker.reset()
 			qs.owned = false
 		}
+		// This node does not run the query, so its own health must not
+		// reflect a failure from before it lost ownership.
+		qs.setResult(nil)
 		return
 	}
 	qs.owned = true
@@ -332,6 +353,10 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 		res, err = frameToSamples(frame, job, s.name, s.metrics)
 	}
 	if err != nil {
+		if ctx.Err() != nil {
+			// The loop is stopping or reloading. Do not fake an outage.
+			return err
+		}
 		up := upSample(job, s.name, 0)
 		stale := qs.tracker.allExcept(up.labels)
 		if sendErr := cfg.out.sendMetrics(ctx, job, s.name, now, []sample{up}, stale); sendErr != nil {

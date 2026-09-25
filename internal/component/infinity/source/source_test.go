@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -262,4 +263,112 @@ func TestNewRejectsMissingOutputs(t *testing.T) {
 	require.NoError(t, err)
 	_, err = New(testOptions(t, cluster.Mock()), args)
 	require.ErrorContains(t, err, "needs forward_to.metrics or output.metrics")
+}
+
+// TestCancelledPollSendsNoMarkers guards against a poll that is cancelled
+// mid-fetch (shutdown, or a reload that stops its loop) faking an outage by
+// sending up=0 and stale markers.
+func TestCancelledPollSendsNoMarkers(t *testing.T) {
+	entered := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	app := testappender.NewCollectingAppender()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// timeout must be <= interval, so both hold the poll open long enough
+	// for the test to cancel it mid-flight.
+	cfg := fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "2s"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	_, err := startComponent(ctx, testOptions(t, cluster.Mock()), cfg, testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler was never entered")
+	}
+	cancel()
+
+	require.Never(t, func() bool {
+		return app.LatestSampleFor(series("up")) != nil
+	}, 300*time.Millisecond, 20*time.Millisecond, "a cancelled poll must not send up=0 or a stale marker")
+}
+
+// TestUpdateDoesNotWaitForSlowPoll guards against Update holding c.mut while
+// it waits for a slow poll's qs.mut, which would also block CurrentHealth
+// and every other query's poll.
+func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
+	var once sync.Once
+	block := make(chan struct{})
+	closeBlock := func() { once.Do(func() { close(block) }) }
+	defer closeBlock()
+
+	entered := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-block
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer srv.Close()
+
+	app := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: app}
+	// timeout must be <= interval. Both stay short so the random initial
+	// offset (up to interval) does not make the test slow.
+	cfg := fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "2s"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), cfg, appendable, nil)
+	require.NoError(t, err)
+
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler was never entered")
+	}
+
+	updateDone := make(chan struct{})
+	var updateErr error
+	go func() {
+		defer close(updateDone)
+		args, perr := parse(fmt.Sprintf(`
+			interval = "2s"
+			timeout  = "2s"
+			query "q" {
+				url = %q
+			}`, srv.URL+"/other"))
+		if perr != nil {
+			updateErr = perr
+			return
+		}
+		args.ForwardTo.Metrics = []storage.Appendable{appendable}
+		updateErr = c.Update(args)
+	}()
+
+	// Give Update time to reach the point where the pre-fix code would hold
+	// c.mut while waiting for this query's in-flight poll.
+	time.Sleep(50 * time.Millisecond)
+
+	start := time.Now()
+	_ = c.CurrentHealth()
+	require.Less(t, time.Since(start), 100*time.Millisecond, "CurrentHealth must not wait for a slow poll")
+
+	closeBlock()
+	select {
+	case <-updateDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Update never returned")
+	}
+	require.NoError(t, updateErr)
 }
