@@ -348,7 +348,7 @@ The `forward_to` block configures the Alloy-native receivers for the results.
 | Name       | Type                  | Description                                | Default | Required |
 | ----------- | --------------------- | --------------------------------------------- | ------- | -------- |
 | `logs`     | `list(LogsReceiver)`  | Loki components to send log entries to.     | `[]`    | no       |
-| `metrics`  | `list(Appendable)`    | Prometheus components to send samples to.   | `[]`    | no       |
+| `metrics`  | `list(MetricsReceiver)` | Prometheus components to send samples to. | `[]`    | no       |
 
 ### `output`
 
@@ -378,6 +378,8 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
   It counts the dropped samples in `infinity_source_duplicate_series_total` and logs a warning once for each poll.
 * `up` is `1` after a successful poll and `0` after a failed poll.
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
+* When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends no stale markers for the poll in progress.
+* When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series go stale by the metrics backend's lookback period instead. Losing ownership also clears the query's health on this node.
 
 ## Logs
 
