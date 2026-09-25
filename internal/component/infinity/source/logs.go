@@ -32,6 +32,28 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 		levelField = fieldByName(f, "level")
 	}
 
+	// Resolve label columns once before the row loop, skipping missing ones.
+	type resolvedCol struct {
+		name  string
+		field *data.Field
+	}
+	var labelCols []resolvedCol
+	for _, c := range l.labelColumns {
+		fld := fieldByName(f, c)
+		if fld != nil {
+			labelCols = append(labelCols, resolvedCol{name: c, field: fld})
+		}
+	}
+
+	// Resolve structured metadata columns once before the row loop, skipping missing ones.
+	var metadataCols []resolvedCol
+	for _, c := range l.structuredMetadataColumns {
+		fld := fieldByName(f, c)
+		if fld != nil {
+			metadataCols = append(metadataCols, resolvedCol{name: c, field: fld})
+		}
+	}
+
 	entries := make([]entry, 0, f.Rows())
 	for row := 0; row < f.Rows(); row++ {
 		e := entry{ts: now, labels: model.LabelSet{}}
@@ -49,13 +71,9 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 			}
 			e.line = line
 		}
-		for _, c := range l.labelColumns {
-			fld := fieldByName(f, c)
-			if fld == nil {
-				continue
-			}
-			if _, ok := fld.ConcreteAt(row); ok {
-				e.labels[model.LabelName(sanitizeName(c))] = model.LabelValue(valueString(fld, row))
+		for _, col := range labelCols {
+			if _, ok := col.field.ConcreteAt(row); ok {
+				e.labels[model.LabelName(sanitizeName(col.name))] = model.LabelValue(valueString(col.field, row))
 			}
 		}
 		if _, set := e.labels["level"]; !set && levelField != nil {
@@ -63,13 +81,9 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 				e.labels["level"] = model.LabelValue(valueString(levelField, row))
 			}
 		}
-		for _, c := range l.structuredMetadataColumns {
-			fld := fieldByName(f, c)
-			if fld == nil {
-				continue
-			}
-			if _, ok := fld.ConcreteAt(row); ok {
-				e.structuredMetadata = append(e.structuredMetadata, push.LabelAdapter{Name: c, Value: valueString(fld, row)})
+		for _, col := range metadataCols {
+			if _, ok := col.field.ConcreteAt(row); ok {
+				e.structuredMetadata = append(e.structuredMetadata, push.LabelAdapter{Name: col.name, Value: valueString(col.field, row)})
 			}
 		}
 		e.labels[model.JobLabel] = model.LabelValue(job)
