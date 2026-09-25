@@ -167,10 +167,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newStaticLabelsStage(*cfg.StaticLabelsConfig, opts)
 	case cfg.GeoIPConfig != nil:
 		s, err = newGeoIPStage(*cfg.GeoIPConfig, opts)
 		if err != nil {
