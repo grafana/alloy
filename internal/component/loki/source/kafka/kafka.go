@@ -149,8 +149,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	t, err := kt.NewSyncer(c.opts.Logger, newArgs.Convert(), entryHandler, &kt.KafkaTargetMessageParser{})
+	t, err := kt.NewSyncer(c.opts.Logger, newArgs.Convert(), c.handler, &kt.KafkaTargetMessageParser{})
 	if err != nil {
 		c.opts.Logger.Error("failed to create kafka client with provided config", "err", err)
 		return err

@@ -137,8 +137,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	t, err := kt.NewSyncer(c.opts.Logger, cfg, entryHandler, &parser.AzureEventHubsTargetMessageParser{
+	t, err := kt.NewSyncer(c.opts.Logger, cfg, c.handler, &parser.AzureEventHubsTargetMessageParser{
 		DisallowCustomMessages: newArgs.DisallowCustomMessages,
 	})
 	if err != nil {
