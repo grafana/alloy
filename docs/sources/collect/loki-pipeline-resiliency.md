@@ -35,6 +35,9 @@ To configure Loki pipeline resiliency, you:
 - Ensure you have a pipeline that forwards logs through one or more `loki.source.*` components into a `loki.write` component.
 - Identify how long an endpoint outage you need the pipeline to survive.
   This value determines how you size the WAL.
+- Identify the label that names a single {{< param "PRODUCT_NAME" >}} process in your metrics.
+  Every query uses _`<INSTANCE_LABEL>`_ for it.
+  Standard Prometheus scrape configurations set `instance`, and Kubernetes deployments often use `pod`.
 
 ## Understand the default behavior during an outage
 
@@ -189,13 +192,34 @@ To enable it, complete the following steps:
    Leave `retry_on_http_429` at its default of `true` so that rate-limited batches are retried instead of dropped.
 
 1. Confirm that the storage path {{< param "PRODUCT_NAME" >}} uses has room for `max_segment_age` worth of logs at your normal ingest rate.
-   At an ingest rate of 5 MB/s with `max_segment_age` set to `4h`, the raw log volume is roughly 72 GB.
-   That figure is the uncompressed log volume rather than the size of the WAL on disk.
+   Rather than estimating your ingest rate, size the WAL from observed peak throughput.
+   The query returns bytes for the busiest instance, and sums every `loki.write` component on it, because they share one disk.
 
+   ```promql
+   max(
+     max_over_time(
+       sum by (<INSTANCE_LABEL>) (rate(loki_write_sent_bytes_total[5m]))[7d:5m]
+     )
+   ) * <MAX_SEGMENT_AGE_HOURS> * 3600
+   ```
+
+   Replace the following:
+
+   - _`<INSTANCE_LABEL>`_: The label that names a single {{< param "PRODUCT_NAME" >}} process.
+   - _`<MAX_SEGMENT_AGE_HOURS>`_: The `max_segment_age` you chose, expressed in hours.
+
+   The result is the uncompressed log volume in bytes rather than the size of the WAL on disk.
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
-   Measure the ratio for your own logs and leave headroom rather than provisioning exactly 72 GB.
 
+   Once the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes:
+
+   ```promql
+   sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_wal_writer_reclaimed_space[6h]))
+     / sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_sent_bytes_total[6h]))
+   ```
+
+   Multiply the sizing result by that ratio, then leave headroom on top.
    A WAL write that fails on a full disk loses the entry, and the only signal is a `failed to write entry` log message.
    The WAL directory sits inside a component-specific directory relative to that path, and you can't configure it separately.
 
@@ -212,6 +236,12 @@ To enable it, complete the following steps:
    Both gauges report log entry timestamps rather than wall-clock times, so the gap between them approximates the backlog rather than measuring it exactly.
    During an outage the written timestamp keeps advancing.
    The read timestamp advances until the endpoint queue fills, and stalls after that.
+
+   This query reports how far the delivery pointer trails real time, in seconds:
+
+   ```promql
+   time() - loki_write_last_read_timestamp
+   ```
 
 The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout`.
 There's no argument for the WAL directory and no maximum size argument.
@@ -273,6 +303,19 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    Alert on any increase in the two dropped-data counters, because a healthy pipeline never increments them.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
 
+   This query lists every drop path that's currently active:
+
+   ```promql
+   sum by (<INSTANCE_LABEL>, component_id, reason) (rate(loki_write_dropped_entries_total[5m])) > 0
+   ```
+
+   {{< param "PRODUCT_NAME" >}} also records how long entries take to reach their final disposition.
+   This query reports the 99th percentile in seconds, which is the drain time to compare against the Loki age limits:
+
+   ```promql
+   histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
+   ```
+
 1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
    Two of these loss paths don't increment any drop counter, so the logs are the only signal.
 
@@ -300,11 +343,18 @@ In practice, three limits apply, and the shortest one decides the outcome.
 That's true only when you pair the WAL with `max_backoff_retries = 0` and one endpoint per component.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
-Compare the outage duration plus the drain time against half of `max_chunk_age`, and against the effective `reject_old_samples_max_age` for your tenant.
 With the default `max_chunk_age` of `2h`, an entry has to reach Loki within one hour of the newest entry in its stream.
 Raising `max_segment_age` beyond that only retains entries that Loki rejects.
-
 Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
+
+You don't have to estimate the outage and drain durations to know whether you're approaching that limit.
+The following alert fires when delivery falls half an hour behind, which leaves time to react before the one hour window closes:
+
+```promql
+time() - loki_write_last_read_timestamp > 1800
+```
+
+Set the threshold below your own window, which is half of the cluster `max_chunk_age` expressed in seconds.
 
 Neither limit is controlled from the {{< param "PRODUCT_NAME" >}} side.
 `reject_old_samples_max_age` is set in [`limits_config`][loki-limits], so a tenant override can change it.
