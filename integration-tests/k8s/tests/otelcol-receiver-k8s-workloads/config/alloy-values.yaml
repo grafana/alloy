@@ -1,0 +1,21 @@
+controller:
+  type: deployment
+  replicas: 3
+
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  clustering:
+    enabled: true
+  extraArgs:
+    - --cluster.wait-for-size=3
+    - --cluster.wait-timeout=2m
+
+rbac:
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "namespaces"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["get", "list", "watch"]

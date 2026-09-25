@@ -144,6 +144,7 @@ body:
       - otelcol.receiver.googlecloudpubsub
       - otelcol.receiver.influxdb
       - otelcol.receiver.jaeger
+      - otelcol.receiver.k8s_workloads
       - otelcol.receiver.kafka
       - otelcol.receiver.loki
       - otelcol.receiver.nginx

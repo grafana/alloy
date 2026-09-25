@@ -1,0 +1,48 @@
+declare "deployment_rollouts" {
+	argument "cluster_name" {
+		optional = true
+		default  = ""
+	}
+
+	argument "cluster_uid" {
+		optional = true
+		default  = ""
+	}
+
+	argument "clustering_enabled" {
+		optional = true
+		default  = true
+	}
+
+	argument "snapshot_interval" {
+		optional = true
+		default  = "1m"
+	}
+
+	argument "snapshot_max_size_bytes" {
+		optional = true
+		default  = 524288
+	}
+
+	argument "logs_output" {
+		comment = "List of OpenTelemetry log consumers that receive inventory events."
+	}
+
+	otelcol.receiver.k8s_workloads "default" {
+		cluster_name = argument.cluster_name.value
+		cluster_uid  = argument.cluster_uid.value
+
+		snapshots {
+			interval       = argument.snapshot_interval.value
+			max_size_bytes = argument.snapshot_max_size_bytes.value
+		}
+
+		clustering {
+			enabled = argument.clustering_enabled.value
+		}
+
+		output {
+			logs = argument.logs_output.value
+		}
+	}
+}
