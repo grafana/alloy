@@ -1,0 +1,21 @@
+{{- if and .Values.gateway.enabled .Values.gateway.podDisruptionBudget.enabled -}}
+apiVersion: {{ include "alloy.controller.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "alloy.fullname" . }}-gateway
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  {{- if .Values.gateway.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.gateway.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  {{- if .Values.gateway.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.gateway.podDisruptionBudget.maxUnavailable }}
+  {{- end }}
+{{- end }}

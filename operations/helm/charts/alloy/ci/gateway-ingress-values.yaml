@@ -1,0 +1,163 @@
+# Example values file for NGINX gateway with Ingress integration
+# This demonstrates using Kubernetes Ingress to route to the NGINX gateway
+
+# Enable the gateway
+gateway:
+  # -- Enable the NGINX gateway component.
+  enabled: true
+  # -- Number of gateway replicas.
+  replicas: 2
+
+  # ClusterIP service - Ingress will route to this
+  service:
+    type: ClusterIP
+
+  # Configure upstreams
+  upstreams:
+    otlpGrpc:
+      enabled: true
+      path: /opentelemetry
+      targetPort: 4317
+      protocol: grpc
+
+    otlpHttp:
+      enabled: true
+      path: /otlp/v1
+      targetPort: 4318
+      protocol: http
+
+    loki:
+      enabled: true
+      path: /loki/api/v1/push
+      targetPort: 3100
+      protocol: http
+
+    prometheus:
+      enabled: true
+      path: /api/v1/metrics/write
+      targetPort: 9009
+      protocol: http
+
+  # Performance tuning
+  nginxConfig:
+    enableAccessLog: false
+    workerConnections: 2048
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Enable Ingress to route external traffic to gateway
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - alloy.example.com
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: alloy-tls
+      hosts:
+        - alloy.example.com
+
+# Alloy configuration
+alloy:
+  configMap:
+    content: |
+      logging {
+        level  = "info"
+        format = "logfmt"
+      }
+
+      // OpenTelemetry receiver
+      otelcol.receiver.otlp "default" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+
+        output {
+          metrics = [otelcol.exporter.prometheus.default.input]
+          logs    = [otelcol.exporter.loki.default.input]
+          traces  = [otelcol.exporter.otlp.default.input]
+        }
+      }
+
+      // Loki receiver
+      loki.source.api "default" {
+        http {
+          listen_address = "0.0.0.0"
+          listen_port    = 3100
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // Exporters
+      otelcol.exporter.prometheus "default" {
+        forward_to = [prometheus.remote_write.default.receiver]
+      }
+
+      otelcol.exporter.loki "default" {
+        forward_to = [loki.write.default.receiver]
+      }
+
+      otelcol.exporter.otlp "default" {
+        client {
+          endpoint = env("OTLP_ENDPOINT")
+        }
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = env("LOKI_URL")
+        }
+      }
+
+      prometheus.remote_write "default" {
+        endpoint {
+          url = env("PROMETHEUS_REMOTE_WRITE_URL")
+        }
+      }
+
+  # Expose ports
+  extraPorts:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+    protocol: TCP
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+    protocol: TCP
+  - name: loki
+    port: 3100
+    targetPort: 3100
+    protocol: TCP
+  - name: prometheus
+    port: 9009
+    targetPort: 9009
+    protocol: TCP
+
+# Controller configuration
+controller:
+  type: deployment
+  replicas: 2
+
+# RBAC
+rbac:
+  create: true
+
+# ServiceAccount
+serviceAccount:
+  create: true
