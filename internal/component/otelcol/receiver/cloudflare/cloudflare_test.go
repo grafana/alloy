@@ -15,7 +15,8 @@ import (
 // so a case only spells out what it actually overrides.
 func expectedConfig(override func(logs *cloudflarereceiver.LogsConfig)) cloudflarereceiver.Config {
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
-	cfg.Logs.MaxRequestBodySize = 20 * 1024 * 1024
+       // See cloudflare.DefaultMaxRequestBodySize for context on why this is hard coded here
+	cfg.Logs.MaxRequestBodySize = int64(cloudflare.DefaultMaxRequestBodySize)
 	override(&cfg.Logs)
 	return *cfg
 }
