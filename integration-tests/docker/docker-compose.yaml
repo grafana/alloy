@@ -103,19 +103,6 @@ services:
     networks:
       - integration-tests
 
-  mysql:
-    image: mysql:8.4@sha256:563602a18ffd5be220968e8508d84c9dcd80fbffe69e28af51572db29e3285b2
-    container_name: mysql
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: testdb
-    volumes:
-      - ./tests/database-observability-mysql/init_mysql.sh:/docker-entrypoint-initdb.d/init_mysql.sh
-    networks:
-      - integration-tests
-
   postgres:
     image: postgres:16@sha256:081f1bc7bd5e143dbb6e487b710bbc27712cdcfaced4c071b8e47349aa1b4171
     container_name: postgres
