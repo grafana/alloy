@@ -8,7 +8,25 @@ import (
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/scraper/scraperhelper"
 )
+
+// defaultLogsConfig is the logs config produced when no logs block is given.
+// Metrics test cases reuse it so they assert only on what they exercise.
+func defaultLogsConfig() awscloudwatchreceiver.LogsConfig {
+	return awscloudwatchreceiver.LogsConfig{
+		PollInterval:        time.Minute,
+		MaxEventsPerRequest: 1000,
+		Groups: awscloudwatchreceiver.GroupConfig{
+			AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+				Limit:   50,
+				Streams: awscloudwatchreceiver.StreamConfig{},
+			},
+			NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+		},
+	}
+}
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
@@ -185,6 +203,181 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 		},
+		{
+			testName: "autodiscover with pattern and linked accounts",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					groups {
+						autodiscover {
+							pattern = "/aws/lambda/.*"
+							account_identifiers = ["123456789012", "987654321098"]
+							include_linked_accounts = true
+						}
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs: awscloudwatchreceiver.LogsConfig{
+					PollInterval:        time.Minute,
+					MaxEventsPerRequest: 1000,
+					Groups: awscloudwatchreceiver.GroupConfig{
+						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+							Pattern:               "/aws/lambda/.*",
+							Limit:                 50,
+							Streams:               awscloudwatchreceiver.StreamConfig{},
+							AccountIdentifiers:    []string{"123456789012", "987654321098"},
+							IncludeLinkedAccounts: boolPtr(true),
+						},
+						NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+					},
+				},
+			},
+		},
+		{
+			testName: "metrics with explicit queries",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					collection_interval = "1m"
+					period = "1m"
+					query {
+						namespace = "AWS/EC2"
+						metric_name = "CPUUtilization"
+						dimensions = {
+							InstanceId = "i-1234567890abcdef0",
+						}
+						stats = ["Average", "p99"]
+					}
+					query {
+						namespace = "AWS/DynamoDB"
+						metric_name = "SuccessfulRequestLatency"
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs:   defaultLogsConfig(),
+				Metrics: awscloudwatchreceiver.MetricsConfig{
+					ControllerConfig: scraperhelper.ControllerConfig{
+						CollectionInterval: time.Minute,
+						InitialDelay:       time.Second,
+					},
+					Period: time.Minute,
+					Delay:  10 * time.Minute,
+					Queries: []awscloudwatchreceiver.MetricQuery{
+						{
+							Namespace:  "AWS/EC2",
+							MetricName: "CPUUtilization",
+							Dimensions: map[string]string{"InstanceId": "i-1234567890abcdef0"},
+							Stats:      []string{"Average", "p99"},
+						},
+						{
+							Namespace:  "AWS/DynamoDB",
+							MetricName: "SuccessfulRequestLatency",
+						},
+					},
+				},
+			},
+		},
+		{
+			testName: "metrics with defaults",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					query {
+						namespace = "AWS/EC2"
+						metric_name = "CPUUtilization"
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs:   defaultLogsConfig(),
+				Metrics: awscloudwatchreceiver.MetricsConfig{
+					ControllerConfig: scraperhelper.ControllerConfig{
+						// 5m, not the generic otelcol default of 1m.
+						CollectionInterval: 5 * time.Minute,
+						InitialDelay:       time.Second,
+					},
+					Period: 5 * time.Minute,
+					Delay:  10 * time.Minute,
+					Queries: []awscloudwatchreceiver.MetricQuery{
+						{Namespace: "AWS/EC2", MetricName: "CPUUtilization"},
+					},
+				},
+			},
+		},
+		{
+			testName: "metrics discovery with filters",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					collection_interval = "5m"
+					period = "5m"
+					delay = "15m"
+					discovery {
+						limit = 200
+						stats = ["Average"]
+						filters {
+							namespace = "AWS/EC2"
+							metric_name = "CPUUtilization"
+						}
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs:   defaultLogsConfig(),
+				Metrics: awscloudwatchreceiver.MetricsConfig{
+					ControllerConfig: scraperhelper.ControllerConfig{
+						CollectionInterval: 5 * time.Minute,
+						InitialDelay:       time.Second,
+					},
+					Period: 5 * time.Minute,
+					Delay:  15 * time.Minute,
+					Discovery: &awscloudwatchreceiver.MetricsDiscoveryConfig{
+						Filters: configoptional.Some(awscloudwatchreceiver.MetricsDiscoveryFilters{
+							Namespace:  "AWS/EC2",
+							MetricName: "CPUUtilization",
+						}),
+						Limit: 200,
+						Stats: []string{"Average"},
+					},
+				},
+			},
+		},
+		{
+			testName: "metrics discovery without filters uses default limit",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					discovery {}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs:   defaultLogsConfig(),
+				Metrics: awscloudwatchreceiver.MetricsConfig{
+					ControllerConfig: scraperhelper.ControllerConfig{
+						CollectionInterval: 5 * time.Minute,
+						InitialDelay:       time.Second,
+					},
+					Period: 5 * time.Minute,
+					Delay:  10 * time.Minute,
+					Discovery: &awscloudwatchreceiver.MetricsDiscoveryConfig{
+						Filters: configoptional.None[awscloudwatchreceiver.MetricsDiscoveryFilters](),
+						Limit:   100,
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -201,6 +394,88 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			require.Equal(t, tc.expected, *actual)
 		})
 	}
+}
+
+// TestArguments_NoMetricsBlock guards backwards compatibility: a configuration
+// without a metrics block must leave the upstream Metrics config at its zero
+// value, so existing logs-only users gain no CloudWatch GetMetricData calls.
+func TestArguments_NoMetricsBlock(t *testing.T) {
+	cfg := `
+		region = "us-west-2"
+		logs {
+			poll_interval = "1m"
+		}
+		output {}
+	`
+
+	var args awscloudwatch.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+	require.Nil(t, args.Metrics)
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	require.Equal(t,
+		awscloudwatchreceiver.MetricsConfig{},
+		actual.(*awscloudwatchreceiver.Config).Metrics,
+	)
+}
+
+// TestArguments_AutodiscoverNullLimit guards against a nil dereference in
+// AutodiscoverConfig.Convert. SetToDefault populates the limit when the block is
+// present, but an explicit `limit = null` leaves the pointer nil, which used to
+// panic while loading the configuration.
+func TestArguments_AutodiscoverNullLimit(t *testing.T) {
+	cfg := `
+		region = "us-west-2"
+		logs {
+			groups {
+				autodiscover {
+					prefix = "app-"
+					limit = null
+				}
+			}
+		}
+		output {}
+	`
+
+	var args awscloudwatch.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	autodiscover := actual.(*awscloudwatchreceiver.Config).Logs.Groups.AutodiscoverConfig
+	require.NotNil(t, autodiscover)
+	require.Equal(t, 50, autodiscover.Limit)
+}
+
+// TestArguments_IncludeLinkedAccountsUnset guards the pointer semantics of
+// include_linked_accounts. Upstream only forwards the field to AWS when it is
+// non-nil, so omitting the attribute must not send an explicit false.
+func TestArguments_IncludeLinkedAccountsUnset(t *testing.T) {
+	cfg := `
+		region = "us-west-2"
+		logs {
+			groups {
+				autodiscover {
+					prefix = "app-"
+				}
+			}
+		}
+		output {}
+	`
+
+	var args awscloudwatch.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	autodiscover := actual.(*awscloudwatchreceiver.Config).Logs.Groups.AutodiscoverConfig
+	require.NotNil(t, autodiscover)
+	require.Nil(t, autodiscover.IncludeLinkedAccounts)
+	require.Nil(t, autodiscover.AccountIdentifiers)
 }
 
 func TestArguments_Validate(t *testing.T) {
@@ -274,6 +549,109 @@ func TestArguments_Validate(t *testing.T) {
 			`,
 			expectedError: "invalid start_from time format",
 		},
+		{
+			testName: "both prefix and pattern",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					groups {
+						autodiscover {
+							prefix = "app-"
+							pattern = "app-.*"
+						}
+					}
+				}
+				output {}
+			`,
+			expectedError: "cannot specify both prefix and pattern",
+		},
+		{
+			testName: "both queries and discovery",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					query {
+						namespace = "AWS/EC2"
+						metric_name = "CPUUtilization"
+					}
+					discovery {
+						limit = 100
+					}
+				}
+				output {}
+			`,
+			expectedError: "metrics and discovery are mutually exclusive",
+		},
+		{
+			testName: "collection_interval less than period",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					collection_interval = "1m"
+					period = "5m"
+					query {
+						namespace = "AWS/EC2"
+						metric_name = "CPUUtilization"
+					}
+				}
+				output {}
+			`,
+			expectedError: "metrics collection_interval must be greater than or equal to period",
+		},
+		{
+			testName: "empty stat name",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					query {
+						namespace = "AWS/EC2"
+						metric_name = "CPUUtilization"
+						stats = [""]
+					}
+				}
+				output {}
+			`,
+			expectedError: "stat name must not be empty",
+		},
+		{
+			testName: "discovery limit not positive",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					discovery {
+						limit = 0
+					}
+				}
+				output {}
+			`,
+			expectedError: "metrics discovery limit must be greater than 0",
+		},
+		{
+			testName: "query missing namespace",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					query {
+						metric_name = "CPUUtilization"
+					}
+				}
+				output {}
+			`,
+			expectedError: `missing required attribute "namespace"`,
+		},
+		{
+			testName: "query missing metric_name",
+			cfg: `
+				region = "us-west-2"
+				metrics {
+					query {
+						namespace = "AWS/EC2"
+					}
+				}
+				output {}
+			`,
+			expectedError: `missing required attribute "metric_name"`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -287,4 +665,9 @@ func TestArguments_Validate(t *testing.T) {
 // Helper function to create string pointers
 func ptr(s string) *string {
 	return &s
+}
+
+// Helper function to create bool pointers
+func boolPtr(b bool) *bool {
+	return &b
 }
