@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.20.1](https://github.com/grafana/alloy/compare/v1.20.0...v1.20.1) (2026-09-25)
+
+
+### Bug Fixes 🐛
+
+* **loki.process:** Move stage.static_labels validation to syntax.Validator ([#7175](https://github.com/grafana/alloy/issues/7175)) ([2b92bfb](https://github.com/grafana/alloy/commit/2b92bfb075aeb9d0662ce4f5d130483e4ecc11f1))
+* **loki.source.kubernetes:** Forward log lines with out-of-order timestamps ([#7080](https://github.com/grafana/alloy/issues/7080)) ([41d9001](https://github.com/grafana/alloy/commit/41d9001c1ad36c566d4d4f9c669d91d2f23703e7))
+* **loki.write:** Catch more runtime errors when parsing config ([#7216](https://github.com/grafana/alloy/issues/7216)) ([32c2180](https://github.com/grafana/alloy/commit/32c2180837b850181cba14b23d794652b0e8a073))
+* **loki.write:** Prevent panic on failed update ([#7128](https://github.com/grafana/alloy/issues/7128)) ([3aa1c65](https://github.com/grafana/alloy/commit/3aa1c6577ebb015e2a1124888c91db9396200394))
+* **prometheus.remote_write:** Tolerate unknown WAL record types on replay ([#7189](https://github.com/grafana/alloy/issues/7189)) ([26d1a25](https://github.com/grafana/alloy/commit/26d1a2533d2c45f1e5a720aedd3ef119887e54c9))
+
 ## [1.20.0](https://github.com/grafana/alloy/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
