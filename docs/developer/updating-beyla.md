@@ -1,9 +1,9 @@
 # Updating Beyla
 
-> **Maintainers only.** Bumping Beyla records new binary checksums in
-> `beyla_version.yaml` — the trust anchor for verifying the download. Run
-> `make update-beyla` and review the checksum diff only as a maintainer, to guard
-> against supply-chain tampering.
+> **Only maintainers should update Beyla**
+> Bumping Beyla records new binary checksums in `beyla_version.yaml`.
+> To guard against supply-chain attacks, only maintainers should change the Beyla binaries that Alloy incorporates.
+> If a community PR is opened for this, maintainers should close it and reopen a new one made by a maintainer.
 
 ## Overview
 
@@ -28,7 +28,8 @@ This one command:
   pinned manifest),
 - downloads and verifies the binaries against those checksums,
 - downloads the matching config schema,
-- syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`.
+- syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`,
+- regenerates the golden config fixture (`golden_test.go`).
 
 Review the `beyla_version.yaml` diff before committing — the committed checksum is the
 trust anchor, like `go.sum`.
