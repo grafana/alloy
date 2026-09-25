@@ -102,6 +102,8 @@ The `/RUNTIMEPRIORITY` installation option sets this flag, and if {{< param "PRO
 
 - `Arguments`: Type `REG_MULTI_SZ`. Each value represents a binary argument for the {{< param "PRODUCT_NAME" >}} binary.
 - `Environment`: Type `REG_MULTI_SZ`. Each value represents an environment value `KEY=VALUE` for the {{< param "PRODUCT_NAME" >}} binary.
+- `ALLOY_OTEL_MODE`: Type `REG_SZ`. Set this value to `1` or `true` (case-insensitive) to run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}. Refer to [Run the {{< param "OTEL_ENGINE" >}} with service installations][OTelEngine] for more information.
+- `OTelArguments`: Type `REG_MULTI_SZ`. Each value represents an additional binary argument for the {{< param "PRODUCT_NAME" >}} binary when it runs the {{< param "OTEL_ENGINE" >}}. {{< param "PRODUCT_NAME" >}} ignores this value when it runs the {{< param "DEFAULT_ENGINE" >}}.
 
 ## Uninstall
 
@@ -163,5 +165,6 @@ To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as
 
 [releases]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/
+[OTelEngine]: ../../otel_engine/service-installations/
 [Run]: ../../run/windows/
 [Configure]: ../../../configure/windows/

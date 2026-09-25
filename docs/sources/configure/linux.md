@@ -39,7 +39,7 @@ To change the configuration file used by the service, perform the following step
 
 By default, the {{< param "PRODUCT_NAME" >}} service launches with the [run][] command, passing the following flags:
 
-* `--storage.path=/var/lib/alloy`
+* `--storage.path=/var/lib/alloy/data`
 
 To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary, perform the following steps:
 
@@ -58,6 +58,14 @@ To pass additional command-line flags to the {{< param "PRODUCT_NAME" >}} binary
    ```
 
 To see the list of valid command-line flags that can be passed to the service, refer to the documentation for the [run][] command.
+
+## Run the {{% param "OTEL_ENGINE" %}}
+
+The {{< param "PRODUCT_NAME" >}} service runs the {{< param "DEFAULT_ENGINE" >}} unless you enable `ALLOY_OTEL_MODE` in the environment file.
+The `CONFIG_FILE` and `CUSTOM_ARGS` settings apply only to the {{< param "DEFAULT_ENGINE" >}}.
+The {{< param "OTEL_ENGINE" >}} uses `OTEL_CONFIG_FILE` and `OTEL_CUSTOM_ARGS` instead.
+
+Refer to [Run the {{< param "OTEL_ENGINE" >}} with service installations][OTelEngine] for the steps to switch engines.
 
 ## Expose the UI to other machines
 
@@ -83,4 +91,5 @@ To expose the UI to other machines, complete the following steps:
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
 [run]:../../reference/cli/run/
+[OTelEngine]: ../../set-up/otel_engine/service-installations/
 [UI]: ../../troubleshoot/debug/#alloy-ui
