@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
@@ -61,24 +60,16 @@ type Writer struct {
 }
 
 // NewWriter creates a new Writer.
-func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer, metrics *WriterMetrics) (*Writer, error) {
-	// Start WAL
-	wl, err := New(walCfg, logger, reg)
-	if err != nil {
-		return nil, fmt.Errorf("error starting WAL: %w", err)
-	}
-
-	wrt := &Writer{
+func NewWriter(logger *slog.Logger, metrics *WriterMetrics, wl WAL, cfg Config) *Writer {
+	return &Writer{
 		logger:      logger,
 		entryWriter: newEntryWriter(),
 		wg:          sync.WaitGroup{},
-		cfg:         walCfg,
+		cfg:         cfg,
 		wal:         wl,
 		done:        make(chan struct{}),
 		metrics:     metrics,
 	}
-
-	return wrt, nil
 }
 
 func (wrt *Writer) Start() {
@@ -139,9 +130,6 @@ func (wrt *Writer) Stop() {
 	// Stop cleaner routine and wait for it to stop.
 	close(wrt.done)
 	wrt.wg.Wait()
-
-	// Close WAL to finalize all pending writes.
-	wrt.wal.Close()
 }
 
 // cleanSegments will remove segments older than maxAge from the WAL directory. If there's just one segment, none will be

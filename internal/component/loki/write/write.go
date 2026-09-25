@@ -86,7 +86,11 @@ type Component struct {
 	mut            sync.RWMutex
 	externalLabels model.LabelSet
 
-	// remote write consumer
+	// wal is opened when it is first enabled and reused across updates.
+	// It will always be nil when disabled.
+	wal wal.WAL
+	// consumer is set by the first successful Update and afterwards only replaced by
+	// another successfully built consumer, never cleared.
 	consumer client.Consumer
 }
 
@@ -115,13 +119,15 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.Lock()
 		defer c.mut.Unlock()
 
-		if c.consumer != nil {
-			if d, ok := c.consumer.(client.DrainableConsumer); ok {
-				// stop and drain since component is shutting down.
-				d.StopAndDrain()
-			} else {
-				c.consumer.Stop()
-			}
+		if d, ok := c.consumer.(client.DrainableConsumer); ok {
+			// stop and drain since component is shutting down.
+			d.StopAndDrain()
+		} else {
+			c.consumer.Stop()
+		}
+
+		if c.wal != nil {
+			c.wal.Close()
 		}
 	}()
 
@@ -146,13 +152,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.consumer != nil {
-		// only drain on component shutdown
-		c.consumer.Stop()
-	}
-
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
-
 	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
@@ -164,42 +163,110 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
-	walCfg := wal.Config{
-		Dir:           filepath.Join(c.opts.DataPath, "wal"),
-		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
-		WatchConfig: wal.WatchConfig{
-			MinReadFrequency: newArgs.WAL.MinReadFrequency,
-			MaxReadFrequency: newArgs.WAL.MaxReadFrequency,
-			DrainTimeout:     newArgs.WAL.DrainTimeout,
-		},
-	}
 
-	var err error
+	var (
+		consumer client.Consumer
+		err      error
+	)
+
 	if newArgs.WAL.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		consumer, err = c.newWALConsumer(newArgs, cfgs)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create clients: %w", err)
+		return fmt.Errorf("failed to create client: %w", err)
 	}
+
+	if c.consumer != nil {
+		c.consumer.Stop()
+	}
+
+	// The WAL is only needed while a WAL consumer is reading from it.
+	if !newArgs.WAL.Enabled && c.wal != nil {
+		c.wal.Close()
+		c.wal = nil
+	}
+
+	c.consumer = consumer
+	c.consumer.Start()
+	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
 
-func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
-	c.mut.RLock()
-	consumer := c.consumer
+func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client.Consumer, error) {
+	var (
+		wl     = c.wal
+		opened = false
+	)
 
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
+	if wl == nil {
+		var err error
+		wl, err = wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
+		if err != nil {
+			return nil, err
+		}
+		opened = true
 	}
-	c.mut.RUnlock()
 
-	// NOTE: For now it's ok to ignore error here. Error mean the consumer is going away,
-	// either because ctx was canceled or because it has been stopped by a shutdown or an update.
-	_ = consumer.ConsumeEntry(ctx, e)
+	consumer, err := client.NewWALConsumer(
+		c.opts.Logger,
+		c.opts.Registerer,
+		wl,
+		wal.Config{
+			MaxSegmentAge: args.WAL.MaxSegmentAge,
+			WatchConfig: wal.WatchConfig{
+				MinReadFrequency: args.WAL.MinReadFrequency,
+				MaxReadFrequency: args.WAL.MaxReadFrequency,
+				DrainTimeout:     args.WAL.DrainTimeout,
+			},
+		},
+		cfgs...,
+	)
+	if err != nil {
+		if opened {
+			wl.Close()
+		}
+		return nil, err
+	}
+
+	c.wal = wl
+	return consumer, nil
+}
+
+func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
+	var labelsMerged bool
+
+	for {
+		c.mut.RLock()
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			e.Labels = externalLabels.Merge(e.Labels)
+		}
+
+		err := consumer.ConsumeEntry(ctx, e)
+		// Only a stopped consumer is worth retrying, an update swapped it out.
+		// Anything else is an accepted entry, a canceled context while shutting down,
+		// or a failed WAL write.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the entry, and the retry hands it to those endpoints again.
+		if !errors.Is(err, loki.ErrConsumerStopped) {
+			return
+		}
+
+		if ctx.Err() != nil {
+			return
+		}
+	}
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
