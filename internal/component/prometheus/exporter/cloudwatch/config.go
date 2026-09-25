@@ -132,6 +132,7 @@ type Metric struct {
 	Length                 time.Duration `alloy:"length,attr,optional"`
 	NilToZero              *bool         `alloy:"nil_to_zero,attr,optional"`
 	AddCloudwatchTimestamp *bool         `alloy:"add_cloudwatch_timestamp,attr,optional"`
+	ExportAllDataPoints    *bool         `alloy:"export_all_data_points,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -284,16 +285,16 @@ func toYACEMetrics(ms []Metric, jobPeriod time.Duration, jobLength time.Duration
 			Name:       m.Name,
 			Statistics: m.Statistics,
 
-			// Length dictates the size of the window for whom we request metrics, that is, endTime - startTime. Period
-			// dictates the size of the buckets in which we aggregate data, inside that window. Since data will be scraped
-			// by Alloy every so often, dictated by the scrapedInterval, CloudWatch should return a single datapoint
-			// for each requested metric. That is if Period >= Length, but is Period > Length, we will be getting not enough
-			// data to fill the whole aggregation bucket. Therefore, Period == Length.
+			// Length defines the metric query window, endTime - startTime. Period defines the aggregation bucket size within
+			// that window. When length isn't configured, this function sets it equal to period. A configured length greater
+			// than period lets YACE return multiple data points when ExportAllDataPoints is enabled. YACE rejects a length
+			// shorter than period.
 			Period: periodSeconds,
 			Length: lengthSeconds,
 
 			NilToZero:              m.NilToZero,
 			AddCloudwatchTimestamp: m.AddCloudwatchTimestamp,
+			ExportAllDataPoints:    m.ExportAllDataPoints,
 		})
 	}
 	return yaceMetrics
