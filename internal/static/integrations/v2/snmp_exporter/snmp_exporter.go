@@ -15,6 +15,7 @@ import (
 var DefaultConfig = Config{
 	WalkParams:              make(map[string]snmp_config.WalkParams),
 	SnmpConfigFile:          "",
+	SnmpConfigFiles:         []string{},
 	SnmpConfigMergeStrategy: "replace",
 	SnmpConcurrency:         1,
 }
@@ -23,6 +24,7 @@ var DefaultConfig = Config{
 type Config struct {
 	WalkParams              map[string]snmp_config.WalkParams `yaml:"walk_params,omitempty"`
 	SnmpConfigFile          string                            `yaml:"config_file,omitempty"`
+	SnmpConfigFiles         []string                          `yaml:"config_files,omitempty"`
 	SnmpConfigMergeStrategy string                            `yaml:"config_merge_strategy,omitempty"`
 	SnmpConcurrency         int                               `yaml:"concurrency,omitempty"`
 	SnmpTargets             []snmp_exporter.SNMPTarget        `yaml:"snmp_targets"`
@@ -48,7 +50,8 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 
 // NewIntegration creates a new SNMP integration.
 func (c *Config) NewIntegration(l *slog.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
-	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
+	snmpConfigFiles := append(c.SnmpConfigFiles, c.SnmpConfigFile)
+	snmpCfg, err := snmp_exporter.LoadSNMPConfig(snmpConfigFiles, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err
 	}
