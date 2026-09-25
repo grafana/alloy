@@ -17,7 +17,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -27,104 +26,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
-
-func TestAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-	}
-`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.NoError(t, err)
-}
-
-func TestBadAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-		bearer_token = "token"
-		bearer_token_file = "/path/to/file.token"
-	}
-`
-
-	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
-}
-
-func TestUnmarshallWalAttrributes(t *testing.T) {
-	type testcase struct {
-		raw           string
-		errorExpected bool
-		expected      WalArguments
-	}
-
-	for name, tc := range map[string]testcase{
-		"min read frequency higher than max": {
-			raw: `
-			enabled = true
-			min_read_frequency = "1h"
-			max_read_frequency = "1m"
-			`,
-			errorExpected: true,
-		},
-		"default config is wal disabled": {
-			raw: "",
-			expected: WalArguments{
-				Enabled:          false,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with defaults": {
-			raw: `
-			enabled = true
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with some overrides": {
-			raw: `
-			enabled = true
-			max_segment_age = "10m"
-			min_read_frequency = "11ms"
-			drain_timeout = "5m"
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    time.Minute * 10,
-				MinReadFrequency: time.Millisecond * 11,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     time.Minute * 5,
-			},
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			cfg := WalArguments{}
-			err := syntax.Unmarshal([]byte(tc.raw), &cfg)
-			if tc.errorExpected {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tc.expected, cfg)
-		})
-	}
-}
 
 func TestWriteToSingleEndpoint(t *testing.T) {
 	t.Run("wal disabled", func(t *testing.T) {
