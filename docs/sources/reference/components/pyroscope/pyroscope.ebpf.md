@@ -72,6 +72,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | Name                          | Type                     | Description                                                                                                          | Default          | Required |
 | ----------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `forward_to`                  | `list(ProfilesReceiver)` | List of receivers to send collected profiles to.                                                                     |                  | yes      |
+| `batch_enabled`               | `bool`                   | Send all profiles from each collection interval in one batch.                                                        | `false`          | no       |
 | `bpf_fs_root`                 | `string`                 | Root path of the BPF filesystem for pinned maps used in trace correlation.                                           | `"/sys/fs/bpf/"` | no       |
 | `build_id_cache_size`         | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`             | no       |
 | `cache_rounds`                | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |                  | no       |
@@ -117,6 +118,13 @@ Only the `forward_to` field is required.
 Omitted fields take their default values.
 
 Several arguments are marked as "Deprecated (no-op)". These arguments were previously used for configuring various cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
+
+When `batch_enabled` is `true`, `pyroscope.ebpf` sends all profiles collected during each `collect_interval` in one batch.
+`pyroscope.write` sends the batch in one request per endpoint, preserving each profile's labels.
+`pyroscope.relabel` preserves batching while applying rules to each series.
+Batching reduces request overhead, especially when profiling all processes on a host.
+The batch must fit within your server's request size limit, and retries apply to the entire batch.
+Set `batch_enabled` to `false` to send profiles individually.
 
 ## Blocks
 

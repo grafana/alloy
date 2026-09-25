@@ -485,3 +485,34 @@ func (t *TestAppender) Profiles() []*pyroscope.IncomingProfile {
 	defer t.mu.Unlock()
 	return t.profiles
 }
+
+func TestRelabelBatch(t *testing.T) {
+	calls := 0
+	app := pyroscope.AppenderMock{AppendBatchFunc: func(_ context.Context, series []pyroscope.RawProfileSeries) error {
+		calls++
+		require.Len(t, series, 1)
+		require.Equal(t, "prod", series[0].Labels.Get("env"))
+		require.Equal(t, "profile", string(series[0].Samples[0].RawProfile))
+		return nil
+	}}
+	c, err := New(component.Options{
+		Logger: util.TestAlloyLogger(t).Slog(), Registerer: prometheus.NewRegistry(),
+		OnStateChange: func(component.Exports) {},
+	}, Arguments{
+		ForwardTo: []pyroscope.Appendable{app}, MaxCacheSize: 10,
+		RelabelConfigs: []*alloy_relabel.Config{{
+			SourceLabels: []string{"env"}, Action: "drop",
+			Regex: alloy_relabel.Regexp{Regexp: regexp.MustCompile("dev")},
+		}},
+	})
+	require.NoError(t, err)
+	series := []pyroscope.RawProfileSeries{
+		{Labels: labels.FromStrings("env", "dev")},
+		{Labels: labels.FromStrings("env", "prod"), Samples: []*pyroscope.RawSample{{RawProfile: []byte("profile")}}},
+	}
+	require.NoError(t, c.AppendBatch(t.Context(), series))
+	require.Equal(t, 1, calls)
+	require.Equal(t, "dev", series[0].Labels.Get("env"))
+	require.NoError(t, c.AppendBatch(t.Context(), series[:1]))
+	require.Equal(t, 1, calls)
+}

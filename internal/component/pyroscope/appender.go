@@ -34,6 +34,38 @@ type Appender interface {
 	AppendIngest(ctx context.Context, profile *IncomingProfile) error
 }
 
+// RawProfileSeries contains profiles sharing the same labels.
+// Appenders must not mutate the series, samples, or profile bytes.
+type RawProfileSeries struct {
+	Labels  labels.Labels
+	Samples []*RawSample
+}
+
+// BatchAppender optionally supports sending multiple series in one request.
+type BatchAppender interface {
+	AppendBatch(ctx context.Context, series []RawProfileSeries) error
+}
+
+// AppendBatch uses batch delivery when supported, falling back to individual appends.
+func AppendBatch(ctx context.Context, app Appender, series []RawProfileSeries) error {
+	if len(series) == 0 {
+		return nil
+	}
+	if batch, ok := app.(BatchAppender); ok {
+		return batch.AppendBatch(ctx, series)
+	}
+	var multiErr error
+	for _, s := range series {
+		if err := ctx.Err(); err != nil {
+			return multierror.Append(multiErr, err)
+		}
+		if err := app.Append(ctx, s.Labels, s.Samples); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
 type RawSample struct {
 	ID string
 	// raw_profile is the set of bytes of the pprof profile
@@ -195,6 +227,28 @@ func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) e
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
+	}
+	return multiErr
+}
+
+func (a *appender) AppendBatch(ctx context.Context, series []RawProfileSeries) error {
+	if len(series) == 0 {
+		return nil
+	}
+	now := time.Now()
+	defer func() { a.writeLatency.Observe(time.Since(now).Seconds()) }()
+	var multiErr error
+	for _, child := range a.children {
+		if err := AppendBatch(ctx, child, series); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	if multiErr == nil {
+		var count int
+		for _, s := range series {
+			count += len(s.Samples)
+		}
+		a.samplesCounter.Add(float64(count))
 	}
 	return multiErr
 }

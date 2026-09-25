@@ -3,6 +3,7 @@
 package ebpf
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -201,4 +202,13 @@ func TestReconstructionAfterError(t *testing.T) {
 	args = NewDefaultArguments()
 	_, err = New(logger, reg, "test-ebpf", args)
 	require.NoError(t, err)
+}
+
+func TestBatchEnabledConfig(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(fmt.Sprintf("forward_to = []\nbatch_enabled = %t", enabled)), &args))
+		require.Equal(t, enabled, args.BatchEnabled)
+	}
+	require.False(t, NewDefaultArguments().BatchEnabled)
 }
