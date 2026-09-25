@@ -159,13 +159,21 @@ func (a *Arguments) SetToDefault() {
 	*a = DefaultArguments
 }
 
+// Query format and type values that appear in more than one place.
+const (
+	formatTable = "table"
+	formatLogs  = "logs"
+	sourceURL   = "url"
+	typeGraphQL = "graphql"
+)
+
 var (
-	supportedTypes       = []string{"json", "csv", "tsv", "xml", "html", "graphql"}
+	supportedTypes       = []string{"json", "csv", "tsv", "xml", "html", typeGraphQL}
 	supportedParsers     = []string{"backend", "jq-backend"}
-	supportedFormats     = []string{"table", "logs"}
-	supportedSources     = []string{"url", "inline"}
+	supportedFormats     = []string{formatTable, formatLogs}
+	supportedSources     = []string{sourceURL, "inline"}
 	supportedMethods     = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
-	supportedBodyTypes   = []string{"raw", "form-data", "x-www-form-urlencoded", "graphql"}
+	supportedBodyTypes   = []string{"raw", "form-data", "x-www-form-urlencoded", typeGraphQL}
 	supportedColumnTypes = []string{"string", "number", "boolean", "timestamp", "timestamp_epoch", "timestamp_epoch_s"}
 
 	metricPrefixRE = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
@@ -224,22 +232,22 @@ func (q *QueryBlock) applyDefaults() {
 		q.Parser = "backend"
 	}
 	if q.Format == "" {
-		q.Format = "table"
+		q.Format = formatTable
 	}
 	if q.Source == "" {
-		q.Source = "url"
+		q.Source = sourceURL
 	}
 	q.URLOptions.Method = strings.ToUpper(strings.TrimSpace(q.URLOptions.Method))
 	if q.URLOptions.Method == "" {
 		q.URLOptions.Method = http.MethodGet
-		if q.Type == "graphql" {
+		if q.Type == typeGraphQL {
 			q.URLOptions.Method = http.MethodPost
 		}
 	}
 	if q.URLOptions.BodyType == "" {
 		q.URLOptions.BodyType = "raw"
-		if q.Type == "graphql" {
-			q.URLOptions.BodyType = "graphql"
+		if q.Type == typeGraphQL {
+			q.URLOptions.BodyType = typeGraphQL
 		}
 	}
 	if q.Logs != nil && q.Logs.LineColumn == "" {
@@ -275,7 +283,7 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 	}
 
 	switch q.Source {
-	case "url":
+	case sourceURL:
 		if q.Data != "" {
 			errs = append(errs, errors.New(`data must be empty when source is "url"`))
 		}
@@ -301,7 +309,7 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 	}
 
 	if q.Metrics != nil {
-		if q.Format != "table" {
+		if q.Format != formatTable {
 			errs = append(errs, errors.New(`metrics block requires format "table"`))
 		}
 		if q.Metrics.SeriesLimit < 0 {
@@ -312,7 +320,7 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 		}
 	}
 	if q.Logs != nil {
-		if q.Format != "logs" {
+		if q.Format != formatLogs {
 			errs = append(errs, errors.New(`logs block requires format "logs"`))
 		}
 		if q.Logs.EntryLimit < 0 {
@@ -365,11 +373,11 @@ func (o *URLOptions) validate(queryType string, clientHeaders map[string]struct{
 	if o.Method == http.MethodGet && hasBody {
 		errs = append(errs, errors.New("a request body is not allowed with method GET"))
 	}
-	if queryType == "graphql" {
+	if queryType == typeGraphQL {
 		if o.Method != http.MethodPost {
 			errs = append(errs, errors.New(`type "graphql" requires method "POST"`))
 		}
-		if o.BodyType != "graphql" {
+		if o.BodyType != typeGraphQL {
 			errs = append(errs, errors.New(`type "graphql" requires body_type "graphql"`))
 		}
 	}
@@ -392,10 +400,10 @@ func validateOutputs(a Arguments) error {
 	hasLogs := len(a.ForwardTo.Logs) > 0 || len(a.Output.Logs) > 0
 	var errs []error
 	for _, q := range a.Queries {
-		if q.Format == "table" && !hasMetrics {
+		if q.Format == formatTable && !hasMetrics {
 			errs = append(errs, fmt.Errorf(`query %q: format "table" needs forward_to.metrics or output.metrics`, q.Name))
 		}
-		if q.Format == "logs" && !hasLogs {
+		if q.Format == formatLogs && !hasLogs {
 			errs = append(errs, fmt.Errorf(`query %q: format "logs" needs forward_to.logs or output.logs`, q.Name))
 		}
 	}

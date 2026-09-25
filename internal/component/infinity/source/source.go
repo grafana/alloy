@@ -333,7 +333,7 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 	job := c.opts.ID
 	frame, err := c.fetchFrame(ctx, cfg, s)
 
-	if s.format == "logs" {
+	if s.format == formatLogs {
 		if err != nil {
 			return err
 		}
@@ -390,7 +390,7 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 
 func (c *Component) fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, error) {
 	body := []byte(s.data)
-	if s.source == "url" {
+	if s.source == sourceURL {
 		rctx, cancel := context.WithTimeout(ctx, cfg.timeout)
 		defer cancel()
 		req, err := buildRequest(rctx, s)

@@ -37,7 +37,7 @@ func buildFrame(s querySpec, body []byte) (*data.Frame, error) {
 
 func parseFrame(s querySpec, body string) (*data.Frame, error) {
 	switch s.qtype {
-	case "json", "graphql":
+	case "json", typeGraphQL:
 		return jsonframer.ToFrame(body, jsonframer.FramerOptions{
 			FramerType:   jsonFramerType(s.parser),
 			FrameName:    s.name,

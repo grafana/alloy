@@ -57,7 +57,7 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 		}
 		body = &buf
 		contentType = w.FormDataContentType()
-	case "graphql":
+	case typeGraphQL:
 		payload := map[string]any{"query": s.graphqlQuery}
 		if s.graphqlVariables != "" {
 			payload["variables"] = json.RawMessage(s.graphqlVariables)
