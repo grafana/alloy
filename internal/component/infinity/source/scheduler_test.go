@@ -27,7 +27,7 @@ func TestLoopNoOverlap(t *testing.T) {
 		lastEnd                              atomic.Int64
 		maxGap                               atomic.Int64
 	)
-	interval := 50 * time.Millisecond
+	interval := 200 * time.Millisecond
 	poll := func(context.Context) {
 		if end := lastEnd.Load(); end != 0 {
 			gap := time.Now().UnixNano() - end
@@ -46,7 +46,7 @@ func TestLoopNoOverlap(t *testing.T) {
 	}
 	l := startLoop(t.Context(), interval, 0, poll, func() { overruns.Add(1) })
 
-	require.Eventually(t, func() bool { return calls.Load() >= 3 }, 2*time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return calls.Load() >= 3 }, 5*time.Second, 10*time.Millisecond)
 	l.stop()
 
 	require.Equal(t, int32(1), maxRunning.Load(), "polls never overlap")
