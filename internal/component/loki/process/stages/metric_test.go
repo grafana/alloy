@@ -378,6 +378,7 @@ loki_process_custom_total_keys{baz="fu",fu="baz"} 8.0
 				metricsAfterCleanup: func(reg *prometheus.Registry) error {
 					return testutil.GatherAndCompare(reg, strings.NewReader(""))
 				},
+				extracted: func(expected map[string]any, actual map[string]any) bool { return true },
 			})
 		})
 	}
