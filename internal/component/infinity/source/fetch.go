@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -59,11 +60,48 @@ func fetch(client *http.Client, req *http.Request, maxSize int64) ([]byte, error
 	return body, nil
 }
 
-// redactErr hides query params in the URL that net/http puts in its errors.
+// redactErr hides query params in URLs that net/http puts in its errors.
+// It redacts each nested *url.Error, and then scrubs the final text,
+// because net/http also writes URLs into plain text, for example a bad
+// redirect Location.
 func redactErr(err error) error {
-	var ue *url.Error
-	if errors.As(err, &ue) {
-		return &url.Error{Op: ue.Op, URL: redactURL(ue.URL), Err: ue.Err}
+	if err == nil {
+		return nil
+	}
+	r := redactURLErrors(err)
+	return &redactedError{msg: scrubURLs(r.Error()), err: r}
+}
+
+func redactURLErrors(err error) error {
+	if ue, ok := err.(*url.Error); ok {
+		return &url.Error{Op: ue.Op, URL: redactURL(ue.URL), Err: redactURLErrors(ue.Err)}
 	}
 	return err
 }
+
+// urlInTextRE matches a URL with a query in error text. Quotes and spaces
+// end the match, because Go error text quotes URLs.
+var urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#]*\?[^\s"'#]*`)
+
+// scrubURLs redacts each URL with a query in msg. A URL that does not parse
+// loses its whole query.
+func scrubURLs(msg string) string {
+	return urlInTextRE.ReplaceAllStringFunc(msg, func(m string) string {
+		u, err := url.Parse(m)
+		if err != nil {
+			base, _, _ := strings.Cut(m, "?")
+			return base + "?REDACTED"
+		}
+		return redactURL(u.String())
+	})
+}
+
+// redactedError has a message without secrets. Unwrap keeps errors.Is
+// working for callers.
+type redactedError struct {
+	msg string
+	err error
+}
+
+func (e *redactedError) Error() string { return e.msg }
+func (e *redactedError) Unwrap() error { return e.err }

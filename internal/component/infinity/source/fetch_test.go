@@ -138,3 +138,25 @@ func TestFetchFrameRedactsBuildError(t *testing.T) {
 	require.Equal(t, reasonRequest, reasonOf(err))
 	require.NotContains(t, err.Error(), "supersecret")
 }
+
+func redirectToSecret(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Location", "https://files.example/%zz?token=supersecret")
+	w.WriteHeader(http.StatusFound)
+}
+
+// TestFetchRedactsRedirectURL checks a bad redirect Location. net/http puts
+// it inside the error text, below the outer *url.Error.
+func TestFetchRedactsRedirectURL(t *testing.T) {
+	srv := serve(redirectToSecret)
+	defer srv.Close()
+
+	_, err := doFetch(t.Context(), srv.URL, 1024, nil)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "supersecret")
+}
+
+func TestScrubURLs(t *testing.T) {
+	in := `Get "http://a.example/x?key=abc": failed to parse Location header "https://files.example/%zz?token=supersecret": bad`
+	want := `Get "http://a.example/x?key=REDACTED": failed to parse Location header "https://files.example/%zz?REDACTED": bad`
+	require.Equal(t, want, scrubURLs(in))
+}

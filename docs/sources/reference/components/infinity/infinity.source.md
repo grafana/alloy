@@ -492,7 +492,9 @@ The health message names the first failed query in label order, its failure reas
 query "orders" failed: status 503 (and 2 other queries)
 ```
 
-Health messages never show a URL's query string; `infinity.source` replaces every query parameter value with `REDACTED`.
+Health messages and logs never show a URL's query parameter values; `infinity.source` replaces every query parameter value with `REDACTED`.
+This includes URLs inside HTTP errors, for example a bad redirect `Location` header.
+When such a URL doesn't parse, `infinity.source` replaces its whole query string with `REDACTED`.
 
 ## Debug information
 
