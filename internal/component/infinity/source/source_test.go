@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
+	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
@@ -417,4 +418,75 @@ func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
 		t.Fatal("Update never returned")
 	}
 	require.NoError(t, updateErr)
+}
+
+// TestParserPanicFailsOnlyThatQuery checks that a response that makes the
+// parser panic marks its own query unhealthy and leaves other queries alone.
+func TestParserPanicFailsOnlyThatQuery(t *testing.T) {
+	cfg := `
+		interval = "100ms"
+		timeout  = "50ms"
+		query "bad" {
+			source = "inline"
+			data   = "[{\"a\":1},{\"a\":\"x\"}]"
+		}
+		query "q" {
+			source = "inline"
+			data   = "[{\"v\":1}]"
+		}`
+	app := testappender.NewCollectingAppender()
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), cfg, testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		h := c.CurrentHealth()
+		assert.Equal(ct, component.HealthTypeUnhealthy, h.Health)
+		assert.Contains(ct, h.Message, `query "bad" failed: parser panic`)
+		assert.NotContains(ct, h.Message, "other query")
+		v := app.LatestSampleFor(series("v"))
+		if assert.NotNil(ct, v) {
+			assert.Equal(ct, 1.0, v.Value)
+		}
+	}, 2*time.Second, 20*time.Millisecond)
+}
+
+// TestParseBoundedByTimeout uses a jq expression that never ends. The poll
+// must fail with reason timeout, and Run must still stop at once.
+func TestParseBoundedByTimeout(t *testing.T) {
+	args, err := parse(`
+		interval = "1s"
+		timeout  = "200ms"
+		query "q" {
+			source        = "inline"
+			data          = "[1]"
+			parser        = "jq-backend"
+			root_selector = "until(false; .)"
+		}`)
+	require.NoError(t, err)
+	app := testappender.NewCollectingAppender()
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		_ = c.Run(ctx)
+	}()
+
+	// The first poll starts within one interval and must end one timeout later.
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Equal(ct, 1.0, promtestutil.ToFloat64(c.metrics.pollFailures.WithLabelValues("q", reasonTimeout)))
+		h := c.CurrentHealth()
+		assert.Contains(ct, h.Message, "parsing the response took longer than timeout")
+	}, 2*time.Second, 10*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Run did not return after its context was cancelled")
+	}
 }

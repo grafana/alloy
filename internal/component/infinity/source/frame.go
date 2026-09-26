@@ -17,7 +17,15 @@ import (
 // PostProcessFrame in that commit.
 
 // buildFrame parses body and runs the post-processing steps.
-func buildFrame(s querySpec, body []byte) (*data.Frame, error) {
+func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
+	// infinity-libs can panic on some input, for example mixed value types
+	// in one column. A bad response must fail the poll, not crash Alloy.
+	defer func() {
+		if r := recover(); r != nil {
+			retErr = newPollError(reasonParse, fmt.Errorf("parser panic: %v", r))
+		}
+	}()
+
 	frame, err := parseFrame(s, string(body))
 	if err != nil {
 		return nil, newPollError(reasonParse, err)

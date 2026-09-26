@@ -211,3 +211,17 @@ func TestPostProcessError(t *testing.T) {
 	_, err = buildFrame(s, []byte(`[{"a":1}]`))
 	require.Equal(t, reasonPostprocess, reasonOf(err))
 }
+
+// TestBuildFrameRecoversPanic uses an input that makes gframer panic on a
+// type conversion. The poll must fail with reason parse, not crash Alloy.
+func TestBuildFrameRecoversPanic(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://x"
+	}`)
+	require.NoError(t, err)
+
+	_, err = buildFrame(s, []byte(`[{"a":1},{"a":"x"}]`))
+	require.Error(t, err)
+	require.Equal(t, reasonParse, reasonOf(err))
+	require.ErrorContains(t, err, "parser panic")
+}

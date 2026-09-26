@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -335,7 +336,7 @@ func (c *Component) owns(name string) bool {
 func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState, now time.Time) error {
 	s := qs.spec
 	job := c.opts.ID
-	frame, err := c.fetchFrame(ctx, cfg, s)
+	frame, err := fetchFrame(ctx, cfg, s)
 
 	if s.format == formatLogs {
 		if err != nil {
@@ -396,12 +397,15 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 	return nil
 }
 
-func (c *Component) fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, error) {
+// fetchFrame gets the body and builds the frame. The timeout covers the
+// request, the body read and parsing.
+func fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, error) {
+	ctx, cancel := context.WithTimeout(ctx, cfg.timeout)
+	defer cancel()
+
 	body := []byte(s.data)
 	if s.source == sourceURL {
-		rctx, cancel := context.WithTimeout(ctx, cfg.timeout)
-		defer cancel()
-		req, err := buildRequest(rctx, s)
+		req, err := buildRequest(ctx, s)
 		if err != nil {
 			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), err))
 		}
@@ -410,7 +414,29 @@ func (c *Component) fetchFrame(ctx context.Context, cfg pollConfig, s querySpec)
 			return nil, err
 		}
 	}
-	return buildFrame(s, body)
+
+	// infinity-libs takes no context, so parsing runs in its own goroutine
+	// and the poll stops waiting at the deadline. A jq or jsonata expression
+	// that never ends keeps running in that goroutine. The channel has a
+	// buffer, so a goroutine that ends late can still send and exit.
+	type result struct {
+		frame *data.Frame
+		err   error
+	}
+	done := make(chan result, 1)
+	go func() {
+		f, err := buildFrame(s, body)
+		done <- result{frame: f, err: err}
+	}()
+	select {
+	case r := <-done:
+		return r.frame, r.err
+	case <-ctx.Done():
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, newPollError(reasonTimeout, errors.New("parsing the response took longer than timeout"))
+		}
+		return nil, ctx.Err()
+	}
 }
 
 // CurrentHealth implements component.HealthComponent.
