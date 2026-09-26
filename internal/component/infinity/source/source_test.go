@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -349,9 +350,8 @@ func TestCancelledPollSendsNoMarkers(t *testing.T) {
 	}, 300*time.Millisecond, 20*time.Millisecond, "a cancelled poll must not send up=0 or a stale marker")
 }
 
-// TestUpdateDoesNotWaitForSlowPoll guards against Update holding c.mut while
-// it waits for a slow poll's qs.mut, which would also block CurrentHealth
-// and every other query's poll.
+// TestUpdateDoesNotWaitForSlowPoll guards against Update waiting for a slow
+// poll. A wait would also block CurrentHealth and the other queries' polls.
 func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
 	var once sync.Once
 	block := make(chan struct{})
@@ -361,7 +361,13 @@ func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
 	entered := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		close(entered)
-		<-block
+		// Also end on client disconnect, so srv.Close cannot hang if the
+		// test fails before it closes block.
+		select {
+		case <-block:
+		case <-r.Context().Done():
+			return
+		}
 		_, _ = w.Write([]byte(`[{"v":1}]`))
 	}))
 	defer srv.Close()
@@ -403,21 +409,17 @@ func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
 		updateErr = c.Update(args)
 	}()
 
-	// Give Update time to reach the point where the pre-fix code would hold
-	// c.mut while waiting for this query's in-flight poll.
-	time.Sleep(50 * time.Millisecond)
+	// The poll is still blocked, so Update must not wait for it.
+	select {
+	case <-updateDone:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Update waited for a slow poll")
+	}
+	require.NoError(t, updateErr)
 
 	start := time.Now()
 	_ = c.CurrentHealth()
 	require.Less(t, time.Since(start), 100*time.Millisecond, "CurrentHealth must not wait for a slow poll")
-
-	closeBlock()
-	select {
-	case <-updateDone:
-	case <-time.After(2 * time.Second):
-		t.Fatal("Update never returned")
-	}
-	require.NoError(t, updateErr)
 }
 
 // TestParserPanicFailsOnlyThatQuery checks that a response that makes the
@@ -489,4 +491,108 @@ func TestParseBoundedByTimeout(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("Run did not return after its context was cancelled")
 	}
+}
+
+// TestFormatChangeToLogsMarksStale checks that a query that changes from
+// table to logs sends stale markers for its old series, including up.
+func TestFormatChangeToLogsMarksStale(t *testing.T) {
+	table := `
+		interval = "100ms"
+		timeout  = "50ms"
+		query "q" {
+			type   = "csv"
+			source = "inline"
+			data   = "name,v\na,1\n"
+			column {
+				selector = "name"
+			}
+			column {
+				selector = "v"
+				type     = "number"
+			}
+		}`
+	app := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: app}
+	recv := loki.NewLogsReceiver()
+	go func() {
+		for {
+			select {
+			case <-recv.Chan():
+			case <-t.Context().Done():
+				return
+			}
+		}
+	}()
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), table, appendable, recv)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		up := app.LatestSampleFor(series("up"))
+		return up != nil && up.Value == 1
+	}, 2*time.Second, 20*time.Millisecond)
+
+	args, err := parse(`
+		interval = "100ms"
+		timeout  = "50ms"
+		query "q" {
+			type   = "csv"
+			source = "inline"
+			format = "logs"
+			data   = "level,body\nerror,disk full\n"
+		}`)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Logs = []loki.LogsReceiver{recv}
+	require.NoError(t, c.Update(args))
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		v := app.LatestSampleFor(series("v", "name", "a"))
+		up := app.LatestSampleFor(series("up"))
+		if !assert.NotNil(ct, v) || !assert.NotNil(ct, up) {
+			return
+		}
+		assert.True(ct, value.IsStaleNaN(v.Value))
+		assert.True(ct, value.IsStaleNaN(up.Value))
+	}, 2*time.Second, 20*time.Millisecond)
+}
+
+// TestUpdateClosesOldClient checks that Update closes the idle connections
+// of the HTTP client it replaces.
+func TestUpdateClosesOldClient(t *testing.T) {
+	h := &switchable{}
+	h.body.Store(`[{"v":1}]`)
+	srv := httptest.NewUnstartedServer(h)
+	var closed atomic.Int32
+	srv.Config.ConnState = func(_ net.Conn, st http.ConnState) {
+		if st == http.StateClosed {
+			closed.Add(1)
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "100ms"
+		timeout  = "100ms"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	app := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: app}
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), cfg, appendable, nil)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return h.hits.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
+
+	// A long interval keeps the new client from polling, so only the old
+	// client's connection can close.
+	args, err := parse(fmt.Sprintf(`
+		interval = "1h"
+		timeout  = "100ms"
+		query "q" {
+			url = %q
+		}`, srv.URL))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	require.NoError(t, c.Update(args))
+
+	require.Eventually(t, func() bool { return closed.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/prometheus/common/config"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -57,8 +58,11 @@ type Component struct {
 }
 
 type queryState struct {
-	mut              sync.Mutex
-	spec             querySpec
+	// spec is atomic so that Update can replace it without waiting for a
+	// running poll. Each poll loads it once, at its start.
+	spec atomic.Pointer[querySpec]
+
+	mut              sync.Mutex // guards the fields below, not spec
 	tracker          *tracker
 	owned            bool
 	warnedOverride   bool
@@ -173,21 +177,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		name string
 		qs   *queryState
 	}
-	// pendingSpec is a query whose spec must be set once c.mut is free. A
-	// poll can hold qs.mut for a long time, and c.mut must never wait on it.
-	type pendingSpec struct {
-		qs   *queryState
-		spec querySpec
-	}
 	var (
 		toStop  []*loop
 		removed []removedQuery
-		pending []pendingSpec
 	)
 
 	c.mut.Lock()
 	intervalChanged := c.args.Interval != args.Interval
 	c.args = args
+	oldClient := c.client
 	c.client = client
 	c.otelMetrics = args.Output.Metrics
 	c.otelLogs = args.Output.Logs
@@ -206,15 +204,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for name, spec := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
-			// A new query has no loop yet, so no poll can be holding its
-			// qs.mut. Set its spec now, while c.mut is still held.
-			qs = &queryState{tracker: newTracker(), spec: spec}
+			qs = &queryState{tracker: newTracker()}
 			c.queries[name] = qs
-		} else {
-			// A kept query can be mid-poll, holding qs.mut for a while.
-			// Defer its spec swap until c.mut is free.
-			pending = append(pending, pendingSpec{qs: qs, spec: spec})
 		}
+		qs.spec.Store(&spec)
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
@@ -225,15 +218,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for _, l := range toStop {
 		l.stop()
 	}
-
-	// Set each kept query's spec now that c.mut is free. This loop runs one
-	// query at a time, so a query that is mid-poll can delay the spec
-	// update of every kept query still waiting in this loop. It never
-	// blocks c.mut, so it never blocks CurrentHealth or a new query's poll.
-	for _, p := range pending {
-		p.qs.mut.Lock()
-		p.qs.spec = p.spec
-		p.qs.mut.Unlock()
+	// Close after the stopped loops end, so their connections are idle. A
+	// poll that is still running keeps its connection until the transport's
+	// idle timeout closes it.
+	if oldClient != nil {
+		oldClient.CloseIdleConnections()
 	}
 
 	cfg := c.snapshot()
@@ -307,8 +296,19 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 	}
 	qs.owned = true
 
+	s := qs.spec.Load()
 	start := time.Now()
-	err := c.runQuery(ctx, cfg, qs, start)
+	if s.format == formatLogs && qs.tracker.len() > 0 {
+		// The query was a table query before a reload. Update does not wait
+		// for qs.mut, so the poll ends the old series here.
+		stale := qs.tracker.all()
+		qs.tracker.reset()
+		if err := cfg.out.sendMetrics(ctx, c.opts.ID, name, start, nil, stale); err != nil {
+			c.metrics.pollFailures.WithLabelValues(name, reasonEmit).Inc()
+			c.opts.Logger.Warn("failed to send stale markers after a format change", "query", name, "err", err)
+		}
+	}
+	err := c.runQuery(ctx, cfg, qs, *s, start)
 	c.metrics.pollDuration.WithLabelValues(name).Observe(time.Since(start).Seconds())
 	if err != nil {
 		if ctx.Err() != nil {
@@ -333,8 +333,7 @@ func (c *Component) owns(name string) bool {
 }
 
 // runQuery runs one poll. The caller holds qs.mut.
-func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState, now time.Time) error {
-	s := qs.spec
+func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState, s querySpec, now time.Time) error {
 	job := c.opts.ID
 	frame, err := fetchFrame(ctx, cfg, s)
 
