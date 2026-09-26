@@ -41,8 +41,10 @@ You can use the following arguments with `infinity.source`:
 | `timeout`            | `duration` | Timeout for one poll of one query.                       | `"10s"` | no       |
 
 The `timeout` argument must be less than or equal to the `interval` argument.
-`timeout` bounds the HTTP request and reading its response body.
-It doesn't bound parsing the response or sending the result to receivers.
+`timeout` bounds the HTTP request, reading its response body, and parsing the response.
+It doesn't bound sending the result to receivers.
+When parsing takes longer than `timeout`, the poll fails with the `timeout` reason.
+Refer to [Limitations](#limitations) for what happens to a parser expression that doesn't end.
 
 `infinity.source` measures the `max_response_size` argument against the decompressed response body.
 A compressed response can be smaller on the wire than `max_response_size` and still fail this limit once decompressed.
@@ -127,7 +129,9 @@ The following strings are valid `type` values:
 * `"csv"`: Parse the response as comma-separated values.
 * `"tsv"`: Parse the response as tab-separated values.
 * `"xml"`: Parse the response as XML.
-* `"html"`: Parse an HTML table in the response.
+* `"html"`: Parse the response with the XML parser.
+  `infinity.source` doesn't extract HTML tables.
+  Malformed markup can parse into one string field with an empty name, without an error.
 * `"graphql"`: Parse a GraphQL JSON response. This implies `url_options.method = "POST"` and `url_options.body_type = "graphql"`.
 
 The following strings are valid `parser` values:
@@ -255,7 +259,9 @@ Specify `transform.summarize` zero or more times.
 | -------------- | -------- | -------------------------------------------------| ----------- | -------- |
 | `expression`  | `string` | Expression that summarizes the frame.           |             | yes      |
 | `by`          | `string` | Column to group rows by before summarizing.     |             | no       |
-| `alias`       | `string` | Name of the resulting summary column.           | `"summary"` | no       |
+| `alias`       | `string` | Name of the resulting summary column.           | `expression` | no      |
+
+When you don't set `alias`, the summary column uses the `expression` text as its name.
 
 ### `transform.computed_column`
 
@@ -374,6 +380,9 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * Each numeric column with a non-nil value becomes a gauge sample. The sample name is the `metrics` block's `prefix` argument plus the column name, sanitized to a valid Prometheus metric name.
 * Each boolean column becomes a sample with a value of `1` or `0`.
 * Time columns don't become samples or labels.
+* CSV, TSV, XML, and HTML columns are strings unless a `column` block sets `type = "number"`.
+  JSON string values that hold numbers, for example `"5"`, are also strings.
+  An untyped string column becomes a label, so a query without a numeric column sends only `up`.
 * Every sample from one poll shares the poll's start time.
 * Every series has a `job` label set to the component's ID, and an `instance` label set to the query's label.
   A column named `job` or `instance` doesn't override these two labels; `infinity.source` logs a warning the first time this happens for a query.
@@ -384,6 +393,31 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
 * When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends no stale markers for the poll in progress.
 * When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series go stale by the metrics backend's lookback period instead. Losing ownership also clears the query's health on this node.
+
+This example parses inline CSV data and sets `type = "number"` on the `count` column, so `count` becomes a sample and `name` becomes a label:
+
+```alloy
+infinity.source "inline_csv" {
+  query "jobs" {
+    type   = "csv"
+    source = "inline"
+    data   = "name,count\nbuild,3\ndeploy,5\n"
+
+    column {
+      selector = "name"
+    }
+
+    column {
+      selector = "count"
+      type     = "number"
+    }
+  }
+
+  forward_to {
+    metrics = [prometheus.remote_write.default.receiver]
+  }
+}
+```
 
 ## Logs
 
@@ -407,6 +441,11 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * Metrics show the current state only. `infinity.source` doesn't ingest historical points.
 * Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
 * `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the UQL, GROQ, and simple parsers.
+* `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
+* The parser libraries can't stop a `jq` or JSONata expression that doesn't end.
+  After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
+  A JSONata expression with unbounded recursion can crash {{< param "PRODUCT_NAME" >}} with a stack overflow, which Go can't recover from.
+  Keep `root_selector` expressions simple.
 
 ## Translate a Grafana panel query
 
