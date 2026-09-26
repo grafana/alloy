@@ -25,7 +25,7 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 		return nil, newPollError(reasonEntryLimit, fmt.Errorf("query returned more than entry_limit (%d) entries", l.entryLimit))
 	}
 
-	timeField := firstTimeField(f)
+	timeFields := timeFieldsOf(f)
 	lineField := fieldByName(f, l.lineColumn)
 	levelField := fieldByName(f, "severity")
 	if levelField == nil {
@@ -57,9 +57,10 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 	entries := make([]entry, 0, f.Rows())
 	for row := 0; row < f.Rows(); row++ {
 		e := entry{ts: now, labels: model.LabelSet{}}
-		if timeField != nil {
-			if v, ok := timeField.ConcreteAt(row); ok {
+		for _, tf := range timeFields {
+			if v, ok := tf.ConcreteAt(row); ok {
 				e.ts = v.(time.Time)
+				break
 			}
 		}
 		if lineField != nil {
@@ -93,13 +94,17 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 	return entries, nil
 }
 
-func firstTimeField(f *data.Frame) *data.Field {
+// timeFieldsOf returns every time-typed field of f, in column order. A row's
+// timestamp is the first of these fields that has a non-nil value in that
+// row, so a later row can use a different column than an earlier row does.
+func timeFieldsOf(f *data.Frame) []*data.Field {
+	var out []*data.Field
 	for _, fld := range f.Fields {
 		if fld.Type().NonNullableType() == data.FieldTypeTime {
-			return fld
+			out = append(out, fld)
 		}
 	}
-	return nil
+	return out
 }
 
 func fieldByName(f *data.Frame, name string) *data.Field {

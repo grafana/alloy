@@ -46,6 +46,24 @@ func TestFrameToEntriesRowJSONAndPollTime(t *testing.T) {
 	require.Equal(t, `{"msg":"hi","n":null}`, got[0].line, "keys keep column order")
 }
 
+func TestFrameToEntriesTimestampFallsBackToSecondTimeColumn(t *testing.T) {
+	primary := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	fallback := time.Date(2026, 9, 25, 13, 0, 0, 0, time.UTC)
+	f := data.NewFrame("q",
+		data.NewField("body", nil, []string{"a", "b"}),
+		data.NewField("ts1", nil, []*time.Time{nil, &primary}),
+		data.NewField("ts2", nil, []*time.Time{&fallback, &fallback}),
+	)
+
+	got, err := frameToEntries(f, "j", "i", logsSpec{lineColumn: "body"}, time.Now())
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	// Row 0: ts1 is nil, so the entry falls back to ts2.
+	require.Equal(t, fallback, got[0].ts)
+	// Row 1: ts1 has a value, so it wins over ts2.
+	require.Equal(t, primary, got[1].ts)
+}
+
 func TestFrameToEntriesLevelLabelWins(t *testing.T) {
 	f := data.NewFrame("q",
 		data.NewField("body", nil, []string{"x"}),

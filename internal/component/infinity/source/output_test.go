@@ -68,6 +68,30 @@ func TestSendMetricsOTel(t *testing.T) {
 	require.True(t, math.IsNaN(dps.At(1).DoubleValue()))
 }
 
+func TestSendMetricsAppendFailuresCounted(t *testing.T) {
+	// testappender.Appender rejects an empty label set, unlike
+	// CollectingAppender, so it can stand in for a receiver that fails.
+	app := &testappender.Appender{}
+	o := outputs{prom: testappender.ConstantAppendable{Inner: app}, loki: loki.NewFanout(nil)}
+	ts := time.UnixMilli(1_700_000_000_000)
+	bad := sample{labels: labels.EmptyLabels(), value: 1}
+	good := sample{labels: labels.FromStrings("__name__", "v"), value: 2}
+
+	err := o.sendMetrics(t.Context(), "j", "i", ts, []sample{bad, good}, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "1 of 2 appends failed, first:")
+}
+
+func TestSendLogsSkipsOTelConsumerWhenNoEntries(t *testing.T) {
+	c := &testConsumer{}
+	o := outputs{prom: testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}, loki: loki.NewFanout(nil), otelLogs: []otelcol.Consumer{c}}
+
+	require.NoError(t, o.sendLogs(t.Context(), "j", "i", time.Now(), nil))
+
+	_, lds := c.snapshot()
+	require.Empty(t, lds)
+}
+
 func TestSendLogs(t *testing.T) {
 	recv := loki.NewLogsReceiver()
 	c := &testConsumer{}

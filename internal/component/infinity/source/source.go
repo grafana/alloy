@@ -56,22 +56,21 @@ type Component struct {
 }
 
 type queryState struct {
-	mut            sync.Mutex
-	spec           querySpec
-	tracker        *tracker
-	owned          bool
-	warnedOverride bool
-	loop           *loop // guarded by Component.mut
+	mut              sync.Mutex
+	spec             querySpec
+	tracker          *tracker
+	owned            bool
+	warnedOverride   bool
+	warnedReservedUp bool
+	loop             *loop // guarded by Component.mut
 
 	hmut    sync.Mutex
-	polled  bool
 	lastErr error
 }
 
 func (qs *queryState) setResult(err error) {
 	qs.hmut.Lock()
 	defer qs.hmut.Unlock()
-	qs.polled = true
 	qs.lastErr = err
 }
 
@@ -206,10 +205,15 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for name, spec := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
-			qs = &queryState{tracker: newTracker()}
+			// A new query has no loop yet, so no poll can be holding its
+			// qs.mut. Set its spec now, while c.mut is still held.
+			qs = &queryState{tracker: newTracker(), spec: spec}
 			c.queries[name] = qs
+		} else {
+			// A kept query can be mid-poll, holding qs.mut for a while.
+			// Defer its spec swap until c.mut is free.
+			pending = append(pending, pendingSpec{qs: qs, spec: spec})
 		}
-		pending = append(pending, pendingSpec{qs: qs, spec: spec})
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
@@ -221,10 +225,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		l.stop()
 	}
 
-	// Set each query's spec now that c.mut is free. A query whose loop was
-	// just stopped above has no poll in flight, so this cannot block for
-	// long; a query that kept running can still be mid-poll, but that only
-	// blocks this one query's spec update, not c.mut or any other query.
+	// Set each kept query's spec now that c.mut is free. This loop runs one
+	// query at a time, so a query that is mid-poll can delay the spec
+	// update of every kept query still waiting in this loop. It never
+	// blocks c.mut, so it never blocks CurrentHealth or a new query's poll.
 	for _, p := range pending {
 		p.qs.mut.Lock()
 		p.qs.spec = p.spec
@@ -374,6 +378,10 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 	if res.overridden && !qs.warnedOverride {
 		qs.warnedOverride = true
 		c.opts.Logger.Warn("a column named job or instance was replaced by the component label", "query", s.name)
+	}
+	if res.reservedUp && !qs.warnedReservedUp {
+		qs.warnedReservedUp = true
+		c.opts.Logger.Warn("a column whose metric name is up was dropped because up is reserved for the synthetic sample", "query", s.name)
 	}
 
 	current := append(res.samples, upSample(job, s.name, 1))

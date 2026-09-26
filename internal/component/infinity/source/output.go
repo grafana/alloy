@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -36,16 +37,30 @@ func (o outputs) sendMetrics(ctx context.Context, job, instance string, ts time.
 	app := o.prom.Appender(ctx)
 	t := ts.UnixMilli()
 	staleNaN := math.Float64frombits(value.StaleNaN)
-	for _, s := range samples {
-		if _, err := app.Append(0, s.labels, t, s.value); err != nil {
-			errs = append(errs, err)
+
+	total := len(samples) + len(stale)
+	var appendFailures int
+	var firstAppendErr error
+	appendOne := func(ls labels.Labels, v float64) {
+		if _, err := app.Append(0, ls, t, v); err != nil {
+			appendFailures++
+			if firstAppendErr == nil {
+				firstAppendErr = err
+			}
 		}
+	}
+	for _, s := range samples {
+		appendOne(s.labels, s.value)
 	}
 	for _, ls := range stale {
-		if _, err := app.Append(0, ls, t, staleNaN); err != nil {
-			errs = append(errs, err)
-		}
+		appendOne(ls, staleNaN)
 	}
+	if appendFailures > 0 {
+		// One error per failed append would flood the log. Report the
+		// count and the first error instead.
+		errs = append(errs, fmt.Errorf("%d of %d appends failed, first: %w", appendFailures, total, firstAppendErr))
+	}
+
 	if err := app.Commit(); err != nil {
 		errs = append(errs, err)
 	}
@@ -111,9 +126,11 @@ func (o outputs) sendLogs(ctx context.Context, job, instance string, observed ti
 			break
 		}
 	}
-	for _, c := range o.otelLogs {
-		if err := c.ConsumeLogs(ctx, toLogs(job, instance, observed, entries)); err != nil {
-			errs = append(errs, err)
+	if len(entries) > 0 {
+		for _, c := range o.otelLogs {
+			if err := c.ConsumeLogs(ctx, toLogs(job, instance, observed, entries)); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	return errors.Join(errs...)

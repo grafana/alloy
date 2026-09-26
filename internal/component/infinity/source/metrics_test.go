@@ -65,6 +65,19 @@ func TestFrameToSamplesJobInstanceOverride(t *testing.T) {
 	require.Equal(t, "j", res.samples[0].labels.Get("job"))
 }
 
+func TestFrameToSamplesReservedUp(t *testing.T) {
+	f := data.NewFrame("q",
+		data.NewField("up", nil, []bool{false}),
+		data.NewField("v", nil, []float64{1}),
+	)
+
+	res, err := frameToSamples(f, "j", "i", metricsSpec{})
+	require.NoError(t, err)
+	require.True(t, res.reservedUp)
+	require.Len(t, res.samples, 1)
+	require.Equal(t, "v", res.samples[0].labels.Get("__name__"))
+}
+
 func TestFrameToSamplesSeriesLimit(t *testing.T) {
 	f := data.NewFrame("q",
 		data.NewField("k", nil, []string{"a", "b", "c"}),

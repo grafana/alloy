@@ -21,7 +21,9 @@ type pollError struct {
 	err    error
 }
 
-func (e *pollError) Error() string { return e.reason + ": " + e.err.Error() }
+// Error returns only the wrapped error's text. The reason stays out of this
+// text; it is available as a metric label and a log field through reasonOf.
+func (e *pollError) Error() string { return e.err.Error() }
 func (e *pollError) Unwrap() error { return e.err }
 
 func newPollError(reason string, err error) error {

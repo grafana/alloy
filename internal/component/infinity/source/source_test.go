@@ -148,7 +148,32 @@ func TestFailedPollMarksStaleAndDown(t *testing.T) {
 		assert.Equal(ct, 0.0, up.Value)
 		health := c.CurrentHealth()
 		assert.Equal(ct, component.HealthTypeUnhealthy, health.Health)
-		assert.Contains(ct, health.Message, `query "q" failed: status: status 503`)
+		assert.Contains(ct, health.Message, `query "q" failed: status 503`)
+	}, 2*time.Second, 20*time.Millisecond)
+}
+
+func TestHealthMultipleFailuresMessage(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "100ms"
+		timeout  = "50ms"
+		query "a" {
+			url = %q
+		}
+		query "b" {
+			url = %q
+		}`, srv.URL, srv.URL)
+
+	app := testappender.NewCollectingAppender()
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), cfg, testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		h := c.CurrentHealth()
+		assert.Equal(ct, component.HealthTypeUnhealthy, h.Health)
+		assert.Contains(ct, h.Message, `query "a" failed: status 404 (and 1 other query)`)
 	}, 2*time.Second, 20*time.Millisecond)
 }
 
@@ -203,6 +228,27 @@ func TestJobInstanceOverride(t *testing.T) {
 	_, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return app.LatestSampleFor(series("v")) != nil }, 2*time.Second, 20*time.Millisecond)
+}
+
+func TestUpColumnReserved(t *testing.T) {
+	h := &switchable{}
+	h.body.Store(`[{"up": false}]`)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	app := testappender.NewCollectingAppender()
+	_, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		up := app.LatestSampleFor(series("up"))
+		if !assert.NotNil(c, up) {
+			return
+		}
+		// The response's own "up" column must not override the synthetic
+		// up sample: only the poll's success (1) shows up here.
+		assert.Equal(c, 1.0, up.Value)
+	}, 2*time.Second, 20*time.Millisecond)
 }
 
 func TestUpdateRemovesQuery(t *testing.T) {

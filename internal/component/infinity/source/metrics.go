@@ -19,7 +19,16 @@ type metricsResult struct {
 	duplicates int
 	// overridden is true when a column label was replaced by job or instance.
 	overridden bool
+	// reservedUp is true when a column's final metric name is up. That name
+	// is reserved for the synthetic up sample, so the column's sample is
+	// dropped.
+	reservedUp bool
 }
+
+// upMetricName is the metric name of the synthetic up sample. A data column
+// with this final name, after prefix and sanitizing, is dropped instead of
+// sent, so it cannot collide with the synthetic sample.
+const upMetricName = "up"
 
 // frameToSamples maps each row to current-state samples. String columns
 // become labels. Numeric and boolean columns become samples. Time columns
@@ -51,7 +60,12 @@ func frameToSamples(f *data.Frame, job, instance string, m metricsSpec) (metrics
 			if !ok {
 				continue
 			}
-			b.Set(model.MetricNameLabel, m.prefix+sanitizeName(fld.Name))
+			name := m.prefix + sanitizeName(fld.Name)
+			if name == upMetricName {
+				res.reservedUp = true
+				continue
+			}
+			b.Set(model.MetricNameLabel, name)
 			ls := b.Labels()
 			h := ls.Hash()
 			if _, dup := seen[h]; dup {
@@ -95,7 +109,7 @@ func sampleValue(fld *data.Field, row int) (float64, bool) {
 
 func upSample(job, instance string, v float64) sample {
 	return sample{
-		labels: labels.FromStrings(model.MetricNameLabel, "up", model.JobLabel, job, model.InstanceLabel, instance),
+		labels: labels.FromStrings(model.MetricNameLabel, upMetricName, model.JobLabel, job, model.InstanceLabel, instance),
 		value:  v,
 	}
 }
