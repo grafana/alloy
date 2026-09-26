@@ -347,6 +347,7 @@ A change in ownership takes effect at the next poll, at most one `interval` afte
 
 When a node loses ownership of a query, it clears that query's tracked series without sending stale markers, so the previous owner doesn't mark the new owner's series as stale.
 Losing ownership also clears the query's health on that node, so the node's health no longer reflects a failure from before it lost ownership.
+When you remove a query from the configuration, only the node that owns it sends stale markers for its series.
 
 [using clustering]: ../../../../get-started/clustering/
 

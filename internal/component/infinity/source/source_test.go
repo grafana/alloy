@@ -839,3 +839,62 @@ func TestHealthRedactsRedirectURL(t *testing.T) {
 		assert.NotContains(ct, h.Message, "supersecret")
 	}, 2*time.Second, 20*time.Millisecond)
 }
+
+// switchOwner is a cluster where this node owns every key until other is set.
+type switchOwner struct {
+	cluster.Cluster
+	other *atomic.Bool
+}
+
+func (s switchOwner) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
+	if s.other.Load() {
+		return []peer.Peer{{Name: "other", Self: false}}, nil
+	}
+	return []peer.Peer{{Name: "self", Self: true}}, nil
+}
+
+// TestRemovedQueryMarkersOnlyFromOwner checks that a node that no longer
+// owns a query sends no stale markers when the query is removed. The new
+// owner still sends those series.
+func TestRemovedQueryMarkersOnlyFromOwner(t *testing.T) {
+	h := &switchable{}
+	h.body.Store(`[{"v":1}]`)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	other := atomic.NewBool(false)
+	cl := switchOwner{Cluster: cluster.Mock(), other: other}
+	// A long interval leaves time to remove the query before the next poll.
+	cfg := fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "1s"
+		clustering {
+			enabled = true
+		}
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	app := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: app}
+	c, err := startComponent(t.Context(), testOptions(t, cl), cfg, appendable, nil)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return app.LatestSampleFor(series("v")) != nil }, 3*time.Second, 10*time.Millisecond)
+
+	other.Store(true)
+	args, err := parse(fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "1s"
+		clustering {
+			enabled = true
+		}
+		query "other" {
+			url = %q
+		}`, srv.URL))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	require.NoError(t, c.Update(args))
+
+	v := app.LatestSampleFor(series("v"))
+	require.NotNil(t, v)
+	require.False(t, value.IsStaleNaN(v.Value), "a node that lost ownership must not mark the series stale")
+}

@@ -248,6 +248,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		stale := r.qs.tracker.all()
 		r.qs.tracker.reset()
 		r.qs.mut.Unlock()
+		// The series came from the old config. When another node owns the
+		// query now, its series are that node's, so do not mark them.
+		if oldGen != nil && oldGen.clustering && !c.owns(r.name) {
+			stale = nil
+		}
 		if len(stale) > 0 {
 			if err := c.outputs().sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
 				c.opts.Logger.Warn("failed to send stale markers for a removed query", "query", r.name, "err", err)
