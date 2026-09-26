@@ -210,6 +210,27 @@ func TestConvertTopN(t *testing.T) {
 	require.Equal(t, 0, *topN)
 }
 
+func TestConvertLexicographicSortType(t *testing.T) {
+	cfgText := `
+	include = ["/var/log/*.log"]
+	ordering_criteria {
+		regex = "^(?P<name>.*)\\.log$"
+		sort_by {
+			sort_type = "lexicographic"
+			regex_key = "name"
+		}
+	}
+	output {}
+	`
+	var args filelog.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfgText), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	sortBy := cfg.(*filelogreceiver.FileLogConfig).InputConfig.Criteria.OrderingCriteria.SortBy
+	require.Len(t, sortBy, 1)
+	require.Equal(t, "alphabetical", sortBy[0].SortType)
+}
+
 func TestValidate(t *testing.T) {
 	alloyCfg := `
 	include            = ["/var/log/*.log"]
