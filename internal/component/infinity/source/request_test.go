@@ -2,6 +2,7 @@ package source
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -134,4 +135,49 @@ func TestRedactURL(t *testing.T) {
 	for in, want := range tests {
 		require.Equal(t, want, redactURL(in), in)
 	}
+}
+
+func TestBuildRequestDefaultAccept(t *testing.T) {
+	tests := []struct {
+		qtype, want string
+	}{
+		{"json", "application/json;q=0.9,text/plain"},
+		{"graphql", "application/json;q=0.9,text/plain"},
+		{"csv", "text/csv"},
+		{"tsv", "text/csv"},
+		{"xml", "text/xml;q=0.9,text/plain"},
+		{"html", "text/xml;q=0.9,text/plain"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.qtype, func(t *testing.T) {
+			opts := ""
+			if tt.qtype == typeGraphQL {
+				opts = `url_options {
+					body_graphql_query = "{ a }"
+				}`
+			}
+			s, err := specFromConfig(fmt.Sprintf(`query "q" {
+				type = %q
+				url  = "http://example.com/api"
+				%s
+			}`, tt.qtype, opts))
+			require.NoError(t, err)
+			req, err := buildRequest(t.Context(), s)
+			require.NoError(t, err)
+			require.Equal(t, []string{tt.want}, req.Header.Values("Accept"))
+		})
+	}
+}
+
+func TestBuildRequestUserAccept(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://example.com/api"
+		url_options {
+			headers = { "accept" = "application/vnd.api+json" }
+		}
+	}`)
+	require.NoError(t, err)
+	req, err := buildRequest(t.Context(), s)
+	require.NoError(t, err)
+	require.Equal(t, []string{"application/vnd.api+json"}, req.Header.Values("Accept"))
 }

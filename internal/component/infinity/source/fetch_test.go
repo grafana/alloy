@@ -127,3 +127,13 @@ func TestFetchRedactsURL(t *testing.T) {
 	require.Equal(t, reasonRequest, reasonOf(err))
 	require.NotContains(t, err.Error(), "supersecret")
 }
+
+// TestFetchFrameRedactsBuildError checks that an error from building the
+// request does not show query params.
+func TestFetchFrameRedactsBuildError(t *testing.T) {
+	s := querySpec{name: "q", qtype: "json", source: sourceURL, method: http.MethodGet, url: "http://x/%zz?api_key=supersecret"}
+	_, err := fetchFrame(t.Context(), pollConfig{client: http.DefaultClient, timeout: time.Second, maxSize: 1024}, s)
+	require.Error(t, err)
+	require.Equal(t, reasonRequest, reasonOf(err))
+	require.NotContains(t, err.Error(), "supersecret")
+}

@@ -32,7 +32,7 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 		contentType string
 	)
 	switch s.bodyType {
-	case "raw":
+	case bodyTypeRaw:
 		if s.body != "" {
 			body = strings.NewReader(s.body)
 			contentType = s.bodyContentType
@@ -76,6 +76,9 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	if s.accept != "" {
+		req.Header.Set("Accept", s.accept)
 	}
 	for k, v := range s.headers {
 		req.Header.Set(k, v)

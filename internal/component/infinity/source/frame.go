@@ -52,7 +52,7 @@ func parseFrame(s querySpec, body string) (*data.Frame, error) {
 			RootSelector: s.rootSelector,
 			Columns:      jsonColumns(s.columns),
 		})
-	case "csv", "tsv":
+	case typeCSV, typeTSV:
 		opts := csvframer.FramerOptions{
 			FrameName:          s.name,
 			Columns:            gframerColumns(s.columns),
@@ -68,7 +68,7 @@ func parseFrame(s querySpec, body string) (*data.Frame, error) {
 		default:
 			body = s.csv.columns + "\n" + body
 		}
-		if s.qtype == "tsv" {
+		if s.qtype == typeTSV {
 			opts.Delimiter = "\t"
 		}
 		return csvframer.ToFrame(body, opts)

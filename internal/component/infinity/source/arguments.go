@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -165,22 +166,26 @@ const (
 	formatLogs  = "logs"
 	sourceURL   = "url"
 	typeGraphQL = "graphql"
+	typeCSV     = "csv"
+	typeTSV     = "tsv"
+	bodyTypeRaw = "raw"
 )
 
 var (
-	supportedTypes       = []string{"json", "csv", "tsv", "xml", "html", typeGraphQL}
+	supportedTypes       = []string{"json", typeCSV, typeTSV, "xml", "html", typeGraphQL}
 	supportedParsers     = []string{"backend", "jq-backend"}
 	supportedFormats     = []string{formatTable, formatLogs}
 	supportedSources     = []string{sourceURL, "inline"}
 	supportedMethods     = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
-	supportedBodyTypes   = []string{"raw", "form-data", "x-www-form-urlencoded", typeGraphQL}
+	supportedBodyTypes   = []string{bodyTypeRaw, "form-data", "x-www-form-urlencoded", typeGraphQL}
 	supportedColumnTypes = []string{"string", "number", "boolean", "timestamp", "timestamp_epoch", "timestamp_epoch_s"}
 
 	metricPrefixRE = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
 )
 
-// Validate implements syntax.Validator. It also applies query defaults,
-// because labeled blocks do not get a Defaulter call before the label is set.
+// Validate implements syntax.Validator. It also applies query defaults.
+// They run here and not in a Defaulter, because some of them depend on
+// type, for example graphql uses POST.
 func (a *Arguments) Validate() error {
 	var errs []error
 	if a.Interval <= 0 {
@@ -212,12 +217,14 @@ func (a *Arguments) Validate() error {
 	seen := map[string]struct{}{}
 	for i := range a.Queries {
 		q := &a.Queries[i]
+		// Check this before applyDefaults sets method and body_type.
+		urlOptionsSet := !q.URLOptions.isZero()
 		q.applyDefaults()
 		if _, dup := seen[q.Name]; dup {
 			errs = append(errs, fmt.Errorf("duplicate query name %q", q.Name))
 		}
 		seen[q.Name] = struct{}{}
-		if err := q.validate(clientHeaders); err != nil {
+		if err := q.validate(clientHeaders, urlOptionsSet); err != nil {
 			errs = append(errs, fmt.Errorf("query %q: %w", q.Name, err))
 		}
 	}
@@ -245,7 +252,7 @@ func (q *QueryBlock) applyDefaults() {
 		}
 	}
 	if q.URLOptions.BodyType == "" {
-		q.URLOptions.BodyType = "raw"
+		q.URLOptions.BodyType = bodyTypeRaw
 		if q.Type == typeGraphQL {
 			q.URLOptions.BodyType = typeGraphQL
 		}
@@ -255,7 +262,7 @@ func (q *QueryBlock) applyDefaults() {
 	}
 }
 
-func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
+func (q *QueryBlock) validate(clientHeaders map[string]struct{}, urlOptionsSet bool) error {
 	var errs []error
 
 	if !slices.Contains(supportedTypes, q.Type) {
@@ -302,6 +309,12 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 		if q.Data == "" {
 			errs = append(errs, errors.New(`data is required when source is "inline"`))
 		}
+		if q.URL != "" {
+			errs = append(errs, errors.New(`url must be empty when source is "inline"`))
+		}
+		if urlOptionsSet {
+			errs = append(errs, errors.New(`url_options must be empty when source is "inline"`))
+		}
 	case "azure-blob", "reference", "expression", "random-walk":
 		errs = append(errs, fmt.Errorf("source %q is not supported in Alloy", q.Source))
 	default:
@@ -345,9 +358,19 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 		if t.kinds() != 1 {
 			errs = append(errs, fmt.Errorf("transform %d must set exactly one kind", i))
 		}
+		// The library changes a limit of 0 or less to 10 without an error.
+		if t.Limit != nil && t.Limit.Limit <= 0 {
+			errs = append(errs, fmt.Errorf("transform %d: limit must be greater than 0", i))
+		}
+	}
+	if q.SummarizeExpression == "" && (q.SummarizeBy != "" || q.SummarizeAlias != "") {
+		errs = append(errs, errors.New("summarize_by and summarize_alias require summarize_expression"))
+	}
+	if q.CSVOptions != (CSVOptions{}) && q.Type != typeCSV && q.Type != typeTSV {
+		errs = append(errs, errors.New(`csv_options requires type "csv" or "tsv"`))
 	}
 
-	errs = append(errs, q.URLOptions.validate(q.Type, clientHeaders)...)
+	errs = append(errs, q.URLOptions.validate(q.Type, q.Source, clientHeaders)...)
 	return errors.Join(errs...)
 }
 
@@ -361,7 +384,13 @@ func (t Transform) kinds() int {
 	return n
 }
 
-func (o *URLOptions) validate(queryType string, clientHeaders map[string]struct{}) []error {
+func (o *URLOptions) isZero() bool {
+	return o.Method == "" && len(o.Headers) == 0 && len(o.Params) == 0 && o.BodyType == "" &&
+		o.Body.Value == "" && o.BodyContentType == "" && len(o.BodyForm) == 0 &&
+		o.BodyGraphQLQuery.Value == "" && o.BodyGraphQLVariables == ""
+}
+
+func (o *URLOptions) validate(queryType, source string, clientHeaders map[string]struct{}) []error {
 	var errs []error
 	if !slices.Contains(supportedMethods, o.Method) {
 		errs = append(errs, fmt.Errorf("unknown method %q, must be one of %s", o.Method, strings.Join(supportedMethods, ", ")))
@@ -380,12 +409,31 @@ func (o *URLOptions) validate(queryType string, clientHeaders map[string]struct{
 		if o.BodyType != typeGraphQL {
 			errs = append(errs, errors.New(`type "graphql" requires body_type "graphql"`))
 		}
+		// An inline source sends no request, so it needs no query.
+		if source == sourceURL && o.BodyGraphQLQuery.Value == "" {
+			errs = append(errs, errors.New(`type "graphql" requires body_graphql_query`))
+		}
+	}
+	if o.BodyType != bodyTypeRaw && (o.Body.Value != "" || o.BodyContentType != "") {
+		errs = append(errs, errors.New(`body and body_content_type require body_type "raw"`))
+	}
+	if o.BodyType != "form-data" && o.BodyType != "x-www-form-urlencoded" && len(o.BodyForm) > 0 {
+		errs = append(errs, errors.New(`body_form requires body_type "form-data" or "x-www-form-urlencoded"`))
+	}
+	if o.BodyType != typeGraphQL && (o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables != "") {
+		errs = append(errs, errors.New(`body_graphql_query and body_graphql_variables require body_type "graphql"`))
 	}
 	if o.BodyGraphQLVariables != "" && !json.Valid([]byte(o.BodyGraphQLVariables)) {
 		errs = append(errs, errors.New("body_graphql_variables must be valid JSON"))
 	}
-	for k := range o.Headers {
-		if _, ok := clientHeaders[http.CanonicalHeaderKey(k)]; ok {
+	canonical := map[string]string{}
+	for _, k := range slices.Sorted(maps.Keys(o.Headers)) {
+		ck := http.CanonicalHeaderKey(k)
+		if prev, dup := canonical[ck]; dup {
+			errs = append(errs, fmt.Errorf("url_options.headers keys %q and %q are the same header", prev, k))
+		}
+		canonical[ck] = k
+		if _, ok := clientHeaders[ck]; ok {
 			errs = append(errs, fmt.Errorf("url_options.headers key %q is also in client.http_headers", k))
 		}
 	}

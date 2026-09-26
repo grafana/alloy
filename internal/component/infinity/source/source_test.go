@@ -596,3 +596,39 @@ func TestUpdateClosesOldClient(t *testing.T) {
 
 	require.Eventually(t, func() bool { return closed.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
 }
+
+// TestClientAcceptReplacesDefault checks that an Accept header in
+// client.http_headers is the only Accept value the server gets.
+func TestClientAcceptReplacesDefault(t *testing.T) {
+	accept := make(chan []string, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case accept <- r.Header.Values("Accept"):
+		default:
+		}
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "100ms"
+		timeout  = "50ms"
+		client {
+			http_headers = {
+				"Accept" = ["application/vnd.api+json"],
+			}
+		}
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	app := testappender.NewCollectingAppender()
+	_, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), cfg, testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	select {
+	case got := <-accept:
+		require.Equal(t, []string{"application/vnd.api+json"}, got)
+	case <-time.After(2 * time.Second):
+		t.Fatal("no request")
+	}
+}

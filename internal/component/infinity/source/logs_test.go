@@ -1,6 +1,7 @@
 package source
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -81,4 +82,20 @@ func TestFrameToEntriesEntryLimit(t *testing.T) {
 
 	_, err := frameToEntries(f, "j", "i", logsSpec{lineColumn: "body", entryLimit: 2}, time.Now())
 	require.Equal(t, reasonEntryLimit, reasonOf(err))
+}
+
+// TestRowJSONNonFinite checks that NaN and Inf values do not fail the poll.
+// json.Marshal rejects them, so they are written as strings.
+func TestRowJSONNonFinite(t *testing.T) {
+	nan := math.NaN()
+	f := data.NewFrame("q",
+		data.NewField("a", nil, []float64{math.Inf(1)}),
+		data.NewField("b", nil, []*float64{&nan}),
+		data.NewField("c", nil, []float32{float32(math.Inf(-1))}),
+		data.NewField("d", nil, []float64{1.5}),
+	)
+	got, err := frameToEntries(f, "j", "i", logsSpec{lineColumn: "body"}, time.Now())
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	require.JSONEq(t, `{"a":"+Inf","b":"NaN","c":"-Inf","d":1.5}`, got[0].line)
 }

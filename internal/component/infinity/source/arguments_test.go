@@ -200,6 +200,98 @@ query "q" {
 	url = "http://x"
 	url_options { headers = { "x-key" = "b" } }
 }`, `url_options.headers key "x-key" is also in client.http_headers`},
+		{"zero transform limit", `query "q" {
+	url = "http://x"
+	transform.limit {
+		limit = 0
+	}
+}`, "transform 0: limit must be greater than 0"},
+		{"summarize by without expression", `query "q" {
+	url = "http://x"
+	summarize_by = "a"
+}`, "summarize_by and summarize_alias require summarize_expression"},
+		{"summarize alias without expression", `query "q" {
+	url = "http://x"
+	summarize_alias = "total"
+}`, "summarize_by and summarize_alias require summarize_expression"},
+		{"raw body with form body type", `query "q" {
+	url = "http://x"
+	url_options {
+		method = "POST"
+		body_type = "form-data"
+		body = "x"
+	}
+}`, `body and body_content_type require body_type "raw"`},
+		{"body content type with graphql body type", `query "q" {
+	type = "graphql"
+	url = "http://x"
+	url_options {
+		body_graphql_query = "{ a }"
+		body_content_type = "text/plain"
+	}
+}`, `body and body_content_type require body_type "raw"`},
+		{"form body with raw body type", `query "q" {
+	url = "http://x"
+	url_options {
+		method = "POST"
+		body_form = { "a" = "b" }
+	}
+}`, `body_form requires body_type "form-data" or "x-www-form-urlencoded"`},
+		{"graphql query with raw body type", `query "q" {
+	url = "http://x"
+	url_options {
+		method = "POST"
+		body_graphql_query = "{ a }"
+	}
+}`, `body_graphql_query and body_graphql_variables require body_type "graphql"`},
+		{"graphql variables with raw body type", `query "q" {
+	url = "http://x"
+	url_options {
+		method = "POST"
+		body_graphql_variables = "{}"
+	}
+}`, `body_graphql_query and body_graphql_variables require body_type "graphql"`},
+		{"graphql without query", `query "q" {
+	type = "graphql"
+	url = "http://x"
+}`, `type "graphql" requires body_graphql_query`},
+		{"headers equal after canonicalization", `query "q" {
+	url = "http://x"
+	url_options {
+		headers = { "x-key" = "a", "X-Key" = "b" }
+	}
+}`, `url_options.headers keys "X-Key" and "x-key" are the same header`},
+		{"csv options with json type", `query "q" {
+	url = "http://x"
+	csv_options {
+		delimiter = ";"
+	}
+}`, `csv_options requires type "csv" or "tsv"`},
+		{"url with inline source", `query "q" {
+	source = "inline"
+	data = "[]"
+	url = "http://x"
+}`, `url must be empty when source is "inline"`},
+		{"url options with inline source", `query "q" {
+	source = "inline"
+	data = "[]"
+	url_options {
+		method = "GET"
+	}
+}`, `url_options must be empty when source is "inline"`},
+		{"valid inline graphql", `query "q" {
+	type = "graphql"
+	source = "inline"
+	data = "{}"
+}`, ""},
+		{"valid form body", `query "q" {
+	url = "http://x"
+	url_options {
+		method = "POST"
+		body_type = "x-www-form-urlencoded"
+		body_form = { "a" = "b" }
+	}
+}`, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

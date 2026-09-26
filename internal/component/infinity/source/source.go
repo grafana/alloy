@@ -165,9 +165,16 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err != nil {
 		return err
 	}
+	// The client adds its headers to each request, so a default Accept
+	// would be sent next to the client's own.
+	clientAccept := args.Client.HTTPHeaders != nil && hasHeader(args.Client.HTTPHeaders.Headers, "Accept")
 	specs := make(map[string]querySpec, len(args.Queries))
 	for _, q := range args.Queries {
-		specs[q.Name] = newQuerySpec(q)
+		spec := newQuerySpec(q)
+		if clientAccept {
+			spec.accept = ""
+		}
+		specs[q.Name] = spec
 	}
 
 	c.prom.UpdateChildren(args.ForwardTo.Metrics)
@@ -406,7 +413,7 @@ func fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, 
 	if s.source == sourceURL {
 		req, err := buildRequest(ctx, s)
 		if err != nil {
-			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), err))
+			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), redactErr(err)))
 		}
 		body, err = fetch(cfg.client, req, cfg.maxSize)
 		if err != nil {

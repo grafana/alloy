@@ -1,6 +1,10 @@
 package source
 
-import "github.com/grafana/alloy/syntax/alloytypes"
+import (
+	"net/http"
+
+	"github.com/grafana/alloy/syntax/alloytypes"
+)
 
 // querySpec is the validated internal form of a query block. It does not
 // depend on Alloy syntax types, so the pipeline can be tested on its own.
@@ -16,6 +20,7 @@ type querySpec struct {
 	method           string
 	params           map[string]string
 	headers          map[string]string
+	accept           string // default Accept header, empty if the user sets one
 	bodyType         string
 	body             string
 	bodyContentType  string
@@ -105,6 +110,9 @@ func newQuerySpec(q QueryBlock) querySpec {
 		},
 		logs: logsSpec{lineColumn: "body"},
 	}
+	if !hasHeader(q.URLOptions.Headers, "Accept") {
+		s.accept = defaultAccept(q.Type)
+	}
 	for _, c := range q.Columns {
 		s.columns = append(s.columns, columnSpec{selector: c.Selector, alias: c.Text, typ: c.Type, timeFormat: c.TimestampFormat})
 	}
@@ -143,6 +151,27 @@ func newQuerySpec(q QueryBlock) querySpec {
 		}
 	}
 	return s
+}
+
+// defaultAccept returns the Accept header that the plugin sends for each
+// type.
+func defaultAccept(qtype string) string {
+	switch qtype {
+	case typeCSV, typeTSV:
+		return "text/csv"
+	case "xml", "html":
+		return "text/xml;q=0.9,text/plain"
+	}
+	return "application/json;q=0.9,text/plain"
+}
+
+func hasHeader[V any](headers map[string]V, name string) bool {
+	for k := range headers {
+		if http.CanonicalHeaderKey(k) == name {
+			return true
+		}
+	}
+	return false
 }
 
 func unwrapSecrets(in map[string]alloytypes.Secret) map[string]string {

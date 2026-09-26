@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -144,7 +146,7 @@ func rowJSON(f *data.Frame, row int) (string, error) {
 		buf.WriteByte(':')
 		var v any
 		if cv, ok := fld.ConcreteAt(row); ok {
-			v = cv
+			v = jsonSafe(cv)
 		}
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -154,4 +156,22 @@ func rowJSON(f *data.Frame, row int) (string, error) {
 	}
 	buf.WriteByte('}')
 	return buf.String(), nil
+}
+
+// jsonSafe returns NaN and Inf as the strings "NaN", "+Inf" and "-Inf".
+// json.Marshal fails on them, and one such value would fail the whole poll.
+func jsonSafe(v any) any {
+	var f float64
+	switch x := v.(type) {
+	case float64:
+		f = x
+	case float32:
+		f = float64(x)
+	default:
+		return v
+	}
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return strconv.FormatFloat(f, 'g', -1, 64)
+	}
+	return v
 }
