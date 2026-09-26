@@ -41,6 +41,8 @@ You can use the following arguments with `infinity.source`:
 | `timeout`            | `duration` | Timeout for one poll of one query.                       | `"10s"` | no       |
 
 The `timeout` argument must be less than or equal to the `interval` argument.
+`timeout` bounds the HTTP request and reading its response body.
+It doesn't bound parsing the response or sending the result to receivers.
 
 `infinity.source` measures the `max_response_size` argument against the decompressed response body.
 A compressed response can be smaller on the wire than `max_response_size` and still fail this limit once decompressed.
@@ -144,7 +146,7 @@ The following strings are valid `source` values:
 * `"inline"`: Use the `data` argument as the response body, without making an HTTP request.
 
 When `source` is `"url"`, the `url` argument is required, and must be an absolute `http` or `https` URL.
-When `source` is `"inline"`, the `data` argument is required, and `url` must be empty.
+When `source` is `"inline"`, the `data` argument is required.
 
 Set `filter_expression` to drop rows after parsing.
 Set `summarize_expression` to replace the frame with a single row that summarizes it; `summarize_by` groups rows before summarizing, and `summarize_alias` names the resulting column.
@@ -194,7 +196,8 @@ The `csv_options` block configures parsing for `type = "csv"` and `type = "tsv"`
 For `type = "tsv"` queries, `infinity.source` ignores `delimiter` and always splits fields on a tab.
 
 Set `columns` to `"-"` or `"none"` to treat the response as headerless, so `infinity.source` generates column names automatically.
-Any other non-empty value for `columns` is used as a header line, added before the response body, instead of the response's own first line.
+Any other non-empty value for `columns` is added before the response body as a header line.
+`infinity.source` doesn't drop the response's own first line: it becomes a data row.
 
 ### `logs`
 
@@ -367,8 +370,8 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 
 `infinity.source` maps each row of a query's parsed frame to metrics as follows:
 
-* Each string column with a non-nil value becomes a label. The label name is the column name.
-* Each numeric column with a non-nil value becomes a gauge sample. The sample name is the `metrics` block's `prefix` argument plus the column name.
+* Each string column with a non-nil value becomes a label. The label name is the column name, sanitized to a valid Prometheus label name.
+* Each numeric column with a non-nil value becomes a gauge sample. The sample name is the `metrics` block's `prefix` argument plus the column name, sanitized to a valid Prometheus metric name.
 * Each boolean column becomes a sample with a value of `1` or `0`.
 * Time columns don't become samples or labels.
 * Every sample from one poll shares the poll's start time.
@@ -376,6 +379,7 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
   A column named `job` or `instance` doesn't override these two labels; `infinity.source` logs a warning the first time this happens for a query.
 * When two rows produce the same label set, `infinity.source` keeps the first row's sample and drops the rest.
   It counts the dropped samples in `infinity_source_duplicate_series_total` and logs a warning once for each poll.
+* `up` is reserved for the synthetic sample described below. A column whose final metric name is `up`, after `prefix` and sanitizing, is dropped; `infinity.source` logs a warning the first time this happens for a query. Set `metrics.prefix` to avoid this collision.
 * `up` is `1` after a successful poll and `0` after a failed poll.
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
 * When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends no stale markers for the poll in progress.
