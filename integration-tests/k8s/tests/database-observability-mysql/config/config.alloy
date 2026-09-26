@@ -1,5 +1,6 @@
-// WARNING: This configuration is for integration testing only.
-// It is not intended to represent a recommended production configuration.
+logging {
+  level = "debug"
+}
 
 prometheus.exporter.mysql "mysql" {
   data_source_name = "root:rootpassword@tcp(mysql:3306)/testdb"
@@ -7,7 +8,7 @@ prometheus.exporter.mysql "mysql" {
 
 database_observability.mysql "test" {
   data_source_name = "root:rootpassword@tcp(mysql:3306)/testdb"
-  forward_to       = [loki.write.default.receiver]
+  forward_to       = [loki.write.loki.receiver]
   targets          = prometheus.exporter.mysql.mysql.targets
 
   query_samples {
@@ -33,23 +34,27 @@ database_observability.mysql "test" {
 
 prometheus.scrape "mysql" {
   targets         = database_observability.mysql.test.targets
-  forward_to      = [prometheus.remote_write.default.receiver]
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
 }
 
-prometheus.remote_write "default" {
+prometheus.remote_write "mimir" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
   }
+
   external_labels = {
-    test_name = "database_observability_mysql",
+    alloy_test_name = "database-observability-mysql",
   }
 }
 
-loki.write "default" {
+loki.write "loki" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
   }
+
   external_labels = {
-    test_name = "database_observability_mysql",
+    alloy_test_name = "database-observability-mysql",
   }
 }

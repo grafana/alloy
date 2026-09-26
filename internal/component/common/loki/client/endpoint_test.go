@@ -360,12 +360,13 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
-			c, err := newEndpoint(m, tt.endpointConfig, logging.NewSlogNop(), marker.NewNopTracker())
+			e, err := newEndpoint(m, tt.endpointConfig, logging.NewSlogNop(), marker.NewNopTracker())
 			require.NoError(t, err)
+			e.start()
 
 			// Send all the input log entries
 			for i, logEntry := range tt.inputEntries {
-				c.enqueue(t.Context(), logEntry, 0)
+				e.enqueue(t.Context(), logEntry, 0)
 
 				if tt.inputDelay > 0 && i < len(tt.inputEntries)-1 {
 					time.Sleep(tt.inputDelay)
@@ -379,7 +380,7 @@ func TestEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			c.stop()
+			e.stop()
 			close(receivedReqsChan)
 
 			// Get all push requests received on the server side
@@ -419,6 +420,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			},
 		}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
+		e.start()
 		defer e.stop()
 
 		entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
@@ -459,6 +461,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			},
 		}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
+		e.start()
 		defer e.stop()
 
 		entry1 := loki.Entry{Entry: push.Entry{Line: "1"}}
@@ -505,6 +508,7 @@ func TestEndpointBatchSizeMetric(t *testing.T) {
 		QueueConfig:   QueueConfig{Capacity: int(10 * units.MiB), MinShards: 1, BlockOnOverflow: true, DrainTimeout: 30 * time.Second},
 	}, logging.NewSlogNop(), marker.NewNopTracker())
 	require.NoError(t, err)
+	e.start()
 
 	for _, entry := range entries {
 		require.NoError(t, e.enqueue(t.Context(), entry, 0))
@@ -536,6 +540,7 @@ func TestEndpointCallerCancel(t *testing.T) {
 
 		e, err := newEndpoint(newMetrics(prometheus.NewRegistry()), Config{URL: url}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
+		e.start()
 		defer e.stop()
 
 		ctx, cancel := context.WithCancel(t.Context())
@@ -571,7 +576,7 @@ func TestEndpointCallerCancel(t *testing.T) {
 			},
 		}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
-
+		e.start()
 		defer e.stop()
 
 		entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
@@ -608,6 +613,7 @@ func TestEndpointStopped(t *testing.T) {
 		URL: url,
 	}, logging.NewSlogNop(), marker.NewNopTracker())
 	require.NoError(t, err)
+	e.start()
 	e.stop()
 
 	entry := loki.Entry{Entry: push.Entry{Line: "my entry"}}
