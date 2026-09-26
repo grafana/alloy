@@ -2,12 +2,14 @@ package remotewrite
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 
 	"github.com/grafana/alloy/internal/static/agentctl/waltools"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 )
 
@@ -187,8 +189,7 @@ deletion but then comes back at some point).`,
 
 			fmt.Printf("\nPer-target stats:\n")
 
-			table := tablewriter.NewWriter(os.Stdout)
-			table.Header("Job", "Instance", "Series", "Samples")
+			table := newTargetTable(os.Stdout)
 
 			sort.Sort(waltools.BySeriesCount(stats.Targets))
 
@@ -200,6 +201,15 @@ deletion but then comes back at some point).`,
 			must(table.Render())
 		},
 	}
+}
+
+// newTargetTable returns the per-target stats table. tablewriter v1 uses
+// Unicode borders by default, so this sets the ASCII symbols to keep the
+// old output.
+func newTargetTable(w io.Writer) *tablewriter.Table {
+	table := tablewriter.NewTable(w, tablewriter.WithSymbols(tw.NewSymbols(tw.StyleASCII)))
+	table.Header("Job", "Instance", "Series", "Samples")
+	return table
 }
 
 func must(err error) {
