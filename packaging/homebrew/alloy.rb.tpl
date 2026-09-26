@@ -76,6 +76,48 @@ class Alloy < Formula
       extra_args=""
       [ -f "$extra_args_file" ] && extra_args=$(cat "$extra_args_file")
 
+      # Rotate the service log files.
+      #
+      # launchd (and systemd on Linux) open the service log files and pass them
+      # to Alloy as stdout/stderr. Renaming a file doesn't work, because Alloy
+      # keeps writing to the renamed file. Instead, the file is copied to a
+      # backup and truncated in place (copytruncate).
+      #
+      # ALLOY_SERVICE_LOG_FILES is set by the service definition below, so
+      # running the wrapper from a terminal doesn't touch the service log files.
+      log_max_size_mb="${ALLOY_LOG_MAX_SIZE_MB:-10}"
+      log_max_backups="${ALLOY_LOG_MAX_BACKUPS:-3}"
+      log_check_interval="${ALLOY_LOG_CHECK_INTERVAL:-60}"
+
+      rotate_log() {
+        log_file="$1"
+        [ -f "$log_file" ] || return 0
+        size=$(wc -c < "$log_file" | tr -d ' ')
+        [ "$size" -gt $((log_max_size_mb * 1024 * 1024)) ] || return 0
+
+        i="$log_max_backups"
+        while [ "$i" -gt 1 ]; do
+          prev=$((i - 1))
+          [ -f "$log_file.$prev" ] && mv -f "$log_file.$prev" "$log_file.$i"
+          i="$prev"
+        done
+        cp -f "$log_file" "$log_file.1" && : > "$log_file"
+      }
+
+      log_files="${ALLOY_SERVICE_LOG_FILES:-}"
+      if [ -n "$log_files" ] && [ "$log_max_size_mb" -gt 0 ] && [ "$log_max_backups" -gt 0 ]; then
+        for f in $log_files; do rotate_log "$f"; done
+
+        # $$ is the PID of this shell, which becomes Alloy after exec below.
+        # The loop stops once Alloy has exited.
+        alloy_pid=$$
+        (
+          while sleep "$log_check_interval" && kill -0 "$alloy_pid" 2>/dev/null; do
+            for f in $log_files; do rotate_log "$f"; done
+          done
+        ) </dev/null &
+      fi
+
       # extra_args is intentionally unquoted so a file with multiple arguments
       # word-splits into separate argv entries.
       if [ -n "$otel_mode" ]; then
@@ -104,6 +146,13 @@ class Alloy < Formula
         Extra command line arguments:
           #{pkgetc}/extra-args.txt
 
+      When running as a service, logs are written to:
+        #{var}/log/alloy.log
+        #{var}/log/alloy.err.log
+      Log files are rotated when they exceed 10 MB, keeping 3 backups.
+      To change this, set ALLOY_LOG_MAX_SIZE_MB and ALLOY_LOG_MAX_BACKUPS
+      in #{pkgetc}/config.env. Set ALLOY_LOG_MAX_SIZE_MB=0 to disable rotation.
+
       To enable the OTel Engine:
         - Set "ALLOY_OTEL_MODE=1" in #{pkgetc}/config.env
         - Create collector config in #{pkgetc}/config.yaml
@@ -116,6 +165,8 @@ class Alloy < Formula
     keep_alive true
     log_path var/"log/alloy.log"
     error_log_path var/"log/alloy.err.log"
+    # Log files rotated by alloy-wrapper. Must match log_path and error_log_path.
+    environment_variables ALLOY_SERVICE_LOG_FILES: "#{var}/log/alloy.log #{var}/log/alloy.err.log"
   end
 
   test do
