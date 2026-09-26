@@ -41,9 +41,9 @@ You can use the following arguments with `infinity.source`:
 | `timeout`            | `duration` | Timeout for one poll of one query.                       | `"10s"` | no       |
 
 The `timeout` argument must be less than or equal to the `interval` argument.
-`timeout` bounds the HTTP request, reading its response body, and parsing the response.
+`timeout` bounds the HTTP request, an OAuth 2.0 token request, reading the response body, and parsing the response.
 It doesn't bound sending the result to receivers.
-When parsing takes longer than `timeout`, the poll fails with the `timeout` reason.
+When these steps take longer than `timeout`, the poll fails with the `timeout` reason.
 Refer to [Limitations](#limitations) for what happens to a parser expression that doesn't end.
 
 `infinity.source` measures the `max_response_size` argument against the decompressed response body.
@@ -391,7 +391,8 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * `up` is reserved for the synthetic sample described below. A column whose final metric name is `up`, after `prefix` and sanitizing, is dropped; `infinity.source` logs a warning the first time this happens for a query. Set `metrics.prefix` to avoid this collision.
 * `up` is `1` after a successful poll and `0` after a failed poll.
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
-* When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends no stale markers for the poll in progress.
+* When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends nothing for the poll in progress, even if its fetch already succeeded.
+* A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends.
 * When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series go stale by the metrics backend's lookback period instead. Losing ownership also clears the query's health on this node.
 
 This example parses inline CSV data and sets `type = "number"` on the `count` column, so `count` becomes a sample and `name` becomes a label:
@@ -447,6 +448,8 @@ infinity.source "inline_csv" {
 * `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
 * The parser libraries can't stop a `jq` or JSONata expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
+  While it runs, `infinity.source` starts no new poll for that query.
+  Each skipped poll fails with the `timeout` reason and the message `the previous poll is still running`.
   A JSONata expression with unbounded recursion can crash {{< param "PRODUCT_NAME" >}} with a stack overflow, which Go can't recover from.
   Keep `root_selector` expressions simple.
 

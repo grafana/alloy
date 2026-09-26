@@ -85,3 +85,23 @@ func TestSelfMetricsDeleteQuery(t *testing.T) {
 	m.deleteQuery("a")
 	require.Equal(t, 1, testutil.CollectAndCount(m.pollFailures))
 }
+
+// TestLoopNoPollAfterCancel checks that a tick and a cancel that are both
+// ready do not start one more poll. The select picks at random, so the test
+// repeats the race many times.
+func TestLoopNoPollAfterCancel(t *testing.T) {
+	interval := 5 * time.Millisecond
+	for range 30 {
+		ctx, cancel := context.WithCancel(t.Context())
+		var calls atomic.Int32
+		l := startLoop(ctx, interval, 0, func(context.Context) {
+			calls.Add(1)
+			// Let a tick arrive, then cancel, so both are ready.
+			time.Sleep(3 * interval)
+			cancel()
+		}, func() {})
+		<-l.done
+		require.Equal(t, int32(1), calls.Load(), "no poll may start after cancel")
+		cancel()
+	}
+}

@@ -48,21 +48,35 @@ type Component struct {
 	prom    *alloyprom.Fanout
 	loki    *loki.Fanout
 
+	// gen is the current config generation. Update replaces it without
+	// waiting for a running poll. Each poll loads it once, at its start.
+	gen atomic.Pointer[generation]
+
 	mut         sync.RWMutex
 	args        Arguments
-	client      *http.Client
 	otelMetrics []otelcol.Consumer
 	otelLogs    []otelcol.Consumer
 	queries     map[string]*queryState
 	runCtx      context.Context
 }
 
-type queryState struct {
-	// spec is atomic so that Update can replace it without waiting for a
-	// running poll. Each poll loads it once, at its start.
-	spec atomic.Pointer[querySpec]
+// generation holds the settings of one config load. It never changes, so
+// a poll that loads it sees a client and specs from the same load.
+type generation struct {
+	client     *http.Client
+	timeout    time.Duration
+	maxSize    int64
+	clustering bool
+	specs      map[string]querySpec
+}
 
-	mut              sync.Mutex // guards the fields below, not spec
+type queryState struct {
+	// workers counts the fetch goroutines of this query that still run.
+	// A goroutine that passes the timeout keeps running, so it can be 1
+	// when a poll starts.
+	workers atomic.Int32
+
+	mut              sync.Mutex // guards the fields below
 	tracker          *tracker
 	owned            bool
 	warnedOverride   bool
@@ -83,15 +97,6 @@ func (qs *queryState) result() error {
 	qs.hmut.Lock()
 	defer qs.hmut.Unlock()
 	return qs.lastErr
-}
-
-// pollConfig is a snapshot of the settings a poll needs.
-type pollConfig struct {
-	client     *http.Client
-	timeout    time.Duration
-	maxSize    int64
-	clustering bool
-	out        outputs
 }
 
 var (
@@ -176,6 +181,13 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		}
 		specs[q.Name] = spec
 	}
+	gen := &generation{
+		client:     client,
+		timeout:    args.Timeout,
+		maxSize:    int64(args.MaxResponseSize),
+		clustering: args.Clustering.Enabled,
+		specs:      specs,
+	}
 
 	c.prom.UpdateChildren(args.ForwardTo.Metrics)
 	c.loki.UpdateChildren(args.ForwardTo.Logs)
@@ -192,8 +204,8 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.mut.Lock()
 	intervalChanged := c.args.Interval != args.Interval
 	c.args = args
-	oldClient := c.client
-	c.client = client
+	oldGen := c.gen.Load()
+	c.gen.Store(gen)
 	c.otelMetrics = args.Output.Metrics
 	c.otelLogs = args.Output.Logs
 
@@ -208,13 +220,12 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		removed = append(removed, removedQuery{name: name, qs: qs})
 		delete(c.queries, name)
 	}
-	for name, spec := range specs {
+	for name := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
 			qs = &queryState{tracker: newTracker()}
 			c.queries[name] = qs
 		}
-		qs.spec.Store(&spec)
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
@@ -228,18 +239,17 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	// Close after the stopped loops end, so their connections are idle. A
 	// poll that is still running keeps its connection until the transport's
 	// idle timeout closes it.
-	if oldClient != nil {
-		oldClient.CloseIdleConnections()
+	if oldGen != nil {
+		oldGen.client.CloseIdleConnections()
 	}
 
-	cfg := c.snapshot()
 	for _, r := range removed {
 		r.qs.mut.Lock()
 		stale := r.qs.tracker.all()
 		r.qs.tracker.reset()
 		r.qs.mut.Unlock()
 		if len(stale) > 0 {
-			if err := cfg.out.sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
+			if err := c.outputs().sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
 				c.opts.Logger.Warn("failed to send stale markers for a removed query", "query", r.name, "err", err)
 			}
 		}
@@ -267,30 +277,31 @@ func (c *Component) startLoopLocked(name string, qs *queryState) *loop {
 	)
 }
 
-func (c *Component) snapshot() pollConfig {
+// outputs returns the current outputs. A poll calls it just before it
+// sends, so a reload during the poll changes where the result goes.
+func (c *Component) outputs() outputs {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
-	return pollConfig{
-		client:     c.client,
-		timeout:    c.args.Timeout,
-		maxSize:    int64(c.args.MaxResponseSize),
-		clustering: c.args.Clustering.Enabled,
-		out: outputs{
-			prom:        c.prom,
-			loki:        c.loki,
-			otelMetrics: c.otelMetrics,
-			otelLogs:    c.otelLogs,
-		},
+	return outputs{
+		prom:        c.prom,
+		loki:        c.loki,
+		otelMetrics: c.otelMetrics,
+		otelLogs:    c.otelLogs,
 	}
 }
 
 func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
-	cfg := c.snapshot()
+	g := c.gen.Load()
+	s, ok := g.specs[name]
+	if !ok {
+		// A reload removed the query and is stopping this loop.
+		return
+	}
 
 	qs.mut.Lock()
 	defer qs.mut.Unlock()
 
-	if cfg.clustering && !c.owns(name) {
+	if g.clustering && !c.owns(name) {
 		if qs.owned {
 			// The new owner takes over. The old series go stale by lookback.
 			qs.tracker.reset()
@@ -303,19 +314,19 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 	}
 	qs.owned = true
 
-	s := qs.spec.Load()
 	start := time.Now()
-	if s.format == formatLogs && qs.tracker.len() > 0 {
+	if s.format == formatLogs && qs.tracker.len() > 0 && ctx.Err() == nil {
 		// The query was a table query before a reload. Update does not wait
 		// for qs.mut, so the poll ends the old series here.
 		stale := qs.tracker.all()
 		qs.tracker.reset()
-		if err := cfg.out.sendMetrics(ctx, c.opts.ID, name, start, nil, stale); err != nil {
+		if err := c.outputs().sendMetrics(ctx, c.opts.ID, name, start, nil, stale); err != nil {
 			c.metrics.pollFailures.WithLabelValues(name, reasonEmit).Inc()
 			c.opts.Logger.Warn("failed to send stale markers after a format change", "query", name, "err", err)
 		}
 	}
-	err := c.runQuery(ctx, cfg, qs, *s, start)
+	frame, err := fetchFrame(ctx, g, s, &qs.workers)
+	err = c.emit(ctx, qs, s, start, frame, err)
 	c.metrics.pollDuration.WithLabelValues(name).Observe(time.Since(start).Seconds())
 	if err != nil {
 		if ctx.Err() != nil {
@@ -339,10 +350,11 @@ func (c *Component) owns(name string) bool {
 	return peers[0].Self
 }
 
-// runQuery runs one poll. The caller holds qs.mut.
-func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState, s querySpec, now time.Time) error {
+// emit maps the result of a fetch and sends it. fetchErr is the fetch
+// error, if any. The caller holds qs.mut.
+func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now time.Time, frame *data.Frame, fetchErr error) error {
 	job := c.opts.ID
-	frame, err := fetchFrame(ctx, cfg, s)
+	err := fetchErr
 
 	if s.format == formatLogs {
 		if err != nil {
@@ -352,7 +364,11 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 		if err != nil {
 			return err
 		}
-		if err := cfg.out.sendLogs(ctx, job, s.name, now, entries); err != nil {
+		if err := ctx.Err(); err != nil {
+			// The loop is stopping or reloading. Drop the result.
+			return err
+		}
+		if err := c.outputs().sendLogs(ctx, job, s.name, now, entries); err != nil {
 			return newPollError(reasonEmit, err)
 		}
 		c.metrics.entriesSent.WithLabelValues(s.name).Add(float64(len(entries)))
@@ -370,7 +386,7 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 		}
 		up := upSample(job, s.name, 0)
 		stale := qs.tracker.allExcept(up.labels)
-		if sendErr := cfg.out.sendMetrics(ctx, job, s.name, now, []sample{up}, stale); sendErr != nil {
+		if sendErr := c.outputs().sendMetrics(ctx, job, s.name, now, []sample{up}, stale); sendErr != nil {
 			c.metrics.pollFailures.WithLabelValues(s.name, reasonEmit).Inc()
 			c.opts.Logger.Warn("failed to send stale markers", "query", s.name, "err", sendErr)
 		}
@@ -391,9 +407,14 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 		c.opts.Logger.Warn("a column whose metric name is up was dropped because up is reserved for the synthetic sample", "query", s.name)
 	}
 
+	if err := ctx.Err(); err != nil {
+		// The loop is stopping or reloading. Drop the result and keep the
+		// tracker as it was.
+		return err
+	}
 	current := append(res.samples, upSample(job, s.name, 1))
 	stale := qs.tracker.stale(current)
-	sendErr := cfg.out.sendMetrics(ctx, job, s.name, now, current, stale)
+	sendErr := c.outputs().sendMetrics(ctx, job, s.name, now, current, stale)
 	// The source worked, so keep the new state even if a receiver failed.
 	qs.tracker.replace(current)
 	c.metrics.samplesSent.WithLabelValues(s.name).Add(float64(len(current)))
@@ -403,35 +424,31 @@ func (c *Component) runQuery(ctx context.Context, cfg pollConfig, qs *queryState
 	return nil
 }
 
-// fetchFrame gets the body and builds the frame. The timeout covers the
-// request, the body read and parsing.
-func fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, error) {
-	ctx, cancel := context.WithTimeout(ctx, cfg.timeout)
+// fetchFrame gets the body and builds the frame in a worker goroutine. The
+// timeout covers the request, the body read and parsing.
+//
+// The poll stops waiting at the deadline, because two steps take no
+// context: infinity-libs parsing, and the OAuth token request of
+// prometheus/common. A jq or jsonata expression that never ends keeps
+// running in the worker. So a query starts no new worker while its last
+// one still runs, and this keeps it to one abandoned worker.
+func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic.Int32) (*data.Frame, error) {
+	if workers.Load() > 0 {
+		return nil, newPollError(reasonTimeout, errors.New("the previous poll is still running"))
+	}
+	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
-	body := []byte(s.data)
-	if s.source == sourceURL {
-		req, err := buildRequest(ctx, s)
-		if err != nil {
-			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), redactErr(err)))
-		}
-		body, err = fetch(cfg.client, req, cfg.maxSize)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// infinity-libs takes no context, so parsing runs in its own goroutine
-	// and the poll stops waiting at the deadline. A jq or jsonata expression
-	// that never ends keeps running in that goroutine. The channel has a
-	// buffer, so a goroutine that ends late can still send and exit.
 	type result struct {
 		frame *data.Frame
 		err   error
 	}
+	// The buffer lets an abandoned worker send and exit.
 	done := make(chan result, 1)
+	workers.Inc()
 	go func() {
-		f, err := buildFrame(s, body)
+		f, err := fetchAndBuild(ctx, g, s)
+		workers.Dec()
 		done <- result{frame: f, err: err}
 	}()
 	select {
@@ -439,10 +456,25 @@ func fetchFrame(ctx context.Context, cfg pollConfig, s querySpec) (*data.Frame, 
 		return r.frame, r.err
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return nil, newPollError(reasonTimeout, errors.New("parsing the response took longer than timeout"))
+			return nil, newPollError(reasonTimeout, errors.New("the request or parsing took longer than timeout"))
 		}
 		return nil, ctx.Err()
 	}
+}
+
+func fetchAndBuild(ctx context.Context, g *generation, s querySpec) (*data.Frame, error) {
+	body := []byte(s.data)
+	if s.source == sourceURL {
+		req, err := buildRequest(ctx, s)
+		if err != nil {
+			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), redactErr(err)))
+		}
+		body, err = fetch(g.client, req, g.maxSize)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return buildFrame(s, body)
 }
 
 // CurrentHealth implements component.HealthComponent.

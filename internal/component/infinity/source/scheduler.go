@@ -41,6 +41,10 @@ func startLoop(parent context.Context, interval, offset time.Duration, poll func
 				return
 			case <-ticker.C:
 			}
+			// select picks at random when both cases are ready.
+			if ctx.Err() != nil {
+				return
+			}
 		}
 	}()
 	return l

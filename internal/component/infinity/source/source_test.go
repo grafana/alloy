@@ -23,6 +23,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
@@ -482,7 +483,7 @@ func TestParseBoundedByTimeout(t *testing.T) {
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
 		assert.Equal(ct, 1.0, promtestutil.ToFloat64(c.metrics.pollFailures.WithLabelValues("q", reasonTimeout)))
 		h := c.CurrentHealth()
-		assert.Contains(ct, h.Message, "parsing the response took longer than timeout")
+		assert.Contains(ct, h.Message, "the request or parsing took longer than timeout")
 	}, 2*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -630,5 +631,196 @@ func TestClientAcceptReplacesDefault(t *testing.T) {
 		require.Equal(t, []string{"application/vnd.api+json"}, got)
 	case <-time.After(2 * time.Second):
 		t.Fatal("no request")
+	}
+}
+
+// runComponent runs c until the returned cancel is called. The returned
+// channel closes when Run returns.
+func runComponent(parent context.Context, c *Component) (context.CancelFunc, <-chan struct{}) {
+	ctx, cancel := context.WithCancel(parent)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = c.Run(ctx)
+	}()
+	return cancel, done
+}
+
+// TestOAuthTokenHangIsBounded uses a token server that never answers.
+// prometheus/common gets tokens without a deadline, so the poll must still
+// end at timeout.
+func TestOAuthTokenHangIsBounded(t *testing.T) {
+	release := make(chan struct{})
+	tokenSrv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		<-release
+	}))
+	defer tokenSrv.Close()
+	defer close(release)
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer api.Close()
+
+	args, err := parse(fmt.Sprintf(`
+		interval = "1s"
+		timeout  = "200ms"
+		client {
+			oauth2 {
+				client_id     = "id"
+				client_secret = "secret"
+				token_url     = %q
+			}
+		}
+		query "q" {
+			url = %q
+		}`, tokenSrv.URL, api.URL))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, runDone := runComponent(t.Context(), c)
+	defer cancel()
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Equal(ct, 1.0, promtestutil.ToFloat64(c.metrics.pollFailures.WithLabelValues("q", reasonTimeout)))
+	}, 2*time.Second, 10*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Run did not return after its context was cancelled")
+	}
+}
+
+// TestOneAbandonedWorkerPerQuery checks that a parse that never ends blocks
+// later polls of that query instead of starting more workers.
+func TestOneAbandonedWorkerPerQuery(t *testing.T) {
+	args, err := parse(`
+		interval = "100ms"
+		timeout  = "50ms"
+		query "q" {
+			source        = "inline"
+			data          = "[1]"
+			parser        = "jq-backend"
+			root_selector = "until(false; .)"
+		}`)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.GreaterOrEqual(ct, promtestutil.ToFloat64(c.metrics.pollFailures.WithLabelValues("q", reasonTimeout)), 4.0)
+		assert.Contains(ct, c.CurrentHealth().Message, "the previous poll is still running")
+	}, 3*time.Second, 10*time.Millisecond)
+
+	c.mut.RLock()
+	qs := c.queries["q"]
+	c.mut.RUnlock()
+	require.Equal(t, int32(1), qs.workers.Load())
+}
+
+// TestOutputsReadAtEmitTime checks that a poll sends to the outputs that are
+// current when it emits, not the ones from when it started.
+func TestOutputsReadAtEmitTime(t *testing.T) {
+	var once sync.Once
+	block := make(chan struct{})
+	closeBlock := func() { once.Do(func() { close(block) }) }
+	defer closeBlock()
+	entered := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		select {
+		case <-block:
+		case <-r.Context().Done():
+			return
+		}
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "2s"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	first, second := &testConsumer{}, &testConsumer{}
+	args, err := parse(cfg)
+	require.NoError(t, err)
+	args.Output.Metrics = []otelcol.Consumer{first}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler was never entered")
+	}
+	args, err = parse(cfg)
+	require.NoError(t, err)
+	args.Output.Metrics = []otelcol.Consumer{second}
+	require.NoError(t, c.Update(args))
+	closeBlock()
+
+	require.Eventually(t, func() bool {
+		m, _ := second.snapshot()
+		return len(m) > 0
+	}, 2*time.Second, 10*time.Millisecond)
+	m, _ := first.snapshot()
+	require.Empty(t, m, "the poll must not send to the old output")
+}
+
+// TestCancelledEmitSendsNothing checks that a poll whose context ends after
+// a successful fetch sends nothing and keeps the tracker as it was.
+func TestCancelledEmitSendsNothing(t *testing.T) {
+	for _, format := range []string{formatTable, formatLogs} {
+		t.Run(format, func(t *testing.T) {
+			args, err := parse(fmt.Sprintf(`
+				query "q" {
+					source = "inline"
+					format = %q
+					data   = "[{\"v\":1}]"
+				}`, format))
+			require.NoError(t, err)
+			app := testappender.NewCollectingAppender()
+			recv := loki.NewLogsReceiver()
+			args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+			args.ForwardTo.Logs = []loki.LogsReceiver{recv}
+			c, err := New(testOptions(t, cluster.Mock()), args)
+			require.NoError(t, err)
+
+			c.mut.RLock()
+			qs := c.queries["q"]
+			c.mut.RUnlock()
+			g := c.gen.Load()
+			s := g.specs["q"]
+			frame, err := buildFrame(s, []byte(s.data))
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			qs.mut.Lock()
+			err = c.emit(ctx, qs, s, time.Now(), frame, nil)
+			tracked := qs.tracker.len()
+			qs.mut.Unlock()
+
+			require.Error(t, err)
+			require.Zero(t, tracked)
+			require.Nil(t, app.LatestSampleFor(series("up")))
+			select {
+			case <-recv.Chan():
+				t.Fatal("a cancelled poll sent a log entry")
+			default:
+			}
+		})
 	}
 }
