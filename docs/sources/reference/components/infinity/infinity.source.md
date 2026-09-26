@@ -441,6 +441,9 @@ infinity.source "inline_csv" {
 * Metrics show the current state only. `infinity.source` doesn't ingest historical points.
 * Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
 * `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the UQL, GROQ, and simple parsers.
+* A JSON or GraphQL frame can have at most 10,000,000 cells, where cells are rows times columns.
+  The parser makes one column for each distinct key in any row, so a small response with many distinct keys can need a very large frame.
+  `infinity.source` checks this after `root_selector` and before it builds the frame, and fails the poll with the `too_large` reason.
 * `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
 * The parser libraries can't stop a `jq` or JSONata expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.

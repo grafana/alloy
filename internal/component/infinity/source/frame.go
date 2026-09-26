@@ -1,6 +1,7 @@
 package source
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -9,6 +10,7 @@ import (
 	"github.com/grafana/infinity-libs/lib/go/jsonframer"
 	"github.com/grafana/infinity-libs/lib/go/transformations"
 	"github.com/grafana/infinity-libs/lib/go/xmlframer"
+	"github.com/tidwall/gjson"
 )
 
 // This file is the only place that imports infinity-libs. Parsing and
@@ -28,6 +30,10 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 
 	frame, err := parseFrame(s, string(body))
 	if err != nil {
+		var pe *pollError
+		if errors.As(err, &pe) {
+			return nil, err
+		}
 		return nil, newPollError(reasonParse, err)
 	}
 	if frame == nil {
@@ -46,11 +52,24 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 func parseFrame(s querySpec, body string) (*data.Frame, error) {
 	switch s.qtype {
 	case "json", typeGraphQL:
-		return jsonframer.ToFrame(body, jsonframer.FramerOptions{
-			FramerType:   jsonFramerType(s.parser),
-			FrameName:    s.name,
-			RootSelector: s.rootSelector,
-			Columns:      jsonColumns(s.columns),
+		// This is the same check that ToFrame runs first.
+		if !gjson.Valid(body) {
+			return nil, errors.New("invalid json response received")
+		}
+		// Apply the root selector here, so the size check sees the rows
+		// that gframer gets. ToFrame then gets no selector, so the
+		// selector runs only once.
+		selected, err := jsonframer.GetRootData(body, s.rootSelector, jsonFramerType(s.parser))
+		if err != nil {
+			return nil, err
+		}
+		if err := checkFrameSize(selected, len(s.columns)); err != nil {
+			return nil, err
+		}
+		return jsonframer.ToFrame(selected, jsonframer.FramerOptions{
+			FramerType: jsonFramerType(s.parser),
+			FrameName:  s.name,
+			Columns:    jsonColumns(s.columns),
 		})
 	case typeCSV, typeTSV:
 		opts := csvframer.FramerOptions{
@@ -81,6 +100,45 @@ func parseFrame(s querySpec, body string) (*data.Frame, error) {
 		})
 	}
 	return nil, fmt.Errorf("unsupported type %q", s.qtype)
+}
+
+// maxFrameCells limits rows times columns of one JSON frame. gframer makes
+// one column for each distinct key in any row, and gives every column a
+// cell for every row. A small body with many distinct keys can so need many
+// gigabytes. 10 million cells is far more than a normal API response needs.
+const maxFrameCells = 10_000_000
+
+// checkFrameSize estimates the cells gframer allocates for the JSON in
+// selected, before it allocates them. numColumns is the number of column
+// blocks; when it is not 0, the frame has only those columns.
+func checkFrameSize(selected string, numColumns int) error {
+	r := gjson.Parse(selected)
+	if !r.IsArray() {
+		// One object becomes one row, so the body already bounds it.
+		return nil
+	}
+	rows, cols := 0, numColumns
+	keys := map[string]struct{}{}
+	var err error
+	r.ForEach(func(_, row gjson.Result) bool {
+		rows++
+		if numColumns == 0 && row.IsObject() {
+			row.ForEach(func(k, _ gjson.Result) bool {
+				keys[k.Str] = struct{}{}
+				return true
+			})
+			cols = max(1, len(keys))
+		}
+		if cols == 0 {
+			cols = 1
+		}
+		if rows*cols > maxFrameCells {
+			err = newPollError(reasonTooLarge, fmt.Errorf("the response makes a frame with more than %d cells (rows times columns)", maxFrameCells))
+			return false
+		}
+		return true
+	})
+	return err
 }
 
 func postProcess(s querySpec, frame *data.Frame) (*data.Frame, error) {

@@ -1,7 +1,11 @@
 package source
 
 import (
+	"fmt"
+	"runtime"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/stretchr/testify/require"
@@ -224,4 +228,53 @@ func TestBuildFrameRecoversPanic(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, reasonParse, reasonOf(err))
 	require.ErrorContains(t, err, "parser panic")
+}
+
+// distinctKeyRows returns a JSON array of n objects, each with its own key.
+// gframer would allocate n*n cells for it.
+func distinctKeyRows(n int) []byte {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range n {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `{"k%d":1}`, i)
+	}
+	b.WriteByte(']')
+	return []byte(b.String())
+}
+
+func TestBuildFrameRejectsHugeFrame(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://x"
+	}`)
+	require.NoError(t, err)
+	body := distinctKeyRows(50_000)
+
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	start := time.Now()
+	_, err = buildFrame(s, body)
+	elapsed := time.Since(start)
+	runtime.ReadMemStats(&after)
+
+	require.Error(t, err)
+	require.Equal(t, reasonTooLarge, reasonOf(err))
+	require.Less(t, elapsed, time.Second)
+	require.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(100<<20), "the check must fail before the frame is allocated")
+}
+
+func TestBuildFrameSizeCountsColumnBlocks(t *testing.T) {
+	// With column blocks, the frame has only those columns, so many
+	// distinct keys are fine.
+	s, err := specFromConfig(`query "q" {
+		url = "http://x"
+		column {
+			selector = "k1"
+		}
+	}`)
+	require.NoError(t, err)
+	_, err = buildFrame(s, distinctKeyRows(5_000))
+	require.NoError(t, err)
 }
