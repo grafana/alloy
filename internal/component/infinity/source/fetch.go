@@ -83,8 +83,9 @@ var (
 	// urlInTextRE matches a URL with a query in error text. Quotes and
 	// spaces end the match, because Go error text quotes URLs.
 	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#]*\?[^\s"'#]*`)
-	// quotedQueryRE matches a quoted token with a query, for example a
-	// relative redirect Location that has no scheme.
+	// quotedQueryRE matches a quoted token with a "?", for example a
+	// relative redirect Location that has no scheme. scrubURLs checks that
+	// the token looks like a URL before it redacts it.
 	quotedQueryRE = regexp.MustCompile(`"([^"\s]*)\?[^"]*"`)
 	// userinfoRE matches user info after "//", which can hold a password.
 	userinfoRE = regexp.MustCompile(`//[^/?#\s"'@]+@`)
@@ -107,7 +108,12 @@ func scrubURLs(msg string) string {
 			// The URL pass above already redacted it.
 			return m
 		}
-		base, _, _ := strings.Cut(m, "?")
+		base, query, _ := strings.Cut(m, "?")
+		// Scrub only a token that looks like a path or a key=value query,
+		// so ordinary text such as "what?" stays readable.
+		if !strings.HasPrefix(base, `"/`) && !strings.Contains(query, "=") {
+			return m
+		}
 		return base + `?REDACTED"`
 	})
 }

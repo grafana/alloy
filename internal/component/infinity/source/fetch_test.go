@@ -178,3 +178,19 @@ func TestScrubURLs(t *testing.T) {
 	want = `parse "/%zz?REDACTED": bad; parse "https://files.example/%zz": bad`
 	require.Equal(t, want, scrubURLs(in))
 }
+
+func TestScrubURLsQuotedTokens(t *testing.T) {
+	tests := map[string]string{
+		// Ordinary error text stays as it is.
+		`invalid value "what?" for field x`: `invalid value "what?" for field x`,
+		`json: unknown field "a?b"`:         `json: unknown field "a?b"`,
+		`unexpected token "?"`:              `unexpected token "?"`,
+		// URL-like tokens lose their query.
+		`parse "/%zz?token=supersecret": bad`:            `parse "/%zz?REDACTED": bad`,
+		`parse "files/x?token=supersecret"`:              `parse "files/x?REDACTED"`,
+		`parse "https://user:pw@files.example/%zz": bad`: `parse "https://files.example/%zz": bad`,
+	}
+	for in, want := range tests {
+		require.Equal(t, want, scrubURLs(in), "input %q", in)
+	}
+}
