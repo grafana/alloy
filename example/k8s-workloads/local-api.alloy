@@ -12,7 +12,11 @@ otelcol.receiver.k8s_workloads "default" {
 
 otelcol.exporter.otlphttp "rollout_api" {
 	client {
+		// For the SDLC ingester, use http://localhost:4318/workloads locally.
 		endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
+		headers  = {
+			"Authorization" = "Bearer " + sys.env("SDLC_CAP_TOKEN"),
+		}
 	}
 
 	retry_on_failure {

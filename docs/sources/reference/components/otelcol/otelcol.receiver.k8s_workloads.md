@@ -345,6 +345,9 @@ otelcol.receiver.k8s_workloads "default" {
 otelcol.exporter.otlphttp "rollout_api" {
   client {
     endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
+    headers = {
+      "Authorization" = "Bearer " + sys.env("SDLC_CAP_TOKEN"),
+    }
   }
 
   retry_on_failure {
@@ -353,7 +356,10 @@ otelcol.exporter.otlphttp "rollout_api" {
 }
 ```
 
-Set `ROLLOUT_OTLP_ENDPOINT` to the base URL of an API that accepts OTLP/HTTP logs.
+For the SDLC prototype ingester, set `ROLLOUT_OTLP_ENDPOINT` to a base URL that
+includes `/workloads`, such as `http://localhost:4318/workloads` for local testing.
+Set `SDLC_CAP_TOKEN` to a Grafana Cloud access policy token with `logs:write` and
+exactly one stack realm. Use HTTPS when sending the token over a network.
 The exporter sends requests to `<ROLLOUT_OTLP_ENDPOINT>/v1/logs`.
 To use a different path, set the exporter's `logs_endpoint` argument to the complete URL.
 
@@ -375,7 +381,7 @@ For a complete custom endpoint configuration, use
 
 ### Send events to Grafana Cloud
 
-This example sends workload events to a Grafana Cloud API that accepts OTLP/HTTP logs at `/v1/logs`:
+This example sends workload events to the SDLC prototype ingester at `/workloads/v1/logs` using a Grafana Cloud access policy token:
 
 ```alloy
 otelcol.receiver.k8s_workloads "default" {
@@ -409,7 +415,7 @@ otelcol.exporter.otlphttp "grafana_cloud" {
 
 otelcol.auth.basic "grafana_cloud" {
   client_auth {
-    username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+    username = sys.env("GRAFANA_CLOUD_STACK_ID")
     password = sys.env("GRAFANA_CLOUD_API_KEY")
   }
 }
@@ -422,11 +428,16 @@ otelcol.storage.file "rollouts" {
 Set the following environment variables:
 
 * `K8S_CLUSTER_NAME`: Human-readable name of the Kubernetes cluster.
-* `GRAFANA_CLOUD_OTLP_ENDPOINT`: Base URL of the OTLP/HTTP endpoint without `/v1/logs`.
-  `otelcol.exporter.otlphttp` appends `/v1/logs` when it sends log records.
-* `GRAFANA_CLOUD_INSTANCE_ID`: Grafana Cloud stack or instance ID used as the basic authentication
-  username.
-* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token authorized to write to the endpoint.
+* `GRAFANA_CLOUD_OTLP_ENDPOINT`: Ingester base URL including `/workloads`, for example `https://sdlc.example.com/workloads`.
+  `otelcol.exporter.otlphttp` appends `/v1/logs`, producing `/workloads/v1/logs`.
+* `GRAFANA_CLOUD_STACK_ID`: Grafana Cloud stack ID used as the basic authentication username.
+  This must match the token's stack realm, not a Loki tenant or instance ID.
+* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token with `logs:write` and exactly one stack realm matching `GRAFANA_CLOUD_STACK_ID`.
+
+The prototype ingester validates the token and adds the trusted stack ID as the
+`grafana.stack.id` resource attribute before publishing events.
+Use a token from the same environment as the ingester's Auth API.
+The `/github/v1/logs` path is reserved for image provenance and isn't available yet.
 
 This example configures retries and a persistent sending queue in the exporter.
 For exporter options, refer to [`otelcol.exporter.otlphttp`](../otelcol.exporter.otlphttp/).
