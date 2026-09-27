@@ -97,10 +97,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s, err = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 	case cfg.RegexConfig != nil:
 		s, err = newRegexStage(*cfg.RegexConfig, opts)
 		if err != nil {
