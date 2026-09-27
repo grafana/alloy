@@ -345,21 +345,28 @@ otelcol.receiver.k8s_workloads "default" {
 otelcol.exporter.otlphttp "rollout_api" {
   client {
     endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
-    headers = {
-      "Authorization" = "Bearer " + sys.env("SDLC_CAP_TOKEN"),
-    }
+    auth     = otelcol.auth.basic.rollout_api.handler
   }
 
   retry_on_failure {
     max_elapsed_time = "0s"
   }
 }
+
+otelcol.auth.basic "rollout_api" {
+  client_auth {
+    username = sys.env("SDLC_STACK_ID")
+    password = sys.env("SDLC_CAP_TOKEN")
+  }
+}
 ```
 
 For the SDLC prototype ingester, set `ROLLOUT_OTLP_ENDPOINT` to a base URL that
 includes `/workloads`, such as `http://localhost:4318/workloads` for local testing.
-Set `SDLC_CAP_TOKEN` to a Grafana Cloud access policy token with `logs:write` and
-exactly one stack realm. Use HTTPS when sending the token over a network.
+Set `SDLC_STACK_ID` to the target Grafana Cloud stack ID and `SDLC_CAP_TOKEN` to a
+Grafana Cloud access policy token with `logs:write`. The policy can have one stack
+realm matching that stack, or one org realm for its owning organization.
+Use HTTPS when sending the token over a network.
 The exporter sends requests to `<ROLLOUT_OTLP_ENDPOINT>/v1/logs`.
 To use a different path, set the exporter's `logs_endpoint` argument to the complete URL.
 
@@ -431,11 +438,15 @@ Set the following environment variables:
 * `GRAFANA_CLOUD_OTLP_ENDPOINT`: Ingester base URL including `/workloads`, for example `https://sdlc.example.com/workloads`.
   `otelcol.exporter.otlphttp` appends `/v1/logs`, producing `/workloads/v1/logs`.
 * `GRAFANA_CLOUD_STACK_ID`: Grafana Cloud stack ID used as the basic authentication username.
-  This must match the token's stack realm, not a Loki tenant or instance ID.
-* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token with `logs:write` and exactly one stack realm matching `GRAFANA_CLOUD_STACK_ID`.
+  Use the target stack ID, not a Loki tenant or instance ID.
+* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token with `logs:write` and one stack realm matching `GRAFANA_CLOUD_STACK_ID`, or one org realm for the organization that owns that stack.
 
 The prototype ingester validates the token and adds the trusted stack ID as the
 `grafana.stack.id` resource attribute before publishing events.
+For an org-wide token, the ingester additionally checks the target stack's ownership
+against Auth Cache. It rejects requests for a stack owned by another organization.
+The ingester needs `AUTH_CACHE_URL` configured for org-wide tokens; no additional
+CAP scopes beyond `logs:write` are required.
 Use a token from the same environment as the ingester's Auth API.
 The `/github/v1/logs` path is reserved for image provenance and isn't available yet.
 
