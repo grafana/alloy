@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/prometheus/client_golang/prometheus"
 	promtestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
@@ -694,21 +696,30 @@ func TestOAuthTokenHangIsBounded(t *testing.T) {
 }
 
 // TestOneAbandonedWorkerPerQuery checks that a parse that never ends blocks
-// later polls of that query instead of starting more workers.
+// later polls of that query instead of starting more workers. The parse
+// blocks on a channel instead of running an endless jq expression, so the
+// test leaves no goroutine that uses CPU.
 func TestOneAbandonedWorkerPerQuery(t *testing.T) {
 	args, err := parse(`
 		interval = "100ms"
 		timeout  = "50ms"
 		query "q" {
-			source        = "inline"
-			data          = "[1]"
-			parser        = "jq-backend"
-			root_selector = "until(false; .)"
+			source = "inline"
+			data   = "[1]"
 		}`)
 	require.NoError(t, err)
 	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
+
+	release := make(chan struct{})
+	defer close(release)
+	var parses atomic.Int32
+	c.parse = func(querySpec, []byte) (*data.Frame, error) {
+		parses.Inc()
+		<-release
+		return nil, errors.New("released")
+	}
 	cancel, _ := runComponent(t.Context(), c)
 	defer cancel()
 
@@ -721,6 +732,7 @@ func TestOneAbandonedWorkerPerQuery(t *testing.T) {
 	qs := c.queries["q"]
 	c.mut.RUnlock()
 	require.Equal(t, int32(1), qs.workers.Load())
+	require.Equal(t, int32(1), parses.Load())
 }
 
 // TestOutputsReadAtEmitTime checks that a poll sends to the outputs that are

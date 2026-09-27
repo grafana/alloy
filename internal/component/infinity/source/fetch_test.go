@@ -133,7 +133,7 @@ func TestFetchRedactsURL(t *testing.T) {
 // request does not show query params.
 func TestFetchFrameRedactsBuildError(t *testing.T) {
 	s := querySpec{name: "q", qtype: "json", source: sourceURL, method: http.MethodGet, url: "http://x/%zz?api_key=supersecret"}
-	_, err := fetchFrame(t.Context(), &generation{client: http.DefaultClient, timeout: time.Second, maxSize: 1024}, s, atomic.NewInt32(0))
+	_, err := fetchFrame(t.Context(), &generation{client: http.DefaultClient, timeout: time.Second, maxSize: 1024}, s, atomic.NewInt32(0), buildFrame)
 	require.Error(t, err)
 	require.Equal(t, reasonRequest, reasonOf(err))
 	require.NotContains(t, err.Error(), "supersecret")

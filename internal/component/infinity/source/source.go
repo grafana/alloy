@@ -47,6 +47,8 @@ type Component struct {
 	metrics *selfMetrics
 	prom    *alloyprom.Fanout
 	loki    *loki.Fanout
+	// parse builds a frame from a body. Tests replace it before Run.
+	parse parseFunc
 
 	// gen is the current config generation. Update replaces it without
 	// waiting for a running poll. Each poll loads it once, at its start.
@@ -59,6 +61,8 @@ type Component struct {
 	queries     map[string]*queryState
 	runCtx      context.Context
 }
+
+type parseFunc func(querySpec, []byte) (*data.Frame, error)
 
 // generation holds the settings of one config load. It never changes, so
 // a poll that loads it sees a client and specs from the same load.
@@ -125,6 +129,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		prom:    alloyprom.NewFanout(nil, opts.ID, opts.Registerer, lsData.(labelstore.LabelStore)),
 		loki:    loki.NewFanout(nil),
 		queries: map[string]*queryState{},
+		parse:   buildFrame,
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -330,7 +335,7 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 			c.opts.Logger.Warn("failed to send stale markers after a format change", "query", name, "err", err)
 		}
 	}
-	frame, err := fetchFrame(ctx, g, s, &qs.workers)
+	frame, err := fetchFrame(ctx, g, s, &qs.workers, c.parse)
 	err = c.emit(ctx, qs, s, start, frame, err)
 	c.metrics.pollDuration.WithLabelValues(name).Observe(time.Since(start).Seconds())
 	if err != nil {
@@ -438,7 +443,7 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 // prometheus/common. A jq or jsonata expression that never ends keeps
 // running in the worker. So a query starts no new worker while its last
 // one still runs, and this keeps it to one abandoned worker.
-func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic.Int32) (*data.Frame, error) {
+func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic.Int32, parse parseFunc) (*data.Frame, error) {
 	if workers.Load() > 0 {
 		return nil, newPollError(reasonTimeout, errors.New("the previous poll is still running"))
 	}
@@ -453,7 +458,7 @@ func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic
 	done := make(chan result, 1)
 	workers.Inc()
 	go func() {
-		f, err := fetchAndBuild(ctx, g, s)
+		f, err := fetchAndBuild(ctx, g, s, parse)
 		workers.Dec()
 		done <- result{frame: f, err: err}
 	}()
@@ -468,7 +473,7 @@ func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic
 	}
 }
 
-func fetchAndBuild(ctx context.Context, g *generation, s querySpec) (*data.Frame, error) {
+func fetchAndBuild(ctx context.Context, g *generation, s querySpec, parse parseFunc) (*data.Frame, error) {
 	body := []byte(s.data)
 	if s.source == sourceURL {
 		req, err := buildRequest(ctx, s)
@@ -480,7 +485,7 @@ func fetchAndBuild(ctx context.Context, g *generation, s querySpec) (*data.Frame
 			return nil, err
 		}
 	}
-	return buildFrame(s, body)
+	return parse(s, body)
 }
 
 // CurrentHealth implements component.HealthComponent.
