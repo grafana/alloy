@@ -1,0 +1,39 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		metrics = [otelcol.exporter.clickhouse.default.input]
+		logs    = [otelcol.exporter.clickhouse.default.input]
+		traces  = [otelcol.exporter.clickhouse.default.input]
+	}
+}
+
+otelcol.exporter.clickhouse "default" {
+	endpoint          = "tcp://127.0.0.1:9000"
+	connection_params = {}
+	compress          = ""
+
+	metrics_tables {
+		gauge {
+			name = "otel_metrics_gauge"
+		}
+
+		sum {
+			name = "otel_metrics_sum"
+		}
+
+		summary {
+			name = "otel_metrics_summary"
+		}
+
+		histogram {
+			name = "otel_metrics_histogram"
+		}
+
+		exponential_histogram {
+			name = "otel_metrics_exponential_histogram"
+		}
+	}
+}

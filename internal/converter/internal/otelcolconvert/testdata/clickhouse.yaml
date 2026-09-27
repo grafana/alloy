@@ -1,0 +1,55 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  clickhouse:
+    endpoint: tcp://127.0.0.1:9000
+    username: otel
+    password: mysecret
+    database: oteldb
+    logs_table_name: my_logs
+    traces_table_name: my_traces
+    ttl: 72h
+    cluster_name: my_cluster
+    create_schema: false
+    compress: zstd
+    async_insert: false
+    timeout: 10s
+    json: true
+    table_engine:
+      name: ReplicatedMergeTree
+      params: "/clickhouse/tables/{shard}/{table}"
+    metrics_tables:
+      gauge:
+        name: my_gauge
+      sum:
+        name: my_sum
+      summary:
+        name: my_summary
+      histogram:
+        name: my_histogram
+      exponential_histogram:
+        name: my_exp_histogram
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 10s
+      max_elapsed_time: 60s
+    sending_queue:
+      num_consumers: 5
+      queue_size: 500
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [clickhouse]
+    traces:
+      receivers: [otlp]
+      exporters: [clickhouse]
+    metrics:
+      receivers: [otlp]
+      exporters: [clickhouse]
