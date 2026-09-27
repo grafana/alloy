@@ -29,9 +29,12 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 
 	timeFields := timeFieldsOf(f)
 	lineField := fieldByName(f, l.lineColumn)
-	levelField := fieldByName(f, "severity")
-	if levelField == nil {
-		levelField = fieldByName(f, "level")
+	// Each row takes its level from the first of these with a value.
+	var levelFields []*data.Field
+	for _, name := range []string{"severity", "level"} {
+		if fld := fieldByName(f, name); fld != nil {
+			levelFields = append(levelFields, fld)
+		}
 	}
 
 	// Resolve label columns once before the row loop, skipping missing ones.
@@ -79,9 +82,12 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 				e.labels[model.LabelName(sanitizeName(col.name))] = model.LabelValue(valueString(col.field, row))
 			}
 		}
-		if _, set := e.labels["level"]; !set && levelField != nil {
-			if _, ok := levelField.ConcreteAt(row); ok {
-				e.labels["level"] = model.LabelValue(valueString(levelField, row))
+		if _, set := e.labels["level"]; !set {
+			for _, lf := range levelFields {
+				if _, ok := lf.ConcreteAt(row); ok {
+					e.labels["level"] = model.LabelValue(valueString(lf, row))
+					break
+				}
 			}
 		}
 		for _, col := range metadataCols {

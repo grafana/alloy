@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/alecthomas/units"
 	"github.com/prometheus/prometheus/storage"
@@ -338,6 +339,12 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}, urlOptionsSet b
 		}
 		if q.Logs.EntryLimit < 0 {
 			errs = append(errs, errors.New("logs.entry_limit must not be negative"))
+		}
+		for _, c := range q.Logs.StructuredMetadataColumns {
+			// Loki rejects a name that normalizes to only underscores.
+			if !strings.ContainsFunc(c, func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }) {
+				errs = append(errs, fmt.Errorf("structured_metadata_columns entry %q needs at least one letter or digit", c))
+			}
 		}
 		for _, c := range q.Logs.LabelColumns {
 			if slices.Contains(q.Logs.StructuredMetadataColumns, c) {

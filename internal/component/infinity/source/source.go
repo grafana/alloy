@@ -396,6 +396,7 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 			c.opts.Logger.Warn("failed to send stale markers", "query", s.name, "err", sendErr)
 		}
 		qs.tracker.replace([]sample{up})
+		c.metrics.samplesSent.WithLabelValues(s.name).Inc()
 		return err
 	}
 

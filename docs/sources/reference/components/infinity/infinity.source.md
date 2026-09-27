@@ -150,10 +150,12 @@ The following strings are valid `source` values:
 * `"inline"`: Use the `data` argument as the response body, without making an HTTP request.
 
 When `source` is `"url"`, the `url` argument is required, and must be an absolute `http` or `https` URL.
-When `source` is `"inline"`, the `data` argument is required.
+When `source` is `"inline"`, the `data` argument is required, and `url` and the `url_options` block must not be set.
+The `csv_options` block is valid only when `type` is `"csv"` or `"tsv"`.
 
 Set `filter_expression` to drop rows after parsing.
 Set `summarize_expression` to replace the frame with a single row that summarizes it; `summarize_by` groups rows before summarizing, and `summarize_alias` names the resulting column.
+Setting `summarize_by` or `summarize_alias` without `summarize_expression` is a configuration error.
 
 `infinity.source` post-processes each parsed frame in a fixed order: computed columns, then `filter_expression`, then the summary when `summarize_expression` is set, and finally each `transform` block, in the order the blocks appear in the configuration.
 
@@ -216,6 +218,7 @@ The `logs` block configures a query with `format = "logs"`.
 
 A `logs` block requires `format = "logs"` on the enclosing `query` block.
 A value of `0` for `entry_limit` disables the limit.
+Each `structured_metadata_columns` entry must have at least one letter or digit, because Loki rejects a name that has only underscores after normalization.
 Refer to [Logs](#logs-1) for how `infinity.source` maps rows to log entries using these arguments.
 
 ### `metrics`
@@ -240,6 +243,8 @@ Specify `transform.limit` zero or more times.
 | Name    | Type     | Description                      | Default | Required |
 | ------- | -------- | ---------------------------------- | ------- | -------- |
 | `limit` | `number` | Maximum number of rows to keep.    |         | yes      |
+
+The `limit` argument must be greater than `0`.
 
 ### `transform.filter`
 
@@ -303,9 +308,23 @@ The following strings are valid `body_type` values:
 A request body with `method = "GET"` is a configuration error.
 A `type = "graphql"` query on the enclosing `query` block requires `method = "POST"` and `body_type = "graphql"`; setting either argument to a conflicting value is a configuration error.
 The `body_graphql_variables` argument must be valid JSON when set.
+A `type = "graphql"` query with `source = "url"` requires `body_graphql_query`.
+
+Each body argument must match `body_type`, or it's a configuration error:
+
+* `body` and `body_content_type` require `body_type = "raw"`.
+* `body_form` requires `body_type = "form-data"` or `body_type = "x-www-form-urlencoded"`.
+* `body_graphql_query` and `body_graphql_variables` require `body_type = "graphql"`.
 
 `infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the request URL's existing query string.
 A header name in both `headers` and `client`'s `http_headers` argument is a configuration error, and so is a parameter name in both `params` and the `url` argument's own query string.
+Header names are case-insensitive, so two `headers` keys that differ only in case, such as `"x-key"` and `"X-Key"`, are a configuration error.
+
+When neither `headers` nor `client`'s `http_headers` sets an `Accept` header, `infinity.source` sends a default `Accept` header for the query's `type`:
+
+* `"json"` and `"graphql"`: `application/json;q=0.9,text/plain`
+* `"csv"` and `"tsv"`: `text/csv`
+* `"xml"` and `"html"`: `text/xml;q=0.9,text/plain`
 
 ### `client`
 
@@ -428,7 +447,7 @@ infinity.source "inline_csv" {
 * Timestamp: the first time column with a non-nil value in the row. If no time column has a value, `infinity.source` uses the poll's start time.
 * Line: the value of the `logs` block's `line_column` column, converted to a string. If the frame has no column with that name, the line is a JSON object of every column in the row, in column order.
 * Labels: `job`, `instance`, plus each column listed in `label_columns` that has a non-nil value in the row. `infinity.source` ignores a name in `label_columns` that isn't a column in the frame.
-* Level: `infinity.source` sets the `level` label from a column named `severity` or `level`, unless `label_columns` already maps a column to a label named `level`. The `level` value also stays as an OpenTelemetry log attribute.
+* Level: `infinity.source` sets the `level` label from the `severity` column, or from the `level` column when `severity` has no value in that row, unless `label_columns` already maps a column to a label named `level`. The `level` value also stays as an OpenTelemetry log attribute.
 * Structured metadata: each column listed in `structured_metadata_columns` that has a non-nil value in the row.
 * `job` and `instance` map to the OpenTelemetry resource attributes `service.name` and `service.instance.id`.
 * If the entry count for a poll would exceed the `logs` block's `entry_limit`, the poll fails, and `infinity.source` sends no entries for it.

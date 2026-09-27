@@ -292,6 +292,13 @@ query "q" {
 		body_form = { "a" = "b" }
 	}
 }`, ""},
+		{"metadata column without letters or digits", `query "q" {
+	url = "http://x"
+	format = "logs"
+	logs {
+		structured_metadata_columns = ["a-b", "--"]
+	}
+}`, `structured_metadata_columns entry "--" needs at least one letter or digit`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -898,3 +898,18 @@ func TestRemovedQueryMarkersOnlyFromOwner(t *testing.T) {
 	require.NotNil(t, v)
 	require.False(t, value.IsStaleNaN(v.Value), "a node that lost ownership must not mark the series stale")
 }
+
+// TestFailedPollCountsUp checks that the up=0 sample of a failed poll is
+// counted in infinity_source_samples_sent_total.
+func TestFailedPollCountsUp(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+
+	app := testappender.NewCollectingAppender()
+	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.GreaterOrEqual(ct, promtestutil.ToFloat64(c.metrics.samplesSent.WithLabelValues("q")), 1.0)
+	}, 2*time.Second, 20*time.Millisecond)
+}

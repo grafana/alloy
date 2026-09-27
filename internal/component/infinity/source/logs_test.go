@@ -99,3 +99,22 @@ func TestRowJSONNonFinite(t *testing.T) {
 	require.Len(t, got, 1)
 	require.JSONEq(t, `{"a":"+Inf","b":"NaN","c":"-Inf","d":1.5}`, got[0].line)
 }
+
+// TestFrameToEntriesLevelPerRow checks that each row takes its level from
+// severity, or from level when severity is null in that row.
+func TestFrameToEntriesLevelPerRow(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		source = "inline"
+		format = "logs"
+		data   = "x"
+	}`)
+	require.NoError(t, err)
+	f, err := buildFrame(s, []byte(`[{"body":"a","level":"warn"},{"body":"b","severity":"error"}]`))
+	require.NoError(t, err)
+
+	got, err := frameToEntries(f, "j", "i", s.logs, time.Now())
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	require.EqualValues(t, "warn", got[0].labels["level"])
+	require.EqualValues(t, "error", got[1].labels["level"])
+}
