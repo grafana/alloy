@@ -455,8 +455,10 @@ func TestParserPanicFailsOnlyThatQuery(t *testing.T) {
 	}, 2*time.Second, 20*time.Millisecond)
 }
 
-// TestParseBoundedByTimeout uses a jq expression that never ends. The poll
-// must fail with reason timeout, and Run must still stop at once.
+// TestParseBoundedByTimeout uses a jq expression that runs far longer than
+// timeout (0.8s, or 15s with -race, when measured) and then ends,
+// so it does not leave a goroutine that uses CPU for the rest of the tests.
+// The poll must fail with reason timeout, and Run must still stop at once.
 func TestParseBoundedByTimeout(t *testing.T) {
 	args, err := parse(`
 		interval = "1s"
@@ -465,7 +467,7 @@ func TestParseBoundedByTimeout(t *testing.T) {
 			source        = "inline"
 			data          = "[1]"
 			parser        = "jq-backend"
-			root_selector = "until(false; .)"
+			root_selector = "reduce range(0; 10000000) as $i (0; .+1)"
 		}`)
 	require.NoError(t, err)
 	app := testappender.NewCollectingAppender()
