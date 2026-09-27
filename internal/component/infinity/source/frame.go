@@ -108,11 +108,12 @@ func jsonToFrame(s querySpec, body string) (*data.Frame, error) {
 }
 
 // maxFrameCells limits rows times columns of one JSON, GraphQL, XML or
-// HTML frame. gframer makes
-// one column for each distinct key in any row, and gives every column a
-// cell for every row. A small body with many distinct keys can so need many
-// gigabytes. 10 million cells is far more than a normal API response needs.
-const maxFrameCells = 10_000_000
+// HTML frame. gframer makes one column for each distinct key in any row,
+// and gives every column a cell for every row. A small body with many
+// distinct keys can so need many gigabytes. 2 million cells is far more
+// than a normal API response needs, but one poll at this budget can still
+// use a few hundred MB.
+const maxFrameCells = 2_000_000
 
 // checkFrameSize estimates the cells gframer allocates for the JSON in
 // selected, before it allocates them. numColumns is the number of column

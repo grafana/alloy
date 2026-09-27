@@ -462,14 +462,16 @@ infinity.source "inline_csv" {
 * Metrics show the current state only. `infinity.source` doesn't ingest historical points.
 * Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
 * `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the UQL, GROQ, and simple parsers.
-* A JSON, GraphQL, XML, or HTML frame can have at most 10,000,000 cells, where cells are rows times columns.
+* A JSON, GraphQL, XML, or HTML frame can have at most 2,000,000 cells, where cells are rows times columns.
   The parser makes one column for each distinct key in any row, so a small response with many distinct keys can need a very large frame.
   `infinity.source` checks this after `root_selector` and before it builds the frame, and fails the poll with the `too_large` reason.
+  One poll near this budget can still use a few hundred MB of memory. Set `metrics.series_limit` or `logs.entry_limit` to limit what a query sends.
 * `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
 * The parser libraries can't stop a `jq` or JSONata expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
   While it runs, `infinity.source` starts no new poll for that query.
   Each skipped poll fails with the `timeout` reason and the message `the previous poll is still running`.
+  A configuration reload that changes `interval` while a query parses has the same effect: the first poll of the new loop can fail with this message until the old parse ends.
   A JSONata expression with unbounded recursion can crash {{< param "PRODUCT_NAME" >}} with a stack overflow, which Go can't recover from.
   Keep `root_selector` expressions simple.
 

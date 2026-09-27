@@ -444,6 +444,8 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 // running in the worker. So a query starts no new worker while its last
 // one still runs, and this keeps it to one abandoned worker.
 func fetchFrame(ctx context.Context, g *generation, s querySpec, workers *atomic.Int32, parse parseFunc) (*data.Frame, error) {
+	// A reload that changes the interval stops the loop and abandons its
+	// running worker. So the first poll of the new loop can also get here.
 	if workers.Load() > 0 {
 		return nil, newPollError(reasonTimeout, errors.New("the previous poll is still running"))
 	}

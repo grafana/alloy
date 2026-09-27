@@ -305,3 +305,14 @@ func TestBuildFrameRejectsHugeXMLFrame(t *testing.T) {
 	require.Equal(t, reasonTooLarge, reasonOf(err))
 	require.Less(t, time.Since(start), time.Second)
 }
+
+// TestBuildFrameBudget checks the size of the budget: 1,500 rows with 1,500
+// distinct keys need 2.25 million cells.
+func TestBuildFrameBudget(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://x"
+	}`)
+	require.NoError(t, err)
+	_, err = buildFrame(s, distinctKeyRows(1_500))
+	require.Equal(t, reasonTooLarge, reasonOf(err))
+}

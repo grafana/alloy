@@ -276,7 +276,7 @@ query "q" {
 	source = "inline"
 	data = "[]"
 	url_options {
-		method = "GET"
+		method = "POST"
 	}
 }`, `url_options must be empty when source is "inline"`},
 		{"valid inline graphql", `query "q" {
@@ -329,4 +329,25 @@ func TestValidateOutputs(t *testing.T) {
 
 	logs.ForwardTo.Logs = []loki.LogsReceiver{loki.NewLogsReceiver()}
 	require.NoError(t, validateOutputs(logs))
+}
+
+// TestValidateIdempotent checks that Validate accepts the defaults it set
+// itself on an earlier call.
+func TestValidateIdempotent(t *testing.T) {
+	for _, cfg := range []string{
+		`query "q" {
+			source = "inline"
+			data   = "[]"
+		}`,
+		`query "q" {
+			type   = "graphql"
+			source = "inline"
+			data   = "{}"
+		}`,
+		minimalQuery,
+	} {
+		args, err := parse(cfg)
+		require.NoError(t, err)
+		require.NoError(t, args.Validate())
+	}
 }

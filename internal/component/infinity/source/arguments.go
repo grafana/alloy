@@ -218,14 +218,12 @@ func (a *Arguments) Validate() error {
 	seen := map[string]struct{}{}
 	for i := range a.Queries {
 		q := &a.Queries[i]
-		// Check this before applyDefaults sets method and body_type.
-		urlOptionsSet := !q.URLOptions.isZero()
 		q.applyDefaults()
 		if _, dup := seen[q.Name]; dup {
 			errs = append(errs, fmt.Errorf("duplicate query name %q", q.Name))
 		}
 		seen[q.Name] = struct{}{}
-		if err := q.validate(clientHeaders, urlOptionsSet); err != nil {
+		if err := q.validate(clientHeaders); err != nil {
 			errs = append(errs, fmt.Errorf("query %q: %w", q.Name, err))
 		}
 	}
@@ -263,7 +261,7 @@ func (q *QueryBlock) applyDefaults() {
 	}
 }
 
-func (q *QueryBlock) validate(clientHeaders map[string]struct{}, urlOptionsSet bool) error {
+func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 	var errs []error
 
 	if !slices.Contains(supportedTypes, q.Type) {
@@ -313,7 +311,7 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}, urlOptionsSet b
 		if q.URL != "" {
 			errs = append(errs, errors.New(`url must be empty when source is "inline"`))
 		}
-		if urlOptionsSet {
+		if q.URLOptions.isSet(q.Type) {
 			errs = append(errs, errors.New(`url_options must be empty when source is "inline"`))
 		}
 	case "azure-blob", "reference", "expression", "random-walk":
@@ -391,10 +389,18 @@ func (t Transform) kinds() int {
 	return n
 }
 
-func (o *URLOptions) isZero() bool {
-	return o.Method == "" && len(o.Headers) == 0 && len(o.Params) == 0 && o.BodyType == "" &&
-		o.Body.Value == "" && o.BodyContentType == "" && len(o.BodyForm) == 0 &&
-		o.BodyGraphQLQuery.Value == "" && o.BodyGraphQLVariables == ""
+// isSet reports whether o has any value other than the defaults that
+// applyDefaults sets for queryType. It ignores those defaults, so Validate
+// gives the same result when it runs twice on the same Arguments.
+func (o *URLOptions) isSet(queryType string) bool {
+	defMethod, defBodyType := http.MethodGet, bodyTypeRaw
+	if queryType == typeGraphQL {
+		defMethod, defBodyType = http.MethodPost, typeGraphQL
+	}
+	return (o.Method != "" && o.Method != defMethod) || (o.BodyType != "" && o.BodyType != defBodyType) ||
+		len(o.Headers) > 0 || len(o.Params) > 0 ||
+		o.Body.Value != "" || o.BodyContentType != "" || len(o.BodyForm) > 0 ||
+		o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables != ""
 }
 
 func (o *URLOptions) validate(queryType, source string, clientHeaders map[string]struct{}) []error {
