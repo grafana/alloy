@@ -542,7 +542,6 @@ require (
 	github.com/grafana/infinity-libs/lib/go/jsonframer v1.3.0 // indirect
 	github.com/grafana/infinity-libs/lib/go/transformations v1.1.1 // indirect
 	github.com/grafana/infinity-libs/lib/go/utils v1.0.1 // indirect
-	github.com/grafana/infinity-libs/lib/go/xmlframer v1.0.4 // indirect
 	github.com/grafana/jfr-parser v0.9.3 // indirect
 	github.com/grafana/jfr-parser/pprof v0.0.4 // indirect
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34 // indirect

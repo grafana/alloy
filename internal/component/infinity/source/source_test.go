@@ -838,18 +838,22 @@ func TestCancelledEmitSendsNothing(t *testing.T) {
 }
 
 func TestHealthRedactsRedirectURL(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(redirectToSecret))
-	defer srv.Close()
+	for name, location := range secretRedirects {
+		t.Run(name, func(t *testing.T) {
+			srv := httptest.NewServer(redirectTo(location))
+			defer srv.Close()
 
-	app := testappender.NewCollectingAppender()
-	c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
-	require.NoError(t, err)
+			app := testappender.NewCollectingAppender()
+			c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
+			require.NoError(t, err)
 
-	require.EventuallyWithT(t, func(ct *assert.CollectT) {
-		h := c.CurrentHealth()
-		assert.Equal(ct, component.HealthTypeUnhealthy, h.Health)
-		assert.NotContains(ct, h.Message, "supersecret")
-	}, 2*time.Second, 20*time.Millisecond)
+			require.EventuallyWithT(t, func(ct *assert.CollectT) {
+				h := c.CurrentHealth()
+				assert.Equal(ct, component.HealthTypeUnhealthy, h.Health)
+				assert.NotContains(ct, h.Message, "supersecret")
+			}, 2*time.Second, 20*time.Millisecond)
+		})
+	}
 }
 
 // switchOwner is a cluster where this node owns every key until other is set.

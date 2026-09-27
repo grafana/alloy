@@ -278,3 +278,30 @@ func TestBuildFrameSizeCountsColumnBlocks(t *testing.T) {
 	_, err = buildFrame(s, distinctKeyRows(5_000))
 	require.NoError(t, err)
 }
+
+// distinctChildXML returns n repeated item elements, each with its own
+// child name. The XML parser turns them into rows with distinct keys.
+func distinctChildXML(n int) []byte {
+	var b strings.Builder
+	b.WriteString("<root>")
+	for i := range n {
+		fmt.Fprintf(&b, "<item><k%d>1</k%d></item>", i, i)
+	}
+	b.WriteString("</root>")
+	return []byte(b.String())
+}
+
+func TestBuildFrameRejectsHugeXMLFrame(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url           = "http://x"
+		type          = "xml"
+		root_selector = "root.item"
+	}`)
+	require.NoError(t, err)
+
+	start := time.Now()
+	_, err = buildFrame(s, distinctChildXML(5_000))
+	require.Error(t, err)
+	require.Equal(t, reasonTooLarge, reasonOf(err))
+	require.Less(t, time.Since(start), time.Second)
+}

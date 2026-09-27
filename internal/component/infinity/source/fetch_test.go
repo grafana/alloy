@@ -139,24 +139,42 @@ func TestFetchFrameRedactsBuildError(t *testing.T) {
 	require.NotContains(t, err.Error(), "supersecret")
 }
 
-func redirectToSecret(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Location", "https://files.example/%zz?token=supersecret")
-	w.WriteHeader(http.StatusFound)
+// secretRedirects are bad redirect Location values. net/http writes each
+// one into its error text.
+var secretRedirects = map[string]string{
+	"query with scheme":    "https://files.example/%zz?token=supersecret",
+	"query without scheme": "/%zz?token=supersecret",
+	"userinfo":             "https://user:supersecret@files.example/%zz",
 }
 
-// TestFetchRedactsRedirectURL checks a bad redirect Location. net/http puts
-// it inside the error text, below the outer *url.Error.
-func TestFetchRedactsRedirectURL(t *testing.T) {
-	srv := serve(redirectToSecret)
-	defer srv.Close()
+func redirectTo(location string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", location)
+		w.WriteHeader(http.StatusFound)
+	}
+}
 
-	_, err := doFetch(t.Context(), srv.URL, 1024, nil)
-	require.Error(t, err)
-	require.NotContains(t, err.Error(), "supersecret")
+// TestFetchRedactsRedirectURL checks bad redirect Location values. net/http
+// puts them inside the error text, below the outer *url.Error.
+func TestFetchRedactsRedirectURL(t *testing.T) {
+	for name, location := range secretRedirects {
+		t.Run(name, func(t *testing.T) {
+			srv := serve(redirectTo(location))
+			defer srv.Close()
+
+			_, err := doFetch(t.Context(), srv.URL, 1024, nil)
+			require.Error(t, err)
+			require.NotContains(t, err.Error(), "supersecret")
+		})
+	}
 }
 
 func TestScrubURLs(t *testing.T) {
 	in := `Get "http://a.example/x?key=abc": failed to parse Location header "https://files.example/%zz?token=supersecret": bad`
 	want := `Get "http://a.example/x?key=REDACTED": failed to parse Location header "https://files.example/%zz?REDACTED": bad`
+	require.Equal(t, want, scrubURLs(in))
+
+	in = `parse "/%zz?token=s1": bad; parse "https://user:pw@files.example/%zz": bad`
+	want = `parse "/%zz?REDACTED": bad; parse "https://files.example/%zz": bad`
 	require.Equal(t, want, scrubURLs(in))
 }

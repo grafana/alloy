@@ -462,7 +462,7 @@ infinity.source "inline_csv" {
 * Metrics show the current state only. `infinity.source` doesn't ingest historical points.
 * Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
 * `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the UQL, GROQ, and simple parsers.
-* A JSON or GraphQL frame can have at most 10,000,000 cells, where cells are rows times columns.
+* A JSON, GraphQL, XML, or HTML frame can have at most 10,000,000 cells, where cells are rows times columns.
   The parser makes one column for each distinct key in any row, so a small response with many distinct keys can need a very large frame.
   `infinity.source` checks this after `root_selector` and before it builds the frame, and fails the poll with the `too_large` reason.
 * `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
@@ -513,8 +513,9 @@ query "orders" failed: status 503 (and 2 other queries)
 ```
 
 Health messages and logs never show a URL's query parameter values; `infinity.source` replaces every query parameter value with `REDACTED`.
-This includes URLs inside HTTP errors, for example a bad redirect `Location` header.
+This includes URLs inside HTTP errors, for example a bad redirect `Location` header, with or without a scheme.
 When such a URL doesn't parse, `infinity.source` replaces its whole query string with `REDACTED`.
+`infinity.source` also removes user info, such as `user:password@`, from every URL in these messages.
 
 ## Debug information
 

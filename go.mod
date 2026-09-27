@@ -942,6 +942,7 @@ require (
 require (
 	github.com/99designs/gqlgen v0.17.91
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
+	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad
 	github.com/charmbracelet/huh v1.0.0
 	github.com/google/cadvisor/lib v0.0.0
 	github.com/grafana/grafana-plugin-sdk-go v0.292.1
@@ -949,7 +950,6 @@ require (
 	github.com/grafana/infinity-libs/lib/go/gframer v1.1.13
 	github.com/grafana/infinity-libs/lib/go/jsonframer v1.3.0
 	github.com/grafana/infinity-libs/lib/go/transformations v1.1.1
-	github.com/grafana/infinity-libs/lib/go/xmlframer v1.0.4
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.161.0
@@ -1021,7 +1021,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/rds v1.123.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.9.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect

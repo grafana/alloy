@@ -1332,8 +1332,6 @@ github.com/grafana/infinity-libs/lib/go/transformations v1.1.1 h1:cNstq+7XGaQ16u
 github.com/grafana/infinity-libs/lib/go/transformations v1.1.1/go.mod h1:EWOERYo6wDM6lSmExyqN+H12gyaw+gIVm1jg2Vcd8sI=
 github.com/grafana/infinity-libs/lib/go/utils v1.0.1 h1:eA/kfSTtnzutzajmijIG9LUunPpAR9epvdAB+khDCmk=
 github.com/grafana/infinity-libs/lib/go/utils v1.0.1/go.mod h1:+hkrwV9ib8dsTCQDNh29PPE8Cnr9sy+w2XzuhrYqPTU=
-github.com/grafana/infinity-libs/lib/go/xmlframer v1.0.4 h1:0hUXH8tsLy0qEWF/DFauVdDUEriF36CF2hPjyhJY+OY=
-github.com/grafana/infinity-libs/lib/go/xmlframer v1.0.4/go.mod h1:gcYFYTb0RoLbxWcnLH9tTojrXpSET6WVmZRBO+6bxos=
 github.com/grafana/jfr-parser v0.9.3 h1:rMrDfV7U5Ycz12/d57sQrN7UHmt1N6Wi6SSuNKi8hyk=
 github.com/grafana/jfr-parser v0.9.3/go.mod h1:KYbwbvXtBoOsYw9b9w8R01dbM5oVfopljq3hA1WDJMQ=
 github.com/grafana/jfr-parser/pprof v0.0.4 h1:QIpA0tTgG17m/l2B6X0tqf8dZu+AN/UY6B3aYLfAFtY=

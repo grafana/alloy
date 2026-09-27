@@ -79,20 +79,36 @@ func redactURLErrors(err error) error {
 	return err
 }
 
-// urlInTextRE matches a URL with a query in error text. Quotes and spaces
-// end the match, because Go error text quotes URLs.
-var urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#]*\?[^\s"'#]*`)
+var (
+	// urlInTextRE matches a URL with a query in error text. Quotes and
+	// spaces end the match, because Go error text quotes URLs.
+	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#]*\?[^\s"'#]*`)
+	// quotedQueryRE matches a quoted token with a query, for example a
+	// relative redirect Location that has no scheme.
+	quotedQueryRE = regexp.MustCompile(`"([^"\s]*)\?[^"]*"`)
+	// userinfoRE matches user info after "//", which can hold a password.
+	userinfoRE = regexp.MustCompile(`//[^/?#\s"'@]+@`)
+)
 
-// scrubURLs redacts each URL with a query in msg. A URL that does not parse
-// loses its whole query.
+// scrubURLs removes user info and redacts each query in msg. A URL that
+// parses keeps its param names. Any other query loses its whole text.
 func scrubURLs(msg string) string {
-	return urlInTextRE.ReplaceAllStringFunc(msg, func(m string) string {
+	msg = userinfoRE.ReplaceAllString(msg, "//")
+	msg = urlInTextRE.ReplaceAllStringFunc(msg, func(m string) string {
 		u, err := url.Parse(m)
 		if err != nil {
 			base, _, _ := strings.Cut(m, "?")
 			return base + "?REDACTED"
 		}
 		return redactURL(u.String())
+	})
+	return quotedQueryRE.ReplaceAllStringFunc(msg, func(m string) string {
+		if strings.Contains(m, "://") {
+			// The URL pass above already redacted it.
+			return m
+		}
+		base, _, _ := strings.Cut(m, "?")
+		return base + `?REDACTED"`
 	})
 }
 
