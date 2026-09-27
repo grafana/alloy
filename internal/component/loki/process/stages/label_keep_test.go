@@ -4,8 +4,45 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 )
+
+func TestValidateLabelslKeepConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+		err    error
+	}{
+		{
+			name:   "valid single label",
+			config: `values = [ "testLabel1" ]`,
+		},
+		{
+			name:   "valid multiple labels",
+			config: `values = [ "testLabel1", "testLabel2" ]`,
+		},
+		{
+			name:   "empty values returns err",
+			config: `values = [ ]`,
+			err:    errEmptyLabelKeepStageConfig,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg LabelKeepConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+}
 
 func TestLabelKeepStage(t *testing.T) {
 	now := time.Now()

@@ -157,10 +157,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelKeepConfig != nil:
-		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
 	case cfg.LabelDropConfig != nil:
 		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {
