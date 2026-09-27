@@ -125,6 +125,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.162.0
