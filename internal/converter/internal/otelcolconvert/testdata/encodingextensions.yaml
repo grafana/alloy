@@ -1,0 +1,23 @@
+extensions:
+  text_encoding/custom:
+    encoding: iso-8859-1
+    marshaling_separator: " | "
+    unmarshaling_separator: "\\s*\\|\\s*"
+  json_log_encoding/custom:
+    array_mode: false
+    mode: body_with_inline_attributes
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  debug:
+
+service:
+  extensions: [text_encoding/custom, json_log_encoding/custom]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [debug]

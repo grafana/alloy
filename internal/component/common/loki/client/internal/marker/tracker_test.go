@@ -19,6 +19,7 @@ func TestTracker(t *testing.T) {
 		f.MarkSegment(10)
 
 		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		st.Start()
 		defer st.Stop()
 
 		require.Equal(t, 10, st.LastMarkedSegment())
@@ -30,6 +31,7 @@ func TestTracker(t *testing.T) {
 		f.MarkSegment(10)
 
 		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		st.Start()
 		defer st.Stop()
 
 		st.UpdateReceivedData(11, 10)
@@ -48,6 +50,7 @@ func TestTracker(t *testing.T) {
 		f.MarkSegment(10)
 
 		st := NewSegmentTracker(f, 2*time.Second, logger, metrics)
+		st.Start()
 		defer st.Stop()
 
 		// segment 11 has 5 pending data items, and will become old after 2 secs
