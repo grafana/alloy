@@ -6,14 +6,14 @@ import (
 	"github.com/grafana/alloy/sqlfingerprint"
 )
 
-// TestV4Fingerprints pins the external protocol independently of pair equality.
+// TestV5Fingerprints pins the external protocol independently of pair equality.
 // Updating these values requires an intentional fingerprint-version decision.
-func TestV4Fingerprints(t *testing.T) {
+func TestV5Fingerprints(t *testing.T) {
 	f := newFingerprinter(t, sqlfingerprint.Options{})
 	for dialect, expected := range map[sqlfingerprint.Dialect]string{
-		sqlfingerprint.PostgreSQL: "v4:postgresql:bcd92c00f72b11f8814bfba0c7d2e2bc8d684a7bfaa99b55780fdc4c350a5dcf",
-		sqlfingerprint.MySQL:      "v4:mysql:0c4aeb2dce41b4a95b5b455614a4cf3e215c8624420ade0ab6ac554203c4c5d3",
-		sqlfingerprint.SQLServer:  "v4:microsoft.sql_server:4a1f8aee17d3eeb8373ccbec66378901772e9a3910e61b62c9e323bd154ffef8",
+		sqlfingerprint.PostgreSQL: "v5:postgresql:2e42dec05173c67fdb07c7cd7eee79ca36dc0239ec889f0c9f57307f4ca208f6",
+		sqlfingerprint.MySQL:      "v5:mysql:874d773502cb5173d39da1d699bd20772475e7ced06780ec1f6e1d41a929116a",
+		sqlfingerprint.SQLServer:  "v5:microsoft.sql_server:ba933ec706bf87f93b01880a93916bb4cd5bbe684ba8a080724ba7d1df9ce6aa",
 	} {
 		if got := one(t, f, dialect, "SELECT id FROM orders WHERE id=42"); got != expected {
 			t.Errorf("%s protocol changed: got %s, want %s", dialect, got, expected)

@@ -198,6 +198,10 @@ func FuzzFingerprint(f *testing.F) {
 		"INSERT IGNORE INTO app.t (b,a) VALUES (...) /* , ... */",
 		"INSERT INTO t (b,a) VALUES (LOWER(?),?)",
 		"INSERT INTO t (b,a,) VALUES (?,?)",
+		"SELECT %(id)s::INTEGER",
+		"SELECT %(missing",
+		"SELECT rating%(scale)s FROM reviews WHERE id=%(id)s",
+		"SELECT $$%(inside)s$$, %(id)s",
 	} {
 		f.Add(seed)
 	}

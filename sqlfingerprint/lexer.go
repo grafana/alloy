@@ -40,7 +40,7 @@ func (l *lexer) statement() ([]token, Reason, bool) {
 	var tokens []token
 	var reason Reason
 	for l.pos < len(l.input) {
-		t, problem, fatal := l.next()
+		t, problem, fatal := l.next(tokens)
 		if problem != "" {
 			reason = problem
 		}
@@ -64,7 +64,7 @@ func (l *lexer) statement() ([]token, Reason, bool) {
 }
 
 // next dispatches lexical constructs before consuming individual punctuation.
-func (l *lexer) next() (token, Reason, bool) {
+func (l *lexer) next(previous []token) (token, Reason, bool) {
 	c := l.input[l.pos]
 	if isSpace(c) {
 		l.pos++
@@ -76,8 +76,13 @@ func (l *lexer) next() (token, Reason, bool) {
 	if strings.HasPrefix(l.input[l.pos:], "/*") {
 		return l.blockComment()
 	}
-	if l.dialect == PostgreSQL && c == '$' {
-		return l.dollar()
+	if l.dialect == PostgreSQL {
+		if c == '$' {
+			return l.dollar()
+		}
+		if strings.HasPrefix(l.input[l.pos:], "%(") && postgresValueExpected(previous) {
+			return l.postgresNamedParameter()
+		}
 	}
 	if c == '\'' || c == '"' || c == '`' || (c == '[' && l.dialect == SQLServer) {
 		t, reason, fatal := l.quoted(c, false)
