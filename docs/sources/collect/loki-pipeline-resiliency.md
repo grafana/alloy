@@ -222,11 +222,11 @@ To enable it, complete the following steps:
    A component with several `endpoint` blocks counts its volume once per endpoint, while the WAL stores each entry once.
    Components without a `wal` block add to the total without writing anything to the storage path.
 
-   After the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes:
+   After the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes, aggregated the same way as the sizing query above:
 
    ```promql
-   sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_wal_writer_reclaimed_space[6h]))
-     / sum by (<INSTANCE_LABEL>, component_id) (rate(loki_write_batch_size_bytes_sum[6h]))
+   sum by (<INSTANCE_LABEL>) (rate(loki_write_wal_writer_reclaimed_space[6h]))
+     / sum by (<INSTANCE_LABEL>) (rate(loki_write_batch_size_bytes_sum[6h]))
    ```
 
    Multiply the sizing result by that ratio, then leave headroom on top.
