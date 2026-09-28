@@ -15,7 +15,7 @@ import (
 
 // Version identifies the canonicalization and hash format. Changes to query
 // equivalence rules must increment this value, even if the API stays the same.
-const Version = "v1"
+const Version = "v2"
 
 // Dialect selects the lexical and database statistics normalization rules.
 type Dialect string

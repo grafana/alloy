@@ -30,12 +30,17 @@ not read statistics itself. See [the example configuration](../example/sql-finge
 
 ## Correlation contract
 
-Fingerprints have the form `v1:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
+Fingerprints have the form `v2:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
 a version and dialect prefix followed by tokens framed with a kind byte and a
 big-endian, four-byte UTF-8 length. This avoids ambiguity between token boundaries.
 The fingerprint protocol includes token kinds and normalization rules; changing
 any equivalence rule requires a new version. It is independent of native database
 query IDs, sessions, and plans.
+
+Version 2 recognizes PostgreSQL question-mark parameters without requiring a
+trailing comment marker. Its fingerprints differ from version 1 for all dialects,
+since the protocol version is included in the hash. Use version 2 in both the
+trace processor and the service that fingerprints database statistics.
 
 Values and bind names are erased. SQL operators, aliases, explicit schema names,
 and identifier case are retained, except PostgreSQL's unquoted name folding.
@@ -64,8 +69,10 @@ The Go implementation is independent; it doesn't embed database server source.
 The PostgreSQL adapter treats any final standalone `?` token as an obfuscated
 trailing comment, such as Rails query tags, regardless of the preceding clause.
 For example, both `ORDER BY name ASC ?` and `SELECT * FROM restaurants ?` match
-those statements followed by `/* comment */`. Remaining `?` tokens in value
-positions are normalized as parameters, so `= ? ?` also matches `= $1 /* comment */`.
+those statements followed by `/* comment */`. Question marks in value positions
+are normalized as parameters even without a trailing comment: Java's
+`WHERE ?=? ORDER BY name` matches `WHERE $1=$2 ORDER BY name`.
+After removing a comment marker, `= ? ?` also matches `= $1 /* comment */`.
 Quoted question marks and infix `?`, `?|`, and `?&` JSON operators are preserved.
 The remaining statement must still pass validation. This assumes a terminal `?`
 is a comment marker, not a missing value or an incomplete JSON operator expression.
@@ -111,7 +118,7 @@ in the backend.
 For an array attribute, Tempo can test element equality:
 
 ```traceql
-{ span.db.query.fingerprint = "v1:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v2:postgresql:<HASH>" }
 ```
 
 Replace `<HASH>` with the hash returned by this package. Use an array-capable

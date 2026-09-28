@@ -58,7 +58,7 @@ The legacy dialect values `postgres` and `mssql` are also accepted.
 Resource attributes aren't used to select the dialect.
 
 The output attribute `db.query.fingerprint` is always an array of unique strings, including for a single statement.
-Values have the form `v1:<DIALECT>:<SHA256>`.
+Values have the form `v2:<DIALECT>:<SHA256>`.
 The component replaces this attribute on recognized SQL spans and removes stale values if recomputation produces no fingerprints.
 It preserves SQL text, span timing, and other attributes.
 
@@ -183,7 +183,7 @@ Your backend can import `github.com/grafana/alloy/sqlfingerprint` and call `Fing
 For each returned value, search Tempo with an array-element equality query:
 
 ```traceql
-{ span.db.query.fingerprint = "v1:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v2:postgresql:<HASH>" }
 ```
 
 Replace _`<HASH>`_ with the returned SHA-256 value.
