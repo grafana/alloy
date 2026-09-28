@@ -317,12 +317,15 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    sum by (<INSTANCE_LABEL>, component_id, reason) (rate(loki_write_dropped_entries_total[5m])) > 0
    ```
 
-   {{< param "PRODUCT_NAME" >}} also records how long entries take to reach their final disposition.
-   This query reports the 99th percentile in seconds, which is the drain time to compare against the Loki age limits:
+   {{< param "PRODUCT_NAME" >}} also records end-to-end propagation latency, measured from entry creation until it's sent or dropped.
+   This query reports the 99th percentile in seconds:
 
    ```promql
    histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
    ```
+
+   This latency isn't the WAL backlog, and it isn't what the Loki age limits measure.
+   Use the WAL timestamp gauges for backlog expressed in log time.
 
 1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
    Three of these drop paths never increment a `loki_write_*` counter, so a metric alone won't reveal them.
@@ -343,7 +346,8 @@ Data buffered during an outage only helps if Loki accepts it once connectivity i
 Two separate Loki limits reject old entries, and they're configured independently:
 
 - **Out-of-order window**: Loki rejects an entry older than half of `max_chunk_age` for its stream, with `reason=too_far_behind`.
-  The default `max_chunk_age` of `2h` gives a one hour window. The effective value can be configured per tenant through Loki runtime overrides.
+  The default `max_chunk_age` of `2h` gives a one hour window.
+  Loki sets `max_chunk_age` in the `ingester` block, so it applies to the whole cluster rather than per tenant.
   Grafana Cloud enables automatic stream sharding by default, which reduces how often streams reach this window.
   Regular `too_far_behind` errors should be investigated with your Loki administrator or Grafana Cloud support.
 - **Absolute sample age**: Loki rejects an entry older than `reject_old_samples_max_age`, with `reason=greater_than_max_sample_age`.
@@ -373,7 +377,7 @@ Set the threshold below your own window, which is half of the cluster `max_chunk
 
 Neither limit is controlled from {{< param "PRODUCT_NAME" >}}.
 `reject_old_samples_max_age` is set in [`limits_config`][loki-limits], so a tenant override can change it.
-`max_chunk_age` is set in the Loki `ingester` block and applies to the whole cluster.
+`max_chunk_age` has no per-tenant override, so changing it requires a cluster-wide configuration change.
 
 Refer to [Enforce rate limits and push request validation][loki-validation] for what each rejection reason means.
 Refer to [Automatic stream sharding][loki-ooo] for details.
