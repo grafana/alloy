@@ -21,7 +21,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				output {}
 			`,
 			expected: Config{
-				HostIdentifiers:      []string{"host.id"},
+				HostIdentifiers:      []string{"k8s.node.name", "host.id"},
 				MetricsFlushInterval: 60 * time.Second,
 			},
 		},

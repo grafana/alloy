@@ -119,7 +119,7 @@ func newPipeline(
 	next nextFn,
 ) (*pipeline, error) {
 
-	var stages []entryProcessor
+	p := &pipeline{}
 
 	// We build stages from the back so we can pass the correct next function
 	// to the constructor.
@@ -131,19 +131,23 @@ func newPipeline(
 			next:         next,
 		})
 		if err != nil {
+			p.stop()
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
 		ep, ok := s.(entryProcessor)
 		if !ok {
+			p.stop()
+			s.Cleanup()
 			return nil, errors.New("stage has not been migrated to new interface")
 		}
 
-		stages = append(stages, ep)
+		p.stages = append(p.stages, ep)
 		next = ep.process
 	}
 
-	return &pipeline{next: next, stages: stages}, nil
+	p.next = next
+	return p, nil
 }
 
 func (p *pipeline) process(ctx context.Context, entries []Entry) error {

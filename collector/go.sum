@@ -1867,8 +1867,12 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokena
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.161.0/go.mod h1:hhHtjYWXx7zjVOuQQRRjvpkjwWgul/+O4URcCTa97Ng=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.161.0 h1:dUQXyV94sMvKYu1d+neSQq7zwWq0ej52vAZrjybT/XE=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.161.0/go.mod h1:27IS3eIgpuKROv0bkZ4WOLsIGJKW7wkWrhHeMAOf5Bw=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.161.0 h1:dSuFr6gFlddj1MJrAVfY+YkC6wJx9f1Re130l4WDt9Q=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.161.0/go.mod h1:y02V2yk3rDKHAXvhNNRjCVY49HXkVPI7SbC66bNJE+A=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.161.0 h1:24zZw03mM0sewEtNtgP6owOMhAc35pxEqDJ+h/tKrps=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.161.0/go.mod h1:BTwi3vNPyu+p1/45oZQJqPQxNC0jwKeimKvROZaugpc=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.161.0 h1:S3WZm0eipJHICQCarshXZM2vU/Vvzcy6rO5b6QFER+U=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.161.0/go.mod h1:tjC0fdXP4BquZ5kHsLdZL2dGhMtzvBEVHfONdEF9Wo4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.161.0 h1:Zr1GjMgdPW43OwUTTVhnlkmS5gsBA0hwM50HiNPJDpw=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.161.0/go.mod h1:t17mbV4YM9TV5P06wYM1wcaBBiqBJktWa6x8cS+PeN4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.161.0 h1:Bb7bd8QV88DI8g2KGcJ6lLoAuEnaFLtinnKFXrpJoao=
@@ -1985,6 +1989,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/winperfcounters v0.161.0/go.mod h1:rodMlMdmqq0dfGd6OGT8ly6scK+P/xzlLDJcAAyx8d4=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.161.0 h1:WIAcnTyBMGezqo9keZrESrRRZv7WTNLBr7vEVDbrscU=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xk8stest v0.161.0/go.mod h1:hDwYbgMU/xUGzDGTm2vZprOmK6LDh3y6Dw2HYsmL16Y=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.161.0 h1:HhgPPSNMWMweV5ICSvrRgzsRQGfPa1r8tm/mFf1XXXs=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.161.0/go.mod h1:ThlAod8EgwvCy7YisKJ9z63j1A/5fbPZN/RwiJVeOA0=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.161.0 h1:LRvR7uhi922QBL22quliXDTNMvOvx15pAEaVbbJhDzg=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.161.0/go.mod h1:Z5vTfM4nCUehjw4DDvKJlNpet5BP7R7HBrwG9OzqsFQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.161.0 h1:8e+zbTFP8GaC6D8RTNzwh7JvcahVhZGvxOnsW86AaA8=

@@ -784,6 +784,64 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 	})
 }
 
+func TestPartitionProcessing(t *testing.T) {
+	convert := func(t *testing.T, cfg string) (*kafkareceiver.Config, error) {
+		var args kafka.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		converted, err := args.Convert()
+		if err != nil {
+			return nil, err
+		}
+		return converted.(*kafkareceiver.Config), nil
+	}
+
+	t.Run("defaults to disabled with max_buffered_batches of 1", func(t *testing.T) {
+		otelObj, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, kafkareceiver.PartitionProcessing{MaxBufferedBatches: 1}, otelObj.PartitionProcessing)
+	})
+
+	t.Run("independent processing can be enabled", func(t *testing.T) {
+		otelObj, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 10
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, kafkareceiver.PartitionProcessing{Independent: true, MaxBufferedBatches: 10}, otelObj.PartitionProcessing)
+	})
+
+	t.Run("independent processing without autocommit is rejected by upstream validation", func(t *testing.T) {
+		_, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			autocommit {
+				enable = false
+			}
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 10
+			}
+
+			output {}
+		`)
+		require.ErrorContains(t, err, "partition_processing.independent requires autocommit.enable")
+	})
+}
+
 func TestArguments_SASLAndKerberosAreMutuallyExclusive(t *testing.T) {
 	tests := []struct {
 		testName string

@@ -723,7 +723,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.2 // indirect
 	github.com/open-telemetry/opamp-go v0.23.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.161.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.161.0 // indirect; indirect)
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.161.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.161.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.161.0 // indirect
@@ -947,6 +947,8 @@ require (
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.161.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.161.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/redactionprocessor v0.161.0
@@ -1061,6 +1063,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/basicauth v0.161.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.161.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/pprof v0.161.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding v0.161.0 // indirect
 	github.com/opencontainers/cgroups v0.0.6 // indirect
 	github.com/outscale/osc-sdk-go/v2 v2.34.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect

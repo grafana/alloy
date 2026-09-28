@@ -39,6 +39,11 @@ You can use the following arguments with `database_observability.sql_server`:
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
+
+The `query_timeout` applies separately to each SQL statement.
+The timeout includes waiting for an available connection and reading the statement results.
+A collection cycle can run multiple statements and can take longer than `query_timeout`.
 
 The following collectors are configurable:
 

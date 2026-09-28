@@ -56,6 +56,7 @@ type Arguments struct {
 	Compression             string                   `alloy:"compression,attr,optional"`
 	AcquireFSLock           bool                     `alloy:"acquire_fs_lock,attr,optional"`
 	FileCacheAdvise         bool                     `alloy:"file_cache_advise,attr,optional"`
+	SkipUnmodifiedFiles     bool                     `alloy:"skip_unmodified_files,attr,optional"`
 	MultilineConfig         *otelcol.MultilineConfig `alloy:"multiline,block,optional"`
 	TrimConfig              *otelcol.TrimConfig      `alloy:",squash"`
 	Header                  *HeaderConfig            `alloy:"header,block,optional"`
@@ -102,8 +103,11 @@ type MatchCriteria struct {
 }
 
 type OrderingCriteria struct {
-	Regex   string `alloy:"regex,attr,optional"`
-	TopN    int    `alloy:"top_n,attr,optional"`
+	Regex string `alloy:"regex,attr,optional"`
+	// TopN is a pointer so it can distinguish "unset" (apply the upstream default) from
+	// an explicit 0, which upstream treats as "match all files" rather than falling back
+	// to the default. When sort_by is configured, set top_n explicitly.
+	TopN    *int   `alloy:"top_n,attr,optional"`
 	SortBy  []Sort `alloy:"sort_by,block"`
 	GroupBy string `alloy:"group_by,attr,optional"`
 }
@@ -174,6 +178,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.Compression = args.Compression
 	cfg.InputConfig.AcquireFSLock = args.AcquireFSLock
 	cfg.InputConfig.FileCacheAdvise = args.FileCacheAdvise
+	cfg.InputConfig.SkipUnmodifiedFiles = args.SkipUnmodifiedFiles
 
 	if len(args.Attributes) > 0 {
 		cfg.InputConfig.Attributes = make(map[string]helper.ExprStringConfig, len(args.Attributes))
@@ -217,12 +222,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.Criteria.ExcludeOlderThan = args.MatchCriteria.ExcludeOlderThan
 	if args.MatchCriteria.OrderingCriteria != nil {
 		cfg.InputConfig.Criteria.OrderingCriteria.Regex = args.MatchCriteria.OrderingCriteria.Regex
-		// TopN is a pointer upstream so it can distinguish "unset" (apply the default) from an
-		// explicit 0 (match all files). Alloy's top_n has no such distinction, so 0 keeps meaning
-		// "unset" here, matching the prior behavior.
-		if topN := args.MatchCriteria.OrderingCriteria.TopN; topN != 0 {
-			cfg.InputConfig.Criteria.OrderingCriteria.TopN = &topN
-		}
+		cfg.InputConfig.Criteria.OrderingCriteria.TopN = args.MatchCriteria.OrderingCriteria.TopN
 		cfg.InputConfig.Criteria.OrderingCriteria.GroupBy = args.MatchCriteria.OrderingCriteria.GroupBy
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
@@ -295,7 +295,7 @@ func (args *Arguments) Validate() error {
 	}
 
 	if args.MatchCriteria.OrderingCriteria != nil {
-		if args.MatchCriteria.OrderingCriteria.TopN < 0 {
+		if topN := args.MatchCriteria.OrderingCriteria.TopN; topN != nil && *topN < 0 {
 			errs = multierror.Append(errs, errors.New("'top_n' must not be negative"))
 		}
 
