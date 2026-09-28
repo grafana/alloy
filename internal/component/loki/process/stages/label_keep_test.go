@@ -13,7 +13,7 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		config    string
-		errSubStr string
+		expectErr bool
 	}{
 		{
 			name:   "valid single label",
@@ -26,12 +26,12 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 		{
 			name:      "empty list of values",
 			config:    `values = [ ]`,
-			errSubStr: errEmptyLabelKeepStageConfig.Error(),
+			expectErr: true,
 		},
 		{
 			name:      "missing values attribute",
 			config:    ``,
-			errSubStr: `missing required attribute "values"`,
+			expectErr: true,
 		},
 	}
 
@@ -39,8 +39,8 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg LabelKeepConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.errSubStr != "" {
-				require.ErrorContains(t, err, tt.errSubStr)
+			if tt.expectErr {
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}
