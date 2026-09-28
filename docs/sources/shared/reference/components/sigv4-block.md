@@ -13,6 +13,8 @@ headless: true
 | `role_arn`              | `string` | AWS Role ARN, an alternative to using AWS API keys.    |         | no       |
 | `secret_key`            | `secret` | AWS API secret key.                                    |         | no       |
 | `service_name`          | `string` | AWS service name to sign requests for.                 | `"aps"` | no       |
+| `session_name`          | `string` | Session name to use when assuming a role through STS.  |         | no       |
+| `tags`                  | `map(string)` | Tags to add to the assumed role session, when assuming a role through STS. |         | no       |
 | `use_fips_sts_endpoint` | `bool`   | Whether to use a FIPS-compliant AWS STS endpoint.      | `false` | no       |
 
 If `region` is left blank, the region from the default credentials chain is used.

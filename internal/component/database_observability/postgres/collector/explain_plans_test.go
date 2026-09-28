@@ -44,6 +44,52 @@ func validatePlan(t *testing.T, expect, actual database_observability.ExplainPla
 	})
 }
 
+func Test_ExplainPlans_buildSearchPathStatement(t *testing.T) {
+	t.Run("falls back to public only when registry is nil", func(t *testing.T) {
+		ep := &ExplainPlans{}
+		assert.Equal(t, `SET SESSION search_path TO "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("falls back to public only when database is unknown to the registry", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("otherdb", []*tableInfo{
+			{database: "otherdb", schema: "public", tableName: "users"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("includes all schemas with public last", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "catalog", tableName: "products"},
+			{database: "testdb", schema: "auth", tableName: "users"},
+			{database: "testdb", schema: "public", tableName: "databasechangelog"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		// Non-public schemas are sorted alphabetically; public is always appended last.
+		assert.Equal(t, `SET SESSION search_path TO "auth", "catalog", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("appends public when the database has no public schema", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "catalog", tableName: "products"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "catalog", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+
+	t.Run("escapes embedded double quotes in schema names", func(t *testing.T) {
+		reg := NewTableRegistry()
+		reg.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: `we"ird`, tableName: "t"},
+		})
+		ep := &ExplainPlans{tableRegistry: reg}
+		assert.Equal(t, `SET SESSION search_path TO "we""ird", "public"`, ep.buildSearchPathStatement("testdb"))
+	})
+}
+
 type mockDbConnectionFactory struct {
 	Mock               *sqlmock.Sqlmock
 	InstantiationCount int
@@ -2422,7 +2468,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 		require.Contains(t, c.queryCache, key)
 		require.Equal(t, 1, c.currentBatchSize)
 
-		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`SET SESSION search_path TO "public"`).WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 		mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").
@@ -3160,7 +3206,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3227,7 +3273,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3295,7 +3341,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS " + dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null,null,null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
@@ -3363,7 +3409,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
-			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))

@@ -57,6 +57,7 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 | [`debug_metrics`][debug_metrics]               | Configures the metrics that this component generates to monitor its state.                               | no       |
 | [`marshaler`][marshaler]                       | Marshaler used to produce output data.                                                                   | no       |
 | [`resource_attrs_to_s3`][resource_attrs_to_s3] | Configures the mapping of S3 configuration values to resource attribute values for uploading operations. | no       |
+| [`retry_on_failure`][retry_on_failure]         | Configures retry mechanism for failed requests.                                                          | no       |
 | [`sending_queue`][sending_queue]               | Configures batching of data before sending.                                                              | no       |
 | `sending_queue` > [`batch`][batch]             | Configures batching requests based on a timeout and a minimum number of items.                           | no       |
 
@@ -66,6 +67,7 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 [sending_queue]: #sending_queue
 [batch]: #batch
 [resource_attrs_to_s3]: #resource_attrs_to_s3-block
+[retry_on_failure]: #retry_on_failure
 
 {{< /docs/alloy-config >}}
 
@@ -126,6 +128,12 @@ The following arguments are supported:
 | Name   | Type     | Description                            | Default       | Required |
 |--------|----------|----------------------------------------|---------------|----------|
 | `type` | `string` | Marshaler used to produce output data. | `"otlp_json"` | no       |
+
+### `retry_on_failure`
+
+The `retry_on_failure` block configures how failed uploads to S3 are retried.
+
+{{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `sending_queue`
 

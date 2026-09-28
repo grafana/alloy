@@ -1,6 +1,7 @@
 package write
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -26,104 +26,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
-
-func TestAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-	}
-`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.NoError(t, err)
-}
-
-func TestBadAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-		bearer_token = "token"
-		bearer_token_file = "/path/to/file.token"
-	}
-`
-
-	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
-}
-
-func TestUnmarshallWalAttrributes(t *testing.T) {
-	type testcase struct {
-		raw           string
-		errorExpected bool
-		expected      WalArguments
-	}
-
-	for name, tc := range map[string]testcase{
-		"min read frequency higher than max": {
-			raw: `
-			enabled = true
-			min_read_frequency = "1h"
-			max_read_frequency = "1m"
-			`,
-			errorExpected: true,
-		},
-		"default config is wal disabled": {
-			raw: "",
-			expected: WalArguments{
-				Enabled:          false,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with defaults": {
-			raw: `
-			enabled = true
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with some overrides": {
-			raw: `
-			enabled = true
-			max_segment_age = "10m"
-			min_read_frequency = "11ms"
-			drain_timeout = "5m"
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    time.Minute * 10,
-				MinReadFrequency: time.Millisecond * 11,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     time.Minute * 5,
-			},
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			cfg := WalArguments{}
-			err := syntax.Unmarshal([]byte(tc.raw), &cfg)
-			if tc.errorExpected {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tc.expected, cfg)
-		})
-	}
-}
 
 func TestWriteToSingleEndpoint(t *testing.T) {
 	t.Run("wal disabled", func(t *testing.T) {
@@ -309,14 +211,14 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 			require.FailNow(t, "failed waiting for logs")
 		case req := <-ch1:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		case req := <-ch2:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String())
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
 		}
 	}
 }
@@ -474,5 +376,240 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		require.Eventually(b, func() bool {
 			return int64(tc.linesCount) == seenLines.Load()
 		}, time.Minute, time.Second, "haven't seen expected number of lines")
+	}
+}
+
+func TestUpdateWhileSendingIsBlocked(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			ctrl, _ := blockedComponent(t, ctx, walEnabled)
+
+			updated := make(chan error, 1)
+			go func() { updated <- ctrl.Update(blockedEndpointArgs(t, "http://localhost:1", walEnabled)) }()
+
+			select {
+			case err := <-updated:
+				require.NoError(t, err)
+			case <-time.After(30 * time.Second):
+				t.Fatal("Update did not return while sending was blocked")
+			}
+		})
+	}
+}
+
+func TestStopWhileSendingIsBlocked(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			_, stopped := blockedComponent(t, ctx, walEnabled)
+			cancel()
+
+			select {
+			case err := <-stopped:
+				require.NoError(t, err)
+			case <-time.After(30 * time.Second):
+				t.Fatal("Run did not return while sending was blocked")
+			}
+		})
+	}
+}
+
+func blockedComponent(t *testing.T, ctx context.Context, walEnabled bool) (*componenttest.Controller, <-chan error) {
+	t.Helper()
+
+	blocked := atomic.NewBool(false)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		blocked.Store(true)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+	require.NoError(t, err)
+
+	stopped := make(chan error, 1)
+	go func() {
+		stopped <- ctrl.Run(ctx, blockedEndpointArgs(t, srv.URL, walEnabled), func(o component.Options) component.Options {
+			o.MinStability = featuregate.StabilityExperimental
+			return o
+		})
+	}()
+
+	require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+	ch := ctrl.Exports().(Exports).Receiver.Chan()
+
+	go func() {
+		entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "very important log"})
+		for {
+			select {
+			case ch <- entry:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	require.Eventually(t, blocked.Load, 10*time.Second, 10*time.Millisecond)
+	return ctrl, stopped
+}
+func blockedEndpointArgs(t *testing.T, url string, walEnabled bool) Arguments {
+	t.Helper()
+
+	cfg := fmt.Sprintf(`
+		endpoint {
+			url                 = "%s"
+			batch_size          = "1B"
+			min_backoff_period  = "1ms"
+			max_backoff_period  = "5ms"
+			max_backoff_retries = 0
+
+			queue_config {
+				capacity          = "1B"
+				min_shards        = 1
+				drain_timeout     = "1s"
+				block_on_overflow = true
+			}
+		}
+
+		wal {
+			enabled       = %t
+			drain_timeout = "1s"
+		}
+	`, url, walEnabled)
+
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+	return args
+}
+
+func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			firstReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			firstSrv := loki_util.NewRemoteWriteServer(firstReceived, http.StatusOK)
+			defer firstSrv.Close()
+
+			secondReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			secondSrv := loki_util.NewRemoteWriteServer(secondReceived, http.StatusOK)
+			defer secondSrv.Close()
+
+			firstEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, firstSrv.URL)
+
+			secondEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, secondSrv.URL)
+
+			var firstArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(firstEndpoint), &firstArgs))
+			firstArgs.WAL.Enabled = walEnabled
+
+			// Moves to the second server, but both endpoints hash to the same name so
+			// building the consumer fails.
+			var failingArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint+secondEndpoint), &failingArgs))
+			failingArgs.WAL.Enabled = walEnabled
+
+			var secondArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint), &secondArgs))
+			secondArgs.WAL.Enabled = walEnabled
+
+			ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+			require.NoError(t, err)
+
+			go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
+			require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+			recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})
+			waitForLine(t, firstReceived, "first")
+
+			require.Error(t, ctrl.Update(failingArgs))
+
+			// The failed update left the previous consumer in place.
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})
+			waitForLine(t, firstReceived, "second")
+
+			require.NoError(t, ctrl.Update(secondArgs))
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})
+			waitForLine(t, secondReceived, "third")
+		})
+	}
+}
+
+func TestUpdateTogglesWAL(t *testing.T) {
+	received := make(chan loki_util.RemoteWriteRequest, 100)
+	srv := loki_util.NewRemoteWriteServer(received, http.StatusOK)
+	defer srv.Close()
+
+	endpoint := fmt.Sprintf(`
+		endpoint {
+			url        = "%s"
+			batch_wait = "10ms"
+		}
+	`, srv.URL)
+
+	var walArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &walArgs))
+	walArgs.WAL.Enabled = true
+
+	var noWalArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &noWalArgs))
+
+	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+	require.NoError(t, err)
+
+	go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
+	require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+	recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})
+	waitForLine(t, received, "with wal")
+
+	require.NoError(t, ctrl.Update(noWalArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})
+	waitForLine(t, received, "without wal")
+
+	require.NoError(t, ctrl.Update(walArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})
+	waitForLine(t, received, "with wal again")
+}
+
+// waitForLine waits until an entry with the wanted line is received. Lines are matched
+// instead of asserting on the next request, a reload can re-deliver entries that the
+// previous consumer had already sent.
+func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want string) {
+	t.Helper()
+
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case req := <-received:
+			for _, stream := range req.Request.Streams {
+				for _, entry := range stream.Entries {
+					if entry.Line == want {
+						return
+					}
+				}
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for entry %q", want)
+		}
 	}
 }

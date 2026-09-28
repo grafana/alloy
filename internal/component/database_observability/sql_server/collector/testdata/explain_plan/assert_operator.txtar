@@ -1,0 +1,43 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+INSERT INTO ReadingListBooks (ReadingListId, BookId)
+SELECT rl.Id, b.Id FROM ReadingLists rl, Books b
+WHERE NOT EXISTS (
+    SELECT 1 FROM ReadingListBooks rlb
+    WHERE rlb.ReadingListId = rl.Id AND rlb.BookId = b.Id
+)
+```
+
+Mirrors the real shape from alloy#6941 (query_hash c1bf3f3945559e7f): the
+query optimizer wraps the INSERT ... WHERE NOT EXISTS in an Assert to
+enforce the uniqueness check, so Assert sits above the Update rather than
+the other way around.
+
+-- assert_operator.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Assert" LogicalOp="Assert" EstimateRows="1" EstimatedTotalSubtreeCost="10.75">
+              <Assert StartupExpression="0">
+                <RelOp PhysicalOp="Clustered Index Insert" LogicalOp="Insert" EstimateRows="1.5" EstimatedTotalSubtreeCost="10.74">
+                  <Update>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[ReadingListBooks]" Index="[PK_ReadingListBooks]" IndexKind="Clustered" />
+                    <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.5">
+                      <TableScan>
+                        <Object Database="[MyDb]" Schema="[dbo]" Table="[ReadingLists]" />
+                      </TableScan>
+                    </RelOp>
+                  </Update>
+                </RelOp>
+              </Assert>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

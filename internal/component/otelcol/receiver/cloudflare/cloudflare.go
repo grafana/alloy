@@ -2,6 +2,9 @@
 package cloudflare
 
 import (
+	"errors"
+
+	"github.com/alecthomas/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -13,6 +16,11 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 )
+
+// Upstream leaves the factory default at zero and applies 20MiB in Validate().
+// Set it explicitly here because Alloy validates a separate config:
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/3f8455d8038a985398861171e5310bc9b4e988b2/receiver/cloudflarereceiver/config.go#L54-L56
+const DefaultMaxRequestBodySize = 20 * units.MiB
 
 var (
 	_ receiver.Arguments = Arguments{}
@@ -33,13 +41,14 @@ func init() {
 }
 
 type Arguments struct {
-	Endpoint        string                      `alloy:"endpoint,attr"`
-	Secret          string                      `alloy:"secret,attr,optional"`
-	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`
-	TimestampFormat string                      `alloy:"timestamp_format,attr,optional"`
-	Separator       string                      `alloy:"separator,attr,optional"`
-	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
-	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
+	Endpoint           string                      `alloy:"endpoint,attr"`
+	Secret             string                      `alloy:"secret,attr,optional"`
+	TimestampField     string                      `alloy:"timestamp_field,attr,optional"`
+	TimestampFormat    string                      `alloy:"timestamp_format,attr,optional"`
+	Separator          string                      `alloy:"separator,attr,optional"`
+	Attributes         map[string]string           `alloy:"attributes,attr,optional"`
+	MaxRequestBodySize units.Base2Bytes            `alloy:"max_request_body_size,attr,optional"`
+	TLS                *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -47,28 +56,34 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	// Defaults filled by upstream OTel receiver in a factory.
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	*args = Arguments{
+		TimestampField:     cfg.Logs.TimestampField,
+		TimestampFormat:    cfg.Logs.TimestampFormat,
+		Separator:          cfg.Logs.Separator,
+		MaxRequestBodySize: DefaultMaxRequestBodySize,
+	}
 }
 
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	tlsCfg := args.TLS.Convert()
-	logCfg := cloudflarereceiver.LogsConfig{
-		Secret:          args.Secret,
-		Endpoint:        args.Endpoint,
-		TLS:             tlsCfg.Get(),
-		Attributes:      args.Attributes,
-		TimestampField:  args.TimestampField,
-		TimestampFormat: args.TimestampFormat,
-		Separator:       args.Separator,
-	}
-
-	return &cloudflarereceiver.Config{
-		Logs: logCfg,
-	}
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	cfg.Logs.Secret = args.Secret
+	cfg.Logs.Endpoint = args.Endpoint
+	cfg.Logs.TLS = tlsCfg.Get()
+	cfg.Logs.Attributes = args.Attributes
+	cfg.Logs.TimestampField = args.TimestampField
+	cfg.Logs.TimestampFormat = args.TimestampFormat
+	cfg.Logs.Separator = args.Separator
+	cfg.Logs.MaxRequestBodySize = int64(args.MaxRequestBodySize)
+	return cfg
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	if args.MaxRequestBodySize <= 0 {
+		return errors.New("max_request_body_size must be greater than 0")
+	}
 	otelCfg := args.receiverConfig()
 	return otelCfg.Validate()
 }

@@ -29,7 +29,7 @@ You can use the following arguments with `database_observability.postgres`:
 
 | Name                 | Type                 | Description                                                 | Default | Required |
 |----------------------|----------------------|-------------------------------------------------------------|---------|----------|
-| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. Required when no `database_instance` blocks are defined. |         | no       |
 | `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
@@ -46,17 +46,19 @@ Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/
 
 The following fields are exported and can be referenced by other components:
 
-| Name            | Type                | Description                                                            |
-| --------------- | ------------------- | ---------------------------------------------------------------------- |
-| `logs_receiver` | `LogsReceiver`      | Receiver for PostgreSQL logs that processes and exports error metrics. |
-| `targets`       | `list(map(string))` | Targets that can be used to collect metrics from the component.        |
+| Name             | Type                        | Description                                                            |
+| ---------------- | --------------------------- | ---------------------------------------------------------------------- |
+| `logs_receiver`  | `LogsReceiver`              | Receiver for PostgreSQL logs that processes and exports error metrics. Exported in the single-DSN form only. |
+| `logs_receivers` | `map(LogsReceiver)`         | One logs receiver per [`database_instance`][database_instance] block, keyed by block label. Empty in the single-DSN form. |
+| `targets`        | `list(map(string))`         | Targets that can be used to collect metrics from the component.        |
 
 The following collectors are configurable:
 
 | Name             | Description                                                           | Enabled by default |
 |------------------|-----------------------------------------------------------------------|--------------------|
 | `explain_plans`  | Collect query explain plans.                                          | yes                |
-| `logs`           | Process PostgreSQL logs and export error metrics.                     | yes                |
+| `table_stats`    | Collect table-level scan statistics.                                  | no                 |
+| `index_stats`    | Collect per-index usage statistics.                                   | no                 |
 | `query_details`  | Collect queries information.                                          | yes                |
 | `query_samples`  | Collect query samples and wait events information.                    | yes                |
 | `schema_details` | Collect schemas, tables, and columns from PostgreSQL system catalogs. | yes                |
@@ -73,21 +75,28 @@ You can use the following blocks with `database_observability.postgres`:
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
+| [`database_instance`][database_instance]                  | Define one database to monitor. Repeat the block to monitor several databases. | no       |
+| `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| [`clustering`][clustering]         | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
+| [`logs`][logs]                     | Configure the logs collector.                     | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
-| [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
+| [`prometheus_exporter`][prometheus_exporter] | Configure the embedded `postgres_exporter`. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
+[database_instance]: #database_instance
+[clustering]: #clustering
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
+[logs]: #logs
 [health_check]: #health_check
 [prometheus_exporter]: #prometheus_exporter
 
@@ -131,6 +140,84 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
+### `database_instance`
+
+The `database_instance` block defines one database server to monitor.
+Repeat the block to monitor several databases with a single component.
+The block label must be unique across `database_instance` blocks and identifies the database in the component's metrics endpoint path and in the `logs_receivers` export.
+Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port, and database name are rejected.
+
+| Name               | Type                | Description                                                  | Default | Required |
+|--------------------|---------------------|--------------------------------------------------------------|---------|----------|
+| `data_source_name` | `secret`            | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+
+The component always embeds a `postgres_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
+Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
+External exporter targets are only supported in the top-level single-DSN form.
+
+When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
+They're mutually exclusive with `database_instance` blocks.
+All other arguments and blocks, such as collector settings and `prometheus_exporter`, apply to every configured database.
+
+The metrics for each database are served on a separate `/db/<LABEL>/metrics` path under the component's HTTP endpoint, and the exported targets point to the corresponding path.
+When you don't define `database_instance` blocks, the component serves metrics on its historical `/metrics` path.
+The metrics endpoints are served exactly at those paths: requests to any other path under the component's HTTP endpoint return HTTP 404.
+
+Each database also gets its own logs receiver in the `logs_receivers` export, keyed by the block label.
+Forward each database's PostgreSQL logs to its own receiver so log-derived error metrics are attributed to the right database.
+
+For example:
+
+```alloy
+database_observability.postgres "pool" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  database_instance "orders" {
+    data_source_name = sys.env("ORDERS_DSN")
+
+    cloud_provider {
+      aws {
+        arn = "orders-rds-db-arn"
+      }
+    }
+  }
+
+  database_instance "billing" {
+    data_source_name = sys.env("BILLING_DSN")
+  }
+}
+
+loki.source.file "orders_db_logs" {
+  targets    = local.file_match.orders_db_logs.targets
+  forward_to = [database_observability.postgres.pool.logs_receivers["orders"]]
+}
+```
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enables distributing databases with other cluster nodes. | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `database_observability.postgres` component instance opts-in to distributing its configured databases between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All component instances opting in to clustering use the instance key of each configured database, `postgresql://<host>:<port>/<dbname>`, and a consistent hashing algorithm to determine ownership of each database between the cluster peers.
+Each peer then only collects from the subset of databases it's responsible for, and only exports the targets of those databases, so `prometheus.scrape` components on the same node scrape exactly the databases the node owns.
+When a node joins or leaves the cluster, every peer recalculates ownership: expect a short gap or a brief duplicate collection for a database while its ownership moves.
+While the cluster isn't yet ready to admit traffic, for example while it's still forming and waiting for the minimum cluster size, the component doesn't collect from any database.
+
+Every node exports the logs receivers of all configured databases, whether it owns them or not: a node that doesn't own a database accepts and discards entries sent to that database's receiver.
+Log pipelines that forward PostgreSQL logs to the exported receivers therefore work unchanged on every node, but only the owning node processes the logs into error metrics.
+
+Clustering is also useful with a single database: when several cluster nodes run an identical configuration, exactly one node collects from the database at a time, which gives you a highly available setup without duplicate collection.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `database_observability.postgres` collects from every configured database.
+
+[using clustering]: ../../../../get-started/clustering/
+
 ### `query_details`
 
 | Name               | Type       | Description                                          | Default | Required |
@@ -165,6 +252,14 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
 
+### `logs`
+
+| Name                           | Type   | Description                                                              | Default | Required |
+|--------------------------------|--------|--------------------------------------------------------------------------|---------|----------|
+| `enable_error_logs_processing` | `bool` | Emit per-query error telemetry by pairing error and statement log lines. | `false` | no       |
+
+The `logs` collector is always enabled and counts server errors from the PostgreSQL logs forwarded to `logs_receiver`. When `enable_error_logs_processing` is `true`, the collector additionally emits per-query error telemetry that associates each error with the query that caused it.
+
 ### `health_check`
 
 | Name               | Type       | Description                                          | Default | Required |
@@ -180,15 +275,18 @@ Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.p
 
 ## `logs` collector
 
-The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
+The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point. It counts server errors and exposes them as a Prometheus metric on the component's metrics endpoint. When [`enable_error_logs_processing`](#logs) is `true`, it also emits per-query error telemetry as Loki log entries, so each error can be associated with the query that caused it.
+When you define [`database_instance`][database_instance] blocks, each database has its own entry point in the `logs_receivers` export instead, keyed by block label.
 
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
-- `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
+- `loki.source.file`: to read and process PostgreSQL log files from a self-managed database instance
 - `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
 
+PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
+
 {{< admonition type="note" >}}
-Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
+Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
 {{< /admonition >}}
 
 ## Example
@@ -199,7 +297,10 @@ database_observability.postgres "orders_db" {
   forward_to       = [loki.relabel.orders_db.receiver]
   targets          = prometheus.exporter.postgres.orders_db.targets
 
-  enable_collectors = ["query_samples", "explain_plans"]
+  // Enable per-query error telemetry from the processed PostgreSQL logs.
+  logs {
+    enable_error_logs_processing = true
+  }
 }
 
 prometheus.exporter.postgres "orders_db" {

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -118,7 +120,7 @@ func (l *Loki) QueryLogs(t *testing.T, testName string, expected ...ExpectedLogR
 	queryURL, err := url.Parse(l.endpoint("/loki/api/v1/query_range"))
 	require.NoError(t, err)
 	values := queryURL.Query()
-	values.Set("query", "{"+testNameLabel+"=\""+testName+"\"}")
+	values.Set("query", "{"+testNameLabel+"="+strconv.Quote(testName)+"}")
 	values.Set("limit", strconv.Itoa(lokiQueryLimit))
 	queryURL.RawQuery = values.Encode()
 
@@ -137,9 +139,59 @@ func (l *Loki) QueryLogs(t *testing.T, testName string, expected ...ExpectedLogR
 
 		for _, e := range expected {
 			entries := matchingEntries(e.Labels, e.StructuredMetadata, parsed.Data.Result)
-			require.Lenf(c, entries, e.EntryCount, "unexpected entry count for labels %v and structured metadata %v", e.Labels, e.StructuredMetadata)
+			assert.Lenf(c, entries, e.EntryCount, "unexpected entry count for labels %v and structured metadata %v", e.Labels, e.StructuredMetadata)
 		}
 	}, timeout, retryInterval)
+}
+
+// LogMatcher selects entries by stream labels and structured metadata. Both are
+// treated as subsets of the entry's own.
+type LogMatcher struct {
+	Labels             map[string]string
+	StructuredMetadata map[string]string
+}
+
+// QueryLogsPresent asserts at least one entry matches each matcher. Use it
+// instead of QueryLogs when the number of entries is not deterministic.
+//
+// Each matcher's Labels go into the LogQL selector, so a matcher is unaffected
+// by unrelated entries pushing it past the query limit. StructuredMetadata is
+// matched on the returned entries.
+func (l *Loki) QueryLogsPresent(t *testing.T, testName string, matchers ...LogMatcher) {
+	t.Helper()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for _, m := range matchers {
+			entries := l.queryEntries(c, testName, m)
+			assert.NotEmptyf(c, entries, "no entries for labels %v and structured metadata %v", m.Labels, m.StructuredMetadata)
+		}
+	}, timeout, retryInterval)
+}
+
+func (l *Loki) queryEntries(c *assert.CollectT, testName string, m LogMatcher) []lokihttp.LogEntry {
+	selectors := []string{testNameLabel + "=" + strconv.Quote(testName)}
+	for name, value := range m.Labels {
+		selectors = append(selectors, name+"="+strconv.Quote(value))
+	}
+	sort.Strings(selectors)
+
+	queryURL, err := url.Parse(l.endpoint("/loki/api/v1/query_range"))
+	require.NoError(c, err)
+	values := queryURL.Query()
+	values.Set("query", "{"+strings.Join(selectors, ",")+"}")
+	values.Set("limit", strconv.Itoa(lokiQueryLimit))
+	queryURL.RawQuery = values.Encode()
+
+	resp := curl(c, queryURL.String(), http.Header{
+		"X-Loki-Response-Encoding-Flags": []string{"categorize-labels"},
+	})
+
+	var parsed lokihttp.LogResponse
+	require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse loki response")
+	require.Equal(c, "success", parsed.Status, "loki query failed: %s", parsed.Status)
+
+	// Labels are already enforced by the selector.
+	return matchingEntries(nil, m.StructuredMetadata, parsed.Data.Result)
 }
 
 // matchingEntries returns all entries who partially matches stream labels and structured metadata.

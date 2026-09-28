@@ -40,6 +40,7 @@ type Arguments struct {
 	SampleOnFirstMatch            bool                `alloy:"sample_on_first_match,attr,optional"`
 	DropPendingTracesOnShutdown   bool                `alloy:"drop_pending_traces_on_shutdown,attr,optional"`
 	MaximumTraceSizeBytes         uint64              `alloy:"maximum_trace_size_bytes,attr,optional"`
+	NumShards                     uint32              `alloy:"num_shards,attr,optional"`
 	DecisionCache                 DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -96,6 +97,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.SampleOnFirstMatch = args.SampleOnFirstMatch
 	cfg.DropPendingTracesOnShutdown = args.DropPendingTracesOnShutdown
 	cfg.MaximumTraceSizeBytes = args.MaximumTraceSizeBytes
+	cfg.NumShards = args.NumShards
 	cfg.PolicyCfgs = otelPolicyCfgs
 	cfg.DecisionCache = args.DecisionCache.Convert()
 	return cfg, nil

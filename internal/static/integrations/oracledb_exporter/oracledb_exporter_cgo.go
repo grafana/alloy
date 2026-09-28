@@ -57,5 +57,5 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	// and flip StartupReady; without it, Collect only logs "Database connection in progress"
 	// and never scrapes Oracle metrics (see oracle-db-appdev-monitoring collector.Database).
 	go oeExporter.InitializeDatabases()
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(oeExporter)), nil
+	return integrations.NewCollectorIntegration(c.Name(), integrations.WithLogger(logger), integrations.WithCollectors(oeExporter)), nil
 }
