@@ -149,16 +149,21 @@ func TestStructuredMetadataDropStage(t *testing.T) {
 
 func TestValidateStructuredMetadataDropConfig(t *testing.T) {
 	type testCase struct {
-		name   string
-		config string
-		err    error
+		name      string
+		config    string
+		errSubstr string
 	}
 
 	tests := []testCase{
 		{
-			name:   "empty config",
-			config: `values = [ ]`,
-			err:    errEmptyStructuredMetadataDropStageConfig,
+			name:      "empty list of values",
+			config:    `values = [ ]`,
+			errSubstr: errEmptyStructuredMetadataDropStageConfig.Error(),
+		},
+		{
+			name:      "missing values attribute",
+			config:    ``,
+			errSubstr: `missing required attribute "values"`,
 		},
 		{
 			name:   "with a value",
@@ -174,8 +179,8 @@ func TestValidateStructuredMetadataDropConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg StructuredMetadataDropConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.errSubstr != "" {
+				require.ErrorContains(t, err, tt.errSubstr)
 			} else {
 				require.NoError(t, err)
 			}
