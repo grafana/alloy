@@ -214,7 +214,7 @@ To enable it, complete the following steps:
    - _`<INSTANCE_LABEL>`_: The label that names a single {{< param "PRODUCT_NAME" >}} process.
    - _`<MAX_SEGMENT_AGE_HOURS>`_: The `max_segment_age` you chose, expressed in hours.
 
-   The result is the uncompressed log-entry volume in bytes, not the compressed request volume.
+   The result is an upper bound on uncompressed batch volume, not just log-entry volume, because `loki_write_batch_size_bytes` includes stream-label bytes.
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
 
@@ -247,7 +247,7 @@ To enable it, complete the following steps:
 
    ```promql
    loki_write_wal_writer_last_written_timestamp
-     - on (<INSTANCE_LABEL>, component_id) group_right loki_write_last_read_timestamp
+     - on (<INSTANCE_LABEL>, component_path, component_id) group_right loki_write_last_read_timestamp
    ```
 
 The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout` arguments.
