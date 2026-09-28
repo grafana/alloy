@@ -173,6 +173,13 @@ func (c *WALConsumer) Start() {
 	}
 }
 
+func (c *WALConsumer) Consume(_ context.Context, batch loki.Batch) error {
+	if err := c.writer.WriteBatch(batch); err != nil {
+		return fmt.Errorf("%w: %w", ErrWALWrite, err)
+	}
+	return nil
+}
+
 func (c *WALConsumer) ConsumeEntry(_ context.Context, entry loki.Entry) error {
 	if err := c.writer.WriteEntry(entry); err != nil {
 		return fmt.Errorf("%w: %w", ErrWALWrite, err)
