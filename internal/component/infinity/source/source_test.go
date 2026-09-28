@@ -864,18 +864,54 @@ type switchOwner struct {
 	cluster.Cluster
 	other   *atomic.Bool
 	lookups *atomic.Int32
+	gate    *lookupGate
 }
 
 func newSwitchOwner(other bool) switchOwner {
-	return switchOwner{Cluster: cluster.Mock(), other: atomic.NewBool(other), lookups: atomic.NewInt32(0)}
+	return switchOwner{Cluster: cluster.Mock(), other: atomic.NewBool(other), lookups: atomic.NewInt32(0), gate: &lookupGate{}}
 }
 
+// Lookup reads the owner before it waits at the gate, so a held Lookup
+// returns the owner from before any later move.
 func (s switchOwner) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
 	s.lookups.Inc()
-	if s.other.Load() {
+	other := s.other.Load()
+	s.gate.wait()
+	if other {
 		return []peer.Peer{{Name: "other", Self: false}}, nil
 	}
 	return []peer.Peer{{Name: "self", Self: true}}, nil
+}
+
+// lookupGate holds one Lookup until the test releases it.
+type lookupGate struct {
+	mu      sync.Mutex
+	entered chan struct{}
+	release chan struct{}
+}
+
+// arm makes the next Lookup wait. entered closes when that Lookup waits.
+// release lets it return, and is safe to call more than once.
+func (g *lookupGate) arm() (entered <-chan struct{}, release func()) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.entered = make(chan struct{})
+	g.release = make(chan struct{})
+	r := g.release
+	var once sync.Once
+	return g.entered, func() { once.Do(func() { close(r) }) }
+}
+
+func (g *lookupGate) wait() {
+	g.mu.Lock()
+	entered, release := g.entered, g.release
+	g.entered, g.release = nil, nil
+	g.mu.Unlock()
+	if entered == nil {
+		return
+	}
+	close(entered)
+	<-release
 }
 
 // move gives every key to another node, or back to this node, and tells c,
@@ -1096,11 +1132,17 @@ func TestNotifyClusterChangeDisabled(t *testing.T) {
 		}`)
 	require.NoError(t, err)
 	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
-	c, err := New(testOptions(t, cluster.Mock()), args)
+	cl := newSwitchOwner(false)
+	c, err := New(testOptions(t, cl), args)
 	require.NoError(t, err)
 
 	require.NotPanics(t, c.NotifyClusterChange)
 	require.Zero(t, len(c.clusterChanged), "a disabled component must not queue a cluster change")
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	c.NotifyClusterChange()
+	time.Sleep(50 * time.Millisecond)
+	require.Zero(t, cl.lookups.Load(), "a disabled component must not look up owners")
 
 	c, _, err = newCounting(testOptions(t, cluster.Mock()), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
 	require.NoError(t, err)
@@ -1110,8 +1152,8 @@ func TestNotifyClusterChangeDisabled(t *testing.T) {
 	})
 }
 
-// TestNotifyClusterChangeCoalesces checks that many notifications start no
-// goroutines and do not make one ownership refresh each.
+// TestNotifyClusterChangeCoalesces checks that notifications that come
+// during a refresh start no goroutines and give one more refresh only.
 func TestNotifyClusterChangeCoalesces(t *testing.T) {
 	cl := newSwitchOwner(false)
 	c, _, err := newCounting(testOptions(t, cl), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
@@ -1122,13 +1164,21 @@ func TestNotifyClusterChangeCoalesces(t *testing.T) {
 
 	before := runtime.NumGoroutine()
 	lookups := cl.lookups.Load()
-	const notifications = 10000
-	for range notifications {
+	// Hold the refresh of the first notification, so the others queue.
+	entered, release := cl.gate.arm()
+	defer release()
+	c.NotifyClusterChange()
+	<-entered
+	for range 10000 {
 		c.NotifyClusterChange()
 	}
+	release()
+
 	require.Eventually(t, func() bool { return len(c.clusterChanged) == 0 }, time.Second, 5*time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	require.LessOrEqual(t, goroutinesAfter(before, time.Second), before, "notifications must start no goroutines")
-	require.Less(t, cl.lookups.Load()-lookups, int32(notifications), "notifications must coalesce")
+	// One query, so each refresh makes one Lookup.
+	require.LessOrEqual(t, cl.lookups.Load()-lookups, int32(3), "notifications must coalesce")
 }
 
 // TestRunStopsPendingJitter checks that Run returns at once, runs no poll,
@@ -1180,4 +1230,83 @@ func goroutinesAfter(want int, timeout time.Duration) int {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// TestRefreshesAreSerialized checks that an Update refresh that uses an old
+// ring cannot overwrite a newer watcher refresh.
+func TestRefreshesAreSerialized(t *testing.T) {
+	cl := newSwitchOwner(true)
+	c, _, err := newCounting(testOptions(t, cl), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	args, err := parse(clusteredInline + `
+		query "b" {
+			source = "inline"
+			data   = "[1]"
+		}`)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+
+	// Update looks up b with the old ring and waits.
+	entered, release := cl.gate.arm()
+	defer release()
+	updateErr := make(chan error, 1)
+	go func() { updateErr <- c.Update(args) }()
+	<-entered
+
+	// The ring moves b to this node while Update waits.
+	cl.move(false, c)
+	time.Sleep(100 * time.Millisecond)
+	release()
+	require.NoError(t, <-updateErr)
+
+	b := queryStateOf(c, "b")
+	require.Eventually(t, func() bool { return b.assigned.Load() }, time.Second, 5*time.Millisecond, "the newest ring must win")
+	require.Never(t, func() bool { return !b.assigned.Load() }, 200*time.Millisecond, 10*time.Millisecond)
+}
+
+// TestUpdateKicksGainedRunningLoop checks that Update kicks a new query that
+// it finds owned when Run already started its loop.
+func TestUpdateKicksGainedRunningLoop(t *testing.T) {
+	cl := newSwitchOwner(false)
+	c, _, err := newCounting(testOptions(t, cl), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	var parsesB atomic.Int32
+	c.parse = func(s querySpec, body []byte) (*data.Frame, error) {
+		if s.name == "b" {
+			parsesB.Inc()
+		}
+		return buildFrame(s, body)
+	}
+
+	args, err := parse(clusteredInline + `
+		query "b" {
+			source = "inline"
+			data   = "[1]"
+		}`)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+
+	// Update adds b and waits in its Lookup. Run then starts the loop of b.
+	entered, release := cl.gate.arm()
+	defer release()
+	updateErr := make(chan error, 1)
+	go func() { updateErr <- c.Update(args) }()
+	<-entered
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	require.Eventually(t, func() bool {
+		c.mut.RLock()
+		defer c.mut.RUnlock()
+		b := c.queries["b"]
+		return b != nil && b.loop != nil
+	}, time.Second, 5*time.Millisecond)
+	release()
+	require.NoError(t, <-updateErr)
+
+	// interval is 10s, so only a kick polls b this soon.
+	require.Eventually(t, func() bool { return parsesB.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
 }

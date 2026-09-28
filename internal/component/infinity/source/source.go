@@ -55,6 +55,10 @@ type Component struct {
 	gen atomic.Pointer[generation]
 	// clusterChanged holds one pending cluster change.
 	clusterChanged chan struct{}
+	// refreshMu makes each ownership refresh look up and store as one step,
+	// so a refresh from an old ring cannot overwrite a newer one. Never
+	// hold it with mut or a queryState.mut.
+	refreshMu sync.Mutex
 
 	mut         sync.RWMutex
 	args        Arguments
@@ -258,6 +262,8 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		case !ok || clusteringEnabled:
 			toLookUp[name] = qs
 		}
+		// A restart drops a pending jitter, so the query waits for its new
+		// random offset.
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
@@ -275,9 +281,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		oldGen.client.CloseIdleConnections()
 	}
 
-	// A new query must not poll before its owner is known. Update does not
-	// kick here, so new loops keep their random offset.
-	c.refreshOwnership(toLookUp)
+	// A new query must not poll before its owner is known. New loops keep
+	// their random offset, so only a loop that Run already started gets a
+	// kick below.
+	gained := c.refreshOwnership(toLookUp)
 
 	for _, r := range removed {
 		r.qs.mut.Lock()
@@ -298,6 +305,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	}
 
 	c.mut.Lock()
+	for _, qs := range gained {
+		if qs.loop != nil {
+			kick(qs)
+		}
+	}
 	if c.runCtx != nil {
 		for name, qs := range c.queries {
 			if qs.loop == nil {
@@ -392,10 +404,7 @@ func (c *Component) watchCluster(ctx context.Context) {
 		states := maps.Clone(c.queries)
 		c.mut.RUnlock()
 		for _, qs := range c.refreshOwnership(states) {
-			select {
-			case qs.kick <- struct{}{}:
-			default:
-			}
+			kick(qs)
 		}
 	}
 	refresh()
@@ -410,8 +419,11 @@ func (c *Component) watchCluster(ctx context.Context) {
 }
 
 // refreshOwnership looks up the owner of each query and returns the queries
-// that this node gains. It takes no lock, so a blocked poll cannot delay it.
+// that this node gains. It takes no lock that a poll holds, so a blocked
+// poll cannot delay it.
 func (c *Component) refreshOwnership(states map[string]*queryState) []*queryState {
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
 	var gained []*queryState
 	for name, qs := range states {
 		mine := c.owns(name)
@@ -420,6 +432,15 @@ func (c *Component) refreshOwnership(states map[string]*queryState) []*queryStat
 		}
 	}
 	return gained
+}
+
+// kick wakes the loop of qs without blocking. A kick that is already pending
+// covers this one.
+func kick(qs *queryState) {
+	select {
+	case qs.kick <- struct{}{}:
+	default:
+	}
 }
 
 func (c *Component) owns(name string) bool {

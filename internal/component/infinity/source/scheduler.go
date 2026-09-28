@@ -55,6 +55,10 @@ func startLoop(parent context.Context, interval, offset time.Duration, kick <-ch
 			case <-firstC:
 			case <-tickC:
 			case <-soonC:
+				// Move the next tick, so it does not come just after this poll.
+				if ticker != nil {
+					ticker.Reset(interval)
+				}
 			}
 			// select picks at random when more than one case is ready.
 			if ctx.Err() != nil {

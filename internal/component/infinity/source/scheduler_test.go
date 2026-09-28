@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -183,5 +184,35 @@ func TestJitter(t *testing.T) {
 		j := jitter(time.Second)
 		require.GreaterOrEqual(t, j, time.Duration(0))
 		require.Less(t, j, 100*time.Millisecond)
+	}
+}
+
+// TestLoopKickResetsTick checks that a kicked poll moves the next tick, so
+// two polls do not come close together.
+func TestLoopKickResetsTick(t *testing.T) {
+	interval := 300 * time.Millisecond
+	kick := make(chan struct{}, 1)
+	var (
+		mu    sync.Mutex
+		polls []time.Time
+	)
+	l := startLoop(t.Context(), interval, 0, kick, func(context.Context) {
+		mu.Lock()
+		polls = append(polls, time.Now())
+		mu.Unlock()
+	}, func() {})
+	defer l.stop()
+
+	// Kick just before the first tick. The jitter is below 30ms.
+	time.Sleep(250 * time.Millisecond)
+	kick <- struct{}{}
+	time.Sleep(2 * interval)
+	l.stop()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.GreaterOrEqual(t, len(polls), 3)
+	for i := 1; i < len(polls); i++ {
+		require.GreaterOrEqual(t, polls[i].Sub(polls[i-1]), interval/2, "poll %d came too soon after the one before", i)
 	}
 }
