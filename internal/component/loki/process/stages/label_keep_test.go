@@ -11,9 +11,9 @@ import (
 
 func TestValidateLabelslKeepConfig(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
-		err    error
+		name      string
+		config    string
+		errSubStr string
 	}{
 		{
 			name:   "valid single label",
@@ -24,9 +24,14 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 			config: `values = [ "testLabel1", "testLabel2" ]`,
 		},
 		{
-			name:   "empty values returns err",
-			config: `values = [ ]`,
-			err:    errEmptyLabelKeepStageConfig,
+			name:      "empty list of values",
+			config:    `values = [ ]`,
+			errSubStr: errEmptyLabelKeepStageConfig.Error(),
+		},
+		{
+			name:      "missing values attribute",
+			config:    ``,
+			errSubStr: `missing required attribute "values"`,
 		},
 	}
 
@@ -34,8 +39,8 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var cfg LabelKeepConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.errSubStr != "" {
+				require.ErrorContains(t, err, tt.errSubStr)
 			} else {
 				require.NoError(t, err)
 			}
