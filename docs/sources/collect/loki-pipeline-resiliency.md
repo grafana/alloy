@@ -349,7 +349,7 @@ Two separate Loki limits reject old entries, and they're configured independentl
   This limit applies while `reject_old_samples` is `true`, which is the default, and the maximum age defaults to one week.
   You can override `reject_old_samples` and `reject_old_samples_max_age` per tenant through the Loki runtime overrides file.
 
-In practice, three limits apply, and the shortest one will decide if data is dropped.
+In practice, three limits apply, and the shortest one decides if data is dropped.
 {{< param "PRODUCT_NAME" >}} holds buffered data for `max_segment_age`.
 Loki then accepts the replayed entries only if they satisfy both its out-of-order window and its absolute age limit.
 
