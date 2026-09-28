@@ -356,10 +356,10 @@ func TestEndpoint(t *testing.T) {
 			},
 			expectedReqs: []util.RemoteWriteRequest{},
 			expectedMetrics: `
-                              # HELP loki_write_sent_entries_total Number of log entries sent to the ingester.
+                              # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__",tenant=""} 0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because failed to be sent to the ingester after all retries.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large",tenant=""} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed",tenant=""} 1
