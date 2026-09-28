@@ -2,18 +2,34 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 )
 
-// errEmptyStaticLabelStageConfig error returned if the config is empty.
-var errEmptyStaticLabelStageConfig = errors.New("static_labels stage config cannot be empty")
+var _ syntax.Validator = (*StaticLabelsConfig)(nil)
 
 // StaticLabelsConfig contains a map of static labels to be set.
 type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
+}
+
+func (c *StaticLabelsConfig) Validate() error {
+	for labelName, v := range c.Values {
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !model.LabelName(labelName).IsValid() {
+			return fmt.Errorf(errInvalidLabelName, labelName)
+		}
+		if v == nil || *v == "" {
+			continue
+		}
+		if !model.LabelValue(*v).IsValid() {
+			return fmt.Errorf("invalid label value: %s", *v)
+		}
+	}
+	return nil
 }
 
 var (
@@ -21,41 +37,16 @@ var (
 	_ entryProcessor = (*staticLabelStage)(nil)
 )
 
-func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) (*staticLabelStage, error) {
-	err := validateLabelStaticConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabelStage {
 	values := make([]string, 0, len(config.Values)*2)
 	for n, v := range config.Values {
 		if v == nil || *v == "" {
 			continue
 		}
-
-		value := *v
-		if !model.LabelValue(value).IsValid() {
-			return nil, fmt.Errorf("invalid label value: %s", value)
-		}
-
-		values = append(values, n, value)
+		values = append(values, n, *v)
 	}
 
-	return &staticLabelStage{opts.next, values}, nil
-}
-
-func validateLabelStaticConfig(c StaticLabelsConfig) error {
-	if c.Values == nil {
-		return errEmptyStaticLabelStageConfig
-	}
-	for labelName := range c.Values {
-		// TODO: add support for different validation schemes.
-		//nolint:staticcheck
-		if !model.LabelName(labelName).IsValid() {
-			return fmt.Errorf(errInvalidLabelName, labelName)
-		}
-	}
-	return nil
+	return &staticLabelStage{opts.next, values}
 }
 
 // staticLabelStage implements Stage.
