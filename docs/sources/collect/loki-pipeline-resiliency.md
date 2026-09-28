@@ -214,7 +214,7 @@ To enable it, complete the following steps:
    - _`<INSTANCE_LABEL>`_: The label that names a single {{< param "PRODUCT_NAME" >}} process.
    - _`<MAX_SEGMENT_AGE_HOURS>`_: The `max_segment_age` you chose, expressed in hours.
 
-   The result is the uncompressed log-entry volume in bytes, not the compressed request volume. Use the ratio below to estimate the corresponding WAL bytes on disk.
+   The result is the uncompressed log-entry volume in bytes, not the compressed request volume.
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
 
@@ -243,10 +243,11 @@ To enable it, complete the following steps:
    During an outage the written timestamp keeps advancing.
    The read timestamp advances until the endpoint queue fills, and stalls after that.
 
-   This query reports how far the delivery pointer trails real time, in seconds:
+   This query reports the backlog for each endpoint, in seconds of log time:
 
    ```promql
-   time() - loki_write_last_read_timestamp
+   loki_write_wal_writer_last_written_timestamp
+     - on (<INSTANCE_LABEL>, component_id) group_right loki_write_last_read_timestamp
    ```
 
 The `wal` block accepts `enabled`, `max_segment_age`, `min_read_frequency`, `max_read_frequency`, and `drain_timeout` arguments.
@@ -323,7 +324,8 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
    ```
 
-   Three of these loss paths don't increment a `loki_write_*` drop counter. The conversion path has the `otelcol_exporter_loki_entries_failed` metric; for the other two, logs are the only signal.
+1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
+   Three of these drop paths never increment a `loki_write_*` counter, so a metric alone won't reveal them.
 
    | Message                                                     | Meaning                                                                                                       |
    | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -357,12 +359,16 @@ Raising `max_segment_age` beyond that only retains entries that Loki rejects.
 Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
 
 You don't have to estimate the outage and drain durations to know whether you're approaching that limit.
-The following alert fires when delivery falls half an hour behind, which leaves time to react before the one hour window closes:
+Compare the two WAL timestamp gauges instead, because the gap between them is the backlog in log time.
+The following alert fires when that backlog passes half an hour, which leaves time to react before the one hour window closes:
 
 ```promql
-time() - loki_write_last_read_timestamp > 1800
+loki_write_wal_writer_last_written_timestamp
+  - on (<INSTANCE_LABEL>, component_id) group_right loki_write_last_read_timestamp
+  > 1800
 ```
 
+Both gauges stall together when no logs arrive, so an idle pipeline reports a gap of zero rather than paging.
 Set the threshold below your own window, which is half of the cluster `max_chunk_age` expressed in seconds.
 
 Neither limit is controlled from {{< param "PRODUCT_NAME" >}}.
