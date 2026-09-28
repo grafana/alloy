@@ -46,7 +46,6 @@ func TestValidateLabelslKeepConfig(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestLabelKeepStage(t *testing.T) {
