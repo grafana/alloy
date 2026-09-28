@@ -43,8 +43,11 @@ type batch struct {
 	maxSize int
 	// maxStreams is the maximum number of streams in the batch. Zero means no limit.
 	maxStreams int
-	// size holds the total number of bytes for all stream labels and entries.
+	// size is the total size of the batch.
 	size int
+	// entriesSize is the total size of all entries, not including stream labels.
+	// It is used to report the sent/dropped bytes metrics.
+	entriesSize int
 	// segmentCounter tracks the amount of entries for each segment present in this batch.
 	segmentCounter map[int]int
 }
@@ -64,16 +67,22 @@ func newBatch(maxStreams, maxSize int) *batch {
 // errMaxStreamsLimitExceeded when adding a new stream would exceed maxStreams.
 // segmentNum associates the entry with a WAL segment and is unused for non-WAL clients.
 func (b *batch) add(entry loki.Entry, segmentNum int) error {
+	entrySize := entry.Size()
 	labels := labelsMapToString(entry.Labels)
+	labelsSize := len(labels)
 
 	stream, ok := b.streams[labels]
 	if ok {
-		size := entry.Size()
-		if !b.canAdd(size) {
+		// Don't add labelSize if the stream exists. It must be counted once per batch,
+		// and would have been added by a previous entry already.
+		if !b.canAdd(entrySize) {
 			return errBatchSizeReached
 		}
 
-		b.size += size
+		// It is correct to add entrySize to both b.size and b.entriesSize, because
+		// as mentioned earlier, labelSize must be counted once per batch.
+		b.size += entrySize
+		b.entriesSize += entrySize
 		b.countForSegment(segmentNum)
 		b.created = append(b.created, entry.Created())
 		stream.Entries = append(stream.Entries, entry.Entry)
@@ -87,7 +96,7 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 	}
 
 	// This is a new stream, include the size of its labels in the batch size.
-	size := entry.Size() + len(labels)
+	size := entrySize + labelsSize
 
 	// NOTE: We will always allow to add at least one entry to a batch
 	// even if that entry makes the size bigger than maxSize.
@@ -95,7 +104,11 @@ func (b *batch) add(entry loki.Entry, segmentNum int) error {
 		return errBatchSizeReached
 	}
 
+	// It is correct to add size to b.size and entrySize to b.entriesSize.
+	// The batch size must include the size of the labels when adding a new stream
+	// to a batch, but entries size should just count the size of the entries.
 	b.size += size
+	b.entriesSize += entrySize
 	b.countForSegment(segmentNum)
 	b.created = append(b.created, entry.Created())
 	b.streams[labels] = &push.Stream{

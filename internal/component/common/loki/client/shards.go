@@ -445,6 +445,11 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	bufBytes := float64(len(buf))
 	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(bufBytes)
 
+	// entriesBytes is the uncompressed size of all entries in the batch. It is
+	// different from bufBytes which is the compressed size of the encoded
+	// protobuf request.
+	entriesBytes := float64(batch.entriesSize)
+
 	backoff := backoff.New(s.ctx, s.cfg.BackoffConfig)
 	var status int
 	for {
@@ -457,13 +462,13 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if s.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
 			s.logger.Warn("dropping batch due to rate limiting applied at ingester")
-			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(bufBytes)
+			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(entriesBytes)
 			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(float64(entriesCount))
 			return
 		}
 
 		if err == nil {
-			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
+			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(entriesBytes)
 			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host, tenantID).Add(float64(entriesCount))
 			return
 		}
@@ -493,7 +498,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	} else if batchIsTooLarge(status) {
 		dropReason = reasonBatchTooLarge
 	}
-	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
+	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(entriesBytes)
 	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
 }
 
