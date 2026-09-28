@@ -368,7 +368,7 @@ The following alert fires when that backlog passes half an hour, which leaves ti
 
 ```promql
 loki_write_wal_writer_last_written_timestamp
-  - on (<INSTANCE_LABEL>, component_id) group_right loki_write_last_read_timestamp
+  - on (<INSTANCE_LABEL>, component_path, component_id) group_right loki_write_last_read_timestamp
   > 1800
 ```
 
