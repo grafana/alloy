@@ -26,33 +26,47 @@ func (b *Batch) Add(stream Stream) {
 	b.entryLen += len(stream.Entries)
 }
 
-// AddEntry adds a single entry to the stream matching labels, creating it if it
-// does not exist yet. created is used to update the stream's oldest created
-// timestamp.
-func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry) {
-	b.add(labels, created, entry)
-	b.entryLen += 1
-}
-
 func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
-	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
-	// much more efficient. If this still shows up in profiles as expensive after
-	// that change we should consider alternative representations for streams.
-	i := slices.IndexFunc(b.streams, func(s Stream) bool {
-		return s.Labels.Equal(labels)
-	})
-
+	i := b.streamIndex(labels)
 	if i >= 0 {
-		b.streams[i].Entries = append(b.streams[i].Entries, entries...)
-
-		if created != 0 && (b.streams[i].created == 0 || created < b.streams[i].created) {
-			b.streams[i].created = created
-		}
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, entries...)
+		s.updateCreated(created)
 		return
 	}
 
 	stream := NewStreamWithCreatedUnixMicro(labels, created, entries...)
 	b.streams = append(b.streams, stream)
+}
+
+// AddEntry adds a single entry to the stream matching labels, creating it if it
+// does not exist yet. created is used to update the stream's oldest created
+// timestamp.
+func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	b.addEntry(labels, created, entry)
+	b.entryLen += 1
+}
+
+func (b *Batch) addEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	i := b.streamIndex(labels)
+	if i >= 0 {
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, entry)
+		s.updateCreated(created)
+		return
+	}
+
+	stream := NewStreamWithCreatedUnixMicro(labels, created, entry)
+	b.streams = append(b.streams, stream)
+}
+
+func (b *Batch) streamIndex(labels model.LabelSet) int {
+	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
+	// much more efficient. If this still shows up in profiles as expensive after
+	// that change we should consider alternative representations for streams.
+	return slices.IndexFunc(b.streams, func(s Stream) bool {
+		return s.Labels.Equal(labels)
+	})
 }
 
 // FilterMap calls fn for each entry in the batch. If fn returns true the
@@ -248,6 +262,13 @@ type Stream struct {
 
 func (s Stream) Created() int64 {
 	return s.created
+}
+
+// updateCreated keeps the oldest non-zero created timestamp.
+func (s *Stream) updateCreated(created int64) {
+	if created != 0 && (s.created == 0 || created < s.created) {
+		s.created = created
+	}
 }
 
 // Clone returns a clone of the stream.
