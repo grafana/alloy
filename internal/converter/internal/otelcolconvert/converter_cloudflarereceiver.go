@@ -3,6 +3,7 @@ package otelcolconvert
 import (
 	"fmt"
 
+	"github.com/alecthomas/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -46,14 +47,20 @@ func (cloudflareReceiverConverter) ConvertAndAppend(state *State, id componentst
 func toCloudflareReceiver(state *State, id componentstatus.InstanceID, cfg *cloudflarereceiver.Config) *cloudflare.Arguments {
 	nextLogs := state.Next(id, pipeline.SignalLogs)
 
+	maxRequestBodySize := units.Base2Bytes(cfg.Logs.MaxRequestBodySize)
+	if maxRequestBodySize <= 0 {
+		maxRequestBodySize = cloudflare.DefaultMaxRequestBodySize
+	}
+
 	return &cloudflare.Arguments{
-		Endpoint:        cfg.Logs.Endpoint,
-		Secret:          cfg.Logs.Secret,
-		TLS:             toTLSServerArguments(cfg.Logs.TLS),
-		Attributes:      cfg.Logs.Attributes,
-		TimestampField:  cfg.Logs.TimestampField,
-		TimestampFormat: cfg.Logs.TimestampFormat,
-		Separator:       cfg.Logs.Separator,
+		Endpoint:           cfg.Logs.Endpoint,
+		Secret:             cfg.Logs.Secret,
+		TLS:                toTLSServerArguments(cfg.Logs.TLS),
+		Attributes:         cfg.Logs.Attributes,
+		TimestampField:     cfg.Logs.TimestampField,
+		TimestampFormat:    cfg.Logs.TimestampFormat,
+		Separator:          cfg.Logs.Separator,
+		MaxRequestBodySize: maxRequestBodySize,
 		Output: &otelcol.ConsumerArguments{
 			Logs: ToTokenizedConsumers(nextLogs),
 		},
