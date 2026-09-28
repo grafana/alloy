@@ -61,6 +61,17 @@ The Go implementation is independent; it doesn't embed database server source.
 
 ## Coverage and limits
 
+The PostgreSQL adapter treats any final standalone `?` token as an obfuscated
+trailing comment, such as Rails query tags, regardless of the preceding clause.
+For example, both `ORDER BY name ASC ?` and `SELECT * FROM restaurants ?` match
+those statements followed by `/* comment */`. Remaining `?` tokens in value
+positions are normalized as parameters, so `= ? ?` also matches `= $1 /* comment */`.
+Quoted question marks and infix `?`, `?|`, and `?&` JSON operators are preserved.
+The remaining statement must still pass validation. This assumes a terminal `?`
+is a comment marker, not a missing value or an incomplete JSON operator expression.
+Ruby's [SQL obfuscator](https://github.com/open-telemetry/opentelemetry-ruby-contrib/blob/main/helpers/sql-processor/lib/opentelemetry/helpers/sql_processor/obfuscator.rb)
+replaces both literal values and comments with question marks.
+
 This experimental implementation uses a dialect-aware lexer and structural
 normalizer. It is **not a complete port of the three database SQL grammars** or
 their catalog-dependent normalizers. It supports standalone `SELECT`, `INSERT`,

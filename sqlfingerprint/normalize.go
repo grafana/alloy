@@ -38,6 +38,9 @@ func wordSet(words string) map[string]bool {
 // normalize accepts query tokens and native digest list markers. It checks
 // statement structure before applying the versioned equivalence rules.
 func normalize(tokens []token, dialect Dialect, options Options) ([]token, Reason) {
+	if dialect == PostgreSQL {
+		tokens = normalizePostgresObfuscatedComment(tokens)
+	}
 	if dialect == SQLServer {
 		tokens = stripParameterDeclaration(tokens)
 	}
