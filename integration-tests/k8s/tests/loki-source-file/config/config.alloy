@@ -1,0 +1,79 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+discovery.kubernetes "pods" {
+  role = "pod"
+
+  namespaces {
+    names = [sys.env("TARGET_NAMESPACE")]
+  }
+}
+
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    action        = "keep"
+    source_labels = ["__meta_kubernetes_pod_label_alloy_logs_test"]
+    regex         = "true"
+  }
+
+  rule {
+    source_labels = [
+      "__meta_kubernetes_namespace",
+      "__meta_kubernetes_pod_name",
+      "__meta_kubernetes_pod_uid",
+      "__meta_kubernetes_pod_container_name",
+    ]
+    separator    = "/"
+    regex        = "(.*)/(.*)/(.*)/(.*)"
+    replacement  = "/var/log/pods/${1}_${2}_${3}/${4}/*.log"
+    target_label = "__path__"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+}
+
+loki.source.file "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.process.tag.receiver]
+
+  file_match {
+    enabled = true
+  }
+}
+
+loki.process "tag" {
+  forward_to = [loki.write.loki.receiver]
+
+  stage.cri { }
+
+  stage.structured_metadata {
+    values = {
+      pod = "",
+    }
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "loki-source-file",
+  }
+}

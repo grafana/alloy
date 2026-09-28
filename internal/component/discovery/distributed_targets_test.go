@@ -114,7 +114,7 @@ var localTargetsTestCases = []struct {
 func TestDistributedTargets_LocalTargets(t *testing.T) {
 	for _, tt := range localTargetsTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			dt := NewDistributedTargets(!tt.clusteringDisabled, tt.cluster, tt.allTargets)
+			dt := NewDistributedTargets(!tt.clusteringDisabled, tt.cluster, tt.allTargets, TargetHashing{})
 			localTargets := dt.LocalTargets()
 			require.Equal(t, tt.expectedLocalTargets, localTargets)
 		})
@@ -247,6 +247,14 @@ Comparison to baseline before optimisations:
 	DistributedTargets-8        1572.1k ± 0%   501.2k ± 0%  -68.12% (p=0.000 n=10)
 */
 func BenchmarkDistributedTargets(b *testing.B) {
+	benchmarkDistributedTargets(b, TargetHashing{})
+}
+
+func BenchmarkDistributedTargetsExcludedLabels(b *testing.B) {
+	benchmarkDistributedTargets(b, ExcludeOwnershipLabels([]string{"flavour"}))
+}
+
+func benchmarkDistributedTargets(b *testing.B, hashing TargetHashing) {
 	const (
 		numTargets = 100_000
 		numPeers   = 20
@@ -265,7 +273,11 @@ func BenchmarkDistributedTargets(b *testing.B) {
 
 	randomLookupMap := make(map[shard.Key][]peer.Peer)
 	for _, target := range targets {
-		randomLookupMap[keyFor(target)] = []peer.Peer{peers[rand.Int()%numPeers]}
+		key := keyFor(target)
+		if hashing.Ownership != nil {
+			key = shard.Key(hashing.Ownership(target))
+		}
+		randomLookupMap[key] = []peer.Peer{peers[rand.Int()%numPeers]}
 	}
 
 	fakeCluster := &fakeCluster{
@@ -277,11 +289,15 @@ func BenchmarkDistributedTargets(b *testing.B) {
 
 	var prev *DistributedTargets
 	for i := 0; i < b.N; i++ {
-		dt := NewDistributedTargets(true, fakeCluster, targets)
+		dt := NewDistributedTargets(true, fakeCluster, targets, hashing)
 		_ = dt.LocalTargets()
 		_ = dt.MovedToRemoteInstance(prev)
 		prev = dt
 	}
+}
+
+func keyFor(tgt Target) shard.Key {
+	return shard.Key(tgt.NonMetaLabelsHash())
 }
 
 func mkTarget(kv ...string) Target {
@@ -296,15 +312,20 @@ func testDistTargets(lookupMap map[shard.Key][]peer.Peer) *DistributedTargets {
 	return NewDistributedTargets(true, &fakeCluster{
 		peers:     allTestPeers,
 		lookupMap: lookupMap,
-	}, allTestTargets)
+	}, allTestTargets, TargetHashing{})
 }
 
 type fakeCluster struct {
 	lookupMap map[shard.Key][]peer.Peer
 	peers     []peer.Peer
+	notReady  bool
+	onLookup  func(shard.Key)
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
+	if f.onLookup != nil {
+		f.onLookup(key)
+	}
 	if key == magicErrorKey {
 		return nil, fmt.Errorf("test error for magic error key")
 	}
@@ -316,7 +337,7 @@ func (f *fakeCluster) Peers() []peer.Peer {
 }
 
 func (f *fakeCluster) Ready() bool {
-	return true
+	return !f.notReady
 }
 
 func (f *fakeCluster) Enabled() bool {

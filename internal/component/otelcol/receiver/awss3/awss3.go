@@ -1,6 +1,8 @@
 package awss3
 
 import (
+	"errors"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -8,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
@@ -51,11 +54,17 @@ type SQSConfig struct {
 	MaxNumberOfMessages *int64 `alloy:"max_number_of_messages,attr,optional"`
 }
 
+type Encoding struct {
+	Extension *extension.ExtensionHandler `alloy:"extension,attr"`
+	Suffix    string                      `alloy:"suffix,attr"`
+}
+
 type Arguments struct {
 	StartTime    string             `alloy:"start_time,attr,optional"`
 	EndTime      string             `alloy:"end_time,attr,optional"`
 	S3Downloader S3DownloaderConfig `alloy:"s3downloader,block"`
 	SQS          *SQSConfig         `alloy:"sqs,block,optional"`
+	Encodings    []Encoding         `alloy:"encoding,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -63,7 +72,6 @@ type Arguments struct {
 
 // ArgumentsFromConfig constructs component arguments from awss3receiver config.
 func ArgumentsFromConfig(cfg *awss3receiver.Config) Arguments {
-	// TODO(x1unix): map Encodings
 	args := Arguments{
 		StartTime: cfg.StartTime,
 		EndTime:   cfg.EndTime,
@@ -90,6 +98,18 @@ func ArgumentsFromConfig(cfg *awss3receiver.Config) Arguments {
 		}
 	}
 
+	if len(cfg.Encodings) > 0 {
+		args.Encodings = make([]Encoding, 0, len(cfg.Encodings))
+		for _, enc := range cfg.Encodings {
+			args.Encodings = append(args.Encodings, Encoding{
+				Extension: &extension.ExtensionHandler{
+					ID: enc.Extension,
+				},
+				Suffix: enc.Suffix,
+			})
+		}
+	}
+
 	return args
 }
 
@@ -99,8 +119,7 @@ func (args *Arguments) SetToDefault() {
 	*args = ArgumentsFromConfig(defaultCfg)
 }
 
-func (args Arguments) receiverConfig() *awss3receiver.Config {
-	// TODO(x1unix): map Encodings and Notification with components.
+func (args Arguments) receiverConfig() (*awss3receiver.Config, error) {
 	cfg := &awss3receiver.Config{
 		StartTime: args.StartTime,
 		EndTime:   args.EndTime,
@@ -127,17 +146,34 @@ func (args Arguments) receiverConfig() *awss3receiver.Config {
 		}
 	}
 
-	return cfg
+	if len(args.Encodings) > 0 {
+		cfg.Encodings = make([]awss3receiver.Encoding, 0, len(args.Encodings))
+		for _, enc := range args.Encodings {
+			if enc.Extension == nil {
+				return nil, errors.New("missing encoding extension")
+			}
+
+			cfg.Encodings = append(cfg.Encodings, awss3receiver.Encoding{
+				Extension: enc.Extension.ID,
+				Suffix:    enc.Suffix,
+			})
+		}
+	}
+
+	return cfg, nil
 }
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return args.receiverConfig(), nil
+	return args.receiverConfig()
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	otelCfg := args.receiverConfig()
+	otelCfg, err := args.receiverConfig()
+	if err != nil {
+		return err
+	}
 	return otelCfg.Validate()
 }
 
@@ -158,8 +194,19 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	// TODO(x1unix): expose components after Encodings will be exposed (See: #4938 and #4934)
-	return nil
+	if len(args.Encodings) == 0 {
+		return nil
+	}
+
+	out := make(map[otelcomponent.ID]otelcomponent.Component, len(args.Encodings))
+	for _, enc := range args.Encodings {
+		if enc.Extension == nil {
+			continue
+		}
+
+		out[enc.Extension.ID] = enc.Extension.Extension
+	}
+	return out
 }
 
 // NextConsumers implements receiver.Arguments.

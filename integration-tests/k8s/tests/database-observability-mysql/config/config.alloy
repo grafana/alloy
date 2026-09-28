@@ -1,0 +1,60 @@
+logging {
+  level = "debug"
+}
+
+prometheus.exporter.mysql "mysql" {
+  data_source_name = "root:rootpassword@tcp(mysql:3306)/testdb"
+}
+
+database_observability.mysql "test" {
+  data_source_name = "root:rootpassword@tcp(mysql:3306)/testdb"
+  forward_to       = [loki.write.loki.receiver]
+  targets          = prometheus.exporter.mysql.mysql.targets
+
+  query_samples {
+    collect_interval = "1s"
+  }
+
+  query_details {
+    collect_interval = "1s"
+  }
+
+  schema_details {
+    collect_interval = "1s"
+  }
+
+  explain_plans {
+    collect_interval = "1s"
+  }
+
+  health_check {
+    collect_interval = "1s"
+  }
+}
+
+prometheus.scrape "mysql" {
+  targets         = database_observability.mysql.test.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "database-observability-mysql",
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "database-observability-mysql",
+  }
+}

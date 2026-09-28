@@ -43,7 +43,7 @@ You can use the following blocks with `loki.write`:
 
 | Block                                              | Description                                                | Required |
 | -------------------------------------------------- | ---------------------------------------------------------- | -------- |
-| [`endpoint`][endpoint]                             | Location to send logs to.                                  | no       |
+| [`endpoint`][endpoint]                             | Location to send logs to.                                  | yes      |
 | `endpoint` > [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | `endpoint` > [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
 | `endpoint` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |

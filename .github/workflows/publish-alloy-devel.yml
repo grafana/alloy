@@ -85,7 +85,7 @@ jobs:
     - name: Get the image tag
       id: get-tag
       run: |
-        TAG="$(bash ./scripts/image-tag-docker)"
+        TAG="$(bash ./scripts/image-tag-docker)-distroless"
         echo "${TAG}" > .tag-only
         echo "grafana/alloy-dev:${TAG}" > .image-tag
         echo "tag=${TAG}" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,14 @@
+otelcol.receiver.cloudflare "default" {
+	endpoint              = "0.0.0.0:12345"
+	max_request_body_size = "5MiB"
+
+	output {
+		logs = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

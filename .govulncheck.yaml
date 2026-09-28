@@ -71,3 +71,14 @@ ignore:
       tsdb/remote-write symbols Alloy does call. No fix on the prometheus
       v3.12 line; revisit when a v3.12.x backport lands or we move to v3.13.
     expires: 2027-01-01
+
+  - id: GO-2026-5115
+    reason: |
+      Loki path traversal, a CVE-2021-36156 bypass (CVE-2026-21726), fixed
+      upstream in v3.6.4. github.com/grafana/loki/v3 is pinned to a commit
+      on Loki's #k324 branch that is chronologically after the fix and does
+      contain it, but the pin's pseudo-version base (v3.0.0) still sorts
+      below v3.6.4 under normal semver comparison, so govulncheck flags it
+      as a false positive. Revisit once Loki cuts a release with the new
+      dskit NewProvider signature and the pin can move to a real tag.
+    expires: 2027-01-01

@@ -213,8 +213,10 @@ func supervisorConfigFromEnv() (*config.Supervisor, *authCredentials, error) {
 	cfg.Server.Headers = http.Header{
 		"Authorization": []string{"Basic " + authStr},
 	}
+	// AcceptsRemoteConfig now enables both the AcceptsRemoteConfig and ReportsRemoteConfig
+	// OpAMP capabilities upstream; setting ReportsRemoteConfig here too is deprecated and
+	// only produces a startup warning log.
 	cfg.Capabilities.AcceptsRemoteConfig = true
-	cfg.Capabilities.ReportsRemoteConfig = true
 	cfg.Agent.Arguments = []string{"otel"}
 	cfg.Agent.PassthroughLogs = true
 	cfg.Storage.Directory = storageDir

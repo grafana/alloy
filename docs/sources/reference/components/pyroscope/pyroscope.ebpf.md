@@ -140,13 +140,15 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 The following Prometheus metrics are exposed:
 
-| Name                                              | Type        | Description                                                                   |
-| ------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                |
-| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`. |
-| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                          |
-| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                   |
-| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                  |
+| Name                                              | Type        | Description                                                                         |
+| ------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
+| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                      |
+| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`.       |
+| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total number of bytes in pprof profiles collected by the eBPF component, per `service_name`. |
+| `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total number of samples in pprof profiles collected by the eBPF component, per `service_name`. |
+| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                               |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                        |
+| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                       |
 
 ### eBPF profiler internal metrics
 

@@ -42,6 +42,7 @@ func init() {
 // Arguments configures the otelcol.exporter.awss3 component.
 type Arguments struct {
 	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
+	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
 
 	S3Uploader    S3Uploader    `alloy:"s3_uploader,block"`
 	MarshalerName MarshalerType `alloy:"marshaler,block,optional"`
@@ -60,6 +61,7 @@ func (args *Arguments) SetToDefault() {
 	args.S3Uploader.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 	args.Queue.SetToDefault()
+	args.Retry.SetToDefault()
 	args.Timeout = otelcol.DefaultTimeout
 }
 
@@ -74,12 +76,13 @@ func (args *Arguments) Validate() error {
 }
 
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var result awss3exporter.Config
+	result := *awss3exporter.NewFactory().CreateDefaultConfig().(*awss3exporter.Config)
 
 	result.S3Uploader = args.S3Uploader.Convert()
 	result.MarshalerName = args.MarshalerName.Convert()
 	result.ResourceAttrsToS3 = args.ResourceAttrsToS3.Convert()
 	result.TimeoutSettings.Timeout = args.Timeout
+	result.BackOffConfig = *args.Retry.Convert()
 
 	q, err := args.Queue.Convert()
 	if err != nil {
