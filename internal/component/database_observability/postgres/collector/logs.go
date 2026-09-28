@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hoophq/alcatraz"
+	"github.com/hoophq/alcatraz/anonymizer"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -39,11 +41,31 @@ var logFormatRegex = regexp.MustCompile(
 		`[A-Z0-9]{5}:`,
 )
 
+// sessionMetaRegex matches the %s:%v:%x:%c run of the required log_line_prefix
+// (session start time, virtual transaction id, transaction id, session id),
+// anchored at the start of the text right after the SQLSTATE. All four are
+// server-generated (never client-controlled), unlike the %a that follows them,
+// so no anti-spoofing care is needed here. A future log_line_prefix variant
+// that omits this run simply fails to match; callers fall back to pid-based
+// pairing in that case (see attachContinuation).
+var sessionMetaRegex = regexp.MustCompile(
+	`^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{3})? \S+):(\d+/\d+):(\d+):([^:]+):`,
+)
+
 var supportedSeverities = map[string]struct{}{
 	"ERROR": {},
 	"FATAL": {},
 	"PANIC": {},
 }
+
+// Continuation labels that carry captured, redacted text onto a pendingError
+// (see pendingError.builderAndFlagFor).
+const (
+	pgLabelStatement = "STATEMENT"
+	pgLabelDetail    = "DETAIL"
+	pgLabelHint      = "HINT"
+	pgLabelContext   = "CONTEXT"
+)
 
 // pgLogLabels are the labels PostgreSQL can write at the start of a log message:
 // the severities plus the detail/continuation labels. Classification scans the
@@ -52,7 +74,7 @@ var supportedSeverities = map[string]struct{}{
 var pgLogLabels = []string{
 	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1", "DEBUG",
 	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
-	"STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION",
+	pgLabelStatement, pgLabelDetail, pgLabelHint, pgLabelContext, "QUERY", "LOCATION",
 }
 
 // pgLabelSeparator is what PostgreSQL writes between a log label and the
@@ -84,9 +106,33 @@ type pendingError struct {
 	sqlstate      string
 	sqlstateClass string
 	timestamp     time.Time
+	message       string
+
+	// Session-metadata fields already present in the required log_line_prefix.
+	// All server-generated (never client-controlled), so none need redaction.
+	lineNumber       string
+	sessionStartTime string
+	vxid             string
+	xid              string
+	sessionID        string // %c; preferred over pid for pairing when available (see attachContinuation)
+	applicationName  string // %a; client-controlled, redacted like message/detail
 
 	sql          strings.Builder
 	hasStatement bool
+
+	detail    strings.Builder
+	hasDetail bool
+
+	hint    strings.Builder
+	hasHint bool
+
+	context    strings.Builder
+	hasContext bool
+
+	// activeField is the label (pgLabelStatement, pgLabelDetail, pgLabelHint,
+	// or pgLabelContext) that a following bare TAB-continuation line (no
+	// embedded label of its own) appends to. Empty when no such field is open.
+	activeField string
 }
 
 type LogsArguments struct {
@@ -117,6 +163,8 @@ type Logs struct {
 	errorsBySQLState      *prometheus.CounterVec
 	parseErrors           prometheus.Counter
 	logsProcessingEnabled prometheus.Gauge
+
+	piiEngine *alcatraz.Engine
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -164,6 +212,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		cancel:                    cancel,
 		stopped:                   atomic.NewBool(false),
 		startTime:                 time.Now(),
+		piiEngine:                 alcatraz.NewEngine(),
 	}
 
 	l.initMetrics()
@@ -322,7 +371,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	if strings.HasPrefix(line, "\t") {
 		if l.enableErrorLogsProcessing {
-			l.appendStatement(line)
+			l.appendToActiveField(line)
 		}
 		return nil
 	}
@@ -334,9 +383,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
 		strings.Contains(line, "FATAL:") ||
 		strings.Contains(line, "PANIC:")
-	hasStatementKeyword := l.enableErrorLogsProcessing && strings.Contains(line, "STATEMENT:")
+	hasContinuationKeyword := l.enableErrorLogsProcessing &&
+		(strings.Contains(line, "STATEMENT:") || strings.Contains(line, "DETAIL:") ||
+			strings.Contains(line, "HINT:") || strings.Contains(line, "CONTEXT:"))
 	mayFlush := l.enableErrorLogsProcessing && l.pending != nil && l.pending.hasStatement
-	if !hasErrorKeyword && !hasStatementKeyword && !mayFlush {
+	if !hasErrorKeyword && !hasContinuationKeyword && !mayFlush {
 		return nil
 	}
 
@@ -348,7 +399,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		l.flushPending()
 	}
 
-	if !hasErrorKeyword && !hasStatementKeyword {
+	if !hasErrorKeyword && !hasContinuationKeyword {
 		return nil
 	}
 
@@ -461,10 +512,27 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		label, labelAt = nextLabel, next
 	}
 
-	if label == "STATEMENT" {
+	lineNumber := strings.TrimSpace(parts[1])
+
+	// %s:%v:%x:%c, all server-generated. A prefix variant lacking this run
+	// (e.g. one missing %v/%x/%c) simply fails to match here; sessionID stays
+	// "" and callers fall back to pid-based pairing.
+	var sessionStartTime, vxid, xid, sessionID, applicationName string
+	if m := sessionMetaRegex.FindStringSubmatchIndex(rest); m != nil {
+		sessionStartTime = rest[m[2]:m[3]]
+		vxid = rest[m[4]:m[5]]
+		xid = rest[m[6]:m[7]]
+		sessionID = rest[m[8]:m[9]]
+		if labelAt > m[1] {
+			applicationName = strings.TrimSuffix(strings.TrimSpace(rest[m[1]:labelAt]), ":")
+		}
+	}
+
+	switch label {
+	case pgLabelStatement, pgLabelDetail, pgLabelHint, pgLabelContext:
 		if l.enableErrorLogsProcessing {
-			sqlStart := searchFrom + labelAt + len("STATEMENT:")
-			l.attachStatement(pid, strings.TrimSpace(line[sqlStart:]))
+			textStart := searchFrom + labelAt + len(label) + 1
+			l.attachContinuation(pid, sessionID, label, strings.TrimSpace(line[textStart:]))
 		}
 		return nil
 	}
@@ -487,18 +555,28 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
+	msgStart := searchFrom + labelAt + len(label) + 1
+	message := strings.TrimSpace(line[msgStart:])
+
 	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
 	// pending is displaced here (no STATEMENT captured → no op="error_message" entry);
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
-		receivedAt:    time.Now(),
-		pid:           pid,
-		severity:      label,
-		datname:       database,
-		user:          user,
-		sqlstate:      sqlstateCode,
-		sqlstateClass: sqlstateClass,
-		timestamp:     parsedTimestamp,
+		receivedAt:       time.Now(),
+		pid:              pid,
+		severity:         label,
+		datname:          database,
+		user:             user,
+		sqlstate:         sqlstateCode,
+		sqlstateClass:    sqlstateClass,
+		timestamp:        parsedTimestamp,
+		message:          message,
+		lineNumber:       lineNumber,
+		sessionStartTime: sessionStartTime,
+		vxid:             vxid,
+		xid:              xid,
+		sessionID:        sessionID,
+		applicationName:  applicationName,
 	}
 
 	return nil
@@ -529,30 +607,78 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 	return reconstructed, true
 }
 
-// appendStatement appends a TAB-continuation line to the in-flight STATEMENT's SQL.
-func (l *Logs) appendStatement(line string) {
-	if l.pending == nil || !l.pending.hasStatement {
-		return
+// builderAndFlagFor returns the builder and "has content" flag for one of the
+// pendingError's continuation fields, or (nil, nil) for an unrecognized label.
+func (p *pendingError) builderAndFlagFor(label string) (*strings.Builder, *bool) {
+	switch label {
+	case pgLabelStatement:
+		return &p.sql, &p.hasStatement
+	case pgLabelDetail:
+		return &p.detail, &p.hasDetail
+	case pgLabelHint:
+		return &p.hint, &p.hasHint
+	case pgLabelContext:
+		return &p.context, &p.hasContext
+	default:
+		return nil, nil
 	}
-	if l.pending.sql.Len() > 0 {
-		l.pending.sql.WriteByte('\n')
-	}
-	l.pending.sql.WriteString(strings.TrimLeft(line, "\t"))
 }
 
-// attachStatement records the STATEMENT keyword line's SQL onto the pending
-// error, provided the line's backend PID matches the pending's. A mismatched
-// PID means the streams interleaved; the pending is left in place to be
-// displaced by the next error or dropped on timeout.
-func (l *Logs) attachStatement(pid, sql string) {
-	if l.pending == nil || l.pending.pid != pid {
+// appendLine appends text to b as a new line, adding the separating newline
+// only when b already holds a prior line.
+func appendLine(b *strings.Builder, text string) {
+	if b.Len() > 0 {
+		b.WriteByte('\n')
+	}
+	b.WriteString(text)
+}
+
+// appendToActiveField appends a TAB-continuation line (no label of its own)
+// to whichever field (STATEMENT, DETAIL, HINT, or CONTEXT) was most recently
+// opened by attachContinuation. A bare line arriving with no field open is
+// dropped.
+func (l *Logs) appendToActiveField(line string) {
+	if l.pending == nil {
 		return
 	}
-	if l.pending.sql.Len() > 0 {
-		l.pending.sql.WriteByte('\n')
+	b, _ := l.pending.builderAndFlagFor(l.pending.activeField)
+	if b == nil {
+		return
 	}
-	l.pending.sql.WriteString(sql)
-	l.pending.hasStatement = true
+	appendLine(b, strings.TrimLeft(line, "\t"))
+}
+
+// attachContinuation records a STATEMENT/DETAIL/HINT/CONTEXT keyword line's
+// text onto the pending error, provided the line's identity matches the
+// pending's (session id when both have one, pid otherwise — see the matching
+// note above). A mismatch means the streams interleaved; the pending is left
+// in place to be displaced by the next error or dropped on timeout. Opening a
+// field makes it "active" so a following bare continuation line (see
+// appendToActiveField) knows which builder to extend.
+func (l *Logs) attachContinuation(pid, sessionID, label, text string) {
+	if l.pending == nil {
+		return
+	}
+	// %c (session id) is preferred when both sides have it: it can't be
+	// reused the way a backend pid can be, over a long-lived instance's
+	// uptime. Fall back to pid when either side lacks it (a log_line_prefix
+	// variant without %c).
+	var matches bool
+	if sessionID != "" && l.pending.sessionID != "" {
+		matches = l.pending.sessionID == sessionID
+	} else {
+		matches = l.pending.pid == pid
+	}
+	if !matches {
+		return
+	}
+	b, has := l.pending.builderAndFlagFor(label)
+	if b == nil {
+		return
+	}
+	appendLine(b, text)
+	*has = true
+	l.pending.activeField = label
 }
 
 // flushPending emits the pending error if its STATEMENT was captured, then
@@ -566,6 +692,17 @@ func (l *Logs) flushPending() {
 	l.pending = nil
 
 	l.emitErrorEntry(p)
+}
+
+// redact masks any PII the engine recognizes in free-form error text (message,
+// DETAIL, HINT, CONTEXT) before it leaves the process. Structured fields
+// (severity, sqlstate, datname, user, pid) never go through this path.
+func (l *Logs) redact(text string) string {
+	if text == "" {
+		return text
+	}
+	hits := l.piiEngine.Analyze(text, alcatraz.Options{})
+	return anonymizer.Anonymize(text, hits, anonymizer.Redact())
 }
 
 func (l *Logs) emitErrorEntry(p *pendingError) {
@@ -583,15 +720,39 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 		ts = time.Now()
 	}
 
-	// Minimal logfmt body for one ERROR + STATEMENT pair: just the fields
-	// needed to compute per-query error rate plus who/what triggered it. The
-	// SQL text and remaining error-detail fields (client/session, error
-	// message, …) are intentionally omitted (deferred to a follow-up PR);
-	// consumers recover the SQL by joining on query_fingerprint. severity, pid,
-	// sqlstate, sqlstate_class, and fp never need quoting; %q escapes datname
-	// and user.
-	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s",
-		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass)
+	// severity, pid, sqlstate, sqlstate_class, and fp never need quoting;
+	// %q escapes datname, user, and message.
+	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s message=%q",
+		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass, l.redact(p.message))
+
+	if p.lineNumber != "" {
+		body += fmt.Sprintf(" line_number=%s", p.lineNumber)
+	}
+	if p.sessionStartTime != "" {
+		body += fmt.Sprintf(" session_start_time=%q", p.sessionStartTime)
+	}
+	if p.vxid != "" {
+		body += fmt.Sprintf(" vxid=%s", p.vxid)
+	}
+	if p.xid != "" {
+		body += fmt.Sprintf(" xid=%s", p.xid)
+	}
+	if p.sessionID != "" {
+		body += fmt.Sprintf(" session_id=%s", p.sessionID)
+	}
+	if p.applicationName != "" {
+		body += fmt.Sprintf(" application_name=%q", l.redact(p.applicationName))
+	}
+
+	if p.hasDetail {
+		body += fmt.Sprintf(" detail=%q", l.redact(strings.TrimSpace(p.detail.String())))
+	}
+	if p.hasHint {
+		body += fmt.Sprintf(" hint=%q", l.redact(strings.TrimSpace(p.hint.String())))
+	}
+	if p.hasContext {
+		body += fmt.Sprintf(" context=%q", l.redact(strings.TrimSpace(p.context.String())))
+	}
 
 	// Blocking send by design (backpressure over dropping entries), but guarded
 	// by the collector context so a stalled downstream can't wedge Stop().
