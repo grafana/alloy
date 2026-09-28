@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"reflect"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var errOutputSourceRequired = errors.New("output source value is required if output is specified")
@@ -15,8 +17,10 @@ type OutputConfig struct {
 	Source string `alloy:"source,attr"`
 }
 
-func validateOutputConfig(config OutputConfig) error {
-	if config.Source == "" {
+var _ syntax.Validator = (*OutputConfig)(nil)
+
+func (o *OutputConfig) Validate() error {
+	if o.Source == "" {
 		return errOutputSourceRequired
 	}
 
@@ -29,16 +33,12 @@ var (
 )
 
 // newOutputStage creates a new outputStage
-func newOutputStage(config OutputConfig, opts stageOpts) (*outputStage, error) {
-	if err := validateOutputConfig(config); err != nil {
-		return nil, err
-	}
-
+func newOutputStage(config OutputConfig, opts stageOpts) *outputStage {
 	return &outputStage{
 		next:   opts.next,
 		config: config,
 		logger: opts.slogger.With("stage", "output"),
-	}, nil
+	}
 }
 
 // outputStage will mutate the incoming entry and set it from extracted data
