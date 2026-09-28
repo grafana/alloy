@@ -323,8 +323,7 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
    ```
 
-1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
-   Two of these loss paths don't increment any drop counter, so the logs are the only signal.
+   Three of these loss paths don't increment a `loki_write_*` drop counter. The conversion path has the `otelcol_exporter_loki_entries_failed` metric; for the other two, logs are the only signal.
 
    | Message                                                     | Meaning                                                                                                       |
    | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
