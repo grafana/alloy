@@ -19,6 +19,7 @@ func TestHTTPServerArguments_ConvertTimeoutZeroValue(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
+	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
 	require.Equal(t, time.Duration(0), server.IdleTimeout)
 	require.Equal(t, time.Duration(0), server.ReadHeaderTimeout)
 	require.Equal(t, time.Duration(0), server.WriteTimeout)
@@ -40,6 +41,86 @@ func TestCORSArguments_ConvertExposedHeaders(t *testing.T) {
 	})
 }
 
+func TestHTTPClientArguments_ConvertKeepalive(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.False(t, cfg.Keepalive.HasValue())
+	})
+
+	t.Run("set", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{
+			Keepalive: &otelcol.KeepaliveArguments{
+				IdleConnTimeout:     30 * time.Second,
+				MaxIdleConns:        50,
+				MaxIdleConnsPerHost: 10,
+			},
+		}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.True(t, cfg.Keepalive.HasValue())
+		ka := cfg.Keepalive.Get()
+		require.Equal(t, 30*time.Second, ka.IdleConnTimeout)
+		require.Equal(t, 50, ka.MaxIdleConns)
+		require.Equal(t, 10, ka.MaxIdleConnsPerHost)
+	})
+
+	t.Run("disable_keep_alives conflicts with keepalive", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{
+			DisableKeepAlives: true,
+			Keepalive:         &otelcol.KeepaliveArguments{},
+		}
+		_, err := args.Convert()
+		require.Error(t, err)
+	})
+}
+
+func TestKeepaliveArguments_SetToDefault(t *testing.T) {
+	var args otelcol.KeepaliveArguments
+	args.SetToDefault()
+	require.Equal(t, otelcol.DefaultKeepaliveIdleConnTimeout, args.IdleConnTimeout)
+	require.Equal(t, otelcol.DefaultKeepaliveMaxIdleConns, args.MaxIdleConns)
+	require.Equal(t, 0, args.MaxIdleConnsPerHost)
+}
+
+func TestHTTPServerArguments_ConvertKeepalive(t *testing.T) {
+	t.Run("unset", func(t *testing.T) {
+		args := &otelcol.HTTPServerArguments{}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.False(t, cfg.Get().Keepalive.HasValue())
+	})
+
+	t.Run("set", func(t *testing.T) {
+		args := &otelcol.HTTPServerArguments{
+			Keepalive: &otelcol.HTTPKeepaliveServerArguments{
+				IdleTimeout: 30 * time.Second,
+			},
+		}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.True(t, cfg.Get().Keepalive.HasValue())
+		require.Equal(t, 30*time.Second, cfg.Get().Keepalive.Get().IdleTimeout)
+	})
+
+	t.Run("keep_alives_enabled false conflicts with keepalive", func(t *testing.T) {
+		disabled := false
+		args := &otelcol.HTTPServerArguments{
+			KeepAlivesEnabled: &disabled,
+			Keepalive:         &otelcol.HTTPKeepaliveServerArguments{},
+		}
+		_, err := args.Convert()
+		require.Error(t, err)
+	})
+}
+
+func TestHTTPKeepaliveServerArguments_SetToDefault(t *testing.T) {
+	var args otelcol.HTTPKeepaliveServerArguments
+	args.SetToDefault()
+	require.Equal(t, otelcol.DefaultKeepaliveServerIdleTimeout, args.IdleTimeout)
+}
+
 func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 	args := &otelcol.HTTPServerArguments{
 		IdleTimeout:       2 * time.Minute,
@@ -52,6 +133,7 @@ func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
+	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
 	require.Equal(t, 2*time.Minute, server.IdleTimeout)
 	require.Equal(t, 10*time.Second, server.ReadTimeout)
 	require.Equal(t, 45*time.Second, server.WriteTimeout)

@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/grafana/alloy/internal/util"
+
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -84,7 +86,7 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 			return
 		}
 
-		promhttp.HandlerFor(reg, promhttp.HandlerOpts{}).ServeHTTP(w, req)
+		util.PromHTTPHandlerFor(reg, e.logger, promhttp.HandlerOpts{}).ServeHTTP(w, req)
 	})
 	return h, nil
 }

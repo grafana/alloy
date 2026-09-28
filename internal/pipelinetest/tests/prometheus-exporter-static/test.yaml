@@ -21,10 +21,22 @@ config: |
 
   prometheus.scrape "default" {
     targets    = prometheus.exporter.static.default.targets
-    forward_to = [pipelinetest.prometheus.receiver]
+    forward_to = [prometheus.remote_write.default.receiver]
 
     scrape_interval = "1s"
     scrape_timeout  = "500ms"
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = pipelinetest.prometheus.url
+
+      // The test writes too few series to fill a batch, so without a short
+      // deadline every send waits out the 5s default.
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
+   }
   }
 
 assert:

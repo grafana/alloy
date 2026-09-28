@@ -83,8 +83,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration returns the Squid Exporter Integration
-func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
-	return New(c)
+func (c *Config) NewIntegration(logger *slog.Logger) (integrations.Integration, error) {
+	return New(logger, c)
 }
 
 func init() {
@@ -94,7 +94,7 @@ func init() {
 
 // New creates a new squid integration. The integration scrapes metrics
 // from an Squid exporter running with the https://github.com/boynux/squid-exporter
-func New(c *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	se.ExtractServiceTimes = true
 	if err := c.validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
@@ -107,5 +107,5 @@ func New(c *Config) (integrations.Integration, error) {
 		Password: string(c.Password),
 	})
 
-	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(seExporter)), nil
+	return integrations.NewCollectorIntegration(c.Name(), integrations.WithLogger(logger), integrations.WithCollectors(seExporter)), nil
 }

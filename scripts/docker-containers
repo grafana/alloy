@@ -49,6 +49,8 @@ fi
 # DEFAULT_LATEST is the default tag to use for the "latest" tag.
 DEFAULT_LATEST=latest
 BORINGCRYPTO_LATEST=boringcrypto
+DISTROLESS_LATEST=latest-distroless
+BORINGCRYPTO_DISTROLESS_LATEST=boringcrypto-distroless
 
 # The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
@@ -102,6 +104,41 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
+  alloy-distroless)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$DISTROLESS_LATEST
+    else
+      BRANCH_TAG=$BRANCH_TAG-distroless
+    fi
+
+    docker buildx build $DOCKER_FLAGS                    \
+      --platform $BUILD_PLATFORMS                        \
+      --build-arg RELEASE_BUILD=1                        \
+      --build-arg VERSION="$VERSION"                    \
+      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-distroless" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"             \
+      -f Dockerfile.chisel                               \
+      .
+    ;;
+
+  alloy-boringcrypto-distroless)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$BORINGCRYPTO_DISTROLESS_LATEST
+    else
+      BRANCH_TAG=$BRANCH_TAG-boringcrypto-distroless
+    fi
+
+    docker buildx build $DOCKER_FLAGS                                 \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO                        \
+      --build-arg RELEASE_BUILD=1                                     \
+      --build-arg VERSION="$VERSION"                                 \
+      --build-arg GOEXPERIMENT=boringcrypto                           \
+      -t "$RELEASE_ALLOY_IMAGE:$TAG_VERSION-boringcrypto-distroless" \
+      -t "$RELEASE_ALLOY_IMAGE:$BRANCH_TAG"                          \
+      -f Dockerfile.chisel                                            \
+      .
+    ;;
+
   alloy-devel)
     docker buildx build $DOCKER_FLAGS      \
       --platform $BUILD_PLATFORMS          \
@@ -126,6 +163,41 @@ case "$TARGET_CONTAINER" in
       -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto" \
       -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"               \
       -f Dockerfile                                     \
+      .
+    ;;
+
+  alloy-devel-distroless)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$DISTROLESS_LATEST
+    else
+      BRANCH_TAG=$BRANCH_TAG-distroless
+    fi
+
+    docker buildx build $DOCKER_FLAGS                  \
+      --platform $BUILD_PLATFORMS                      \
+      --build-arg RELEASE_BUILD=1                      \
+      --build-arg VERSION="$VERSION"                  \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-distroless" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"             \
+      -f Dockerfile.chisel                             \
+      .
+    ;;
+
+  alloy-devel-boringcrypto-distroless)
+    if [[ "$BRANCH_TAG" == "$DEFAULT_LATEST" ]]; then
+      BRANCH_TAG=$BORINGCRYPTO_DISTROLESS_LATEST
+    else
+      BRANCH_TAG=$BRANCH_TAG-boringcrypto-distroless
+    fi
+
+    docker buildx build $DOCKER_FLAGS                               \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO                      \
+      --build-arg RELEASE_BUILD=1                                   \
+      --build-arg VERSION="$VERSION"                               \
+      --build-arg GOEXPERIMENT=boringcrypto                         \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG_VERSION-boringcrypto-distroless" \
+      -t "$DEVEL_ALLOY_IMAGE:$BRANCH_TAG"                          \
+      -f Dockerfile.chisel                                          \
       .
     ;;
 
@@ -154,9 +226,33 @@ case "$TARGET_CONTAINER" in
       .
     ;;
 
+  alloy-devel-distroless-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS             \
+      --platform $BUILD_PLATFORMS                 \
+      --build-arg RELEASE_BUILD=1                 \
+      --build-arg VERSION="$VERSION"             \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG-distroless"     \
+      -f Dockerfile.chisel                        \
+      .
+    ;;
+
+  alloy-devel-boringcrypto-distroless-pr)
+	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+
+    docker buildx build $DOCKER_FLAGS                          \
+      --platform $BUILD_PLATFORMS_BORINGCRYPTO                 \
+      --build-arg RELEASE_BUILD=1                              \
+      --build-arg VERSION="$VERSION"                          \
+      --build-arg GOEXPERIMENT=boringcrypto                    \
+      -t "$DEVEL_ALLOY_IMAGE:$TAG-boringcrypto-distroless"     \
+      -f Dockerfile.chisel                                     \
+      .
+    ;;
+
   *)
-    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-devel|alloy-devel-boringcrypto|alloy-devel-pr|alloy-devel-boringcrypto-pr"
+    echo "Usage: $0 alloy|alloy-boringcrypto|alloy-distroless|alloy-boringcrypto-distroless|alloy-devel|alloy-devel-boringcrypto|alloy-devel-distroless|alloy-devel-boringcrypto-distroless|alloy-devel-pr|alloy-devel-boringcrypto-pr|alloy-devel-distroless-pr|alloy-devel-boringcrypto-distroless-pr"
     exit 1
     ;;
 esac
-
