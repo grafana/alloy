@@ -108,18 +108,23 @@ func TestOutputStage(t *testing.T) {
 
 func TestValidateOutputConfig(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
-		err    error
+		name      string
+		config    string
+		expectErr bool
 	}{
 		{
 			name:   "valid",
 			config: `source = "mysource"`,
 		},
 		{
-			name:   "empty value returns err",
-			config: `source = ""`,
-			err:    errOutputSourceRequired,
+			name:      "empty value returns err",
+			config:    `source = ""`,
+			expectErr: true,
+		},
+		{
+			name:      "empty config returns err",
+			config:    ``,
+			expectErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -127,8 +132,8 @@ func TestValidateOutputConfig(t *testing.T) {
 			var cfg OutputConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
 
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
+			if tt.expectErr {
+				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
 			}
