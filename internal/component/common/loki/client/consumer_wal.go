@@ -162,6 +162,10 @@ func (c *WALConsumer) Start() {
 	}
 }
 
+func (c *WALConsumer) Consume(_ context.Context, batch loki.Batch) error {
+	return c.writer.WriteBatch(batch)
+}
+
 func (c *WALConsumer) ConsumeEntry(_ context.Context, entry loki.Entry) error {
 	return c.writer.WriteEntry(entry)
 }

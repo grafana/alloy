@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"testing"
@@ -30,152 +29,72 @@ import (
 )
 
 func TestWALConsumer(t *testing.T) {
-	var (
-		dir       = t.TempDir()
-		logger    = logging.NewSlogNop()
-		reg       = prometheus.NewRegistry()
-		walConfig = wal.Config{
-			MaxSegmentAge: time.Second * 10,
-			WatchConfig:   wal.DefaultWatchConfig,
-		}
-	)
-	// start all necessary resources
-	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
-
-	wl, err := wal.New(logger, reg, dir)
-	require.NoError(t, err)
-	defer wl.Close()
-
-	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig)
-	require.NoError(t, err)
-	consumer.Start()
-
-	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
-	go func() {
-		for req := range rwReceivedReqs {
-			receivedRequests.Append(req)
-		}
-	}()
-
-	defer func() {
-		consumer.Stop()
-		closeServer()
-	}()
-
-	var testLabels = model.LabelSet{
-		"wal_enabled": "true",
-	}
-	var totalLines = 100
-	for i := range totalLines {
-		require.NoError(
-			t,
-			consumer.ConsumeEntry(
-				t.Context(),
-				loki.Entry{
-					Labels: testLabels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      fmt.Sprintf("line%d", i),
-					},
-				},
-			),
+	runConsumerTest(t, func(t *testing.T, consume consumeFunc) {
+		var (
+			dir       = t.TempDir()
+			logger    = logging.NewSlogNop()
+			reg       = prometheus.NewRegistry()
+			walConfig = wal.Config{
+				MaxSegmentAge: time.Second * 10,
+				WatchConfig:   wal.DefaultWatchConfig,
+			}
 		)
-	}
 
-	require.Eventually(t, func() bool {
-		return receivedRequests.Length() == totalLines
-	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
 
-	var seenEntries = map[string]struct{}{}
-	// assert over rw received entries
-	defer receivedRequests.DoneIterate()
-	for _, req := range receivedRequests.StartIterate() {
-		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
-		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
-		require.Equal(t, `{wal_enabled="true"}`, req.Request.Streams[0].Labels)
-		seenEntries[req.Request.Streams[0].Entries[0].Line] = struct{}{}
-	}
-	require.Len(t, seenEntries, totalLines)
+		testEndpointConfig, receivedRequests, closeServer := newServerAndEndpointConfig(t)
+		consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig)
+		require.NoError(t, err)
+		consumer.Start()
+
+		defer func() {
+			consumer.Stop()
+			closeServer()
+		}()
+
+		const numEntries = 100
+		require.NoError(t, consume(t.Context(), consumer, newTestEntries(model.LabelSet{"wal_enabled": "true"}, numEntries)))
+		requireReceivedEntries(t, receivedRequests, `{wal_enabled="true"}`, numEntries)
+	})
 }
 
 func TestWALConsumer_MultipleConfigs(t *testing.T) {
-	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
-	testEndpointConfig2, rwReceivedReqs2, closeServer2 := newServerAndEndpointConfig(t)
-	testEndpointConfig2.Name = "test-client-2"
+	runConsumerTest(t, func(t *testing.T, consume consumeFunc) {
+		testEndpointConfig, receivedRequests, closeServer := newServerAndEndpointConfig(t)
+		testEndpointConfig2, receivedRequests2, closeServer2 := newServerAndEndpointConfig(t)
+		testEndpointConfig2.Name = "test-client-2"
 
-	var (
-		dir       = t.TempDir()
-		logger    = logging.NewSlogNop()
-		reg       = prometheus.NewRegistry()
-		walConfig = wal.Config{
-			WatchConfig:   wal.DefaultWatchConfig,
-			MaxSegmentAge: time.Second * 10,
-		}
-	)
-
-	wl, err := wal.New(logger, reg, dir)
-	require.NoError(t, err)
-	defer wl.Close()
-
-	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig, testEndpointConfig2)
-	require.NoError(t, err)
-	consumer.Start()
-
-	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
-	ctx, cancel := context.WithCancel(t.Context())
-	go func(ctx context.Context) {
-		for {
-			select {
-			case req := <-rwReceivedReqs:
-				receivedRequests.Append(req)
-			case req := <-rwReceivedReqs2:
-				receivedRequests.Append(req)
-			case <-ctx.Done():
-				return
+		var (
+			dir       = t.TempDir()
+			logger    = logging.NewSlogNop()
+			reg       = prometheus.NewRegistry()
+			walConfig = wal.Config{
+				WatchConfig:   wal.DefaultWatchConfig,
+				MaxSegmentAge: time.Second * 10,
 			}
-		}
-	}(ctx)
-
-	defer func() {
-		consumer.Stop()
-		closeServer()
-		closeServer2()
-		cancel()
-	}()
-
-	var testLabels = model.LabelSet{
-		"pizza-flavour": "fugazzeta",
-	}
-	var totalLines = 100
-	for i := range totalLines {
-		require.NoError(
-			t,
-			consumer.ConsumeEntry(t.Context(),
-				loki.Entry{
-					Labels: testLabels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      fmt.Sprintf("line%d", i),
-					},
-				}),
 		)
-	}
 
-	// times 2 due to endpoint being run
-	expectedTotalLines := totalLines * 2
-	require.Eventually(t, func() bool {
-		return receivedRequests.Length() == expectedTotalLines
-	}, 5*time.Second, time.Second, "timed out waiting for requests to be received")
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
 
-	var seenEntries int
-	// assert over rw received entries
-	defer receivedRequests.DoneIterate()
-	for _, req := range receivedRequests.StartIterate() {
-		require.Len(t, req.Request.Streams, 1, "expected 1 stream requests to be received")
-		require.Len(t, req.Request.Streams[0].Entries, 1, "expected 1 entry in the only stream received per request")
-		seenEntries += 1
-	}
-	require.Equal(t, seenEntries, expectedTotalLines)
+		consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig, testEndpointConfig2)
+		require.NoError(t, err)
+		consumer.Start()
+
+		defer func() {
+			consumer.Stop()
+			closeServer()
+			closeServer2()
+		}()
+
+		const numEntries = 100
+		require.NoError(t, consume(t.Context(), consumer, newTestEntries(model.LabelSet{"pizza-flavour": "fugazzeta"}, numEntries)))
+		requireReceivedEntries(t, receivedRequests, `{pizza-flavour="fugazzeta"}`, numEntries)
+		requireReceivedEntries(t, receivedRequests2, `{pizza-flavour="fugazzeta"}`, numEntries)
+	})
 }
 
 func TestWALConsumer_InvalidConfig(t *testing.T) {
@@ -591,74 +510,76 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 }
 
 func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
-	const (
-		drainTimeout = time.Second
-	)
+	runConsumerTest(t, func(t *testing.T, consume consumeFunc) {
+		const (
+			drainTimeout = time.Second
+		)
 
-	server, blocked, release := newBlockedServer()
-	defer server.Close()
-	defer release()
+		server, blocked, release := newBlockedServer()
+		defer server.Close()
+		defer release()
 
-	serverURL, err := url.Parse(server.URL)
-	require.NoError(t, err)
+		serverURL, err := url.Parse(server.URL)
+		require.NoError(t, err)
 
-	dir := t.TempDir()
-	walConfig := wal.Config{
-		MaxSegmentAge: time.Minute,
-		WatchConfig: wal.WatchConfig{
-			MinReadFrequency: 10 * time.Millisecond,
-			MaxReadFrequency: 50 * time.Millisecond,
-			DrainTimeout:     drainTimeout,
-		},
-	}
+		dir := t.TempDir()
+		walConfig := wal.Config{
+			MaxSegmentAge: time.Minute,
+			WatchConfig: wal.WatchConfig{
+				MinReadFrequency: 10 * time.Millisecond,
+				MaxReadFrequency: 50 * time.Millisecond,
+				DrainTimeout:     drainTimeout,
+			},
+		}
 
-	endpointConfig := Config{
-		Name: "test-client",
-		URL:  flagext.URLValue{URL: serverURL},
-		// Long enough that the in-flight request stays parked for the whole test.
-		Timeout:   time.Minute,
-		BatchSize: 1,
-		BackoffConfig: backoff.Config{
-			MinBackoff: time.Millisecond,
-			MaxBackoff: 10 * time.Millisecond,
-			MaxRetries: 0,
-		},
-		QueueConfig: QueueConfig{
-			Capacity:        1,
-			MinShards:       1,
-			DrainTimeout:    drainTimeout,
-			BlockOnOverflow: true,
-		},
-	}
+		endpointConfig := Config{
+			Name: "test-client",
+			URL:  flagext.URLValue{URL: serverURL},
+			// Long enough that the in-flight request stays parked for the whole test.
+			Timeout:   time.Minute,
+			BatchSize: 1,
+			BackoffConfig: backoff.Config{
+				MinBackoff: time.Millisecond,
+				MaxBackoff: 10 * time.Millisecond,
+				MaxRetries: 0,
+			},
+			QueueConfig: QueueConfig{
+				Capacity:        1,
+				MinShards:       1,
+				DrainTimeout:    drainTimeout,
+				BlockOnOverflow: true,
+			},
+		}
 
-	var (
-		logger = logging.NewSlogNop()
-		reg    = prometheus.NewRegistry()
-	)
+		var (
+			logger = logging.NewSlogNop()
+			reg    = prometheus.NewRegistry()
+		)
 
-	wl, err := wal.New(logger, reg, dir)
-	require.NoError(t, err)
-	defer wl.Close()
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
 
-	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, endpointConfig)
-	require.NoError(t, err)
-	consumer.Start()
+		consumer, err := NewWALConsumer(logger, reg, wl, walConfig, endpointConfig)
+		require.NoError(t, err)
+		consumer.Start()
 
-	feedUntilBlocked(t, blocked, consumer)
+		feedUntilBlocked(t, blocked, consumer, consume)
 
-	stopped := make(chan struct{})
-	go func() {
-		consumer.StopAndDrain()
-		close(stopped)
-	}()
+		stopped := make(chan struct{})
+		go func() {
+			consumer.StopAndDrain()
+			close(stopped)
+		}()
 
-	// A healthy shutdown costs at most the WAL drain timeout plus the queue drain timeout.
-	select {
-	case <-stopped:
-	case <-time.After(5 * (drainTimeout + drainTimeout)):
-		release()
-		t.Fatal("StopAndDrain did not finish in time")
-	}
+		// A healthy shutdown costs at most the WAL drain timeout plus the queue drain timeout.
+		select {
+		case <-stopped:
+		case <-time.After(5 * (drainTimeout + drainTimeout)):
+			release()
+			t.Fatal("StopAndDrain did not finish in time")
+		}
+	})
 }
 
 func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
