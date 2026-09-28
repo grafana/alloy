@@ -21,7 +21,7 @@ To mitigate the effects of service interruptions and improve Loki pipeline resil
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > The `wal` block itself isn't gated behind the `stability.level` [flag][], but changing any `queue_config` argument is.
 
-[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
+[flag]: ../../reference/cli/run/
 [experimental]: https://grafana.com/docs/release-life-cycle/
 
 ## Components used in this topic
@@ -199,7 +199,7 @@ To enable it, complete the following steps:
 
 1. Confirm that the storage path {{< param "PRODUCT_NAME" >}} uses has room for `max_segment_age` worth of logs at your normal ingest rate.
    Rather than estimating your ingest rate, size the WAL from observed peak throughput.
-   The query returns bytes for the busiest instance, and sums every `loki.write` component on it, because they share one disk.
+   The query returns bytes for the busiest instance, and sums every `loki.write` component on it, because they share one storage path.
 
    ```promql
    max(
@@ -217,6 +217,10 @@ To enable it, complete the following steps:
    The result is an upper bound on uncompressed batch volume, not just log-entry volume, because `loki_write_batch_size_bytes` includes stream-label bytes.
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
+
+   The query overestimates in two more cases, both of which leave you with spare capacity rather than too little.
+   A component with several `endpoint` blocks counts its volume once per endpoint, while the WAL stores each entry once.
+   Components without a `wal` block add to the total without writing anything to the storage path.
 
    After the WAL has run longer than `max_segment_age`, this query reports the ratio of WAL bytes on disk to raw log bytes:
 
@@ -310,6 +314,9 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    Alert on any increase in `loki_write_dropped_entries_total`, because a healthy pipeline never increments it.
    `loki_write_dropped_bytes_total` increments on the same events, so it tells you how much data you lost rather than whether you lost any.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
+
+   Busy tenants can reach `rate_limited` and `stream_limited` during normal operation, and either one also drives retries.
+   Exclude those two reasons from a page-on-any-increase alert, and track them on a separate threshold instead.
 
    This query lists every drop path that's currently active:
 
