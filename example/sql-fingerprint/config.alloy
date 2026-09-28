@@ -1,0 +1,45 @@
+// Run: alloy run --stability.level=experimental example/sql-fingerprint/config.alloy
+// Send application OTLP traces to localhost:4317 or localhost:4318.
+// Each SQL span needs db.system.name and db.query.text, or their legacy keys.
+otelcol.receiver.otlp "applications" {
+	grpc {
+		endpoint = "127.0.0.1:4317"
+	}
+
+	http {
+		endpoint = "127.0.0.1:4318"
+	}
+
+	output {
+		traces = [otelcol.processor.sql_fingerprint.queries.input]
+	}
+}
+
+otelcol.processor.sql_fingerprint "queries" {
+	// Use 16 or 17 for PostgreSQL sources on those major versions.
+	// Use identical options when calling the shared Go package in your backend.
+	postgresql_version = 18
+	max_query_bytes    = 1048576
+
+	output {
+		traces = [otelcol.processor.batch.traces.input]
+	}
+}
+
+otelcol.processor.batch "traces" {
+	output {
+		traces = [otelcol.exporter.otlp.tempo.input]
+	}
+}
+
+otelcol.exporter.otlp "tempo" {
+	client {
+		// Point this at your local Tempo OTLP gRPC listener.
+		// Keep it different from Alloy's receiver to avoid a forwarding loop.
+		endpoint = "127.0.0.1:4319"
+
+		tls {
+			insecure = true
+		}
+	}
+}
