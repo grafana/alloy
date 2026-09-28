@@ -1,0 +1,9 @@
+controller:
+  type: daemonset
+alloy:
+  initialDelaySeconds: 1
+  mounts:
+    varlog: true
+  extraEnv:
+    - name: TARGET_NAMESPACE
+      value: "file-log-producer"

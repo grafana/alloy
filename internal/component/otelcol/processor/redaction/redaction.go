@@ -180,7 +180,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		input["db_sanitizer"] = args.DBSanitizer.convert()
 	}
 
-	var result redactionprocessor.Config
+	result := *redactionprocessor.NewFactory().CreateDefaultConfig().(*redactionprocessor.Config)
 	if err := mapstructure.Decode(input, &result); err != nil {
 		return nil, err
 	}

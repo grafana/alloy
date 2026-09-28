@@ -40,6 +40,7 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
+		integrations.WithLogger(logger),
 		integrations.WithCollectors(handler),
 		integrations.WithRunner(func(ctx context.Context) error {
 			<-ctx.Done()

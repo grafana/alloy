@@ -28,7 +28,7 @@ func (c *Component) sendProfiles(ctx context.Context, ps []reporter.PPROF) {
 	for _, p := range ps {
 		serviceName := p.Labels.Get("service_name")
 		c.metrics.pprofsTotal.WithLabelValues(serviceName).Inc()
-		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(len(p.Raw)))
+		c.metrics.pprofSamplesTotal.WithLabelValues(serviceName).Add(float64(p.Samples))
 
 		rawProfile := p.Raw
 

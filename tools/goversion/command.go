@@ -186,9 +186,13 @@ func bumpBuildImage(root string) error {
 	if err != nil {
 		return err
 	}
+	return updateBuildImageRefs(root, refs)
+}
 
+func updateBuildImageRefs(root string, refs *buildImageRefs) error {
 	var paths = []string{
 		"Dockerfile",
+		"Dockerfile.chisel",
 		".github/workflows/build.yml",
 		".github/workflows/release-publish-alloy-artifacts.yml",
 		".github/workflows/test_full.yml",

@@ -74,9 +74,9 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 	}
 
 	// OtelExtensionConfig does not implement ServerAuth
-	return &headerssetterextension.Config{
-		HeadersConfig: upstreamHeaders,
-	}, nil
+	cfg := headerssetterextension.NewFactory().CreateDefaultConfig().(*headerssetterextension.Config)
+	cfg.HeadersConfig = upstreamHeaders
+	return cfg, nil
 }
 
 // ConvertServer returns nil since theheaders extension does not support server authentication.
