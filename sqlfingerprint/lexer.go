@@ -245,7 +245,23 @@ func (l *lexer) name() (token, Reason, bool) {
 	if upper == "U" && strings.HasPrefix(l.input[l.pos:], "&") {
 		return token{word, name}, Unsupported, false
 	}
+	if mysqlKeywords[strings.ToLower(name)] && l.mysqlQualifiedIdentifier(start) {
+		return token{identifier, name}, "", false
+	}
 	return token{word, name}, "", false
+}
+
+// mysqlQualifiedIdentifier checks the lexical exceptions to MySQL keyword
+// lookup before whitespace is discarded. A word immediately after a dot, or
+// before a dot followed immediately by a name, keeps its identifier spelling.
+func (l *lexer) mysqlQualifiedIdentifier(start int) bool {
+	if l.dialect != MySQL {
+		return false
+	}
+	if start > 0 && l.input[start-1] == '.' {
+		return true
+	}
+	return l.pos+1 < len(l.input) && l.input[l.pos] == '.' && isWordPart(l.input[l.pos+1])
 }
 
 // isLiteralPrefix recognizes the dialect's prefixes attached to single quotes.

@@ -184,9 +184,21 @@ func TestConcurrentUse(t *testing.T) {
 }
 
 // FuzzFingerprint checks that arbitrary bytes never panic and results remain
-// deterministic. Seeds target quotes, nesting, native markers, and batch splitting.
+// deterministic. Seeds cover INSERT column lists, quoting, nesting, native
+// markers, and batch splitting.
 func FuzzFingerprint(f *testing.F) {
-	for _, seed := range []string{"SELECT 1", "SELECT $$a;b$$", "SELECT * FROM t WHERE id IN (...)", "SELECT 'a''b'; SELECT @p", "SELECT /* nested /* ; */ */ 1", "SELECT 'unterminated"} {
+	for _, seed := range []string{
+		"SELECT 1",
+		"SELECT $$a;b$$",
+		"SELECT * FROM t WHERE id IN (...)",
+		"SELECT 'a''b'; SELECT @p",
+		"SELECT /* nested /* ; */ */ 1",
+		"SELECT 'unterminated",
+		"INSERT INTO t (b,a) VALUES (1,2)",
+		"INSERT IGNORE INTO app.t (b,a) VALUES (...) /* , ... */",
+		"INSERT INTO t (b,a) VALUES (LOWER(?),?)",
+		"INSERT INTO t (b,a,) VALUES (?,?)",
+	} {
 		f.Add(seed)
 	}
 	n := newFingerprinter(f, sqlfingerprint.Options{MaxQueryBytes: 16384})

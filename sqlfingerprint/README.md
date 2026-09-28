@@ -30,16 +30,16 @@ not read statistics itself. See [the example configuration](../example/sql-finge
 
 ## Correlation contract
 
-Fingerprints have the form `v2:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
+Fingerprints have the form `v4:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
 a version and dialect prefix followed by tokens framed with a kind byte and a
 big-endian, four-byte UTF-8 length. This avoids ambiguity between token boundaries.
 The fingerprint protocol includes token kinds and normalization rules; changing
 any equivalence rule requires a new version. It is independent of native database
 query IDs, sessions, and plans.
 
-Version 2 recognizes PostgreSQL question-mark parameters without requiring a
-trailing comment marker. Its fingerprints differ from version 1 for all dialects,
-since the protocol version is included in the hash. Use version 2 in both the
+Version 4 groups simple MySQL constant-row INSERTs by their column set, regardless
+of column order. Fingerprints differ from earlier versions for all dialects,
+since the protocol version is included in the hash. Use version 4 in both the
 trace processor and the service that fingerprints database statistics.
 
 Values and bind names are erased. SQL operators, aliases, explicit schema names,
@@ -65,6 +65,26 @@ and [SQL Server statement offsets](https://learn.microsoft.com/en-us/sql/relatio
 The Go implementation is independent; it doesn't embed database server source.
 
 ## Coverage and limits
+
+For MySQL, a row of multiple values such as `VALUES (?,?,?,?,?,?)` matches the
+native `VALUES (...)` marker. Simple `INSERT [IGNORE] [INTO] table (columns)`
+statements sort their explicit column list when every row collapses to a constant
+value marker. The table can be database-qualified. For example,
+`INSERT INTO t (b,a) VALUES (?,?)` matches `INSERT INTO t (a,b) VALUES (...)`.
+This deliberately groups inserts across different column orders, including those
+produced by different application frameworks.
+
+Column names, table qualification, and INSERT modifiers remain significant.
+Single rows and repeated rows remain distinct. Expressions, `DEFAULT`,
+`INSERT ... SELECT`, row aliases, trailing update clauses, and other INSERT
+forms retain column order so that expression-to-column assignments stay intact.
+
+Ordinary identifiers match their backtick-quoted digest form. The nonreserved
+[COMMENT keyword](https://dev.mysql.com/doc/refman/8.4/en/keywords.html) can name
+a column without quotes and still appears as uppercase `COMMENT` in digest text;
+both keyword spellings share one token. Quoted and qualified identifiers retain
+their spelling and case. These rules make the Java `reviews` insert and its
+MySQL digest in `mysql_digest_test.go` produce the same fingerprint.
 
 The PostgreSQL adapter treats any final standalone `?` token as an obfuscated
 trailing comment, such as Rails query tags, regardless of the preceding clause.
@@ -118,7 +138,7 @@ in the backend.
 For an array attribute, Tempo can test element equality:
 
 ```traceql
-{ span.db.query.fingerprint = "v2:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v4:postgresql:<HASH>" }
 ```
 
 Replace `<HASH>` with the hash returned by this package. Use an array-capable

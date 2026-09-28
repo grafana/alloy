@@ -50,6 +50,9 @@ func normalize(tokens []token, dialect Dialect, options Options) ([]token, Reaso
 	}
 	tokens = normalizeAtoms(tokens, dialect)
 	result, _, reason := normalizeGroups(tokens, 0, dialect, options)
+	if reason == "" && dialect == MySQL {
+		result = normalizeMySQLInsertColumns(result)
+	}
 	return result, reason
 }
 
@@ -212,7 +215,7 @@ func normalizeWord(name string, dialect Dialect, previous []token) token {
 			return token{value, "?"}
 		}
 	}
-	if keywords[lower] {
+	if keywords[lower] || (dialect == MySQL && mysqlKeywords[lower]) {
 		return token{word, lower}
 	}
 	if dialect == PostgreSQL {

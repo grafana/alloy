@@ -58,7 +58,7 @@ The legacy dialect values `postgres` and `mssql` are also accepted.
 Resource attributes aren't used to select the dialect.
 
 The output attribute `db.query.fingerprint` is always an array of unique strings, including for a single statement.
-Values have the form `v2:<DIALECT>:<SHA256>`.
+Values have the form `v4:<DIALECT>:<SHA256>`.
 The component replaces this attribute on recognized SQL spans and removes stale values if recomputation produces no fingerprints.
 It preserves SQL text, span timing, and other attributes.
 
@@ -74,6 +74,10 @@ The experimental normalizer handles literal and parameter substitution, quoted i
 PostgreSQL 16 and 17 retain constant list lengths; PostgreSQL 18 constant `IN` and `ARRAY` lists and MySQL digest lists are collapsed.
 SQL Server list lengths are retained.
 Explicit schema qualification remains significant.
+
+Simple MySQL `INSERT [IGNORE] [INTO] table (columns) VALUES ...` statements match regardless of column order when every row reduces to a constant-value marker, including the native `(...)` marker.
+Column names, table qualification, and the distinction between single and repeated rows remain significant.
+INSERTs with expressions, `DEFAULT`, `SELECT`, row aliases, or trailing clauses retain column order.
 
 This implementation is a structural normalizer, not a complete replica of each database parser.
 It doesn't support stored procedures, procedural or transaction blocks, DDL, execution wrappers, optimizer hints, executable comments, Unicode escape identifiers, client batch directives, or batches without semicolon separators.
@@ -183,7 +187,7 @@ Your backend can import `github.com/grafana/alloy/sqlfingerprint` and call `Fing
 For each returned value, search Tempo with an array-element equality query:
 
 ```traceql
-{ span.db.query.fingerprint = "v2:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v4:postgresql:<HASH>" }
 ```
 
 Replace _`<HASH>`_ with the returned SHA-256 value.

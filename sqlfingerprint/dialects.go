@@ -11,6 +11,12 @@ session_user std stddev stddev_pop stddev_samp subdate substr substring sum sysd
 system_user trim variance var_pop var_samp avg
 `)
 
+// mysqlKeywords supplements the shared syntax set with MySQL keyword tokens.
+// COMMENT is nonreserved, so it can name a column while still being emitted as
+// an uppercase keyword in DIGEST_TEXT. Quoted names retain their identifier kind.
+// Source: https://github.com/mysql/mysql-server/blob/8.4/sql/lex.h
+var mysqlKeywords = wordSet("comment")
+
 // postgresTypes limits cast squashing to built-in type names. A user-defined
 // cast may execute a function and must not be mistaken for a constant expression.
 var postgresTypes = wordSet(`
