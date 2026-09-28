@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.20.1](https://github.com/grafana/alloy/compare/v1.20.0...v1.20.1) (2026-09-28)
+
+
+### Bug Fixes 🐛
+
+* **loki:** Add the timestamp to batch size calculation [backport] ([#7248](https://github.com/grafana/alloy/issues/7248)) ([3457a1c](https://github.com/grafana/alloy/commit/3457a1ccc8da558ffbd162c040a0d8ca62a0c54f))
+* **loki:** Include estimate for stream labels in batch size [backport] ([#7247](https://github.com/grafana/alloy/issues/7247)) ([b346475](https://github.com/grafana/alloy/commit/b346475ab6242f6d9762d37e3c26bee9f65126c0))
+* **loki:** Make loki_write_sent_bytes_total and loki_write_dropped_bytes_total count uncompressed bytes [backport] ([#7249](https://github.com/grafana/alloy/issues/7249)) ([575025a](https://github.com/grafana/alloy/commit/575025a43c8b204cb2e28edd7cb3a71e56455465))
+* **otelcol.connector.host_info:** Mirror upstream logic and fix potential sources of over-count [backport] ([#7253](https://github.com/grafana/alloy/issues/7253)) ([479eb6f](https://github.com/grafana/alloy/commit/479eb6f11b2149b8326d0d229601d977e2630aaf))
+* **otelcol.receiver.cloudflare:** Default max_request_body_size to 20MiB [backport] ([#7254](https://github.com/grafana/alloy/issues/7254)) ([237fac7](https://github.com/grafana/alloy/commit/237fac76db82fd1466f920b577e4274d77bb244d))
+* **prometheus.remote_write:** Tolerate unknown WAL record types on replay [backport] ([#7237](https://github.com/grafana/alloy/issues/7237)) ([a613be5](https://github.com/grafana/alloy/commit/a613be532ebd9cfa247039c5bee9c2c2ef185625))
+
 ## [1.20.0](https://github.com/grafana/alloy/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
