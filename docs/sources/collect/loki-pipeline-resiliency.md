@@ -214,7 +214,7 @@ To enable it, complete the following steps:
    - _`<INSTANCE_LABEL>`_: The label that names a single {{< param "PRODUCT_NAME" >}} process.
    - _`<MAX_SEGMENT_AGE_HOURS>`_: The `max_segment_age` you chose, expressed in hours.
 
-   The result is the compressed request volume in bytes rather than the size of the WAL on disk.
+   The result is the uncompressed log-entry volume in bytes, not the compressed request volume. Use the ratio below to estimate the corresponding WAL bytes on disk.
    {{< param "PRODUCT_NAME" >}} compresses WAL records with Snappy, which shrinks them, while record framing and 32 KiB page padding add to them.
    Cleanup also never deletes the highest-numbered segment, so up to 128 MiB persists beyond the `max_segment_age` window.
 
