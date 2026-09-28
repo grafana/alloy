@@ -243,7 +243,7 @@ To enable it, complete the following steps:
    During an outage the written timestamp keeps advancing.
    The read timestamp advances until the endpoint queue fills, and stalls after that.
 
-   This query reports the backlog for each endpoint, in seconds of log time:
+   This query reports the WAL backlog for each endpoint, in seconds of log time:
 
    ```promql
    loki_write_wal_writer_last_written_timestamp
@@ -363,8 +363,8 @@ Raising `max_segment_age` beyond that only retains entries that Loki rejects.
 Both Loki rejections return `400`, which `loki.write` doesn't retry, so those entries are dropped with `reason=ingester_error`.
 
 You don't have to estimate the outage and drain durations to know whether you're approaching that limit.
-Compare the two WAL timestamp gauges instead, because the gap between them is the backlog in log time.
-The following alert fires when that backlog passes half an hour, which leaves time to react before the one hour window closes:
+Compare the two WAL timestamp gauges instead, because the gap between them tracks how far the watcher trails the writer.
+The following alert fires when that gap passes half an hour, which leaves time to react before the one hour window closes:
 
 ```promql
 loki_write_wal_writer_last_written_timestamp
@@ -374,6 +374,12 @@ loki_write_wal_writer_last_written_timestamp
 
 Both gauges stall together when no logs arrive, so an idle pipeline reports a gap of zero rather than paging.
 Set the threshold below your own window, which is half of the cluster `max_chunk_age` expressed in seconds.
+
+The read gauge advances when the watcher queues an entry, not when Loki accepts it.
+The gap therefore measures the WAL backlog and stops at the endpoint queue.
+
+A stalled sender can hold old entries in that queue while the gap stays small.
+Pair this alert with `loki_write_batch_retries_total` and the drop counters so a stuck endpoint still pages.
 
 Neither limit is controlled from {{< param "PRODUCT_NAME" >}}.
 `reject_old_samples_max_age` is set in [`limits_config`][loki-limits], so a tenant override can change it.
