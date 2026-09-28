@@ -311,12 +311,10 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    | `rate_limited`    | Loki rate-limited the batch, either on the final attempt or immediately when `retry_on_http_429` is `false`.      |
    | `stream_limited`  | The entry would have exceeded `max_streams`.                                                                      |
 
-   Alert on any increase in `loki_write_dropped_entries_total`, because a healthy pipeline never increments it.
+   Alert on any increase in `loki_write_dropped_entries_total` for reasons other than `rate_limited` and `stream_limited`, because a healthy pipeline never increments those other reasons on its own.
+   Busy tenants can reach `rate_limited` and `stream_limited` during normal operation, and either one also drives retries, so track those two reasons on a separate threshold instead of paging on any increase.
    `loki_write_dropped_bytes_total` increments on the same events, so it tells you how much data you lost rather than whether you lost any.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
-
-   Busy tenants can reach `rate_limited` and `stream_limited` during normal operation, and either one also drives retries.
-   Exclude those two reasons from a page-on-any-increase alert, and track them on a separate threshold instead.
 
    This query lists every drop path that's currently active:
 
@@ -324,7 +322,8 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    sum by (<INSTANCE_LABEL>, component_id, reason) (rate(loki_write_dropped_entries_total[5m])) > 0
    ```
 
-   {{< param "PRODUCT_NAME" >}} also records end-to-end propagation latency, measured from entry creation until it's sent or dropped.
+   For entries that reach a batch, {{< param "PRODUCT_NAME" >}} also records propagation latency, measured from entry creation until the batch is sent or dropped.
+   Entries dropped before they reach a batch, such as `queue_is_full` drops or failed WAL writes, don't contribute to this metric.
    This query reports the 99th percentile in seconds:
 
    ```promql
