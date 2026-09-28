@@ -17,8 +17,8 @@ type StructuredMetadataDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-func validateStructuredMetadataDropConfig(cfg StructuredMetadataDropConfig) error {
-	if len(cfg.Values) < 1 {
+func (s *StructuredMetadataDropConfig) Validate() error {
+	if len(s.Values) < 1 {
 		return errEmptyStructuredMetadataDropStageConfig
 	}
 	return nil
@@ -29,16 +29,12 @@ var (
 	_ entryProcessor = (*structuredMetadataDropStage)(nil)
 )
 
-func newStructuredMetadataDropStage(config StructuredMetadataDropConfig, opts stageOpts) (*structuredMetadataDropStage, error) {
-	if err := validateStructuredMetadataDropConfig(config); err != nil {
-		return nil, err
-	}
-
+func newStructuredMetadataDropStage(config StructuredMetadataDropConfig, opts stageOpts) *structuredMetadataDropStage {
 	return &structuredMetadataDropStage{
 		next:   opts.next,
 		config: &config,
 		logger: opts.slogger.With("stage", "structured_metadata_drop"),
-	}, nil
+	}
 }
 
 type structuredMetadataDropStage struct {
