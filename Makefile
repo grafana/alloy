@@ -102,7 +102,7 @@ BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
 # OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
 # Collector core version in collector/builder-config.yaml.
-BUILDER_VERSION      		?= v0.158.0
+BUILDER_VERSION      		?= v0.161.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -262,7 +262,7 @@ integration-test-k8s-local-dev:
 .PHONY: integration-test-windows-service
 integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
-		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
+		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 10m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:

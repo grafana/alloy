@@ -142,6 +142,7 @@ The following arguments are supported:
 |---------------------------------|----------|-------------------------------------------------------------------------------------------------------------|---------|----------|
 | `listen_address`                | `string` | The `<host:port>` address to listen to for syslog messages.                                                 |         | yes      |
 | `add_attributes`                | `bool`   | Add net.* attributes to log messages according to OpenTelemetry semantic conventions.                       | `false` | no       |
+| `auth`                          | `capsule(otelcol.Handler)` | Handler from an `otelcol.auth` component to authenticate each accepted TCP connection.    |         | no       |
 | `encoding`                      | `string` | The encoding of the syslog messages.                                                                        | `utf-8` | no       |
 | `max_log_size`                  | `string` | The maximum size of a log entry to read before failing.                                                     | `1MiB`  | no       |
 | `one_log_per_packet`            | `bool`   | Skip log tokenization, improving performance when messages always contain one log and multiline isn't used. | `false` | no       |
@@ -153,6 +154,8 @@ The `encoding` argument specifies the encoding of the incoming syslog messages.
 Refer to the upstream receiver [documentation][encoding-documentation] for more details.
 
 The `max_log_size` argument has a minimum value of `64KiB`
+
+`auth` only applies to the `tcp` block. It has no effect on the `udp` block.
 
 ### `multiline`
 

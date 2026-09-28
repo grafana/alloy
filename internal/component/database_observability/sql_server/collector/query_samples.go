@@ -21,8 +21,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 	QUERY_HASH_BYTE_LEN   = 8
 
 	// maxWaitOccurrencesPerRequest bounds the number of distinct wait episodes
@@ -123,6 +121,7 @@ ORDER BY r.session_id, r.request_id, w.exec_context_id`
 type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
+	QueryTimeout          time.Duration
 	Tracker               QueryTracker
 	EntryHandler          loki.EntryHandler
 	Logger                *slog.Logger
@@ -134,6 +133,7 @@ type QuerySamplesArguments struct {
 type QuerySamples struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
+	queryTimeout          time.Duration
 	tracker               QueryTracker
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
@@ -267,6 +267,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	return &QuerySamples{
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
+		queryTimeout:          queryTimeoutOrDefault(args.QueryTimeout),
 		tracker:               args.Tracker,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
@@ -299,7 +300,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -325,19 +326,13 @@ func (c *QuerySamples) Stop() {
 	c.wg.Wait()
 }
 
-func (c *QuerySamples) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *QuerySamples) collect(ctx context.Context) error {
 	if c.tracker == nil {
 		c.logger.Error("no query tracker available, skipping collection")
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
@@ -372,22 +367,28 @@ func (c *QuerySamples) collect(ctx context.Context) error {
 		return err
 	}
 
-	rows, err := c.dbConnection.QueryContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to query SQL Server activity: %w", err)
-	}
-	defer rows.Close()
-
 	var snapshot []querySampleRow
-	for rows.Next() {
-		row, err := scanQuerySampleRow(rows)
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rows, err := c.dbConnection.QueryContext(queryCtx, query, args...)
 		if err != nil {
-			return fmt.Errorf("failed to scan SQL Server activity: %w", err)
+			return fmt.Errorf("failed to query SQL Server activity: %w", err)
 		}
-		snapshot = append(snapshot, row)
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("failed to read SQL Server activity: %w", err)
+		defer rows.Close()
+
+		for rows.Next() {
+			row, err := scanQuerySampleRow(rows)
+			if err != nil {
+				return fmt.Errorf("failed to scan SQL Server activity: %w", err)
+			}
+			snapshot = append(snapshot, row)
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to read SQL Server activity: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	c.applySnapshot(snapshot, registrySet)
@@ -549,7 +550,7 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		database_observability.OP_QUERY_SAMPLE,
 		c.buildQuerySampleLine(state.lastRow),
 		timestamp,
 	)
@@ -560,7 +561,7 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
-			OP_WAIT_EVENT_V2,
+			database_observability.OP_WAIT_EVENT_V2,
 			c.buildWaitEventLine(state.lastRow, wait),
 			timestamp,
 		)
@@ -682,21 +683,21 @@ func classifySQLServerWaitEventType(waitType string) string {
 	waitType = strings.ToUpper(waitType)
 
 	if hasAnyPrefix(waitType, replicationWaitEventPrefixes...) || hasAnyValue(waitType, replicationWaitEventNames...) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	if strings.HasPrefix(waitType, "LCK_M_") {
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	}
 	if hasAnyValue(waitType, networkWaitEventNames...) {
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	}
 	if hasAnyPrefix(waitType, ioWaitEventPrefixes...) || hasAnyValue(waitType, ioWaitEventNames...) {
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	}
 	if hasAnyPrefix(waitType, engineWaitEventPrefixes...) || hasAnyValue(waitType, engineWaitEventNames...) {
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	}
-	return "Other Wait"
+	return database_observability.WAIT_EVENT_TYPE_OTHER
 }
 
 func hasAnyPrefix(value string, prefixes ...string) bool {

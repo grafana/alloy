@@ -50,9 +50,9 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements receiver.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &awsecscontainermetricsreceiver.Config{
-		CollectionInterval: args.CollectionInterval,
-	}, nil
+	cfg := awsecscontainermetricsreceiver.NewFactory().CreateDefaultConfig().(*awsecscontainermetricsreceiver.Config)
+	cfg.CollectionInterval = args.CollectionInterval
+	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.

@@ -1,0 +1,30 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+INSERT INTO Orders (CustomerId, Total)
+SELECT CustomerId, Total FROM StagingOrders
+```
+
+-- insert_operator.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Clustered Index Insert" LogicalOp="Insert" EstimateRows="500" EstimatedTotalSubtreeCost="0.8">
+              <Update>
+                <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" Index="[PK_Orders]" IndexKind="Clustered" />
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="500" EstimatedTotalSubtreeCost="0.5">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[StagingOrders]" />
+                  </TableScan>
+                </RelOp>
+              </Update>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

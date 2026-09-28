@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
@@ -195,4 +196,23 @@ func Test(t *testing.T) {
 		require.NoError(t, err, "HTTP request failed")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
+}
+
+func TestDefaultArguments(t *testing.T) {
+	// ConvertClient calls Validate, which resolves AWS credentials from the environment.
+	t.Setenv("AWS_ACCESS_KEY_ID", "example_access_key_id")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "example_secret_access_key")
+
+	var args sigv4.Arguments
+	args.SetToDefault()
+
+	client, err := args.ConvertClient()
+	require.NoError(t, err)
+	cfg := client.(*sigv4authextension.Config)
+
+	// Config holds an unexported credsProvider that Validate populates, so this covers the
+	// exported surface rather than the whole struct. A new upstream field would slip past.
+	require.Equal(t, "", cfg.Region)
+	require.Equal(t, "", cfg.Service)
+	require.Equal(t, sigv4authextension.AssumeRole{}, cfg.AssumeRole)
 }

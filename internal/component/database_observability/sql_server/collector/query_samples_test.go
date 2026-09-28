@@ -15,6 +15,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -232,8 +233,8 @@ func TestQuerySamples_CollectAndFinalize(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
 	entries := handler.Received()
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entries[1].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[1].Labels)
 	require.True(t, entries[0].Timestamp.Equal(querySampleStart))
 	require.Equal(t, entries[0].Timestamp, entries[1].Timestamp)
 
@@ -316,7 +317,7 @@ func TestQuerySamples_OmitsBlockingSessionIDWhenUnavailable(t *testing.T) {
 	collector.applySnapshot([]querySampleRow{row}, registered)
 	collector.applySnapshot(nil, registered)
 	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
-	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, handler.Received()[1].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, handler.Received()[1].Labels)
 	require.NotContains(t, handler.Received()[1].Line, `blocking_session_id=`)
 
 	row.BlockingSessionID = sql.NullInt64{Valid: true}
@@ -408,9 +409,9 @@ func TestQuerySamples_TaskWaitTracking(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(handler.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
 	entries := handler.Received()
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 	for _, entry := range entries[1:] {
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entry.Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entry.Labels)
 	}
 	require.Contains(t, entries[1].Line, `wait_time="250ms"`)
 	require.Contains(t, entries[2].Line, `wait_time="50ms"`)
@@ -501,7 +502,7 @@ func TestQuerySamples_ParallelWaitsProduceOneSample(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(handler.Received()) == 3 }, 5*time.Second, 20*time.Millisecond)
 	entries := handler.Received()
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 	require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
 	require.Contains(t, entries[2].Line, `wait_event_type="Engine Wait"`)
 }

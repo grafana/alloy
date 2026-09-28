@@ -36,8 +36,9 @@ func TestConfigDefault(t *testing.T) {
 
 	fCfg, err := args.Convert()
 	require.NoError(t, err)
-	cfg := fluentforwardreceiver.NewFactory().CreateDefaultConfig()
-	assert.Equal(t, cfg, fCfg)
+	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
+	// bump added one: document it, then update these values.
+	assert.Equal(t, &fluentforwardreceiver.Config{}, fCfg)
 
 	assert.Error(t, args.Validate())
 }

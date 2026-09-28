@@ -47,6 +47,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			NativeHistogramMaxBucketNumber:  100,
 			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, []string{"endpoint", "type"}),
+		// Intentionally undocumented: this metric belongs to the experimental debug-info feature.
 		debugInfoUploadBytes: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_ebpf_debug_info_upload_bytes_total",
 			Help: "Total number of bytes uploaded to the debug info endpoint",

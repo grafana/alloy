@@ -151,7 +151,7 @@ func (cg *ConfigGenerator) generateOauth2(oa promopv1.OAuth2, namespace string) 
 	}
 	return &commonConfig.OAuth2{
 		Scopes:         oa.Scopes,
-		TokenURL:       oa.TokenURL,
+		TokenURL:       string(oa.TokenURL),
 		EndpointParams: oa.EndpointParams,
 		ClientID:       clid,
 		ClientSecret:   commonConfig.Secret(clisecret),
@@ -272,7 +272,10 @@ func (r *relabeler) addFromV1(cfgs ...promopv1.RelabelConfig) (err error) {
 				return err
 			}
 		}
-		cfg.Modulus = c.Modulus
+		if c.Modulus < 0 {
+			return fmt.Errorf("modulus must not be negative, got %d", c.Modulus)
+		}
+		cfg.Modulus = uint64(c.Modulus)
 		if c.Replacement != nil {
 			cfg.Replacement = *c.Replacement
 		}
