@@ -1,7 +1,9 @@
 package loki
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -177,6 +179,190 @@ func TestBatch_Clone(t *testing.T) {
 	require.Equal(t, "keep", clonedStreams[0].Entries[0].Line)
 	require.Equal(t, "move", clonedStreams[0].Entries[1].Line)
 	require.Equal(t, "drop", clonedStreams[0].Entries[2].Line)
+}
+
+func BenchmarkBatch_Add(b *testing.B) {
+	type testCase struct {
+		name       string
+		numEntries int
+		numStreams int
+	}
+
+	tests := []testCase{
+		{
+			name:       "1000 entries, single stream",
+			numEntries: 1000,
+			numStreams: 1,
+		},
+		{
+			name:       "1000 entries, 10 streams",
+			numEntries: 1000,
+			numStreams: 10,
+		},
+		{
+			name:       "1000 entries, 100 streams",
+			numEntries: 1000,
+			numStreams: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			streams := make([]Stream, 0, tt.numEntries)
+			for i := range tt.numEntries {
+				labels := model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i%tt.numStreams))}
+				streams = append(streams, NewStream(labels, push.Entry{Timestamp: time.Now(), Line: "very important log"}))
+			}
+
+			b.ResetTimer()
+			b.ReportAllocs()
+			for b.Loop() {
+				batch := NewBatch()
+				for _, s := range streams {
+					batch.Add(s)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkBatch_AddEntry(b *testing.B) {
+	type testCase struct {
+		name       string
+		numEntries int
+		numStreams int
+	}
+
+	tests := []testCase{
+		{
+			name:       "1000 entries, single stream",
+			numEntries: 1000,
+			numStreams: 1,
+		},
+		{
+			name:       "1000 entries, 10 streams",
+			numEntries: 1000,
+			numStreams: 10,
+		},
+		{
+			name:       "1000 entries, 100 streams",
+			numEntries: 1000,
+			numStreams: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			labels := make([]model.LabelSet, 0, tt.numStreams)
+			for i := range tt.numStreams {
+				labels = append(labels, model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i))})
+			}
+			entry := push.Entry{Timestamp: time.Now(), Line: "very important log"}
+
+			b.ResetTimer()
+			b.ReportAllocs()
+			for b.Loop() {
+				batch := NewBatch()
+				for i := range tt.numEntries {
+					batch.AddEntry(labels[i%tt.numStreams], 0, entry)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkBatch_FilterMap(b *testing.B) {
+	type testCase struct {
+		name       string
+		numEntries int
+		numStreams int
+	}
+
+	tests := []testCase{
+		{
+			name:       "1000 entries, single stream",
+			numEntries: 1000,
+			numStreams: 1,
+		},
+		{
+			name:       "1000 entries, 10 streams",
+			numEntries: 1000,
+			numStreams: 10,
+		},
+		{
+			name:       "1000 entries, 100 streams",
+			numEntries: 1000,
+			numStreams: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			labels := make([]model.LabelSet, 0, tt.numStreams)
+			for i := range tt.numStreams {
+				labels = append(labels, model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i))})
+			}
+			entry := push.Entry{Timestamp: time.Now(), Line: "very important log"}
+
+			batch := NewBatch()
+			for i := range tt.numEntries {
+				batch.AddEntry(labels[i%tt.numStreams], 0, entry)
+			}
+
+			b.ResetTimer()
+			b.ReportAllocs()
+			for b.Loop() {
+				batch.FilterMap(func(*Entry) bool { return true })
+			}
+		})
+	}
+}
+
+func BenchmarkBatch_FilterMapStreams(b *testing.B) {
+	type testCase struct {
+		name       string
+		numEntries int
+		numStreams int
+	}
+
+	tests := []testCase{
+		{
+			name:       "1000 entries, single stream",
+			numEntries: 1000,
+			numStreams: 1,
+		},
+		{
+			name:       "1000 entries, 10 streams",
+			numEntries: 1000,
+			numStreams: 10,
+		},
+		{
+			name:       "1000 entries, 100 streams",
+			numEntries: 1000,
+			numStreams: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			labels := make([]model.LabelSet, 0, tt.numStreams)
+			for i := range tt.numStreams {
+				labels = append(labels, model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i))})
+			}
+			entry := push.Entry{Timestamp: time.Now(), Line: "very important log"}
+
+			batch := NewBatch()
+			for i := range tt.numEntries {
+				batch.AddEntry(labels[i%tt.numStreams], 0, entry)
+			}
+
+			b.ResetTimer()
+			b.ReportAllocs()
+			for b.Loop() {
+				batch.FilterMapStreams(func(*Stream) bool { return true })
+			}
+		})
+	}
 }
 
 func collectStreams(b *Batch) []Stream {
