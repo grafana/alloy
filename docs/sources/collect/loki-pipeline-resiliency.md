@@ -342,7 +342,7 @@ Data buffered during an outage only helps if Loki accepts it once connectivity i
 Two separate Loki limits reject old entries, and they're configured independently:
 
 - **Out-of-order window**: Loki rejects an entry older than half of `max_chunk_age` for its stream, with `reason=too_far_behind`.
-  The default `max_chunk_age` of `2h` gives a one hour window, and this setting is global rather than per tenant.
+  The default `max_chunk_age` of `2h` gives a one hour window. The effective value can be configured per tenant through Loki runtime overrides.
   Grafana Cloud enables automatic stream sharding by default, which reduces how often streams reach this window.
   Regular `too_far_behind` errors should be investigated with your Loki administrator or Grafana Cloud support.
 - **Absolute sample age**: Loki rejects an entry older than `reject_old_samples_max_age`, with `reason=greater_than_max_sample_age`.
