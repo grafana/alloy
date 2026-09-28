@@ -345,9 +345,7 @@ func TestWatcher(t *testing.T) {
 			// create new watcher, and defer stop
 			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
 			defer watcher.Stop()
-			wl, err := New(Config{
-				Dir: dir,
-			}, logger, reg)
+			wl, err := New(logger, reg, dir)
 			require.NoError(t, err)
 			defer wl.Close()
 			ew := newEntryWriter()
@@ -422,9 +420,7 @@ func TestWatcher_Replay(t *testing.T) {
 			},
 		})
 		defer watcher.Stop()
-		wl, err := New(Config{
-			Dir: dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -503,9 +499,7 @@ func TestWatcher_Replay(t *testing.T) {
 			},
 		})
 		defer watcher.Stop()
-		wl, err := New(Config{
-			Dir: dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
@@ -615,9 +609,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// start watcher, and burn through WAL as we write to it
 		watcher.Start()
 
-		wl, err := New(Config{
-			Dir: dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		return writeTo, watcher, wl
 	}

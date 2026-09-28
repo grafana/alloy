@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultTimeout  = 10 * time.Second
+	defaultTimeout  = 30 * time.Second
 	defaultInterval = 50 * time.Millisecond
 )
 

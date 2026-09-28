@@ -14,5 +14,5 @@ title: otelcol.receiver.opencensus
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.opencensus` is removed.
-Use [`otelcol.receiver.otlp`](../otelcol.receiver.otlp) instead.
+Use [`otelcol.receiver.otlp`](../otelcol.receiver.otlp/) instead.
 {{< /admonition >}}

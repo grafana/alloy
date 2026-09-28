@@ -22,9 +22,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT         = "wait_event"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
 
 const (
@@ -491,7 +488,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		database_observability.OP_QUERY_SAMPLE,
 		sampleLabels,
 		ts,
 	)
@@ -508,10 +505,10 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 
 		var op, labels string
 		if c.enablePreClassifiedWaitEvents {
-			op = OP_WAIT_EVENT_V2
+			op = database_observability.OP_WAIT_EVENT_V2
 			labels = c.buildWaitEventV2Labels(state, we, waitTimeStr)
 		} else {
-			op = OP_WAIT_EVENT
+			op = database_observability.OP_WAIT_EVENT
 			labels = c.buildWaitEventLabels(state, we, waitTimeStr)
 		}
 
@@ -695,18 +692,18 @@ func isPostgresReplicationWaitEvent(waitEvent string) bool {
 
 func classifyPostgresWaitEventType(rawType, waitEvent string) string {
 	if isPostgresReplicationWaitEvent(waitEvent) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	switch rawType {
 	case "IO":
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	case "Client":
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	case "Lock":
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	case "LWLock", "BufferPin", "IPC":
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	default:
-		return "Other Wait"
+		return database_observability.WAIT_EVENT_TYPE_OTHER
 	}
 }

@@ -49,13 +49,17 @@ otelcol.processor.memory_limiter "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.memory_limiter`:
 
-| Name                     | Type       | Description                                                                            | Default        | Required |
-|--------------------------|------------|----------------------------------------------------------------------------------------|----------------|----------|
-| `check_interval`         | `duration` | How often to check memory usage.                                                       |                | yes      |
-| `limit_percentage`       | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no       |
-| `limit`                  | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no       |
-| `spike_limit_percentage` | `int`      | Maximum spike expected between the measurements of memory usage.                       | `0`            | no       |
-| `spike_limit`            | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no       |
+| Name                                | Type       | Description                                                                            | Default        | Required |
+|-------------------------------------|------------|----------------------------------------------------------------------------------------|----------------|----------|
+| `check_interval`                    | `duration` | How often to check memory usage.                                                       |                | yes      |
+| `limit_percentage`                  | `int`      | Maximum amount of total available memory targeted to be allocated by the process heap. | `0`            | no       |
+| `limit`                             | `string`   | Maximum amount of memory targeted to be allocated by the process heap.                 | `"0MiB"`       | no       |
+| `max_gc_interval_when_hard_limited` | `duration` | Ceiling for the interval between forced garbage collections while over the hard limit.  | `"30s"`        | no       |
+| `max_gc_interval_when_soft_limited` | `duration` | Ceiling for the interval between forced garbage collections while over the soft limit.  | `"30s"`        | no       |
+| `min_gc_interval_when_hard_limited` | `duration` | Floor for the interval between forced garbage collections while over the hard limit.    | `"0s"`         | no       |
+| `min_gc_interval_when_soft_limited` | `duration` | Floor for the interval between forced garbage collections while over the soft limit.    | `"10s"`        | no       |
+| `spike_limit_percentage`            | `int`      | Maximum spike expected between the measurements of memory usage.                       | `0`            | no       |
+| `spike_limit`                       | `string`   | Maximum spike expected between the measurements of memory usage.                       | 20% of `limit` | no       |
 
 The arguments must define either `limit` or the `limit_percentage, spike_limit_percentage` pair, but not both.
 
@@ -66,7 +70,16 @@ The recommended value for spike limits is about 20% of the corresponding hard li
 The recommended `check_interval` value is 1 second.
 If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
 
-The `limit` and `spike_limit` values must be larger than 1 MiB.
+The `limit` and `spike_limit` values are rounded down to a whole number of MiB, which is the granularity the processor works at.
+A value of `"1536KiB"` is therefore treated as `"1MiB"`, and any value below 1 MiB rounds down to zero and is rejected.
+
+Forcing a garbage collection is CPU-heavy, so the processor spaces them out.
+While over a limit, it forces one no more often than the matching `min_gc_interval_when_*_limited`.
+When a forced collection fails to reclaim anything, which happens when the memory is held by live references such as a backed-up exporter queue, the interval doubles up to the matching `max_gc_interval_when_*_limited` and resets as soon as a collection is effective again.
+Set a `max_gc_interval_when_*_limited` to `"0s"` to turn off that doubling and hold the interval at the floor.
+
+`min_gc_interval_when_soft_limited` must be greater than or equal to `min_gc_interval_when_hard_limited`, and the same ordering applies to the two ceilings.
+A ceiling, when set, must also be greater than or equal to the floor on the same path.
 
 ## Blocks
 

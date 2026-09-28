@@ -283,11 +283,15 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 }
 
 func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
-	const maxCapacity = dockerMaxChunkSize * 64
+	const (
+		// initialBufSize is the size that bufio.Scanner would allocate without a Buffer call.
+		initialBufSize = 4096
+		maxCapacity    = dockerMaxChunkSize * 64
+	)
 
 	reader := bufio.NewReader(r)
 	scanner := bufio.NewScanner(reader)
-	buf := make([]byte, 0, maxCapacity)
+	buf := make([]byte, 0, initialBufSize)
 	scanner.Buffer(buf, maxCapacity)
 
 	for {
