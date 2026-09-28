@@ -63,7 +63,7 @@ func TestEndpoint(t *testing.T) {
 		{
 			name: "batch log entries together until the batch size is reached",
 			endpointConfig: Config{
-				BatchSize: logEntries[0].Size() + logEntries[1].Size(),
+				BatchSize: logEntries[0].Size() + logEntries[1].Size() + labelSetSize(model.LabelSet{}),
 				BatchWait: 100 * time.Millisecond,
 			},
 			serverResponseStatus: 200,
@@ -515,11 +515,12 @@ func TestEndpointBatchSizeMetric(t *testing.T) {
 
 	require.Equal(t, 1, len(receivedReqsChan), "expected both entries to be sent in a single batch")
 
-	// The observed size is the uncompressed size of the log lines, which is what
-	// the batch compares against the configured BatchSize.
+	// The observed size is the uncompressed size of the log lines plus the
+	// stream's label bytes, which is what the batch compares against the
+	// configured BatchSize.
 	sum, count := histogramSumAndCount(t, reg, "loki_write_batch_size_bytes")
 	assert.Equal(t, uint64(1), count)
-	assert.Equal(t, float64(entries[0].Size()+entries[1].Size()), sum)
+	assert.Equal(t, float64(entries[0].Size()+entries[1].Size()+labelSetSize(model.LabelSet{})), sum)
 }
 
 func TestEndpointCallerCancel(t *testing.T) {
