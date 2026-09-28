@@ -312,7 +312,8 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    | `stream_limited`  | The entry would have exceeded `max_streams`.                                                                      |
 
    Alert on any increase in `loki_write_dropped_entries_total` for reasons other than `rate_limited` and `stream_limited`, because a healthy pipeline never increments those other reasons on its own.
-   Busy tenants can reach `rate_limited` and `stream_limited` during normal operation, and either one also drives retries, so track those two reasons on a separate threshold instead of paging on any increase.
+   Busy tenants can reach `rate_limited` and `stream_limited` during normal operation, so track those two reasons on a separate threshold instead of paging on any increase.
+   Only `rate_limited` drives retries; `stream_limited` drops the entry immediately, without retrying.
    `loki_write_dropped_bytes_total` increments on the same events, so it tells you how much data you lost rather than whether you lost any.
    Retries happen during ordinary transient failures, so alert on `loki_write_batch_retries_total` only when the rate stays elevated for several minutes.
 
