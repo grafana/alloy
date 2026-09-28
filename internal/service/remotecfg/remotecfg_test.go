@@ -337,9 +337,12 @@ func TestConfigFallbackToCacheFailure(t *testing.T) {
 
 	env, client := setupFallbackTest(t, cfgGood)
 
-	// Verify initial state: good config loaded
+	// Verify initial state: good config loaded and cached. Confirm lastLoaded and fresh read.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+		b, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(b))
 	}, time.Second, 10*time.Millisecond)
 
 	// Corrupt the cache to simulate cache failure
@@ -397,9 +400,12 @@ func TestConfigSkipCacheRestorationWhenSameHash(t *testing.T) {
 
 	env, client := setupFallbackTest(t, cfgGood)
 
-	// Verify initial state: good config loaded and cached
+	// Verify initial state: good config loaded and cached. Confirm lastLoaded and fresh read.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		assert.Equal(c, getHash([]byte(cfgGood)), env.svc.cm.getLastLoadedCfgHash())
+		b, err := env.svc.cm.getCachedConfig()
+		assert.NoError(c, err)
+		assert.Equal(c, cfgGood, string(b))
 	}, time.Second, 10*time.Millisecond)
 
 	// Replace cache with the bad config (simulating a scenario where someone manually corrupted the cache with the same content that will be sent remotely)

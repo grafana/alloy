@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -31,43 +30,6 @@ func init() {
 	})
 }
 
-// Arguments holds values which are used to configure the loki.write component.
-type Arguments struct {
-	Endpoints      []EndpointOptions `alloy:"endpoint,block,optional"`
-	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
-	MaxStreams     int               `alloy:"max_streams,attr,optional"`
-	WAL            WalArguments      `alloy:"wal,block,optional"`
-}
-
-// WalArguments holds the settings for configuring the Write-Ahead Log (WAL) used
-// by the underlying remote write client.
-type WalArguments struct {
-	Enabled          bool          `alloy:"enabled,attr,optional"`
-	MaxSegmentAge    time.Duration `alloy:"max_segment_age,attr,optional"`
-	MinReadFrequency time.Duration `alloy:"min_read_frequency,attr,optional"`
-	MaxReadFrequency time.Duration `alloy:"max_read_frequency,attr,optional"`
-	DrainTimeout     time.Duration `alloy:"drain_timeout,attr,optional"`
-}
-
-func (wa *WalArguments) Validate() error {
-	if wa.MinReadFrequency >= wa.MaxReadFrequency {
-		return fmt.Errorf("WAL min read frequency should be lower than max read frequency")
-	}
-	return nil
-}
-
-func (wa *WalArguments) SetToDefault() {
-	// todo(thepalbi): Once we are in a good state: replay implemented, and a better cleanup mechanism
-	// make WAL enabled the default
-	*wa = WalArguments{
-		Enabled:          false,
-		MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-		MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-		MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-		DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-	}
-}
-
 // Exports holds the receiver that is used to send log entries to the
 // loki.write component.
 type Exports struct {
@@ -80,18 +42,18 @@ var (
 
 // Component implements the loki.write component.
 type Component struct {
-	opts component.Options
-
-	mut      sync.RWMutex
-	args     Arguments
+	opts     component.Options
 	receiver loki.LogsReceiver
 
-	// remote write consumer
-	consumer client.Consumer
+	mut            sync.RWMutex
+	externalLabels model.LabelSet
 
-	// sink is the place where log entries received by this component should be written to.
-	// It will in turn write to client.Consumer.
-	sink loki.EntryHandler
+	// wal is opened when it is first enabled and reused across updates.
+	// It will always be nil when disabled.
+	wal wal.WAL
+	// consumer is set by the first successful Update and afterwards only replaced by
+	// another successfully built consumer, never cleared.
+	consumer client.Consumer
 }
 
 // New creates a new loki.write component.
@@ -116,18 +78,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// First we need to stop the sink. Stopping the sink will not stop the wrapped handler.
-		if c.sink != nil {
-			c.sink.Stop()
+		c.mut.Lock()
+		defer c.mut.Unlock()
+
+		if d, ok := c.consumer.(client.DrainableConsumer); ok {
+			// stop and drain since component is shutting down.
+			d.StopAndDrain()
+		} else {
+			c.consumer.Stop()
 		}
 
-		if c.consumer != nil {
-			if d, ok := c.consumer.(client.DrainableConsumer); ok {
-				// stop and drain since component is shutting down.
-				d.StopAndDrain()
-			} else {
-				c.consumer.Stop()
-			}
+		if c.wal != nil {
+			c.wal.Close()
 		}
 	}()
 
@@ -135,15 +97,8 @@ func (c *Component) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case entry := <-c.receiver.Chan():
-			c.mut.RLock()
-			select {
-			case <-ctx.Done():
-				c.mut.RUnlock()
-				return nil
-			case c.sink.Chan() <- entry:
-			}
-			c.mut.RUnlock()
+		case e := <-c.receiver.Chan():
+			c.consumeEntry(ctx, e)
 		}
 	}
 }
@@ -158,16 +113,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	c.args = newArgs
-
-	if c.sink != nil {
-		c.sink.Stop()
-	}
-
-	if c.consumer != nil {
-		// only drain on component shutdown
-		c.consumer.Stop()
-	}
 
 	cfgs := newArgs.convertEndpointConfigs()
 
@@ -180,47 +125,116 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
-	walCfg := wal.Config{
-		Enabled:       newArgs.WAL.Enabled,
-		Dir:           filepath.Join(c.opts.DataPath, "wal"),
-		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
-		WatchConfig: wal.WatchConfig{
-			MinReadFrequency: newArgs.WAL.MinReadFrequency,
-			MaxReadFrequency: newArgs.WAL.MaxReadFrequency,
-			DrainTimeout:     newArgs.WAL.DrainTimeout,
-		},
-	}
 
-	var err error
-	if walCfg.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+	var (
+		consumer client.Consumer
+		err      error
+	)
+
+	if newArgs.WAL.Enabled {
+		consumer, err = c.newWALConsumer(newArgs, cfgs)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create cliens: %w", err)
+		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	c.sink = newEntryHandler(c.consumer, util.MapToModelLabelSet(c.args.ExternalLabels))
+	if c.consumer != nil {
+		c.consumer.Stop()
+	}
+
+	// The WAL is only needed while a WAL consumer is reading from it.
+	if !newArgs.WAL.Enabled && c.wal != nil {
+		c.wal.Close()
+		c.wal = nil
+	}
+
+	c.consumer = consumer
+	c.consumer.Start()
+	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
 
-func newEntryHandler(handler loki.EntryHandler, externalLabels model.LabelSet) loki.EntryHandler {
-	return loki.NewEntryMutatorHandler(handler, func(e loki.Entry) loki.Entry {
-		if len(externalLabels) == 0 {
-			return e
+func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client.Consumer, error) {
+	var (
+		wl     = c.wal
+		opened = false
+	)
+
+	if wl == nil {
+		var err error
+		wl, err = wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
+		if err != nil {
+			return nil, err
 		}
-		e.Labels = externalLabels.Merge(e.Labels)
-		return e
-	})
+		opened = true
+	}
+
+	consumer, err := client.NewWALConsumer(
+		c.opts.Logger,
+		c.opts.Registerer,
+		wl,
+		wal.Config{
+			MaxSegmentAge: args.WAL.MaxSegmentAge,
+			WatchConfig: wal.WatchConfig{
+				MinReadFrequency: args.WAL.MinReadFrequency,
+				MaxReadFrequency: args.WAL.MaxReadFrequency,
+				DrainTimeout:     args.WAL.DrainTimeout,
+			},
+		},
+		cfgs...,
+	)
+	if err != nil {
+		if opened {
+			wl.Close()
+		}
+		return nil, err
+	}
+
+	c.wal = wl
+	return consumer, nil
+}
+
+func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
+	var labelsMerged bool
+
+	for {
+		c.mut.RLock()
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			e.Labels = externalLabels.Merge(e.Labels)
+		}
+
+		err := consumer.ConsumeEntry(ctx, e)
+		// Only a stopped consumer is worth retrying, an update swapped it out.
+		// Anything else is an accepted entry, a canceled context while shutting down,
+		// or a failed WAL write.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the entry, and the retry hands it to those endpoints again.
+		if !errors.Is(err, loki.ErrConsumerStopped) {
+			return
+		}
+
+		if ctx.Err() != nil {
+			return
+		}
+	}
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
 	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
 	for _, e := range args.Endpoints {
-		if e.QueueConfig != defaultQueueConfig && !canUseExperimentalConfig {
+		if e.QueueConfig != defaultQueueConfigArguments && !canUseExperimentalConfig {
 			return errors.New("changing queue_config requires stability.level flag to be experimental")
 		}
 	}

@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
-	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 func AppendPrometheusScrape(pb *build.PrometheusBlocks, scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.Appendable, targets []discovery.Target, label string) {
@@ -91,7 +90,7 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		MetricNameValidationScheme:     scrapeConfig.MetricNameValidationScheme.String(),
 		MetricNameEscapingScheme:       scrapeConfig.MetricNameEscapingScheme,
 		ScrapeFallbackProtocol:         fallbackProtocol,
-		Clustering:                     cluster.ComponentBlock{Enabled: false},
+		Clustering:                     scrape.ClusteringConfig{Enabled: false},
 	}
 	return alloyArgs
 }

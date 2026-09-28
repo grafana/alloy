@@ -15,12 +15,11 @@ const (
 	reasonGeneric       = "ingester_error"
 	reasonRateLimited   = "rate_limited"
 	reasonStreamLimited = "stream_limited"
-	reasonLineTooLong   = "line_too_long"
 	reasonQueueIsFull   = "queue_is_full"
 	reasonBatchTooLarge = "batch_too_large"
 )
 
-var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonLineTooLong, reasonQueueIsFull}
+var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonQueueIsFull, reasonBatchTooLarge}
 
 type metrics struct {
 	sentBytes                    *prometheus.CounterVec
@@ -45,15 +44,15 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}, []string{labelHost, labelTenant})
 	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_bytes_total",
-		Help: "Number of bytes dropped because failed to be sent to the ingester after all retries.",
+		Help: "Number of bytes dropped because all retries exhausted.",
 	}, []string{labelHost, labelTenant, labelReason})
 	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_entries_total",
-		Help: "Number of log entries sent to the ingester.",
+		Help: "Number of log entries sent.",
 	}, []string{labelHost, labelTenant})
 	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_entries_total",
-		Help: "Number of log entries dropped because failed to be sent to the ingester after all retries.",
+		Help: "Number of log entries dropped because all retries exhausted.",
 	}, []string{labelHost, labelTenant, labelReason})
 
 	const (

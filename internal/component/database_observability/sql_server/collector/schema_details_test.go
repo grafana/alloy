@@ -122,9 +122,9 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true},{"name":"category","type":"int","not_null":true}],"indexes":[{"name":"PK_some_table","type":"CLUSTERED","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="dbo" table="some_table"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" database="some_db" schema="dbo" table="some_table" table_spec="%s"`, expectedTableSpec), entries[1].Line)
 	})
 
@@ -210,9 +210,9 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int"}]}`))
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="dbo" table="some_view"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" database="some_db" schema="dbo" table="some_view" table_spec="%s"`, expectedTableSpec), entries[1].Line)
 	})
 
@@ -290,7 +290,7 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"primary_key":true},{"name":"name","type":"varchar"}],"indexes":[{"name":"PK_some_table","type":"CLUSTERED","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"NONCLUSTERED","columns":["id","name"],"unique":false,"nullable":true}]}`))
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" database="some_db" schema="dbo" table="some_table" table_spec="%s"`, expectedTableSpec), entries[1].Line)
 	})
 
@@ -367,13 +367,13 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="schema_a" table="table_a"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[1].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="schema_b" table="table_b"`, entries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[2].Labels)
 		require.Contains(t, entries[2].Line, `schema="schema_a" table="table_a"`)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[3].Labels)
 		require.Contains(t, entries[3].Line, `schema="schema_b" table="table_b"`)
 	})
 
@@ -447,9 +447,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[2].Labels)
 	})
 
 	t.Run("second scrape after emit_interval re-emits OP_CREATE_STATEMENT", func(t *testing.T) {
@@ -513,10 +513,10 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[3].Labels)
 	})
 
 	t.Run("table dropped between scrapes is removed from throttle map", func(t *testing.T) {
@@ -650,7 +650,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="dbo" table="some_table"`, entries[0].Line)
 	})
 
@@ -802,7 +802,7 @@ func TestSchemaDetails(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="dbo" table="some_table"`, entries[0].Line)
 	})
 
@@ -881,9 +881,9 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true}],"indexes":[{"name":"PK_some_table","type":"CLUSTERED","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" database="some_db" schema="dbo" table="some_table"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" database="some_db" schema="dbo" table="some_table" table_spec="%s"`, expectedTableSpec), entries[1].Line)
 	})
 }
@@ -1015,15 +1015,15 @@ func TestSchemaDetailsMultiDatabase(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond)
 
 	entries := lokiClient.Received()
-	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 	require.Contains(t, entries[0].Line, `database="db_a"`)
 	require.Contains(t, entries[0].Line, `table="t_db_a"`)
-	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
 	require.Contains(t, entries[1].Line, `database="db_a"`)
-	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[2].Labels)
 	require.Contains(t, entries[2].Line, `database="db_b"`)
 	require.Contains(t, entries[2].Line, `table="t_db_b"`)
-	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[3].Labels)
 	require.Contains(t, entries[3].Line, `database="db_b"`)
 
 	// Throttle keys are qualified with the database, so same-named tables in
