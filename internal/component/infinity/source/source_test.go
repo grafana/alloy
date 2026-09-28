@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -861,14 +862,27 @@ func TestHealthRedactsRedirectURL(t *testing.T) {
 // switchOwner is a cluster where this node owns every key until other is set.
 type switchOwner struct {
 	cluster.Cluster
-	other *atomic.Bool
+	other   *atomic.Bool
+	lookups *atomic.Int32
+}
+
+func newSwitchOwner(other bool) switchOwner {
+	return switchOwner{Cluster: cluster.Mock(), other: atomic.NewBool(other), lookups: atomic.NewInt32(0)}
 }
 
 func (s switchOwner) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
+	s.lookups.Inc()
 	if s.other.Load() {
 		return []peer.Peer{{Name: "other", Self: false}}, nil
 	}
 	return []peer.Peer{{Name: "self", Self: true}}, nil
+}
+
+// move gives every key to another node, or back to this node, and tells c,
+// the same way the cluster service does.
+func (s switchOwner) move(toOther bool, c *Component) {
+	s.other.Store(toOther)
+	c.NotifyClusterChange()
 }
 
 // TestRemovedQueryMarkersOnlyFromOwner checks that a node that no longer
@@ -880,8 +894,7 @@ func TestRemovedQueryMarkersOnlyFromOwner(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 
-	other := atomic.NewBool(false)
-	cl := switchOwner{Cluster: cluster.Mock(), other: other}
+	cl := newSwitchOwner(false)
 	// A long interval leaves time to remove the query before the next poll.
 	cfg := fmt.Sprintf(`
 		interval = "2s"
@@ -898,7 +911,7 @@ func TestRemovedQueryMarkersOnlyFromOwner(t *testing.T) {
 	require.NoError(t, err)
 	require.Eventually(t, func() bool { return app.LatestSampleFor(series("v")) != nil }, 3*time.Second, 10*time.Millisecond)
 
-	other.Store(true)
+	cl.other.Store(true)
 	args, err := parse(fmt.Sprintf(`
 		interval = "2s"
 		timeout  = "1s"
@@ -930,4 +943,241 @@ func TestFailedPollCountsUp(t *testing.T) {
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
 		assert.GreaterOrEqual(ct, promtestutil.ToFloat64(c.metrics.samplesSent.WithLabelValues("q")), 1.0)
 	}, 2*time.Second, 20*time.Millisecond)
+}
+
+// clusteredInline is a clustered config with one inline query. interval is
+// long, so only a kick can make the query poll during a test.
+const clusteredInline = `
+	interval = "10s"
+	timeout  = "1s"
+	clustering {
+		enabled = true
+	}
+	query "q" {
+		source = "inline"
+		data   = "[{\"v\":1}]"
+	}`
+
+// newCounting builds a component from cfg that sends metrics to app. The
+// returned counter counts the parses, which is one per owned poll.
+func newCounting(opts component.Options, cfg string, app storage.Appendable) (*Component, *atomic.Int32, error) {
+	args, err := parse(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	args.ForwardTo.Metrics = []storage.Appendable{app}
+	c, err := New(opts, args)
+	if err != nil {
+		return nil, nil, err
+	}
+	parses := atomic.NewInt32(0)
+	c.parse = func(s querySpec, b []byte) (*data.Frame, error) {
+		parses.Inc()
+		return buildFrame(s, b)
+	}
+	return c, parses, nil
+}
+
+func queryStateOf(c *Component, name string) *queryState {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	return c.queries[name]
+}
+
+// TestClusterChangeGainPollsSoon checks that a node that gains a query polls
+// it within interval/10, not at its next tick.
+func TestClusterChangeGainPollsSoon(t *testing.T) {
+	cl := newSwitchOwner(true)
+	c, parses, err := newCounting(testOptions(t, cl), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	cl.move(false, c)
+	require.Eventually(t, func() bool { return parses.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
+}
+
+// TestClusterChangeLossStopsPolling checks that a node that loses a query
+// stops polling it, clears its series without stale markers, and clears
+// its health.
+func TestClusterChangeLossStopsPolling(t *testing.T) {
+	h := &switchable{}
+	h.status.Store(http.StatusServiceUnavailable)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	cl := newSwitchOwner(false)
+	cfg := queryConfig(srv.URL) + `
+		clustering {
+			enabled = true
+		}`
+	app := testappender.NewCollectingAppender()
+	c, err := startComponent(t.Context(), testOptions(t, cl), cfg, testappender.ConstantAppendable{Inner: app}, nil)
+	require.NoError(t, err)
+	qs := queryStateOf(c, "q")
+	require.Eventually(t, func() bool {
+		return c.CurrentHealth().Health == component.HealthTypeUnhealthy
+	}, 2*time.Second, 10*time.Millisecond)
+
+	cl.move(true, c)
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		qs.mut.Lock()
+		tracked := qs.tracker.len()
+		qs.mut.Unlock()
+		assert.Zero(ct, tracked)
+		assert.Equal(ct, component.HealthTypeHealthy, c.CurrentHealth().Health)
+	}, 2*time.Second, 10*time.Millisecond)
+
+	hits := h.hits.Load()
+	require.Never(t, func() bool { return h.hits.Load() > hits }, 400*time.Millisecond, 20*time.Millisecond, "a node that lost the query must not poll it")
+	up := app.LatestSampleFor(series("up"))
+	require.NotNil(t, up)
+	require.False(t, value.IsStaleNaN(up.Value), "a node that lost the query must not send stale markers")
+}
+
+// TestNotifyClusterChangeDoesNotWaitForPoll checks that NotifyClusterChange
+// returns at once, and that ownership still changes, while a poll is blocked.
+func TestNotifyClusterChangeDoesNotWaitForPoll(t *testing.T) {
+	var once sync.Once
+	block := make(chan struct{})
+	closeBlock := func() { once.Do(func() { close(block) }) }
+	defer closeBlock()
+	entered := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		select {
+		case <-block:
+		case <-r.Context().Done():
+		}
+	}))
+	defer srv.Close()
+
+	cl := newSwitchOwner(false)
+	cfg := fmt.Sprintf(`
+		interval = "2s"
+		timeout  = "2s"
+		clustering {
+			enabled = true
+		}
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	c, err := startComponent(t.Context(), testOptions(t, cl), cfg, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}, nil)
+	require.NoError(t, err)
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("handler was never entered")
+	}
+
+	qs := queryStateOf(c, "q")
+	require.True(t, qs.assigned.Load())
+
+	start := time.Now()
+	for range 100 {
+		c.NotifyClusterChange()
+	}
+	cl.move(true, c)
+	require.Less(t, time.Since(start), 50*time.Millisecond, "NotifyClusterChange must not wait for a poll")
+
+	require.Eventually(t, func() bool { return !qs.assigned.Load() }, time.Second, 5*time.Millisecond, "a blocked poll must not delay the ownership change")
+}
+
+// TestNotifyClusterChangeDisabled checks that NotifyClusterChange does
+// nothing when clustering is disabled, and does not panic before Run.
+func TestNotifyClusterChangeDisabled(t *testing.T) {
+	args, err := parse(`
+		query "q" {
+			source = "inline"
+			data   = "[1]"
+		}`)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+
+	require.NotPanics(t, c.NotifyClusterChange)
+	require.Zero(t, len(c.clusterChanged), "a disabled component must not queue a cluster change")
+
+	c, _, err = newCounting(testOptions(t, cluster.Mock()), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	require.NotPanics(t, func() {
+		c.NotifyClusterChange()
+		c.NotifyClusterChange()
+	})
+}
+
+// TestNotifyClusterChangeCoalesces checks that many notifications start no
+// goroutines and do not make one ownership refresh each.
+func TestNotifyClusterChangeCoalesces(t *testing.T) {
+	cl := newSwitchOwner(false)
+	c, _, err := newCounting(testOptions(t, cl), clusteredInline, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	before := runtime.NumGoroutine()
+	lookups := cl.lookups.Load()
+	const notifications = 10000
+	for range notifications {
+		c.NotifyClusterChange()
+	}
+	require.Eventually(t, func() bool { return len(c.clusterChanged) == 0 }, time.Second, 5*time.Millisecond)
+	require.LessOrEqual(t, goroutinesAfter(before, time.Second), before, "notifications must start no goroutines")
+	require.Less(t, cl.lookups.Load()-lookups, int32(notifications), "notifications must coalesce")
+}
+
+// TestRunStopsPendingJitter checks that Run returns at once, runs no poll,
+// and leaves no goroutine when a kicked poll waits for its jitter.
+func TestRunStopsPendingJitter(t *testing.T) {
+	before := runtime.NumGoroutine()
+	cl := newSwitchOwner(true)
+	cfg := `
+		interval = "1h"
+		timeout  = "1s"
+		clustering {
+			enabled = true
+		}
+		query "q" {
+			source = "inline"
+			data   = "[{\"v\":1}]"
+		}`
+	c, parses, err := newCounting(testOptions(t, cl), cfg, testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()})
+	require.NoError(t, err)
+	cancel, runDone := runComponent(t.Context(), c)
+	defer cancel()
+
+	// The jitter is up to 6 minutes, so it is still pending at shutdown.
+	cl.move(false, c)
+	qs := queryStateOf(c, "q")
+	require.Eventually(t, func() bool {
+		return qs.assigned.Load() && len(qs.kick) == 0 && len(c.clusterChanged) == 0
+	}, time.Second, 5*time.Millisecond)
+
+	cancel()
+	select {
+	case <-runDone:
+	case <-time.After(time.Second):
+		t.Fatal("Run did not return after its context was cancelled")
+	}
+	require.Zero(t, parses.Load())
+	require.LessOrEqual(t, goroutinesAfter(before, 2*time.Second), before, "Run must leave no goroutine")
+}
+
+// goroutinesAfter waits until at most want goroutines run, or until timeout,
+// and returns the count. require.Eventually runs its condition in a new
+// goroutine, so it cannot count them.
+func goroutinesAfter(want int, timeout time.Duration) int {
+	deadline := time.Now().Add(timeout)
+	for {
+		n := runtime.NumGoroutine()
+		if n <= want || time.Now().After(deadline) {
+			return n
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }

@@ -53,6 +53,8 @@ type Component struct {
 	// gen is the current config generation. Update replaces it without
 	// waiting for a running poll. Each poll loads it once, at its start.
 	gen atomic.Pointer[generation]
+	// clusterChanged holds one pending cluster change.
+	clusterChanged chan struct{}
 
 	mut         sync.RWMutex
 	args        Arguments
@@ -79,6 +81,9 @@ type queryState struct {
 	// A goroutine that passes the timeout keeps running, so it can be 1
 	// when a poll starts.
 	workers atomic.Int32
+	// assigned tells if the cluster gives this query to this node.
+	assigned atomic.Bool
+	kick     chan struct{}
 
 	mut              sync.Mutex // guards the fields below
 	tracker          *tracker
@@ -106,6 +111,7 @@ func (qs *queryState) result() error {
 var (
 	_ component.Component       = (*Component)(nil)
 	_ component.HealthComponent = (*Component)(nil)
+	_ cluster.Component         = (*Component)(nil)
 )
 
 // New creates an infinity.source component.
@@ -130,6 +136,9 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		loki:    loki.NewFanout(nil),
 		queries: map[string]*queryState{},
 		parse:   buildFrame,
+		// The cluster service calls NotifyClusterChange synchronously, so
+		// it sends without blocking into this buffer.
+		clusterChanged: make(chan struct{}, 1),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -146,7 +155,14 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 	c.mut.Unlock()
 
+	watchDone := make(chan struct{})
+	go func() {
+		defer close(watchDone)
+		c.watchCluster(ctx)
+	}()
+
 	<-ctx.Done()
+	<-watchDone
 
 	c.mut.Lock()
 	c.runCtx = nil
@@ -204,6 +220,9 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	var (
 		toStop  []*loop
 		removed []removedQuery
+		// toLookUp holds the queries whose owner Update looks up before
+		// their loops start.
+		toLookUp = map[string]*queryState{}
 	)
 
 	c.mut.Lock()
@@ -225,11 +244,19 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		removed = append(removed, removedQuery{name: name, qs: qs})
 		delete(c.queries, name)
 	}
+	clusteringEnabled := gen.clustering && (oldGen == nil || !oldGen.clustering)
 	for name := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
-			qs = &queryState{tracker: newTracker()}
+			qs = &queryState{tracker: newTracker(), kick: make(chan struct{}, 1)}
 			c.queries[name] = qs
+		}
+		switch {
+		case !gen.clustering:
+			// Enabling clustering later must not see a false gain.
+			qs.assigned.Store(true)
+		case !ok || clusteringEnabled:
+			toLookUp[name] = qs
 		}
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
@@ -247,6 +274,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if oldGen != nil {
 		oldGen.client.CloseIdleConnections()
 	}
+
+	// A new query must not poll before its owner is known. Update does not
+	// kick here, so new loops keep their random offset.
+	c.refreshOwnership(toLookUp)
 
 	for _, r := range removed {
 		r.qs.mut.Lock()
@@ -281,7 +312,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 // startLoopLocked starts the poll loop of one query. The caller holds c.mut.
 func (c *Component) startLoopLocked(name string, qs *queryState) *loop {
 	interval := c.args.Interval
-	return startLoop(c.runCtx, interval, randomOffset(interval),
+	return startLoop(c.runCtx, interval, randomOffset(interval), qs.kick,
 		func(ctx context.Context) { c.poll(ctx, name, qs) },
 		func() { c.metrics.pollsOverrun.WithLabelValues(name).Inc() },
 	)
@@ -311,7 +342,7 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 	qs.mut.Lock()
 	defer qs.mut.Unlock()
 
-	if g.clustering && !c.owns(name) {
+	if g.clustering && !qs.assigned.Load() {
 		if qs.owned {
 			// The new owner takes over. The old series go stale by lookback.
 			qs.tracker.reset()
@@ -347,6 +378,48 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 		c.opts.Logger.Warn("poll failed", "query", name, "reason", reasonOf(err), "err", err)
 	}
 	qs.setResult(err)
+}
+
+// watchCluster refreshes ownership once at start and on each cluster
+// change. It wakes the loops of the queries this node gains, so they do not
+// wait for their next tick. A query this node loses stops at its next poll.
+func (c *Component) watchCluster(ctx context.Context) {
+	refresh := func() {
+		if !c.gen.Load().clustering {
+			return
+		}
+		c.mut.RLock()
+		states := maps.Clone(c.queries)
+		c.mut.RUnlock()
+		for _, qs := range c.refreshOwnership(states) {
+			select {
+			case qs.kick <- struct{}{}:
+			default:
+			}
+		}
+	}
+	refresh()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.clusterChanged:
+			refresh()
+		}
+	}
+}
+
+// refreshOwnership looks up the owner of each query and returns the queries
+// that this node gains. It takes no lock, so a blocked poll cannot delay it.
+func (c *Component) refreshOwnership(states map[string]*queryState) []*queryState {
+	var gained []*queryState
+	for name, qs := range states {
+		mine := c.owns(name)
+		if was := qs.assigned.Swap(mine); mine && !was {
+			gained = append(gained, qs)
+		}
+	}
+	return gained
 }
 
 func (c *Component) owns(name string) bool {
@@ -488,6 +561,18 @@ func fetchAndBuild(ctx context.Context, g *generation, s querySpec, parse parseF
 		}
 	}
 	return parse(s, body)
+}
+
+// NotifyClusterChange implements cluster.Component. It never blocks, because
+// the cluster service calls each component in turn.
+func (c *Component) NotifyClusterChange() {
+	if g := c.gen.Load(); g == nil || !g.clustering {
+		return
+	}
+	select {
+	case c.clusterChanged <- struct{}{}:
+	default:
+	}
 }
 
 // CurrentHealth implements component.HealthComponent.

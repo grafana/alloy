@@ -361,8 +361,9 @@ A consistent hash of the component ID and the query name assigns each query to e
 
 If {{< param "PRODUCT_NAME" >}} isn't running in clustered mode, the `clustering` block is a no-op, and `infinity.source` polls every query on every node.
 
-`infinity.source` checks ownership on every poll, so it doesn't implement `NotifyClusterChange`.
-A change in ownership takes effect at the next poll, at most one `interval` after the cluster changes.
+`infinity.source` recomputes the ownership of its queries when the cluster changes.
+A node that gains a query polls it after a short random delay of up to 10% of `interval`, and doesn't wait for its next scheduled poll.
+A node that loses a query stops polling it at its next scheduled poll.
 
 When a node loses ownership of a query, it clears that query's tracked series without sending stale markers, so the previous owner doesn't mark the new owner's series as stale.
 Losing ownership also clears the query's health on that node, so the node's health no longer reflects a failure from before it lost ownership.
