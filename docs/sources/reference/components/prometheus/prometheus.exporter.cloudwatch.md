@@ -228,23 +228,26 @@ You can use the following arguments with the `custom_namespace` block:
 
 {{< badge text="Required" >}}
 
-Represents an AWS Metric to scrape.
+The `metric` block defines an AWS metric to scrape.
 
-The `metric` block may be specified multiple times to define multiple target metrics.
-Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
+You can configure the `metric` block multiple times to define multiple target metrics.
+Refer to the [View available metrics][]topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 You can use the following arguments with the `metric` block:
 
-| Name                       | Type           | Description                                                                | Default                                                                                                                               | Required |
-| -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `name`                     | `string`       | Metric name.                                                               |                                                                                                                                       | yes      |
-| `period`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `period` in the parent job.                                                                                              | no       |
-| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                                       | yes      |
-| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | The value of `add_cloudwatch_timestamp` in the parent job.                                                                            | no       |
-| `length`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `length` in the parent job.                                                                                              | no       |
-| `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [`static`][static] or [`discovery`][discovery] block. `true` if not set in the parent block. | no       |
+| Name                       | Type           | Description                                                                          | Default                          | Required |
+| -------------------------- | -------------- | ------------------------------------------------------------------------------------ | -------------------------------- | -------- |
+| `name`                     | `string`       | Metric name.                                                                         |                                  | yes      |
+| `statistics`               | `list(string)` | Statistics to scrape, for example, `"Minimum"` or `"Maximum"`.                       |                                  | yes      |
+| `add_cloudwatch_timestamp` | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                  | `false`                          | no       |
+| `length`                   | `duration`     | How far back in time to consider metrics. Refer to [`period` and `length`][period].  | Derived from [`period`][period]. | no       |
+| `nil_to_zero`              | `bool`         | Whether to convert `NaN` metric values to 0.                                         | `true`                           | no       |
+| `period`                   | `duration`     | Time bucket width for aggregating metrics. Refer to [`period` and `length`][period]. | `5m`                             | no       |
+
+In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, these arguments default to the parent block's value when the parent sets one.
 
 [period]: #period-and-length
+[View available metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html
 
 #### `period` and `length`
 
@@ -411,6 +414,9 @@ You can use the following arguments with the `static` block:
 | `regions`     | `list(string)` | List of AWS regions.                                                                                                                                         |         | yes      |
 | `custom_tags` | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`. | `{}`    | no       |
 | `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [`metric`][metric] block.                             | `true`  | no       |
+
+Setting `period`, `length`, or `delay` on a `static` block has no effect.
+Configure these arguments on each `metric` block instead.
 
 All dimensions must be specified when scraping single metrics like the example above.
 For example, `AWS/Logs` metrics require `Resource`, `Service`, `Class`, and `Type` dimensions to be specified.

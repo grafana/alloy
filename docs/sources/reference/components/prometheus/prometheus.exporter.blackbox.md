@@ -101,7 +101,7 @@ You can use the following arguments with the `target` block:
 | `labels`  | `map(string)` | Labels to add to the target.        |         | no       |
 | `module`  | `string`      | Blackbox module to use to probe.    | `""`    | no       |
 
-You can specify the `target` block multiple times to define multiple targets.
+You can configure the `target` block multiple times to define multiple targets.
 You must set the `name` attribute, and the component uses it in the target's `job` label.
 
 Labels specified in the `labels` argument won't override labels set by `blackbox_exporter`.
