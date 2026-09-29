@@ -97,10 +97,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s, err = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 	case cfg.RegexConfig != nil:
 		s, err = newRegexStage(*cfg.RegexConfig, opts)
 		if err != nil {
@@ -112,10 +109,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(*cfg.OutputConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newOutputStage(*cfg.OutputConfig, opts)
 	case cfg.MatchConfig != nil:
 		s, err = newMatcherStage(opts.slogger, *cfg.MatchConfig, opts.registerer, opts.minStability)
 		if err != nil {
@@ -154,10 +148,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelKeepConfig != nil:
-		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
 	case cfg.LabelDropConfig != nil:
 		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {

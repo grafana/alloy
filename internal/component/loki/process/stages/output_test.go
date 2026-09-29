@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
@@ -106,6 +107,36 @@ func TestOutputStage(t *testing.T) {
 }
 
 func TestValidateOutputConfig(t *testing.T) {
-	emptyConfig := OutputConfig{Source: ""}
-	require.Equal(t, validateOutputConfig(emptyConfig), errOutputSourceRequired)
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
+	}{
+		{
+			name:   "valid",
+			config: `source = "mysource"`,
+		},
+		{
+			name:      "empty value returns err",
+			config:    `source = ""`,
+			expectErr: true,
+		},
+		{
+			name:      "empty config returns err",
+			config:    ``,
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg OutputConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
