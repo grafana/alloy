@@ -43,8 +43,11 @@ def load_settings(path):
         raise ValueError("discovery_mode must be alloy or ta")
     if settings.get("ta_strategy") not in ("consistent-hashing", "least-weighted"):
         raise ValueError("ta_strategy must be consistent-hashing or least-weighted")
-    if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", settings.get("ta_image", "")):
-        raise ValueError("ta_image must be pinned by SHA256 digest")
+    policy = settings.get("ta_image_pull_policy", "IfNotPresent")
+    image = settings.get("ta_image", "")
+    local = policy == "Never" and re.fullmatch(r"target-allocator-local:[0-9a-f]{12}-[0-9a-f]{16}", image)
+    if policy not in ("Never", "IfNotPresent") or not (local or re.fullmatch(r".+@sha256:[0-9a-f]{64}", image)):
+        raise ValueError("ta_image requires a digest, or a local build tag with pull policy Never")
     for key in ("alloy_resources", "ta_resources"):
         if not isinstance(settings.get(key), dict):
             raise ValueError(f"{key} must be a Kubernetes resources object")

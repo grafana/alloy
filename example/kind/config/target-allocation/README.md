@@ -241,3 +241,48 @@ one process with no HA in this demo. A TA restart can temporarily change assignm
 while collector discovery recovers. The switch to an external allocator also uses
 normal scrape staleness behavior; do not assume Alloy clustering's handoff handling
 applies to HTTP-discovered target removal.
+
+## Build TA from the local operator checkout
+
+With this demo already running, build and deploy the TA source in
+`~/workspace/opentelemetry-operator`:
+
+```sh
+task target-allocation:local
+task target-allocation:verify
+```
+
+Use `OPERATOR_DIR=/path/to/opentelemetry-operator` to select another checkout.
+The checkout must already exist; the task does not fetch, switch branches, or edit
+TA source. Later source edits are included on each rebuild. It invokes upstream
+`make targetallocator` for the running node's Linux architecture and packages the
+binary using the upstream Dockerfile. Use a Go version supported by the checkout's
+`go.mod` on your PATH. Only TA is built, not the operator or integration suites.
+
+Build concurrency is limited to two Go workers with a 1 GiB soft heap limit per
+Go process; this is not a hard limit on total compiler memory. The first build can
+be slow while dependencies and the cross-compilation cache are populated. Later
+builds reuse the Go caches. Modules are read-only during the build.
+
+The image tag combines the source revision and a hash of the compiled binary plus
+Dockerfile. It is loaded directly into the existing kind cluster, never pushed to
+a registry. Local images use `imagePullPolicy: Never`; the runtime image ID is
+recorded for verification. The task preserves workload pods and refuses to run if
+another kind cluster is active.
+
+Generated files are ignored under `example/kind/build/target-allocation/`:
+
+- `local-settings.json`: local-image profile, run ID `ta-local`.
+- `local-build.json`: source revision, working-tree status, architecture and image ID.
+- `local-image/`: copied upstream Dockerfile and binary build context.
+
+Rerun `task target-allocation:local` after editing TA to rebuild, load and switch.
+Source changes produce a new image tag and Deployment rollout. The repository's
+published-image profile remains unchanged. To return to upstream TA:
+
+```sh
+task target-allocation:switch MODE=ta
+```
+
+For rollback all the way to Alloy Kubernetes discovery, use
+`task target-allocation:switch MODE=alloy`.

@@ -101,6 +101,16 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(any("upgrade" in args for args in commands))
         self.assertFalse(any("apply" in args and any(a.endswith("targets.json") for a in args) for args in commands))
 
+    def test_local_image_must_be_content_tagged_and_never_pulled(self):
+        self.settings["ta_image"] = "target-allocator-local:0123456789ab-0123456789abcdef"
+        with self.assertRaises(ValueError):
+            self.load()
+        self.settings["ta_image_pull_policy"] = "Never"
+        self.assertEqual(self.load()["ta_image_pull_policy"], "Never")
+        self.settings["ta_image"] = "target-allocator-local:latest"
+        with self.assertRaises(ValueError):
+            self.load()
+
     def test_reject_invalid_allocation_settings(self):
         for key, value in (("discovery_mode", "unknown"), ("ta_strategy", "per-node"),
                            ("ta_image", "target-allocator:latest"),

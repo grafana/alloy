@@ -57,6 +57,7 @@ def manifests(settings, namespace, release):
                     "serviceAccountName": name,
                     "containers": [{
                         "name": name, "image": settings["ta_image"],
+                        "imagePullPolicy": settings.get("ta_image_pull_policy", "IfNotPresent"),
                         "ports": [{"name": "http", "containerPort": 8080}],
                         "resources": settings["ta_resources"],
                         "readinessProbe": {"httpGet": {"path": "/readyz", "port": "http"}},

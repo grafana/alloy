@@ -322,6 +322,18 @@ build was performed. The existing cluster remains the only active kind cluster.
 
 Work together to invent the allocation algorithm.
 
+Preparation: `task target-allocation:local` builds the unchanged local operator
+checkout's TA, packages it with the upstream Dockerfile, loads it into the existing
+kind cluster, and switches Alloy to that image. Builds use limited concurrency and
+content-derived image tags; source revision and image ID are recorded in ignored
+`build/target-allocation/local-build.json`. See the runbook for rebuilding and
+returning to the published TA. No custom allocation algorithm has been added.
+
+Verified the clean operator revision `e9e4c53cb656f932d42a31a56d7860bf0987b7e9`
+with a local ARM64 build and a cached rebuild. Runtime image provenance matches;
+all 27 target pod identities are unchanged and Cloud run `ta-local` receives
+880 / 100 / 1,660 series across the peers.
+
 ## 4. Make a demo
 
 Make the demo. Stretch goal: try it in a dev cluster to demonstrate real savings.

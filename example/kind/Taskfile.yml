@@ -11,6 +11,11 @@ vars:
   CLUSTERNAME: alloy-example
 
 tasks:
+  target-allocation:local:
+    desc: Build TA from the operator checkout, load it into the existing cluster, and switch
+    cmds:
+      - python3 config/target-allocation/local.py --operator-dir '{{.OPERATOR_DIR | default "~/workspace/opentelemetry-operator"}}' --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
   target-allocation:switch:
     desc: Switch Alloy or TA allocation without rebuilding images or changing target pods
     requires:
