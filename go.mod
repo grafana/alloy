@@ -1187,3 +1187,6 @@ replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/d
 // Cherry-pick of https://github.com/prometheus/prometheus/pull/19218 so Remote Write v2 metadata stops shrinking the remote_write shard count. (auto-synced from collector/builder-config.yaml)
 // TODO - tracks the prometheus-314-metadata-shard-calculator-patch branch of the Grafana fork; drop at the Prometheus 3.15 bump, which has the fix upstream. (auto-synced from collector/builder-config.yaml)
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
+
+// Hackathon: use the fork of alloy-remote-config that contains the tunnel/v1 protos. (auto-synced from collector/builder-config.yaml)
+replace github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260929174108-d46b224d9002

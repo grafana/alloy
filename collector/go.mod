@@ -1144,4 +1144,6 @@ replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/d
 
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
 
+replace github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260929174108-d46b224d9002
+
 exclude github.com/knadh/koanf v1.5.0
