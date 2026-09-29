@@ -97,14 +97,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Help: "Number of times batches has had to be retried.",
 	}, []string{labelHost, labelTenant})
 
-	m.countersWithHostTenant = []*prometheus.CounterVec{
-		m.batchRetries, m.sentBytes, m.sentEntries,
-	}
-
-	m.countersWithHostTenantReason = []*prometheus.CounterVec{
-		m.droppedBytes, m.droppedEntries,
-	}
-
 	if reg != nil {
 		m.sentBytes = util.MustRegisterOrGet(reg, m.sentBytes).(*prometheus.CounterVec)
 		m.droppedBytes = util.MustRegisterOrGet(reg, m.droppedBytes).(*prometheus.CounterVec)
@@ -115,6 +107,16 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.requestSize = util.MustRegisterOrGet(reg, m.requestSize).(*prometheus.HistogramVec)
 		m.requestDuration = util.MustRegisterOrGet(reg, m.requestDuration).(*prometheus.HistogramVec)
 		m.batchRetries = util.MustRegisterOrGet(reg, m.batchRetries).(*prometheus.CounterVec)
+	}
+
+	// Build these lists after registration. A reused registry returns the
+	// collectors that are already registered.
+	m.countersWithHostTenant = []*prometheus.CounterVec{
+		m.batchRetries, m.sentBytes, m.sentEntries,
+	}
+
+	m.countersWithHostTenantReason = []*prometheus.CounterVec{
+		m.droppedBytes, m.droppedEntries,
 	}
 
 	return &m
