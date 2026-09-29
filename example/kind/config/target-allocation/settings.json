@@ -6,5 +6,21 @@
   "large_targets": 3,
   "large_series": 800,
   "small_targets": 24,
-  "small_series": 10
+  "small_series": 10,
+  "discovery_mode": "alloy",
+  "ta_image": "ghcr.io/open-telemetry/opentelemetry-operator/target-allocator:0.160.0@sha256:df98ddd322a68fa354f1008523bb4e32ad2d250fba7883214c479bb976ddc3ea",
+  "ta_strategy": "consistent-hashing",
+  "http_refresh_interval_seconds": 10,
+  "alloy_resources": {
+    "requests": {
+      "cpu": "100m",
+      "memory": "256Mi"
+    }
+  },
+  "ta_resources": {
+    "requests": {
+      "cpu": "50m",
+      "memory": "128Mi"
+    }
+  }
 }

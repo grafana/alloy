@@ -1,0 +1,59 @@
+logging {
+	level = "info"
+}
+
+discovery.http "demo" {
+	url              = "http://target-allocator:8080/jobs/target-allocation/targets?collector_id=" + sys.env("POD_NAME")
+	refresh_interval = sys.env("DEMO_HTTP_REFRESH_INTERVAL")
+}
+
+// Vanilla TA filters targets but returns their original discovery labels.
+discovery.relabel "demo" {
+	targets = discovery.http.demo.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "instance"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_size_class"]
+		target_label  = "size_class"
+	}
+}
+
+// TA has already allocated this subset: do not shard it a second time.
+prometheus.scrape "demo" {
+	targets         = discovery.relabel.demo.output
+	job_name        = "target-allocation"
+	scrape_interval = sys.env("DEMO_SCRAPE_INTERVAL")
+	forward_to      = [prometheus.remote_write.cloud.receiver]
+}
+
+// Exactly one peer monitors TA; no Kubernetes discovery is needed.
+discovery.relabel "allocator_metrics" {
+	targets = [{"__address__" = "target-allocator:8080", "instance" = "target-allocator", "__monitor_peer__" = sys.env("POD_NAME")}]
+
+	rule {
+		source_labels = ["__monitor_peer__"]
+		regex         = "alloy-target-allocation-0"
+		action        = "keep"
+	}
+}
+
+prometheus.scrape "allocator" {
+	targets         = discovery.relabel.allocator_metrics.output
+	job_name        = "target-allocator"
+	scrape_interval = sys.env("DEMO_SCRAPE_INTERVAL")
+	forward_to      = [prometheus.relabel.allocator.receiver]
+}
+
+prometheus.relabel "allocator" {
+	forward_to = [prometheus.remote_write.cloud.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|scrape_samples_scraped|process_cpu_seconds_total|process_resident_memory_bytes|go_memstats_heap_inuse_bytes|opentelemetry_allocator_.*|prometheus_sd_.*"
+		action        = "keep"
+	}
+}

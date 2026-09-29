@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Render and deploy the kind scrape baseline with only Python's standard library."""
+"""Render, deploy, and switch the kind allocation demo using the standard library."""
 
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shlex
 import subprocess
+
+import allocator
 
 
 HERE = Path(__file__).resolve().parent
@@ -28,7 +31,7 @@ SECRET_KEYS = (
 def load_settings(path):
     settings = json.loads(path.read_text())
     for key in ("alloy_replicas", "scrape_interval_seconds", "large_targets",
-                "large_series", "small_targets", "small_series"):
+                "large_series", "small_targets", "small_series", "http_refresh_interval_seconds"):
         if type(settings.get(key)) is not int or settings[key] < 1:
             raise ValueError(f"{key} must be a positive integer")
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", settings.get("run_id", "")):
@@ -36,6 +39,15 @@ def load_settings(path):
     repository, separator, tag = settings.get("alloy_image", "").rpartition(":")
     if not separator or not repository or not tag or tag == "latest":
         raise ValueError("alloy_image must have an explicit version tag")
+    if settings.get("discovery_mode") not in ("alloy", "ta"):
+        raise ValueError("discovery_mode must be alloy or ta")
+    if settings.get("ta_strategy") not in ("consistent-hashing", "least-weighted"):
+        raise ValueError("ta_strategy must be consistent-hashing or least-weighted")
+    if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", settings.get("ta_image", "")):
+        raise ValueError("ta_image must be pinned by SHA256 digest")
+    for key in ("alloy_resources", "ta_resources"):
+        if not isinstance(settings.get(key), dict):
+            raise ValueError(f"{key} must be a Kubernetes resources object")
     return settings
 
 
@@ -66,6 +78,10 @@ def workload(settings, size):
 
 def render(settings):
     BUILD.mkdir(parents=True, exist_ok=True)
+    ta_enabled = settings["discovery_mode"] == "ta"
+    config_file = "config-ta.alloy" if ta_enabled else "config.alloy"
+    config = (HERE / config_file).read_text() + "\n" + (HERE / "common.alloy").read_text()
+    (BUILD / "config.alloy").write_text(config)
     image_repo, image_tag = settings["alloy_image"].rsplit(":", 1)
     values = {
         "fullnameOverride": RELEASE,
@@ -74,19 +90,21 @@ def render(settings):
         "controller": {"type": "statefulset", "replicas": settings["alloy_replicas"]},
         "alloy": {
             "enableReporting": False,
-            "clustering": {"enabled": True, "name": "target-allocation"},
-            "configMap": {"content": (HERE / "config.alloy").read_text()},
-            "extraArgs": ["--cluster.node-name=$(POD_NAME)"],
+            "clustering": {"enabled": not ta_enabled, "name": "target-allocation"},
+            "configMap": {"content": config},
+            "extraArgs": [] if ta_enabled else ["--cluster.node-name=$(POD_NAME)"],
             "extraEnv": [
                 {"name": "POD_NAME", "valueFrom": {"fieldRef": {"fieldPath": "metadata.name"}}},
                 {"name": "POD_NAMESPACE", "valueFrom": {"fieldRef": {"fieldPath": "metadata.namespace"}}},
+                {"name": "DEMO_HTTP_REFRESH_INTERVAL", "value": f"{settings['http_refresh_interval_seconds']}s"},
                 {"name": "DEMO_RUN_ID", "value": settings["run_id"]},
                 {"name": "DEMO_SCRAPE_INTERVAL", "value": f"{settings['scrape_interval_seconds']}s"},
             ],
             "envFrom": [{"secretRef": {"name": "grafana-cloud-metrics"}}],
-            "resources": {"requests": {"cpu": "100m", "memory": "256Mi"}},
+            "resources": settings["alloy_resources"],
         },
-        "rbac": {"namespaces": [NAMESPACE]},
+        "rbac": {"create": not ta_enabled, "namespaces": [NAMESPACE]},
+        "serviceAccount": {"automountServiceAccountToken": not ta_enabled},
     }
     service = {
         "apiVersion": "v1", "kind": "Service",
@@ -97,7 +115,8 @@ def render(settings):
     targets = {"apiVersion": "v1", "kind": "List",
                "items": [service, workload(settings, "large"), workload(settings, "small")]}
     for name, data in (("alloy-values.json", values), ("targets.json", targets),
-                       ("settings.json", settings)):
+                       ("settings.json", settings),
+                       ("allocator.json", allocator.manifests(settings, NAMESPACE, RELEASE))):
         (BUILD / name).write_text(json.dumps(data, indent=2) + "\n")
     count = settings["large_targets"] * settings["large_series"] + settings["small_targets"] * settings["small_series"]
     print(f"Workload: {count:,} series, {count / settings['scrape_interval_seconds']:.1f} samples/s, plus monitoring overhead")
@@ -134,19 +153,41 @@ def run(args, **kwargs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("render", "up", "down", "status"))
+    parser.add_argument("action", choices=("render", "up", "switch", "down", "status"))
     parser.add_argument("--settings", type=Path, default=HERE / "settings.json")
     parser.add_argument("--kubeconfig", type=Path, default=KIND_ROOT / "build/kubeconfig.yaml")
     parser.add_argument("--cluster", default="alloy-example")
+    parser.add_argument("--mode", choices=("alloy", "ta"))
+    parser.add_argument("--strategy", choices=("consistent-hashing", "least-weighted"))
+    parser.add_argument("--run-id")
     args = parser.parse_args()
-    if args.action in ("render", "up"):
+    if args.action in ("render", "up", "switch"):
         settings = load_settings(args.settings)
+        if args.mode:
+            settings["discovery_mode"] = args.mode
+        if args.strategy:
+            settings["ta_strategy"] = args.strategy
+        if args.run_id:
+            if not re.fullmatch(r"[a-zA-Z0-9_-]+", args.run_id):
+                raise ValueError("Invalid run ID")
+            settings["run_id"] = args.run_id
+        elif args.mode:
+            settings["run_id"] = ("baseline-onehot" if args.mode == "alloy" else
+                                  "ta-consistent" if settings["ta_strategy"] == "consistent-hashing" else "ta-least-weighted")
         render(settings)
     if args.action == "render":
         return
     kube = ["kubectl", "--kubeconfig", args.kubeconfig, "--context", f"kind-{args.cluster}"]
     helm = ["helm", "--kubeconfig", args.kubeconfig, "--kube-context", f"kind-{args.cluster}"]
-    if args.action == "up":
+    if args.action in ("up", "switch"):
+        if args.action == "switch":
+            # Never create a cluster or mutate workload resources during a comparison.
+            for size in ("large", "small"):
+                current = json.loads(run(kube + ["-n", NAMESPACE, "get", "statefulset", f"targets-{size}", "-o", "json"], capture_output=True).stdout)
+                expected = workload(settings, size)["spec"]
+                if (current["spec"]["replicas"] != expected["replicas"] or
+                    current["spec"]["template"]["spec"]["containers"][0]["args"] != expected["template"]["spec"]["containers"][0]["args"]):
+                    raise ValueError("Workload settings differ from live targets; use up explicitly to resize")
         values = credentials()
         namespace = {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": NAMESPACE}}
         run(kube + ["apply", "-f", "-"], input=json.dumps(namespace))
@@ -158,14 +199,24 @@ def main():
         # stdin keeps credentials out of command arguments and generated files.
         # Server-side apply also avoids a last-applied annotation containing secrets.
         run(kube + ["apply", "--server-side", "--field-manager=target-allocation-demo", "-f", "-"], input=json.dumps(secret))
-        run(kube + ["apply", "-f", BUILD / "targets.json"])
+        if args.action == "up":
+            run(kube + ["apply", "-f", BUILD / "targets.json"])
+        if settings["discovery_mode"] == "ta":
+            run(kube + ["apply", "-f", BUILD / "allocator.json"])
+            run(kube + ["-n", NAMESPACE, "rollout", "status", "deployment/target-allocator", "--timeout=180s"])
+        # Secret updates trigger exactly one Helm rollout, without exposing the secret.
+        values_path = BUILD / "alloy-values.json"
+        chart_values = json.loads(values_path.read_text())
+        chart_values["controller"]["podAnnotations"] = {
+            "checksum/cloud-credentials": hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()}
+        values_path.write_text(json.dumps(chart_values, indent=2) + "\n")
         run(helm + ["upgrade", "--install", RELEASE, REPO_ROOT / "operations/helm/charts/alloy",
                     "--namespace", NAMESPACE, "--values", BUILD / "alloy-values.json", "--wait", "--timeout", "5m"])
-        # New pods pick up secret changes even if the Helm values are unchanged.
-        run(kube + ["-n", NAMESPACE, "rollout", "restart", f"statefulset/{RELEASE}"])
         for name in ("targets-large", "targets-small", RELEASE):
             run(kube + ["-n", NAMESPACE, "rollout", "status", f"statefulset/{name}", "--timeout=300s"])
-        print("Baseline ready. Allow at least 5 minutes of warm-up before comparing load.")
+        if settings["discovery_mode"] == "alloy":
+            run(kube + ["delete", "-f", BUILD / "allocator.json", "--ignore-not-found=true"])
+        print("Demo ready. Allow at least 5 minutes of warm-up before comparing load.")
     elif args.action == "down":
         run(helm + ["uninstall", RELEASE, "-n", NAMESPACE, "--ignore-not-found", "--wait"])
         run(kube + ["delete", "namespace", NAMESPACE, "--ignore-not-found", "--wait=true"])

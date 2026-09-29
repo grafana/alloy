@@ -136,3 +136,108 @@ task target-allocation:down
 Use `task cluster:delete` to remove the whole example cluster, including any other
 examples deployed there. The demo WAL uses the chart's ephemeral storage; this is
 a local experiment, not a durable production deployment.
+
+## Use vanilla Target Allocator
+
+Once the baseline is running, switch in the same cluster:
+
+```sh
+task target-allocation:switch MODE=ta
+task target-allocation:verify
+```
+
+The switch installs one upstream Target Allocator (TA) Deployment, an internal
+Service, its configuration, and namespace-scoped pod-watch RBAC. No operator or
+CRDs are installed. The image is pinned to the multi-platform digest of upstream
+0.160.0. Three Alloy pods identify themselves to TA using their pod names.
+
+TA performs Kubernetes discovery and filters ready targets with a metrics port.
+Each Alloy fetches only its assigned subset using `discovery.http` every 10 seconds.
+Alloy clustering is disabled, so targets are not sharded twice. The Alloy service
+account has no pod-watch permissions and its API token is not mounted.
+
+Vanilla TA returns original discovery labels even after using relabel rules for
+filtering and hashing. Alloy therefore maps `instance` and `size_class` on its
+assigned subset. TA's `/scrape_configs` API is not imported: this example has one
+explicitly configured scrape job, with the same interval in TA and Alloy.
+
+Switching updates only allocator and scraper resources. It does not rebuild
+images, create another cluster, or change target pods. The switch rejects a profile
+whose target counts or series sizes differ from the running workload. Use `up`
+explicitly to resize. HTTP polling and scraping intervals are independent.
+
+Try TA's other vanilla strategy on exactly the same targets:
+
+```sh
+task target-allocation:switch MODE=ta STRATEGY=least-weighted
+```
+
+Rollback restores Alloy Kubernetes discovery, clustering, token mounting and RBAC,
+then removes TA resources after Alloy is ready:
+
+```sh
+task target-allocation:switch MODE=alloy
+```
+
+The switch task assigns run IDs `ta-consistent`, `ta-least-weighted`, or
+`baseline-onehot`. Substitute that run ID into the earlier queries. A mode switch
+rolls scraper pods and can produce temporary gaps or duplicate owners; wait for
+convergence and at least five minutes of query lookback before comparing. A changed
+allocation does not imply series-aware balancing: both vanilla TA strategies are
+size-blind. Do not recreate targets to force TA to reproduce the selected baseline
+skew.
+
+For a custom run ID, invoke the Python entry point directly:
+
+```sh
+python3 config/target-allocation/demo.py switch --mode ta --run-id ta-repeat
+```
+
+The default `settings.json` still selects the Alloy baseline. `switch` overrides it
+for that invocation and writes the effective settings to
+`build/target-allocation/settings.json`; it does not modify the input profile.
+A later `up` uses the input profile and may switch back. Set `discovery_mode: ta`
+and an appropriate `run_id` in your profile for a fresh TA-mode deployment.
+
+| Setting | Purpose |
+| --- | --- |
+| `discovery_mode` | `alloy` or `ta` for `up` and `render`. |
+| `ta_image` | Upstream image pinned by digest, never built locally. |
+| `ta_strategy` | `consistent-hashing` or `least-weighted`. |
+| `http_refresh_interval_seconds` | Target refresh interval; default 10. |
+| `alloy_resources`, `ta_resources` | Kubernetes resource requests/limits. |
+
+### Verify and monitor TA mode
+
+`task target-allocation:verify` compares TA HTTP assignments, Alloy discovery
+exports and healthy scrape targets. It checks unique ownership and label identity,
+and rejects a mounted Alloy API token. It reads effective rendered settings.
+A failure during rollout can be transient; rerun after pods and discovery settle.
+
+The TA Service exposes `/jobs`, `/jobs/target-allocation/targets?collector_id=<pod>`,
+`/metrics`, `/livez`, and `/readyz`. An unknown collector ID returns HTTP 200 with
+`[]`, so HTTP status alone does not prove correct collector registration.
+
+Peer 0 scrapes TA's telemetry once under `job="target-allocator"`; workload queries
+continue to select `job="target-allocation"`. Monitoring peer 0 is deliberately
+simple and not highly available. The self-scrape allowlist includes HTTP discovery
+failures and refresh metrics. Useful additional queries:
+
+```promql
+sum by (scraper) (prometheus_sd_http_failures_total{experiment="target-allocation",run_id="ta-consistent"})
+opentelemetry_allocator_collectors_allocatable{experiment="target-allocation",run_id="ta-consistent"}
+opentelemetry_allocator_targets{experiment="target-allocation",run_id="ta-consistent"}
+sum(process_resident_memory_bytes{experiment="target-allocation",run_id="ta-consistent",job=~"alloy-self|target-allocator"})
+sum(rate(process_cpu_seconds_total{experiment="target-allocation",run_id="ta-consistent",job=~"alloy-self|target-allocator"}[5m]))
+```
+
+Include TA's CPU and memory in comparisons. Removing Alloy pod watches demonstrates
+centralized discovery; total process memory does not isolate discovery savings.
+At this small workload, allocator overhead may exceed resource savings.
+
+A failed HTTP refresh retains the previous discovery targets. A successful empty
+list clears that collector's assignment; these are different failure modes. TA is
+one process with no HA in this demo. A TA restart can temporarily change assignments
+while collector discovery recovers. The switch to an external allocator also uses
+normal scrape staleness behavior; do not assume Alloy clustering's handoff handling
+applies to HTTP-discovered target removal.

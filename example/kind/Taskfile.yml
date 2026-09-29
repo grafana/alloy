@@ -11,6 +11,23 @@ vars:
   CLUSTERNAME: alloy-example
 
 tasks:
+  target-allocation:switch:
+    desc: Switch Alloy or TA allocation without rebuilding images or changing target pods
+    requires:
+      vars: [MODE]
+    preconditions:
+      - sh: |
+          clusters=$(docker ps --filter label=io.x-k8s.kind.cluster --format '{{`{{.Label "io.x-k8s.kind.cluster"}}`}}') &&
+          test -z "$(printf '%s\n' "$clusters" | grep -vx '{{.CLUSTERNAME}}')"
+        msg: Stop other running kind clusters before switching the demo.
+    cmds:
+      - python3 config/target-allocation/demo.py switch --mode '{{.MODE}}' --strategy '{{.STRATEGY | default "consistent-hashing"}}' --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
+  target-allocation:verify:
+    desc: Verify TA assignments match healthy Alloy scrapes with no mounted Kubernetes token
+    cmds:
+      - python3 config/target-allocation/verify.py --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
   target-allocation:render:
     desc: Render the scrape allocation baseline and print its ingestion size
     cmds:

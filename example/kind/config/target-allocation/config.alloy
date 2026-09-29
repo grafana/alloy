@@ -46,39 +46,3 @@ prometheus.scrape "demo" {
 	}
 	forward_to = [prometheus.remote_write.cloud.receiver]
 }
-
-// Every peer monitors itself; self-scrapes must not be sharded.
-prometheus.scrape "self" {
-	targets         = [{"__address__" = "127.0.0.1:12345", "instance" = sys.env("POD_NAME")}]
-	job_name        = "alloy-self"
-	scrape_interval = sys.env("DEMO_SCRAPE_INTERVAL")
-	forward_to      = [prometheus.relabel.self.receiver]
-}
-
-prometheus.relabel "self" {
-	forward_to = [prometheus.remote_write.cloud.receiver]
-
-	rule {
-		source_labels = ["__name__"]
-		regex         = "up|scrape_samples_scraped|process_cpu_seconds_total|process_resident_memory_bytes|go_memstats_heap_inuse_bytes|cluster_.*|prometheus_scrape_targets_.*|prometheus_remote_storage_samples_(total|failed_total|pending|retries_total)|prometheus_sd_kubernetes_.*"
-		action        = "keep"
-	}
-}
-
-prometheus.remote_write "cloud" {
-	// Apply the scraper identity after ownership selection, outside the hash input.
-	external_labels = {
-		experiment = "target-allocation",
-		run_id     = sys.env("DEMO_RUN_ID"),
-		scraper    = sys.env("POD_NAME"),
-	}
-
-	endpoint {
-		url = sys.env("GRAFANA_CLOUD_PROMETHEUS_URL")
-
-		basic_auth {
-			username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USERNAME")
-			password = sys.env("GRAFANA_CLOUD_METRICS_WRITE_TOKEN")
-		}
-	}
-}
