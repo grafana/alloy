@@ -81,12 +81,13 @@ type Component struct {
 	cluster cluster.Cluster
 	metrics *reportingMetrics
 
-	mu             sync.RWMutex
-	args           Arguments
-	restConfig     *rest.Config
-	logsSink       consumer.Logs
-	restart        chan struct{}
-	clusterChanged chan struct{}
+	mu                 sync.RWMutex
+	args               Arguments
+	restConfig         *rest.Config
+	logsSink           consumer.Logs
+	restart            chan struct{}
+	clusterChanged     chan struct{}
+	clusterLastChanged time.Time
 }
 
 var (
@@ -201,6 +202,12 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		return nil
 	}
 
+	if args.Clustering.Enabled && c.cluster.Enabled() {
+		if err := c.waitForClusterStability(ctx); err != nil {
+			return err
+		}
+	}
+
 	client, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes client: %w", err)
@@ -253,9 +260,10 @@ func (c *Component) emit(ctx context.Context, batch func() eventBatch) error {
 
 // NotifyClusterChange implements cluster.Component.
 func (c *Component) NotifyClusterChange() {
-	c.mu.RLock()
+	c.mu.Lock()
 	enabled := c.args.Clustering.Enabled
-	c.mu.RUnlock()
+	c.clusterLastChanged = time.Now()
+	c.mu.Unlock()
 	if enabled {
 		select {
 		case c.clusterChanged <- struct{}{}:
@@ -268,5 +276,37 @@ func (c *Component) requestRestart() {
 	select {
 	case c.restart <- struct{}{}:
 	default:
+	}
+}
+
+// Let gossip converge before starting expensive inventory collection. Ownership
+// loss still cancels this wait immediately through the generation context. Bound
+// the delay so continuous node churn cannot indefinitely prevent collection.
+func (c *Component) waitForClusterStability(ctx context.Context) error {
+	const quietPeriod = 30 * time.Second
+	start := time.Now()
+	deadline := start.Add(90 * time.Second)
+	for {
+		c.mu.RLock()
+		changed := c.clusterLastChanged
+		c.mu.RUnlock()
+		if changed.Before(start) {
+			changed = start
+		}
+		ready := changed.Add(quietPeriod)
+		if ready.After(deadline) {
+			ready = deadline
+		}
+		delay := time.Until(ready)
+		if delay <= 0 {
+			return ctx.Err()
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 }

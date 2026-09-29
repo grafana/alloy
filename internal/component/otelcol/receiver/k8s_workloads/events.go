@@ -122,8 +122,9 @@ func describeDeployment(d *appsv1.Deployment, sets []appsv1.ReplicaSet, pods []c
 		Status: deploymentStatus(d), Desired: desired, Replicas: d.Status.Replicas, Updated: d.Status.UpdatedReplicas, Ready: d.Status.ReadyReplicas,
 		Available: d.Status.AvailableReplicas, Unavailable: d.Status.UnavailableReplicas, Conditions: conditions, Containers: []containerSnapshot{}}
 	owned := map[string]bool{}
-	for _, rs := range sets {
-		if owner := metav1.GetControllerOf(&rs); owner != nil && owner.UID == d.UID {
+	for i := range sets {
+		rs := &sets[i]
+		if owner := metav1.GetControllerOf(rs); owner != nil && owner.UID == d.UID {
 			owned[string(rs.UID)] = true
 		}
 	}
@@ -131,8 +132,9 @@ func describeDeployment(d *appsv1.Deployment, sets []appsv1.ReplicaSet, pods []c
 		image := newImageData(container.Name, container.Image, init)
 		entry := containerSnapshot{Name: container.Name, Init: init, Image: image.reference, ImageName: image.imageName, Tag: image.tag, Resolved: []resolvedImage{}}
 		seen := map[string]bool{}
-		for _, pod := range pods {
-			owner := metav1.GetControllerOf(&pod)
+		for i := range pods {
+			pod := &pods[i]
+			owner := metav1.GetControllerOf(pod)
 			if owner == nil || !owned[string(owner.UID)] {
 				continue
 			}

@@ -99,6 +99,8 @@ Unchanged and empty inventories still produce snapshots.
 The component checks the sizes of OTLP envelopes encoded as Protocol Buffers or JSON before delivery.
 An event at or above `max_size_bytes` produces an [error report](#error-reports) instead of the original event.
 The component never truncates or splits an inventory.
+The payload limit applies to serialized events, not to the memory used during collection.
+Deployment, ReplicaSet, and Pod lists use pagination to reduce collection memory.
 
 ### `client`
 
@@ -160,6 +162,8 @@ The `clustering` block assigns collection to one {{< param "PRODUCT_NAME" >}} cl
 When clustering is enabled, consistent hashing assigns the component to one {{< param "PRODUCT_NAME" >}} cluster member.
 Ownership moves to another member when the owner stops or the cluster membership changes.
 The replacement member rebuilds its state from the Kubernetes API and can emit duplicate events.
+Before starting collection, a new owner waits for 30 seconds without a cluster membership notification, up to a maximum of 90 seconds.
+This delay reduces repeated startup snapshots while members join, but doesn't guarantee exclusive ownership during a network partition.
 
 If {{< param "PRODUCT_NAME" >}} isn't running in clustered mode, the block has no effect and every configured instance watches the Kubernetes cluster.
 

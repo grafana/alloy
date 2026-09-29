@@ -111,6 +111,8 @@ func (c *controller) run(ctx context.Context) error {
 		}
 	}
 	factory.Start(ctx.Done())
+	// Release the previous generation's informer caches before a new owner starts.
+	defer factory.Shutdown()
 	if !cache.WaitForCacheSync(ctx.Done(), namespaces.HasSynced, deployments.HasSynced) {
 		return fmt.Errorf("sync namespace and Deployment watches")
 	}
@@ -237,17 +239,17 @@ func (c *controller) collectDeployments(ctx context.Context, ns *corev1.Namespac
 	attempt := makeEvent(c.opts.clusterUID, c.opts.clusterName, ns.Name, string(ns.UID), "", "snapshot", "deployment", collected, nil)
 	// Use API lists instead of stale watch caches for authoritative membership.
 	// Enrichment lists are separate reads, not an atomic cross-resource snapshot.
-	deployments, err := c.opts.client.AppsV1().Deployments(ns.Name).List(ctx, metav1.ListOptions{})
+	deployments, err := c.listDeployments(ctx, ns.Name)
 	if err != nil {
 		c.report(ctx, attempt, "collection_failed", "Could not list Deployments", 0, 0)
 		return
 	}
-	sets, err := c.opts.client.AppsV1().ReplicaSets(ns.Name).List(ctx, metav1.ListOptions{})
+	sets, err := c.listReplicaSets(ctx, ns.Name, len(deployments.Items) != 0)
 	if err != nil {
 		c.report(ctx, attempt, "collection_failed", "Could not list ReplicaSets", 0, 0)
 		return
 	}
-	pods, err := c.opts.client.CoreV1().Pods(ns.Name).List(ctx, metav1.ListOptions{})
+	pods, err := c.listPods(ctx, ns.Name, len(deployments.Items) != 0)
 	if err != nil {
 		c.report(ctx, attempt, "collection_failed", "Could not list Pods", 0, 0)
 		return
