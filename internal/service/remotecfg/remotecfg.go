@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -46,6 +47,7 @@ type Service struct {
 	systemAttrs map[string]string
 	attrs       map[string]string
 	cm          *configManager
+	tunnel      *tunnelRunner
 
 	// runCtx is the context from Run method, used for service lifecycle operations
 	runCtx context.Context
@@ -63,6 +65,12 @@ type Options struct {
 	StoragePath string                // Where to cache configuration on-disk.
 	ConfigPath  string                // Where the root config file is.
 	Metrics     prometheus.Registerer // Where to send metrics to.
+
+	HTTPClient    *http.Client
+	HTTPServerURL string
+
+	// tunnelClientFactory is overridden by tests. Production uses newTunnelClient.
+	tunnelClientFactory tunnelClientFactory
 }
 
 // New returns a new instance of the remotecfg service.
@@ -75,6 +83,10 @@ func New(opts Options) (*Service, error) {
 	}
 
 	metrics := registerMetrics(opts.Metrics)
+	tunnelFactory := opts.tunnelClientFactory
+	if tunnelFactory == nil {
+		tunnelFactory = newTunnelClient
+	}
 
 	svc := &Service{
 		opts:        opts,
@@ -82,6 +94,7 @@ func New(opts Options) (*Service, error) {
 		metrics:     metrics,
 		cm:          newConfigManager(metrics, opts.Logger, remotecfgPath, opts.ConfigPath),
 	}
+	svc.tunnel = newTunnelRunner(opts.Logger, opts.HTTPClient, opts.HTTPServerURL, tunnelFactory)
 
 	return svc, nil
 }
@@ -115,6 +128,11 @@ type Data struct {
 	Host service.Host
 }
 
+// GetHost returns the isolated remote configuration host.
+func (d Data) GetHost() service.Host {
+	return d.Host
+}
+
 // Definition returns the definition of the remotecfg service.
 func (s *Service) Definition() service.Definition {
 	return service.Definition{
@@ -142,7 +160,16 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	s.cm.setController(c)
 
+	tunnelCtx, cancelTunnel := context.WithCancel(ctx)
+	tunnelDone := make(chan struct{})
+	go func() {
+		defer close(tunnelDone)
+		s.tunnel.Run(tunnelCtx)
+	}()
+
 	defer func() {
+		cancelTunnel()
+		<-tunnelDone
 		s.cm.cleanup()
 		s.mut.Lock()
 		s.runCtx = nil
@@ -186,6 +213,7 @@ func (s *Service) Update(newConfig any) error {
 	// it. Make sure we stop everything gracefully before returning.
 	if newArgs.URL == "" {
 		s.updateHandleEmptyUrl(newArgs)
+		s.tunnel.Update(newArgs)
 		return nil
 	}
 
@@ -207,6 +235,7 @@ func (s *Service) Update(newConfig any) error {
 		s.fetchLoadConfig(true) // Allow cache fallback when config is updated
 	}
 
+	s.tunnel.Update(newArgs)
 	return nil
 }
 

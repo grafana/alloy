@@ -6,8 +6,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/service/remotecfg"
 )
+
+const remoteConfigServiceName = "remotecfg"
+
+type remoteConfigData interface {
+	GetHost() service.Host
+}
 
 var defaultInfoOpts = component.InfoOptions{
 	GetHealth:    true,
@@ -55,14 +60,14 @@ func GetComponentByID(host service.Host, id string) (*component.Info, error) {
 }
 
 func getRemoteHost(host service.Host) (service.Host, error) {
-	svc, found := host.GetService(remotecfg.ServiceName)
+	svc, found := host.GetService(remoteConfigServiceName)
 	if !found {
 		return nil, fmt.Errorf("remote config service not available")
 	}
 
-	data := svc.Data().(remotecfg.Data)
-	if data.Host == nil {
+	data, ok := svc.Data().(remoteConfigData)
+	if !ok || data.GetHost() == nil {
 		return nil, fmt.Errorf("remote config service startup in progress")
 	}
-	return data.Host, nil
+	return data.GetHost(), nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -150,7 +151,7 @@ func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 					// SIGHUP is reserved by otel collector. Thus, use nop.
 					return nil
 				},
-				newRemoteConfigService: func(_ *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+				newRemoteConfigService: func(_ *logging.Logger, reg prometheus.Registerer, _ httpservice.Data) (service.Service, error) {
 					// Otel uses OpAMP, thus remote config management is disabled.
 					return remotecfgservice.NewStub(reg), nil
 				},
@@ -342,12 +343,14 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 			signal.Notify(reloadSignal, syscall.SIGHUP)
 			return reloadSignal
 		},
-		newRemoteConfigService: func(l *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+		newRemoteConfigService: func(l *logging.Logger, reg prometheus.Registerer, httpData httpservice.Data) (service.Service, error) {
 			return remotecfgservice.New(remotecfgservice.Options{
-				Logger:      l.Slog().With("service", "remotecfg"),
-				ConfigPath:  configPath,
-				StoragePath: fr.storagePath,
-				Metrics:     reg,
+				Logger:        l.Slog().With("service", "remotecfg"),
+				ConfigPath:    configPath,
+				StoragePath:   fr.storagePath,
+				Metrics:       reg,
+				HTTPClient:    newInMemoryHTTPClient(httpData),
+				HTTPServerURL: "http://" + httpData.MemoryListenAddr,
 			})
 		},
 		getConfig: loadConfig,
@@ -381,7 +384,7 @@ type runParams struct {
 	newReloadSignal func() chan os.Signal
 
 	// newRemoteConfigService constructs remote configuration service.
-	newRemoteConfigService func(l *logging.Logger, regs prometheus.Registerer) (service.Service, error)
+	newRemoteConfigService func(l *logging.Logger, regs prometheus.Registerer, httpData httpservice.Data) (service.Service, error)
 
 	// reloadConfig is callback called on config reload.
 	reloadConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) error
@@ -535,7 +538,8 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		},
 	})
 
-	remoteCfgService, err := params.newRemoteConfigService(l, reg)
+	httpData := httpService.Data().(httpservice.Data)
+	remoteCfgService, err := params.newRemoteConfigService(l, reg, httpData)
 	if err != nil {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)
 	}
@@ -667,6 +671,14 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 				slogger.Info("config reloaded")
 			}
 		}
+	}
+}
+
+func newInMemoryHTTPClient(httpData httpservice.Data) *http.Client {
+	transport := &http.Transport{DialContext: httpData.DialFunc}
+	return &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
 	}
 }
 

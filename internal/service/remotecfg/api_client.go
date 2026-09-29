@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
@@ -46,7 +47,7 @@ func newAPIClientWithClient(client collectorv1connect.CollectorServiceClient, me
 
 // newCollectorClient creates a CollectorServiceClient instance based on the provided Arguments configuration.
 func newCollectorClient(args Arguments) (collectorv1connect.CollectorServiceClient, error) {
-	httpClient, err := commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
+	httpClient, err := newRemoteConfigHTTPClient(args)
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +56,10 @@ func newCollectorClient(args Arguments) (collectorv1connect.CollectorServiceClie
 		args.URL,
 		connect.WithInterceptors(newAgentInterceptor()),
 	), nil
+}
+
+func newRemoteConfigHTTPClient(args Arguments) (*http.Client, error) {
+	return commonconfig.NewClientFromConfig(*args.HTTPClientConfig.Convert(), "remoteconfig")
 }
 
 func (c *apiClient) GetConfig(ctx context.Context, req *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {

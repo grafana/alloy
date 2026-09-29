@@ -10,17 +10,22 @@ import (
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
-	"github.com/grafana/alloy/internal/service/http"
 )
+
+const httpServiceName = "http"
+
+type readyService interface {
+	IsReady() bool
+}
 
 // IsReady is the resolver for the isReady field.
 func (r *alloyResolver) IsReady(ctx context.Context, obj *model.Alloy) (bool, error) {
-	rawService, ok := r.Host.GetService(http.ServiceName)
+	rawService, ok := r.Host.GetService(httpServiceName)
 	if !ok {
 		return false, nil
 	}
 
-	httpService, ok := rawService.(*http.Service)
+	httpService, ok := rawService.(readyService)
 	if !ok {
 		return false, nil
 	}
