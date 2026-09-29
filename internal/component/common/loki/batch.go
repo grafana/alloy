@@ -69,19 +69,18 @@ func (b *Batch) streamIndex(labels model.LabelSet) int {
 	})
 }
 
-// FilterMap calls fn for each entry in the batch. If fn returns true the
-// entry is kept, if fn returns false the entry is dropped. Kept entries are
-// written back, and entries whose labels change are moved to a different stream.
-func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
+// FilterMap calls fn for each entry in the batch. fn returns the entry to keep
+// and whether to keep it. If keep is false the entry is dropped. Kept entries
+// are written back, and entries whose labels change are moved to a different stream.
+func (b *Batch) FilterMap(fn func(entry Entry) (Entry, bool)) {
 	var (
 		newLen int
 		moves  []Entry
 	)
 
 	// Process each entry and compact each stream in place.
-	// The callback mutates a temporary Entry view. Kept entries are written back,
-	// dropped entries are skipped, and moved entries are deferred
-	// so we do not mutate the stream set while iterating it.
+	// Kept entries are written back, dropped entries are skipped, and moved
+	// entries are deferred so we do not mutate the stream set while iterating it.
 	for i := range b.streams {
 		var (
 			// dst is where the next kept entry is written. It only moves forward
@@ -94,8 +93,8 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 		for _, e := range stream.Entries {
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
-			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e)
-			if !fn(&entry) {
+			entry, keep := fn(NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e))
+			if !keep {
 				continue
 			}
 
@@ -118,7 +117,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 
 	// Reinsert entries whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.Created(), moved.Entry)
+		b.addEntry(moved.Labels, moved.Created(), moved.Entry)
 	}
 	b.entryLen = newLen
 

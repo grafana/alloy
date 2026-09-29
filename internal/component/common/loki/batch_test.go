@@ -43,20 +43,20 @@ func TestBatch_FilterMap(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 1, b.StreamLen())
 
-	b.FilterMap(func(entry *Entry) bool {
+	b.FilterMap(func(entry Entry) (Entry, bool) {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return true
+			return entry, true
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return true
+			return entry, true
 		case "drop":
-			return false
+			return entry, false
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return false
+			return entry, false
 		}
 	})
 
@@ -145,20 +145,20 @@ func TestBatch_Clone(t *testing.T) {
 
 	cloned := original.Clone()
 
-	original.FilterMap(func(entry *Entry) bool {
+	original.FilterMap(func(entry Entry) (Entry, bool) {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return true
+			return entry, true
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return true
+			return entry, true
 		case "drop":
-			return false
+			return entry, false
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return false
+			return entry, false
 		}
 	})
 
@@ -272,6 +272,8 @@ func BenchmarkBatch_AddEntry(b *testing.B) {
 }
 
 func BenchmarkBatch_FilterMap(b *testing.B) {
+	const relabelEvery = 10
+
 	type testCase struct {
 		name       string
 		numEntries int
@@ -309,10 +311,26 @@ func BenchmarkBatch_FilterMap(b *testing.B) {
 				batch.AddEntry(labels[i%tt.numStreams], 0, entry)
 			}
 
-			b.ResetTimer()
+			// Toggling the label moves the entry on every call it is picked, and moves
+			// it back the next time, so the batch keeps a similar shape and can be
+			// reused across iterations.
+			var n int
+			fn := func(e Entry) (Entry, bool) {
+				n++
+				if n%relabelEvery != 0 {
+					return e, true
+				}
+				if _, ok := e.Labels["moved"]; ok {
+					delete(e.Labels, "moved")
+				} else {
+					e.Labels["moved"] = "true"
+				}
+				return e, true
+			}
+
 			b.ReportAllocs()
 			for b.Loop() {
-				batch.FilterMap(func(*Entry) bool { return true })
+				batch.FilterMap(fn)
 			}
 		})
 	}
