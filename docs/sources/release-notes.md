@@ -10,4 +10,4 @@ weight: 999
 
 For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links to pull requests and related issues when available, refer to the [CHANGELOG][].
 
-[Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
+[CHANGELOG]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
