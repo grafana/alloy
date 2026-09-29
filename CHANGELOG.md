@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes 🐛
+
+* **prometheus.remote_write:** Clamp WAL truncation mint to `now - min_keepalive_time` so future-dated samples cannot trash the WAL
+
 ## [1.20.0](https://github.com/grafana/alloy/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
