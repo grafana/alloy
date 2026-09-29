@@ -128,7 +128,7 @@ You can use the following arguments with `prometheus.exporter.cloudwatch`:
 | ------------------------- | ------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.     |         | yes      |
 | `aws_sdk_version_v2`      | `bool`              | (Deprecated, no-op) Has no effect. AWS SDK for Go v2 is always used.           | `true`  | no       |
-| `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
+| `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set to `false` to enable them in US regions.    | `true`  | no       |
 | `debug`                   | `bool`              | (Deprecated, no-op) Has no effect. Use the global log level instead.           | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics.               | `{}`    | no       |
 | `labels_snake_case`       | `bool`              | Output labels on metrics in snake case instead of camel case.                  | `false` | no       |
@@ -154,18 +154,21 @@ You can use the following blocks with `prometheus.exporter.cloudwatch`:
 
 {{< docs/alloy-config >}}
 
-| Name                                       | Description                                                                                                                                                | Required |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| [`discovery`][discovery]                   | Configures a discovery job. You can configure multiple jobs.                                                                                               | no\*     |
-| `discovery` > [`role`][role]               | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
-| `discovery` > [`metric`][metric]           | Configures the list of metrics the job should scrape. You can define multiple metrics inside one job.                                                      | yes      |
-| [`static`][static]                         | Configures a static job. You can configure multiple jobs.                                                                                                  | no\*     |
-| `static` > [`role`][role]                  | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
-| `static` > [`metric`][metric]              | Configures the list of metrics the job should scrape. You can define multiple metrics inside one job.                                                      | yes      |
-| [`custom_namespace`][custom_namespace]     | Configures a custom namespace job. You can configure multiple jobs.                                                                                        | no\*     |
-| `custom_namespace` > [`role`][role]        | Configures the IAM roles the job should assume to scrape metrics. Defaults to the role configured in the environment {{< param "PRODUCT_NAME" >}} runs on. | no       |
-| `custom_namespace` > [`metric`][metric]    | Configures the list of metrics the job should scrape. You can define multiple metrics inside one job.                                                      | yes      |
-| [`decoupled_scraping`][decoupled_scraping] | Configures the decoupled scraping feature to retrieve metrics on a schedule and return the cached metrics.                                                 | no       |
+| Name                                       | Description                                               | Required |
+| ------------------------------------------ | --------------------------------------------------------- | -------- |
+| [`custom_namespace`][custom_namespace]     | Configures a custom namespace job.                        | no       |
+| `custom_namespace` > [`metric`][metric]    | Configures a metric to scrape.                            | yes      |
+| `custom_namespace` > [`role`][role]        | Configures the IAM roles to assume when scraping metrics. | no       |
+| [`decoupled_scraping`][decoupled_scraping] | Configures background scraping on a schedule.             | no       |
+| [`discovery`][discovery]                   | Configures a discovery job.                               | no       |
+| `discovery` > [`metric`][metric]           | Configures a metric to scrape.                            | yes      |
+| `discovery` > [`role`][role]               | Configures the IAM roles to assume when scraping metrics. | no       |
+| [`static`][static]                         | Configures a static job.                                  | no       |
+| `static` > [`metric`][metric]              | Configures a metric to scrape.                            | yes      |
+| `static` > [`role`][role]                  | Configures the IAM roles to assume when scraping metrics. | no       |
+
+You must configure at least one `discovery`, `static`, or `custom_namespace` block.
+Each job block requires at least one `metric` block.
 
 [discovery]: #discovery
 [static]: #static
@@ -176,9 +179,121 @@ You can use the following blocks with `prometheus.exporter.cloudwatch`:
 
 {{< /docs/alloy-config >}}
 
-{{< admonition type="note" >}}
-The `static`, `discovery`, and `custom_namespace` blocks are marked as not required, but you must configure at least one `static`, `discovery`, or `custom_namespace` job.
-{{< /admonition >}}
+### `custom_namespace`
+
+The `custom_namespace` block allows the component to scrape CloudWatch metrics from custom namespaces using only the namespace name and a list of metrics under that namespace.
+For example:
+
+```alloy
+prometheus.exporter.cloudwatch "discover_instances" {
+    sts_region = "eu-west-1"
+
+    custom_namespace "customEC2Metrics" {
+        namespace = "CustomEC2Metrics"
+        regions   = ["us-east-1"]
+
+        metric {
+            name       = "cpu_usage_idle"
+            statistics = ["Average"]
+            period     = "5m"
+        }
+
+        metric {
+            name       = "disk_free"
+            statistics = ["Average"]
+            period     = "5m"
+        }
+    }
+}
+```
+
+You can configure the `custom_namespace` block multiple times to scrape metrics from different namespaces.
+
+| Name                          | Type           | Description                                                                                                                                                                                                                                            | Default                                                        | Required |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | -------- |
+| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                                                                                                           |                                                                | yes      |
+| `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                   |                                                                | yes      |
+| `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key/value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`                                                           | no       |
+| `delay`                       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration.                                                                                                                                                                                 | `0`                                                            | no       |
+| `period`                      | `duration`     | Default period for metrics in this job.                                                                                                                                                                                                                | `5m`                                                           | no       |
+| `length`                      | `duration`     | Default length for metrics in this job.                                                                                                                                                                                                                | Calculated based on `period`. Refer to [period][] for details. | no       |
+| `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics are filtered to only those that contain exactly this list of dimensions. If the list is empty or undefined, all dimension combinations are included. | `{}`                                                           | no       |
+| `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [`metric`][metric] block.                                                                                                                               | `true`                                                         | no       |
+| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                         | `false`                                                        | no       |
+| `add_cloudwatch_timestamp`    | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time.                                                                                                                                                                             | `false`                                                        | no       |
+
+### `metric`
+
+{{< badge text="Required" >}}
+
+Represents an AWS Metric to scrape.
+
+The `metric` block may be specified multiple times to define multiple target metrics.
+Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
+
+| Name                       | Type           | Description                                                                | Default                                                                                                                               | Required |
+| -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `name`                     | `string`       | Metric name.                                                               |                                                                                                                                       | yes      |
+| `period`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `period` in the parent job.                                                                                              | no       |
+| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                                       | yes      |
+| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | The value of `add_cloudwatch_timestamp` in the parent job.                                                                            | no       |
+| `length`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `length` in the parent job.                                                                                              | no       |
+| `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [`static`][static] or [`discovery`][discovery] block. `true` if not set in the parent block. | no       |
+
+[period]: #period-and-length
+
+#### `period` and `length`
+
+`period` controls primarily the width of the time bucket used for aggregating metrics collected from CloudWatch.
+`length` controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
+If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
+
+{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
+
+If, across multiple metrics under the same static or discovery job, there's a different `period` or `length`, the minimum of all periods, and maximum of all lengths is configured.
+
+On the other hand, if `length` isn't configured, both period and length settings are calculated based on the required `period` configuration attribute.
+
+If all metrics within a job (discovery or static) have the same `period` value configured, CloudWatch APIs are requested for metrics from the scrape time, to `period` seconds in the past.
+The values of these are exported to Prometheus.
+
+{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
+
+On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
+First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and the new `period` value, taking the minimum of all periods.
+Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample is exported to CloudWatch.
+
+{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
+
+### `role`
+
+Represents an [AWS IAM Role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html).
+If omitted, the AWS role that corresponds to the credentials configured in the environment is used.
+
+Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials.
+In this case, a different role is configured for {{< param "PRODUCT_NAME" >}} to assume before calling AWS APIs.
+Therefore, the credentials configured in the system need permission to assume the target role.
+Refer to [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html) in the AWS IAM documentation for more information about how to configure this.
+
+| Name          | Type     | Description                                                                                                    | Default | Required |
+| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
+| `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
+
+[details]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
+
+### `decoupled_scraping`
+
+The `decoupled_scraping` block configures an optional feature that scrapes CloudWatch metrics in the background on a scheduled interval.
+When this feature is enabled, CloudWatch metrics are gathered asynchronously at the scheduled interval instead of synchronously when the CloudWatch component is scraped.
+
+The decoupled scraping feature reduces the number of API requests sent to AWS.
+This feature also prevents component scrape timeouts when you gather high volumes of CloudWatch metrics.
+
+| Name              | Type       | Description                                                             | Default | Required |
+| ----------------- | ---------- | ----------------------------------------------------------------------- | ------- | -------- |
+| `enabled`         | `bool`     | Whether to enable decoupled scraping.                                   | `false` | no       |
+| `scrape_interval` | `duration` | How frequently to gather CloudWatch metrics asynchronously.             | `5m`    | no       |
 
 ### `discovery`
 
@@ -214,7 +329,7 @@ You can configure the `discovery` block one or multiple times to scrape metrics 
 | Name                          | Type           | Description                                                                                                                                                                                                                                       | Default                                                        | Required |
 | ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------- |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                              |                                                                | yes      |
-| `type`                        | `string`       | CloudWatch service alias (`"alb"`, `"ec2"`, etc) or namespace name (`"AWS/EC2"`, `"AWS/S3"`, etc). Refer to [supported-services][] for a complete list.                                                                                           |                                                                | yes      |
+| `type`                        | `string`       | CloudWatch namespace name, for example, `"AWS/EC2"` or `"AWS/S3"`. Refer to [supported-services][] for the complete list.                                                                                                                         |                                                                | yes      |
 | `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                      | `{}`                                                           | no       |
 | `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics are filtered to only those that contain exactly this list of dimensions. If the list is empty or undefined, all dimension combinations are included. | `{}`                                                           | no       |
 | `delay`                       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration.                                                                                                                                                                            | `0`                                                            | no       |
@@ -224,6 +339,12 @@ You can configure the `discovery` block one or multiple times to scrape metrics 
 | `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                    | `false`                                                        | no       |
 | `search_tags`                 | `map(string)`  | List of key/value pairs to use for tag filtering. All must match. The value can be a regular expression.                                                                                                                                          | `{}`                                                           | no       |
 | `add_cloudwatch_timestamp`    | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time.                                                                                                                                                                        | `false`                                                        | no       |
+
+{{< admonition type="note" >}}
+Don't use CloudWatch service aliases such as `alb` or `ec2`.
+Use the namespace name instead, for example, `AWS/ApplicationELB` or `AWS/EC2`.
+{{< param "PRODUCT_NAME" >}} logs a warning each time it converts an alias to a namespace.
+{{< /admonition >}}
 
 [supported-services]: #supported-services-in-discovery-jobs
 
@@ -282,122 +403,6 @@ You can configure the `static` block one or multiple times to scrape metrics wit
 All dimensions must be specified when scraping single metrics like the example above.
 For example, `AWS/Logs` metrics require `Resource`, `Service`, `Class`, and `Type` dimensions to be specified.
 The same applies to CloudWatch custom metrics, all dimensions attached to a metric when saved in CloudWatch are required.
-
-### `custom_namespace`
-
-The `custom_namespace` block allows the component to scrape CloudWatch metrics from custom namespaces using only the namespace name and a list of metrics under that namespace.
-For example:
-
-```alloy
-prometheus.exporter.cloudwatch "discover_instances" {
-    sts_region = "eu-west-1"
-
-    custom_namespace "customEC2Metrics" {
-        namespace = "CustomEC2Metrics"
-        regions   = ["us-east-1"]
-
-        metric {
-            name       = "cpu_usage_idle"
-            statistics = ["Average"]
-            period     = "5m"
-        }
-
-        metric {
-            name       = "disk_free"
-            statistics = ["Average"]
-            period     = "5m"
-        }
-    }
-}
-```
-
-You can configure the `custom_namespace` block multiple times to scrape metrics from different namespaces.
-
-| Name                          | Type           | Description                                                                                                                                                                                                                                            | Default                                                        | Required |
-| ----------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | -------- |
-| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                                                                                                                           |                                                                | yes      |
-| `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                                                                                                                   |                                                                | yes      |
-| `custom_tags`                 | `map(string)`  | Custom tags to be added as a list of key/value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`.                                                                                           | `{}`                                                           | no       |
-| `delay`                       | `duration`     | Delay the start time of the CloudWatch metrics query by this duration.                                                                                                                                                                                 | `0`                                                            | no       |
-| `period`                      | `duration`     | Default period for metrics in this job.                                                                                                                                                                                                                | `5m`                                                           | no       |
-| `length`                      | `duration`     | Default length for metrics in this job.                                                                                                                                                                                                                | Calculated based on `period`. Refer to [period][] for details. | no       |
-| `dimension_name_requirements` | `list(string)` | List of metric dimensions to query. Before querying metric values, the total list of metrics are filtered to only those that contain exactly this list of dimensions. If the list is empty or undefined, all dimension combinations are included. | `{}`                                                           | no       |
-| `nil_to_zero`                 | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [`metric`][metric] block.                                                                                                                               | `true`                                                         | no       |
-| `recently_active_only`        | `bool`         | Only return metrics that have been active in the last 3 hours.                                                                                                                                                                                         | `false`                                                        | no       |
-| `add_cloudwatch_timestamp`    | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time.                                                                                                                                                                             | `false`                                                        | no       |
-
-### `metric`
-
-{{< badge text="Required" >}}
-
-Represents an AWS Metric to scrape.
-
-The `metric` block may be specified multiple times to define multiple target metrics.
-Refer to the [View available metrics](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html) topic in the Amazon CloudWatch documentation for detailed metrics information.
-
-| Name                       | Type           | Description                                                                | Default                                                                                                            | Required |
-| -------------------------- | -------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
-| `name`                     | `string`       | Metric name.                                                               |                                                                                                                    | yes      |
-| `period`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `period` in the parent job.                                                                           | no       |
-| `statistics`               | `list(string)` | List of statistics to scrape. For example, `"Minimum"`, `"Maximum"`, etc.  |                                                                                                                    | yes      |
-| `add_cloudwatch_timestamp` | `bool`         | When `true`, use the timestamp from CloudWatch instead of the scrape time. | The value of `add_cloudwatch_timestamp` in the parent job.                                                         | no       |
-| `length`                   | `duration`     | Refer to the [period][] section below.                                     | The value of `length` in the parent job.                                                                           | no       |
-| `nil_to_zero`              | `bool`         | When `true`, `NaN` metric values are converted to 0.                       | The value of `nil_to_zero` in the parent [`static`][static] or [`discovery`][discovery] block. `true` if not set in the parent block. | no       |
-
-[period]: #period-and-length
-
-#### `period` and `length`
-
-`period` controls primarily the width of the time bucket used for aggregating metrics collected from CloudWatch.
-`length` controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
-If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
-
-{{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
-
-If, across multiple metrics under the same static or discovery job, there's a different `period` or `length`, the minimum of all periods, and maximum of all lengths is configured.
-
-On the other hand, if `length` isn't configured, both period and length settings are calculated based on the required `period` configuration attribute.
-
-If all metrics within a job (discovery or static) have the same `period` value configured, CloudWatch APIs are requested for metrics from the scrape time, to `period` seconds in the past.
-The values of these are exported to Prometheus.
-
-{{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
-
-On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
-First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and the new `period` value, taking the minimum of all periods.
-Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample is exported to CloudWatch.
-
-{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
-
-### `role`
-
-Represents an [AWS IAM Role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html).
-If omitted, the AWS role that corresponds to the credentials configured in the environment is used.
-
-Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials.
-In this case, a different role is configured for {{< param "PRODUCT_NAME" >}} to assume before calling AWS APIs.
-Therefore, the credentials configured in the system need permission to assume the target role.
-Refer to [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html) in the AWS IAM documentation for more information about how to configure this.
-
-| Name          | Type     | Description                                                                                                    | Default | Required |
-| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
-| `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
-
-[details]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
-
-### `decoupled_scraping`
-
-The `decoupled_scraping` block configures an optional feature that scrapes CloudWatch metrics in the background on a scheduled interval.
-When this feature is enabled, CloudWatch metrics are gathered asynchronously at the scheduled interval instead of synchronously when the CloudWatch component is scraped.
-
-The decoupled scraping feature reduces the number of API requests sent to AWS.
-This feature also prevents component scrape timeouts when you gather high volumes of CloudWatch metrics.
-
-| Name              | Type     | Description                                                             | Default | Required |
-| ----------------- | -------- | ----------------------------------------------------------------------- | ------- | -------- |
-| `enabled`         | `bool`   | Controls whether the decoupled scraping featured is enabled             | false   | no       |
-| `scrape_interval` | `string` | Controls how frequently to asynchronously gather new CloudWatch metrics | 5m      | no       |
 
 ## Exported fields
 
