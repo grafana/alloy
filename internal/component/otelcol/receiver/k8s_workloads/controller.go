@@ -116,22 +116,13 @@ func (c *controller) run(ctx context.Context) error {
 	if !cache.WaitForCacheSync(ctx.Done(), namespaces.HasSynced, deployments.HasSynced) {
 		return fmt.Errorf("sync namespace and Deployment watches")
 	}
-	// A single worker serializes scan collection. Ticks coalesce while a scan is
-	// running; they never create overlapping or queued catch-up collections.
+	// Schedule from completion so slow scans cannot accumulate catch-up work.
+	// Waiting happens outside the worker, which remains available for notifications.
 	scan := &eventBatch{scan: true}
-	c.queue.Add(scan)
+	completed := make(chan time.Duration, 1)
 	go func() {
-		ticker := time.NewTicker(c.opts.snapshots.Interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				c.queue.ShutDown()
-				return
-			case <-ticker.C:
-				c.queue.Add(scan)
-			}
-		}
+		defer c.queue.ShutDown()
+		scheduleScans(ctx, c.opts.snapshots, func() { c.queue.Add(scan) }, completed)
 	}()
 	for {
 		item, shutdown := c.queue.Get()
@@ -139,7 +130,9 @@ func (c *controller) run(ctx context.Context) error {
 			return nil
 		}
 		if item.scan {
+			started := time.Now()
 			c.collect(ctx)
+			completed <- time.Since(started)
 			c.queue.Forget(item)
 		} else if err := c.deliver(ctx, item); err != nil {
 			if !item.reported {

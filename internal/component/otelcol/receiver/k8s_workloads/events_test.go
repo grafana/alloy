@@ -190,6 +190,7 @@ func TestStartupTickAndWatchEvents(t *testing.T) {
 	ns, d, _, _ := fixture()
 	c, sink, client := testController(t, ns, d)
 	c.opts.snapshots.Interval = 50 * time.Millisecond
+	c.opts.snapshots.MinIntervalAfterScan = 50 * time.Millisecond
 	c.now = time.Now
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

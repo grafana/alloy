@@ -58,16 +58,20 @@ func (args *Arguments) Validate() error {
 }
 
 type SnapshotArguments struct {
-	Interval     time.Duration `alloy:"interval,attr,optional"`
-	MaxSizeBytes int           `alloy:"max_size_bytes,attr,optional"`
+	Interval             time.Duration `alloy:"interval,attr,optional"`
+	MinIntervalAfterScan time.Duration `alloy:"min_interval_after_scan,attr,optional"`
+	MaxSizeBytes         int           `alloy:"max_size_bytes,attr,optional"`
 }
 
 func (args *SnapshotArguments) SetToDefault() {
-	*args = SnapshotArguments{Interval: time.Minute, MaxSizeBytes: 512 * 1024}
+	*args = SnapshotArguments{Interval: time.Minute, MinIntervalAfterScan: time.Minute, MaxSizeBytes: 512 * 1024}
 }
 func (args *SnapshotArguments) Validate() error {
 	if args.Interval <= 0 {
 		return fmt.Errorf("snapshots.interval must be positive")
+	}
+	if args.MinIntervalAfterScan < 0 {
+		return fmt.Errorf("snapshots.min_interval_after_scan must not be negative")
 	}
 	if args.MaxSizeBytes < 8192 {
 		return fmt.Errorf("snapshots.max_size_bytes must be at least 8192")

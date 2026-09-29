@@ -88,11 +88,16 @@ The optional `snapshots` block configures the inventory scan interval and the si
 
 | Name | Type | Description | Default | Required |
 | --- | --- | --- | --- | --- |
-| `interval` | `duration` | Positive interval between inventory scans. | `"1m"` | no |
+| `interval` | `duration` | Minimum positive interval between the starts of inventory scans. | `"1m"` | no |
+| `min_interval_after_scan` | `duration` | Minimum pause after a scan completes, including failed scans. Must not be negative. | `"1m"` | no |
 | `max_size_bytes` | `number` | Exclusive upper limit on a serialized one-record OTLP envelope. Must be at least 8192. | `524288` | no |
 
 The component performs its first scan after the namespace and Deployment watches synchronize.
-It performs subsequent scans serially and coalesces ticks if collection takes longer than the interval.
+It performs subsequent scans serially.
+The next scan starts no earlier than `interval` after the previous scan started and `min_interval_after_scan` after it completed.
+For example, a three-minute scan with both settings at `"1m"` starts the next scan after a one-minute pause.
+Notifications can be delivered during this pause.
+Set `min_interval_after_scan` to `"0s"` to allow the next scan to start immediately when collection exceeds `interval`.
 Resource changes don't trigger extra snapshots.
 Unchanged and empty inventories still produce snapshots.
 
