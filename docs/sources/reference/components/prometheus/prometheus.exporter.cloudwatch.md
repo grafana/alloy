@@ -282,19 +282,19 @@ Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, ag
 ### `role`
 
 The `role` block defines an [AWS IAM Role][].
-If omitted, the AWS role that corresponds to the credentials configured in the environment is used.
+If you omit this block, {{< param "PRODUCT_NAME" >}} uses the AWS role that corresponds to the credentials configured in the environment.
 
 Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials.
-In this case, a different role is configured for {{< param "PRODUCT_NAME" >}} to assume before calling AWS APIs.
+In this case, configure a different role for {{< param "PRODUCT_NAME" >}} to assume before it calls AWS APIs.
 Therefore, the credentials configured in the system need permission to assume the target role.
 Refer to [Granting a user permissions to switch roles][] in the AWS IAM documentation for more information about how to configure this.
 
 You can use the following arguments with the `role` block:
 
-| Name          | Type     | Description                                                                                                    | Default | Required |
-| ------------- | -------- | -------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
-| `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
+| Name          | Type     | Description                                                                          | Default | Required |
+| ------------- | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
+| `role_arn`    | `string` | Amazon Resource Name (ARN) of the IAM role to assume for AWS API calls.              |         | yes      |
+| `external_id` | `string` | External ID for the STS AssumeRole API call. Refer to the [IAM User Guide][details]. | `""`    | no       |
 
 [AWS IAM Role]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
 [Granting a user permissions to switch roles]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html
