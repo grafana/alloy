@@ -82,7 +82,7 @@ func (c *Component) processRecord(ctx context.Context, args Arguments, r *kgo.Re
 			return false
 		}
 
-		// Only this tenant's partition waits while retrying.
+		// Only this worker's partition waits while retrying.
 		bo.Wait()
 		if !bo.Ongoing() {
 			if ctx.Err() != nil {
@@ -98,12 +98,16 @@ func (c *Component) processRecord(ctx context.Context, args Arguments, r *kgo.Re
 // guard returns the tenant owning r's partition, or a drop reason if r must
 // not be processed.
 func (c *Component) guard(r *kgo.Record) (tenant, reason string) {
-	expected, ok := c.registry.Load().TenantFor(r.Partition)
+	reg := c.registry.Load()
+	expected, ok := reg.TenantFor(r.Partition)
 	if !ok {
 		return "", "unassigned_partition"
 	}
 	if kafkaclient.Header(r, kafkaclient.HeaderTenantID) != expected {
 		return "", "tenant_mismatch"
+	}
+	if topic, ok := reg.TopicFor(kafkaclient.Header(r, kafkaclient.HeaderSignal)); !ok || topic != r.Topic {
+		return "", "topic_mismatch"
 	}
 	if v := kafkaclient.Header(r, kafkaclient.HeaderSchemaVersion); v != kafkaclient.SchemaVersion {
 		return "", "unsupported_schema_version"

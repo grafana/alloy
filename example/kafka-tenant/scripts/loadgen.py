@@ -1,5 +1,6 @@
 """Sends every supported signal for every tenant to the producers, then checks
-at the sink that each tenant was delivered by exactly one consumer.
+at the sink that each signal of each tenant was delivered by exactly one
+consumer.
 
 Uses only the standard library: remote-write protobuf and snappy are
 hand-encoded (snappy as literal-only blocks, which is valid snappy).
@@ -18,7 +19,16 @@ SINK = os.environ.get("SINK", "http://sink:9999")
 TENANTS = os.environ.get("TENANTS", "tenant-a,tenant-b,tenant-c,tenant-d").split(",")
 ROUNDS = int(os.environ.get("ROUNDS", "10"))
 
-PATHS = ["/api/v1/push", "/loki/api/v1/push", "/ingest", "/v1/metrics", "/v1/logs", "/v1/traces"]
+# Sink path → signal. Each signal has its own topic.
+SIGNALS = {
+    "/api/v1/push": "metrics",
+    "/v1/metrics": "metrics",
+    "/loki/api/v1/push": "logs",
+    "/v1/logs": "logs",
+    "/v1/traces": "traces",
+    "/ingest": "profiles",
+}
+PATHS = list(SIGNALS)
 
 
 def varint(n):
@@ -139,16 +149,21 @@ def main():
 
     ok = True
     for tenant in TENANTS:
-        consumers = stats.get(tenant, {})
-        missing = set(PATHS) - {p for c in consumers.values() for p in c}
-        if len(consumers) != 1:
-            print(f"FAIL {tenant}: delivered by {sorted(consumers)} (want exactly one consumer)")
-            ok = False
-        elif missing:
+        by_signal = {}
+        for consumer, paths in stats.get(tenant, {}).items():
+            for path in paths:
+                by_signal.setdefault(SIGNALS.get(path, path), set()).add(consumer)
+        for signal in sorted(set(SIGNALS.values())):
+            consumers = by_signal.get(signal, set())
+            if len(consumers) != 1:
+                print(f"FAIL {tenant} {signal}: delivered by {sorted(consumers)} (want exactly one consumer)")
+                ok = False
+            else:
+                print(f"OK   {tenant} {signal}: delivered by {next(iter(consumers))}")
+        missing = set(PATHS) - {p for c in stats.get(tenant, {}).values() for p in c}
+        if missing:
             print(f"FAIL {tenant}: missing paths {sorted(missing)}")
             ok = False
-        else:
-            print(f"OK   {tenant}: all signals delivered by {next(iter(consumers))}")
     if "<none>" in stats:
         print(f"FAIL deliveries without tenant: {stats['<none>']}")
         ok = False

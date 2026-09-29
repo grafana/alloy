@@ -36,10 +36,10 @@ const (
 
 // Signal values for HeaderSignal.
 const (
-	SignalMetrics  = "metrics"
-	SignalLogs     = "logs"
-	SignalTraces   = "traces"
-	SignalProfiles = "profiles"
+	SignalMetrics  = registry.SignalMetrics
+	SignalLogs     = registry.SignalLogs
+	SignalTraces   = registry.SignalTraces
+	SignalProfiles = registry.SignalProfiles
 )
 
 // Format values for HeaderFormat.
@@ -125,22 +125,26 @@ func (a Arguments) Opts() ([]kgo.Opt, error) {
 	return opts, nil
 }
 
-// CheckTopic verifies that the registry's topic exists and has at least as
-// many partitions as the registry declares. Components never create topics.
-func CheckTopic(ctx context.Context, cl *kgo.Client, reg *registry.Registry) error {
-	topics, err := kadm.NewClient(cl).ListTopics(ctx, reg.Topic())
+// CheckTopics verifies that every topic in the registry exists and has at
+// least as many partitions as the registry declares. Components never create
+// topics.
+func CheckTopics(ctx context.Context, cl *kgo.Client, reg *registry.Registry) error {
+	names := reg.Topics()
+	topics, err := kadm.NewClient(cl).ListTopics(ctx, names...)
 	if err != nil {
-		return fmt.Errorf("listing topic %q: %w", reg.Topic(), err)
+		return fmt.Errorf("listing topics %v: %w", names, err)
 	}
-	td, ok := topics[reg.Topic()]
-	if !ok || errors.Is(td.Err, kerr.UnknownTopicOrPartition) {
-		return fmt.Errorf("topic %q does not exist; it must be created before starting the component", reg.Topic())
-	}
-	if td.Err != nil {
-		return fmt.Errorf("topic %q: %w", reg.Topic(), td.Err)
-	}
-	if n := int32(len(td.Partitions)); n < reg.Partitions() {
-		return fmt.Errorf("topic %q has %d partitions but the tenant registry declares %d", reg.Topic(), n, reg.Partitions())
+	for _, name := range names {
+		td, ok := topics[name]
+		if !ok || errors.Is(td.Err, kerr.UnknownTopicOrPartition) {
+			return fmt.Errorf("topic %q does not exist; it must be created before starting the component", name)
+		}
+		if td.Err != nil {
+			return fmt.Errorf("topic %q: %w", name, td.Err)
+		}
+		if n := int32(len(td.Partitions)); n < reg.Partitions() {
+			return fmt.Errorf("topic %q has %d partitions but the tenant registry declares %d", name, n, reg.Partitions())
+		}
 	}
 	return nil
 }

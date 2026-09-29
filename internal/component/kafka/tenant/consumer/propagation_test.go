@@ -122,7 +122,7 @@ func TestTenantPropagation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+			cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 			defer cluster.Close()
 
 			rec := newRecorder(t)
@@ -149,7 +149,7 @@ func TestTenantPropagation(t *testing.T) {
 // otelcol.processor.batch drops the tenant unless metadata_keys includes
 // X-Scope-OrgID.
 func TestTenantPropagation_BatchWithoutMetadataKeys(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)

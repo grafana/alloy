@@ -23,10 +23,14 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const testTopic = "alloy-telemetry"
+var testTopics = []string{"alloy-metrics", "alloy-logs", "alloy-traces", "alloy-profiles"}
 
 const testRegistry = `
-topic: alloy-telemetry
+topics:
+  metrics: alloy-metrics
+  logs: alloy-logs
+  traces: alloy-traces
+  profiles: alloy-profiles
 partitions: 4
 tenants:
   tenant-a: 0
@@ -88,7 +92,7 @@ func post(h http.Handler, path, tenant string, body []byte, headers ...string) *
 
 func consumeAll(t *testing.T, brokers []string, n int) []*kgo.Record {
 	t.Helper()
-	cl, err := kgo.NewClient(kgo.SeedBrokers(brokers...), kgo.ConsumeTopics(testTopic))
+	cl, err := kgo.NewClient(kgo.SeedBrokers(brokers...), kgo.ConsumeTopics(testTopics...))
 	require.NoError(t, err)
 	defer cl.Close()
 
@@ -105,7 +109,7 @@ func consumeAll(t *testing.T, brokers []string, n int) []*kgo.Record {
 }
 
 func TestProducer_RoutesToTenantPartition(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	c, h := startProducer(t, testArgs(cluster.ListenAddrs()))
@@ -132,6 +136,7 @@ func TestProducer_RoutesToTenantPartition(t *testing.T) {
 
 	a := byValue["metrics-a"]
 	require.NotNil(t, a)
+	require.Equal(t, "alloy-metrics", a.Topic)
 	require.Equal(t, int32(0), a.Partition)
 	require.Equal(t, "tenant-a", string(a.Key))
 	require.Equal(t, "tenant-a", kafkaclient.Header(a, kafkaclient.HeaderTenantID))
@@ -144,19 +149,21 @@ func TestProducer_RoutesToTenantPartition(t *testing.T) {
 
 	b := byValue["profile-b"]
 	require.NotNil(t, b)
+	require.Equal(t, "alloy-profiles", b.Topic)
 	require.Equal(t, int32(2), b.Partition)
 	require.Equal(t, kafkaclient.FormatPyroscopeIngest, kafkaclient.Header(b, kafkaclient.HeaderFormat))
 	require.Equal(t, "/ingest?name=app&from=1", kafkaclient.Header(b, kafkaclient.HeaderURL))
 
 	tr := byValue["{}"]
 	require.NotNil(t, tr)
+	require.Equal(t, "alloy-traces", tr.Topic)
 	require.Equal(t, int32(2), tr.Partition)
 	require.Equal(t, kafkaclient.SignalTraces, kafkaclient.Header(tr, kafkaclient.HeaderSignal))
 	require.Equal(t, kafkaclient.FormatOTLP, kafkaclient.Header(tr, kafkaclient.HeaderFormat))
 }
 
 func TestProducer_Rejections(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	c, h := startProducer(t, testArgs(cluster.ListenAddrs()))
@@ -168,8 +175,21 @@ func TestProducer_Rejections(t *testing.T) {
 	require.Equal(t, http.StatusRequestEntityTooLarge, post(h, "/loki/api/v1/push", "tenant-a", bytes.Repeat([]byte("x"), 2048)).Code)
 }
 
+func TestProducer_SignalWithoutTopic(t *testing.T) {
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, "alloy-logs"))
+	defer cluster.Close()
+
+	args := testArgs(cluster.ListenAddrs())
+	args.Registry = alloytypes.OptionalSecret{Value: "topics: {logs: alloy-logs}\npartitions: 4\ntenants: {tenant-a: 0}"}
+	c, h := startProducer(t, args)
+	require.Eventually(t, c.topicOK.Load, 10*time.Second, 10*time.Millisecond)
+
+	require.Equal(t, http.StatusNotFound, post(h, "/ingest", "tenant-a", []byte("x")).Code)
+	require.Equal(t, http.StatusNoContent, post(h, "/loki/api/v1/push", "tenant-a", []byte("x")).Code)
+}
+
 func TestProducer_BrokerDown(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 
 	c, h := startProducer(t, testArgs(cluster.ListenAddrs()))
 	require.Eventually(t, c.topicOK.Load, 10*time.Second, 10*time.Millisecond)
@@ -180,7 +200,7 @@ func TestProducer_BrokerDown(t *testing.T) {
 }
 
 func TestProducer_MissingTopic(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, "other-topic"))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics[:3]...))
 	defer cluster.Close()
 
 	c, h := startProducer(t, testArgs(cluster.ListenAddrs()))
@@ -193,7 +213,7 @@ func TestProducer_MissingTopic(t *testing.T) {
 }
 
 func TestProducer_TooFewPartitions(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(2, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(2, testTopics...))
 	defer cluster.Close()
 
 	c, _ := startProducer(t, testArgs(cluster.ListenAddrs()))
@@ -205,7 +225,7 @@ func TestProducer_TooFewPartitions(t *testing.T) {
 func TestArguments_Unmarshal(t *testing.T) {
 	var args Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(`
-		registry      = "topic: t\npartitions: 1\n"
+		registry      = "topics: {logs: t}\npartitions: 1\n"
 		max_body_size = "512KiB"
 		compression   = "zstd"
 		client {
@@ -242,13 +262,13 @@ func TestArguments_Unmarshal(t *testing.T) {
 }
 
 func TestProducer_InvalidRegistryUpdateKeepsPrevious(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	args := testArgs(cluster.ListenAddrs())
 	c, _ := startProducer(t, args)
 
-	args.Registry = alloytypes.OptionalSecret{Value: "topic: t\npartitions: 4\ntenants: {a: 1, b: 1}"}
+	args.Registry = alloytypes.OptionalSecret{Value: "topics: {logs: t}\npartitions: 4\ntenants: {a: 1, b: 1}"}
 	require.ErrorContains(t, c.Update(args), "assigned to both")
 
 	p, ok := c.registry.Load().PartitionFor("tenant-b")

@@ -40,8 +40,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 		lag: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "kafka_tenant_consumer_lag",
-			Help: "Records between the last processed record and the partition's high watermark, as of the last fetch.",
-		}, []string{"partition"}),
+			Help: "Records between the last processed record and the partition's high watermark, as of its fetch.",
+		}, []string{"topic", "partition"}),
 	}
 	m.recordsConsumed = util.MustRegisterOrGet(reg, m.recordsConsumed).(*prometheus.CounterVec)
 	m.dropped = util.MustRegisterOrGet(reg, m.dropped).(*prometheus.CounterVec)

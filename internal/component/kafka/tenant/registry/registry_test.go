@@ -8,7 +8,11 @@ import (
 
 func TestParse(t *testing.T) {
 	r, err := Parse([]byte(`
-topic: alloy-telemetry
+topics:
+  metrics: alloy-metrics
+  logs: alloy-logs
+  traces: alloy-traces
+  profiles: alloy-profiles
 partitions: 8
 tenants:
   tenant-a: 0
@@ -18,7 +22,10 @@ retired: [3]
 `))
 	require.NoError(t, err)
 
-	require.Equal(t, "alloy-telemetry", r.Topic())
+	topic, ok := r.TopicFor(SignalLogs)
+	require.True(t, ok)
+	require.Equal(t, "alloy-logs", topic)
+	require.Equal(t, []string{"alloy-logs", "alloy-metrics", "alloy-profiles", "alloy-traces"}, r.Topics())
 	require.Equal(t, int32(8), r.Partitions())
 	require.Equal(t, int32(5), r.MaxAssignedPartition())
 
@@ -40,7 +47,7 @@ retired: [3]
 }
 
 func TestParse_NoTenants(t *testing.T) {
-	r, err := Parse([]byte("topic: t\npartitions: 4\n"))
+	r, err := Parse([]byte("topics: {metrics: t}\npartitions: 4\n"))
 	require.NoError(t, err)
 	require.Equal(t, int32(-1), r.MaxAssignedPartition())
 }
@@ -51,16 +58,18 @@ func TestParse_Errors(t *testing.T) {
 		in   string
 		err  string
 	}{
-		{"invalid yaml", "topic: [", "parsing tenant registry"},
-		{"missing topic", "partitions: 4", "topic must be set"},
-		{"missing partitions", "topic: t", "partitions must be greater than 0"},
-		{"negative partition", "topic: t\npartitions: 4\ntenants: {a: -1}", "out of range"},
-		{"partition too large", "topic: t\npartitions: 4\ntenants: {a: 4}", "out of range"},
-		{"shared partition", "topic: t\npartitions: 4\ntenants: {a: 1, b: 1}", "assigned to both"},
-		{"retired partition", "topic: t\npartitions: 4\ntenants: {a: 1}\nretired: [1]", "retired partition 1"},
-		{"retired out of range", "topic: t\npartitions: 4\nretired: [9]", "retired partition 9 out of range"},
-		{"empty tenant", "topic: t\npartitions: 4\ntenants: {'': 1}", "must not be empty"},
-		{"duplicate tenant key", "topic: t\npartitions: 4\ntenants:\n  a: 1\n  a: 2\n", "parsing tenant registry"},
+		{"invalid yaml", "topics: [", "parsing tenant registry"},
+		{"missing topics", "partitions: 4", "topics must map at least one signal"},
+		{"unknown signal", "topics: {events: t}\npartitions: 4", `unknown signal "events"`},
+		{"empty topic", "topics: {logs: ''}\npartitions: 4", `topic for signal "logs" must not be empty`},
+		{"missing partitions", "topics: {logs: t}", "partitions must be greater than 0"},
+		{"negative partition", "topics: {logs: t}\npartitions: 4\ntenants: {a: -1}", "out of range"},
+		{"partition too large", "topics: {logs: t}\npartitions: 4\ntenants: {a: 4}", "out of range"},
+		{"shared partition", "topics: {logs: t}\npartitions: 4\ntenants: {a: 1, b: 1}", "assigned to both"},
+		{"retired partition", "topics: {logs: t}\npartitions: 4\ntenants: {a: 1}\nretired: [1]", "retired partition 1"},
+		{"retired out of range", "topics: {logs: t}\npartitions: 4\nretired: [9]", "retired partition 9 out of range"},
+		{"empty tenant", "topics: {logs: t}\npartitions: 4\ntenants: {'': 1}", "must not be empty"},
+		{"duplicate tenant key", "topics: {logs: t}\npartitions: 4\ntenants:\n  a: 1\n  a: 2\n", "parsing tenant registry"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -74,8 +83,17 @@ func TestHolder(t *testing.T) {
 	var h Holder
 	require.Nil(t, h.Load())
 
-	r, err := Parse([]byte("topic: t\npartitions: 1\ntenants: {a: 0}"))
+	r, err := Parse([]byte("topics: {logs: t}\npartitions: 1\ntenants: {a: 0}"))
 	require.NoError(t, err)
 	h.Store(r)
 	require.Same(t, r, h.Load())
+}
+
+func TestParse_SharedTopic(t *testing.T) {
+	r, err := Parse([]byte("topics: {metrics: shared, logs: shared, traces: traces}\npartitions: 1"))
+	require.NoError(t, err)
+	require.Equal(t, []string{"shared", "traces"}, r.Topics())
+
+	_, ok := r.TopicFor(SignalProfiles)
+	require.False(t, ok, "unmapped signals have no topic")
 }

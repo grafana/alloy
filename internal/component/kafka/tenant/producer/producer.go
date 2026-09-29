@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,7 +199,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	// Verify the topic until it succeeds, and again whenever the client or
+	// Verify the topics until it succeeds, and again whenever the client or
 	// registry changes. Produce requests are rejected while it fails.
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -225,14 +226,14 @@ func (c *Component) checkTopic(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	if err := kafkaclient.CheckTopic(ctx, cl, reg); err != nil {
+	if err := kafkaclient.CheckTopics(ctx, cl, reg); err != nil {
 		c.topicOK.Store(false)
 		c.setHealth(component.HealthTypeUnhealthy, err.Error())
 		c.opts.Logger.Warn("topic check failed, rejecting produce requests", "err", err)
 		return
 	}
 	c.topicOK.Store(true)
-	c.setHealth(component.HealthTypeHealthy, "topic verified")
+	c.setHealth(component.HealthTypeHealthy, "topics verified")
 }
 
 // Update implements component.Component.
@@ -251,7 +252,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Re-verify the topic only when the client or the topic layout changed,
 	// so that adding a tenant doesn't briefly reject requests.
 	old := c.registry.Load()
-	recheck := old == nil || old.Topic() != reg.Topic() || old.Partitions() != reg.Partitions()
+	recheck := old == nil || !slices.Equal(old.Topics(), reg.Topics()) || old.Partitions() != reg.Partitions()
 
 	if c.client.Load() == nil || !reflect.DeepEqual(c.args.clientArgs(), newArgs.clientArgs()) {
 		recheck = true
@@ -380,6 +381,11 @@ func (c *Component) handle(r *http.Request, rt route) (int, string) {
 		c.metrics.rejected.WithLabelValues("unknown_tenant").Inc()
 		return http.StatusForbidden, "unknown tenant"
 	}
+	topic, ok := reg.TopicFor(rt.signal)
+	if !ok {
+		c.metrics.rejected.WithLabelValues("signal_disabled").Inc()
+		return http.StatusNotFound, "no topic configured for signal " + rt.signal
+	}
 
 	cl := c.client.Load()
 	if cl == nil || !c.topicOK.Load() {
@@ -397,7 +403,7 @@ func (c *Component) handle(r *http.Request, rt route) (int, string) {
 	}
 
 	rec := &kgo.Record{
-		Topic:     reg.Topic(),
+		Topic:     topic,
 		Partition: partition,
 		Key:       []byte(tenant),
 		Value:     body,

@@ -13,7 +13,8 @@ title: kafka.tenant_consumer
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `kafka.tenant_consumer` reads the records that [`kafka.tenant_producer`][kafka.tenant_producer] writes to Kafka and forwards them to other components, keeping the tenant of each record.
-Each tenant owns one partition of the topic, so all signals of a tenant are processed by exactly one consumer at a time.
+Each signal has its own topic, and each tenant owns the same partition number in every topic.
+Each signal of a tenant is therefore processed by exactly one consumer at a time, and a stalled signal doesn't delay any other signal or tenant.
 
 You can specify multiple `kafka.tenant_consumer` components by giving them different labels.
 
@@ -42,7 +43,6 @@ You can use the following arguments with `kafka.tenant_consumer`:
 | `instance_id`             | `string`                 | Static group member ID of this consumer.                               |                     | no       |
 | `logs_forward_to`         | `list(LogsReceiver)`     | Receivers for Loki push records.                                       |                     | no       |
 | `max_backoff`             | `duration`               | Maximum backoff between retries of a record.                           | `"10s"`             | no       |
-| `max_parallel_partitions` | `int`                    | Maximum number of partitions processed at the same time.               | `32`                | no       |
 | `max_retries`             | `int`                    | Maximum number of retries of a record before it's dropped.             | `5`                 | no       |
 | `metrics_forward_to`      | `list(MetricsReceiver)`  | Receivers for Prometheus remote write records.                         |                     | no       |
 | `min_backoff`             | `duration`               | Initial backoff between retries of a record.                           | `"100ms"`           | no       |
@@ -57,22 +57,24 @@ If the file is invalid, the component rejects the whole file and keeps using the
 The `start_offset` argument accepts `"earliest"` or `"latest"`.
 It only applies when the consumer group has no committed offset for a partition.
 
-When you change the `client` block, `group_id`, `instance_id`, `session_timeout`, `start_offset`, or the registry's `topic`, the consumer leaves the group and joins it again.
+When you change the `client` block, `group_id`, `instance_id`, `session_timeout`, `start_offset`, or the registry's `topics`, the consumer leaves the group and joins it again.
 
 `kafka.tenant_consumer` never creates topics.
-The topic named in the registry must exist and have at least as many partitions as the registry's `partitions` field.
+Every topic named in the registry must exist and have at least as many partitions as the registry's `partitions` field.
 
 [registry]: ../kafka.tenant_producer/#tenant-registry
 
 ### Partition ownership
 
-All `kafka.tenant_consumer` components with the same `group_id` join one consumer group and read the topic named in the registry.
-Kafka assigns each partition to one consumer in the group.
-Because each partition belongs to one tenant, all signals of a tenant are processed by exactly one consumer at a time.
+All `kafka.tenant_consumer` components with the same `group_id` join one consumer group and read every topic named in the registry.
+Kafka assigns each partition of each topic to one consumer in the group.
+Because each partition belongs to one tenant, and each topic holds one signal, each signal of a tenant is processed by exactly one consumer at a time.
+Different signals of the same tenant can be processed by different consumers.
 
 `kafka.tenant_consumer` uses the cooperative-sticky balancer.
-It processes up to `max_parallel_partitions` partitions in parallel and the records of one partition in order.
-It blocks rebalances while it processes a fetch, and commits offsets only after it processes the records.
+Each assigned partition has its own worker, which processes the partition's records in order.
+Before a rebalance moves a partition to another consumer, the component stops the partition's worker and commits the offsets of the records it finished.
+The component commits only the offsets of processed records, every second and on rebalance or shutdown.
 
 Affinity means one owner at a time, not always the same consumer.
 A rebalance, for example when a consumer joins, leaves, or restarts, can move a tenant's partition to another consumer.
@@ -85,14 +87,14 @@ Use a stable name that's unique for each consumer, for example the pod name of a
 ### Record handling
 
 Before it forwards a record, `kafka.tenant_consumer` checks the record against the registry.
-It drops records on partitions that aren't assigned to a tenant, records whose `tenant_id` header doesn't match the tenant of the partition, and records with an unsupported `schema_version` header.
+It drops records on partitions that aren't assigned to a tenant, records whose `tenant_id` header doesn't match the tenant of the partition, records in a topic that doesn't match their `signal` header, and records with an unsupported `schema_version` header.
 
 `kafka.tenant_consumer` drops records it can't decode, so malformed payloads never block a partition.
 It also drops records whose signal has no downstream configured, for example Loki records when `logs_forward_to` is empty.
 
 If a downstream component returns an error, `kafka.tenant_consumer` retries the record with exponential backoff between `min_backoff` and `max_backoff`, up to `max_retries` times, and then drops it.
-Retries block the tenant's partition.
-Because the component fetches new records only after it finished the current fetch for all its partitions, retries also delay other tenants on the same consumer.
+Retries block only the partition of the record, which holds one signal of one tenant.
+While a partition's worker falls behind, the component pauses fetching that partition and keeps fetching all others.
 
 ### Tenant propagation
 
@@ -142,7 +144,7 @@ Delivery is at-least-once end-to-end only if the downstream call is synchronous:
 
 Records that `kafka.tenant_consumer` drops aren't delivered.
 
-The throughput of a single tenant is limited to what one partition and one consumer can handle.
+The throughput of one signal of a tenant is limited to what one partition and one consumer can handle.
 
 ## Blocks
 
@@ -219,8 +221,8 @@ The following arguments are supported:
 
 ## Component health
 
-`kafka.tenant_consumer` is reported as unhealthy if it's given an invalid configuration, if it can't create the Kafka consumer, or while it can't verify the topic.
-The topic check fails if the topic doesn't exist, if it has fewer partitions than the registry declares, or if the brokers are unreachable.
+`kafka.tenant_consumer` is reported as unhealthy if it's given an invalid configuration, if it can't create the Kafka consumer, or while it can't verify the topics.
+The topic check fails if a topic doesn't exist, if a topic has fewer partitions than the registry declares, or if the brokers are unreachable.
 While the topic check fails, the component doesn't consume records and retries the check every 10 seconds.
 
 ## Debug information
@@ -235,17 +237,18 @@ The following Prometheus metrics are exposed:
 | ------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------- |
 | `kafka_tenant_consumer_assigned_partitions`      | `gauge`     | Number of partitions currently assigned to this consumer.                                                |
 | `kafka_tenant_consumer_dropped_total`            | `counter`   | Total number of records dropped, by `reason` and `format`.                                               |
-| `kafka_tenant_consumer_lag`                      | `gauge`     | Records between the last processed record and the high watermark of the partition, as of the last fetch. |
+| `kafka_tenant_consumer_lag`                      | `gauge`     | Records between the last processed record and the high watermark of the partition, as of its fetch.      |
 | `kafka_tenant_consumer_process_duration_seconds` | `histogram` | Time spent processing one record, including retries, by `format`.                                        |
 | `kafka_tenant_consumer_rebalances_total`         | `counter`   | Total number of times partitions were assigned to this consumer.                                         |
 | `kafka_tenant_consumer_records_consumed_total`   | `counter`   | Total number of records forwarded downstream, by `signal` and `format`.                                  |
 
-The `kafka_tenant_consumer_lag` metric has a `partition` label.
+The `kafka_tenant_consumer_lag` metric has `topic` and `partition` labels.
 
 The `reason` label of `kafka_tenant_consumer_dropped_total` has one of the following values:
 
 - `unassigned_partition`: The record's partition isn't assigned to a tenant, for example because it's retired.
 - `tenant_mismatch`: The record's `tenant_id` header doesn't match the tenant of the partition.
+- `topic_mismatch`: The record's topic isn't the topic the registry maps the record's `signal` header to.
 - `unsupported_schema_version`: The record's `schema_version` header isn't supported.
 - `decode_error`: The record's payload can't be decoded, or the downstream component rejected it as invalid.
 - `no_downstream`: No downstream component is configured for the record's signal.
@@ -256,7 +259,11 @@ The `reason` label of `kafka_tenant_consumer_dropped_total` has one of the follo
 This example shows a producer instance and a consumer instance of {{< param "PRODUCT_NAME" >}} that share the following tenant registry file, `/etc/alloy/tenant-registry.yaml`:
 
 ```yaml
-topic: alloy-tenants
+topics:
+  metrics: alloy-metrics
+  logs: alloy-logs
+  traces: alloy-traces
+  profiles: alloy-profiles
 partitions: 8
 tenants:
   team-a: 0

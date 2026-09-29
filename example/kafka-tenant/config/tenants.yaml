@@ -1,5 +1,10 @@
-# Shared by producers and consumers. Each tenant owns exactly one partition.
-topic: alloy-telemetry
+# Shared by producers and consumers. Each signal has its own topic, and each
+# tenant owns the same partition number in every topic.
+topics:
+  metrics: alloy-metrics
+  logs: alloy-logs
+  traces: alloy-traces
+  profiles: alloy-profiles
 partitions: 4
 tenants:
   tenant-a: 0

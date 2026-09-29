@@ -39,9 +39,9 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >-
-        rpk topic create alloy-telemetry -X brokers=redpanda:9092 -p 4
-        -c retention.ms=86400000 -c max.message.bytes=2097152
-        || rpk topic describe alloy-telemetry -X brokers=redpanda:9092
+        rpk topic create alloy-metrics alloy-logs alloy-traces alloy-profiles
+        -X brokers=redpanda:9092 -p 4 -c retention.ms=86400000 -c max.message.bytes=2097152;
+        rpk topic describe alloy-metrics alloy-logs alloy-traces alloy-profiles -X brokers=redpanda:9092 -p
     depends_on:
       redpanda:
         condition: service_healthy

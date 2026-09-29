@@ -12,8 +12,8 @@ title: kafka.tenant_producer
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`kafka.tenant_producer` receives Prometheus, Loki, Pyroscope, and OTLP requests over HTTP and writes each request to the Kafka partition assigned to the request's tenant.
-A [tenant registry](#tenant-registry) maps each tenant to exactly one partition of a single topic.
+`kafka.tenant_producer` receives Prometheus, Loki, Pyroscope, and OTLP requests over HTTP and writes each request to the Kafka topic of its signal, in the partition assigned to the request's tenant.
+A [tenant registry](#tenant-registry) maps each signal to a topic, and each tenant to exactly one partition number, which the tenant uses in every topic.
 Use [`kafka.tenant_consumer`][kafka.tenant_consumer] to read the records back into {{< param "PRODUCT_NAME" >}} pipelines.
 
 You can specify multiple `kafka.tenant_producer` components by giving them different labels.
@@ -44,6 +44,7 @@ OTLP over gRPC and the Pyroscope `push.v1.PusherService/Push` Connect API aren't
 ### Tenants and responses
 
 `kafka.tenant_producer` reads the tenant from the `X-Scope-OrgID` request header and looks up the tenant's partition in the registry.
+It writes the request to the topic the registry maps the endpoint's signal to.
 The component never falls back to hashing, so a tenant that isn't in the registry is always rejected.
 It replies with a `2xx` status code only after Kafka acknowledged the record.
 
@@ -53,9 +54,10 @@ It replies with a `2xx` status code only after Kafka acknowledged the record.
 | The `X-Scope-OrgID` header is missing.                                                | `401`                                                       |
 | The `X-Scope-OrgID` header contains more than one tenant, separated by a pipe (`\|`). | `400`                                                       |
 | The tenant isn't in the registry.                                                     | `403`                                                       |
+| The registry doesn't map the endpoint's signal to a topic.                            | `404`                                                       |
 | The request body is larger than `max_body_size`.                                      | `413`                                                       |
 | The producer buffer is full. Refer to `max_buffered_records`.                         | `429`                                                       |
-| The topic isn't verified, Kafka is unavailable, or `produce_timeout` passed.          | `503`                                                       |
+| The topics aren't verified, Kafka is unavailable, or `produce_timeout` passed.        | `503`                                                       |
 
 ### Records
 
@@ -95,16 +97,17 @@ The `registry` argument takes the contents of the [tenant registry](#tenant-regi
 The `compression` argument accepts `"none"`, `"gzip"`, `"snappy"`, `"lz4"`, or `"zstd"`.
 
 `kafka.tenant_producer` allows record batches of up to `max_body_size` plus 64 KiB for record headers and batch overhead.
-Set the topic's maximum message size, `max.message.bytes`, to at least this value.
+Set the maximum message size of each topic, `max.message.bytes`, to at least this value.
 Otherwise, Kafka rejects large requests.
 
 `kafka.tenant_producer` never creates topics.
-The topic named in the registry must exist and have at least as many partitions as the registry's `partitions` field.
-Until the component verifies the topic, it reports itself as unhealthy and rejects requests with `503`.
+Every topic named in the registry must exist and have at least as many partitions as the registry's `partitions` field.
+Until the component verifies the topics, it reports itself as unhealthy and rejects requests with `503`.
 
 ### Tenant registry
 
-The tenant registry is a YAML file that maps each tenant to one partition of a single topic.
+The tenant registry is a YAML file that maps each signal to a topic, and each tenant to one partition number.
+A tenant uses the same partition number in every topic.
 `kafka.tenant_producer` and `kafka.tenant_consumer` must use the same file.
 Load the file with [`local.file`][local.file] and pass `local.file.<LABEL>.content` to the `registry` argument.
 
@@ -113,7 +116,11 @@ Load the file with [`local.file`][local.file] and pass `local.file.<LABEL>.conte
 The following example shows a tenant registry:
 
 ```yaml
-topic: alloy-tenants
+topics:
+  metrics: alloy-metrics
+  logs: alloy-logs
+  traces: alloy-traces
+  profiles: alloy-profiles
 partitions: 8
 tenants:
   team-a: 0
@@ -125,16 +132,17 @@ retired:
 
 The tenant registry supports the following fields:
 
-| Field        | Type        | Description                                                         | Required |
-| ------------ | ----------- | ------------------------------------------------------------------- | -------- |
-| `topic`      | `string`    | Kafka topic that holds the data of all tenants.                     | yes      |
-| `partitions` | `int`       | Minimum number of partitions the topic must have.                   | yes      |
-| `tenants`    | `map(int)`  | Map of tenant IDs to partition numbers.                             | no       |
-| `retired`    | `list(int)` | Partitions that belonged to a removed tenant and aren't reassigned. | no       |
+| Field        | Type          | Description                                                         | Required |
+| ------------ | ------------- | ------------------------------------------------------------------- | -------- |
+| `topics`     | `map(string)` | Map of signals to Kafka topics.                                     | yes      |
+| `partitions` | `int`         | Minimum number of partitions every topic must have.                 | yes      |
+| `tenants`    | `map(int)`    | Map of tenant IDs to partition numbers.                             | no       |
+| `retired`    | `list(int)`   | Partitions that belonged to a removed tenant and aren't reassigned. | no       |
 
 The following rules apply to the tenant registry:
 
-- `topic` must be set, and `partitions` must be greater than `0`.
+- `topics` must map at least one signal to a non-empty topic name. Valid signals are `metrics`, `logs`, `traces`, and `profiles`.
+- `partitions` must be greater than `0`.
 - Every partition in `tenants` and `retired` must be in the range `[0, partitions)`.
 - Two tenants can't share a partition.
 - A tenant can't be assigned to a retired partition.
@@ -142,9 +150,14 @@ The following rules apply to the tenant registry:
 
 If the file breaks any of these rules, the component rejects the whole file and keeps using the previous registry.
 
+A topic per signal keeps signals independent: a stalled downstream for one signal of a tenant doesn't delay that tenant's other signals.
+Signals without a topic are rejected with `404`.
+Several signals can share a topic, and their records are then processed in one order.
+Retention is set per topic, so each signal can have its own retention period.
+
 {{< admonition type="caution" >}}
 When you remove a tenant, add its partition to `retired`.
-Don't assign a retired partition to a new tenant until the topic's retention period has passed.
+Don't assign a retired partition to a new tenant until the longest retention period of the topics has passed.
 Until then, the partition still holds the previous tenant's records, and the new tenant could be sent the previous tenant's data.
 `kafka.tenant_consumer` drops records whose `tenant_id` header doesn't match the tenant of the partition, but don't rely on this check alone.
 {{< /admonition >}}
@@ -222,8 +235,8 @@ The `tls` block inside the `http` block configures TLS for the HTTP server.
 
 ## Component health
 
-`kafka.tenant_producer` is reported as unhealthy if it's given an invalid configuration, or while it can't verify the topic.
-The topic check fails if the topic doesn't exist, if it has fewer partitions than the registry declares, or if the brokers are unreachable.
+`kafka.tenant_producer` is reported as unhealthy if it's given an invalid configuration, or while it can't verify the topics.
+The topic check fails if a topic doesn't exist, if a topic has fewer partitions than the registry declares, or if the brokers are unreachable.
 While the topic check fails, the component rejects requests with `503` and retries the check every 10 seconds.
 
 ## Debug information
@@ -241,7 +254,7 @@ The following Prometheus metrics are exposed:
 | `kafka_tenant_producer_rejected_total`           | `counter`   | Total number of requests rejected before producing, by `reason`.      |
 | `kafka_tenant_producer_requests_total`           | `counter`   | Total number of requests, by `signal`, `format`, and response `code`. |
 
-The `reason` label of `kafka_tenant_producer_rejected_total` has one of the following values: `no_tenant`, `multi_tenant`, `unknown_tenant`, or `too_large`.
+The `reason` label of `kafka_tenant_producer_rejected_total` has one of the following values: `no_tenant`, `multi_tenant`, `unknown_tenant`, `signal_disabled`, or `too_large`.
 
 The HTTP server also exposes metrics with the `kafka_tenant_producer_` prefix, for example `kafka_tenant_producer_request_duration_seconds` and `kafka_tenant_producer_tcp_connections`.
 

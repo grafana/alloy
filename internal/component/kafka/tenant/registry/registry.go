@@ -5,15 +5,27 @@ package registry
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"go.uber.org/atomic"
 	"gopkg.in/yaml.v3"
 )
 
-// Registry maps each tenant to exactly one partition of a single topic.
+// Signals that can be mapped to a topic.
+const (
+	SignalMetrics  = "metrics"
+	SignalLogs     = "logs"
+	SignalTraces   = "traces"
+	SignalProfiles = "profiles"
+)
+
+var signals = []string{SignalMetrics, SignalLogs, SignalTraces, SignalProfiles}
+
+// Registry maps each signal to a topic, and each tenant to exactly one
+// partition. A tenant uses the same partition number in every topic.
 // A Registry is immutable once parsed.
 type Registry struct {
-	topic      string
+	topics     map[string]string // signal → topic
 	partitions int32
 	byTenant   map[string]int32
 	byPart     map[int32]string
@@ -21,10 +33,10 @@ type Registry struct {
 }
 
 type file struct {
-	Topic      string           `yaml:"topic"`
-	Partitions int32            `yaml:"partitions"`
-	Tenants    map[string]int32 `yaml:"tenants"`
-	Retired    []int32          `yaml:"retired"`
+	Topics     map[string]string `yaml:"topics"`
+	Partitions int32             `yaml:"partitions"`
+	Tenants    map[string]int32  `yaml:"tenants"`
+	Retired    []int32           `yaml:"retired"`
 }
 
 // Parse parses and validates a tenant registry file.
@@ -34,15 +46,23 @@ func Parse(b []byte) (*Registry, error) {
 		return nil, fmt.Errorf("parsing tenant registry: %w", err)
 	}
 
-	if f.Topic == "" {
-		return nil, errors.New("tenant registry: topic must be set")
+	if len(f.Topics) == 0 {
+		return nil, errors.New("tenant registry: topics must map at least one signal to a topic")
+	}
+	for signal, topic := range f.Topics {
+		if !slices.Contains(signals, signal) {
+			return nil, fmt.Errorf("tenant registry: unknown signal %q in topics: valid signals are %v", signal, signals)
+		}
+		if topic == "" {
+			return nil, fmt.Errorf("tenant registry: topic for signal %q must not be empty", signal)
+		}
 	}
 	if f.Partitions <= 0 {
 		return nil, errors.New("tenant registry: partitions must be greater than 0")
 	}
 
 	r := &Registry{
-		topic:      f.Topic,
+		topics:     f.Topics,
 		partitions: f.Partitions,
 		byTenant:   make(map[string]int32, len(f.Tenants)),
 		byPart:     make(map[int32]string, len(f.Tenants)),
@@ -76,10 +96,26 @@ func Parse(b []byte) (*Registry, error) {
 	return r, nil
 }
 
-// Topic returns the topic all tenants are written to.
-func (r *Registry) Topic() string { return r.topic }
+// TopicFor returns the topic that records of signal are written to. It
+// returns false if the signal isn't mapped to a topic.
+func (r *Registry) TopicFor(signal string) (string, bool) {
+	t, ok := r.topics[signal]
+	return t, ok
+}
 
-// Partitions returns the number of partitions the topic is expected to have.
+// Topics returns the distinct topics of all signals, sorted.
+func (r *Registry) Topics() []string {
+	var out []string
+	for _, t := range r.topics {
+		if !slices.Contains(out, t) {
+			out = append(out, t)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// Partitions returns the number of partitions every topic is expected to have.
 func (r *Registry) Partitions() int32 { return r.partitions }
 
 // PartitionFor returns the partition assigned to tenant.

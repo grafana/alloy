@@ -1,8 +1,10 @@
 // Package consumer implements the kafka.tenant_consumer component, which
 // consumes records written by kafka.tenant_producer and feeds them into Alloy
-// pipelines. All consumers in one group share a single topic in which each
-// tenant owns exactly one partition, so each tenant is processed by exactly
-// one consumer at a time.
+// pipelines. Each signal has its own topic, and each tenant owns the same
+// partition number in every topic. All consumers join one group, so each
+// tenant's signal is processed by exactly one consumer at a time, and each
+// partition is processed by its own worker so a stalled partition doesn't
+// hold up any other.
 package consumer
 
 import (
@@ -53,10 +55,9 @@ type Arguments struct {
 	StartOffset    string                    `alloy:"start_offset,attr,optional"`
 	SessionTimeout time.Duration             `alloy:"session_timeout,attr,optional"`
 
-	MaxRetries            int           `alloy:"max_retries,attr,optional"`
-	MinBackoff            time.Duration `alloy:"min_backoff,attr,optional"`
-	MaxBackoff            time.Duration `alloy:"max_backoff,attr,optional"`
-	MaxParallelPartitions int           `alloy:"max_parallel_partitions,attr,optional"`
+	MaxRetries int           `alloy:"max_retries,attr,optional"`
+	MinBackoff time.Duration `alloy:"min_backoff,attr,optional"`
+	MaxBackoff time.Duration `alloy:"max_backoff,attr,optional"`
 
 	Client kafkaclient.Arguments `alloy:"client,block"`
 
@@ -69,14 +70,13 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		GroupID:               "alloy-consumers",
-		StartOffset:           "earliest",
-		SessionTimeout:        45 * time.Second,
-		MaxRetries:            5,
-		MinBackoff:            100 * time.Millisecond,
-		MaxBackoff:            10 * time.Second,
-		MaxParallelPartitions: 32,
-		Output:                &otelcol.ConsumerArguments{},
+		GroupID:        "alloy-consumers",
+		StartOffset:    "earliest",
+		SessionTimeout: 45 * time.Second,
+		MaxRetries:     5,
+		MinBackoff:     100 * time.Millisecond,
+		MaxBackoff:     10 * time.Second,
+		Output:         &otelcol.ConsumerArguments{},
 	}
 }
 
@@ -91,9 +91,6 @@ func (a *Arguments) Validate() error {
 	if a.MaxRetries < 0 {
 		return errors.New("max_retries must not be negative")
 	}
-	if a.MaxParallelPartitions <= 0 {
-		return errors.New("max_parallel_partitions must be greater than 0")
-	}
 	return nil
 }
 
@@ -105,17 +102,17 @@ type groupArgs struct {
 	InstanceID     string
 	StartOffset    string
 	SessionTimeout time.Duration
-	Topic          string
+	Topics         []string
 }
 
-func (a Arguments) groupArgs(topic string) groupArgs {
+func (a Arguments) groupArgs(topics []string) groupArgs {
 	return groupArgs{
 		Client:         a.Client,
 		GroupID:        a.GroupID,
 		InstanceID:     a.InstanceID,
 		StartOffset:    a.StartOffset,
 		SessionTimeout: a.SessionTimeout,
-		Topic:          topic,
+		Topics:         topics,
 	}
 }
 
@@ -138,9 +135,9 @@ type Component struct {
 	groupArgs groupArgs
 	health    component.Health
 
-	// processHook, if set, is called before and after a partition's records
-	// of one fetch are processed. Used by tests.
-	processHook func(partition int32, start bool)
+	// processHook, if set, is called before and after a worker processes a
+	// batch of records. Used by tests.
+	processHook func(topic string, partition int32, start bool)
 }
 
 var (
@@ -224,7 +221,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	c.args = newArgs
-	if ga := newArgs.groupArgs(reg.Topic()); !reflect.DeepEqual(c.groupArgs, ga) {
+	if ga := newArgs.groupArgs(reg.Topics()); !reflect.DeepEqual(c.groupArgs, ga) {
 		c.groupArgs = ga
 		select {
 		case c.restart <- struct{}{}:
@@ -262,11 +259,12 @@ func (c *Component) runConsumer(ctx context.Context) {
 	}
 	args := c.currentArgs()
 
-	if !c.waitForTopic(ctx, args) {
+	if !c.waitForTopics(ctx, args) {
 		return
 	}
 
-	cl, err := c.newGroupClient(args)
+	s := newSession(ctx, c)
+	cl, err := c.newGroupClient(args, s)
 	if err != nil {
 		c.setHealth(component.HealthTypeUnhealthy, err.Error())
 		c.opts.Logger.Error("failed to create kafka consumer", "err", err)
@@ -279,14 +277,16 @@ func (c *Component) runConsumer(ctx context.Context) {
 	c.metrics.assignedPartitions.Set(0)
 	c.metrics.lag.Reset()
 	c.setHealth(component.HealthTypeHealthy, "consuming")
-	c.consume(ctx, cl)
+
+	s.poll(cl)
+	s.shutdown(cl)
 }
 
-// waitForTopic blocks until the registry's topic has been verified. It
+// waitForTopics blocks until the registry's topics have been verified. It
 // returns false if ctx was canceled first.
-func (c *Component) waitForTopic(ctx context.Context, args Arguments) bool {
+func (c *Component) waitForTopics(ctx context.Context, args Arguments) bool {
 	for {
-		err := c.checkTopic(ctx, args)
+		err := c.checkTopics(ctx, args)
 		if err == nil {
 			return true
 		} else if ctx.Err() != nil {
@@ -303,7 +303,7 @@ func (c *Component) waitForTopic(ctx context.Context, args Arguments) bool {
 	}
 }
 
-func (c *Component) checkTopic(ctx context.Context, args Arguments) error {
+func (c *Component) checkTopics(ctx context.Context, args Arguments) error {
 	opts, err := args.Client.Opts()
 	if err != nil {
 		return err
@@ -316,10 +316,10 @@ func (c *Component) checkTopic(ctx context.Context, args Arguments) error {
 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	return kafkaclient.CheckTopic(ctx, cl, c.registry.Load())
+	return kafkaclient.CheckTopics(ctx, cl, c.registry.Load())
 }
 
-func (c *Component) newGroupClient(args Arguments) (*kgo.Client, error) {
+func (c *Component) newGroupClient(args Arguments, s *session) (*kgo.Client, error) {
 	opts, err := args.Client.Opts()
 	if err != nil {
 		return nil, err
@@ -332,18 +332,19 @@ func (c *Component) newGroupClient(args Arguments) (*kgo.Client, error) {
 
 	opts = append(opts,
 		kgo.ConsumerGroup(args.GroupID),
-		kgo.ConsumeTopics(c.registry.Load().Topic()),
+		kgo.ConsumeTopics(c.registry.Load().Topics()...),
 		kgo.Balancers(kgo.CooperativeStickyBalancer()),
-		kgo.DisableAutoCommit(),
-		// Rebalances only happen between polls, once everything polled has
-		// been processed and committed. A partition therefore never has two
-		// owners processing it at the same time.
+		// Only offsets of records a worker finished are committed.
+		kgo.AutoCommitMarks(),
+		kgo.AutoCommitInterval(time.Second),
+		// Rebalance callbacks never run while a poll is being dispatched,
+		// so workers can be stopped before their partitions are given away.
 		kgo.BlockRebalanceOnPoll(),
 		kgo.ConsumeResetOffset(resetOffset),
 		kgo.SessionTimeout(args.SessionTimeout),
-		kgo.OnPartitionsAssigned(c.onAssigned),
-		kgo.OnPartitionsRevoked(c.onRevoked),
-		kgo.OnPartitionsLost(c.onRevoked),
+		kgo.OnPartitionsAssigned(s.onAssigned),
+		kgo.OnPartitionsRevoked(s.onRevoked),
+		kgo.OnPartitionsLost(s.onLost),
 	)
 	if args.InstanceID != "" {
 		// Static membership: a restart within the session timeout gets its
@@ -351,97 +352,4 @@ func (c *Component) newGroupClient(args Arguments) (*kgo.Client, error) {
 		opts = append(opts, kgo.InstanceID(args.InstanceID))
 	}
 	return kgo.NewClient(opts...)
-}
-
-func (c *Component) onAssigned(_ context.Context, _ *kgo.Client, assigned map[string][]int32) {
-	c.metrics.rebalances.Inc()
-	for _, parts := range assigned {
-		c.metrics.assignedPartitions.Add(float64(len(parts)))
-		c.opts.Logger.Info("partitions assigned", "partitions", fmt.Sprint(parts))
-	}
-}
-
-func (c *Component) onRevoked(_ context.Context, _ *kgo.Client, revoked map[string][]int32) {
-	// Offsets are committed after every processed fetch, before rebalances
-	// are allowed, so there is nothing left to commit here.
-	for _, parts := range revoked {
-		c.metrics.assignedPartitions.Sub(float64(len(parts)))
-		for _, p := range parts {
-			c.metrics.lag.DeleteLabelValues(fmt.Sprint(p))
-		}
-		c.opts.Logger.Info("partitions revoked", "partitions", fmt.Sprint(parts))
-	}
-}
-
-func (c *Component) consume(ctx context.Context, cl *kgo.Client) {
-	for ctx.Err() == nil {
-		fetches := cl.PollFetches(ctx)
-		if fetches.IsClientClosed() {
-			return
-		}
-		fetches.EachError(func(topic string, partition int32, err error) {
-			if !errors.Is(err, context.Canceled) {
-				c.opts.Logger.Warn("fetch error", "topic", topic, "partition", partition, "err", err)
-			}
-		})
-
-		args := c.currentArgs()
-		sem := make(chan struct{}, args.MaxParallelPartitions)
-
-		var (
-			wg        sync.WaitGroup
-			mut       sync.Mutex
-			processed []*kgo.Record // Last processed record per partition.
-		)
-		// Partitions (= tenants) are processed in parallel; records within a
-		// partition in order.
-		fetches.EachPartition(func(p kgo.FetchTopicPartition) {
-			if len(p.Records) == 0 {
-				return
-			}
-			wg.Go(func() {
-				sem <- struct{}{}
-				defer func() { <-sem }()
-
-				if c.processHook != nil {
-					c.processHook(p.Partition, true)
-					defer c.processHook(p.Partition, false)
-				}
-
-				last := c.processPartition(ctx, args, p.Records)
-				if last == nil {
-					return
-				}
-				c.metrics.lag.WithLabelValues(fmt.Sprint(p.Partition)).Set(float64(p.HighWatermark - last.Offset - 1))
-				mut.Lock()
-				processed = append(processed, last)
-				mut.Unlock()
-			})
-		})
-		wg.Wait()
-
-		if len(processed) > 0 {
-			// Use a fresh context so a shutdown still commits finished work.
-			commitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			if err := cl.CommitRecords(commitCtx, processed...); err != nil {
-				c.opts.Logger.Warn("failed to commit offsets; records will be reprocessed", "err", err)
-			}
-			cancel()
-		}
-		cl.AllowRebalance()
-	}
-}
-
-// processPartition processes records in order and returns the last record
-// that was finished (forwarded or dropped). Records after it are left
-// uncommitted and are reprocessed later.
-func (c *Component) processPartition(ctx context.Context, args Arguments, records []*kgo.Record) *kgo.Record {
-	var last *kgo.Record
-	for _, r := range records {
-		if !c.processRecord(ctx, args, r) {
-			break
-		}
-		last = r
-	}
-	return last
 }

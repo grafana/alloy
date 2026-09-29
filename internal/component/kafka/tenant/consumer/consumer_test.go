@@ -16,7 +16,7 @@ import (
 )
 
 func TestConsumer_ForwardsAllFormatsWithTenant(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)
@@ -41,7 +41,7 @@ func TestConsumer_ForwardsAllFormatsWithTenant(t *testing.T) {
 }
 
 func TestConsumer_TenantGuardDropsAndContinues(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)
@@ -52,16 +52,21 @@ func TestConsumer_TenantGuardDropsAndContinues(t *testing.T) {
 	mismatch.tenant = "tenant-b" // On tenant-a's partition.
 	retired := allSignals(t, "tenant-a")[3]
 	retired.partition = 3
-	produce(t, cl, mismatch, retired, allSignals(t, "tenant-a")[3])
+	wrongTopic := allSignals(t, "tenant-a")[0] // A metrics record in the traces topic.
+	wrongTopic.topic = topicFor(kafkaclient.SignalTraces)
+	produce(t, cl, mismatch, retired, wrongTopic, allSignals(t, "tenant-a")[3])
 
 	require.Eventually(t, func() bool { return len(rec.deliveries()) == 1 }, 20*time.Second, 10*time.Millisecond)
 	require.Equal(t, []delivery{{"tenant-a", kafkaclient.FormatOTLP}}, rec.deliveries())
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.metrics.dropped.WithLabelValues("topic_mismatch", kafkaclient.FormatPromRWv1)) == 1
+	}, 20*time.Second, 10*time.Millisecond)
 	require.Equal(t, 1.0, testutil.ToFloat64(c.metrics.dropped.WithLabelValues("tenant_mismatch", kafkaclient.FormatOTLP)))
 	require.Equal(t, 1.0, testutil.ToFloat64(c.metrics.dropped.WithLabelValues("unassigned_partition", kafkaclient.FormatOTLP)))
 }
 
 func TestConsumer_MalformedRecordsDoNotStall(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)
@@ -85,12 +90,12 @@ func TestConsumer_MalformedRecordsDoNotStall(t *testing.T) {
 }
 
 func TestConsumer_DownstreamErrorRetriesThenDrops(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	var calls atomic.Int32
 	rec := newRecorder(t)
-	rec.otelFn = func() error {
+	rec.otelFn = func(string) error {
 		if calls.Add(1) <= 3 {
 			return errors.New("downstream unavailable")
 		}
@@ -109,13 +114,54 @@ func TestConsumer_DownstreamErrorRetriesThenDrops(t *testing.T) {
 	require.Equal(t, 1.0, testutil.ToFloat64(c.metrics.dropped.WithLabelValues("downstream_error", kafkaclient.FormatOTLP)))
 }
 
-func TestConsumer_CommitsOnlyAfterProcessing(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+// TestConsumer_StalledPartitionDoesNotBlockOthers checks that a partition
+// whose downstream is stuck holds up only itself: other signals of the same
+// tenant, and the same signal of other tenants, keep flowing, including
+// records fetched after the stall began.
+func TestConsumer_StalledPartitionDoesNotBlockOthers(t *testing.T) {
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	release := make(chan struct{})
 	rec := newRecorder(t)
-	rec.otelFn = func() error { <-release; return nil }
+	rec.otelFn = func(tenant string) error {
+		if tenant == "tenant-a" {
+			<-release
+		}
+		return nil
+	}
+	startConsumer(t, "kafka.tenant_consumer.test", rec.args(cluster.ListenAddrs()), nil)
+
+	cl := newProducer(t, cluster.ListenAddrs())
+	produceRound := func() {
+		produce(t, cl, allSignals(t, "tenant-a")...)
+		produce(t, cl, allSignals(t, "tenant-b")...)
+	}
+	const rounds = 3
+
+	// Everything except tenant-a's traces arrives while they are stuck. Later
+	// rounds are produced only once the stall has begun, so they must be
+	// fetched while it lasts.
+	for i := 1; i <= rounds; i++ {
+		produceRound()
+		require.Eventually(t, func() bool { return len(rec.deliveries()) == i*7 }, 20*time.Second, 10*time.Millisecond, "round %d", i)
+	}
+	for _, d := range rec.deliveries() {
+		require.False(t, d.Tenant == "tenant-a" && d.Format == kafkaclient.FormatOTLP, "tenant-a traces must still be stuck")
+	}
+
+	// Once released, the stuck partition catches up in order.
+	close(release)
+	require.Eventually(t, func() bool { return len(rec.deliveries()) == rounds*8 }, 20*time.Second, 10*time.Millisecond)
+}
+
+func TestConsumer_CommitsOnlyAfterProcessing(t *testing.T) {
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
+	defer cluster.Close()
+
+	release := make(chan struct{})
+	rec := newRecorder(t)
+	rec.otelFn = func(string) error { <-release; return nil }
 	args := rec.args(cluster.ListenAddrs())
 	startConsumer(t, "kafka.tenant_consumer.test", args, nil)
 
@@ -128,7 +174,7 @@ func TestConsumer_CommitsOnlyAfterProcessing(t *testing.T) {
 		if err != nil {
 			return -1
 		}
-		o, ok := offsets.Lookup(testTopic, 0)
+		o, ok := offsets.Lookup(topicFor(kafkaclient.SignalTraces), 0)
 		if !ok {
 			return -1
 		}
@@ -144,14 +190,14 @@ func TestConsumer_CommitsOnlyAfterProcessing(t *testing.T) {
 }
 
 func TestConsumer_InvalidRegistryUpdateKeepsPrevious(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopic))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)
 	args := rec.args(cluster.ListenAddrs())
 	c, _ := startConsumer(t, "kafka.tenant_consumer.test", args, nil)
 
-	args.Registry.Value = "topic: t\npartitions: 4\ntenants: {a: 1}\nretired: [1]"
+	args.Registry.Value = "topics: {logs: t}\npartitions: 4\ntenants: {a: 1}\nretired: [1]"
 	require.ErrorContains(t, c.Update(args), "retired partition")
 
 	tenant, ok := c.registry.Load().TenantFor(0)
@@ -160,7 +206,7 @@ func TestConsumer_InvalidRegistryUpdateKeepsPrevious(t *testing.T) {
 }
 
 func TestConsumer_MissingTopicIsUnhealthy(t *testing.T) {
-	cluster := kfake.MustCluster(kfake.SeedTopics(4, "other"))
+	cluster := kfake.MustCluster(kfake.SeedTopics(4, testTopics[:3]...))
 	defer cluster.Close()
 
 	rec := newRecorder(t)

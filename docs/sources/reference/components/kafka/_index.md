@@ -10,7 +10,7 @@ weight: 100
 
 # `kafka`
 
-The `kafka` components buffer telemetry for many tenants in a single Kafka topic, where each tenant owns exactly one partition.
+The `kafka` components buffer telemetry for many tenants in Kafka, with one topic per signal, where each tenant owns exactly one partition of each topic.
 Use `kafka.tenant_producer` to write incoming requests to Kafka, and `kafka.tenant_consumer` to read them back into {{< param "PRODUCT_NAME" >}} pipelines while keeping each tenant's data separate.
 
 {{< section >}}
