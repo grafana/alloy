@@ -15,7 +15,7 @@ title: prometheus.exporter.cloudwatch
 The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-exporter`][], letting you collect [Amazon CloudWatch metrics][] in a Prometheus-compatible format.
 
 This component lets you scrape CloudWatch metrics in a set of configurations called _jobs_.
-There are two kinds of jobs: [discovery][] and [static][].
+There are two kinds of jobs: [`discovery`][discovery] and [`static`][static].
 
 [`yet-another-cloudwatch-exporter`]: https://github.com/prometheus-community/yet-another-cloudwatch-exporter
 [Amazon CloudWatch metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html
@@ -25,9 +25,9 @@ There are two kinds of jobs: [discovery][] and [static][].
 
 ## Authentication
 
-{{< param "PRODUCT_NAME" >}} must be running in an environment with access to AWS.
+{{< param "PRODUCT_NAME" >}} must run in an environment with access to AWS.
 The exporter uses the [AWS SDK for Go][] and provides authentication via the [AWS default credential chain][].
-Regardless of the method used to acquire the credentials, some permissions are required for the exporter to work.
+However you acquire the credentials, the exporter requires the following permissions:
 
 ```text
 "tag:GetResources",
@@ -36,7 +36,7 @@ Regardless of the method used to acquire the credentials, some permissions are r
 "cloudwatch:ListMetrics"
 ```
 
-The following IAM permissions are required for the [Transit Gateway][] attachment (`tgwa`) metrics to work.
+[Transit Gateway][] attachment (`tgwa`) metrics require the following AWS Identity and Access Management (IAM) permissions:
 
 ```text
 "ec2:DescribeTags",
@@ -45,26 +45,30 @@ The following IAM permissions are required for the [Transit Gateway][] attachmen
 "ec2:DescribeTransitGateway*"
 ```
 
-The following IAM permission is required to discover tagged [API Gateway][] REST APIs:
+To discover tagged [API Gateway][] REST APIs, the exporter requires the following IAM permission:
 
 ```text
 "apigateway:GET"
 ```
 
-The following IAM permissions are required to discover tagged [Database Migration Service][] (DMS) replication instances and tasks:
+To discover tagged [Database Migration Service][] (DMS) replication instances and tasks, the exporter requires the following IAM permissions:
 
 ```text
 "dms:DescribeReplicationInstances",
 "dms:DescribeReplicationTasks"
 ```
 
-The following IAM permission is required to retrieve the AWS account alias, which is added as an `account_alias` label on the exported metrics. If the permission is missing, {{< param "PRODUCT_NAME" >}} logs a `Couldn't get account alias` warning on each scrape and the label is omitted. Metric collection isn't affected.
+To retrieve the AWS account alias, the exporter requires the following IAM permission:
 
 ```text
 "iam:ListAccountAliases"
 ```
 
-To use all of the integration features, use the following AWS IAM Policy:
+{{< param "PRODUCT_NAME" >}} adds the alias as an `account_alias` label on the exported metrics.
+Without this permission, {{< param "PRODUCT_NAME" >}} logs a `Couldn't get account alias` warning on each scrape and omits the label.
+Metric collection continues normally.
+
+To use all of the component's features, use the following AWS IAM policy:
 
 ```json
 {
@@ -402,7 +406,7 @@ prometheus.exporter.cloudwatch "static_instances" {
 }
 ```
 
-As shown above, `static` blocks must be specified with a label, which translates to the `name` label in the exported metric.
+You must give each `static` block a label, which becomes the `name` label in the exported metric.
 
 ```alloy
 static "<LABEL>" {
@@ -416,20 +420,20 @@ You can configure the `static` block one or multiple times to scrape metrics wit
 
 You can use the following arguments with the `static` block:
 
-| Name          | Type           | Description                                                                                                                                                  | Default | Required |
-| ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| `dimensions`  | `map(string)`  | CloudWatch metric dimensions as a list of name / value pairs. Must uniquely define all metrics in this job.                                                  |         | yes      |
-| `namespace`   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
-| `regions`     | `list(string)` | List of AWS regions.                                                                                                                                         |         | yes      |
-| `custom_tags` | `map(string)`  | Custom tags to be added as a list of key / value pairs. When exported to Prometheus format, the label name follows the following format: `custom_tag_{key}`. | `{}`    | no       |
-| `nil_to_zero` | `bool`         | When `true`, `NaN` metric values are converted to 0. Individual metrics can override this value in the [`metric`][metric] block.                             | `true`  | no       |
+| Name          | Type           | Description                                                                                  | Default | Required |
+| ------------- | -------------- | -------------------------------------------------------------------------------------------- | ------- | -------- |
+| `dimensions`  | `map(string)`  | CloudWatch dimensions as name/value pairs. Must uniquely define all metrics in this job.     |         | yes      |
+| `namespace`   | `string`       | CloudWatch metric namespace.                                                                 |         | yes      |
+| `regions`     | `list(string)` | List of AWS regions.                                                                         |         | yes      |
+| `custom_tags` | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`    | no       |
+| `nil_to_zero` | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`  | no       |
 
 Setting `period`, `length`, or `delay` on a `static` block has no effect.
 Configure these arguments on each `metric` block instead.
 
-All dimensions must be specified when scraping single metrics like the example above.
-For example, `AWS/Logs` metrics require `Resource`, `Service`, `Class`, and `Type` dimensions to be specified.
-The same applies to CloudWatch custom metrics, all dimensions attached to a metric when saved in CloudWatch are required.
+Specify all dimensions when you scrape single metrics, as in the preceding example.
+For example, `AWS/Logs` metrics require the `Resource`, `Service`, `Class`, and `Type` dimensions.
+The same applies to CloudWatch custom metrics: specify every dimension attached to the metric in CloudWatch.
 
 ## Exported fields
 
