@@ -33,3 +33,9 @@ Create a local `.env.credentials` from the provided template and fill in your va
 cp example/kind/.env.credentials.template example/kind/.env.credentials
 $EDITOR example/kind/.env.credentials
 ```
+
+## Scrape allocation demo
+
+Use the [skewed scrape allocation baseline](config/target-allocation/README.md)
+to compare scrape load across clustered Alloy peers. Its target counts, series
+counts, and scrape interval are configurable in one settings file.

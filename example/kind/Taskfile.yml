@@ -11,6 +11,41 @@ vars:
   CLUSTERNAME: alloy-example
 
 tasks:
+  target-allocation:render:
+    desc: Render the scrape allocation baseline and print its ingestion size
+    cmds:
+      - python3 config/target-allocation/demo.py render --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}'
+
+  target-allocation:up:
+    desc: Deploy the skewed clustered Alloy baseline to kind
+    cmds:
+      - task: target-allocation:cluster
+      - make -C ../.. prom-gen-image
+      - kind load docker-image prom-gen:latest --name {{.CLUSTERNAME}}
+      - python3 config/target-allocation/demo.py up --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
+  target-allocation:cluster:
+    desc: Create a single-node demo cluster, refusing to run alongside another kind cluster
+    preconditions:
+      - sh: |
+          clusters=$(docker ps --filter label=io.x-k8s.kind.cluster --format '{{`{{.Label "io.x-k8s.kind.cluster"}}`}}') &&
+          test -z "$(printf '%s\n' "$clusters" | grep -vx '{{.CLUSTERNAME}}')"
+        msg: Stop other running kind clusters before starting the demo.
+    cmds:
+      - task: cluster:create
+        vars:
+          KIND_CONFIG: config/target-allocation/kind.yaml
+
+  target-allocation:status:
+    desc: Show the scrape allocation demo pods
+    cmds:
+      - python3 config/target-allocation/demo.py status --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
+  target-allocation:down:
+    desc: Remove the demo namespace and stop Cloud ingestion, keeping kind
+    cmds:
+      - python3 config/target-allocation/demo.py down --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
+
   cluster:create:
     desc: Create a kind cluster
     run: once
@@ -18,7 +53,7 @@ tasks:
       - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
     cmds:
       - mkdir -p build
-      - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
+      - kind create cluster --config '{{.KIND_CONFIG | default "config/kind/multinode.yaml"}}' --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
 
   cluster:delete:
     desc: Delete the kind cluster

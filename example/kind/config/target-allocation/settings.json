@@ -1,0 +1,10 @@
+{
+  "alloy_image": "grafana/alloy:v1.20.1",
+  "alloy_replicas": 3,
+  "scrape_interval_seconds": 30,
+  "run_id": "baseline-onehot",
+  "large_targets": 3,
+  "large_series": 800,
+  "small_targets": 24,
+  "small_series": 10
+}

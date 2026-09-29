@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,10 +19,12 @@ const defaultPort = "9001"
 
 type Config struct {
 	ListenAddress string
+	Series        int
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.ListenAddress, "bind", fmt.Sprintf(":%s", defaultPort), "Bind address")
+	f.IntVar(&cfg.Series, "series", 0, "Emit this many stable synthetic gauge series instead of the default metrics (0 keeps the default)")
 }
 
 func main() {
@@ -29,6 +32,9 @@ func main() {
 	cfg := &Config{}
 	cfg.RegisterFlags(flag.CommandLine)
 	flag.Parse()
+	if cfg.Series < 0 {
+		log.Fatal("series must not be negative")
+	}
 
 	address, port := getAddressAndPort(cfg.ListenAddress)
 	listenAddress := fmt.Sprintf("%s:%s", address, port)
@@ -51,14 +57,30 @@ func main() {
 		"port":    port,
 	}
 
-	go handleCounter(setupCounter(labels))
-	go handleGaugeInput(setupGauge(labels))
-	go handleHistogramInput(setupHistogram(labels))
-	go handleHistogramInput(setupNativeHistogram(labels))
-	go handleHistogramInput(setupMixedHistogram(labels))
-	go handleSummary(setupSummary(labels))
+	if cfg.Series > 0 {
+		setupSyntheticMetrics(registry, cfg.Series)
+	} else {
+		go handleCounter(setupCounter(labels))
+		go handleGaugeInput(setupGauge(labels))
+		go handleHistogramInput(setupHistogram(labels))
+		go handleHistogramInput(setupNativeHistogram(labels))
+		go handleHistogramInput(setupMixedHistogram(labels))
+		go handleSummary(setupSummary(labels))
+	}
 	stopChan := make(chan struct{})
 	<-stopChan
+}
+
+// setupSyntheticMetrics provides repeatable target sizes without series churn.
+func setupSyntheticMetrics(reg prometheus.Registerer, count int) {
+	gauge := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "demo_target_series",
+		Help: "Synthetic series for scrape allocation experiments.",
+	}, []string{"series"})
+	reg.MustRegister(gauge)
+	for i := 0; i < count; i++ {
+		gauge.WithLabelValues(strconv.Itoa(i)).Set(float64(i))
+	}
 }
 
 // When wrapping with a prefix, we need something that can act as a prometheus.Collector, a prometheus.Registerer, and a prometheus.Gatherer
