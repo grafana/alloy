@@ -26,7 +26,7 @@ There are two kinds of jobs: [discovery][] and [static][].
 ## Authentication
 
 {{< param "PRODUCT_NAME" >}} must be running in an environment with access to AWS.
-The exporter uses the [AWS SDK for Go](https://aws.github.io/aws-sdk-go-v2/docs/getting-started/) and provides authentication via the [AWS default credential chain](https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-credentials).
+The exporter uses the [AWS SDK for Go][] and provides authentication via the [AWS default credential chain][].
 Regardless of the method used to acquire the credentials, some permissions are required for the exporter to work.
 
 ```text
@@ -36,7 +36,7 @@ Regardless of the method used to acquire the credentials, some permissions are r
 "cloudwatch:ListMetrics"
 ```
 
-The following IAM permissions are required for the [Transit Gateway](https://aws.amazon.com/transit-gateway/) attachment (`tgwa`) metrics to work.
+The following IAM permissions are required for the [Transit Gateway][] attachment (`tgwa`) metrics to work.
 
 ```text
 "ec2:DescribeTags",
@@ -45,13 +45,13 @@ The following IAM permissions are required for the [Transit Gateway](https://aws
 "ec2:DescribeTransitGateway*"
 ```
 
-The following IAM permission is required to discover tagged [API Gateway](https://aws.amazon.com/es/api-gateway/) REST APIs:
+The following IAM permission is required to discover tagged [API Gateway][] REST APIs:
 
 ```text
 "apigateway:GET"
 ```
 
-The following IAM permissions are required to discover tagged [Database Migration Service](https://aws.amazon.com/dms/) (DMS) replication instances and tasks:
+The following IAM permissions are required to discover tagged [Database Migration Service][] (DMS) replication instances and tasks:
 
 ```text
 "dms:DescribeReplicationInstances",
@@ -92,6 +92,12 @@ To use all of the integration features, use the following AWS IAM Policy:
   ]
 }
 ```
+
+[AWS SDK for Go]: https://aws.github.io/aws-sdk-go-v2/docs/getting-started/
+[AWS default credential chain]: https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-credentials
+[Transit Gateway]: https://aws.amazon.com/transit-gateway/
+[API Gateway]: https://aws.amazon.com/api-gateway/
+[Database Migration Service]: https://aws.amazon.com/dms/
 
 ## Usage
 
@@ -231,7 +237,7 @@ You can use the following arguments with the `custom_namespace` block:
 The `metric` block defines an AWS metric to scrape.
 
 You can configure the `metric` block multiple times to define multiple target metrics.
-Refer to the [View available metrics][]topic in the Amazon CloudWatch documentation for detailed metrics information.
+Refer to the [View available metrics][] topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 You can use the following arguments with the `metric` block:
 
@@ -274,13 +280,13 @@ Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, ag
 
 ### `role`
 
-Represents an [AWS IAM Role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html).
+Represents an [AWS IAM Role][].
 If omitted, the AWS role that corresponds to the credentials configured in the environment is used.
 
 Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials.
 In this case, a different role is configured for {{< param "PRODUCT_NAME" >}} to assume before calling AWS APIs.
 Therefore, the credentials configured in the system need permission to assume the target role.
-Refer to [Granting a user permissions to switch roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html) in the AWS IAM documentation for more information about how to configure this.
+Refer to [Granting a user permissions to switch roles][] in the AWS IAM documentation for more information about how to configure this.
 
 You can use the following arguments with the `role` block:
 
@@ -289,6 +295,8 @@ You can use the following arguments with the `role` block:
 | `external_id` | `string` | External ID used when calling STS AssumeRole API. Refer to the [IAM User Guide][details] for more information. | `""`    | no       |
 | `role_arn`    | `string` | AWS IAM Role ARN the exporter should assume to perform AWS API calls.                                          |         | yes      |
 
+[AWS IAM Role]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+[Granting a user permissions to switch roles]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html
 [details]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
 
 ### `decoupled_scraping`
