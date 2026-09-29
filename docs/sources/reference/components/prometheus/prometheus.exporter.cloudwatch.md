@@ -262,24 +262,24 @@ In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, t
 
 #### `period` and `length`
 
-`period` controls primarily the width of the time bucket used for aggregating metrics collected from CloudWatch.
-`length` controls how far back in time CloudWatch metrics are considered during each {{< param "PRODUCT_NAME" >}} scrape.
-If both settings are configured, the time parameters when calling CloudWatch APIs works as follows:
+`period` sets the width of the time bucket that CloudWatch uses to aggregate metrics.
+`length` sets how far back in time each {{< param "PRODUCT_NAME" >}} scrape looks for CloudWatch metrics.
+When you set both, {{< param "PRODUCT_NAME" >}} calls the CloudWatch APIs as follows:
 
 {{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
 
-If, across multiple metrics under the same static or discovery job, there's a different `period` or `length`, the minimum of all periods, and maximum of all lengths is configured.
+When metrics in the same `static` or `discovery` job use different `period` or `length` values, {{< param "PRODUCT_NAME" >}} takes the minimum of all periods and the maximum of all lengths.
 
-On the other hand, if `length` isn't configured, both period and length settings are calculated based on the required `period` configuration attribute.
+When you don't set `length`, {{< param "PRODUCT_NAME" >}} derives both the period and the length from the required `period` attribute.
 
-If all metrics within a job (discovery or static) have the same `period` value configured, CloudWatch APIs are requested for metrics from the scrape time, to `period` seconds in the past.
-The values of these are exported to Prometheus.
+When every metric in a job uses the same `period` value, {{< param "PRODUCT_NAME" >}} requests metrics from the scrape time back to `period` seconds earlier.
+It then exports those values to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
 
-On the other hand, if metrics with different `period`s are configured under an individual job, this works differently.
-First, two variables are calculated aggregating all periods: `length`, taking the maximum value of all periods, and the new `period` value, taking the minimum of all periods.
-Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, aggregating each in samples for `period` seconds. For each metric, the most recent sample is exported to CloudWatch.
+When metrics in one job use different `period` values, the behavior differs.
+{{< param "PRODUCT_NAME" >}} first aggregates all periods into two values: `length` takes the maximum of all periods, and `period` takes the minimum.
+It then requests metrics from `now - length` to `now`, aggregating each into samples of `period` seconds, and exports the most recent sample for each metric to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
 
