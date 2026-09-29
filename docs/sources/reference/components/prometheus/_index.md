@@ -20,6 +20,6 @@ They support multiple collection methods:
 
 You can relabel, enrich, and route metrics before writing them to storage.
 
-Use a `prometheus` component when you want to collect metrics from your applications and infrastructure, and send them to Prometheus, Grafana Mimir, or another compatible endpoint for analysis.
+Use `prometheus` components when you want to collect metrics from your applications and infrastructure, and send them to Prometheus, Grafana Mimir, or another compatible endpoint for analysis.
 
 {{< section >}}
