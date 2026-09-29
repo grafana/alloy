@@ -83,20 +83,20 @@ func TestBatch_FilterMapStreams(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 3, b.StreamLen())
 
-	b.FilterMapStreams(func(stream *Stream) bool {
+	b.FilterMapStreams(func(stream Stream) (Stream, bool) {
 		action := stream.Labels[model.LabelName("job")]
 
 		switch action {
 		case "keep":
-			return true
+			return stream, true
 		case "move":
 			stream.Labels = stream3
-			return true
+			return stream, true
 		case "drop":
-			return false
+			return stream, false
 		default:
 			t.Fatalf("unexpected stream labels %v", stream.Labels)
-			return false
+			return stream, false
 		}
 	})
 
@@ -377,7 +377,7 @@ func BenchmarkBatch_FilterMapStreams(b *testing.B) {
 			b.ResetTimer()
 			b.ReportAllocs()
 			for b.Loop() {
-				batch.FilterMapStreams(func(*Stream) bool { return true })
+				batch.FilterMapStreams(func(s Stream) (Stream, bool) { return s, true })
 			}
 		})
 	}

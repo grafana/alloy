@@ -133,10 +133,10 @@ func (b *Batch) FilterMap(fn func(entry Entry) (Entry, bool)) {
 	b.streams = b.streams[:streamDst]
 }
 
-// FilterMapStreams calls fn once for each stream in the batch, passing a mutable
-// view of that stream. If fn returns true the stream is kept, if fn returns
-// false the stream and all of its entries are dropped.
-func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
+// FilterMapStreams calls fn once for each stream in the batch. fn returns the
+// stream to keep and whether to keep it. If keep is false the stream and all of
+// its entries are dropped.
+func (b *Batch) FilterMapStreams(fn func(stream Stream) (Stream, bool)) {
 	var (
 		newLen int
 		// dst is where the next kept stream is written. It only moves forward when
@@ -151,15 +151,13 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// do not mutate the stream set while iterating it. They are reinserted below
 	// and may merge into an existing stream.
 	for i := range b.streams {
-		stream := Stream{
+		stream, keep := fn(Stream{
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
 			created: b.streams[i].created,
-		}
-
-		keep := fn(&stream)
+		})
 		if !keep {
 			continue
 		}
