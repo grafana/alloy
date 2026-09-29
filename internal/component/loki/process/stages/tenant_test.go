@@ -215,6 +215,26 @@ func TestValidateTenantConfig(t *testing.T) {
 			`,
 			err: errTenantStageConflictingLabelSourceAndValue,
 		},
+		{
+			name: "should pass when one option is set and another is explicitly empty",
+			cfg: `
+			source = "tenant"
+			value = ""
+			`,
+		},
+		{
+			name: "should fail when all options are explicitly empty",
+			cfg: `
+			source = ""
+			value = ""
+			label = ""
+			`,
+			err: errTenantStageEmptyLabelSourceOrValue,
+		},
+		{
+			name: "should pass on label config option set",
+			cfg:  `label = "tenant_id"`,
+		},
 	}
 
 	for _, tt := range tests {
