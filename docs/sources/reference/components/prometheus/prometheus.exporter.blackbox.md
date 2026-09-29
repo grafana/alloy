@@ -90,6 +90,10 @@ You can use the following blocks with `prometheus.exporter.blackbox`:
 
 ### `target`
 
+The `target` block defines an individual blackbox target.
+
+You can use the following arguments with the `target` block:
+
 | Name      | Type          | Description                         | Default | Required |
 | --------- | ------------- | ----------------------------------- | ------- | -------- |
 | `address` | `string`      | The address of the target to probe. |         | yes      |
@@ -97,7 +101,6 @@ You can use the following blocks with `prometheus.exporter.blackbox`:
 | `labels`  | `map(string)` | Labels to add to the target.        |         | no       |
 | `module`  | `string`      | Blackbox module to use to probe.    | `""`    | no       |
 
-The `target` block defines an individual blackbox target.
 You can specify the `target` block multiple times to define multiple targets.
 You must set the `name` attribute, and the component uses it in the target's `job` label.
 
