@@ -22,20 +22,18 @@ func NewBatch() Batch {
 // Ownership of the stream data is transferred to the batch and it must not be
 // mutated or retained after calling Add.
 func (b *Batch) Add(stream Stream) {
-	b.add(stream.Labels, stream.created, stream.Entries...)
+	b.add(stream)
 	b.entryLen += len(stream.Entries)
 }
 
-func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
-	i := b.streamIndex(labels)
+func (b *Batch) add(stream Stream) {
+	i := b.streamIndex(stream.Labels)
 	if i >= 0 {
 		s := &b.streams[i]
-		s.Entries = append(s.Entries, entries...)
-		s.updateCreated(created)
+		s.Entries = append(s.Entries, stream.Entries...)
+		s.updateCreated(stream.created)
 		return
 	}
-
-	stream := NewStreamWithCreatedUnixMicro(labels, created, entries...)
 	b.streams = append(b.streams, stream)
 }
 
@@ -179,7 +177,7 @@ func (b *Batch) FilterMapStreams(fn func(stream Stream) (Stream, bool)) {
 
 	// Reinsert streams whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.created, moved.Entries...)
+		b.add(moved)
 	}
 
 	b.entryLen = newLen
