@@ -3,6 +3,8 @@ package stages
 import (
 	"context"
 	"errors"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // errEmptyLabelKeepStageConfig error is returned if the config is empty.
@@ -13,16 +15,22 @@ type LabelKeepConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
+var _ syntax.Validator = (*LabelKeepConfig)(nil)
+
+func (l *LabelKeepConfig) Validate() error {
+	if len(l.Values) < 1 {
+		return errEmptyLabelKeepStageConfig
+	}
+
+	return nil
+}
+
 var (
 	_ Stage          = (*labelKeepStage)(nil)
 	_ entryProcessor = (*labelKeepStage)(nil)
 )
 
-func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) (*labelKeepStage, error) {
-	if len(config.Values) < 1 {
-		return nil, errEmptyLabelKeepStageConfig
-	}
-
+func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) *labelKeepStage {
 	labelMap := make(map[string]struct{})
 	for _, label := range config.Values {
 		labelMap[label] = struct{}{}
@@ -31,7 +39,7 @@ func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) (*labelKeepStage,
 	return &labelKeepStage{
 		next:   opts.next,
 		labels: labelMap,
-	}, nil
+	}
 }
 
 type labelKeepStage struct {
