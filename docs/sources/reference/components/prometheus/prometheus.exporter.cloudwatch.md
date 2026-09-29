@@ -252,6 +252,7 @@ You can use the following arguments with the `metric` block:
 
 In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, these arguments default to the parent block's value when the parent sets one.
 
+[custom_namespace]: #custom_namespace
 [period]: #period-and-length
 [View available metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html
 
@@ -280,7 +281,7 @@ Then, CloudWatch APIs are requested for metrics from `now - length` to `now`, ag
 
 ### `role`
 
-Represents an [AWS IAM Role][].
+The `role` block defines an [AWS IAM Role][].
 If omitted, the AWS role that corresponds to the credentials configured in the environment is used.
 
 Multiple roles can be useful when scraping metrics from different AWS accounts with a single pair of credentials.
