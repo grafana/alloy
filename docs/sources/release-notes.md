@@ -8,6 +8,6 @@ weight: 999
 
 # Release notes for {{% param "FULL_PRODUCT_NAME" %}}
 
-For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links to pull requests and related issues when available, refer to the [Changelog][].
+For a complete list of changes to {{< param "FULL_PRODUCT_NAME" >}}, with links to pull requests and related issues when available, refer to the [CHANGELOG][].
 
 [Changelog]: https://github.com/grafana/alloy/blob/main/CHANGELOG.md
