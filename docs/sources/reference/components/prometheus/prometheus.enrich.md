@@ -5,6 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-09-14
 title: prometheus.enrich
 ---
 
@@ -13,12 +14,12 @@ title: prometheus.enrich
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `prometheus.enrich` component enriches metrics with additional labels from service discovery targets.
-It matches labels from incoming metrics against labels from discovered targets, and copies specified labels from the
-matched target to the metric sample. If no match occurs, the metrics are passed through unchanged.
+It matches labels from incoming metrics against labels from discovered targets, and copies specified labels from the matched target to the metric sample.
+If no match occurs, the metrics pass through unchanged.
 
 Use the `target_to_metric_match` argument to specify which target labels correspond to which metric labels. The map keys are target label names and the values are the corresponding metric label names. All labels in the map must match for enrichment to occur.
 
-{{< admonition type="warning" >}}
+{{< admonition type="caution" >}}
 The `target_match_label` and `metrics_match_label` arguments are deprecated in favor of `target_to_metric_match`.
 If `target_to_metric_match` is set, it takes precedence. Replace `target_match_label = "hostname"` with `target_to_metric_match = {"hostname" = "hostname"}`.
 These deprecated arguments will be removed in a future release.
@@ -43,26 +44,33 @@ prometheus.enrich "<LABEL>" {
 
 You can use the following arguments with `prometheus.enrich`:
 
-| Name                                | Type                           | Description                                                                                                     | Default | Required |
-|-------------------------------------|--------------------------------|-----------------------------------------------------------------------------------------------------------------|---------|----------|
-| `forward_to`                        | `list(MetricsReceiver)`        | Where the metrics should be forwarded to, after enrichment.                                                     |         | yes      |
-| `targets`                           | `list(map(string))`            | List of targets from a discovery component.                                                                     |         | yes      |
-| `target_to_metric_match`            | `map(string)`                  | Map of target label name to metric label name. All entries must match for enrichment.                           |         | no       |
-| `target_match_label`                | `string`                       | (Deprecated) The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
-| `metrics_match_label`               | `string`                       | (Deprecated) The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
-| `labels_to_copy`                    | `list(string)`                 | List of labels to copy from discovered targets to metrics. If empty, all labels are copied.                     |         | no       |
+| Name                     | Type                    | Description                                                                                                     | Default | Required |
+| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`             | `list(MetricsReceiver)` | Where the metrics should be forwarded to, after enrichment.                                                     |         | yes      |
+| `targets`                | `list(map(string))`     | List of targets from a discovery component.                                                                     |         | yes      |
+| `labels_to_copy`         | `list(string)`          | List of labels to copy from discovered targets to metrics. If empty, all labels are copied.                     |         | no       |
+| `metrics_match_label`    | `string`                | (Deprecated) The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
+| `target_match_label`     | `string`                | (Deprecated) The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
+| `target_to_metric_match` | `map(string)`           | Map of target label name to metric label name. All entries must match for enrichment.                           |         | no       |
+
+You must set at least one of `target_to_metric_match` or `target_match_label`. Setting `metrics_match_label` alone, without `target_match_label`, causes a validation error.
 
 ## Blocks
 
 The `prometheus.enrich` component doesn't support any blocks. You can configure this component with arguments.
 
-## Exports
+## Exported fields
 
-The following values are exported:
+The following fields are exported and can be referenced by other components:
 
 | Name       | Type              | Description                                               |
 |------------|-------------------|-----------------------------------------------------------|
 | `receiver` | `MetricsReceiver` | The input receiver where samples are sent to be enriched. |
+
+## Component health
+
+`prometheus.enrich` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -70,9 +78,11 @@ The following values are exported:
 
 ## Debug metrics
 
-* `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
-* `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
-* `prometheus_target_cache_size` (gauge): Total number of cached target entries.
+| Name                                 | Type      | Description                                                  |
+| ------------------------------------ | --------- | ------------------------------------------------------------ |
+| `prometheus_fanout_latency`          | histogram | Write latency for sending to direct and indirect components. |
+| `prometheus_forwarded_samples_total` | counter   | Total number of samples sent to downstream components.       |
+| `alloy_prometheus_target_cache_size` | gauge     | Total number of cached target entries.                       |
 
 ## Examples
 
@@ -151,7 +161,7 @@ prometheus.remote_write "default" {
 
 ### Multi-label matching with Kubernetes metadata
 
-The following example enriches cadvisor metrics with Kubernetes Pod metadata, matching on namespace, Pod, and container labels simultaneously.
+The following example enriches cAdvisor metrics with Kubernetes Pod metadata, matching on namespace, Pod, and container labels simultaneously.
 
 ```alloy
 discovery.kubernetes "pods" {
