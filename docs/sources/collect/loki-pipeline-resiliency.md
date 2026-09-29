@@ -3,6 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/collect/loki-pipeline-resilienc
 description: Learn how to configure loki.write to survive a Loki outage with the write-ahead log, and how to plan around ingestion limits.
 title: Configure Loki pipeline resiliency
 menuTitle: Loki pipeline resiliency
+review_date: 2026-09-29
 weight: 255
 ---
 
