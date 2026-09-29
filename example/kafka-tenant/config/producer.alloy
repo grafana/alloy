@@ -1,0 +1,18 @@
+local.file "tenants" {
+  filename = "/etc/alloy/tenants.yaml"
+}
+
+kafka.tenant_producer "default" {
+  registry      = local.file.tenants.content
+  max_body_size = "1MiB"
+
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 8080
+  }
+
+  client {
+    brokers   = ["redpanda:9092"]
+    client_id = sys.env("ALLOY_NAME")
+  }
+}

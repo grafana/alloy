@@ -1,0 +1,8 @@
+# Shared by producers and consumers. Each tenant owns exactly one partition.
+topic: alloy-telemetry
+partitions: 4
+tenants:
+  tenant-a: 0
+  tenant-b: 1
+  tenant-c: 2
+  tenant-d: 3

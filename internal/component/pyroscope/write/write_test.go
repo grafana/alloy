@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	pyrotestlogger "github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/dskit/user"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -397,6 +398,28 @@ func (s *AppendIngestTestSuite) TestBasicFunctionality() {
 	err := s.export.Receiver.Appender().AppendIngest(s.ctx, profile)
 	s.NoError(err)
 	s.Equal(int32(1), s.requestCount.Load())
+}
+
+func (s *AppendIngestTestSuite) TestTenantFromContext() {
+	var gotTenants []string
+	server := s.newServer(func(w http.ResponseWriter, r *http.Request) {
+		gotTenants = append(gotTenants, r.Header.Get(user.OrgIDHeaderName))
+		w.WriteHeader(http.StatusOK)
+	})
+
+	s.newComponent(Arguments{
+		TenantFromContext: true,
+		Endpoints: []*EndpointOptions{s.newEndpoint(server, map[string]string{
+			user.OrgIDHeaderName: "static",
+		})},
+	})
+
+	profile := s.newProfile(map[string]string{"__name__": "app.cpu"})
+	s.NoError(s.export.Receiver.Appender().AppendIngest(user.InjectOrgID(s.ctx, "tenant-a"), profile))
+	// Without a tenant in the context, the static header is used.
+	s.NoError(s.export.Receiver.Appender().AppendIngest(s.ctx, profile))
+
+	s.Equal([]string{"tenant-a", "static"}, gotTenants)
 }
 
 func (s *AppendIngestTestSuite) TestErrorHandling() {

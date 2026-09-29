@@ -22,7 +22,9 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/dskit/user"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -54,6 +56,19 @@ type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
 	Tracing        TracingOptions     `alloy:"tracing,block,optional"` // Intentionally undocumented: temporary troubleshooting hooks that may change or be removed.
+
+	// TenantFromContext sets the X-Scope-OrgID header of each request from the
+	// tenant in the request context, overriding any static header.
+	TenantFromContext bool `alloy:"tenant_from_context,attr,optional"`
+}
+
+// CheckStability returns an error if args use features that minStability
+// does not permit.
+func (rc Arguments) CheckStability(minStability featuregate.Stability) error {
+	if rc.TenantFromContext && !minStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("tenant_from_context is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+	return nil
 }
 
 type TracingOptions struct {
@@ -363,6 +378,7 @@ func (f *fanOutClient) Push(
 			for k, v := range ec.options.Headers {
 				req.Header().Set(k, v)
 			}
+			f.setTenantHeader(ctx, req.Header())
 			for {
 				err = func() error {
 					defer f.observeLatency(ec.options.URL, "push_downstream")()
@@ -616,6 +632,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					for k, v := range ec.options.Headers {
 						req.Header.Set(k, v)
 					}
+					f.setTenantHeader(ctx, req.Header)
 
 					// now set profile content type, overwrite what existed
 					for idx := range profile.ContentType {
@@ -677,6 +694,17 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	wg.Wait()
 
 	return errs
+}
+
+// setTenantHeader sets X-Scope-OrgID from the tenant in ctx if
+// tenant_from_context is enabled.
+func (f *fanOutClient) setTenantHeader(ctx context.Context, h http.Header) {
+	if !f.config.TenantFromContext {
+		return
+	}
+	if orgID, err := user.ExtractOrgID(ctx); err == nil {
+		h.Set(user.OrgIDHeaderName, orgID)
+	}
 }
 
 func (f *fanOutClient) observeLatency(endpoint, latencyType string) func() {

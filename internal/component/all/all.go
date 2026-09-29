@@ -37,6 +37,9 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/triton"                         // Import discovery.triton
 	_ "github.com/grafana/alloy/internal/component/discovery/uyuni"                          // Import discovery.uyuni
 	_ "github.com/grafana/alloy/internal/component/faro/receiver"                            // Import faro.receiver
+	_ "github.com/grafana/alloy/internal/component/kafka/tenant/consumer"                    // Import kafka.tenant_consumer
+	_ "github.com/grafana/alloy/internal/component/kafka/tenant/producer"                    // Import kafka.tenant_producer
+	_ "github.com/grafana/alloy/internal/component/kafka/tenant/promwrite"                   // Import kafka.tenant_prometheus_write
 	_ "github.com/grafana/alloy/internal/component/local/file"                               // Import local.file
 	_ "github.com/grafana/alloy/internal/component/local/file_match"                         // Import local.file_match
 	_ "github.com/grafana/alloy/internal/component/loki/echo"                                // Import loki.echo

@@ -18,6 +18,9 @@ func init() {
 		Build: func(o component.Options, c component.Arguments) (component.Component, error) {
 			tracer := o.Tracer.Tracer("pyroscope.write")
 			args := c.(write.Arguments)
+			if err := args.CheckStability(o.MinStability); err != nil {
+				return nil, err
+			}
 			userAgent := useragent.Get()
 			uid := alloyseed.Get().UID
 
@@ -36,7 +39,21 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			return &glue.GenericComponentGlue[write.Arguments]{Impl: gc}, nil
+			return &glue.GenericComponentGlue[write.Arguments]{Impl: &stabilityGated{Component: gc, minStability: o.MinStability}}, nil
 		},
 	})
+}
+
+// stabilityGated rejects updates that use features not permitted by the
+// configured stability level.
+type stabilityGated struct {
+	*write.Component
+	minStability featuregate.Stability
+}
+
+func (s *stabilityGated) Update(args write.Arguments) error {
+	if err := args.CheckStability(s.minStability); err != nil {
+		return err
+	}
+	return s.Component.Update(args)
 }

@@ -37,11 +37,24 @@ pyroscope.write "<LABEL>" {
 
 ## Arguments
 
-You can use the following argument with `pyroscope.write`:
+You can use the following arguments with `pyroscope.write`:
 
-| Name              | Type          | Description                                      | Default | Required |
-| ----------------- | ------------- | ------------------------------------------------ | ------- | -------- |
-| `external_labels` | `map(string)` | Labels to add to profiles sent over the network. |         | no       |
+| Name                  | Type          | Description                                                                           | Default | Required |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------- | ------- | -------- |
+| `external_labels`     | `map(string)` | Labels to add to profiles sent over the network.                                      |         | no       |
+| `tenant_from_context` | `bool`        | (Experimental) Set the `X-Scope-OrgID` header from the tenant in the request context. | `false` | no       |
+
+> **EXPERIMENTAL**: The `tenant_from_context` argument is an [experimental][] feature.
+> When `tenant_from_context` is `true`, `pyroscope.write` sets the `X-Scope-OrgID` header of each request to the tenant in the request context, if there is one.
+> This overrides any `X-Scope-OrgID` value in the `endpoint` block's `headers` argument.
+> Use it with [`kafka.tenant_consumer`][kafka.tenant_consumer], which passes the tenant of each record in the request context.
+>
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
+[kafka.tenant_consumer]: ../../kafka/kafka.tenant_consumer/
 
 ## Blocks
 

@@ -1,0 +1,104 @@
+// Every writer adds X-Alloy-Consumer so the sink can show which consumer
+// handled each tenant.
+
+local.file "tenants" {
+  filename = "/etc/alloy/tenants.yaml"
+}
+
+kafka.tenant_consumer "default" {
+  registry        = local.file.tenants.content
+  group_id        = "alloy-consumers"
+  instance_id     = sys.env("ALLOY_NAME")
+  session_timeout = "10s"
+
+  client {
+    brokers   = ["redpanda:9092"]
+    client_id = sys.env("ALLOY_NAME")
+  }
+
+  metrics_forward_to  = [prometheus.relabel.default.receiver]
+  logs_forward_to     = [loki.process.default.receiver]
+  profiles_forward_to = [pyroscope.write.sink.receiver]
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+// Metrics: tenant travels in the appender context.
+prometheus.relabel "default" {
+  forward_to = [kafka.tenant_prometheus_write.sink.receiver]
+
+  rule {
+    target_label = "via"
+    replacement  = "tenant-consumer"
+  }
+}
+
+kafka.tenant_prometheus_write "sink" {
+  endpoint {
+    url     = "http://sink:9999/api/v1/push"
+    headers = { "X-Alloy-Consumer" = sys.env("ALLOY_NAME") }
+  }
+}
+
+// Logs: tenant travels in the __tenant_id__ label.
+loki.process "default" {
+  forward_to = [loki.write.sink.receiver]
+
+  stage.static_labels {
+    values = { via = "tenant-consumer" }
+  }
+}
+
+loki.write "sink" {
+  endpoint {
+    url     = "http://sink:9999/loki/api/v1/push"
+    headers = { "X-Alloy-Consumer" = sys.env("ALLOY_NAME") }
+  }
+}
+
+// Profiles: tenant travels in the context.
+pyroscope.write "sink" {
+  tenant_from_context = true
+
+  endpoint {
+    url     = "http://sink:9999"
+    headers = { "X-Alloy-Consumer" = sys.env("ALLOY_NAME") }
+  }
+}
+
+// OTLP: tenant travels in the client metadata.
+otelcol.processor.batch "default" {
+  timeout       = "200ms"
+  metadata_keys = ["X-Scope-OrgID"]
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.sink.input]
+    logs    = [otelcol.exporter.otlphttp.sink.input]
+    traces  = [otelcol.exporter.otlphttp.sink.input]
+  }
+}
+
+otelcol.auth.headers "tenant" {
+  header {
+    key          = "X-Scope-OrgID"
+    from_context = "X-Scope-OrgID"
+  }
+}
+
+otelcol.exporter.otlphttp "sink" {
+  client {
+    endpoint    = "http://sink:9999"
+    auth        = otelcol.auth.headers.tenant.handler
+    compression = "none"
+    headers     = { "X-Alloy-Consumer" = sys.env("ALLOY_NAME") }
+  }
+
+  // Makes ConsumeX synchronous so offsets are only committed after delivery.
+  sending_queue {
+    enabled = false
+  }
+}

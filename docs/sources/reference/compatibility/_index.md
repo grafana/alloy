@@ -186,6 +186,10 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 
 <!-- START GENERATED SECTION: EXPORTERS OF Prometheus `MetricsReceiver` -->
 
+{{< collapse title="kafka" >}}
+- [`kafka.tenant_prometheus_write`](../components/kafka/kafka.tenant_prometheus_write)
+{{< /collapse >}}
+
 {{< collapse title="otelcol" >}}
 - [`otelcol.receiver.prometheus`](../components/otelcol/otelcol.receiver.prometheus)
 {{< /collapse >}}
@@ -205,6 +209,10 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 The following components, grouped by namespace, _consume_ Prometheus `MetricsReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Prometheus `MetricsReceiver` -->
+
+{{< collapse title="kafka" >}}
+- [`kafka.tenant_consumer`](../components/kafka/kafka.tenant_consumer)
+{{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
 - [`otelcol.exporter.prometheus`](../components/otelcol/otelcol.exporter.prometheus)
@@ -270,6 +278,10 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 {{< collapse title="faro" >}}
 - [`faro.receiver`](../components/faro/faro.receiver)
+{{< /collapse >}}
+
+{{< collapse title="kafka" >}}
+- [`kafka.tenant_consumer`](../components/kafka/kafka.tenant_consumer)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
@@ -376,6 +388,10 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [`faro.receiver`](../components/faro/faro.receiver)
 {{< /collapse >}}
 
+{{< collapse title="kafka" >}}
+- [`kafka.tenant_consumer`](../components/kafka/kafka.tenant_consumer)
+{{< /collapse >}}
+
 {{< collapse title="otelcol" >}}
 - [`otelcol.connector.count`](../components/otelcol/otelcol.connector.count)
 - [`otelcol.connector.host_info`](../components/otelcol/otelcol.connector.host_info)
@@ -455,6 +471,10 @@ The following components, grouped by namespace, _export_ Pyroscope `ProfilesRece
 The following components, grouped by namespace, _consume_ Pyroscope `ProfilesReceiver`.
 
 <!-- START GENERATED SECTION: CONSUMERS OF Pyroscope `ProfilesReceiver` -->
+
+{{< collapse title="kafka" >}}
+- [`kafka.tenant_consumer`](../components/kafka/kafka.tenant_consumer)
+{{< /collapse >}}
 
 {{< collapse title="pyroscope" >}}
 - [`pyroscope.ebpf`](../components/pyroscope/pyroscope.ebpf)

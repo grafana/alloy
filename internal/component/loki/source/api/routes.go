@@ -52,6 +52,16 @@ func newRoutes(maxMessageSize int) ([]source.LogsRoute, []source.HandlerRoute) {
 
 var _ source.LogsRoute = (*lokiRoute)(nil)
 
+// NewLokiPushRoute returns a route that decodes Loki push requests into
+// entries, tagging them with the request's tenant. Other components use it to
+// decode Loki push payloads the same way loki.source.api does.
+func NewLokiPushRoute(maxMessageSize int) source.LogsRoute {
+	if maxMessageSize <= 0 {
+		maxMessageSize = defaultMaxMessageSize
+	}
+	return newLokiRoute(pathLokiPush, maxMessageSize)
+}
+
 func newLokiRoute(path string, maxMessageSize int) *lokiRoute {
 	return &lokiRoute{
 		path:           path,

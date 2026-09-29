@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"reflect"
 	"sync"
 	"time"
@@ -240,27 +241,15 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	l := pyroutil.TraceLog(c.logger, sp)
 
 	// Parse labels early
-	var lbls labels.Labels
-	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
-		ls, err := labelset.Parse(nameParam)
-		if err != nil {
-			l.Warn(
-				"Failed to parse labels from name parameter",
-				"name", nameParam,
-				"err", err,
-			)
-			// Continue with empty labels instead of returning an error
-		} else {
-			var labelPairs []labels.Label
-			for k, v := range ls.Labels() {
-				labelPairs = append(labelPairs, labels.Label{Name: k, Value: v})
-			}
-			lbls = labels.New(labelPairs...)
-		}
-	} // todo this is a required parameter, treat absence as error
-
-	// Ensure service_name label is set
-	lbls = ensureServiceName(lbls)
+	lbls, err := LabelsFromIngestURL(r.URL)
+	if err != nil {
+		l.Warn(
+			"Failed to parse labels from name parameter",
+			"name", r.URL.Query().Get("name"),
+			"err", err,
+		)
+		// Continue with empty labels instead of returning an error
+	}
 
 	// Read the entire body into memory
 	// This matches how Append() handles profile data (as RawProfile),
@@ -315,6 +304,29 @@ func (c *Component) shutdownServer() {
 		c.server.StopAndShutdown()
 		c.server = nil
 	}
+}
+
+// LabelsFromIngestURL returns the labels of an /ingest request, parsed from
+// its name query parameter, with service_name set. If the name parameter fails
+// to parse, the error is returned alongside labels built without it.
+func LabelsFromIngestURL(u *url.URL) (labels.Labels, error) {
+	var (
+		lbls labels.Labels
+		err  error
+	)
+	if nameParam := u.Query().Get("name"); nameParam != "" {
+		var ls *labelset.LabelSet
+		if ls, err = labelset.Parse(nameParam); err == nil {
+			var labelPairs []labels.Label
+			for k, v := range ls.Labels() {
+				labelPairs = append(labelPairs, labels.Label{Name: k, Value: v})
+			}
+			lbls = labels.New(labelPairs...)
+		}
+	} // todo this is a required parameter, treat absence as error
+
+	// Ensure service_name label is set
+	return ensureServiceName(lbls), err
 }
 
 // ensureServiceName ensures that the service_name label is set

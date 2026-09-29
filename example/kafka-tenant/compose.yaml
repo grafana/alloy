@@ -1,0 +1,93 @@
+# Local demo of kafka.tenant_producer / kafka.tenant_consumer. See README.md.
+name: alloy-kafka-tenant
+
+x-alloy: &alloy
+  image: alpine:3.20
+  volumes:
+    - ${ALLOY_BINARY:-../../build/alloy-linux}:/usr/bin/alloy:ro
+    - ./config:/etc/alloy:ro
+  depends_on:
+    topic:
+      condition: service_completed_successfully
+    sink:
+      condition: service_started
+
+x-consumer-command: &consumer-command
+  ["alloy", "run", "--stability.level=experimental", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/tmp/alloy", "/etc/alloy/consumer.alloy"]
+
+x-producer-command: &producer-command
+  ["alloy", "run", "--stability.level=experimental", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/tmp/alloy", "/etc/alloy/producer.alloy"]
+
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:9092
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 2s
+      retries: 60
+
+  # Components never create topics; this is the ops step.
+  topic:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        rpk topic create alloy-telemetry -X brokers=redpanda:9092 -p 4
+        -c retention.ms=86400000 -c max.message.bytes=2097152
+        || rpk topic describe alloy-telemetry -X brokers=redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+  producer-1:
+    <<: *alloy
+    command: *producer-command
+    environment: { ALLOY_NAME: producer-1 }
+    ports: ["12346:12345"]
+
+  producer-2:
+    <<: *alloy
+    command: *producer-command
+    environment: { ALLOY_NAME: producer-2 }
+    ports: ["12347:12345"]
+
+  lb:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: [producer-1, producer-2]
+    ports: ["18080:8080"]
+
+  consumer-1:
+    <<: *alloy
+    command: *consumer-command
+    environment: { ALLOY_NAME: consumer-1 }
+    ports: ["12348:12345"]
+
+  consumer-2:
+    <<: *alloy
+    command: *consumer-command
+    environment: { ALLOY_NAME: consumer-2 }
+    ports: ["12349:12345"]
+
+  sink:
+    image: python:3.12-alpine
+    command: ["python", "-u", "/scripts/sink.py"]
+    volumes:
+      - ./scripts:/scripts:ro
+    ports: ["9999:9999"]
+
+  loadgen:
+    image: python:3.12-alpine
+    command: ["python", "-u", "/scripts/loadgen.py"]
+    volumes:
+      - ./scripts:/scripts:ro
+    depends_on: [lb]
+    profiles: [loadgen]
