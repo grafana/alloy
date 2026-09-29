@@ -148,15 +148,25 @@ This affects all discovery jobs.
 
 [STS]: https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html
 
+<!-- vale Grafana.GooglePassive = NO -->
+<!-- vale Grafana.GoogleWill = NO -->
+<!-- vale Grafana.Timeless = NO -->
+
 {{< admonition type="caution" >}}
-Starting with {{< param "PRODUCT_NAME" >}} v1.16, the `aws_sdk_version_v2` argument is deprecated and has no effect. AWS SDK for Go v2 is always used.<br />
-Remove this argument from your configuration. The argument will be removed in a future release.
+Starting with {{< param "PRODUCT_NAME" >}} v1.16, the `aws_sdk_version_v2` argument is deprecated.
+It will be removed in a future release.
+The argument has no effect because {{< param "PRODUCT_NAME" >}} always uses AWS SDK for Go v2.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
-The `debug` argument is deprecated and has no effect. CloudWatch exporter logging now follows the global {{< param "PRODUCT_NAME" >}} log level.<br />
-Remove this argument from your configuration. The argument will be removed in a future release.
+The `debug` argument is deprecated.
+It will be removed in a future release.
+The argument has no effect because CloudWatch exporter logging follows the global {{< param "PRODUCT_NAME" >}} log level.
 {{< /admonition >}}
+
+<!-- vale Grafana.GooglePassive = YES -->
+<!-- vale Grafana.GoogleWill = YES -->
+<!-- vale Grafana.Timeless = YES -->
 
 ## Blocks
 
@@ -380,9 +390,9 @@ The `static` block configures the component to scrape a specific set of CloudWat
 The metrics need to be fully qualified with the following specifications:
 
 1. `namespace`: For example, `AWS/EC2`, `AWS/EBS`, `CoolApp` if it were a custom metric, etc.
-2. `dimensions`: CloudWatch identifies a metric by a set of dimensions, which are essentially label / value pairs.
+1. `dimensions`: CloudWatch identifies a metric by a set of dimensions, which are essentially label / value pairs.
    For example, all `AWS/EC2` metrics are identified by the `InstanceId` dimension and the identifier itself.
-3. `metric`: Metric name and statistics.
+1. `metric`: Metric name and statistics.
 
 The following example configuration shows you how to scrape the same metrics in the discovery example, but for a specific AWS EC2 instance:
 
