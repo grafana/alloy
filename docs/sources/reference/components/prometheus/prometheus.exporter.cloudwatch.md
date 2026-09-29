@@ -227,6 +227,8 @@ prometheus.exporter.cloudwatch "discover_instances" {
 }
 ```
 
+You must give each `custom_namespace` block a label, which becomes the `name` label in the exported metric.
+
 You can configure the `custom_namespace` block multiple times to scrape metrics from different namespaces.
 
 You can use the following arguments with the `custom_namespace` block:
@@ -317,7 +319,7 @@ You can use the following arguments with the `role` block:
 ### `decoupled_scraping`
 
 The `decoupled_scraping` block configures an optional feature that scrapes CloudWatch metrics in the background on a scheduled interval.
-When this feature is enabled, CloudWatch metrics are gathered asynchronously at the scheduled interval instead of synchronously when the CloudWatch component is scraped.
+When you enable this feature, {{< param "PRODUCT_NAME" >}} gathers CloudWatch metrics asynchronously at the scheduled interval instead of synchronously on each component scrape.
 
 The decoupled scraping feature reduces the number of API requests sent to AWS.
 This feature also prevents component scrape timeouts when you gather high volumes of CloudWatch metrics.
@@ -376,11 +378,20 @@ You can use the following arguments with the `discovery` block:
 | `search_tags`                 | `map(string)`  | Key/value pairs to filter by tag. All must match. Values can be regular expressions.         | `{}`                             | no       |
 | `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
 
-{{< admonition type="note" >}}
-Don't use CloudWatch service aliases such as `alb` or `ec2`.
+<!-- vale Grafana.GooglePassive = NO -->
+<!-- vale Grafana.GoogleWill = NO -->
+<!-- vale Grafana.Timeless = NO -->
+
+{{< admonition type="caution" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.4, CloudWatch service aliases such as `alb` and `ec2` are deprecated.
+They will be removed in a future release.
 Use the namespace name instead, for example, `AWS/ApplicationELB` or `AWS/EC2`.
 {{< param "PRODUCT_NAME" >}} logs a warning each time it converts an alias to a namespace.
 {{< /admonition >}}
+
+<!-- vale Grafana.GooglePassive = YES -->
+<!-- vale Grafana.GoogleWill = YES -->
+<!-- vale Grafana.Timeless = YES -->
 
 [supported-services]: #supported-services-in-discovery-jobs
 
@@ -468,8 +479,8 @@ For detailed examples, refer to the [`discovery`][discovery] and [`static`][stat
 
 ## Supported services in discovery jobs
 
-The following AWS services are supported in `cloudwatch_exporter` discovery jobs.
-When you configure a discovery job, make sure the `type` field of each `discovery_job` matches the desired job namespace.
+{{< param "PRODUCT_NAME" >}} supports the following AWS services in `discovery` jobs.
+When you configure a `discovery` block, set its `type` argument to one of these namespaces.
 
 {{< docs/shared lookup="reference/components/prometheus-exporter-cloudwatch-supported-services.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
