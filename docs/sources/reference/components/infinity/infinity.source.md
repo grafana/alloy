@@ -541,7 +541,13 @@ Every metric carries a `query` label with the query's label.
 `infinity.source` deletes a query's label values from these metrics when you remove the query from the configuration.
 `infinity_source_poll_failures_total` also carries a `reason` label, one of `request`, `timeout`, `status`, `too_large`, `parse`, `postprocess`, `series_limit`, `entry_limit`, or `emit`.
 
-## Example
+## Examples
+
+The following examples poll public APIs that need no API key, except where noted.
+They send metrics to a Prometheus-compatible server at `http://localhost:9009/api/v1/push` and logs to a Loki server at `http://localhost:3100/loki/api/v1/push`.
+Change these URLs to match your environment.
+
+### Poll the GitHub API for metrics and logs
 
 This example polls the GitHub API for the core rate limit and sends it as metrics, and polls the Grafana organization's public events feed and sends it as logs:
 
@@ -612,6 +618,359 @@ Replace the following:
 * `GITHUB_TOKEN`: A GitHub personal access token with permission to read the organization's events.
 * `PROMETHEUS_URL`: The URL of the Prometheus remote-write-compatible server to send metrics to.
 * `LOKI_URL`: The URL of the Loki server to send logs to.
+
+### Count completed items per user
+
+This example polls a fake REST API for to-do items, keeps the completed ones, and counts them for each user.
+The `userId` field is a number in the response, so the `column` block types it as a string to make it a label.
+Each user gets one series, for example `jsonplaceholder_completed_todos{user="1"}`.
+
+```alloy
+infinity.source "jsonplaceholder" {
+  interval = "5m"
+
+  query "todos_done" {
+    url = "https://jsonplaceholder.typicode.com/todos"
+
+    column {
+      selector = "userId"
+      text     = "user"
+      type     = "string"
+    }
+
+    column {
+      selector = "id"
+      text     = "id"
+      type     = "number"
+    }
+
+    column {
+      selector = "completed"
+      text     = "completed"
+      type     = "boolean"
+    }
+
+    filter_expression    = "completed == true"
+    summarize_expression = "count(id)"
+    summarize_by         = "user"
+    summarize_alias      = "completed_todos"
+
+    metrics {
+      prefix = "jsonplaceholder_"
+    }
+  }
+
+  forward_to {
+    metrics = [prometheus.remote_write.default.receiver]
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+  }
+}
+```
+
+### Send current weather as metrics
+
+This example polls the Open-Meteo API for the current weather in New York City.
+The response has one `current` object, so `root_selector` makes one row, and each typed column becomes one gauge:
+`open_meteo_temperature_c`, `open_meteo_humidity_percent`, and `open_meteo_wind_kmh`.
+
+```alloy
+infinity.source "weather" {
+  interval = "5m"
+
+  query "nyc" {
+    url           = "https://api.open-meteo.com/v1/forecast"
+    root_selector = "current"
+
+    url_options {
+      params = {
+        "latitude"  = "40.71",
+        "longitude" = "-74.01",
+        "current"   = "temperature_2m,relative_humidity_2m,wind_speed_10m",
+      }
+    }
+
+    column {
+      selector = "temperature_2m"
+      text     = "temperature_c"
+      type     = "number"
+    }
+
+    column {
+      selector = "relative_humidity_2m"
+      text     = "humidity_percent"
+      type     = "number"
+    }
+
+    column {
+      selector = "wind_speed_10m"
+      text     = "wind_kmh"
+      type     = "number"
+    }
+
+    metrics {
+      prefix = "open_meteo_"
+    }
+  }
+
+  forward_to {
+    metrics = [prometheus.remote_write.default.receiver]
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+  }
+}
+```
+
+### Send events from a feed as logs
+
+This example polls the USGS feed of earthquakes from the last hour and sends one log line for each event.
+The event time becomes the log timestamp, the event type becomes a label, and the magnitude and details URL become structured metadata.
+The feed covers a rolling hour and `infinity.source` doesn't remove duplicates, so each poll sends the events again.
+Refer to [Limitations](#limitations).
+
+```alloy
+infinity.source "usgs" {
+  interval = "10m"
+
+  query "quakes" {
+    url           = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson"
+    format        = "logs"
+    root_selector = "features"
+
+    column {
+      selector = "properties.time"
+      text     = "time"
+      type     = "timestamp_epoch"
+    }
+
+    column {
+      selector = "properties.title"
+      text     = "body"
+      type     = "string"
+    }
+
+    column {
+      selector = "properties.type"
+      text     = "event_type"
+      type     = "string"
+    }
+
+    column {
+      selector = "properties.mag"
+      text     = "magnitude"
+      type     = "number"
+    }
+
+    column {
+      selector = "properties.url"
+      text     = "details"
+      type     = "string"
+    }
+
+    logs {
+      label_columns               = ["event_type"]
+      structured_metadata_columns = ["magnitude", "details"]
+      entry_limit                 = 500
+    }
+  }
+
+  forward_to {
+    logs = [loki.write.default.receiver]
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+}
+```
+
+### Summarize a CSV file
+
+This example reads a public CSV file of 2014 Apple stock prices and sends the highest closing price as one gauge, `aapl_2014_max_close`.
+CSV values are strings unless a `column` block types them, so the price column is typed as a number.
+
+```alloy
+infinity.source "csv" {
+  interval = "1h"
+
+  query "aapl_2014" {
+    type = "csv"
+    url  = "https://raw.githubusercontent.com/plotly/datasets/master/2014_apple_stock.csv"
+
+    column {
+      selector = "AAPL_y"
+      text     = "close"
+      type     = "number"
+    }
+
+    summarize_expression = "max(close)"
+    summarize_alias      = "max_close"
+
+    metrics {
+      prefix = "aapl_2014_"
+    }
+  }
+
+  forward_to {
+    metrics = [prometheus.remote_write.default.receiver]
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/v1/push"
+  }
+}
+```
+
+### Parse XML into logs
+
+This example polls a sample XML document and sends one log line for each `slide` element.
+XML attributes become fields with a `-` prefix, so the slide's `type` attribute is selected as `-type`.
+
+```alloy
+infinity.source "xml" {
+  interval = "10m"
+
+  query "slides" {
+    type          = "xml"
+    url           = "https://httpbin.org/xml"
+    format        = "logs"
+    root_selector = "slideshow.slide"
+
+    column {
+      selector = "title"
+      text     = "body"
+      type     = "string"
+    }
+
+    column {
+      selector = "-type"
+      text     = "audience"
+      type     = "string"
+    }
+
+    logs {
+      label_columns = ["audience"]
+    }
+  }
+
+  forward_to {
+    logs = [loki.write.default.receiver]
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+}
+```
+
+### Query a GraphQL API and send metrics over OTLP
+
+This example sends a GraphQL query for all countries and counts them per continent.
+It sends the result to an OpenTelemetry consumer instead of a Prometheus receiver.
+Each continent gets one gauge, for example `countries_count` with the attribute `continent="Europe"`.
+The resource attributes `service.name` and `service.instance.id` hold the component ID and the query name.
+
+```alloy
+infinity.source "graphql" {
+  interval = "1h"
+
+  query "per_continent" {
+    type          = "graphql"
+    url           = "https://countries.trevorblades.com/graphql"
+    root_selector = "data.countries"
+
+    url_options {
+      body_graphql_query = "{ countries { code continent { name } } }"
+    }
+
+    column {
+      selector = "code"
+      text     = "code"
+      type     = "string"
+    }
+
+    column {
+      selector = "continent.name"
+      text     = "continent"
+      type     = "string"
+    }
+
+    summarize_expression = "count(code)"
+    summarize_by         = "continent"
+    summarize_alias      = "count"
+
+    metrics {
+      prefix = "countries_"
+    }
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlp.default.input]
+  }
+}
+
+otelcol.exporter.otlp "default" {
+  client {
+    endpoint = "localhost:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+```
+
+### Print the output to the console
+
+To try a query without a backend, send metrics to `otelcol.exporter.debug` and logs to `loki.echo`.
+Both print what they receive to the {{< param "PRODUCT_NAME" >}} log.
+The first poll happens after a random delay of up to one `interval`, so use a short interval while you test.
+
+```alloy
+infinity.source "try" {
+  interval = "10s"
+
+  query "users" {
+    url    = "https://jsonplaceholder.typicode.com/users"
+    format = "logs"
+
+    column {
+      selector = "username"
+      type     = "string"
+    }
+
+    column {
+      selector = "address.city"
+      text     = "city"
+      type     = "string"
+    }
+
+    logs {
+      label_columns = ["city"]
+    }
+  }
+
+  forward_to {
+    logs = [loki.echo.console.receiver]
+  }
+}
+
+loki.echo "console" { }
+```
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
