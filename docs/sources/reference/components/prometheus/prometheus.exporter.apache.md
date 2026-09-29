@@ -24,7 +24,7 @@ prometheus.exporter.apache "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `prometheus.exporter.apache`.
+You can use the following arguments with `prometheus.exporter.apache`:
 
 | Name            | Type     | Description                               | Default                                 | Required |
 | --------------- | -------- | ----------------------------------------- | --------------------------------------- | -------- |
