@@ -13,7 +13,7 @@ title: prometheus.echo
 
 The `prometheus.echo` component receives Prometheus metrics and writes them to `stdout` in Prometheus exposition format.
 This component is useful for debugging and testing the flow of metrics through a pipeline.
-It lets you see exactly what metrics arrive at a particular point in your configuration.
+You can place `prometheus.echo` at any stage in your pipeline to inspect the metrics passing through it.
 
 ## Usage
 
