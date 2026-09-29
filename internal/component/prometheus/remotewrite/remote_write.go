@@ -154,24 +154,9 @@ func (c *Component) Run(ctx context.Context) error {
 			)
 			c.mut.RUnlock()
 
-			// The timestamp ts is used to determine which series are not receiving
-			// samples and may be deleted from the WAL. Their most recent append
-			// timestamp is compared to ts, and if that timestamp is older than ts,
-			// they are considered inactive and may be deleted.
-			//
-			// Subtracting a duration from ts will delay when it will be considered
-			// inactive and scheduled for deletion.
-			ts := c.remoteStore.LowestSentTimestamp() - minWALTime.Milliseconds()
-			if ts < 0 {
-				ts = 0
-			}
-
-			// Network issues can prevent the result of LowestSentTimestamp from
-			// changing. We don't want data in the WAL to grow forever, so we set a cap
-			// on the maximum age data can be. If our ts is older than this cutoff point,
-			// we'll shift it forward to start deleting very stale data.
-			if maxTS := timestamp.FromTime(time.Now().Add(-maxWALTime)); ts < maxTS {
-				ts = maxTS
+			ts, clampedFuture := truncateTimestamp(c.remoteStore.LowestSentTimestamp(), minWALTime, maxWALTime, time.Now())
+			if clampedFuture {
+				c.opts.Logger.Warn("clamping WAL truncate timestamp; LowestSentTimestamp is in the future", "ts", ts)
 			}
 
 			if ts == lastTs {
@@ -195,6 +180,41 @@ func (c *Component) truncateFrequency() time.Duration {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	return c.cfg.WALOptions.TruncateFrequency
+}
+
+// truncateTimestamp computes the mint used for WAL truncation.
+//
+// The timestamp ts is used to determine which series are not receiving samples
+// and may be deleted from the WAL. Their most recent append timestamp is
+// compared to ts, and if that timestamp is older than ts, they are considered
+// inactive and may be deleted.
+//
+// Subtracting minWALTime from LowestSentTimestamp delays when a series is
+// considered inactive. Network issues can prevent LowestSentTimestamp from
+// advancing, so ts is also floored at now-maxWALTime so the WAL cannot grow
+// forever. Conversely, future-dated samples can latch LowestSentTimestamp far
+// ahead of wall clock; ts is capped at now-minWALTime so truncation never
+// deletes live series and segments the watcher still needs.
+//
+// clampedFuture is true when the future cap was applied.
+func truncateTimestamp(lowestSent int64, minWALTime, maxWALTime time.Duration, now time.Time) (ts int64, clampedFuture bool) {
+	ts = lowestSent - minWALTime.Milliseconds()
+	if ts < 0 {
+		ts = 0
+	}
+
+	// Floor: shift forward if stuck behind maxWALTime.
+	if maxTS := timestamp.FromTime(now.Add(-maxWALTime)); ts < maxTS {
+		ts = maxTS
+	}
+
+	// Ceiling: never truncate with a mint past now-minWALTime.
+	if nowTS := timestamp.FromTime(now.Add(-minWALTime)); ts > nowTS {
+		ts = nowTS
+		clampedFuture = true
+	}
+
+	return ts, clampedFuture
 }
 
 // Update implements Component.
