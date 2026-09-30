@@ -301,6 +301,10 @@ It then requests metrics from `now - length` to `now`, aggregating each into sam
 
 {{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
 
+Each of these time windows assumes a `delay` of `0`.
+A non-zero `delay` shifts the whole window back, so {{< param "PRODUCT_NAME" >}} requests metrics from `now - delay - length` to `now - delay`.
+`static` jobs ignore `delay`.
+
 ### `role`
 
 The `role` block defines an [AWS IAM Role][].
