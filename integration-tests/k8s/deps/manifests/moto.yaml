@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moto
+  template:
+    metadata:
+      labels:
+        app: moto
+    spec:
+      # The moto Service would inject a MOTO_PORT variable. Moto reads that
+      # variable as its own port number and crashes, so disable service links.
+      enableServiceLinks: false
+      containers:
+        - name: moto
+          image: motoserver/moto:5.2.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: 5000
+            periodSeconds: 2
+            failureThreshold: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moto
+  labels:
+    app: moto
+spec:
+  selector:
+    app: moto
+  ports:
+    - port: 5000
+      targetPort: 5000
+      name: http
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: moto-seed
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: amazon/aws-cli:2.37.6
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: test
+            - name: AWS_SECRET_ACCESS_KEY
+              value: test
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              until aws --endpoint-url http://moto:5000 secretsmanager list-secrets >/dev/null 2>&1; do sleep 1; done
+              aws --endpoint-url http://moto:5000 secretsmanager create-secret \
+                --name alloy-integration-test \
+                --secret-string '{"test_name":"remote-aws-secrets-manager"}'
