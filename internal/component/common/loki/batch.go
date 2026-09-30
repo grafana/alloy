@@ -22,52 +22,63 @@ func NewBatch() Batch {
 // Ownership of the stream data is transferred to the batch and it must not be
 // mutated or retained after calling Add.
 func (b *Batch) Add(stream Stream) {
-	b.add(stream.Labels, stream.created, stream.Entries...)
+	b.add(stream)
 	b.entryLen += len(stream.Entries)
+}
+
+func (b *Batch) add(stream Stream) {
+	i := b.streamIndex(stream.Labels)
+	if i >= 0 {
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, stream.Entries...)
+		s.updateCreated(stream.created)
+		return
+	}
+	b.streams = append(b.streams, stream)
 }
 
 // AddEntry adds a single entry to the stream matching labels, creating it if it
 // does not exist yet. created is used to update the stream's oldest created
 // timestamp.
 func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry) {
-	b.add(labels, created, entry)
+	b.addEntry(labels, created, entry)
 	b.entryLen += 1
 }
 
-func (b *Batch) add(labels model.LabelSet, created int64, entries ...push.Entry) {
-	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
-	// much more efficient. If this still shows up in profiles as expensive after
-	// that change we should consider alternative representations for streams.
-	i := slices.IndexFunc(b.streams, func(s Stream) bool {
-		return s.Labels.Equal(labels)
-	})
-
+func (b *Batch) addEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	i := b.streamIndex(labels)
 	if i >= 0 {
-		b.streams[i].Entries = append(b.streams[i].Entries, entries...)
-
-		if created != 0 && (b.streams[i].created == 0 || created < b.streams[i].created) {
-			b.streams[i].created = created
-		}
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, entry)
+		s.updateCreated(created)
 		return
 	}
 
-	stream := NewStreamWithCreatedUnixMicro(labels, created, entries...)
+	stream := NewStreamWithCreatedUnixMicro(labels, created, entry)
 	b.streams = append(b.streams, stream)
 }
 
-// FilterMap calls fn for each entry in the batch. If fn returns true the
-// entry is kept, if fn returns false the entry is dropped. Kept entries are
-// written back, and entries whose labels change are moved to a different stream.
-func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
+func (b *Batch) streamIndex(labels model.LabelSet) int {
+	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
+	// much more efficient. If this still shows up in profiles as expensive after
+	// that change we should consider alternative representations for streams.
+	return slices.IndexFunc(b.streams, func(s Stream) bool {
+		return s.Labels.Equal(labels)
+	})
+}
+
+// FilterMap calls fn for each entry in the batch. fn returns the entry to keep
+// and whether to keep it. If keep is false the entry is dropped. Kept entries
+// are written back, and entries whose labels change are moved to a different stream.
+func (b *Batch) FilterMap(fn func(entry Entry) (Entry, bool)) {
 	var (
 		newLen int
 		moves  []Entry
 	)
 
 	// Process each entry and compact each stream in place.
-	// The callback mutates a temporary Entry view. Kept entries are written back,
-	// dropped entries are skipped, and moved entries are deferred
-	// so we do not mutate the stream set while iterating it.
+	// Kept entries are written back, dropped entries are skipped, and moved
+	// entries are deferred so we do not mutate the stream set while iterating it.
 	for i := range b.streams {
 		var (
 			// dst is where the next kept entry is written. It only moves forward
@@ -80,8 +91,8 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 		for _, e := range stream.Entries {
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
-			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e)
-			if !fn(&entry) {
+			entry, keep := fn(NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e))
+			if !keep {
 				continue
 			}
 
@@ -104,7 +115,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 
 	// Reinsert entries whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.Created(), moved.Entry)
+		b.addEntry(moved.Labels, moved.Created(), moved.Entry)
 	}
 	b.entryLen = newLen
 
@@ -120,10 +131,10 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 	b.streams = b.streams[:streamDst]
 }
 
-// FilterMapStreams calls fn once for each stream in the batch, passing a mutable
-// view of that stream. If fn returns true the stream is kept, if fn returns
-// false the stream and all of its entries are dropped.
-func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
+// FilterMapStreams calls fn once for each stream in the batch. fn returns the
+// stream to keep and whether to keep it. If keep is false the stream and all of
+// its entries are dropped.
+func (b *Batch) FilterMapStreams(fn func(stream Stream) (Stream, bool)) {
 	var (
 		newLen int
 		// dst is where the next kept stream is written. It only moves forward when
@@ -138,15 +149,13 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 	// do not mutate the stream set while iterating it. They are reinserted below
 	// and may merge into an existing stream.
 	for i := range b.streams {
-		stream := Stream{
+		stream, keep := fn(Stream{
 			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
 			// we no longer need to clone stream labels here.
 			Labels:  b.streams[i].Labels.Clone(),
 			Entries: b.streams[i].Entries,
 			created: b.streams[i].created,
-		}
-
-		keep := fn(&stream)
+		})
 		if !keep {
 			continue
 		}
@@ -168,7 +177,7 @@ func (b *Batch) FilterMapStreams(fn func(stream *Stream) (keep bool)) {
 
 	// Reinsert streams whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.Labels, moved.created, moved.Entries...)
+		b.add(moved)
 	}
 
 	b.entryLen = newLen
@@ -248,6 +257,13 @@ type Stream struct {
 
 func (s Stream) Created() int64 {
 	return s.created
+}
+
+// updateCreated keeps the oldest non-zero created timestamp.
+func (s *Stream) updateCreated(created int64) {
+	if created != 0 && (s.created == 0 || created < s.created) {
+		s.created = created
+	}
 }
 
 // Clone returns a clone of the stream.

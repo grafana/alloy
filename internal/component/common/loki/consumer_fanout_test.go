@@ -25,10 +25,10 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	fanout := NewFanoutConsumer([]Consumer{
 		consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
-				batch.FilterMap(func(entry *Entry) bool {
+				batch.FilterMap(func(entry Entry) (Entry, bool) {
 					entry.Line = "mutated by first"
 					entry.Labels = bar
-					return true
+					return entry, true
 				})
 				firstBatch = batch
 				return firstErr
