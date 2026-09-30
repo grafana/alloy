@@ -23,8 +23,11 @@ spec:
         kubectl.kubernetes.io/default-container: alloy
         testAnnotationKey: testAnnotationValue
       labels:
+        helm.sh/chart: alloy
         app.kubernetes.io/name: alloy
         app.kubernetes.io/instance: alloy
+        app.kubernetes.io/version: "vX.Y.Z"
+        app.kubernetes.io/managed-by: Helm
     spec:
       serviceAccountName: alloy
       containers:
