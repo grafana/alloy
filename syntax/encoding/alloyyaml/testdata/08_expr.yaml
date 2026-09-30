@@ -1,0 +1,8 @@
+- password: expr(env("PASSWORD"))
+- targets: expr(discovery.kubernetes.pods.targets)
+- computed: expr((base + 100) * factor)
+- config: |-
+    expr(array.concat(
+    	[1, 2, 3],
+    	[4, 5, 6],
+    ))

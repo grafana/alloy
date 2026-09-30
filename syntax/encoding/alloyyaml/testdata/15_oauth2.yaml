@@ -1,0 +1,38 @@
+- otelcol.auth.oauth2/default:
+    - client_id: someclientid
+    - client_secret: someclientsecret
+    - token_url: https://example.com/oauth2/default/v1/token
+    - endpoint_params:
+        audience:
+            - someaudience
+    - scopes:
+        - api.metrics
+    - tls:
+        - ca_file: /var/lib/mycert.pem
+        - cert_file: certfile
+        - key_file: keyfile
+        - insecure: true
+    - timeout: 2s
+- otelcol.receiver.otlp/default:
+    - grpc:
+        - endpoint: localhost:4317
+    - output:
+        - metrics:
+            - expr(otelcol.exporter.otlp.default_withauth.input)
+            - expr(otelcol.exporter.otlphttp.default_noauth.input)
+        - logs:
+            - expr(otelcol.exporter.otlp.default_withauth.input)
+            - expr(otelcol.exporter.otlphttp.default_noauth.input)
+        - traces:
+            - expr(otelcol.exporter.otlp.default_withauth.input)
+            - expr(otelcol.exporter.otlphttp.default_noauth.input)
+- otelcol.exporter.otlp/default_withauth:
+    - client:
+        - endpoint: database:4317
+        - tls:
+            - ca_file: /tmp/certs/ca.pem
+        - auth: expr(otelcol.auth.oauth2.default.handler)
+- otelcol.exporter.otlphttp/default_noauth:
+    - client:
+        - endpoint: database:4318
+        - http2_ping_timeout: 0s
