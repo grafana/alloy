@@ -143,8 +143,8 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// The loader holds its lock while it calls Update. Cancel the poll in
-	// flight, so that Update does not wait for a slow AWS call.
+	// The loader holds its lock while it calls Update and cancels any
+	// polls in flight.
 	c.mut.Lock()
 	c.gen++
 	myGen := c.gen
@@ -211,7 +211,7 @@ func (c *Component) poll(runCtx context.Context) bool {
 
 	c.mut.Lock()
 	if c.pending > 0 {
-		// The Update in progress fetches and resets the schedule.
+		// If pending is nonzero there is an update in progress that will fetch and set the schedule.
 		c.mut.Unlock()
 		return false
 	}

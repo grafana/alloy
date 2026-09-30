@@ -11,7 +11,7 @@ import (
 	awscommon "github.com/grafana/alloy/internal/component/common/config/aws"
 )
 
-// minPollFrequency stops polling so often that it costs money and hits API rate limits.
+// minPollFrequency limits API usage to limit costs and avoid API rate limits.
 const minPollFrequency = time.Minute
 
 // Arguments configures remote.aws.secrets_manager.
