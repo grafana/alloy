@@ -416,7 +416,8 @@ You can use the following arguments with the `static` block:
 | `nil_to_zero` | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`  | no       |
 
 Setting `period`, `length`, or `delay` on a `static` block has no effect.
-Configure these arguments on each `metric` block instead.
+Configure `period` and `length` on each `metric` block instead.
+The `metric` block has no `delay` argument, so a `static` job can't shift the query window.
 
 The metrics need to be fully qualified with the following specifications:
 
