@@ -67,6 +67,8 @@ The example sets `server.http.listen-addr` to `0.0.0.0:12345` so the {{< param "
 The default address, `127.0.0.1:12345`, accepts connections only from the local host.
 Refer to the [run command reference][RunCommand] for the available flags.
 
+[Clustering][Clustering] is also supported this way, using the same `cluster.*` flags as the standalone {{< param "DEFAULT_ENGINE" >}}.
+
 ## Provide the configuration inline
 
 To provide the {{< param "DEFAULT_ENGINE" >}} configuration inline, use `config.inline.content` instead of `config.path`:
@@ -106,6 +108,7 @@ You can embed the `alloyengine` extension into any other OpenTelemetry Collector
 Refer to [Include `alloyengine` extension in an OCB distribution][OCBDistribution] for instructions.
 
 [CLI]: ../cli/
+[Clustering]: ../../../get-started/clustering/
 [OCBDistribution]: https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md#include-alloyengine-extension-in-an-ocb-distribution
 [PassFlags]: #pass-flags-to-the-default-engine
 [RunCommand]: ../../../reference/cli/run/
