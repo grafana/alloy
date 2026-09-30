@@ -12,7 +12,7 @@ func TestNewMetrics_BothResultSeriesStartAtZero(t *testing.T) {
 	newMetrics(reg)
 
 	for _, result := range []string{"success", "error"} {
-		v, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", result)
+		v, err := counterValue(reg, result)
 		require.NoError(t, err)
 		require.Zero(t, v)
 	}

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	awscommon "github.com/grafana/alloy/internal/component/common/config/aws"
@@ -211,13 +211,14 @@ func TestNew_FailsOnClientError(t *testing.T) {
 	_, err := newComponent(opts, testArgs("prod/db", 0), factory)
 	require.EqualError(t, err, "creating AWS client: no region")
 
-	v, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "error")
+	v, err := counterValue(reg, "error")
 	require.NoError(t, err)
 	require.Equal(t, 1.0, v)
 }
 
-// counterValue reads one labelled counter value from reg.
-func counterValue(reg *prometheus.Registry, name, result string) (float64, error) {
+// counterValue reads one fetches_total value from reg.
+func counterValue(reg *prometheus.Registry, result string) (float64, error) {
+	const name = "remote_aws_secrets_manager_fetches_total"
 	families, err := reg.Gather()
 	if err != nil {
 		return 0, err
@@ -259,10 +260,10 @@ func TestNew_RebuildAfterFailedBuildReusesRegistry(t *testing.T) {
 	require.NotNil(t, c)
 	require.Equal(t, "1", lastDataValue(rec))
 
-	errs, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "error")
+	errs, err := counterValue(reg, "error")
 	require.NoError(t, err)
 	require.Equal(t, 1.0, errs)
-	oks, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "success")
+	oks, err := counterValue(reg, "success")
 	require.NoError(t, err)
 	require.Equal(t, 1.0, oks)
 }
