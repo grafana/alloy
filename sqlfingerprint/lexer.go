@@ -78,6 +78,14 @@ func (l *lexer) next(previous []token) (token, Reason, bool) {
 	}
 	if l.dialect == PostgreSQL {
 		if c == '$' {
+			// Ruby OTel obfuscates the numeric part of $1 into $?. Treat
+			// that whole marker as a value, not a dollar-quoted string.
+			if strings.HasPrefix(l.input[l.pos:], "$?") &&
+				(l.pos+2 == len(l.input) || !isWordPart(l.input[l.pos+2])) && postgresValueExpected(previous) {
+
+				l.pos += 2
+				return token{value, "?"}, "", false
+			}
 			return l.dollar()
 		}
 		if strings.HasPrefix(l.input[l.pos:], "%(") && postgresValueExpected(previous) {

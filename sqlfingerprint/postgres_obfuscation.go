@@ -33,6 +33,9 @@ func postgresValueExpected(previous []token) bool {
 	last := previous[len(previous)-1]
 	if last.kind == word {
 		last.text = strings.ToLower(last.text)
+		if last.text == "ilike" {
+			return true
+		}
 	}
 	return expectsValue([]token{last})
 }
