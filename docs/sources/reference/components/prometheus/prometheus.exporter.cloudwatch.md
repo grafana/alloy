@@ -137,8 +137,8 @@ You can use the following arguments with `prometheus.exporter.cloudwatch`:
 | Name                      | Type                | Description                                                                 | Default | Required |
 | ------------------------- | ------------------- | --------------------------------------------------------------------------- | ------- | -------- |
 | `sts_region`              | `string`            | AWS region to use when calling [STS][] for retrieving account information.  |         | yes      |
-| `aws_sdk_version_v2`      | `bool`              | Deprecated, no-op. Has no effect. AWS SDK for Go v2 is always used.         | `true`  | no       |
-| `debug`                   | `bool`              | Deprecated, no-op. Has no effect. Use the global log level instead.         | `false` | no       |
+| `aws_sdk_version_v2`      | `bool`              | Deprecated. Has no effect. AWS SDK for Go v2 is always used.                | `true`  | no       |
+| `debug`                   | `bool`              | Deprecated. Has no effect. Use the global log level instead.                | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | Tags to export in all metrics, keyed by AWS service namespace.              | `{}`    | no       |
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set to `false` to enable them in US regions. | `true`  | no       |
 | `labels_snake_case`       | `bool`              | Output labels on metrics in snake case instead of camel case.               | `false` | no       |
@@ -481,7 +481,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-For detailed examples, refer to the [`discovery`][discovery] and [`static`][static] sections.
+For detailed examples, refer to the [`custom_namespace`][custom_namespace], [`discovery`][discovery], and [`static`][static] sections.
 
 ## Supported services in discovery jobs
 
