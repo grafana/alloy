@@ -299,16 +299,19 @@ func TestUpdate_WaitsForInFlightPoll(t *testing.T) {
 
 	entered := make(chan struct{})
 	release := make(chan struct{})
-	var once sync.Once
+	var once, releaseOnce sync.Once
+	doRelease := func() { releaseOnce.Do(func() { close(release) }) }
 	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
 		if aws.ToString(in.SecretId) == "old" {
 			once.Do(func() { close(entered) })
 			<-release
-			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"old"}`)}, nil
+			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"stale"}`)}, nil
 		}
 		return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"new"}`)}, nil
 	})
 	runComponent(t, c)
+	// Unblock the poll if the test fails early, so that cleanup does not hang.
+	t.Cleanup(doRelease)
 
 	select {
 	case <-entered:
@@ -318,7 +321,14 @@ func TestUpdate_WaitsForInFlightPoll(t *testing.T) {
 
 	updated := make(chan error, 1)
 	go func() { updated <- c.Update(testArgs("new", fastPoll)) }()
-	close(release)
+
+	// Update must wait behind the in-flight poll.
+	select {
+	case err := <-updated:
+		require.FailNowf(t, "Update returned while a poll was in flight", "err=%v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	doRelease()
 	require.NoError(t, <-updated)
 
 	require.Equal(t, "new", lastDataValue(rec))
