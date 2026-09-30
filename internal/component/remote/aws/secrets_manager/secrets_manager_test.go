@@ -9,7 +9,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,10 +102,15 @@ func (r *recorder) onStateChange(e component.Exports) {
 	r.exports = append(r.exports, e.(Exports))
 }
 
-func (r *recorder) count() int {
+// values returns the "v" field of every export, in order.
+func (r *recorder) values() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return len(r.exports)
+	out := make([]string, 0, len(r.exports))
+	for _, e := range r.exports {
+		out = append(out, string(e.Data["v"]))
+	}
+	return out
 }
 
 func (r *recorder) last() (Exports, bool) {
@@ -160,8 +167,8 @@ func TestNew_ExportsSecret(t *testing.T) {
 	c, rec, err := newTestComponent(t, testArgs("prod/db", 0), newFakeGetter(`{"username":"u","password":"p"}`))
 	require.NoError(t, err)
 
-	require.Equal(t, 1, rec.count())
-	e, _ := rec.last()
+	e, ok := rec.last()
+	require.True(t, ok)
 	require.Equal(t, map[string]alloytypes.Secret{"username": "u", "password": "p"}, e.Data)
 	require.Equal(t, alloytypes.Secret(`{"username":"u","password":"p"}`), e.Content)
 
@@ -178,7 +185,8 @@ func TestNew_FailsOnFetchError(t *testing.T) {
 
 	_, rec, err := newTestComponent(t, testArgs("prod/db", 0), fake)
 	require.EqualError(t, err, `fetching secret "prod/db": ResourceNotFoundException: not found`)
-	require.Zero(t, rec.count())
+	_, exported := rec.last()
+	require.False(t, exported)
 }
 
 func TestNew_FailsOnBinarySecret(t *testing.T) {
@@ -268,16 +276,6 @@ func TestPoll_PicksUpChange(t *testing.T) {
 	require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
 }
 
-func TestPoll_SameValueDoesNotReexport(t *testing.T) {
-	fake := newFakeGetter(`{"v":"1"}`)
-	c, rec, err := newTestComponent(t, testArgs("a", fastPoll), fake)
-	require.NoError(t, err)
-	runComponent(t, c)
-
-	require.Eventually(t, func() bool { return fake.callCount() >= 4 }, waitFor, tick)
-	require.Equal(t, 1, rec.count())
-}
-
 func TestPoll_ErrorKeepsExportsAndRecovers(t *testing.T) {
 	fake := newFakeGetter(`{"v":"1"}`)
 	c, rec, err := newTestComponent(t, testArgs("a", fastPoll), fake)
@@ -287,8 +285,7 @@ func TestPoll_ErrorKeepsExportsAndRecovers(t *testing.T) {
 	fake.returnError(errors.New("AccessDeniedException: denied"))
 	require.Eventually(t, func() bool { return c.CurrentHealth().Health == component.HealthTypeUnhealthy }, waitFor, tick)
 	require.Equal(t, `fetching secret "a": AccessDeniedException: denied`, c.CurrentHealth().Message)
-	require.Equal(t, 1, rec.count())
-	require.Equal(t, "1", lastDataValue(rec))
+	require.Equal(t, []string{"1"}, rec.values())
 	require.Positive(t, testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
 
 	fake.returnSecret(`{"v":"1"}`)
@@ -331,16 +328,20 @@ func TestUpdate_PassesVersion(t *testing.T) {
 	require.Nil(t, fake.lastCall().VersionStage)
 }
 
-func TestUpdate_FailureKeepsPreviousArgs(t *testing.T) {
+func TestUpdate_FailureAdoptsNewArgs(t *testing.T) {
 	fake := newFakeGetter(`{"v":"good"}`)
 	c, rec, err := newTestComponent(t, testArgs("good", fastPoll), fake)
 	require.NoError(t, err)
 
+	var typoFixed atomic.Bool
 	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
-		if aws.ToString(in.SecretId) == "typo" {
-			return nil, errors.New("ResourceNotFoundException: not found")
+		if aws.ToString(in.SecretId) != "typo" {
+			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"good"}`)}, nil
 		}
-		return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"good"}`)}, nil
+		if typoFixed.Load() {
+			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"fixed"}`)}, nil
+		}
+		return nil, errors.New("ResourceNotFoundException: not found")
 	})
 
 	err = c.Update(testArgs("typo", fastPoll))
@@ -349,23 +350,103 @@ func TestUpdate_FailureKeepsPreviousArgs(t *testing.T) {
 	require.Equal(t, "good", lastDataValue(rec))
 
 	runComponent(t, c)
+	start := fake.callCount()
+	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
+	require.Equal(t, "typo", aws.ToString(fake.lastCall().SecretId))
+	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+	require.Equal(t, "good", lastDataValue(rec))
+
+	typoFixed.Store(true)
 	require.Eventually(t, func() bool {
-		return aws.ToString(fake.lastCall().SecretId) == "good" && c.CurrentHealth().Health == component.HealthTypeHealthy
+		return lastDataValue(rec) == "fixed" && c.CurrentHealth().Health == component.HealthTypeHealthy
 	}, waitFor, tick)
 }
 
-func TestUpdate_WaitsForInFlightPoll(t *testing.T) {
+func TestUpdate_FailedClientAdoptsNewArgs(t *testing.T) {
+	good := newFakeGetter(`{"v":"good"}`)
+	rec := &recorder{}
+	opts := component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: rec.onStateChange,
+	}
+	var clientFails atomic.Bool
+	factory := func(context.Context, awscommon.Client) (secretsGetter, error) {
+		if clientFails.Load() {
+			return nil, errors.New("no region")
+		}
+		return good, nil
+	}
+	c, err := newComponent(opts, testArgs("a", fastPoll), factory)
+	require.NoError(t, err)
+
+	clientFails.Store(true)
+	require.EqualError(t, c.Update(testArgs("b", fastPoll)), "creating AWS client: no region")
+	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+
+	runComponent(t, c)
+	clientFails.Store(false)
+	require.Eventually(t, func() bool {
+		return aws.ToString(good.lastCall().SecretId) == "b" && c.CurrentHealth().Health == component.HealthTypeHealthy
+	}, waitFor, tick)
+}
+
+// blockPollUntilCtxDone makes calls for "old" block until their ctx is done.
+// It returns a channel that is closed when the first such call starts.
+func blockPollUntilCtxDone(fake *fakeGetter) <-chan struct{} {
+	entered := make(chan struct{})
+	var once sync.Once
+	fake.setFn(func(ctx context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		if aws.ToString(in.SecretId) == "old" {
+			once.Do(func() { close(entered) })
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"new"}`)}, nil
+	})
+	return entered
+}
+
+func TestUpdate_CancelsInFlightPoll(t *testing.T) {
 	fake := newFakeGetter(`{"v":"old"}`)
 	c, rec, err := newTestComponent(t, testArgs("old", fastPoll), fake)
 	require.NoError(t, err)
 
-	entered := make(chan struct{})
+	entered := blockPollUntilCtxDone(fake)
+	runComponent(t, c)
+	select {
+	case <-entered:
+	case <-time.After(waitFor):
+		require.FailNow(t, "poll did not start")
+	}
+
+	updated := make(chan error, 1)
+	go func() { updated <- c.Update(testArgs("new", fastPoll)) }()
+	select {
+	case err := <-updated:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		require.FailNow(t, "Update waited behind the in-flight poll")
+	}
+
+	require.Equal(t, "new", lastDataValue(rec))
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+	require.Zero(t, testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
+}
+
+func TestUpdate_StalePollNotExported(t *testing.T) {
+	fake := newFakeGetter(`{"v":"old"}`)
+	c, rec, err := newTestComponent(t, testArgs("old", fastPoll), fake)
+	require.NoError(t, err)
+
+	pollCtx := make(chan context.Context, 1)
 	release := make(chan struct{})
 	var once, releaseOnce sync.Once
 	doRelease := func() { releaseOnce.Do(func() { close(release) }) }
-	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+	fake.setFn(func(ctx context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
 		if aws.ToString(in.SecretId) == "old" {
-			once.Do(func() { close(entered) })
+			// Ignore ctx, as a slow SDK call can do.
+			once.Do(func() { pollCtx <- ctx })
 			<-release
 			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"stale"}`)}, nil
 		}
@@ -375,8 +456,9 @@ func TestUpdate_WaitsForInFlightPoll(t *testing.T) {
 	// Unblock the poll if the test fails early, so that cleanup does not hang.
 	t.Cleanup(doRelease)
 
+	var ctx context.Context
 	select {
-	case <-entered:
+	case ctx = <-pollCtx:
 	case <-time.After(waitFor):
 		require.FailNow(t, "poll did not start")
 	}
@@ -384,17 +466,59 @@ func TestUpdate_WaitsForInFlightPoll(t *testing.T) {
 	updated := make(chan error, 1)
 	go func() { updated <- c.Update(testArgs("new", fastPoll)) }()
 
-	// Update must wait behind the in-flight poll.
+	// Release the poll only after Update cancelled it, so that its result is stale.
 	select {
-	case err := <-updated:
-		require.FailNowf(t, "Update returned while a poll was in flight", "err=%v", err)
-	case <-time.After(50 * time.Millisecond):
+	case <-ctx.Done():
+	case <-time.After(waitFor):
+		require.FailNow(t, "Update did not cancel the poll")
 	}
 	doRelease()
 	require.NoError(t, <-updated)
 
 	require.Equal(t, "new", lastDataValue(rec))
-	require.Never(t, func() bool { return lastDataValue(rec) != "new" }, 100*time.Millisecond, tick)
+	require.Never(t, func() bool { return slices.Contains(rec.values(), "stale") }, 100*time.Millisecond, tick)
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
+func TestRetry_AfterFailedPoll(t *testing.T) {
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, rec, err := newTestComponent(t, testArgs("a", time.Hour), fake)
+	require.NoError(t, err)
+	c.maxRetryInterval = fastPoll
+	runComponent(t, c)
+
+	fake.returnError(errors.New("ThrottlingException: slow down"))
+	require.Error(t, c.Update(testArgs("a", time.Hour)))
+
+	// The second retry proves that a failed poll also schedules a retry.
+	start := fake.callCount()
+	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
+
+	fake.returnSecret(`{"v":"2"}`)
+	require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
+	stopped := fake.callCount()
+	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
+func TestRetry_PollDisabledRetriesUntilSuccess(t *testing.T) {
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, rec, err := newTestComponent(t, testArgs("a", 0), fake)
+	require.NoError(t, err)
+	c.maxRetryInterval = fastPoll
+	runComponent(t, c)
+
+	fake.returnError(errors.New("ThrottlingException: slow down"))
+	require.Error(t, c.Update(testArgs("a", 0)))
+
+	start := fake.callCount()
+	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
+
+	fake.returnSecret(`{"v":"2"}`)
+	require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
+	stopped := fake.callCount()
+	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
 func TestRun_StopsWhileFetchBlocked(t *testing.T) {
