@@ -57,6 +57,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.mounts.dockercontainers | bool | `false` | Mount /var/lib/docker/containers from the host into the container for log collection. |
 | alloy.mounts.extra | list | `[]` | Extra volume mounts to add into the Grafana Alloy container. Does not affect the watch container. |
 | alloy.mounts.varlog | bool | `false` | Mount /var/log from the host into the container for log collection. |
+| alloy.resizePolicy | list | `[]` | Resize policy for the Grafana Alloy container. Controls whether an in-place resize of CPU or memory restarts the container. |
 | alloy.resources | object | `{}` | Resource requests and limits to apply to the Grafana Alloy container. |
 | alloy.securityContext | object | `{}` | Security context to apply to the Grafana Alloy container. |
 | alloy.stabilityLevel | string | `"generally-available"` | Minimum stability level of components and behavior to enable. Must be one of "experimental", "public-preview", or "generally-available". |
@@ -70,6 +71,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.94.0@sha256:142a1f11df8dd165f00375b0b1826aecb9c9adeb05c39855893138d7c7575ff7"` | Tag of image to use for config reloading. |
+| configReloader.resizePolicy | list | `[]` | Resize policy for the config reloader container. Controls whether an in-place resize of CPU or memory restarts the container. |
 | configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
