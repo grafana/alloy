@@ -2,10 +2,12 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -230,4 +232,76 @@ aws_secret_access_key = SECRET
 	require.NoError(t, err)
 	require.Equal(t, "ROLEKEY", creds.AccessKeyID)
 	require.Contains(t, auth.Load(), "/ap-southeast-2/sts/aws4_request")
+}
+
+func TestDefaultSessionName(t *testing.T) {
+	tests := []struct {
+		name    string
+		host    string
+		hostErr error
+		want    string
+	}{
+		{name: "normal host name", host: "web-1.example.com", want: "alloy-web-1.example.com"},
+		{name: "disallowed characters", host: "my host/a:b", want: "alloy-my-host-a-b"},
+		{name: "allowed punctuation", host: "a_b+c=d,e@f", want: "alloy-a_b+c=d,e@f"},
+		{name: "long host name", host: strings.Repeat("h", 100), want: "alloy-" + strings.Repeat("h", 58)},
+		{name: "host name error", hostErr: errors.New("no host"), want: "alloy"},
+		{name: "empty host name", host: "", want: "alloy"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			orig := hostname
+			t.Cleanup(func() { hostname = orig })
+			hostname = func() (string, error) { return tt.host, tt.hostErr }
+
+			got := defaultSessionName()
+			require.Equal(t, tt.want, got)
+			require.LessOrEqual(t, len(got), 64)
+		})
+	}
+}
+
+// TestClient_LoadConfig_AssumeRoleSessionName checks the session name that
+// reaches STS, for the default name and for an explicit name.
+func TestClient_LoadConfig_AssumeRoleSessionName(t *testing.T) {
+	tests := []struct {
+		name        string
+		sessionName string
+		want        string
+	}{
+		{name: "default", want: "alloy-test-host"},
+		{name: "explicit", sessionName: "custom", want: "custom"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, isolateAWSEnv(t))
+			orig := hostname
+			t.Cleanup(func() { hostname = orig })
+			hostname = func() (string, error) { return "test-host", nil }
+
+			var gotName atomic.String
+			sts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = r.ParseForm()
+				gotName.Store(r.PostForm.Get("RoleSessionName"))
+				w.Header().Set("Content-Type", "text/xml")
+				_, _ = w.Write([]byte(`<AssumeRoleResponse><AssumeRoleResult><Credentials>` +
+					`<AccessKeyId>ROLEKEY</AccessKeyId><SecretAccessKey>S</SecretAccessKey><SessionToken>T</SessionToken>` +
+					`<Expiration>2099-01-01T00:00:00Z</Expiration></Credentials></AssumeRoleResult></AssumeRoleResponse>`))
+			}))
+			t.Cleanup(sts.Close)
+			t.Setenv("AWS_ENDPOINT_URL_STS", sts.URL)
+
+			cfg, err := Client{
+				Region:     "us-east-1",
+				AccessKey:  "AKID",
+				Secret:     "SECRET",
+				AssumeRole: &AssumeRole{RoleARN: "arn:aws:iam::123456789012:role/alloy", SessionName: tt.sessionName},
+			}.LoadConfig(t.Context())
+			require.NoError(t, err)
+
+			_, err = cfg.Credentials.Retrieve(t.Context())
+			require.NoError(t, err)
+			require.Equal(t, tt.want, gotName.Load())
+		})
+	}
 }

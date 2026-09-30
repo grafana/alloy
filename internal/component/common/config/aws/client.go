@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -17,8 +19,37 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-// DefaultSessionName is the STS session name when assume_role does not set one.
+// DefaultSessionName is the prefix of the default STS session name. It is also
+// the whole name when the host name is not available.
 const DefaultSessionName = "alloy"
+
+// maxSessionNameLen is the longest STS RoleSessionName.
+const maxSessionNameLen = 64
+
+// hostname is a variable so that tests can replace it.
+var hostname = os.Hostname
+
+// defaultSessionName returns "alloy-<hostname>" for an assume_role block that
+// sets no session_name. It replaces each character that STS does not allow
+// with "-", and it cuts the name to the STS limit.
+func defaultSessionName() string {
+	host, err := hostname()
+	if err != nil || host == "" {
+		return DefaultSessionName
+	}
+	name := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
+			strings.ContainsRune("_+=,.@-", r):
+			return r
+		}
+		return '-'
+	}, DefaultSessionName+"-"+host)
+	if len(name) > maxSessionNameLen {
+		name = name[:maxSessionNameLen]
+	}
+	return name
+}
 
 // imdsRegionTimeout limits the region lookup. Off EC2, the metadata address
 // does not answer, so a long wait would delay every component start.
@@ -91,7 +122,7 @@ func (c Client) LoadConfig(ctx context.Context) (awssdk.Config, error) {
 	if ar := c.AssumeRole; ar != nil {
 		sessionName := ar.SessionName
 		if sessionName == "" {
-			sessionName = DefaultSessionName
+			sessionName = defaultSessionName()
 		}
 		provider := stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), ar.RoleARN, func(o *stscreds.AssumeRoleOptions) {
 			o.RoleSessionName = sessionName

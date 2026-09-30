@@ -110,11 +110,14 @@ The `assume_role` block makes `remote.aws.secrets_manager` call AWS STS `AssumeR
 The STS call uses the default regional STS endpoint.
 The `endpoint` argument in the `client` block doesn't change the STS endpoint.
 
-| Name           | Type     | Description                                          | Default   | Required |
-| -------------- | -------- | ---------------------------------------------------- | --------- | -------- |
-| `role_arn`     | `string` | The ARN of the IAM role to assume.                   |           | yes      |
-| `external_id`  | `secret` | The external ID that the role trust policy requires. |           | no       |
-| `session_name` | `string` | The name of the role session.                        | `"alloy"` | no       |
+| Name           | Type     | Description                                          | Default              | Required |
+| -------------- | -------- | ---------------------------------------------------- | -------------------- | -------- |
+| `role_arn`     | `string` | The ARN of the IAM role to assume.                   |                      | yes      |
+| `external_id`  | `secret` | The external ID that the role trust policy requires. |                      | no       |
+| `session_name` | `string` | The name of the role session.                        | `"alloy-<HOSTNAME>"` | no       |
+
+The default `session_name` is `alloy-` followed by the host name.
+Characters that STS doesn't allow are replaced by `-`, and the name has at most 64 characters.
 
 ## Exported fields
 
