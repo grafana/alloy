@@ -14,7 +14,6 @@ declare "deployment_rollouts" {
 		default  = true
 	}
 
-
 	argument "logs_output" {
 		comment = "List of OpenTelemetry log consumers that receive rollout events."
 	}
