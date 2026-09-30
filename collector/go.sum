@@ -1245,8 +1245,6 @@ github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 h1:JeSE6pjso5T
 github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674/go.mod h1:r4w70xmWCQKmi1ONH4KIaBptdivuRPyosB9RmPlGEwA=
 github.com/gosnmp/gosnmp v1.43.2 h1:F9loz6uMCNtIQj0RNO5wz/mZ+FZt2WyNKJYOvw+Zosw=
 github.com/gosnmp/gosnmp v1.43.2/go.mod h1:smHIwoaqr1M+HTAEd7+mKkPs8lp3Lf/U+htPUql1Q3c=
-github.com/grafana/alloy-remote-config v0.0.12 h1:zyuDgWaXBITD3OFY/LDh0iShDb3ye4Av39u2xY1JY1s=
-github.com/grafana/alloy-remote-config v0.0.12/go.mod h1:kHE1usYo2WAVCikQkIXuoG1Clz8BSdiz3kF+DZSCQ4k=
 github.com/grafana/cadvisor v0.0.0-20260914142459-6f984a063abc h1:aMHwzQNHjpJcx/ydEoB6bATHF2HeVXYhdzHrZWiAPQI=
 github.com/grafana/cadvisor v0.0.0-20260914142459-6f984a063abc/go.mod h1:ShMYCWitWxCedSLVYLgHnmwA4j8P14bNHg+DpFIYdw0=
 github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc h1:EnTpJWWs5gMdbnIuyNd0T1JXFD6ZbLsFKmJgUUP7i+8=

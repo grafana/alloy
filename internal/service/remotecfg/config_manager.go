@@ -133,6 +133,14 @@ func (cm *configManager) getCachedConfigPath() string {
 	return filepath.Join(cm.remotecfgPath, cm.argsHash)
 }
 
+// getFilesPath returns the directory where auxiliary files received from the
+// API are stored.
+func (cm *configManager) getFilesPath() string {
+	cm.mut.RLock()
+	defer cm.mut.RUnlock()
+	return filepath.Join(cm.remotecfgPath, filesDirName)
+}
+
 func (cm *configManager) getCachedConfig() ([]byte, error) {
 	p := cm.getCachedConfigPath()
 	return os.ReadFile(p)
@@ -290,7 +298,8 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	}
 
 	b := []byte(gcr.GetContent())
-	newConfigHash := getHash(b)
+	files := gcr.GetFiles()
+	newConfigHash := getConfigHash(b, files)
 
 	// Check if we already received this exact config from remote
 	alreadyReceived := cm.getLastReceivedCfgHash() == newConfigHash
@@ -318,6 +327,26 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 	// Set status to APPLYING when we start processing remote config
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING, "")
+
+	// Write the auxiliary files before loading the configuration so that
+	// components referencing them observe the new contents. Keep the previous
+	// files around so they can be restored if the new configuration fails.
+	filesPath := cm.getFilesPath()
+	prevFiles, err := readFiles(filesPath)
+	if err != nil {
+		cm.logger.Error("failed to read current remote configuration files", "path", filesPath, "err", err)
+		cm.metrics.lastLoadSuccess.Set(0)
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
+		return err
+	}
+	if err := syncFiles(filesPath, files); err != nil {
+		cm.logger.Error("failed to write remote configuration files", "path", filesPath, "err", err)
+		cm.metrics.lastLoadSuccess.Set(0)
+		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
+		cm.restoreFiles(filesPath, prevFiles)
+		return err
+	}
+
 	err = cm.parseAndLoad(b)
 	if err != nil {
 		// Failed to parse/load the configuration - received hash is recorded, but loaded hash unchanged
@@ -327,6 +356,9 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 
 		// Make immediate GetConfig call to notify server of parse/load failure
 		cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, getErrorMessage(err))
+
+		// Restore the files the previously loaded configuration was using.
+		cm.restoreFiles(filesPath, prevFiles)
 
 		// If we have a cached config, attempt to reload it to restore component health.
 		// Otherwise a partial working config will be left in the controller.
@@ -361,7 +393,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 	cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 
 	cm.logger.Info("successfully loaded remote configuration",
-		"config_hash", newConfigHash, "config_size", len(b))
+		"config_hash", newConfigHash, "config_size", len(b), "files_count", len(files))
 
 	// If successful, flush to disk and keep a copy.
 	cm.setCachedConfig(b)
@@ -381,12 +413,26 @@ func (cm *configManager) fetchLoadLocalConfig() {
 		return
 	}
 
+	// The files on disk are the ones that accompanied the cached configuration,
+	// so include them in the hash to avoid reloading when the API returns the same.
+	files, err := readFiles(cm.getFilesPath())
+	if err != nil {
+		cm.logger.Warn("failed to read remote configuration files", "path", cm.getFilesPath(), "err", err)
+	}
+
 	// Successfully loaded from cache - update the loaded hash (but not received hash, since this came from cache)
-	cacheHash := getHash(b)
+	cacheHash := getConfigHash(b, files)
 	cm.setLastLoadedCfgHash(cacheHash)
 
 	cm.logger.Info("successfully loaded configuration from cache",
 		"config_hash", cacheHash, "config_size", len(b), "cache_path", cm.getCachedConfigPath())
+}
+
+// restoreFiles attempts to restore the auxiliary files to a previous state.
+func (cm *configManager) restoreFiles(path string, files map[string][]byte) {
+	if err := syncFiles(path, files); err != nil {
+		cm.logger.Error("failed to restore previous remote configuration files", "path", path, "err", err)
+	}
 }
 
 // cleanup properly stops and cleans up the configManager's resources.

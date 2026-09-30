@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -254,6 +255,59 @@ func TestAPIResponseNotModified(t *testing.T) {
 	}, 1*time.Second, 10*time.Millisecond)
 }
 
+func TestAPIResponseFiles(t *testing.T) {
+	cfg := `loki.process "default" { forward_to = [] }`
+	cfgBad := `unparseable bad config`
+
+	env, client := setupFallbackTest(t, "")
+	filesPath := env.svc.cm.getFilesPath()
+
+	setResponse := func(content string, files map[string][]byte) {
+		client.mut.Lock()
+		client.getConfigFunc = buildGetConfigHandlerWithOptions(GetConfigHandlerOptions{Content: content, Files: files})
+		client.mut.Unlock()
+	}
+	requireFiles := func(expectHash string, expectFiles map[string][]byte) {
+		t.Helper()
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			assert.Equal(c, expectHash, env.svc.cm.getLastLoadedCfgHash())
+			files, err := readFiles(filesPath)
+			assert.NoError(c, err)
+			assert.Equal(c, expectFiles, files)
+		}, time.Second, 10*time.Millisecond)
+	}
+
+	// Files are written alongside the configuration.
+	files1 := map[string][]byte{"a.txt": []byte("a"), "b.txt": []byte("b")}
+	setResponse(cfg, files1)
+	requireFiles(getConfigHash([]byte(cfg), files1), files1)
+
+	// A change in files alone is picked up; removed files are deleted.
+	files2 := map[string][]byte{"a.txt": []byte("a2")}
+	setResponse(cfg, files2)
+	requireFiles(getConfigHash([]byte(cfg), files2), files2)
+
+	// A configuration that fails to load restores the previous files.
+	setResponse(cfgBad, map[string][]byte{"c.txt": []byte("c")})
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, getConfigHash([]byte(cfgBad), map[string][]byte{"c.txt": []byte("c")}), env.svc.cm.getLastReceivedCfgHash())
+	}, time.Second, 10*time.Millisecond)
+	requireFiles(getConfigHash([]byte(cfg), files2), files2)
+
+	// Invalid file names are rejected without writing anything.
+	setResponse(cfg, map[string][]byte{"ok.txt": []byte("ok"), "../escape": []byte("x")})
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		assert.Equal(c, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, env.svc.cm.getRemoteConfigStatus().Status)
+	}, time.Second, 10*time.Millisecond)
+	requireFiles(getConfigHash([]byte(cfg), files2), files2)
+	_, err := os.Stat(filepath.Join(filepath.Dir(filesPath), "escape"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	// Removing all files clears the directory.
+	setResponse(cfg, nil)
+	requireFiles(getHash([]byte(cfg)), map[string][]byte{})
+}
+
 // setupFallbackTest is a helper to reduce code duplication in fallback tests
 func setupFallbackTest(t *testing.T, initialConfig string) (*testEnvironment, *mockCollectorClient) {
 	ctx, cancel := context.WithCancel(t.Context())
@@ -440,6 +494,7 @@ type GetConfigHandlerOptions struct {
 	Content     string
 	Hash        string
 	NotModified bool
+	Files       map[string][]byte
 	// Optional status capture functionality
 	StatusHistory  *[]collectorv1.RemoteConfigStatuses
 	StatusMessages *[]string
@@ -471,6 +526,7 @@ func buildGetConfigHandlerWithOptions(opts GetConfigHandlerOptions) func(context
 				Content:     opts.Content,
 				NotModified: opts.NotModified,
 				Hash:        opts.Hash,
+				Files:       opts.Files,
 			},
 		}
 		return rsp, nil
