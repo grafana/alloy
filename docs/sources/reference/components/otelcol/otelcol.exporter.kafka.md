@@ -42,7 +42,6 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- |
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
-| `allow_auto_topic_creation`                | `bool`         | Whether to allow automatic topic creation.                                                                                  | `true`               | no       |
 | `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"otel-collector"`   | no       |
 | `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                         | `"9m"`               | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
@@ -220,14 +219,15 @@ The `producer` block configures how to retry retrieving metadata when retrieval 
 
 The following arguments are supported:
 
-| Name                     | Type       | Description                                                                | Default     | Required |
-| ------------------------ | ---------- | -------------------------------------------------------------------------- | ----------- | -------- |
-| `compression`            | `string`   | The compression algorithm to use on messages.                              | `"none"`    | no       |
-| `flush_max_messages`     | `number`   | The maximum number of messages in one request.                             | `10000`     | no       |
-| `linger`                 | `duration` | How long a topic partition waits for more records before building a request. | `"10ms"`    | no       |
-| `max_broker_write_bytes` | `number`   | The maximum permitted size of a single write to a broker in bytes.         | `104857600` | no       |
-| `max_message_bytes`      | `number`   | The maximum permitted size of a message in bytes.                          | `1000000`   | no       |
-| `required_acks`          | `number`   | Controls when a message is regarded as transmitted.                        | `1`         | no       |
+| Name                        | Type       | Description                                                                  | Default     | Required |
+| --------------------------- | ---------- | ---------------------------------------------------------------------------- | ----------- | -------- |
+| `allow_auto_topic_creation` | `bool`     | Whether to allow automatic topic creation.                                   | `true`      | no       |
+| `compression`               | `string`   | The compression algorithm to use on messages.                                | `"none"`    | no       |
+| `flush_max_messages`        | `number`   | The maximum number of messages in one request.                               | `10000`     | no       |
+| `linger`                    | `duration` | How long a topic partition waits for more records before building a request. | `"10ms"`    | no       |
+| `max_broker_write_bytes`    | `number`   | The maximum permitted size of a single write to a broker in bytes.           | `104857600` | no       |
+| `max_message_bytes`         | `number`   | The maximum permitted size of a message in bytes.                            | `1000000`   | no       |
+| `required_acks`             | `number`   | Controls when a message is regarded as transmitted.                          | `1`         | no       |
 
 Refer to the [Kafka producer configuration documentation][RequiredAcks] for more information on `required_acks`.
 
