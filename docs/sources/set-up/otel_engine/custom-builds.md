@@ -23,7 +23,7 @@ Grafana doesn't offer commercial support for custom builds.
 Make sure you have the following tools:
 
 - Git
-- Go 1.26.7 or later
+- Go {{< param "GO_VERSION" >}} or later
 - Node.js
 - Docker, if you want to build the container image
 
