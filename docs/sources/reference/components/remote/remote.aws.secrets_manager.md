@@ -46,12 +46,20 @@ You can use the following arguments with `remote.aws.secrets_manager`:
 Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts or when its configuration changes.
 Otherwise, `poll_frequency` must be at least `"1m"`.
 
+With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.
+If you rotate the secret, use the alternating-users rotation strategy, so that the old credentials work until the next poll.
+You can also set a shorter `poll_frequency`.
+Refer to [Rotation strategies](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotation-strategy.html) for more information.
+
 You can set only one of the `version_id` and `version_stage` arguments.
 If you set neither, `remote.aws.secrets_manager` reads the version with the `AWSCURRENT` staging label.
 
 {{< admonition type="note" >}}
 AWS charges for each Secrets Manager API call.
 Each `remote.aws.secrets_manager` component makes one call at each poll.
+It also reads the secret at startup, at each configuration change, and at each retry after a failed read.
+The AWS SDK can retry a failed call up to 3 times.
+If you use the `assume_role` block, the component also calls AWS STS when the role credentials expire.
 Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
 {{< /admonition >}}
 
@@ -90,10 +98,10 @@ You must set both the `key` and `secret` arguments, or neither.
 `remote.aws.secrets_manager` finds the region in this order:
 
 1. The `region` argument.
-1. The `AWS_REGION` environment variable or the region in the shared configuration profile.
+1. The `AWS_REGION` or `AWS_DEFAULT_REGION` environment variable, or the region in the shared configuration profile.
 1. The EC2 instance metadata service.
 
-If none of these gives a region, the component fails to start.
+If none of these gives a region, the component returns an error.
 
 ### `assume_role`
 
@@ -122,13 +130,24 @@ The following fields are exported and can be referenced by other components:
 * A string field value is exported as the plain string.
 * A number, boolean, `null`, object, or array field value is exported as its JSON text.
 * If the secret isn't a JSON object, `data` is empty.
+* If the JSON object has duplicate keys, the last value wins.
 
 `remote.aws.secrets_manager` doesn't support binary secrets.
 
 ## Component health
 
 `remote.aws.secrets_manager` is reported as healthy if the most recent read of the secret was successful.
-If a poll fails, `remote.aws.secrets_manager` keeps the last values it read and is reported as unhealthy.
+If a read fails, `remote.aws.secrets_manager` keeps the last values it read and is reported as unhealthy.
+
+If the first read fails, the component doesn't start and doesn't retry by itself.
+Fix the cause, then reload the configuration.
+
+After a failed read, the component retries after the `poll_frequency` interval or after 1 minute, whichever is shorter.
+If `poll_frequency` is `"0s"`, the component retries every minute until a read succeeds.
+After a successful read, the component returns to the `poll_frequency` schedule.
+
+If a read with new arguments fails after a configuration change, the component keeps the last values it read and is reported as unhealthy.
+It keeps retrying with the new arguments.
 
 ## Debug information
 
