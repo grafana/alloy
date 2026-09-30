@@ -272,6 +272,7 @@ You can configure the `metric` block multiple times to define multiple target me
 Refer to the [View available metrics][] topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, the `add_cloudwatch_timestamp`, `length`, `nil_to_zero`, and `period` arguments default to the parent block's value when the parent sets one.
+In [`static`][static] blocks, only `nil_to_zero` defaults to the parent block's value.
 
 [custom_namespace]: #custom_namespace
 [period]: #period-and-length
