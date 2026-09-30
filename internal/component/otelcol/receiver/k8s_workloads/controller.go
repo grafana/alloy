@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"strconv"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/collector/pdata/plog"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -19,42 +17,29 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+const revisionAnnotation = "deployment.kubernetes.io/revision"
+
 type controllerOptions struct {
 	logger                  *slog.Logger
 	client                  kubernetes.Interface
 	clusterName, clusterUID string
-	snapshots               SnapshotArguments
+	maxEventBytes           int
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
-	metrics                 *reportingMetrics
-}
-type reportingMetrics struct {
-	failures    *prometheus.CounterVec
-	lastSuccess *prometheus.GaugeVec
 }
 
-func newReportingMetrics(reg prometheus.Registerer) *reportingMetrics {
-	m := &reportingMetrics{
-		failures:    prometheus.NewCounterVec(prometheus.CounterOpts{Name: "k8s_workloads_reporting_errors_total", Help: "Failed workload event reporting attempts."}, []string{"operation", "reason"}),
-		lastSuccess: prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "k8s_workloads_snapshot_last_success_timestamp_seconds", Help: "Last snapshot accepted by the downstream pipeline, by scope."}, []string{"kind", "namespace"}),
-	}
-	if reg != nil {
-		reg.MustRegister(m.failures, m.lastSuccess)
-	}
-	return m
-}
-
-type terminalState struct {
+type rolloutState struct {
+	revision int64
 	template corev1.PodTemplateSpec
 	status   string
+	stalled  bool
 }
 
 type controller struct {
-	terminals map[string]terminalState
-	opts      controllerOptions
-	queue     workqueue.TypedRateLimitingInterface[*eventBatch]
-	now       func() time.Time
-	lastError map[string]time.Time
+	opts     controllerOptions
+	rollouts map[string]rolloutState
+	queue    workqueue.TypedRateLimitingInterface[*eventBatch]
+	now      func() time.Time
 }
 
 func newController(opts controllerOptions) *controller {
@@ -64,13 +49,10 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	if opts.snapshots.Interval == 0 {
-		opts.snapshots.SetToDefault()
+	if opts.maxEventBytes == 0 {
+		opts.maxEventBytes = 512 * 1024
 	}
-	if opts.metrics == nil {
-		opts.metrics = newReportingMetrics(nil)
-	}
-	return &controller{terminals: map[string]terminalState{}, opts: opts, now: opts.now, lastError: map[string]time.Time{}, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -83,244 +65,134 @@ func (c *controller) run(ctx context.Context) error {
 		c.opts.clusterUID = string(ns.UID)
 	}
 	factory := informers.NewSharedInformerFactory(c.opts.client, 0)
-	namespaces := factory.Core().V1().Namespaces().Informer()
 	deployments := factory.Apps().V1().Deployments().Informer()
-	for _, binding := range []struct {
-		informer cache.SharedIndexInformer
-		kind     string
-	}{{namespaces, "namespace"}, {deployments, "deployment"}} {
-		kind := binding.kind
-		_, err := binding.informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-			AddFunc: func(obj any, initial bool) {
-				if !initial {
-					c.notify(kind, "created", obj)
-				}
-				if d, ok := obj.(*appsv1.Deployment); ok {
-					c.observeTerminal(d, initial)
-				}
-			},
-			UpdateFunc: func(_, obj any) {
-				if d, ok := obj.(*appsv1.Deployment); ok {
-					c.observeTerminal(d, false)
-				}
-			},
-			DeleteFunc: func(obj any) { c.notify(kind, "deleted", obj) },
-		})
-		if err != nil {
-			return err
-		}
+	_, err := deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
+		AddFunc:    func(obj any, initial bool) { c.observe(obj.(*appsv1.Deployment), initial) },
+		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
+		DeleteFunc: func(obj any) {
+			if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+				obj = tombstone.Obj
+			}
+			if d, ok := obj.(*appsv1.Deployment); ok {
+				delete(c.rollouts, string(d.UID))
+			}
+		},
+	})
+	if err != nil {
+		return err
 	}
 	factory.Start(ctx.Done())
-	// Release the previous generation's informer caches before a new owner starts.
 	defer factory.Shutdown()
-	if !cache.WaitForCacheSync(ctx.Done(), namespaces.HasSynced, deployments.HasSynced) {
-		return fmt.Errorf("sync namespace and Deployment watches")
+	if !cache.WaitForCacheSync(ctx.Done(), deployments.HasSynced) {
+		return fmt.Errorf("sync Deployment watch")
 	}
-	// Schedule from completion so slow scans cannot accumulate catch-up work.
-	// Waiting happens outside the worker, which remains available for notifications.
-	scan := &eventBatch{scan: true}
-	completed := make(chan time.Duration, 1)
-	go func() {
-		defer c.queue.ShutDown()
-		scheduleScans(ctx, c.opts.snapshots, func() { c.queue.Add(scan) }, completed)
-	}()
+	go func() { <-ctx.Done(); c.queue.ShutDown() }()
+	c.opts.logger.Info("Kubernetes Deployment rollout watcher ready")
 	for {
-		item, shutdown := c.queue.Get()
+		event, shutdown := c.queue.Get()
 		if shutdown {
 			return nil
 		}
-		if item.scan {
-			started := time.Now()
-			c.collect(ctx)
-			completed <- time.Since(started)
-			c.queue.Forget(item)
-		} else if err := c.deliver(ctx, item); err != nil {
-			if !item.reported {
-				c.report(ctx, item, "delivery_failed", "Downstream rejected an event; retrying the original event", 0, 0)
-				item.reported = true
-			}
-			c.queue.AddRateLimited(item)
-		} else {
-			c.queue.Forget(item)
+		if c.deliver(ctx, event) {
+			c.queue.Forget(event)
+		} else if ctx.Err() == nil {
+			c.queue.AddRateLimited(event)
 		}
-		c.queue.Done(item)
+		c.queue.Done(event)
 	}
 }
 
-// Informer handlers serialize access to this state. Remember the last terminal
-// result per Pod template, so HPA replica changes do not repeat success events.
-// Startup seeds the state silently; snapshots repair notifications missed while down.
-func (c *controller) observeTerminal(d *appsv1.Deployment, initial bool) {
+// Informer handlers serialize state updates. Revisions are assigned by the
+// Deployment controller, unlike generation which also changes during scaling.
+func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	uid := string(d.UID)
-	previous, exists := c.terminals[uid]
-	if !exists || !equality.Semantic.DeepEqual(previous.template, d.Spec.Template) {
-		previous = terminalState{template: *d.Spec.Template.DeepCopy()}
+	previous, exists := c.rollouts[uid]
+	revision, _ := strconv.ParseInt(d.Annotations[revisionAnnotation], 10, 64)
+	if initial {
+		c.rollouts[uid] = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStatus(d), stalled: rolloutStatus(d) == rolloutStalled}
+		return
 	}
-	status := deploymentStatus(d)
-	operation := status
-	if status == "healthy" {
-		operation = "succeeded"
+	if d.DeletionTimestamp != nil || d.Spec.Paused || d.Status.ObservedGeneration < d.Generation || revision <= 0 {
+		return
 	}
-	if operation == "succeeded" || operation == "stalled" {
-		if !initial && previous.status != operation {
-			now := c.now()
-			c.queue.Add(makeEvent(c.opts.clusterUID, c.opts.clusterName, d.Namespace, "", uid, operation, "deployment", now, map[string]any{
-				"name": d.Name, "uid": uid, "collected_at": now.UTC().Format(time.RFC3339Nano),
-				"status": status, "generation": d.Generation, "observed_generation": d.Status.ObservedGeneration,
-			}))
+	// Ignore stale revision observations, including relists after watch reconnects.
+	if exists && revision < previous.revision {
+		return
+	}
+	if !exists || revision != previous.revision {
+		if exists && previous.revision > 0 && previous.status != rolloutSucceeded {
+			c.enqueue(d, previous, rolloutSuperseded, revision, nil, nil, false)
 		}
-		previous.status = operation
+		kinds, changes := []string{}, []templateChange{}
+		if exists {
+			kinds, changes = templateChanges(previous.template, d.Spec.Template)
+		}
+		previous = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
+		c.enqueue(d, previous, rolloutStarted, 0, kinds, changes, exists)
 	}
-	c.terminals[uid] = previous
+	status := rolloutStatus(d)
+	// Success closes a rollout permanently; later availability/scaling changes
+	// aren't new rollout outcomes. A stalled rollout can recover or be superseded.
+	if previous.status != rolloutSucceeded {
+		switch status {
+		case rolloutSucceeded:
+			c.enqueue(d, previous, rolloutSucceeded, 0, nil, nil, false)
+			previous.status = status
+		case rolloutStalled:
+			if !previous.stalled {
+				c.enqueue(d, previous, rolloutStalled, 0, nil, nil, false)
+				previous.stalled = true
+			}
+			previous.status = status
+		}
+	}
+	c.rollouts[uid] = previous
 }
 
-func (c *controller) notify(kind, operation string, obj any) {
-	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-		obj = tombstone.Obj
+func rolloutStatus(d *appsv1.Deployment) string {
+	if d.Spec.Paused || d.DeletionTimestamp != nil || d.Status.ObservedGeneration < d.Generation {
+		return rolloutStarted
 	}
-	var name, namespace, namespaceUID, uid string
-	switch value := obj.(type) {
-	case *corev1.Namespace:
-		name = value.Name
-		namespace = value.Name
-		uid = string(value.UID)
-		namespaceUID = uid
-	case *appsv1.Deployment:
-		name = value.Name
-		namespace = value.Namespace
-		uid = string(value.UID)
-		if operation == "deleted" {
-			delete(c.terminals, uid)
+	for _, condition := range d.Status.Conditions {
+		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionFalse && condition.Reason == "ProgressDeadlineExceeded" {
+			return rolloutStalled
 		}
-	default:
-		return
 	}
-	now := c.now()
-	event := makeEvent(c.opts.clusterUID, c.opts.clusterName, namespace, namespaceUID, uid, operation, kind, now, map[string]any{"name": name, "uid": uid, "collected_at": now.UTC().Format(time.RFC3339Nano)})
-	c.queue.Add(event)
+	desired := int32(1)
+	if d.Spec.Replicas != nil {
+		desired = *d.Spec.Replicas
+	}
+	// Require the controller's completion condition as well as replica counts.
+	for _, condition := range d.Status.Conditions {
+		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionTrue && condition.Reason == "NewReplicaSetAvailable" && d.Status.UpdatedReplicas == desired && d.Status.Replicas == desired && d.Status.AvailableReplicas == desired && d.Status.UnavailableReplicas == 0 {
+			return rolloutSucceeded
+		}
+	}
+	return rolloutStarted
 }
 
-func (c *controller) collect(ctx context.Context) {
-	// Prototype: timestamps order scans from one active collector. The scan
-	// interval is expected to comfortably exceed typical clock skew across nodes.
-	// Rollback after rescheduling can temporarily cause fresh scans to be rejected.
-	// A durable monotonic epoch/sequence would give stronger failover guarantees.
-	collected := c.now()
-	attempt := makeEvent(c.opts.clusterUID, c.opts.clusterName, "", "", "", "snapshot", "namespace", collected, nil)
-	namespaces, err := c.opts.client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		c.report(ctx, attempt, "collection_failed", "Could not list namespaces", 0, 0)
-		return
-	}
-	entries := make([]namespaceSnapshot, 0, len(namespaces.Items))
-	sort.Slice(namespaces.Items, func(i, j int) bool { return namespaces.Items[i].Name < namespaces.Items[j].Name })
-	for i := range namespaces.Items {
-		entries = append(entries, describeNamespace(&namespaces.Items[i]))
-	}
-	c.publish(ctx, makeEvent(c.opts.clusterUID, c.opts.clusterName, "", "", "", "snapshot", "namespace", collected, map[string]any{
-		"collected_at": collected.UTC().Format(time.RFC3339Nano), "complete": true, "resource_version": namespaces.ResourceVersion, "namespaces": entries,
-	}))
-	for i := range namespaces.Items {
-		if ctx.Err() != nil {
-			return
+// Retry the original event, preserving its ID and timestamp, and give consumers
+// a copy so their mutations cannot affect a later retry.
+func (c *controller) deliver(ctx context.Context, event *eventBatch) bool {
+	jsonData, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
+	if err == nil {
+		var protoData []byte
+		protoData, err = (&plog.ProtoMarshaler{}).MarshalLogs(event.logs)
+		if len(jsonData) >= c.opts.maxEventBytes || len(protoData) >= c.opts.maxEventBytes {
+			c.opts.logger.Error("Dropping oversized rollout event", "event_id", event.id, "max_event_bytes", c.opts.maxEventBytes)
+			return true
 		}
-		c.collectDeployments(ctx, &namespaces.Items[i])
 	}
-}
-func (c *controller) collectDeployments(ctx context.Context, ns *corev1.Namespace) {
-	collected := c.now()
-	attempt := makeEvent(c.opts.clusterUID, c.opts.clusterName, ns.Name, string(ns.UID), "", "snapshot", "deployment", collected, nil)
-	// Use API lists instead of stale watch caches for authoritative membership.
-	// Enrichment lists are separate reads, not an atomic cross-resource snapshot.
-	deployments, err := c.listDeployments(ctx, ns.Name)
+	if err == nil {
+		err = c.opts.emit(ctx, func() eventBatch {
+			copy := plog.NewLogs()
+			event.logs.CopyTo(copy)
+			return eventBatch{logs: copy, id: event.id}
+		})
+	}
 	if err != nil {
-		c.report(ctx, attempt, "collection_failed", "Could not list Deployments", 0, 0)
-		return
+		c.opts.logger.Error("Unable to deliver rollout event; retrying", "event_id", event.id, "err", err)
+		return false
 	}
-	sets, err := c.listReplicaSets(ctx, ns.Name, len(deployments.Items) != 0)
-	if err != nil {
-		c.report(ctx, attempt, "collection_failed", "Could not list ReplicaSets", 0, 0)
-		return
-	}
-	pods, err := c.listPods(ctx, ns.Name, len(deployments.Items) != 0)
-	if err != nil {
-		c.report(ctx, attempt, "collection_failed", "Could not list Pods", 0, 0)
-		return
-	}
-	current, err := c.opts.client.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
-	if err != nil || current.UID != ns.UID {
-		c.report(ctx, attempt, "collection_failed", "Namespace disappeared or was recreated during collection", 0, 0)
-		return
-	}
-	entries := make([]deploymentSnapshot, 0, len(deployments.Items))
-	sort.Slice(deployments.Items, func(i, j int) bool { return deployments.Items[i].Name < deployments.Items[j].Name })
-	for i := range deployments.Items {
-		entries = append(entries, describeDeployment(&deployments.Items[i], sets.Items, pods.Items))
-	}
-	c.publish(ctx, makeEvent(c.opts.clusterUID, c.opts.clusterName, ns.Name, string(ns.UID), "", "snapshot", "deployment", collected, map[string]any{
-		"collected_at": collected.UTC().Format(time.RFC3339Nano), "complete": true, "resource_version": deployments.ResourceVersion, "deployments": entries,
-	}))
-}
-func (c *controller) publish(ctx context.Context, event *eventBatch) {
-	if err := c.deliver(ctx, event); err != nil {
-		c.report(ctx, event, "delivery_failed", "Downstream rejected an event; retrying the original event", 0, 0)
-		event.reported = true
-		c.queue.AddRateLimited(event)
-	}
-}
-func (c *controller) deliver(ctx context.Context, event *eventBatch) error {
-	// Check both supported OTLP encodings, including their one-record envelopes.
-	// The ingester independently checks its final Kafka JSON serialization.
-	jsonBytes, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
-	if err != nil {
-		return err
-	}
-	protoBytes, err := (&plog.ProtoMarshaler{}).MarshalLogs(event.logs)
-	if err != nil {
-		return err
-	}
-	measured := max(len(jsonBytes), len(protoBytes))
-	if measured >= c.opts.snapshots.MaxSizeBytes {
-		c.report(ctx, event, "payload_too_large", "Serialized event reached the configured byte limit", measured, c.opts.snapshots.MaxSizeBytes)
-		return nil // Never retry an unchanged oversized event; the next scan retries collection.
-	}
-	if err := c.send(ctx, event); err != nil {
-		return err
-	}
-	if event.operation == "snapshot" {
-		c.opts.metrics.lastSuccess.WithLabelValues(event.kind, event.namespace).Set(float64(c.now().Unix()))
-	}
-	return nil
-}
-func (c *controller) send(ctx context.Context, event *eventBatch) error {
-	// Some downstream components mutate pdata; retries must retain the payload.
-	return c.opts.emit(ctx, func() eventBatch { logs := plog.NewLogs(); event.logs.CopyTo(logs); return eventBatch{logs: logs} })
-}
-func (c *controller) report(ctx context.Context, failed *eventBatch, reason, message string, measured, limit int) {
-	c.opts.metrics.failures.WithLabelValues(failed.operation, reason).Inc()
-	key := failed.namespace + "/" + failed.operation + "/" + reason
-	now := c.now()
-	if last, ok := c.lastError[key]; !ok || now.Sub(last) >= time.Minute {
-		c.opts.logger.Error(message, "reason", reason, "namespace", failed.namespace, "attempt_id", failed.id, "measured_bytes", measured, "limit_bytes", limit)
-		c.lastError[key] = now
-	}
-	body := map[string]any{"operation": failed.operation, "entity_kind": failed.kind, "attempt_id": failed.id, "reason": reason, "message": message, "failed_collected_at": failed.collected.UTC().Format(time.RFC3339Nano)}
-	if measured > 0 {
-		body["measured_bytes"] = measured
-		body["limit_bytes"] = limit
-	}
-	event := makeEvent(c.opts.clusterUID, c.opts.clusterName, failed.namespace, failed.namespaceUID, failed.entityUID, "error", failed.kind, now, body)
-	record := event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	record.SetEventName(errorEventName)
-	record.SetSeverityNumber(plog.SeverityNumberError)
-	// Errors contain bounded diagnostic fields, never the original payload. Do not
-	// recursively report a reporting failure. They use a separate small budget.
-	payload, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
-	if err != nil || len(payload) > 8192 {
-		c.opts.logger.Error("could not encode bounded reporting error")
-		return
-	}
-	if err := c.send(ctx, event); err != nil {
-		c.opts.logger.Error("could not deliver reporting error", "err", err)
-	}
+	return true
 }

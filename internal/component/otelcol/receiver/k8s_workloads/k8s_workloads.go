@@ -37,16 +37,15 @@ type Arguments struct {
 	ClusterName string `alloy:"cluster_name,attr,optional"`
 	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
 
-	Snapshots  SnapshotArguments          `alloy:"snapshots,block,optional"`
-	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
-	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
-	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
+	MaxEventBytes int                        `alloy:"max_event_bytes,attr,optional"`
+	Client        commonk8s.ClientArguments  `alloy:"client,block,optional"`
+	Clustering    cluster.ComponentBlock     `alloy:"clustering,block,optional"`
+	Output        *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{Client: commonk8s.DefaultClientArguments}
-	args.Snapshots.SetToDefault()
+	*args = Arguments{Client: commonk8s.DefaultClientArguments, MaxEventBytes: 512 * 1024}
 }
 
 // Validate implements syntax.Validator.
@@ -54,36 +53,16 @@ func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
 	}
-	return args.Snapshots.Validate()
-}
-
-type SnapshotArguments struct {
-	Interval             time.Duration `alloy:"interval,attr,optional"`
-	MinIntervalAfterScan time.Duration `alloy:"min_interval_after_scan,attr,optional"`
-	MaxSizeBytes         int           `alloy:"max_size_bytes,attr,optional"`
-}
-
-func (args *SnapshotArguments) SetToDefault() {
-	*args = SnapshotArguments{Interval: time.Minute, MinIntervalAfterScan: time.Minute, MaxSizeBytes: 512 * 1024}
-}
-func (args *SnapshotArguments) Validate() error {
-	if args.Interval <= 0 {
-		return fmt.Errorf("snapshots.interval must be positive")
-	}
-	if args.MinIntervalAfterScan < 0 {
-		return fmt.Errorf("snapshots.min_interval_after_scan must not be negative")
-	}
-	if args.MaxSizeBytes < 8192 {
-		return fmt.Errorf("snapshots.max_size_bytes must be at least 8192")
+	if args.MaxEventBytes < 8192 {
+		return fmt.Errorf("max_event_bytes must be at least 8192")
 	}
 	return nil
 }
 
-// Component watches Kubernetes inventory and emits snapshots and existence notifications.
+// Component watches Kubernetes Deployment rollout transitions.
 type Component struct {
 	opts    component.Options
 	cluster cluster.Cluster
-	metrics *reportingMetrics
 
 	mu                 sync.RWMutex
 	args               Arguments
@@ -109,7 +88,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:           opts,
 		cluster:        clusterData.(cluster.Cluster),
-		metrics:        newReportingMetrics(opts.Registerer),
 		restart:        make(chan struct{}, 1),
 		clusterChanged: make(chan struct{}, 1),
 	}
@@ -217,13 +195,12 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
 	ctrl := newController(controllerOptions{
-		logger:      c.opts.Logger,
-		client:      client,
-		clusterName: args.ClusterName,
-		clusterUID:  args.ClusterUID,
-		emit:        c.emit,
-		snapshots:   args.Snapshots,
-		metrics:     c.metrics,
+		logger:        c.opts.Logger,
+		client:        client,
+		clusterName:   args.ClusterName,
+		clusterUID:    args.ClusterUID,
+		emit:          c.emit,
+		maxEventBytes: args.MaxEventBytes,
 	})
 	return ctrl.run(ctx)
 }
@@ -283,9 +260,9 @@ func (c *Component) requestRestart() {
 	}
 }
 
-// Let gossip converge before starting expensive inventory collection. Ownership
+// Let gossip converge before starting a new watcher. Ownership
 // loss still cancels this wait immediately through the generation context. Bound
-// the delay so continuous node churn cannot indefinitely prevent collection.
+// the delay so continuous node churn cannot indefinitely prevent watching.
 func (c *Component) waitForClusterStability(ctx context.Context) error {
 	const quietPeriod = 30 * time.Second
 	start := time.Now()
