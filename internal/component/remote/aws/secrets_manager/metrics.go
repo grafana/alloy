@@ -26,5 +26,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	// Reuse the collectors that an earlier build registered.
 	m.fetchesTotal = util.MustRegisterOrGet(reg, m.fetchesTotal).(*prometheus.CounterVec)
 	m.lastSuccess = util.MustRegisterOrGet(reg, m.lastSuccess).(prometheus.Gauge)
+	// Make both series now. An alert on the error rate then has data before the first failure.
+	m.fetchesTotal.WithLabelValues("success")
+	m.fetchesTotal.WithLabelValues("error")
 	return m
 }
