@@ -36,7 +36,6 @@ You can use the following arguments with `otelcol.receiver.k8s_workloads`:
 | -------------- | -------- | ------------------------------------------------ | ------- | -------- |
 | `cluster_name` | `string` | Human-readable name of the Kubernetes cluster.   | `""`    | no       |
 | `cluster_uid`  | `string` | Stable identifier for the Kubernetes cluster.    | `""`    | no       |
-| `max_event_bytes` | `number` | Exclusive upper limit for a serialized event; at least 8192. | `524288` | no |
 
 When `cluster_uid` is empty, the component uses the UID of the `kube-system` Namespace as `k8s.cluster.uid`.
 
@@ -233,7 +232,6 @@ The component doesn't persist state or reconcile historical rollouts.
 Downstream delivery failures are logged and retried with the original event ID and timestamp.
 The queue is in memory and is lost on restart.
 Retries can arrive out of order, so consumers must use rollout IDs instead of assuming arrival order.
-Events whose JSON or Protocol Buffers OTLP encoding reaches `max_event_bytes` are dropped with a local error log.
 The component doesn't emit reporting-error events.
 
 ## Exported fields

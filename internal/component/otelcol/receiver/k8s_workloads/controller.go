@@ -23,7 +23,6 @@ type controllerOptions struct {
 	logger                  *slog.Logger
 	client                  kubernetes.Interface
 	clusterName, clusterUID string
-	maxEventBytes           int
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
@@ -48,9 +47,6 @@ func newController(opts controllerOptions) *controller {
 	}
 	if opts.logger == nil {
 		opts.logger = slog.Default()
-	}
-	if opts.maxEventBytes == 0 {
-		opts.maxEventBytes = 512 * 1024
 	}
 	return &controller{opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
@@ -174,22 +170,11 @@ func rolloutStatus(d *appsv1.Deployment) string {
 // Retry the original event, preserving its ID and timestamp, and give consumers
 // a copy so their mutations cannot affect a later retry.
 func (c *controller) deliver(ctx context.Context, event *eventBatch) bool {
-	jsonData, err := (&plog.JSONMarshaler{}).MarshalLogs(event.logs)
-	if err == nil {
-		var protoData []byte
-		protoData, err = (&plog.ProtoMarshaler{}).MarshalLogs(event.logs)
-		if len(jsonData) >= c.opts.maxEventBytes || len(protoData) >= c.opts.maxEventBytes {
-			c.opts.logger.Error("Dropping oversized rollout event", "event_id", event.id, "max_event_bytes", c.opts.maxEventBytes)
-			return true
-		}
-	}
-	if err == nil {
-		err = c.opts.emit(ctx, func() eventBatch {
-			copy := plog.NewLogs()
-			event.logs.CopyTo(copy)
-			return eventBatch{logs: copy, id: event.id}
-		})
-	}
+	err := c.opts.emit(ctx, func() eventBatch {
+		copy := plog.NewLogs()
+		event.logs.CopyTo(copy)
+		return eventBatch{logs: copy, id: event.id}
+	})
 	if err != nil {
 		c.opts.logger.Error("Unable to deliver rollout event; retrying", "event_id", event.id, "err", err)
 		return false

@@ -135,12 +135,3 @@ func (f *fakeCluster) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
 func (f *fakeCluster) Peers() []peer.Peer { return f.owners }
 func (f *fakeCluster) Ready() bool        { return f.ready }
 func (f *fakeCluster) Enabled() bool      { return true }
-
-func TestEventSizeArguments(t *testing.T) {
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(`output {}`), &args))
-	require.Equal(t, 512*1024, args.MaxEventBytes)
-	require.NoError(t, syntax.Unmarshal([]byte("max_event_bytes = 8192\noutput {}"), &args))
-	require.Equal(t, 8192, args.MaxEventBytes)
-	require.Error(t, syntax.Unmarshal([]byte("max_event_bytes = 0\noutput {}"), &args))
-}

@@ -37,24 +37,20 @@ type Arguments struct {
 	ClusterName string `alloy:"cluster_name,attr,optional"`
 	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
 
-	MaxEventBytes int                        `alloy:"max_event_bytes,attr,optional"`
-	Client        commonk8s.ClientArguments  `alloy:"client,block,optional"`
-	Clustering    cluster.ComponentBlock     `alloy:"clustering,block,optional"`
-	Output        *otelcol.ConsumerArguments `alloy:"output,block"`
+	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
+	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
+	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{Client: commonk8s.DefaultClientArguments, MaxEventBytes: 512 * 1024}
+	*args = Arguments{Client: commonk8s.DefaultClientArguments}
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
-	}
-	if args.MaxEventBytes < 8192 {
-		return fmt.Errorf("max_event_bytes must be at least 8192")
 	}
 	return nil
 }
@@ -195,12 +191,11 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
 	ctrl := newController(controllerOptions{
-		logger:        c.opts.Logger,
-		client:        client,
-		clusterName:   args.ClusterName,
-		clusterUID:    args.ClusterUID,
-		emit:          c.emit,
-		maxEventBytes: args.MaxEventBytes,
+		logger:      c.opts.Logger,
+		client:      client,
+		clusterName: args.ClusterName,
+		clusterUID:  args.ClusterUID,
+		emit:        c.emit,
 	})
 	return ctrl.run(ctx)
 }

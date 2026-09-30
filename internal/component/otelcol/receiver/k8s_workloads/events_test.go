@@ -7,7 +7,6 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -172,7 +171,7 @@ func TestNewDeploymentAndBaseline(t *testing.T) {
 	take(t, c, "succeeded")
 	require.NotEqual(t, started.RolloutID, recreated.RolloutID)
 }
-func TestDeliveryRetriesAndSizeLimit(t *testing.T) {
+func TestDeliveryRetries(t *testing.T) {
 	d := deploymentFixture()
 	c := testController(t)
 	c.observe(d, false)
@@ -190,10 +189,6 @@ func TestDeliveryRetriesAndSizeLimit(t *testing.T) {
 		require.Equal(t, expected, data.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Str())
 		return nil
 	}
-	require.True(t, c.deliver(t.Context(), event))
-	event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().SetStr(strings.Repeat("x", 9000))
-	c.opts.maxEventBytes = 8192
-	c.opts.emit = func(context.Context, func() eventBatch) error { t.Fatal("oversize event published"); return nil }
 	require.True(t, c.deliver(t.Context(), event))
 }
 func TestWatcherOnlyUsesDeployments(t *testing.T) {
