@@ -1,8 +1,12 @@
 package aws
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -114,4 +118,59 @@ func TestClient_LoadConfig_AssumeRole(t *testing.T) {
 func TestClient_BaseEndpoint(t *testing.T) {
 	require.Nil(t, Client{}.BaseEndpoint())
 	require.Equal(t, "http://localhost:5000", awssdk.ToString(Client{Endpoint: "http://localhost:5000"}.BaseEndpoint()))
+}
+
+// fakeIMDS serves IMDSv2 and counts requests. It returns the region in the identity document.
+func fakeIMDS(t *testing.T, region string) (endpoint string, requests *atomic.Int32) {
+	requests = &atomic.Int32{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		switch {
+		case r.Method == http.MethodPut && r.URL.Path == "/latest/api/token":
+			w.Header().Set("X-Aws-Ec2-Metadata-Token-Ttl-Seconds", "21600")
+			_, _ = w.Write([]byte("token"))
+		case r.Method == http.MethodGet && r.URL.Path == "/latest/dynamic/instance-identity/document":
+			// The SDK reads the region from the instance identity document.
+			_, _ = w.Write([]byte(`{"region":"` + region + `"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL, requests
+}
+
+func TestLoadConfig_RegionFromIMDS(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	endpoint, _ := fakeIMDS(t, "ap-southeast-2")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "false")
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
+
+	cfg, err := Client{}.LoadConfig(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "ap-southeast-2", cfg.Region)
+}
+
+func TestLoadConfig_ExplicitRegionSkipsIMDS(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	endpoint, requests := fakeIMDS(t, "ap-southeast-2")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "false")
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
+
+	cfg, err := Client{Region: "eu-west-1"}.LoadConfig(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "eu-west-1", cfg.Region)
+	require.Zero(t, requests.Load())
+}
+
+func TestLoadConfig_IMDSDisabledKeepsEmptyRegion(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	endpoint, requests := fakeIMDS(t, "ap-southeast-2")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
+
+	cfg, err := Client{}.LoadConfig(context.Background())
+	require.NoError(t, err)
+	require.Empty(t, cfg.Region)
+	require.Zero(t, requests.Load())
 }

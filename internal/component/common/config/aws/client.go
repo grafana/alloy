@@ -5,11 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -17,6 +19,10 @@ import (
 
 // DefaultSessionName is the STS session name when assume_role does not set one.
 const DefaultSessionName = "alloy"
+
+// imdsRegionTimeout limits the region lookup. Off EC2, the metadata address
+// does not answer, so a long wait would delay every component start.
+const imdsRegionTimeout = 2 * time.Second
 
 // Client configures how a component connects to AWS.
 type Client struct {
@@ -62,6 +68,12 @@ func (c Client) LoadConfig(ctx context.Context) (awssdk.Config, error) {
 		return awssdk.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}
 
+	// LoadDefaultConfig does not read the region from IMDS. Do the lookup here,
+	// because config.WithEC2IMDSRegion fails on hosts that are not EC2.
+	if cfg.Region == "" {
+		cfg.Region = imdsRegion(ctx, cfg)
+	}
+
 	if ar := c.AssumeRole; ar != nil {
 		sessionName := ar.SessionName
 		if sessionName == "" {
@@ -86,4 +98,15 @@ func (c Client) BaseEndpoint() *string {
 		return nil
 	}
 	return awssdk.String(c.Endpoint)
+}
+
+// imdsRegion returns the region from EC2 instance metadata, or "" if it is not available.
+func imdsRegion(ctx context.Context, cfg awssdk.Config) string {
+	ctx, cancel := context.WithTimeout(ctx, imdsRegionTimeout)
+	defer cancel()
+	out, err := imds.NewFromConfig(cfg).GetRegion(ctx, &imds.GetRegionInput{})
+	if err != nil {
+		return ""
+	}
+	return out.Region
 }
