@@ -59,6 +59,7 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | [`otel_attrs_to_hec_metadata`][otel_attrs_to_hec_metadata] | Configures mapping of resource attributes to HEC metadata fields.              | no       |
 | [`sending_queue`][sending_queue]                           | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                         | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition]        | Configures partitioning of batches by client metadata.                         | no       |
 | [`retry_on_failure`][retry_on_failure]                     | Configures retry mechanism for failed requests.                                | no       |
 
 [splunk]: #splunk
@@ -70,6 +71,7 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [debug_metrics]: #debug_metrics
 
 {{< /docs/alloy-config >}}
@@ -174,6 +176,10 @@ The `sending_queue` block configures an in-memory buffer of batches before data 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `retry_on_failure`
 

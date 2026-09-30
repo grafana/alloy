@@ -114,6 +114,7 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
 | [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
 | `sending_queue` > [`batch`][batch]                        | Configures batching requests based on a timeout and a minimum number of items.    | no       |
+| `sending_queue` > `batch` > [`partition`][partition]       | Configures partitioning of batches by client metadata.                              | no       |
 | [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
 | [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
 
@@ -130,6 +131,7 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 [keepalive]: #keepalive
 [queue]: #queue
 [batch]: #batch
+[partition]: #partition
 [retry]: #retry
 [debug_metrics]: #debug_metrics
 
@@ -318,6 +320,10 @@ The `queue` block configures an in-memory buffer of batches before data is sent 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `retry`
 
