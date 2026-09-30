@@ -74,12 +74,13 @@ Make sure you have the following tools:
 1. Optional: Build the {{< param "PRODUCT_NAME" >}} Docker image.
 
    ```shell
-   make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>:<TAG>
+   make alloy-image ALLOY_IMAGE=<REGISTRY>/<IMAGE_NAME>:<TAG>
    ```
+
+   Set `ALLOY_IMAGE` to your own registry and image name.
 
    Replace the following:
 
-   - _`<ALLOY_IMAGE>`_: Your image repository and image name. If you don't set _`<ALLOY_IMAGE>`_, the build defaults to `grafana/alloy:latest`.
    - _`<REGISTRY>`_: Your container registry.
    - _`<IMAGE_NAME>`_: Your image name.
    - _`<TAG>`_: Your image tag.
