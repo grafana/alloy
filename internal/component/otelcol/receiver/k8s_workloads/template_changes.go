@@ -20,18 +20,16 @@ type templateChange struct {
 	After     *string `json:"after,omitempty"`
 }
 
-func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []templateChange) {
+func templateChanges(before, after corev1.PodTemplateSpec) []templateChange {
 	changes := []templateChange{}
-	types := map[string]bool{}
-	add := func(kind string, change templateChange) {
-		types[kind] = true
+	add := func(change templateChange) {
 		changes = append(changes, change)
 	}
 	for _, field := range changedFields(before.ObjectMeta, after.ObjectMeta) {
-		add("configuration", templateChange{Field: "metadata." + field, Operation: "modified"})
+		add(templateChange{Field: "metadata." + field, Operation: "modified"})
 	}
 	for _, field := range changedFields(before.Spec, after.Spec, "containers", "initContainers") {
-		add("configuration", templateChange{Field: "spec." + field, Operation: "modified"})
+		add(templateChange{Field: "spec." + field, Operation: "modified"})
 	}
 	containers := func(old, next []corev1.Container, init bool) {
 		oldByName, nextByName := map[string]corev1.Container{}, map[string]corev1.Container{}
@@ -62,9 +60,9 @@ func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []template
 				if !exists {
 					operation = "removed"
 				}
-				add("container", templateChange{Container: name, Init: init, Field: "container", Operation: operation})
+				add(templateChange{Container: name, Init: init, Field: "container", Operation: operation})
 			}
-			change := func(kind, field string, before, after *string) {
+			change := func(field string, before, after *string) {
 				operation := "modified"
 				if before == nil && after != nil {
 					operation = "added"
@@ -72,7 +70,7 @@ func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []template
 				if before != nil && after == nil {
 					operation = "removed"
 				}
-				add(kind, templateChange{Container: name, Init: init, Field: field, Operation: operation, Before: before, After: after})
+				add(templateChange{Container: name, Init: init, Field: field, Operation: operation, Before: before, After: after})
 			}
 			if previous.Image != current.Image {
 				var a, b *string
@@ -82,7 +80,7 @@ func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []template
 				if exists {
 					b = &current.Image
 				}
-				change("image", "image", a, b)
+				change("image", a, b)
 			}
 			resourceChanges := func(field string, a, b corev1.ResourceList) {
 				keys := map[corev1.ResourceName]bool{}
@@ -112,16 +110,16 @@ func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []template
 						value := next.String()
 						newValue = &value
 					}
-					change("resources", "resources."+field+"."+key, oldValue, newValue)
+					change("resources."+field+"."+key, oldValue, newValue)
 				}
 			}
 			resourceChanges("requests", previous.Resources.Requests, current.Resources.Requests)
 			resourceChanges("limits", previous.Resources.Limits, current.Resources.Limits)
 			for _, field := range changedFields(previous.Resources, current.Resources, "requests", "limits") {
-				change("resources", "resources."+field, nil, nil)
+				change("resources."+field, nil, nil)
 			}
 			for _, field := range changedFields(previous, current, "name", "image", "resources") {
-				change("configuration", field, nil, nil)
+				change(field, nil, nil)
 			}
 		}
 		if sameNames && !equality.Semantic.DeepEqual(oldOrder, nextOrder) {
@@ -129,17 +127,12 @@ func templateChanges(before, after corev1.PodTemplateSpec) ([]string, []template
 			if init {
 				field = "spec.initContainers.order"
 			}
-			add("container", templateChange{Field: field, Operation: "modified"})
+			add(templateChange{Field: field, Operation: "modified"})
 		}
 	}
 	containers(before.Spec.Containers, after.Spec.Containers, false)
 	containers(before.Spec.InitContainers, after.Spec.InitContainers, true)
-	kinds := make([]string, 0, len(types))
-	for kind := range types {
-		kinds = append(kinds, kind)
-	}
-	sort.Strings(kinds)
-	return kinds, changes
+	return changes
 }
 
 // Report only top-level API field names for redacted structs. This covers new

@@ -197,7 +197,8 @@ A template change while paused starts a rollout only after the controller applie
 ### Change summaries
 
 The `started` body includes `changes_known`, which indicates whether a previous template is available for comparison.
-When available, `change_types` contains any of `image`, `resources`, `container`, and `configuration`, and `changes` describes the changed fields.
+When a previous template is available, `changes` describes the changed fields.
+Consumers can classify these differences according to their own requirements.
 Empty change lists are omitted.
 The baseline is the previously observed rollout template; changes aren't reconstructed from historical ReplicaSets.
 
@@ -213,7 +214,6 @@ For example, an image update and a CPU request increase produce these change fie
 ```json
 {
   "changes_known": true,
-  "change_types": ["image", "resources"],
   "changes": [
     {"container": "api", "field": "image", "operation": "modified", "before": "api:v1", "after": "api:v2"},
     {"container": "api", "field": "resources.requests.cpu", "operation": "modified", "before": "250m", "after": "500m"}

@@ -117,14 +117,14 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	}
 	if !exists || revision != previous.revision {
 		if exists && previous.revision > 0 && previous.status != rolloutSucceeded {
-			c.enqueue(d, previous, rolloutSuperseded, revision, nil, nil, false)
+			c.enqueue(d, previous, rolloutSuperseded, revision, nil, false)
 		}
-		kinds, changes := []string{}, []templateChange{}
+		changes := []templateChange{}
 		if exists {
-			kinds, changes = templateChanges(previous.template, d.Spec.Template)
+			changes = templateChanges(previous.template, d.Spec.Template)
 		}
 		previous = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
-		c.enqueue(d, previous, rolloutStarted, 0, kinds, changes, exists)
+		c.enqueue(d, previous, rolloutStarted, 0, changes, exists)
 	}
 	status := rolloutStatus(d)
 	// Success closes a rollout permanently; later availability/scaling changes
@@ -132,11 +132,11 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	if previous.status != rolloutSucceeded {
 		switch status {
 		case rolloutSucceeded:
-			c.enqueue(d, previous, rolloutSucceeded, 0, nil, nil, false)
+			c.enqueue(d, previous, rolloutSucceeded, 0, nil, false)
 			previous.status = status
 		case rolloutStalled:
 			if !previous.stalled {
-				c.enqueue(d, previous, rolloutStalled, 0, nil, nil, false)
+				c.enqueue(d, previous, rolloutStalled, 0, nil, false)
 				previous.stalled = true
 			}
 			previous.status = status

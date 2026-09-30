@@ -36,6 +36,9 @@ func take(t *testing.T, c *controller, status string) (*eventBatch, rolloutEvent
 	c.queue.Done(event)
 	record := event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
 	require.Equal(t, eventPrefix+status, record.EventName())
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &fields))
+	require.NotContains(t, fields, "change_types")
 	var payload rolloutEvent
 	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &payload))
 	require.Equal(t, status, payload.Status)
@@ -74,7 +77,8 @@ func TestRolloutLifecycle(t *testing.T) {
 	c.observe(d, false)
 	_, started := take(t, c, "started")
 	require.Equal(t, int64(2), started.Revision)
-	require.Equal(t, []string{"image"}, started.ChangeTypes)
+	require.Len(t, started.Changes, 1)
+	require.Equal(t, "image", started.Changes[0].Field)
 	require.True(t, *started.ChangesKnown)
 	c.observe(d, false)
 	require.Zero(t, c.queue.Len())

@@ -21,8 +21,7 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	next.Spec.Containers[0].Args = []string{"secret-arg"}
 	next.Annotations = map[string]string{"token": "secret-annotation"}
 	next.Spec.Volumes = []corev1.Volume{{Name: "private", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-volume"}}}}
-	kinds, changes := templateChanges(*old, *next)
-	require.Equal(t, []string{"configuration", "image", "resources"}, kinds)
+	changes := templateChanges(*old, *next)
 	byField := map[string]templateChange{}
 	for _, change := range changes {
 		byField[change.Field] = change
@@ -43,7 +42,7 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(encoded), "secret-")
 	// Removing a resource preserves its previous value and absence of a new value.
-	_, reverse := templateChanges(*next, *old)
+	reverse := templateChanges(*next, *old)
 	for _, change := range reverse {
 		if change.Field == "resources.limits.memory" {
 			require.Equal(t, "removed", change.Operation)
@@ -54,8 +53,7 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	// Canonically equivalent quantities don't appear as changes.
 	equivalent := old.DeepCopy()
 	equivalent.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU] = resource.MustParse("0.25")
-	kinds, changes = templateChanges(*old, *equivalent)
-	require.Empty(t, kinds)
+	changes = templateChanges(*old, *equivalent)
 	require.Empty(t, changes)
 }
 
@@ -66,7 +64,7 @@ func TestTemplateChangesContainers(t *testing.T) {
 	next := old.DeepCopy()
 	next.Spec.InitContainers[0].Image = "setup:v2"
 	next.Spec.Containers = []corev1.Container{{Name: "replacement", Image: "app:v1"}}
-	_, changes := templateChanges(*old, *next)
+	changes := templateChanges(*old, *next)
 	require.Contains(t, changes, templateChange{Container: "app", Field: "container", Operation: "removed"})
 	require.Contains(t, changes, templateChange{Container: "replacement", Field: "container", Operation: "added"})
 	found := false
@@ -83,7 +81,6 @@ func TestTemplateChangesContainers(t *testing.T) {
 	old.Spec.Containers = append(old.Spec.Containers, corev1.Container{Name: "sidecar", Image: "sidecar:v1"})
 	next = old.DeepCopy()
 	next.Spec.Containers[0], next.Spec.Containers[1] = next.Spec.Containers[1], next.Spec.Containers[0]
-	kinds, changes := templateChanges(*old, *next)
-	require.Equal(t, []string{"container"}, kinds)
+	changes = templateChanges(*old, *next)
 	require.Equal(t, []templateChange{{Field: "spec.containers.order", Operation: "modified"}}, changes)
 }

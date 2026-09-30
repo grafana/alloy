@@ -40,11 +40,10 @@ type rolloutEvent struct {
 	SupersededBy string             `json:"superseded_by,omitempty"`
 	Containers   []rolloutContainer `json:"containers"`
 	ChangesKnown *bool              `json:"changes_known,omitempty"`
-	ChangeTypes  []string           `json:"change_types,omitempty"`
 	Changes      []templateChange   `json:"changes,omitempty"`
 }
 
-func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, kinds []string, changes []templateChange, known bool) {
+func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, changes []templateChange, known bool) {
 	now := c.now()
 	rolloutID := func(revision int64) string {
 		return stableID(c.opts.clusterUID, string(d.UID), strconv.FormatInt(revision, 10))
@@ -61,7 +60,6 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 	}
 	if status == rolloutStarted {
 		payload.ChangesKnown = &known
-		payload.ChangeTypes = kinds
 		payload.Changes = changes
 	}
 	encoded, err := json.Marshal(payload)
