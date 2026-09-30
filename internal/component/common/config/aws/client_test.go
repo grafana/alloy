@@ -163,14 +163,66 @@ func TestLoadConfig_ExplicitRegionSkipsIMDS(t *testing.T) {
 	require.Zero(t, requests.Load())
 }
 
-func TestLoadConfig_IMDSDisabledKeepsEmptyRegion(t *testing.T) {
+func TestLoadConfig_NoRegionFails(t *testing.T) {
 	require.NoError(t, isolateAWSEnv(t))
 	endpoint, requests := fakeIMDS(t, "ap-southeast-2")
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
 	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
 
+	_, err := Client{}.LoadConfig(context.Background())
+	require.ErrorContains(t, err, "no AWS region: set client.region, AWS_REGION, or AWS_DEFAULT_REGION: EC2 instance metadata lookup: ")
+	require.Zero(t, requests.Load())
+}
+
+func TestLoadConfig_NoRegionFromIMDSFails(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	endpoint, _ := fakeIMDS(t, "")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "false")
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
+
+	// The SDK reports an empty region from IMDS as an error.
+	_, err := Client{}.LoadConfig(context.Background())
+	require.ErrorContains(t, err, "no AWS region: set client.region, AWS_REGION, or AWS_DEFAULT_REGION: EC2 instance metadata lookup: ")
+	require.ErrorContains(t, err, "did not return a region")
+}
+
+// TestLoadConfig_IMDSRegionReachesCredentialProviders checks that a profile
+// AssumeRole signs its STS call with the region from IMDS.
+func TestLoadConfig_IMDSRegionReachesCredentialProviders(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	endpoint, _ := fakeIMDS(t, "ap-southeast-2")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "false")
+	t.Setenv("AWS_EC2_METADATA_SERVICE_ENDPOINT", endpoint)
+
+	var auth atomic.String
+	sts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth.Store(r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "text/xml")
+		_, _ = w.Write([]byte(`<AssumeRoleResponse><AssumeRoleResult><Credentials>` +
+			`<AccessKeyId>ROLEKEY</AccessKeyId><SecretAccessKey>S</SecretAccessKey><SessionToken>T</SessionToken>` +
+			`<Expiration>2099-01-01T00:00:00Z</Expiration></Credentials></AssumeRoleResult></AssumeRoleResponse>`))
+	}))
+	t.Cleanup(sts.Close)
+	t.Setenv("AWS_ENDPOINT_URL_STS", sts.URL)
+
+	configFile := filepath.Join(t.TempDir(), "config")
+	require.NoError(t, os.WriteFile(configFile, []byte(`[profile role]
+role_arn = arn:aws:iam::123456789012:role/alloy
+source_profile = base
+
+[profile base]
+aws_access_key_id = AKID
+aws_secret_access_key = SECRET
+`), 0o600))
+	t.Setenv("AWS_CONFIG_FILE", configFile)
+	t.Setenv("AWS_PROFILE", "role")
+
 	cfg, err := Client{}.LoadConfig(context.Background())
 	require.NoError(t, err)
-	require.Empty(t, cfg.Region)
-	require.Zero(t, requests.Load())
+	require.Equal(t, "ap-southeast-2", cfg.Region)
+
+	creds, err := cfg.Credentials.Retrieve(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "ROLEKEY", creds.AccessKeyID)
+	require.Contains(t, auth.Load(), "/ap-southeast-2/sts/aws4_request")
 }

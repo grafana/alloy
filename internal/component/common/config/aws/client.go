@@ -71,7 +71,21 @@ func (c Client) LoadConfig(ctx context.Context) (awssdk.Config, error) {
 	// LoadDefaultConfig does not read the region from IMDS. Do the lookup here,
 	// because config.WithEC2IMDSRegion fails on hosts that are not EC2.
 	if cfg.Region == "" {
-		cfg.Region = imdsRegion(ctx, cfg)
+		region, imdsErr := imdsRegion(ctx, cfg)
+		if region == "" {
+			msg := "no AWS region: set client.region, AWS_REGION, or AWS_DEFAULT_REGION"
+			if imdsErr != nil {
+				return awssdk.Config{}, fmt.Errorf("%s: EC2 instance metadata lookup: %w", msg, imdsErr)
+			}
+			return awssdk.Config{}, errors.New(msg)
+		}
+		// Load again, because the credential providers copy the region when
+		// LoadDefaultConfig makes them. Without it, web identity and profile
+		// AssumeRole call STS with no region.
+		cfg, err = config.LoadDefaultConfig(ctx, append(opts, config.WithRegion(region))...)
+		if err != nil {
+			return awssdk.Config{}, fmt.Errorf("loading AWS config: %w", err)
+		}
 	}
 
 	if ar := c.AssumeRole; ar != nil {
@@ -100,13 +114,13 @@ func (c Client) BaseEndpoint() *string {
 	return awssdk.String(c.Endpoint)
 }
 
-// imdsRegion returns the region from EC2 instance metadata, or "" if it is not available.
-func imdsRegion(ctx context.Context, cfg awssdk.Config) string {
+// imdsRegion returns the region from EC2 instance metadata.
+func imdsRegion(ctx context.Context, cfg awssdk.Config) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, imdsRegionTimeout)
 	defer cancel()
 	out, err := imds.NewFromConfig(cfg).GetRegion(ctx, &imds.GetRegionInput{})
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return out.Region
+	return out.Region, nil
 }
