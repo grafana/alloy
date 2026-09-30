@@ -49,11 +49,11 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	require.ErrorIs(t, err, firstErr)
 	require.ErrorIs(t, err, lastErr)
 
-	firstStreams := collectStreams(&firstBatch)
+	firstStreams := firstBatch.Streams()
 	require.Equal(t, bar, firstStreams[0].Labels)
 	require.Equal(t, "mutated by first", firstStreams[0].Entries[0].Line)
 
-	lastStreams := collectStreams(&lastBatch)
+	lastStreams := lastBatch.Streams()
 	require.Equal(t, foo, lastStreams[0].Labels)
 	require.Equal(t, "original", lastStreams[0].Entries[0].Line)
 }
