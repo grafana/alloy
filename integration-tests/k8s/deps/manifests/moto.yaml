@@ -69,4 +69,7 @@ spec:
               until aws --endpoint-url http://moto:5000 secretsmanager list-secrets >/dev/null 2>&1; do sleep 1; done
               aws --endpoint-url http://moto:5000 secretsmanager create-secret \
                 --name alloy-integration-test \
+                --secret-string '{"test_name":"remote-aws-secrets-manager"}' \
+                || aws --endpoint-url http://moto:5000 secretsmanager put-secret-value \
+                --secret-id alloy-integration-test \
                 --secret-string '{"test_name":"remote-aws-secrets-manager"}'
