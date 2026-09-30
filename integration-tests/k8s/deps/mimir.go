@@ -157,20 +157,24 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 
 // withTestName adds the alloy_test_name matcher to a metric selector. The metric
 // is a bare name or a name with label matchers, so callers can select by label.
-func withTestName(metric, testName string) string {
+// It returns an error if the metric contains `{` but does not end with `}`,
+// or if it ends with `,}`.
+func withTestName(metric, testName string) (string, error) {
 	matcher := testNameLabel + "=\"" + testName + "\""
 	if !strings.Contains(metric, "{") {
-		return metric + "{" + matcher + "}"
+		return metric + "{" + matcher + "}", nil
 	}
 	if !strings.HasSuffix(metric, "}") {
-		// Other selector forms are not supported. Return them as given.
-		return metric
+		return "", fmt.Errorf("unsupported selector %q: contains { but does not end with }", metric)
 	}
 	body := strings.TrimSuffix(metric, "}")
-	if strings.HasSuffix(body, "{") {
-		return body + matcher + "}"
+	if strings.HasSuffix(body, ",") {
+		return "", fmt.Errorf("unsupported selector %q: ends with ,}", metric)
 	}
-	return body + "," + matcher + "}"
+	if strings.HasSuffix(body, "{") {
+		return body + matcher + "}", nil
+	}
+	return body + "," + matcher + "}", nil
 }
 
 // instantValues runs an instant query for metric, scoped to testName, and
@@ -180,8 +184,12 @@ func (m *Mimir) instantValues(c *assert.CollectT, metric, testName string) ([]fl
 	if err != nil {
 		return nil, err
 	}
+	query, err := withTestName(metric, testName)
+	if err != nil {
+		return nil, err
+	}
 	values := queryURL.Query()
-	values.Set("query", withTestName(metric, testName))
+	values.Set("query", query)
 	queryURL.RawQuery = values.Encode()
 	resp := curl(c, queryURL.String(), nil)
 
