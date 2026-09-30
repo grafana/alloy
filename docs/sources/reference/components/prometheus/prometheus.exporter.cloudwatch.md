@@ -69,7 +69,7 @@ To retrieve the AWS account alias, the exporter requires the following IAM permi
 Without this permission, {{< param "PRODUCT_NAME" >}} logs a `Couldn't get account alias` warning on each scrape and omits the label.
 Metric collection continues normally.
 
-To use all of the component's features, use the following AWS IAM policy:
+The following AWS IAM policy grants every permission the exporter needs for its own AWS API calls:
 
 ```json
 {
@@ -98,11 +98,14 @@ To use all of the component's features, use the following AWS IAM policy:
 }
 ```
 
+The [`role`][role] block also requires the source credentials to have `sts:AssumeRole` permission on each target role.
+
 [AWS SDK for Go]: https://aws.github.io/aws-sdk-go-v2/docs/getting-started/
 [AWS default credential chain]: https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-credentials
 [Transit Gateway]: https://aws.amazon.com/transit-gateway/
 [API Gateway]: https://aws.amazon.com/api-gateway/
 [Database Migration Service]: https://aws.amazon.com/dms/
+[role]: #role
 
 ## Usage
 
@@ -284,7 +287,8 @@ When you set both, {{< param "PRODUCT_NAME" >}} calls the CloudWatch APIs as fol
 
 When metrics in the same `custom_namespace`, `discovery`, or `static` job use different `period` or `length` values, {{< param "PRODUCT_NAME" >}} takes the minimum of all periods and the maximum of all lengths.
 
-When you don't set `length`, {{< param "PRODUCT_NAME" >}} derives both the period and the length from the required `period` attribute.
+When you don't set `length`, {{< param "PRODUCT_NAME" >}} sets it to the metric's `period`.
+If you don't set `period` either, both default to `5m`.
 
 When you don't set `length` and every metric in a job uses the same `period`, {{< param "PRODUCT_NAME" >}} requests metrics from the scrape time back to `period` seconds earlier.
 It then exports those values to Prometheus.
