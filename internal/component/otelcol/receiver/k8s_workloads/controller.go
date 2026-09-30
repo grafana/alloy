@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -35,10 +36,15 @@ type rolloutState struct {
 }
 
 type controller struct {
-	opts     controllerOptions
-	rollouts map[string]rolloutState
-	queue    workqueue.TypedRateLimitingInterface[*eventBatch]
-	now      func() time.Time
+	mu          sync.Mutex
+	pods        map[string]*corev1.Pod
+	replicaSets map[string]*appsv1.ReplicaSet
+	collections map[string]*imageCollection
+	imageQueue  workqueue.TypedRateLimitingInterface[*imageCollection]
+	opts        controllerOptions
+	rollouts    map[string]rolloutState
+	queue       workqueue.TypedRateLimitingInterface[*eventBatch]
+	now         func() time.Time
 }
 
 func newController(opts controllerOptions) *controller {
@@ -48,11 +54,12 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
 	defer c.queue.ShutDown()
+	defer c.imageQueue.ShutDown()
 	if c.opts.clusterUID == "" {
 		ns, err := c.opts.client.CoreV1().Namespaces().Get(ctx, metav1.NamespaceSystem, metav1.GetOptions{})
 		if err != nil {
@@ -61,6 +68,11 @@ func (c *controller) run(ctx context.Context) error {
 		c.opts.clusterUID = string(ns.UID)
 	}
 	factory := informers.NewSharedInformerFactory(c.opts.client, 0)
+	pods := factory.Core().V1().Pods().Informer()
+	replicaSets := factory.Apps().V1().ReplicaSets().Informer()
+	if err := c.watchImages(pods, replicaSets); err != nil {
+		return err
+	}
 	deployments := factory.Apps().V1().Deployments().Informer()
 	_, err := deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
 		AddFunc:    func(obj any, initial bool) { c.observe(obj.(*appsv1.Deployment), initial) },
@@ -70,7 +82,10 @@ func (c *controller) run(ctx context.Context) error {
 				obj = tombstone.Obj
 			}
 			if d, ok := obj.(*appsv1.Deployment); ok {
+				c.mu.Lock()
 				delete(c.rollouts, string(d.UID))
+				delete(c.collections, string(d.UID))
+				c.mu.Unlock()
 			}
 		},
 	})
@@ -79,10 +94,14 @@ func (c *controller) run(ctx context.Context) error {
 	}
 	factory.Start(ctx.Done())
 	defer factory.Shutdown()
-	if !cache.WaitForCacheSync(ctx.Done(), deployments.HasSynced) {
+	if !cache.WaitForCacheSync(ctx.Done(), deployments.HasSynced, pods.HasSynced, replicaSets.HasSynced) {
 		return fmt.Errorf("sync Deployment watch")
 	}
-	go func() { <-ctx.Done(); c.queue.ShutDown() }()
+	go func() { <-ctx.Done(); c.queue.ShutDown(); c.imageQueue.ShutDown() }()
+	var workers sync.WaitGroup
+	workers.Add(1)
+	go func() { defer workers.Done(); c.resolveImages(ctx) }()
+	defer workers.Wait()
 	c.opts.logger.Info("Kubernetes Deployment rollout watcher ready")
 	for {
 		event, shutdown := c.queue.Get()
@@ -101,6 +120,8 @@ func (c *controller) run(ctx context.Context) error {
 // Informer handlers serialize state updates. Revisions are assigned by the
 // Deployment controller, unlike generation which also changes during scaling.
 func (c *controller) observe(d *appsv1.Deployment, initial bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	uid := string(d.UID)
 	previous, exists := c.rollouts[uid]
 	revision, _ := strconv.ParseInt(d.Annotations[revisionAnnotation], 10, 64)
@@ -118,6 +139,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	if !exists || revision != previous.revision {
 		if exists && previous.revision > 0 && previous.status != rolloutSucceeded {
 			c.enqueue(d, previous, rolloutSuperseded, revision, nil, false)
+			c.closeImages(d, false)
 		}
 		changes := []templateChange{}
 		if exists {
@@ -125,6 +147,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 		}
 		previous = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
 		c.enqueue(d, previous, rolloutStarted, 0, changes, exists)
+		c.openImages(d, previous)
 	}
 	status := rolloutStatus(d)
 	// Success closes a rollout permanently; later availability/scaling changes
@@ -133,6 +156,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 		switch status {
 		case rolloutSucceeded:
 			c.enqueue(d, previous, rolloutSucceeded, 0, nil, false)
+			c.closeImages(d, true)
 			previous.status = status
 		case rolloutStalled:
 			if !previous.stalled {

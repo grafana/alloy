@@ -14,5 +14,8 @@ alloy:
 rbac:
   rules:
     - apiGroups: ["apps"]
-      resources: ["deployments"]
+      resources: ["deployments", "replicasets"]
+      verbs: ["list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods"]
       verbs: ["list", "watch"]

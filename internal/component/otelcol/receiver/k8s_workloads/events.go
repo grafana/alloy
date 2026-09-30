@@ -62,6 +62,10 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 		payload.ChangesKnown = &known
 		payload.Changes = changes
 	}
+	c.enqueuePayload(d, status, payload.RolloutID, now, payload)
+}
+
+func (c *controller) enqueuePayload(d *appsv1.Deployment, kind, rolloutID string, now time.Time, payload any) {
 	encoded, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)
@@ -79,11 +83,11 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 	sl := rl.ScopeLogs().AppendEmpty()
 	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
 	record := sl.LogRecords().AppendEmpty()
-	record.SetEventName(eventPrefix + status)
+	record.SetEventName(eventPrefix + kind)
 	record.SetTimestamp(pcommon.NewTimestampFromTime(now))
 	record.SetObservedTimestamp(record.Timestamp())
 	record.SetSeverityNumber(plog.SeverityNumberInfo)
-	id := stableID(payload.RolloutID, status)
+	id := stableID(rolloutID, kind)
 	record.Attributes().PutStr("grafana.sdlc.event.id", id)
 	record.Attributes().PutInt("grafana.sdlc.schema.version", 1)
 	record.Body().SetStr(string(encoded))

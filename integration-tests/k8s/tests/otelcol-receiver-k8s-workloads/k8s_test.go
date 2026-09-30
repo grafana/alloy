@@ -41,13 +41,20 @@ func TestK8sWorkloads(t *testing.T) {
 	waitEvent(t, func(e rolloutEvent) bool {
 		return e.name == "deployment.rollout.succeeded" && e.body["rollout_id"] == first.body["rollout_id"]
 	})
+	images := waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == first.body["rollout_id"]
+	})
+	require.Equal(t, true, images.body["complete"])
+	containers := images.body["containers"].([]any)
+	require.NotEmpty(t, containers[0].(map[string]any)["runtime_image_ids"])
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "scale", "deployment/web", "--replicas=2"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "rollout", "status", "deployment/web", "--timeout=90s"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "deployment/web", "app=unavailable.invalid/app:test"))
 	broken := waitEvent(t, func(e rolloutEvent) bool {
 		return e.namespace == workloadNamespace && e.name == "deployment.rollout.started" && e.body["rollout_id"] != first.body["rollout_id"]
 	})
-	require.Equal(t, []any{"image"}, broken.body["change_types"])
+	require.NotContains(t, broken.body, "change_types")
+	require.NotEmpty(t, broken.body["changes"])
 	waitEvent(t, func(e rolloutEvent) bool {
 		return e.name == "deployment.rollout.stalled" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
@@ -58,19 +65,26 @@ func TestK8sWorkloads(t *testing.T) {
 	waitEvent(t, func(e rolloutEvent) bool {
 		return e.name == "deployment.rollout.succeeded" && e.body["rollout_id"] == superseded.body["superseded_by"]
 	})
+	partial := waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == broken.body["rollout_id"]
+	})
+	require.Equal(t, false, partial.body["complete"])
+	waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == superseded.body["superseded_by"]
+	})
 	events, err := readEvents()
 	require.NoError(t, err)
 	owners := map[string]bool{}
 	counts := map[string]int{}
 	for _, e := range events {
-		require.Contains(t, []string{"deployment.rollout.started", "deployment.rollout.succeeded", "deployment.rollout.stalled", "deployment.rollout.superseded"}, e.name)
+		require.Contains(t, []string{"deployment.rollout.started", "deployment.rollout.succeeded", "deployment.rollout.stalled", "deployment.rollout.superseded", "deployment.rollout.images_resolved"}, e.name)
 		if e.namespace == workloadNamespace {
 			owners[e.pod] = true
 			counts[e.name]++
 		}
 	}
 	require.Len(t, owners, 1)
-	require.Equal(t, map[string]int{"deployment.rollout.started": 3, "deployment.rollout.succeeded": 2, "deployment.rollout.stalled": 1, "deployment.rollout.superseded": 1}, counts)
+	require.Equal(t, map[string]int{"deployment.rollout.started": 3, "deployment.rollout.succeeded": 2, "deployment.rollout.stalled": 1, "deployment.rollout.superseded": 1, "deployment.rollout.images_resolved": 3}, counts)
 }
 func deployment(name string, labels map[string]string) map[string]any {
 	return map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": name, "namespace": workloadNamespace, "labels": labels}, "spec": map[string]any{"replicas": 1, "progressDeadlineSeconds": 10, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}

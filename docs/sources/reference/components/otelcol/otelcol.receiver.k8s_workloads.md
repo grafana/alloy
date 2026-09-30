@@ -12,7 +12,8 @@ title: otelcol.receiver.k8s_workloads
 
 `otelcol.receiver.k8s_workloads` emits Kubernetes Deployment rollout events as OpenTelemetry logs.
 It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
-Replica-only scaling doesn't start a rollout.
+Replica-only scaling doesn't start a rollout or open image collection.
+Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
 
 You can specify multiple `otelcol.receiver.k8s_workloads` components by giving them different labels.
 
@@ -138,7 +139,7 @@ If {{< param "PRODUCT_NAME" >}} isn't running in clustered mode, the block has n
 
 ## Kubernetes permissions
 
-The component lists and watches Deployments across all namespaces.
+The component lists and watches Deployments, ReplicaSets, and Pods across all namespaces.
 If `cluster_uid` is empty, it also reads the `kube-system` Namespace once to discover the cluster UID.
 Grant its service account the following permissions:
 
@@ -149,7 +150,10 @@ metadata:
   name: alloy-k8s-workloads
 rules:
   - apiGroups: ["apps"]
-    resources: ["deployments"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
     verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["namespaces"]
@@ -169,7 +173,7 @@ The record timestamp and body `observed_at` are the watcher's observation time, 
 
 ### Rollout events
 
-The component emits only the following event types:
+The component emits the following lifecycle event types:
 
 | Event name | Meaning |
 | --- | --- |
@@ -220,6 +224,32 @@ For example, an image update and a CPU request increase produce these change fie
   ]
 }
 ```
+
+### Resolved container images
+
+The component emits one `grafana.sdlc.k8s.deployment.rollout.images_resolved` event
+when image collection closes for a newly observed rollout.
+Collection opens when a new revision is observed, remains open while stalled, and
+closes on success or supersession. Initial discovery and later replica scaling
+don't open collection.
+
+Pods are associated through their controller ReplicaSet and its Deployment owner
+and revision. The receiver collects distinct runtime image IDs for each regular
+and init container. At closure, bounded API reads collect available identities
+that may not yet have reached the watches. Lifecycle events don't wait for these
+reads. Pods created after the closing observation are excluded.
+
+The body contains `name`, `uid`, `rollout_id`, `revision`, `observed_at`, `complete`,
+and `containers`. Each container has `name`, `init`, `image` (the requested image),
+and `runtime_image_ids` (a sorted array of distinct Kubernetes image IDs).
+`complete` is false on supersession, failed final reads, missing identities,
+insufficient observed Pods, or a zero-replica rollout. The field describes the
+closing observation, not a guarantee that every future replica uses those images.
+
+Runtime image IDs are preserved as reported by Kubernetes. They aren't guaranteed
+to identify the same manifest or index as a build's provenance digest.
+The event ID is deterministic for the rollout; delivery retries preserve its body.
+Later scaling doesn't reopen collection or emit another image event.
 
 ### Delivery behavior
 

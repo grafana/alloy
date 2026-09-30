@@ -27,6 +27,7 @@ func testController(t *testing.T) *controller {
 	t.Helper()
 	c := newController(controllerOptions{clusterUID: "cluster-1", logger: slog.New(slog.NewTextHandler(io.Discard, nil)), now: func() time.Time { return time.Unix(100, 0) }})
 	t.Cleanup(c.queue.ShutDown)
+	t.Cleanup(c.imageQueue.ShutDown)
 	return c
 }
 func take(t *testing.T, c *controller, status string) (*eventBatch, rolloutEvent) {
@@ -195,7 +196,7 @@ func TestDeliveryRetries(t *testing.T) {
 	}
 	require.True(t, c.deliver(t.Context(), event))
 }
-func TestWatcherOnlyUsesDeployments(t *testing.T) {
+func TestWatcherUsesDeploymentReplicaSetAndPodWatches(t *testing.T) {
 	d := deploymentFixture()
 	client := fake.NewClientset(d)
 	received := make(chan plog.Logs, 8)
@@ -206,7 +207,7 @@ func TestWatcherOnlyUsesDeployments(t *testing.T) {
 	go func() { done <- c.run(ctx) }()
 	require.Eventually(t, func() bool {
 		for _, action := range client.Actions() {
-			if action.GetVerb() == "watch" {
+			if action.GetVerb() == "watch" && action.GetResource().Resource == "deployments" {
 				return true
 			}
 		}
@@ -223,7 +224,7 @@ func TestWatcherOnlyUsesDeployments(t *testing.T) {
 		t.Fatal("no rollout event")
 	}
 	for _, action := range client.Actions() {
-		require.Equal(t, "deployments", action.GetResource().Resource)
+		require.Contains(t, []string{"deployments", "replicasets", "pods"}, action.GetResource().Resource)
 	}
 	cancel()
 	require.NoError(t, <-done)
