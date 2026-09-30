@@ -1,0 +1,10 @@
+controller:
+  podLabels:
+    demo-mode: ta-hashing
+alloy:
+  clustering:
+    enabled: false
+rbac:
+  create: false
+serviceAccount:
+  automountServiceAccountToken: false

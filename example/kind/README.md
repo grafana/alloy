@@ -12,13 +12,13 @@
 The main command to get started with is:
 
 ```bash
-task help   # list all available tasks
+task --list   # list all available tasks
 ```
 
 Among other things, you can create a kind cluster, deploy the local Grafana Alloy helm chart, and open k9s with the local kind cluster.
 
 ```bash
-task cluster:create                       # create a kind cluster
+task cluster:up                           # create a single-node kind cluster
 task deploy:alloy-helm                    # deploy the local Grafana Alloy helm chart
 k9s --kubeconfig ./build/kubeconfig.yaml  # open k9s with the local kind cluster
 ```
@@ -36,6 +36,6 @@ $EDITOR example/kind/.env.credentials
 
 ## Scrape allocation demo
 
-Use the [skewed scrape allocation baseline](config/target-allocation/README.md)
-to compare scrape load across clustered Alloy peers. Its target counts, series
-counts, and scrape interval are configurable in one settings file.
+See the [scrape allocation demo](config/target-allocation/README.md).
+Run `task deploy:vanilla` or `task deploy:ta-hashing`; edit the checked-in YAML
+to change the workload. `task cluster:down` removes the cluster.

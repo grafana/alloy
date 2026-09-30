@@ -1,0 +1,13 @@
+controller:
+  podLabels:
+    demo-mode: vanilla
+alloy:
+  clustering:
+    enabled: true
+    name: target-allocation
+  extraArgs: ["--cluster.node-name=$(POD_NAME)"]
+rbac:
+  create: true
+  namespaces: [target-allocation]
+serviceAccount:
+  automountServiceAccountToken: true

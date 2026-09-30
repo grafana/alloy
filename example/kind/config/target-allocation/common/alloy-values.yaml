@@ -1,0 +1,36 @@
+---
+fullnameOverride: alloy-target-allocation
+image:
+  repository: grafana/alloy
+  tag: v1.20.1
+crds:
+  create: false
+controller:
+  type: statefulset
+  replicas: 3
+alloy:
+  enableReporting: false
+  extraEnv:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
+  - name: DEMO_HTTP_REFRESH_INTERVAL
+    value: 10s
+  - name: DEMO_SCRAPE_INTERVAL
+    value: 30s
+  - name: DEMO_RUN_ID
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.labels['demo-mode']
+  envFrom:
+  - secretRef:
+      name: grafana-cloud-metrics
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

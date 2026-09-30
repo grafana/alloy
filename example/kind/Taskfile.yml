@@ -1,88 +1,38 @@
-# Install the task command from here: https://taskfile.dev
-# It's a much more human-friendly version of Makefiles.
-
 version: "3"
-
-dotenv:
-  - .env.credentials
-
+dotenv: [.env.credentials]
 vars:
   KUBECONFIG: build/kubeconfig.yaml
   CLUSTERNAME: alloy-example
-
+env:
+  KUBECONFIG: '{{.KUBECONFIG}}'
+  CLUSTERNAME: '{{.CLUSTERNAME}}'
 tasks:
-  target-allocation:local:
-    desc: Build TA from the operator checkout, load it into the existing cluster, and switch
+  cluster:up:
+    desc: Start the single-node demo cluster (only one kind cluster at a time)
+    cmds: [bash config/target-allocation/cluster.sh up]
+  cluster:down:
+    desc: Delete the demo cluster and stop its workloads
+    cmds: [bash config/target-allocation/cluster.sh down]
+  deploy:vanilla:
+    desc: Deploy Alloy clustering with discovery on every peer
     cmds:
-      - python3 config/target-allocation/local.py --operator-dir '{{.OPERATOR_DIR | default "~/workspace/opentelemetry-operator"}}' --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  target-allocation:switch:
-    desc: Switch Alloy or TA allocation without rebuilding images or changing target pods
-    requires:
-      vars: [MODE]
-    preconditions:
-      - sh: |
-          clusters=$(docker ps --filter label=io.x-k8s.kind.cluster --format '{{`{{.Label "io.x-k8s.kind.cluster"}}`}}') &&
-          test -z "$(printf '%s\n' "$clusters" | grep -vx '{{.CLUSTERNAME}}')"
-        msg: Stop other running kind clusters before switching the demo.
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh vanilla
+  deploy:ta-hashing:
+    desc: Build local TA and deploy consistent hashing with Alloy HTTP discovery
     cmds:
-      - python3 config/target-allocation/demo.py switch --mode '{{.MODE}}' --strategy '{{.STRATEGY | default "consistent-hashing"}}' --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  target-allocation:verify:
-    desc: Verify TA assignments match healthy Alloy scrapes with no mounted Kubernetes token
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh ta-hashing
+  deploy:ta-packing:
+    desc: TODO — size-aware allocation
     cmds:
-      - python3 config/target-allocation/verify.py --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  target-allocation:render:
-    desc: Render the scrape allocation baseline and print its ingestion size
+      - 'echo "TODO: implement the packing strategy first" >&2; exit 1'
+  demo:targets:
+    internal: true
     cmds:
-      - python3 config/target-allocation/demo.py render --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}'
-
-  target-allocation:up:
-    desc: Deploy the skewed clustered Alloy baseline to kind
-    cmds:
-      - task: target-allocation:cluster
+      - bash config/target-allocation/cluster.sh check
       - make -C ../.. prom-gen-image
       - kind load docker-image prom-gen:latest --name {{.CLUSTERNAME}}
-      - python3 config/target-allocation/demo.py up --settings '{{.SETTINGS | default "config/target-allocation/settings.json"}}' --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  target-allocation:cluster:
-    desc: Create a single-node demo cluster, refusing to run alongside another kind cluster
-    preconditions:
-      - sh: |
-          clusters=$(docker ps --filter label=io.x-k8s.kind.cluster --format '{{`{{.Label "io.x-k8s.kind.cluster"}}`}}') &&
-          test -z "$(printf '%s\n' "$clusters" | grep -vx '{{.CLUSTERNAME}}')"
-        msg: Stop other running kind clusters before starting the demo.
-    cmds:
-      - task: cluster:create
-        vars:
-          KIND_CONFIG: config/target-allocation/kind.yaml
-
-  target-allocation:status:
-    desc: Show the scrape allocation demo pods
-    cmds:
-      - python3 config/target-allocation/demo.py status --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  target-allocation:down:
-    desc: Remove the demo namespace and stop Cloud ingestion, keeping kind
-    cmds:
-      - python3 config/target-allocation/demo.py down --kubeconfig '{{.KUBECONFIG}}' --cluster '{{.CLUSTERNAME}}'
-
-  cluster:create:
-    desc: Create a kind cluster
-    run: once
-    status:
-      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
-    cmds:
-      - mkdir -p build
-      - kind create cluster --config '{{.KIND_CONFIG | default "config/kind/multinode.yaml"}}' --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
-
-  cluster:delete:
-    desc: Delete the kind cluster
-    run: once
-    cmds:
-      - kind delete cluster --name {{.CLUSTERNAME}}
-      - rm -rf {{.KUBECONFIG}}
 
   update-helm-repos:
     desc: Update helm repositories
@@ -94,7 +44,7 @@ tasks:
 
   deploy:alloy-helm:
     desc: Deploy local Grafana Alloy helm chart
-    deps: [cluster:create]
+    deps: [cluster:up]
     vars:
       ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
       ALLOY_CHART_PATH: '{{.TASK_DIR}}/../../operations/helm/charts/alloy'
@@ -108,7 +58,7 @@ tasks:
 
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart
-    deps: [cluster:create, update-helm-repos]
+    deps: [cluster:up, update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
         -n monitoring --create-namespace
@@ -121,7 +71,7 @@ tasks:
 
   deploy:otelcol:
     desc: Deploy OpenTelemetry Collector helm chart using Alloy OTel Engine
-    deps: [cluster:create, update-helm-repos]
+    deps: [cluster:up, update-helm-repos]
     vars:
       OTELCOL_VALUES_FILE: '{{.OTELCOL_VALUES_FILE | default "config/otelcol-helm/values.yaml"}}'
     preconditions:
