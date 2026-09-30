@@ -553,6 +553,59 @@ func TestRun_StopsWhileFetchBlocked(t *testing.T) {
 	}
 }
 
+// secretServer serves one GetSecretValue response and counts requests.
+func secretServer(t *testing.T) (url string, requests *atomic.Int32) {
+	requests = &atomic.Int32{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Content-Type", "application/x-amz-json-1.1")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"ARN":          "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf",
+			"Name":         "prod/db",
+			"SecretString": `{"username":"u"}`,
+			"VersionId":    "v1",
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL, requests
+}
+
+// isolateAWSEnv stops the host AWS environment from leaking into the tests.
+func isolateAWSEnv(t *testing.T) error {
+	empty := filepath.Join(t.TempDir(), "empty")
+	if err := os.WriteFile(empty, nil, 0o600); err != nil {
+		return err
+	}
+	for k, v := range map[string]string{
+		"AWS_CONFIG_FILE":                  empty,
+		"AWS_SHARED_CREDENTIALS_FILE":      empty,
+		"AWS_PROFILE":                      "",
+		"AWS_EC2_METADATA_DISABLED":        "true",
+		"AWS_ENDPOINT_URL":                 "",
+		"AWS_ENDPOINT_URL_SECRETS_MANAGER": "",
+	} {
+		t.Setenv(k, v)
+	}
+	return nil
+}
+
+func TestNewSDKClient_EndpointFromEnv(t *testing.T) {
+	url, requests := secretServer(t)
+	require.NoError(t, isolateAWSEnv(t))
+	t.Setenv("AWS_ENDPOINT_URL_SECRETS_MANAGER", url)
+
+	client, err := newSDKClient(t.Context(), awscommon.Client{
+		Region:    "us-east-1",
+		AccessKey: "AKID",
+		Secret:    "SECRET",
+	})
+	require.NoError(t, err)
+
+	_, err = client.GetSecretValue(t.Context(), testArgs("prod/db", 0).input())
+	require.NoError(t, err)
+	require.Equal(t, int32(1), requests.Load())
+}
+
 // TestNewSDKClient checks the real SDK wiring: endpoint override, static
 // credentials, and the Secrets Manager JSON protocol.
 func TestNewSDKClient(t *testing.T) {
@@ -569,13 +622,7 @@ func TestNewSDKClient(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	// Stop the host AWS environment from leaking into the test.
-	empty := filepath.Join(t.TempDir(), "empty")
-	require.NoError(t, os.WriteFile(empty, nil, 0o600))
-	t.Setenv("AWS_CONFIG_FILE", empty)
-	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", empty)
-	t.Setenv("AWS_PROFILE", "")
-	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	require.NoError(t, isolateAWSEnv(t))
 
 	client, err := newSDKClient(t.Context(), awscommon.Client{
 		Region:    "us-east-1",

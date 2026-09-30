@@ -44,7 +44,11 @@ func newSDKClient(ctx context.Context, c awscommon.Client) (secretsGetter, error
 		return nil, err
 	}
 	return secretsmanager.NewFromConfig(cfg, func(o *secretsmanager.Options) {
-		o.BaseEndpoint = c.BaseEndpoint()
+		// The SDK sets BaseEndpoint from AWS_ENDPOINT_URL* before it calls this function.
+		// Do not replace that value with nil.
+		if endpoint := c.BaseEndpoint(); endpoint != nil {
+			o.BaseEndpoint = endpoint
+		}
 	}), nil
 }
 
