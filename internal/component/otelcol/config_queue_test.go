@@ -7,7 +7,25 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
+	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
+
+func TestBatchConfig_ConvertPartition(t *testing.T) {
+	args := &otelcol.BatchConfig{
+		FlushTimeout: time.Second,
+		MinSize:      10,
+		Sizer:        "items",
+		Partition: &otelcol.BatchPartitionConfig{
+			MetadataKeys: []string{"tenant"},
+		},
+	}
+
+	converted, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, converted.HasValue())
+	require.Equal(t, otelexporterhelper.RequestSizerTypeItems, converted.Get().Sizer)
+	require.Equal(t, []string{"tenant"}, converted.Get().Partition.MetadataKeys)
+}
 
 func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 	tests := []struct {
@@ -56,12 +74,16 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				block_on_overflow = false
 				sizer = "items"
 				wait_for_result = false
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 100
 					max_size = 500
 					sizer = "bytes"
+
+					partition {
+						metadata_keys = ["tenant", "cluster"]
+					}
 				}
 			`,
 			expected: otelcol.QueueArguments{
@@ -76,6 +98,9 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 					MinSize:      100,
 					MaxSize:      500,
 					Sizer:        "bytes",
+					Partition: &otelcol.BatchPartitionConfig{
+						MetadataKeys: []string{"tenant", "cluster"},
+					},
 				},
 			},
 		},
@@ -117,7 +142,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				enabled = true
 				queue_size = 100
 				sizer = "items"
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 200
@@ -130,7 +155,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with invalid sizer",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 100
@@ -144,7 +169,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with invalid flush_timeout",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "0s"
 					min_size = 100
@@ -157,7 +182,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with negative min_size",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = -1
@@ -170,7 +195,7 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			testName: "batch with max_size less than min_size",
 			cfg: `
 				enabled = true
-				
+
 				batch {
 					flush_timeout = "5s"
 					min_size = 200
@@ -179,6 +204,19 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 				}
 			`,
 			errorMsg: "`max_size` must be greater or equal to `min_size`",
+		},
+		{
+			testName: "batch partition with duplicate metadata keys",
+			cfg: `
+				enabled = true
+
+				batch {
+					partition {
+						metadata_keys = ["tenant", "TENANT"]
+					}
+				}
+			`,
+			errorMsg: `duplicate entry in metadata_keys: "tenant" (case-insensitive)`,
 		},
 	}
 
