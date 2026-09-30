@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-29
 title: prometheus.exporter.cloudwatch
 ---
 
@@ -419,7 +420,7 @@ Configure these arguments on each `metric` block instead.
 
 The metrics need to be fully qualified with the following specifications:
 
-1. `namespace`: For example, `AWS/EC2`, `AWS/EBS`, `CoolApp` if it were a custom metric, etc.
+1. `namespace`: For example, `AWS/EC2`, `AWS/EBS`, `CoolApp` if it were a custom metric.
 1. `dimensions`: CloudWatch identifies a metric by a set of dimensions, which are essentially label and value pairs.
    For example, the `InstanceId` dimension and its value identify every `AWS/EC2` metric.
 1. `metric`: Metric name and statistics.
