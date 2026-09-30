@@ -43,7 +43,7 @@ You can use the following arguments with `remote.aws.secrets_manager`:
 | `version_id`     | `string`   | The unique identifier of the secret version to read. |         | no       |
 | `version_stage`  | `string`   | The staging label of the secret version to read.     |         | no       |
 
-Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and when a configuration change succeeds.
+Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and at each configuration change.
 Otherwise, `poll_frequency` must be at least `"1m"`.
 
 With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.

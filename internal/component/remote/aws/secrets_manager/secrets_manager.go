@@ -66,7 +66,7 @@ type Component struct {
 
 	mut    sync.Mutex
 	args   Arguments
-	client secretsGetter // nil when the last client creation failed.
+	client secretsGetter // Client for the current arguments.
 	health component.Health
 	// gen increments at the start of each Update. A fetch drops its result
 	// if gen changed while the fetch ran, because the result is stale.
