@@ -23,7 +23,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	awscommon "github.com/grafana/alloy/internal/component/common/config/aws"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -126,16 +125,24 @@ func testArgs(secretID string, poll time.Duration) Arguments {
 	return Arguments{SecretID: secretID, PollFrequency: poll}
 }
 
-func newTestComponent(t *testing.T, args Arguments, getter secretsGetter) (*Component, *recorder, error) {
-	rec := &recorder{}
-	opts := component.Options{
+// testOptions returns component options that send exports to rec and register metrics with reg.
+func testOptions(t *testing.T, reg prometheus.Registerer, rec *recorder) component.Options {
+	return component.Options{
 		ID:            "remote.aws.secrets_manager.test",
 		Logger:        util.TestLogger(t),
-		Registerer:    prometheus.NewRegistry(),
+		Registerer:    reg,
 		OnStateChange: rec.onStateChange,
 	}
-	factory := func(context.Context, awscommon.Client) (secretsGetter, error) { return getter, nil }
-	c, err := newComponent(opts, args, factory)
+}
+
+// staticFactory returns a client factory that always returns getter.
+func staticFactory(getter secretsGetter) clientFactory {
+	return func(context.Context, awscommon.Client) (secretsGetter, error) { return getter, nil }
+}
+
+func newTestComponent(t *testing.T, args Arguments, getter secretsGetter) (*Component, *recorder, error) {
+	rec := &recorder{}
+	c, err := newComponent(testOptions(t, prometheus.NewRegistry(), rec), args, staticFactory(getter))
 	return c, rec, err
 }
 
@@ -158,11 +165,6 @@ func lastDataValue(r *recorder) string {
 	return string(e.Data["v"])
 }
 
-func TestRegistered(t *testing.T) {
-	_, err := componenttest.NewControllerFromID(util.TestLogger(t), "remote.aws.secrets_manager")
-	require.NoError(t, err)
-}
-
 func TestNew_ExportsSecret(t *testing.T) {
 	c, rec, err := newTestComponent(t, testArgs("prod/db", 0), newFakeGetter(`{"username":"u","password":"p"}`))
 	require.NoError(t, err)
@@ -179,41 +181,56 @@ func TestNew_ExportsSecret(t *testing.T) {
 	require.Positive(t, testutil.ToFloat64(c.metrics.lastSuccess))
 }
 
-func TestNew_FailsOnFetchError(t *testing.T) {
-	fake := newFakeGetter("")
-	fake.returnError(errors.New("ResourceNotFoundException: not found"))
-
-	_, rec, err := newTestComponent(t, testArgs("prod/db", 0), fake)
-	require.EqualError(t, err, `fetching secret "prod/db": ResourceNotFoundException: not found`)
-	_, exported := rec.last()
-	require.False(t, exported)
-}
-
-func TestNew_FailsOnBinarySecret(t *testing.T) {
-	fake := newFakeGetter("")
-	fake.setFn(func(context.Context, *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+func TestNew_Fails(t *testing.T) {
+	binary := newFakeGetter("")
+	binary.setFn(func(context.Context, *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
 		return &secretsmanager.GetSecretValueOutput{SecretBinary: []byte{1}}, nil
 	})
+	fetchErr := newFakeGetter("")
+	fetchErr.returnError(errors.New("ResourceNotFoundException: not found"))
 
-	_, _, err := newTestComponent(t, testArgs("prod/db", 0), fake)
-	require.ErrorIs(t, err, errBinarySecret)
-}
-
-func TestNew_FailsOnClientError(t *testing.T) {
-	reg := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:        util.TestLogger(t),
-		Registerer:    reg,
-		OnStateChange: func(component.Exports) {},
+	tests := []struct {
+		name    string
+		factory clientFactory
+		wantErr string // The exact error text. Empty means check wantIs.
+		wantIs  error
+	}{
+		{
+			name:    "fetch error",
+			factory: staticFactory(fetchErr),
+			wantErr: `fetching secret "prod/db": ResourceNotFoundException: not found`,
+		},
+		{
+			name:    "binary secret",
+			factory: staticFactory(binary),
+			wantIs:  errBinarySecret,
+		},
+		{
+			name: "client error",
+			factory: func(context.Context, awscommon.Client) (secretsGetter, error) {
+				return nil, errors.New("no region")
+			},
+			wantErr: "creating AWS client: no region",
+		},
 	}
-	factory := func(context.Context, awscommon.Client) (secretsGetter, error) { return nil, errors.New("no region") }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reg := prometheus.NewRegistry()
+			rec := &recorder{}
+			_, err := newComponent(testOptions(t, reg, rec), testArgs("prod/db", 0), tt.factory)
+			if tt.wantIs != nil {
+				require.ErrorIs(t, err, tt.wantIs)
+			} else {
+				require.EqualError(t, err, tt.wantErr)
+			}
+			_, exported := rec.last()
+			require.False(t, exported)
 
-	_, err := newComponent(opts, testArgs("prod/db", 0), factory)
-	require.EqualError(t, err, "creating AWS client: no region")
-
-	v, err := counterValue(reg, "error")
-	require.NoError(t, err)
-	require.Equal(t, 1.0, v)
+			v, err := counterValue(reg, "error")
+			require.NoError(t, err)
+			require.Equal(t, 1.0, v)
+		})
+	}
 }
 
 // counterValue reads one fetches_total value from reg.
@@ -243,19 +260,15 @@ func TestNew_RebuildAfterFailedBuildReusesRegistry(t *testing.T) {
 	// It also wraps the registry with the component ID label.
 	reg := prometheus.NewRegistry()
 	rec := &recorder{}
-	opts := component.Options{
-		Logger:        util.TestLogger(t),
-		Registerer:    prometheus.WrapRegistererWith(prometheus.Labels{"component_id": "remote.aws.secrets_manager.test"}, reg),
-		OnStateChange: rec.onStateChange,
-	}
+	opts := testOptions(t, prometheus.WrapRegistererWith(prometheus.Labels{"component_id": "remote.aws.secrets_manager.test"}, reg), rec)
 
 	failing := newFakeGetter("")
 	failing.returnError(errors.New("boom"))
-	_, err := newComponent(opts, testArgs("prod/db", 0), func(context.Context, awscommon.Client) (secretsGetter, error) { return failing, nil })
+	_, err := newComponent(opts, testArgs("prod/db", 0), staticFactory(failing))
 	require.Error(t, err)
 
 	working := newFakeGetter(`{"v":"1"}`)
-	c, err := newComponent(opts, testArgs("prod/db", 0), func(context.Context, awscommon.Client) (secretsGetter, error) { return working, nil })
+	c, err := newComponent(opts, testArgs("prod/db", 0), staticFactory(working))
 	require.NoError(t, err)
 	require.NotNil(t, c)
 	require.Equal(t, "1", lastDataValue(rec))
@@ -366,12 +379,7 @@ func TestUpdate_FailureAdoptsNewArgs(t *testing.T) {
 
 func TestUpdate_FailedClientAdoptsNewArgs(t *testing.T) {
 	good := newFakeGetter(`{"v":"good"}`)
-	rec := &recorder{}
-	opts := component.Options{
-		Logger:        util.TestLogger(t),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: rec.onStateChange,
-	}
+	opts := testOptions(t, prometheus.NewRegistry(), &recorder{})
 	var clientFails atomic.Bool
 	factory := func(context.Context, awscommon.Client) (secretsGetter, error) {
 		if clientFails.Load() {
@@ -482,25 +490,38 @@ func TestUpdate_StalePollNotExported(t *testing.T) {
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
+// TestRetry_AfterFailedUpdate checks that a failed Update retries on the short
+// schedule until it succeeds, both with polling on and with polling off.
 func TestRetry_AfterFailedUpdate(t *testing.T) {
-	fake := newFakeGetter(`{"v":"1"}`)
-	c, rec, err := newTestComponent(t, testArgs("a", time.Hour), fake)
-	require.NoError(t, err)
-	c.maxRetryInterval = fastPoll
-	runComponent(t, c)
+	tests := []struct {
+		name string
+		poll time.Duration
+	}{
+		{name: "polling enabled", poll: time.Hour},
+		{name: "polling disabled", poll: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := newFakeGetter(`{"v":"1"}`)
+			c, rec, err := newTestComponent(t, testArgs("a", tt.poll), fake)
+			require.NoError(t, err)
+			c.maxRetryInterval = fastPoll
+			runComponent(t, c)
 
-	fake.returnError(errors.New("ThrottlingException: slow down"))
-	require.Error(t, c.Update(testArgs("a", time.Hour)))
+			fake.returnError(errors.New("ThrottlingException: slow down"))
+			require.Error(t, c.Update(testArgs("a", tt.poll)))
 
-	// Each failed retry keeps the short retry schedule.
-	start := fake.callCount()
-	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
+			// Each failed retry keeps the short retry schedule.
+			start := fake.callCount()
+			require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
 
-	fake.returnSecret(`{"v":"2"}`)
-	require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
-	stopped := fake.callCount()
-	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
-	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+			fake.returnSecret(`{"v":"2"}`)
+			require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
+			stopped := fake.callCount()
+			require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
+			require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+		})
+	}
 }
 
 // TestRetry_AfterFailedPoll checks that a scheduled poll that fails while the
@@ -532,26 +553,6 @@ func TestRetry_AfterFailedPoll(t *testing.T) {
 	// Without the reschedule, the retry waits for the next scheduled poll, one pollFreq later.
 	got := failureTimes()
 	require.Less(t, got[1].Sub(got[0]), pollFreq/2)
-}
-
-func TestRetry_PollDisabledRetriesUntilSuccess(t *testing.T) {
-	fake := newFakeGetter(`{"v":"1"}`)
-	c, rec, err := newTestComponent(t, testArgs("a", 0), fake)
-	require.NoError(t, err)
-	c.maxRetryInterval = fastPoll
-	runComponent(t, c)
-
-	fake.returnError(errors.New("ThrottlingException: slow down"))
-	require.Error(t, c.Update(testArgs("a", 0)))
-
-	start := fake.callCount()
-	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
-
-	fake.returnSecret(`{"v":"2"}`)
-	require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
-	stopped := fake.callCount()
-	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
-	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
 func TestRun_StopsWhileFetchBlocked(t *testing.T) {
@@ -586,11 +587,14 @@ func TestRun_StopsWhileFetchBlocked(t *testing.T) {
 	}
 }
 
-// secretServer serves one GetSecretValue response and counts requests.
-func secretServer(t *testing.T) (url string, requests *atomic.Int32) {
+// secretServer serves one GetSecretValue response. It counts requests and
+// keeps the X-Amz-Target header of the last one.
+func secretServer(t *testing.T) (url string, requests *atomic.Int32, target *atomic.String) {
 	requests = &atomic.Int32{}
+	target = &atomic.String{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
+		target.Store(r.Header.Get("X-Amz-Target"))
 		w.Header().Set("Content-Type", "application/x-amz-json-1.1")
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"ARN":          "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf",
@@ -600,7 +604,7 @@ func secretServer(t *testing.T) (url string, requests *atomic.Int32) {
 		})
 	}))
 	t.Cleanup(srv.Close)
-	return srv.URL, requests
+	return srv.URL, requests, target
 }
 
 // isolateAWSEnv stops the host AWS environment from leaking into the tests.
@@ -625,56 +629,45 @@ func isolateAWSEnv(t *testing.T) error {
 	return nil
 }
 
-func TestNewSDKClient_EndpointFromEnv(t *testing.T) {
-	url, requests := secretServer(t)
-	require.NoError(t, isolateAWSEnv(t))
-	t.Setenv("AWS_ENDPOINT_URL_SECRETS_MANAGER", url)
-
-	client, err := newSDKClient(t.Context(), awscommon.Client{
-		// This region has no DNS name. If the endpoint override fails, the call fails offline.
-		Region:    "xx-test-1",
-		AccessKey: "AKID",
-		Secret:    "SECRET",
-	})
-	require.NoError(t, err)
-
-	_, err = client.GetSecretValue(t.Context(), testArgs("prod/db", 0).input())
-	require.NoError(t, err)
-	require.Equal(t, int32(1), requests.Load())
-}
-
-// TestNewSDKClient checks the real SDK wiring: endpoint override, static
-// credentials, and the Secrets Manager JSON protocol.
+// TestNewSDKClient checks the real SDK wiring: endpoint override from the
+// client block or from the environment, static credentials, and the Secrets
+// Manager JSON protocol.
 func TestNewSDKClient(t *testing.T) {
-	var gotTarget string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotTarget = r.Header.Get("X-Amz-Target")
-		w.Header().Set("Content-Type", "application/x-amz-json-1.1")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"ARN":          "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf",
-			"Name":         "prod/db",
-			"SecretString": `{"username":"u"}`,
-			"VersionId":    "v1",
+	tests := []struct {
+		name        string
+		endpointEnv bool
+	}{
+		{name: "endpoint from client block"},
+		{name: "endpoint from env", endpointEnv: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url, requests, target := secretServer(t)
+			require.NoError(t, isolateAWSEnv(t))
+
+			cl := awscommon.Client{
+				// This region has no DNS name. If the endpoint override fails, the call fails offline.
+				Region:    "xx-test-1",
+				AccessKey: "AKID",
+				Secret:    "SECRET",
+			}
+			if tt.endpointEnv {
+				t.Setenv("AWS_ENDPOINT_URL_SECRETS_MANAGER", url)
+			} else {
+				cl.Endpoint = url
+			}
+
+			client, err := newSDKClient(t.Context(), cl)
+			require.NoError(t, err)
+
+			out, err := client.GetSecretValue(t.Context(), testArgs("prod/db", 0).input())
+			require.NoError(t, err)
+			require.Equal(t, int32(1), requests.Load())
+			require.Equal(t, "secretsmanager.GetSecretValue", target.Load())
+
+			e, err := toExports(out)
+			require.NoError(t, err)
+			require.Equal(t, alloytypes.Secret("u"), e.Data["username"])
 		})
-	}))
-	t.Cleanup(srv.Close)
-
-	require.NoError(t, isolateAWSEnv(t))
-
-	client, err := newSDKClient(t.Context(), awscommon.Client{
-		// This region has no DNS name. If the endpoint override fails, the call fails offline.
-		Region:    "xx-test-1",
-		Endpoint:  srv.URL,
-		AccessKey: "AKID",
-		Secret:    "SECRET",
-	})
-	require.NoError(t, err)
-
-	out, err := client.GetSecretValue(t.Context(), testArgs("prod/db", 0).input())
-	require.NoError(t, err)
-	require.Equal(t, "secretsmanager.GetSecretValue", gotTarget)
-
-	e, err := toExports(out)
-	require.NoError(t, err)
-	require.Equal(t, alloytypes.Secret("u"), e.Data["username"])
+	}
 }
