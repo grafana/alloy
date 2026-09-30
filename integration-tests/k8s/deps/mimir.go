@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -153,42 +155,93 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 	}, timeout, retryInterval)
 }
 
+// withTestName adds the alloy_test_name matcher to a metric selector. The metric
+// is a bare name or a name with label matchers, so callers can select by label.
+func withTestName(metric, testName string) string {
+	matcher := testNameLabel + "=\"" + testName + "\""
+	if !strings.Contains(metric, "{") {
+		return metric + "{" + matcher + "}"
+	}
+	if !strings.HasSuffix(metric, "}") {
+		// Other selector forms are not supported. Return them as given.
+		return metric
+	}
+	body := strings.TrimSuffix(metric, "}")
+	if strings.HasSuffix(body, "{") {
+		return body + matcher + "}"
+	}
+	return body + "," + matcher + "}"
+}
+
+// instantValues runs an instant query for metric, scoped to testName, and
+// returns the value of every sample. It does not assert on the values, so callers decide what to check.
+func (m *Mimir) instantValues(c *assert.CollectT, metric, testName string) ([]float64, error) {
+	queryURL, err := url.Parse(m.endpoint("/prometheus/api/v1/query"))
+	if err != nil {
+		return nil, err
+	}
+	values := queryURL.Query()
+	values.Set("query", withTestName(metric, testName))
+	queryURL.RawQuery = values.Encode()
+	resp := curl(c, queryURL.String(), nil)
+
+	var parsed instantQueryResponse
+	if err := json.Unmarshal([]byte(resp), &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse query response %q: %w", resp, err)
+	}
+	if parsed.Status != "success" {
+		return nil, fmt.Errorf("mimir query failed: %s", resp)
+	}
+
+	var out []float64
+	for _, result := range parsed.Data.Result {
+		if len(result.Value) != 2 {
+			continue
+		}
+		sample, ok := result.Value[1].(string)
+		if !ok {
+			continue
+		}
+		value, err := strconv.ParseFloat(sample, 64)
+		if err != nil {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out, nil
+}
+
 // QueryPositive polls an instant query for each metric (scoped to testName) and
 // asserts at least one returned sample is greater than zero. It checks a metric
-// is not just present but reports real data.
+// is not just present but reports real data. A metric can include label
+// matchers, such as name{result="success"}.
 func (m *Mimir) QueryPositive(t *testing.T, testName string, metrics []string) {
 	t.Helper()
-	base := m.endpoint("/prometheus/api/v1/query")
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		for _, metric := range metrics {
-			queryURL, err := url.Parse(base)
-			require.NoError(c, err)
-			values := queryURL.Query()
-			values.Set("query", metric+"{"+testNameLabel+"=\""+testName+"\"}")
-			queryURL.RawQuery = values.Encode()
-			resp := curl(c, queryURL.String(), nil)
+			values, err := m.instantValues(c, metric, testName)
+			require.NoErrorf(c, err, "%s: %v", metric, err)
+			require.NotEmptyf(c, values, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+			require.Greaterf(c, slices.Max(values), 0.0, "%s: expected a positive sample", metric)
+		}
+	}, timeout, retryInterval)
+}
 
-			var parsed instantQueryResponse
-			require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse query response: %s", resp)
-			require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
-			require.NotEmptyf(c, parsed.Data.Result, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+// QueryZero polls an instant query for each metric (scoped to testName) and
+// asserts the metric has at least one sample and every sample is zero. A metric
+// can include label matchers, such as name{result="error"}.
+func (m *Mimir) QueryZero(t *testing.T, testName string, metrics []string) {
+	t.Helper()
 
-			var maxValue float64
-			for _, result := range parsed.Data.Result {
-				if len(result.Value) != 2 {
-					continue
-				}
-				sample, ok := result.Value[1].(string)
-				if !ok {
-					continue
-				}
-				value, convErr := strconv.ParseFloat(sample, 64)
-				if convErr == nil && value > maxValue {
-					maxValue = value
-				}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for _, metric := range metrics {
+			values, err := m.instantValues(c, metric, testName)
+			require.NoErrorf(c, err, "%s: %v", metric, err)
+			require.NotEmptyf(c, values, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+			for _, value := range values {
+				require.Equalf(c, 0.0, value, "%s: expected every sample to be zero", metric)
 			}
-			require.Greaterf(c, maxValue, 0.0, "%s: expected a positive sample", metric)
 		}
 	}, timeout, retryInterval)
 }

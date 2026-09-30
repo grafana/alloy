@@ -31,9 +31,13 @@ func TestRemoteAWSSecretsManager(t *testing.T) {
 		"remote_aws_secrets_manager_fetches_total",
 		"remote_aws_secrets_manager_timestamp_last_success_unix_seconds",
 	})
-	// QueryPositive adds its own label selector, so pass the bare metric name.
-	// The check proves only that at least one fetches_total series is positive.
+	// Both calls add the alloy_test_name selector to the metric that they get.
+	// The first fetch at startup succeeds, so a success series is positive.
+	// Both result series exist from the start, so the error series is present and must stay at zero.
 	mimir.QueryPositive(t, testName, []string{
-		"remote_aws_secrets_manager_fetches_total",
+		`remote_aws_secrets_manager_fetches_total{result="success"}`,
+	})
+	mimir.QueryZero(t, testName, []string{
+		`remote_aws_secrets_manager_fetches_total{result="error"}`,
 	})
 }
