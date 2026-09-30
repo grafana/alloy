@@ -209,14 +209,14 @@ You can use the following arguments with the `custom_namespace` block:
 | ----------------------------- | -------------- | -------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
 | `namespace`                   | `string`       | CloudWatch metric namespace.                                                                 |                                  | yes      |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                         |                                  | yes      |
-| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`                             | no       |
-| `delay`                       | `duration`     | Delay the query start time by this duration.                                                 | `0`                              | no       |
-| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
-| `length`                      | `duration`     | Default length for metrics in this job.                                                      | Derived from [`period`][period]. | no       |
-| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, all combinations are queried.    | `[]`                             | no       |
-| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`                           | no       |
-| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                   | `false`                          | no       |
 | `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
+| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`                             | no       |
+| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.    | `0`                              | no       |
+| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, all combinations are queried.    | `[]`                             | no       |
+| `length`                      | `duration`     | Default length for metrics in this job.                                                      | Derived from [`period`][period]. | no       |
+| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`                           | no       |
+| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
+| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                   | `false`                          | no       |
 
 You must give each `custom_namespace` block a label, which becomes the `name` label in the exported metric.
 
@@ -267,7 +267,7 @@ You can use the following arguments with the `metric` block:
 You can configure the `metric` block multiple times to define multiple target metrics.
 Refer to the [View available metrics][] topic in the Amazon CloudWatch documentation for detailed metrics information.
 
-In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, these arguments default to the parent block's value when the parent sets one.
+In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, the `add_cloudwatch_timestamp`, `length`, `nil_to_zero`, and `period` arguments default to the parent block's value when the parent sets one.
 
 [custom_namespace]: #custom_namespace
 [period]: #period-and-length
@@ -344,15 +344,15 @@ You can use the following arguments with the `discovery` block:
 | ----------------------------- | -------------- | -------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
 | `regions`                     | `list(string)` | List of AWS regions.                                                                         |                                  | yes      |
 | `type`                        | `string`       | CloudWatch namespace name. Refer to [supported-services][] for the complete list.            |                                  | yes      |
+| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
 | `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`                             | no       |
+| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.    | `0`                              | no       |
 | `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, all combinations are queried.    | `[]`                             | no       |
-| `delay`                       | `duration`     | Delay the query start time by this duration.                                                 | `0`                              | no       |
-| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
 | `length`                      | `duration`     | Default length for metrics in this job.                                                      | Derived from [`period`][period]. | no       |
 | `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`                           | no       |
+| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
 | `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                   | `false`                          | no       |
 | `search_tags`                 | `map(string)`  | Key/value pairs to filter by tag. All must match. Values can be regular expressions.         | `{}`                             | no       |
-| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
 
 <!-- vale Grafana.GooglePassive = NO -->
 <!-- vale Grafana.GoogleWill = NO -->
@@ -373,7 +373,7 @@ Use the namespace name instead, for example, `AWS/ApplicationELB` or `AWS/EC2`.
 
 You can configure the `discovery` block one or multiple times to scrape metrics from different services or with different `search_tags`.
 
-The following example configuration, shows you how to scrape CPU utilization and network traffic metrics from all AWS EC2 instances:
+The following example configuration shows you how to scrape CPU utilization and network traffic metrics from all AWS EC2 instances:
 
 ```alloy
 prometheus.exporter.cloudwatch "discover_instances" {
