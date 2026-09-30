@@ -308,8 +308,14 @@ func TestUpdate_TogglesPolling(t *testing.T) {
 	require.Eventually(t, func() bool { return fake.callCount() >= start+3 }, waitFor, tick)
 
 	require.NoError(t, c.Update(testArgs("a", 0)))
-	// Let a poll that is in flight finish before the count is read.
-	time.Sleep(5 * fastPoll)
+	// Wait until the count is stable, so that a poll in flight finishes before the count is read.
+	prev := -1
+	require.Eventually(t, func() bool {
+		cur := fake.callCount()
+		stable := cur == prev
+		prev = cur
+		return stable
+	}, waitFor, 5*fastPoll)
 	stopped := fake.callCount()
 	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
 }
