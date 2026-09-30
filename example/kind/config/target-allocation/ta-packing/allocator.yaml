@@ -11,7 +11,16 @@ data:
       matchLabels:
         app.kubernetes.io/name: alloy
         app.kubernetes.io/instance: alloy-target-allocation
-    allocation_strategy: consistent-hashing
+    allocation_strategy: load-shedding
+    allocation_strategy_config:
+      load_shedding:
+        interval: 5s
+        window: 6
+        default_size: 100
+        probe_interval: 30s
+        probe_timeout: 5s
+        probe_concurrency: 4
+        probe_max_bytes: 67108864
     filter_strategy: relabel-config
     prometheus_cr:
       enabled: false

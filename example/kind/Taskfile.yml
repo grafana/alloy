@@ -24,15 +24,16 @@ tasks:
       - task: demo:targets
       - bash config/target-allocation/deploy.sh ta-hashing
   deploy:ta-packing:
-    desc: TODO — size-aware allocation
+    desc: Build local TA and deploy load-shedding with asynchronous size probes
     cmds:
-      - 'echo "TODO: implement the packing strategy first" >&2; exit 1'
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh ta-packing
   demo:targets:
     internal: true
     cmds:
       - bash config/target-allocation/cluster.sh check
       - make -C ../.. prom-gen-image
-      - kind load docker-image prom-gen:latest --name {{.CLUSTERNAME}}
+      - '{{.KIND | default "kind"}} load docker-image prom-gen:latest --name {{.CLUSTERNAME}}'
 
   update-helm-repos:
     desc: Update helm repositories

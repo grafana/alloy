@@ -20,9 +20,10 @@ shared between modes. `task deploy:vanilla` switches back.
 
 ## 3. Size-aware allocation
 
-Start with pure simulations of the current TA algorithm; compare balance and
-assignment stability before implementing adjustments. Requirements and candidate
-algorithms live in [ALGO.md](ALGO.md). `task deploy:ta-packing` is a TODO.
+Run `task deploy:ta-packing` for the local TA's load-shedding strategy. It probes
+targets asynchronously, estimates sizes by counting text sample lines, and applies
+six-cycle size/total windows. Alloy keeps using HTTP discovery. Algorithms and
+simulation results live in [ALGO.md](ALGO.md).
 
 HA is optional later work, not a demo requirement. If added, use Kubernetes Lease
 leader election, likely with three TA instances. Routing and failover state

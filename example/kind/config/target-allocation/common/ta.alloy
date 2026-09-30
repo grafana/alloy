@@ -7,7 +7,7 @@ discovery.http "demo" {
 	refresh_interval = sys.env("DEMO_HTTP_REFRESH_INTERVAL")
 }
 
-// Vanilla TA filters targets but returns their original discovery labels.
+// TA filters targets but returns their original discovery labels.
 discovery.relabel "demo" {
 	targets = discovery.http.demo.targets
 
