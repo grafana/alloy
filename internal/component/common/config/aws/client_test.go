@@ -24,15 +24,20 @@ func isolateAWSEnv(t *testing.T) error {
 		return err
 	}
 	for k, v := range map[string]string{
-		"AWS_CONFIG_FILE":             empty,
-		"AWS_SHARED_CREDENTIALS_FILE": empty,
-		"AWS_PROFILE":                 "",
-		"AWS_REGION":                  "",
-		"AWS_DEFAULT_REGION":          "",
-		"AWS_ACCESS_KEY_ID":           "",
-		"AWS_SECRET_ACCESS_KEY":       "",
-		"AWS_SESSION_TOKEN":           "",
-		"AWS_EC2_METADATA_DISABLED":   "true",
+		"AWS_CONFIG_FILE":                  empty,
+		"AWS_SHARED_CREDENTIALS_FILE":      empty,
+		"AWS_PROFILE":                      "",
+		"AWS_REGION":                       "",
+		"AWS_DEFAULT_REGION":               "",
+		"AWS_ACCESS_KEY_ID":                "",
+		"AWS_SECRET_ACCESS_KEY":            "",
+		"AWS_SESSION_TOKEN":                "",
+		"AWS_EC2_METADATA_DISABLED":        "true",
+		"AWS_ENDPOINT_URL":                 "",
+		"AWS_ENDPOINT_URL_SECRETS_MANAGER": "",
+		"AWS_ENDPOINT_URL_STS":             "",
+		"AWS_ROLE_ARN":                     "",
+		"AWS_WEB_IDENTITY_TOKEN_FILE":      "",
 	} {
 		t.Setenv(k, v)
 	}

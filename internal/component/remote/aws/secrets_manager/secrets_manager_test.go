@@ -239,11 +239,12 @@ func counterValue(reg *prometheus.Registry, name, result string) (float64, error
 
 func TestNew_RebuildAfterFailedBuildReusesRegistry(t *testing.T) {
 	// The runtime keeps one registry per component and calls Build again after a failed Build.
+	// It also wraps the registry with the component ID label.
 	reg := prometheus.NewRegistry()
 	rec := &recorder{}
 	opts := component.Options{
 		Logger:        util.TestLogger(t),
-		Registerer:    reg,
+		Registerer:    prometheus.WrapRegistererWith(prometheus.Labels{"component_id": "remote.aws.secrets_manager.test"}, reg),
 		OnStateChange: rec.onStateChange,
 	}
 
@@ -583,6 +584,9 @@ func isolateAWSEnv(t *testing.T) error {
 		"AWS_EC2_METADATA_DISABLED":        "true",
 		"AWS_ENDPOINT_URL":                 "",
 		"AWS_ENDPOINT_URL_SECRETS_MANAGER": "",
+		"AWS_ENDPOINT_URL_STS":             "",
+		"AWS_ROLE_ARN":                     "",
+		"AWS_WEB_IDENTITY_TOKEN_FILE":      "",
 	} {
 		t.Setenv(k, v)
 	}
