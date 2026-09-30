@@ -1,18 +1,23 @@
 package k8s_workloads
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/utils/ptr"
 )
 
 func imageFixtures() (*appsv1.Deployment, *appsv1.ReplicaSet, *corev1.Pod) {
@@ -161,4 +166,69 @@ func TestImagesPartialResults(t *testing.T) {
 			require.Zero(t, c.imageQueue.Len())
 		})
 	}
+}
+
+func TestImageWatchTransformDropsUnusedFields(t *testing.T) {
+	owner := metav1.OwnerReference{Kind: "ReplicaSet", Name: "rs", UID: "rs-uid", Controller: ptr.To(true)}
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "ns", UID: "pod-uid", ResourceVersion: "123", Annotations: map[string]string{"large": "unused"}, OwnerReferences: []metav1.OwnerReference{owner}}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "example/app", Env: []corev1.EnvVar{{Name: "UNUSED", Value: "large"}}}}}, Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Name: "app", ImageID: "runtime://digest", ContainerID: "unneeded"}}}}
+	transformed, err := imageWatchTransform(pod)
+	require.NoError(t, err)
+	got := transformed.(*corev1.Pod)
+	require.Equal(t, pod.UID, got.UID)
+	require.Equal(t, pod.ResourceVersion, got.ResourceVersion)
+	require.Equal(t, pod.OwnerReferences, got.OwnerReferences)
+	require.Equal(t, corev1.PodRunning, got.Status.Phase)
+	require.Equal(t, []corev1.ContainerStatus{{Name: "app", ImageID: "runtime://digest"}}, got.Status.ContainerStatuses)
+	require.Empty(t, got.Annotations)
+	require.Empty(t, got.Spec.Containers)
+	require.NotEmpty(t, pod.Spec.Containers, "transform must not mutate input")
+	rs := &appsv1.ReplicaSet{ObjectMeta: metav1.ObjectMeta{UID: "rs-uid", Annotations: map[string]string{revisionAnnotation: "2", "unused": "large"}}, Spec: appsv1.ReplicaSetSpec{Template: corev1.PodTemplateSpec{Spec: pod.Spec}}}
+	transformed, err = imageWatchTransform(rs)
+	require.NoError(t, err)
+	gotRS := transformed.(*appsv1.ReplicaSet)
+	require.Equal(t, map[string]string{revisionAnnotation: "2"}, gotRS.Annotations)
+	require.Empty(t, gotRS.Spec.Template.Spec.Containers)
+	again, err := imageWatchTransform(got)
+	require.NoError(t, err)
+	require.Equal(t, got, again, "informer transforms may run repeatedly")
+}
+
+func TestImageListPagesBeforeRetainingObjects(t *testing.T) {
+	calls := 0
+	result, err := imageList(context.Background(), metav1.ListOptions{ResourceVersion: "0"}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		calls++
+		require.Equal(t, int64(250), opts.Limit)
+		require.Empty(t, opts.ResourceVersion)
+		next := ""
+		if calls == 1 {
+			require.Empty(t, opts.Continue)
+			next = "page-2"
+		} else {
+			require.Equal(t, "page-2", opts.Continue)
+		}
+		return &appsv1.ReplicaSetList{ListMeta: metav1.ListMeta{ResourceVersion: "123", Continue: next}, Items: []appsv1.ReplicaSet{{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprint(calls), Annotations: map[string]string{revisionAnnotation: "2"}}, Spec: appsv1.ReplicaSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "unused", Image: "large"}}}}}}}}, nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+	items, err := meta.ExtractList(result)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	for _, item := range items {
+		require.Empty(t, item.(*appsv1.ReplicaSet).Spec.Template.Spec.Containers)
+	}
+	metadata, err := meta.ListAccessor(result)
+	require.NoError(t, err)
+	require.Equal(t, "123", metadata.GetResourceVersion())
+	require.Empty(t, metadata.GetContinue())
+	calls = 0
+	_, err = imageList(context.Background(), metav1.ListOptions{}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		calls++
+		require.Equal(t, int64(250), opts.Limit)
+		if calls == 1 {
+			return &corev1.PodList{ListMeta: metav1.ListMeta{Continue: "expired"}}, nil
+		}
+		return nil, apierrors.NewResourceExpired("expired")
+	})
+	require.True(t, apierrors.IsResourceExpired(err))
+	require.Equal(t, 2, calls, "must not fall back to unbounded list")
 }

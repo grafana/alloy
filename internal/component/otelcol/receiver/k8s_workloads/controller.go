@@ -12,6 +12,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -67,9 +68,19 @@ func (c *controller) run(ctx context.Context) error {
 		}
 		c.opts.clusterUID = string(ns.UID)
 	}
-	factory := informers.NewSharedInformerFactory(c.opts.client, 0)
-	pods := factory.Core().V1().Pods().Informer()
-	replicaSets := factory.Apps().V1().ReplicaSets().Informer()
+	factory := informers.NewSharedInformerFactoryWithOptions(c.opts.client, 0, informers.WithTransform(imageWatchTransform))
+	pods := factory.InformerFor(&corev1.Pod{}, func(client kubernetes.Interface, _ time.Duration) cache.SharedIndexInformer {
+		api := client.CoreV1().Pods(metav1.NamespaceAll)
+		return newImageInformer(client, &corev1.Pod{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+			return api.List(ctx, options)
+		}, api.Watch)
+	})
+	replicaSets := factory.InformerFor(&appsv1.ReplicaSet{}, func(client kubernetes.Interface, _ time.Duration) cache.SharedIndexInformer {
+		api := client.AppsV1().ReplicaSets(metav1.NamespaceAll)
+		return newImageInformer(client, &appsv1.ReplicaSet{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+			return api.List(ctx, options)
+		}, api.Watch)
+	})
 	if err := c.watchImages(pods, replicaSets); err != nil {
 		return err
 	}

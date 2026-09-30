@@ -9,8 +9,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metainternal "k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/pager"
 )
 
 const rolloutImagesResolved = "images_resolved"
@@ -37,6 +42,81 @@ type imageCollection struct {
 	succeeded   bool
 	ids         map[string]map[string]bool
 	replicaSets map[string]bool
+}
+
+// Transform each bounded list page before the reflector accumulates its initial
+// snapshot. Cache transforms alone run too late to bound initial list memory.
+func imageList(ctx context.Context, options metav1.ListOptions, list cache.ListWithContextFunc) (runtime.Object, error) {
+	if options.ResourceVersion == "0" {
+		// Kubernetes watch caches may ignore Limit for RV=0.
+		options.ResourceVersion = ""
+		options.ResourceVersionMatch = ""
+	}
+	options.Limit = 250
+	pages := pager.New(func(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+		page, err := list(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		metadata, err := meta.ListAccessor(page)
+		if err != nil {
+			return nil, err
+		}
+		result := &metainternal.List{ListMeta: metav1.ListMeta{ResourceVersion: metadata.GetResourceVersion(), Continue: metadata.GetContinue()}}
+		err = meta.EachListItem(page, func(item runtime.Object) error {
+			transformed, err := imageWatchTransform(item)
+			if err != nil {
+				return err
+			}
+			result.Items = append(result.Items, transformed.(runtime.Object))
+			return nil
+		})
+		return result, err
+	})
+	// Let the reflector restart an expired snapshot instead of fetching everything
+	// in an unbounded fallback request.
+	pages.FullListIfExpired = false
+	result, _, err := pages.ListWithAlloc(ctx, options)
+	return result, err
+}
+
+func newImageInformer(client kubernetes.Interface, example runtime.Object, list cache.ListWithContextFunc, watch cache.WatchFuncWithContext) cache.SharedIndexInformer {
+	return cache.NewSharedIndexInformer(cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
+			return imageList(ctx, options, list)
+		},
+		WatchFuncWithContext: watch,
+	}, client), example, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+}
+
+// Keep only image-resolution fields in informer caches and handler queues. A
+// cluster-wide Pod cache otherwise retains full specs, annotations, managed
+// fields, and container state even though this receiver never uses them.
+func imageWatchTransform(obj any) (any, error) {
+	metadata := func(m metav1.ObjectMeta) metav1.ObjectMeta {
+		return metav1.ObjectMeta{Name: m.Name, Namespace: m.Namespace, UID: m.UID,
+			ResourceVersion: m.ResourceVersion, CreationTimestamp: m.CreationTimestamp,
+			DeletionTimestamp: m.DeletionTimestamp, OwnerReferences: m.OwnerReferences}
+	}
+	statuses := func(input []corev1.ContainerStatus) []corev1.ContainerStatus {
+		out := make([]corev1.ContainerStatus, 0, len(input))
+		for _, status := range input {
+			out = append(out, corev1.ContainerStatus{Name: status.Name, ImageID: status.ImageID})
+		}
+		return out
+	}
+	switch value := obj.(type) {
+	case *corev1.Pod:
+		return &corev1.Pod{TypeMeta: value.TypeMeta, ObjectMeta: metadata(value.ObjectMeta), Status: corev1.PodStatus{
+			Phase: value.Status.Phase, ContainerStatuses: statuses(value.Status.ContainerStatuses),
+			InitContainerStatuses: statuses(value.Status.InitContainerStatuses)}}, nil
+	case *appsv1.ReplicaSet:
+		meta := metadata(value.ObjectMeta)
+		meta.Annotations = map[string]string{revisionAnnotation: value.Annotations[revisionAnnotation]}
+		return &appsv1.ReplicaSet{TypeMeta: value.TypeMeta, ObjectMeta: meta}, nil
+	default:
+		return obj, nil
+	}
 }
 
 func containerKey(name string, init bool) string { return strconv.FormatBool(init) + ":" + name }
