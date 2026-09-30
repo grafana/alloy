@@ -1,0 +1,22 @@
+{{- if .Values.prometheusRules.rules }}
+{{- range $ruleName, $rule := .Values.prometheusRules.rules }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ printf "%s-%s" (include "alloy.fullname" $) $ruleName | trunc 63 | trimSuffix "-" }}
+  namespace: {{ $.Values.prometheusRules.namespace | default (include "alloy.namespace" $) }}
+  labels:
+    {{- include "alloy.labels" $ | nindent 4 }}
+    {{- with $.Values.prometheusRules.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    {{- range $groupName, $group := $rule.groups }}
+    - name: {{ $groupName }}
+      rules:
+        {{- toYaml $group.rules | nindent 8 }}
+    {{- end }}
+{{- end }}
+{{- end }}
