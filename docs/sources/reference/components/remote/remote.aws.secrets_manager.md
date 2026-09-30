@@ -89,11 +89,12 @@ The `client` block configures the connection to AWS.
 | Name       | Type     | Description                                                              | Default | Required |
 | ---------- | -------- | ------------------------------------------------------------------------ | ------- | -------- |
 | `endpoint` | `string` | A custom URL for the Secrets Manager API, for example a VPC endpoint.    |         | no       |
-| `key`      | `string` | A static AWS access key ID.                                              |         | no       |
+| `key`      | `string` | An AWS access key ID.                                                    |         | no       |
 | `region`   | `string` | The AWS region. Overrides the environment and instance metadata.         |         | no       |
-| `secret`   | `secret` | A static AWS secret access key.                                          |         | no       |
+| `secret`   | `secret` | An AWS secret access key.                                                |         | no       |
 
 You must set both the `key` and `secret` arguments, or neither.
+If you set them, they replace the default credential chain.
 
 `remote.aws.secrets_manager` finds the region in this order:
 
@@ -130,9 +131,9 @@ The following fields are exported and can be referenced by other components:
 
 `remote.aws.secrets_manager` fills `data` with these rules:
 
+* If the secret isn't a JSON object, `data` is empty.
 * A string field value is exported as the plain string.
 * A number, boolean, `null`, object, or array field value is exported as its JSON text.
-* If the secret isn't a JSON object, `data` is empty.
 * If the JSON object has duplicate keys, the last value wins.
 
 `remote.aws.secrets_manager` doesn't support binary secrets.
