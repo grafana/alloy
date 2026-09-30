@@ -11,7 +11,7 @@ weight: 400
 
 The {{< param "PRODUCT_NAME" >}} service installations for Linux, macOS, and Windows can run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}.
 Set `ALLOY_OTEL_MODE` to `1`, `true`, `yes`, or `on` to run the {{< param "OTEL_ENGINE" >}}.
-Matching isn't case-sensitive.
+Matching is case-insensitive.
 If you don't set `ALLOY_OTEL_MODE`, or you set it to any other value, {{< param "PRODUCT_NAME" >}} runs the {{< param "DEFAULT_ENGINE" >}}.
 
 No service installer exposes an install-time flag for this setting.
