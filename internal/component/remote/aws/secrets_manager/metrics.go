@@ -1,6 +1,10 @@
 package secrets_manager
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/util"
+)
 
 type metrics struct {
 	fetchesTotal *prometheus.CounterVec
@@ -18,10 +22,9 @@ func newMetrics(reg prometheus.Registerer) (*metrics, error) {
 			Help: "Time of the last successful secret fetch, in Unix seconds.",
 		}),
 	}
-	for _, c := range []prometheus.Collector{m.fetchesTotal, m.lastSuccess} {
-		if err := reg.Register(c); err != nil {
-			return nil, err
-		}
-	}
+	// The runtime keeps one registry per component across failed builds.
+	// Reuse the collectors that an earlier build registered.
+	m.fetchesTotal = util.MustRegisterOrGet(reg, m.fetchesTotal).(*prometheus.CounterVec)
+	m.lastSuccess = util.MustRegisterOrGet(reg, m.lastSuccess).(prometheus.Gauge)
 	return m, nil
 }

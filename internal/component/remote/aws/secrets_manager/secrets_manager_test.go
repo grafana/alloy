@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -191,15 +192,70 @@ func TestNew_FailsOnBinarySecret(t *testing.T) {
 }
 
 func TestNew_FailsOnClientError(t *testing.T) {
+	reg := prometheus.NewRegistry()
 	opts := component.Options{
 		Logger:        util.TestLogger(t),
-		Registerer:    prometheus.NewRegistry(),
+		Registerer:    reg,
 		OnStateChange: func(component.Exports) {},
 	}
 	factory := func(context.Context, awscommon.Client) (secretsGetter, error) { return nil, errors.New("no region") }
 
 	_, err := newComponent(opts, testArgs("prod/db", 0), factory)
 	require.EqualError(t, err, "creating AWS client: no region")
+
+	v, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "error")
+	require.NoError(t, err)
+	require.Equal(t, 1.0, v)
+}
+
+// counterValue reads one labelled counter value from reg.
+func counterValue(reg *prometheus.Registry, name, result string) (float64, error) {
+	families, err := reg.Gather()
+	if err != nil {
+		return 0, err
+	}
+	for _, f := range families {
+		if f.GetName() != name {
+			continue
+		}
+		for _, m := range f.GetMetric() {
+			for _, l := range m.GetLabel() {
+				if l.GetName() == "result" && l.GetValue() == result {
+					return m.GetCounter().GetValue(), nil
+				}
+			}
+		}
+	}
+	return 0, fmt.Errorf("metric %s{result=%q} not found", name, result)
+}
+
+func TestNew_RebuildAfterFailedBuildReusesRegistry(t *testing.T) {
+	// The runtime keeps one registry per component and calls Build again after a failed Build.
+	reg := prometheus.NewRegistry()
+	rec := &recorder{}
+	opts := component.Options{
+		Logger:        util.TestLogger(t),
+		Registerer:    reg,
+		OnStateChange: rec.onStateChange,
+	}
+
+	failing := newFakeGetter("")
+	failing.returnError(errors.New("boom"))
+	_, err := newComponent(opts, testArgs("prod/db", 0), func(context.Context, awscommon.Client) (secretsGetter, error) { return failing, nil })
+	require.Error(t, err)
+
+	working := newFakeGetter(`{"v":"1"}`)
+	c, err := newComponent(opts, testArgs("prod/db", 0), func(context.Context, awscommon.Client) (secretsGetter, error) { return working, nil })
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	require.Equal(t, "1", lastDataValue(rec))
+
+	errs, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "error")
+	require.NoError(t, err)
+	require.Equal(t, 1.0, errs)
+	oks, err := counterValue(reg, "remote_aws_secrets_manager_fetches_total", "success")
+	require.NoError(t, err)
+	require.Equal(t, 1.0, oks)
 }
 
 func TestPoll_PicksUpChange(t *testing.T) {

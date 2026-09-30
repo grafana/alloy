@@ -138,6 +138,7 @@ func (c *Component) Update(args component.Arguments) error {
 	client, err := c.newClient(ctx, newArgs.Client)
 	if err != nil {
 		err = fmt.Errorf("creating AWS client: %w", err)
+		c.metrics.fetchesTotal.WithLabelValues("error").Inc()
 		c.setHealth(err)
 		return err
 	}
