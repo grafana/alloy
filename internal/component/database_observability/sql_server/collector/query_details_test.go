@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -172,7 +173,7 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT * FROM [dbo].[orders] o JOIN customers c ON c.id = o.customer_id WHERE o.total > ?"`, entries[0].Line)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT * FROM [dbo].[orders] o JOIN customers c ON c.id = o.customer_id WHERE o.total > ?"`, strings.SplitN(entries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 	require.NotContains(t, entries[0].Line, `\n`)
 	require.NotContains(t, entries[0].Line, `\t`)
 

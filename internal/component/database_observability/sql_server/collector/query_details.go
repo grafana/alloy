@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/sqlfingerprint"
 )
 
 const (
@@ -62,6 +63,7 @@ type QueryDetails struct {
 	entryHandler    loki.EntryHandler
 	tracker         QueryTracker
 	obfuscator      *sqllexer.Obfuscator
+	fingerprinter   *sqlfingerprint.Fingerprinter
 	normalizer      *sqllexer.Normalizer
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
@@ -80,7 +82,14 @@ type QueryDetails struct {
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	// Match the default options used by otelcol.processor.sql_fingerprint.
+	fingerprinter, err := sqlfingerprint.New(sqlfingerprint.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize query fingerprinter: %w", err)
+	}
+
 	return &QueryDetails{
+		fingerprinter:   fingerprinter,
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
@@ -235,10 +244,19 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 		metadata = nil
 	}
 
+	body := fmt.Sprintf(`database="%s" query_hash="%s" querytext=%q`, database, queryHash, normalized)
+	otelFP := c.fingerprinter.Fingerprint(sqlfingerprint.SQLServer, queryText)
+	if len(otelFP.Failures) > 0 {
+		c.logger.Warn("failed to compute otel db query fingerprint", "err", otelFP.Failures, "database", database, "query_hash", queryHash, "querytext", queryText)
+	}
+	if len(otelFP.Failures) == 0 && len(otelFP.Fingerprints) == 1 {
+		body += fmt.Sprintf(` otel_db_query_fingerprint=%q`, otelFP.Fingerprints[0])
+	}
+
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
 		database_observability.OP_QUERY_ASSOCIATION,
-		fmt.Sprintf(`database="%s" query_hash="%s" querytext=%q`, database, queryHash, normalized),
+		body,
 	)
 
 	if metadata == nil {

@@ -3,6 +3,7 @@ package collector
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -428,7 +429,7 @@ func TestQueryTables(t *testing.T) {
 			require.Equal(t, len(tc.logsLines), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.logsLabels[i], entry.Labels)
-				require.Equal(t, tc.logsLines[i], entry.Line)
+				require.Equal(t, tc.logsLines[i], strings.SplitN(entry.Line, ` otel_db_query_fingerprint=`, 2)[0])
 			}
 		})
 	}
@@ -498,7 +499,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -561,7 +562,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -621,7 +622,7 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})

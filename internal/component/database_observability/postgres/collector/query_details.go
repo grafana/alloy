@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/sqlfingerprint"
 )
 
 const (
@@ -65,6 +66,7 @@ type QueryDetails struct {
 	entryHandler              loki.EntryHandler
 	tableRegistry             *TableRegistry
 	enableErrorLogsProcessing bool
+	fingerprinter             *sqlfingerprint.Fingerprinter
 	normalizer                *sqllexer.Normalizer
 
 	logger  *slog.Logger
@@ -75,7 +77,14 @@ type QueryDetails struct {
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	// Match the default options used by otelcol.processor.sql_fingerprint.
+	fingerprinter, err := sqlfingerprint.New(sqlfingerprint.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize query fingerprinter: %w", err)
+	}
+
 	return &QueryDetails{
+		fingerprinter:             fingerprinter,
 		dbConnection:              args.DB,
 		collectInterval:           args.CollectInterval,
 		statementsLimit:           args.StatementsLimit,
@@ -155,6 +164,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		rawQueryText := queryText
 		var fp string
 		if c.enableErrorLogsProcessing {
 			// Fingerprint the raw text BEFORE comment stripping; pg_query
@@ -182,6 +192,15 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		} else {
 			body = fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
 		}
+
+		otelFP := c.fingerprinter.Fingerprint(sqlfingerprint.PostgreSQL, rawQueryText)
+		if len(otelFP.Failures) > 0 {
+			c.logger.Warn("failed to compute otel db query fingerprint", "err", otelFP.Failures, "queryid", queryID, "querytext", rawQueryText)
+		}
+		if len(otelFP.Failures) == 0 && len(otelFP.Fingerprints) == 1 {
+			body += fmt.Sprintf(` otel_db_query_fingerprint=%q`, otelFP.Fingerprints[0])
+		}
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_ASSOCIATION,

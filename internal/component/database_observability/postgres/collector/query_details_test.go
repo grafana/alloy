@@ -545,7 +545,7 @@ func TestQueryDetails(t *testing.T) {
 			require.Equal(t, len(tc.logsLines), len(lokiEntries))
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.logsLabels[i], entry.Labels)
-				require.Equal(t, tc.logsLines[i], entry.Line)
+				require.Equal(t, tc.logsLines[i], strings.SplitN(entry.Line, ` otel_db_query_fingerprint=`, 2)[0])
 			}
 		})
 	}
@@ -615,7 +615,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -675,7 +675,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -733,7 +733,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, strings.SplitN(lokiEntries[0].Line, ` otel_db_query_fingerprint=`, 2)[0])
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -1045,7 +1045,7 @@ func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		for _, e := range lokiClient.Received() {
-			if e.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(e.Line, "query_fingerprint=") {
+			if e.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(e.Line, " query_fingerprint=") {
 				return true
 			}
 		}
@@ -1058,7 +1058,7 @@ func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
 	entries := lokiClient.Received()
 	var assoc *loki.Entry
 	for i := range entries {
-		if entries[i].Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(entries[i].Line, "query_fingerprint=") {
+		if entries[i].Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(entries[i].Line, " query_fingerprint=") {
 			assoc = &entries[i]
 			break
 		}
@@ -1066,7 +1066,7 @@ func TestQueryDetails_QueryAssociation_OnEmitsFingerprint(t *testing.T) {
 	require.NotNil(t, assoc, "expected at least one fingerprinted query_association entry")
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, assoc.Labels)
 	expectedBody := fmt.Sprintf(`level="info" queryid="abc123" query_fingerprint="%s" querytext=%q datname="books_store"`, fp, q)
-	require.Equal(t, expectedBody, assoc.Line)
+	require.Equal(t, expectedBody, strings.SplitN(assoc.Line, ` otel_db_query_fingerprint=`, 2)[0])
 }
 
 // TestQueryDetails_QueryAssociation_OffOmitsFingerprint confirms that with
@@ -1111,7 +1111,7 @@ func TestQueryDetails_QueryAssociation_OffOmitsFingerprint(t *testing.T) {
 	lokiClient.Stop()
 
 	for _, e := range lokiClient.Received() {
-		require.NotContains(t, e.Line, "query_fingerprint=", "no body should carry query_fingerprint when flag is off")
+		require.NotContains(t, e.Line, " query_fingerprint=", "no body should carry query_fingerprint when flag is off")
 	}
 }
 
@@ -1157,7 +1157,7 @@ func TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		for _, e := range lokiClient.Received() {
-			if e.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(e.Line, "query_fingerprint=") {
+			if e.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(e.Line, " query_fingerprint=") {
 				return true
 			}
 		}
@@ -1170,13 +1170,13 @@ func TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack(t *testing.T) {
 	received := lokiClient.Received()
 	var emptyAssoc *loki.Entry
 	for i := range received {
-		require.NotContains(t, received[i].Line, `query_fingerprint=""`, "must never emit an empty query_fingerprint")
+		require.NotContains(t, received[i].Line, ` query_fingerprint=""`, "must never emit an empty query_fingerprint")
 		if received[i].Labels["op"] == database_observability.OP_QUERY_ASSOCIATION && strings.Contains(received[i].Line, `queryid="empty1"`) {
 			emptyAssoc = &received[i]
 		}
 	}
 	require.NotNil(t, emptyAssoc, "empty-fingerprint row should still emit a query_association entry")
-	require.NotContains(t, emptyAssoc.Line, "query_fingerprint=", "empty-fingerprint row must omit the query_fingerprint field")
+	require.NotContains(t, emptyAssoc.Line, " query_fingerprint=", "empty-fingerprint row must omit the query_fingerprint field")
 
 	logs := logBuf.String()
 	require.Contains(t, logs, "could not compute query fingerprint")

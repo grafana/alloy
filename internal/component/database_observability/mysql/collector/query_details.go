@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/sqlfingerprint"
 )
 
 const (
@@ -51,6 +52,7 @@ type QueryDetails struct {
 	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
+	fingerprinter   *sqlfingerprint.Fingerprinter
 	normalizer      *sqllexer.Normalizer
 	tableRegistry   *TableRegistry
 
@@ -62,7 +64,14 @@ type QueryDetails struct {
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	// Match the default options used by otelcol.processor.sql_fingerprint.
+	fingerprinter, err := sqlfingerprint.New(sqlfingerprint.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize query fingerprinter: %w", err)
+	}
+
 	c := &QueryDetails{
+		fingerprinter:   fingerprinter,
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		statementsLimit: args.StatementsLimit,
@@ -149,10 +158,19 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
+		body := fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText)
+		otelFP := c.fingerprinter.Fingerprint(sqlfingerprint.MySQL, digestText)
+		if len(otelFP.Failures) > 0 {
+			c.logger.Warn("failed to compute otel db query fingerprint", "err", otelFP.Failures, "schema", schema, "digest", digest, "digest_text", digestText)
+		}
+		if len(otelFP.Failures) == 0 && len(otelFP.Fingerprints) == 1 {
+			body += fmt.Sprintf(` otel_db_query_fingerprint=%q`, otelFP.Fingerprints[0])
+		}
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+			body,
 		)
 
 		for _, table := range tables {
