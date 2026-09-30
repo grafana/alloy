@@ -75,14 +75,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 }
 
 func newComponent(opts component.Options, args Arguments, newClient clientFactory) (*Component, error) {
-	m, err := newMetrics(opts.Registerer)
-	if err != nil {
-		return nil, err
-	}
 	c := &Component{
 		opts:      opts,
 		newClient: newClient,
-		metrics:   m,
+		metrics:   newMetrics(opts.Registerer),
 		reset:     make(chan struct{}, 1),
 	}
 	if err := c.Update(args); err != nil {

@@ -11,7 +11,7 @@ type metrics struct {
 	lastSuccess  prometheus.Gauge
 }
 
-func newMetrics(reg prometheus.Registerer) (*metrics, error) {
+func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		fetchesTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "remote_aws_secrets_manager_fetches_total",
@@ -26,5 +26,5 @@ func newMetrics(reg prometheus.Registerer) (*metrics, error) {
 	// Reuse the collectors that an earlier build registered.
 	m.fetchesTotal = util.MustRegisterOrGet(reg, m.fetchesTotal).(*prometheus.CounterVec)
 	m.lastSuccess = util.MustRegisterOrGet(reg, m.lastSuccess).(prometheus.Gauge)
-	return m, nil
+	return m
 }
