@@ -282,11 +282,11 @@ When you set both, {{< param "PRODUCT_NAME" >}} calls the CloudWatch APIs as fol
 
 {{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
 
-When metrics in the same `static` or `discovery` job use different `period` or `length` values, {{< param "PRODUCT_NAME" >}} takes the minimum of all periods and the maximum of all lengths.
+When metrics in the same `custom_namespace`, `discovery`, or `static` job use different `period` or `length` values, {{< param "PRODUCT_NAME" >}} takes the minimum of all periods and the maximum of all lengths.
 
 When you don't set `length`, {{< param "PRODUCT_NAME" >}} derives both the period and the length from the required `period` attribute.
 
-When every metric in a job uses the same `period` value, {{< param "PRODUCT_NAME" >}} requests metrics from the scrape time back to `period` seconds earlier.
+When you don't set `length` and every metric in a job uses the same `period`, {{< param "PRODUCT_NAME" >}} requests metrics from the scrape time back to `period` seconds earlier.
 It then exports those values to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
