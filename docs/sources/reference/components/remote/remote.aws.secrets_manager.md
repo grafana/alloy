@@ -13,7 +13,7 @@ title: remote.aws.secrets_manager
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `remote.aws.secrets_manager` reads a secret from [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) and exposes it to other components.
-`remote.aws.secrets_manager` polls the secret for changes, so the most recent value is always available.
+`remote.aws.secrets_manager` reads the secret again at the interval that `poll_frequency` sets.
 
 If the secret is a JSON object, each top-level field is available in the `data` export.
 The raw secret string is always available in the `content` export.
@@ -82,10 +82,18 @@ The `client` block configures the connection to AWS.
 | ---------- | -------- | ------------------------------------------------------------------------ | ------- | -------- |
 | `endpoint` | `string` | A custom URL for the Secrets Manager API, for example a VPC endpoint.    |         | no       |
 | `key`      | `string` | A static AWS access key ID.                                              |         | no       |
-| `region`   | `string` | The AWS region. Overrides the region from the default credential chain. |         | no       |
+| `region`   | `string` | The AWS region. Overrides the environment and instance metadata.         |         | no       |
 | `secret`   | `secret` | A static AWS secret access key.                                          |         | no       |
 
 You must set both the `key` and `secret` arguments, or neither.
+
+`remote.aws.secrets_manager` finds the region in this order:
+
+1. The `region` argument.
+1. The `AWS_REGION` environment variable or the region in the shared configuration profile.
+1. The EC2 instance metadata service.
+
+If none of these gives a region, the component fails to start.
 
 ### `assume_role`
 
