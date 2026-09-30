@@ -343,41 +343,59 @@ func TestUpdate_PassesVersion(t *testing.T) {
 	require.Nil(t, fake.lastCall().VersionStage)
 }
 
-func TestUpdate_FailureAdoptsNewArgs(t *testing.T) {
+// failForSecret makes calls for the secret id fail, and all other calls return {"v":"good"}.
+func failForSecret(fake *fakeGetter, id string) {
+	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		if aws.ToString(in.SecretId) == id {
+			return nil, errors.New("ResourceNotFoundException: not found")
+		}
+		return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"good"}`)}, nil
+	})
+}
+
+// secretIDsSince returns the secret ids of the calls after the first n calls.
+func (f *fakeGetter) secretIDsSince(n int) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var ids []string
+	for _, in := range f.calls[n:] {
+		ids = append(ids, aws.ToString(in.SecretId))
+	}
+	return ids
+}
+
+func (c *Component) currentSecretID() string {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	return c.args.SecretID
+}
+
+func TestUpdate_FailureRevertsToPreviousArgs(t *testing.T) {
 	fake := newFakeGetter(`{"v":"good"}`)
 	c, rec, err := newTestComponent(t, testArgs("good", fastPoll), fake)
 	require.NoError(t, err)
+	runComponent(t, c)
 
-	var typoFixed atomic.Bool
-	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
-		if aws.ToString(in.SecretId) != "typo" {
-			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"good"}`)}, nil
-		}
-		if typoFixed.Load() {
-			return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"fixed"}`)}, nil
-		}
-		return nil, errors.New("ResourceNotFoundException: not found")
-	})
-
+	failForSecret(fake, "typo")
 	err = c.Update(testArgs("typo", fastPoll))
 	require.EqualError(t, err, `fetching secret "typo": ResourceNotFoundException: not found`)
 	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
 	require.Equal(t, "good", lastDataValue(rec))
+	require.Equal(t, "good", c.currentSecretID())
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
 
-	runComponent(t, c)
+	// Update holds the fetch lock, so no later call can use the new arguments.
 	start := fake.callCount()
-	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
-	require.Equal(t, "typo", aws.ToString(fake.lastCall().SecretId))
-	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
-	require.Equal(t, "good", lastDataValue(rec))
-
-	typoFixed.Store(true)
 	require.Eventually(t, func() bool {
-		return lastDataValue(rec) == "fixed" && c.CurrentHealth().Health == component.HealthTypeHealthy
+		return fake.callCount() >= start+3 && c.CurrentHealth().Health == component.HealthTypeHealthy
 	}, waitFor, tick)
+	for _, id := range fake.secretIDsSince(start) {
+		require.Equal(t, "good", id)
+	}
+	require.Equal(t, "good", c.currentSecretID())
 }
 
-func TestUpdate_FailedClientAdoptsNewArgs(t *testing.T) {
+func TestUpdate_ClientErrorRevertsToPreviousArgs(t *testing.T) {
 	good := newFakeGetter(`{"v":"good"}`)
 	opts := testOptions(t, prometheus.NewRegistry(), &recorder{})
 	var clientFails atomic.Bool
@@ -389,16 +407,20 @@ func TestUpdate_FailedClientAdoptsNewArgs(t *testing.T) {
 	}
 	c, err := newComponent(opts, testArgs("a", fastPoll), factory)
 	require.NoError(t, err)
+	runComponent(t, c)
 
 	clientFails.Store(true)
 	require.EqualError(t, c.Update(testArgs("b", fastPoll)), "creating AWS client: no region")
-	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+	require.Equal(t, "a", c.currentSecretID())
 
-	runComponent(t, c)
-	clientFails.Store(false)
+	// The previous client stays in use, so the polls work while client creation still fails.
+	start := good.callCount()
 	require.Eventually(t, func() bool {
-		return aws.ToString(good.lastCall().SecretId) == "b" && c.CurrentHealth().Health == component.HealthTypeHealthy
+		return good.callCount() >= start+3 && c.CurrentHealth().Health == component.HealthTypeHealthy
 	}, waitFor, tick)
+	for _, id := range good.secretIDsSince(start) {
+		require.Equal(t, "a", id)
+	}
 }
 
 // blockPollUntilCtxDone makes calls for "old" block until their ctx is done.
@@ -490,38 +512,25 @@ func TestUpdate_StalePollNotExported(t *testing.T) {
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
-// TestRetry_AfterFailedUpdate checks that a failed Update retries on the short
-// schedule until it succeeds, both with polling on and with polling off.
-func TestRetry_AfterFailedUpdate(t *testing.T) {
-	tests := []struct {
-		name string
-		poll time.Duration
-	}{
-		{name: "polling enabled", poll: time.Hour},
-		{name: "polling disabled", poll: 0},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fake := newFakeGetter(`{"v":"1"}`)
-			c, rec, err := newTestComponent(t, testArgs("a", tt.poll), fake)
-			require.NoError(t, err)
-			c.maxRetryInterval = fastPoll
-			runComponent(t, c)
+// TestUpdate_FailureRestartsPolling checks that a failed Update restarts the poll
+// cycle with the previous arguments. The previous arguments do not fail, so the
+// polls keep the normal schedule and not the retry schedule.
+func TestUpdate_FailureRestartsPolling(t *testing.T) {
+	const pollFreq = 300 * time.Millisecond
+	fake := newFakeGetter(`{"v":"good"}`)
+	c, _, err := newTestComponent(t, testArgs("good", pollFreq), fake)
+	require.NoError(t, err)
+	c.maxRetryInterval = fastPoll
+	runComponent(t, c)
 
-			fake.returnError(errors.New("ThrottlingException: slow down"))
-			require.Error(t, c.Update(testArgs("a", tt.poll)))
+	failForSecret(fake, "typo")
+	require.Error(t, c.Update(testArgs("typo", pollFreq)))
 
-			// Each failed retry keeps the short retry schedule.
-			start := fake.callCount()
-			require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
-
-			fake.returnSecret(`{"v":"2"}`)
-			require.Eventually(t, func() bool { return lastDataValue(rec) == "2" }, waitFor, tick)
-			stopped := fake.callCount()
-			require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
-			require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
-		})
-	}
+	start := fake.callCount()
+	require.Never(t, func() bool { return fake.callCount() > start }, pollFreq/2, tick)
+	require.Eventually(t, func() bool {
+		return fake.callCount() > start && c.CurrentHealth().Health == component.HealthTypeHealthy
+	}, waitFor, tick)
 }
 
 // TestRetry_AfterFailedPoll checks that a scheduled poll that fails while the

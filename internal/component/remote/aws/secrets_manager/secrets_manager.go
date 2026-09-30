@@ -28,7 +28,7 @@ func init() {
 // requestTimeout limits one config load and fetch, so that a hung AWS call cannot block Update.
 const requestTimeout = 30 * time.Second
 
-// maxRetryInterval limits the wait before a retry after a failed fetch.
+// maxRetryInterval limits the wait before a retry after a failed poll.
 // Without it, a failure with the default poll_frequency lasts for an hour.
 const maxRetryInterval = time.Minute
 
@@ -75,7 +75,9 @@ type Component struct {
 	// Polls do not start while it is not zero, because the arguments are stale.
 	pending    int
 	pollCancel context.CancelFunc
-	failing    bool
+	// failing is true when the last poll with the stored arguments failed.
+	// A failed Update does not change it, because the stored arguments stay in use.
+	failing bool
 }
 
 var (
@@ -138,8 +140,10 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
-// Update fetches the secret with the new arguments. The component keeps the
-// new arguments also if the fetch fails, so that retries use them.
+// Update fetches the secret with the new arguments. If the fetch fails, the
+// component keeps the previous arguments and client, and it restarts polling
+// with them. This matches the controller, which keeps the previous arguments
+// when Update fails.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
@@ -166,8 +170,8 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	c.pending--
 	current := c.gen == myGen
-	if current {
-		c.args, c.client, c.failing = newArgs, client, err != nil
+	if current && err == nil {
+		c.args, c.client, c.failing = newArgs, client, false
 	}
 	c.mut.Unlock()
 
@@ -190,17 +194,15 @@ func (c *Component) CurrentHealth() component.Health {
 }
 
 // nextInterval returns the wait before the next poll, or 0 for no poll.
+// If the last poll failed, the wait is at most maxRetryInterval.
 func (c *Component) nextInterval() time.Duration {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	freq := c.args.PollFrequency
-	if !c.failing {
-		return freq
-	}
-	if freq > 0 {
+	if freq > 0 && c.failing {
 		return min(freq, c.maxRetryInterval)
 	}
-	return c.maxRetryInterval
+	return freq
 }
 
 // poll fetches the secret with the current arguments. It returns true if the

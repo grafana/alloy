@@ -43,7 +43,7 @@ You can use the following arguments with `remote.aws.secrets_manager`:
 | `version_id`     | `string`   | The unique identifier of the secret version to read. |         | no       |
 | `version_stage`  | `string`   | The staging label of the secret version to read.     |         | no       |
 
-Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts, when its configuration changes, and when it retries after a failed read.
+Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and when a configuration change succeeds.
 Otherwise, `poll_frequency` must be at least `"1m"`.
 
 With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.
@@ -57,7 +57,7 @@ If you set neither, `remote.aws.secrets_manager` reads the version with the `AWS
 {{< admonition type="note" >}}
 AWS charges for each Secrets Manager API call.
 Each `remote.aws.secrets_manager` component makes one call at each poll.
-It also reads the secret at startup, at each configuration change, and at each retry after a failed read.
+It also reads the secret at startup and at each configuration change.
 The AWS SDK makes up to 3 attempts for each call.
 If you use the `assume_role` block, the component also calls AWS STS when the role credentials expire.
 Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
@@ -146,15 +146,15 @@ If a read fails, `remote.aws.secrets_manager` keeps the last values it read and 
 If the first read fails, the component doesn't start and doesn't retry by itself.
 Fix the cause, then reload the configuration.
 
-After a failed read, the component retries after the `poll_frequency` interval or after 1 minute, whichever is shorter.
-If `poll_frequency` is `"0s"`, the component retries every minute until a read succeeds.
+After a failed poll, the component retries after the `poll_frequency` interval or after 1 minute, whichever is shorter.
 After a successful read, the component returns to the `poll_frequency` schedule.
 
-If a read with new arguments fails after a configuration change, the component keeps the last values it read and is reported as unhealthy.
-It keeps retrying with the new arguments.
-
-If you then restore the previous configuration exactly, {{< param "PRODUCT_NAME" >}} doesn't apply the restored configuration, because it sees no change.
-To recover, change the configuration again or restart {{< param "PRODUCT_NAME" >}}.
+If a read with new arguments fails after a configuration change, the component keeps the previous arguments and the last values it read, and it reports the error.
+It keeps polling with the previous arguments.
+The component becomes healthy again after the next successful poll.
+If `poll_frequency` is `"0s"`, there is no next poll, and the component stays unhealthy until you reload a working configuration.
+The error from the configuration change stays visible in the health of the component.
+To apply the change, fix the configuration and reload it.
 
 ## Debug information
 
