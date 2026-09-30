@@ -88,17 +88,7 @@ func (c *controller) run(ctx context.Context) error {
 	_, err := deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
 		AddFunc:    func(obj any, initial bool) { c.observe(obj.(*appsv1.Deployment), initial) },
 		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
-		DeleteFunc: func(obj any) {
-			if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
-				obj = tombstone.Obj
-			}
-			if d, ok := obj.(*appsv1.Deployment); ok {
-				c.mu.Lock()
-				delete(c.rollouts, string(d.UID))
-				delete(c.collections, string(d.UID))
-				c.mu.Unlock()
-			}
-		},
+		DeleteFunc: c.remove,
 	})
 	if err != nil {
 		return err
@@ -215,4 +205,23 @@ func (c *controller) deliver(ctx context.Context, event *eventBatch) bool {
 		return false
 	}
 	return true
+}
+
+// remove emits an identity-only observation even when no rollout was seen.
+// UID distinguishes deletion/recreation under the same namespace and name.
+func (c *controller) remove(obj any) {
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	d, ok := obj.(*appsv1.Deployment)
+	if !ok || d.UID == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.rollouts, string(d.UID))
+	delete(c.collections, string(d.UID))
+	now := c.now()
+	payload := deploymentDeletion{Name: d.Name, UID: string(d.UID), ObservedAt: now.UTC().Format(time.RFC3339Nano)}
+	c.enqueuePayload(d, "deleted", stableID(c.opts.clusterUID, string(d.UID)), now, payload)
 }

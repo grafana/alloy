@@ -10,7 +10,7 @@ title: otelcol.receiver.k8s_workloads
 
 # `otelcol.receiver.k8s_workloads`
 
-`otelcol.receiver.k8s_workloads` emits Kubernetes Deployment rollout events as OpenTelemetry logs.
+`otelcol.receiver.k8s_workloads` emits Kubernetes Deployment rollout and deletion events as OpenTelemetry logs.
 It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
@@ -184,7 +184,7 @@ The component emits the following lifecycle event types:
 
 Every body contains `name`, `uid`, `rollout_id`, `revision`, `status`, `observed_at`, and `containers`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
-The component doesn't read Pods to resolve runtime image digests.
+Runtime image identities are reported separately by the image collection event.
 A `superseded` event also contains `superseded_by`, the replacement rollout ID.
 
 `rollout_id` is a deterministic hash of the cluster UID, Deployment UID, and controller-assigned revision.
@@ -251,12 +251,25 @@ to identify the same manifest or index as a build's provenance digest.
 The event ID is deterministic for the rollout; delivery retries preserve its body.
 Later scaling doesn't reopen collection or emit another image event.
 
+### Deployment deletion events
+
+`grafana.sdlc.k8s.deployment.deleted` reports an observed Deployment deletion.
+Its body contains `name`, `uid`, and `observed_at`, without rollout or container fields.
+The resource attributes identify the cluster, namespace, and Deployment.
+Deletion is reported even when no rollout was observed for that Deployment.
+
+The event ID is `stableID(stableID(cluster_uid, deployment_uid), "deleted")`, using the same hash function as rollout IDs.
+Repeated observations of the same deletion have the same event ID.
+A recreated Deployment has a different UID, even when its namespace and name are unchanged.
+Consumers can retain historical rollouts while marking the deleted Deployment as inactive.
+Deletions that occur while the watcher is stopped aren't reconstructed on startup.
+
 ### Delivery behavior
 
 The initial watch listing establishes an in-memory baseline without emitting events.
 An in-progress rollout found during startup can subsequently emit an outcome without a preceding `started` event.
 Restarts and ownership changes don't replay missed events, and intermediate revisions can be missed between observations.
-Deleting a Deployment discards its tracked state without emitting an event.
+Deleting a Deployment emits a deletion observation and discards its tracked rollout and image collection state.
 The component doesn't persist state or reconcile historical rollouts.
 
 Downstream delivery failures are logged and retried with the original event ID and timestamp.
