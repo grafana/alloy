@@ -36,7 +36,7 @@ otelcol.receiver.filelog "default" {
 		}
 
 		sort_by {
-			sort_type = "lexicographic"
+			sort_type = "alphabetical"
 			regex_key = "severity"
 			ascending = true
 		}

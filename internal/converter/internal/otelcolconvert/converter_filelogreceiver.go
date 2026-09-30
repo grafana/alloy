@@ -151,14 +151,9 @@ func toOtelcolOrderingCriteria(cfg matcher.OrderingCriteria) *filelog.OrderingCr
 func toOtelcolSortBy(cfg []matcher.Sort) []filelog.Sort {
 	var sorts []filelog.Sort
 	for _, s := range cfg {
-		sortType := s.SortType
-		// Upstream stanza uses "alphabetical", Alloy exposes "lexicographic".
-		if sortType == "alphabetical" {
-			sortType = "lexicographic"
-		}
 		sorts = append(sorts,
 			filelog.Sort{
-				SortType:  sortType,
+				SortType:  s.SortType,
 				RegexKey:  s.RegexKey,
 				Ascending: s.Ascending,
 				Layout:    s.Layout,

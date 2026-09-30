@@ -226,13 +226,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		cfg.InputConfig.Criteria.OrderingCriteria.GroupBy = args.MatchCriteria.OrderingCriteria.GroupBy
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
-			sortType := s.SortType
-			// Alloy exposes "lexicographic", upstream stanza expects "alphabetical".
-			if sortType == "lexicographic" {
-				sortType = "alphabetical"
-			}
 			cfg.InputConfig.Criteria.OrderingCriteria.SortBy = append(cfg.InputConfig.Criteria.OrderingCriteria.SortBy, matcher.Sort{
-				SortType:  sortType,
+				SortType:  s.SortType,
 				RegexKey:  s.RegexKey,
 				Ascending: s.Ascending,
 				Layout:    s.Layout,
@@ -305,7 +300,7 @@ func (args *Arguments) Validate() error {
 		}
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
-			if !slices.Contains([]string{"timestamp", "numeric", "lexicographic", "mtime"}, s.SortType) {
+			if !slices.Contains([]string{"timestamp", "numeric", "alphabetical", "mtime"}, s.SortType) {
 				errs = multierror.Append(errs, fmt.Errorf("invalid 'sort_type': %s", s.SortType))
 			}
 		}

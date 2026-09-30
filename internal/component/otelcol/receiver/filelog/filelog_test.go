@@ -210,13 +210,13 @@ func TestConvertTopN(t *testing.T) {
 	require.Equal(t, 0, *topN)
 }
 
-func TestConvertLexicographicSortType(t *testing.T) {
+func TestConvertAlphabeticalSortType(t *testing.T) {
 	cfgText := `
 	include = ["/var/log/*.log"]
 	ordering_criteria {
 		regex = "^(?P<name>.*)\\.log$"
 		sort_by {
-			sort_type = "lexicographic"
+			sort_type = "alphabetical"
 			regex_key = "name"
 		}
 	}

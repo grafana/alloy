@@ -229,8 +229,8 @@ The following arguments are supported:
 | `location`  | `string` | The location of the timestamp.                                               | `"UTC"` | no       |
 | `regex_key` | `string` | The named capture group from the `regex` attribute to use for sorting.       | `""`    | no       |
 
-`sort_type` must be one of `numeric`, `lexicographic`, `timestamp`, or `mtime`.
-When using `numeric`, `lexicographic`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
+`sort_type` must be one of `numeric`, `alphabetical`, `timestamp`, or `mtime`.
+When using `numeric`, `alphabetical`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
 When using `mtime` `sort_type`, the file's modified time will be used to sort.
 
 The `location` and `layout` arguments are only applicable when `sort_type` is `timestamp`.
