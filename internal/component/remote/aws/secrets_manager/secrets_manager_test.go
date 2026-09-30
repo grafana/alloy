@@ -482,7 +482,7 @@ func TestUpdate_StalePollNotExported(t *testing.T) {
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
-func TestRetry_AfterFailedPoll(t *testing.T) {
+func TestRetry_AfterFailedUpdate(t *testing.T) {
 	fake := newFakeGetter(`{"v":"1"}`)
 	c, rec, err := newTestComponent(t, testArgs("a", time.Hour), fake)
 	require.NoError(t, err)
@@ -492,7 +492,7 @@ func TestRetry_AfterFailedPoll(t *testing.T) {
 	fake.returnError(errors.New("ThrottlingException: slow down"))
 	require.Error(t, c.Update(testArgs("a", time.Hour)))
 
-	// The second retry proves that a failed poll also schedules a retry.
+	// Each failed retry keeps the short retry schedule.
 	start := fake.callCount()
 	require.Eventually(t, func() bool { return fake.callCount() >= start+2 }, waitFor, tick)
 
@@ -501,6 +501,37 @@ func TestRetry_AfterFailedPoll(t *testing.T) {
 	stopped := fake.callCount()
 	require.Never(t, func() bool { return fake.callCount() > stopped }, 100*time.Millisecond, tick)
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
+// TestRetry_AfterFailedPoll checks that a scheduled poll that fails while the
+// component is healthy changes the schedule to the retry interval.
+func TestRetry_AfterFailedPoll(t *testing.T) {
+	const pollFreq = time.Second
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, _, err := newTestComponent(t, testArgs("a", pollFreq), fake)
+	require.NoError(t, err)
+	c.maxRetryInterval = fastPoll
+
+	var mu sync.Mutex
+	var failures []time.Time
+	fake.setFn(func(context.Context, *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		mu.Lock()
+		failures = append(failures, time.Now())
+		mu.Unlock()
+		return nil, errors.New("ThrottlingException: slow down")
+	})
+	runComponent(t, c)
+
+	failureTimes := func() []time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(failures)
+	}
+	require.Eventually(t, func() bool { return len(failureTimes()) >= 2 }, waitFor, tick)
+
+	// Without the reschedule, the retry waits for the next scheduled poll, one pollFreq later.
+	got := failureTimes()
+	require.Less(t, got[1].Sub(got[0]), pollFreq/2)
 }
 
 func TestRetry_PollDisabledRetriesUntilSuccess(t *testing.T) {
@@ -600,7 +631,8 @@ func TestNewSDKClient_EndpointFromEnv(t *testing.T) {
 	t.Setenv("AWS_ENDPOINT_URL_SECRETS_MANAGER", url)
 
 	client, err := newSDKClient(t.Context(), awscommon.Client{
-		Region:    "us-east-1",
+		// This region has no DNS name. If the endpoint override fails, the call fails offline.
+		Region:    "xx-test-1",
 		AccessKey: "AKID",
 		Secret:    "SECRET",
 	})
@@ -630,7 +662,8 @@ func TestNewSDKClient(t *testing.T) {
 	require.NoError(t, isolateAWSEnv(t))
 
 	client, err := newSDKClient(t.Context(), awscommon.Client{
-		Region:    "us-east-1",
+		// This region has no DNS name. If the endpoint override fails, the call fails offline.
+		Region:    "xx-test-1",
 		Endpoint:  srv.URL,
 		AccessKey: "AKID",
 		Secret:    "SECRET",
