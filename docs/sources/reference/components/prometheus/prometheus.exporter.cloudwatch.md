@@ -16,7 +16,7 @@ title: prometheus.exporter.cloudwatch
 The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-exporter`][], letting you collect [Amazon CloudWatch metrics][] in a Prometheus-compatible format.
 
 This component lets you scrape CloudWatch metrics in a set of configurations called _jobs_.
-There are two kinds of jobs: [`discovery`][discovery] and [`static`][static].
+There are three kinds of jobs: [`custom_namespace`][custom_namespace], [`discovery`][discovery] and [`static`][static].
 
 [`yet-another-cloudwatch-exporter`]: https://github.com/prometheus-community/yet-another-cloudwatch-exporter
 [Amazon CloudWatch metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html
@@ -451,7 +451,7 @@ prometheus.exporter.cloudwatch "static_instances" {
         }
 
         metric {
-            name       = "CPUUsage"
+            name       = "CPUUtilization"
             statistics = ["Sum", "Average"]
             period     = "1m"
         }
