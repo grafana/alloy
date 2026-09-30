@@ -82,16 +82,6 @@ func runPipelineTest(t *testing.T, cfgs []StageConfig, entries []Entry, expected
 		check = checks[0]
 	}
 
-	// Pipeline.Run seeds the extracted map with each entry's initial labels
-	// before running any stage. process, called directly below, does not.
-	// Seed it here once so both pipeline implementations start from the same
-	// state.
-	for i := range entries {
-		for labelName, labelValue := range entries[i].Labels {
-			entries[i].Extracted[string(labelName)] = string(labelValue)
-		}
-	}
-
 	cloned := cloneEntries(entries)
 
 	t.Run("Pipeline", func(t *testing.T) {
@@ -313,10 +303,7 @@ func assertEntriesUnordered(t require.TestingT, expected, actual []Entry, checks
 	}
 }
 
-// TODO(@tpaschalis) Comment these out until we port over the remaining
-// stages and use these tests to verify their behavior.
 var (
-	ct                = time.Now()
 	rawTestLine       = `{"log":"11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] \"GET /1986.js HTTP/1.1\" 200 932 \"-\" \"Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6\"","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z"}`
 	processedTestLine = `11.11.11.11 - frank [25/Jan/2000:14:00:01 -0500] "GET /1986.js HTTP/1.1" 200 932 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6"`
 )
@@ -356,221 +343,197 @@ stage.output {
 		source = "message"
 }`
 
-func TestNewPipeline(t *testing.T) {
-	p, err := NewPipeline(logging.NewSlogNop(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		panic(err)
-	}
-	require.Len(t, p.stages, 2)
-}
-
-func TestPipeline_Process(t *testing.T) {
+func TestPipeline(t *testing.T) {
 	t.Parallel()
 
+	var (
+		now = time.Now()
+	)
+
 	est, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		t.Fatal("could not parse timestamp", err)
+	require.NoError(t, err)
+
+	processedTS := time.Date(2000, 01, 25, 14, 00, 01, 0, est)
+
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
-	tests := map[string]struct {
-		config         string
-		entry          string
-		expectedEntry  string
-		t              time.Time
-		expectedT      time.Time
-		initialLabels  model.LabelSet
-		expectedLabels model.LabelSet
-	}{
-		"happy path": {
-			testMultiStageAlloy,
-			rawTestLine,
-			processedTestLine,
-			time.Now(),
-			time.Date(2000, 01, 25, 14, 00, 01, 0, est),
-			map[model.LabelName]model.LabelValue{
-				"match": "true",
+	tests := []testCase{
+		{
+			name:   "happy path",
+			config: testMultiStageAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"match": "true",
+				}, rawTestLine, time.Now()),
 			},
-			map[model.LabelName]model.LabelValue{
-				"match":       "true",
-				"stream":      "stderr",
-				"action":      "GET",
-				"status_code": "200",
-			},
-		},
-		"no match": {
-			testMultiStageAlloy,
-			rawTestLine,
-			rawTestLine,
-			ct,
-			ct,
-			map[model.LabelName]model.LabelValue{
-				"nomatch": "true",
-			},
-			map[model.LabelName]model.LabelValue{
-				"nomatch": "true",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"match":     "true",
+					"output":    processedTestLine,
+					"stream":    "stderr",
+					"timestamp": "25/Jan/2000:14:00:01 -0500",
+					"ip":        "11.11.11.11",
+					"identd":    "-",
+					"user":      "frank",
+					"action":    "GET",
+					"path":      "/1986.js",
+					"protocol":  "HTTP/1.1",
+					"status":    "200",
+					"size":      "932",
+					"referer":   "-",
+					"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+				}, model.LabelSet{
+					"match":       "true",
+					"stream":      "stderr",
+					"action":      "GET",
+					"status_code": "200",
+				}, processedTestLine, processedTS),
 			},
 		},
-		"should initialize the extracted map with the initial labels": {
-			testMultiStageAlloy,
-			rawTestLine,
-			processedTestLine,
-			time.Now(),
-			time.Date(2000, 01, 25, 14, 00, 01, 0, est),
-			map[model.LabelName]model.LabelValue{
-				"match":    "true",
-				"filename": "/var/log/nginx/frontend.log",
+		{
+			name:   "no match",
+			config: testMultiStageAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"nomatch": "true",
+				}, rawTestLine, now),
 			},
-			map[model.LabelName]model.LabelValue{
-				"filename":    "/var/log/nginx/frontend.log",
-				"match":       "true",
-				"stream":      "stderr",
-				"service":     "frontend",
-				"action":      "GET",
-				"status_code": "200",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"nomatch": "true",
+				}, model.LabelSet{
+					"nomatch": "true",
+				}, rawTestLine, now),
 			},
 		},
-		"should set a label from value extracted from JSON": {
-			testLabelsFromJSONAlloy,
-			`{"message":"hello world","app":"api"}`,
-			"hello world",
-			ct,
-			ct,
-			map[model.LabelName]model.LabelValue{},
-			map[model.LabelName]model.LabelValue{
-				"app": "api",
+		{
+			name:   "should initialize the extracted map with the initial labels",
+			config: testMultiStageAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"match":    "true",
+					"filename": "/var/log/nginx/frontend.log",
+				}, rawTestLine, time.Now()),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"match":     "true",
+					"filename":  "/var/log/nginx/frontend.log",
+					"service":   "frontend",
+					"output":    processedTestLine,
+					"stream":    "stderr",
+					"timestamp": "25/Jan/2000:14:00:01 -0500",
+					"ip":        "11.11.11.11",
+					"identd":    "-",
+					"user":      "frank",
+					"action":    "GET",
+					"path":      "/1986.js",
+					"protocol":  "HTTP/1.1",
+					"status":    "200",
+					"size":      "932",
+					"referer":   "-",
+					"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+				}, model.LabelSet{
+					"filename":    "/var/log/nginx/frontend.log",
+					"match":       "true",
+					"stream":      "stderr",
+					"service":     "frontend",
+					"action":      "GET",
+					"status_code": "200",
+				}, processedTestLine, processedTS),
 			},
 		},
-		"should not set a label if the field does not exist in the JSON": {
-			testLabelsFromJSONAlloy,
-			`{"message":"hello world"}`,
-			"hello world",
-			ct,
-			ct,
-			map[model.LabelName]model.LabelValue{},
-			map[model.LabelName]model.LabelValue{},
+		{
+			name:   "should set a label from value extracted from JSON",
+			config: testLabelsFromJSONAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"message":"hello world","app":"api"}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":     "api",
+					"message": "hello world",
+				}, model.LabelSet{
+					"app": "api",
+				}, "hello world", now),
+			},
 		},
-		"should not set a label if the value extracted from JSON is null": {
-			testLabelsFromJSONAlloy,
-			`{"message":"hello world","app":null}`,
-			"hello world",
-			ct,
-			ct,
-			map[model.LabelName]model.LabelValue{},
-			map[model.LabelName]model.LabelValue{},
+		{
+			name:   "should not set a label if the field does not exist in the JSON",
+			config: testLabelsFromJSONAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"message":"hello world"}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":     nil,
+					"message": "hello world",
+				}, model.LabelSet{}, "hello world", now),
+			},
+		},
+		{
+			name:   "should not set a label if the value extracted from JSON is null",
+			config: testLabelsFromJSONAlloy,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"message":"hello world","app":null}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":     nil,
+					"message": "hello world",
+				}, model.LabelSet{}, "hello world", now),
+			},
 		},
 	}
 
-	for tName, tt := range tests {
-		tt := tt
-
-		t.Run(tName, func(t *testing.T) {
-			var config Configs
-
-			err := syntax.Unmarshal([]byte(tt.config), &config)
-			require.NoError(t, err)
-
-			p, err := NewPipeline(logging.NewSlogNop(), loadConfig(tt.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			require.NoError(t, err)
-
-			out := processEntries(p, newEntry(nil, tt.initialLabels, tt.entry, tt.t))[0]
-
-			assert.Equal(t, tt.expectedLabels, out.Labels, "did not get expected labels")
-			assert.Equal(t, tt.expectedEntry, out.Line, "did not receive expected log entry")
-			if out.Timestamp.Unix() != tt.expectedT.Unix() {
-				t.Fatalf("mismatch ts want: %s got:%s", tt.expectedT, tt.t)
-			}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }
 
-var (
-	infoLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelInfo,
-	}))
-	debugLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
-		AddSource: false,
-		Level:     slog.LevelDebug,
-	}))
-)
-
-func BenchmarkPipeline(b *testing.B) {
-	benchmarks := []struct {
-		name   string
-		stgs   []StageConfig
-		logger *slog.Logger
-		entry  string
-	}{
-		{
-			"two stage info level",
-			loadConfig(testMultiStageAlloy),
-			infoLogger,
-			rawTestLine,
-		},
-		{
-			"two stage debug level",
-			loadConfig(testMultiStageAlloy),
-			debugLogger,
-			rawTestLine,
-		},
-	}
-	for _, bm := range benchmarks {
-		b.Run(bm.name, func(b *testing.B) {
-			pl, err := NewPipeline(logging.NewSlogNop(), bm.stgs, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if err != nil {
-				panic(err)
-			}
-			lb := model.LabelSet{}
-			ts := time.Now()
-
-			in := make(chan Entry)
-			out := pl.Run(in)
-			b.ResetTimer()
-
-			go func() {
-				for range out {
-				}
-			}()
-			for b.Loop() {
-				in <- newEntry(nil, lb, bm.entry, ts)
-			}
-			close(in)
-		})
-	}
-}
-
-func TestPipeline_Wrap(t *testing.T) {
+func TestPipeline_Start(t *testing.T) {
 	now := time.Now()
 	p, err := NewPipeline(logging.NewSlogNop(), loadConfig(testMultiStageAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	tests := map[string]struct {
+	type testCase struct {
+		name       string
 		labels     model.LabelSet
 		shouldSend bool
-	}{
-		"should drop": {
-			map[model.LabelName]model.LabelValue{
+	}
+
+	tests := []testCase{
+		{
+			name: "should drop",
+			labels: model.LabelSet{
 				"stream":      "stderr",
 				"action":      "GET",
 				"status_code": "200",
 				"match":       "false",
 			},
-			false,
+			shouldSend: false,
 		},
-		"should send": {
-			map[model.LabelName]model.LabelValue{
+		{
+			name: "should send",
+			labels: model.LabelSet{
 				"stream":      "stderr",
 				"action":      "GET",
 				"status_code": "200",
 			},
-			true,
+			shouldSend: true,
 		},
 	}
 
-	for tName, tt := range tests {
-		t.Run(tName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			c := loki.NewCollectingHandler()
 			handler := p.Start(make(chan loki.Entry), c.Chan())
@@ -595,7 +558,7 @@ func TestPipeline_Wrap(t *testing.T) {
 	}
 }
 
-func Test_PipelineParallel(t *testing.T) {
+func TestPipelineConcurrent(t *testing.T) {
 	cfg := `
 stage.match {
 		selector = "{match=~\".*\"}"
@@ -636,28 +599,31 @@ stage.match {
 	e2 := loki.AddLabelsMiddleware(model.LabelSet{"bar": "foo"}).Wrap(e1)
 	entryhandler := loki.AddLabelsMiddleware(model.LabelSet{"foo": "bar"}).Wrap(e2)
 
+	const parallelism = 10
+
+	sent := make([][]string, parallelism)
+	for i := range parallelism {
+		sent[i] = []string{
+			fmt.Sprintf(`{app:"%d", `, i),
+			fmt.Sprintf(` message:"%d"}`, i),
+		}
+	}
+
 	var wg sync.WaitGroup
-	parallelism := 10
 	wg.Add(parallelism)
 
 	for i := range parallelism {
 		go func(i int) {
 			defer wg.Done()
-			entryhandler.Chan() <- loki.Entry{
-				Labels: make(model.LabelSet),
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      fmt.Sprintf(`{app:"%d", `, 5),
-				},
+			for _, line := range sent[i] {
+				entryhandler.Chan() <- loki.Entry{
+					Labels: make(model.LabelSet),
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      line,
+					},
+				}
 			}
-			entryhandler.Chan() <- loki.Entry{
-				Labels: make(model.LabelSet),
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      fmt.Sprintf(` message:"%s"}`, time.Now()),
-				},
-			}
-			t.Log(i)
 		}(i)
 	}
 
@@ -666,5 +632,83 @@ stage.match {
 	e2.Stop()
 	e1.Stop()
 	out.Stop()
-	t.Log(out.Received())
+
+	// The middlewares give every producer the same labels, so all lines land in
+	// one multiline stream and which lines end up in a block depends on the
+	// interleaving. What must hold is that no line is dropped or duplicated.
+	var got []string
+	for _, e := range out.Received() {
+		got = append(got, strings.Split(e.Line, "\n")...)
+	}
+
+	var expected []string
+	for _, lines := range sent {
+		expected = append(expected, lines...)
+	}
+
+	slices.Sort(got)
+	slices.Sort(expected)
+	require.Equal(t, expected, got)
+}
+
+var (
+	infoLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelInfo,
+	}))
+	debugLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	}))
+)
+
+func BenchmarkPipeline(b *testing.B) {
+	type testCase struct {
+		name   string
+		cfg    string
+		line   string
+		logger *slog.Logger
+	}
+
+	tests := []testCase{
+		{
+			name:   "two stage info level",
+			cfg:    testMultiStageAlloy,
+			line:   rawTestLine,
+			logger: infoLogger,
+		},
+		{
+			name:   "two stage debug level",
+			cfg:    testMultiStageAlloy,
+			line:   rawTestLine,
+			logger: debugLogger,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			pl, err := NewPipeline(tt.logger, loadConfig(tt.cfg), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			require.NoError(b, err)
+
+			lb := model.LabelSet{}
+			ts := time.Now()
+
+			in := make(chan loki.Entry)
+			out := make(chan loki.Entry)
+			handler := pl.Start(in, out)
+			defer handler.Stop()
+			b.ResetTimer()
+
+			go func() {
+				for range out {
+				}
+			}()
+
+			for b.Loop() {
+				in <- loki.NewEntry(lb.Clone(), push.Entry{Timestamp: ts, Line: tt.line})
+			}
+
+			close(in)
+		})
+	}
 }
