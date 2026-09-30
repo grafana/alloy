@@ -43,7 +43,7 @@ You can use the following arguments with `remote.aws.secrets_manager`:
 | `version_id`     | `string`   | The unique identifier of the secret version to read. |         | no       |
 | `version_stage`  | `string`   | The staging label of the secret version to read.     |         | no       |
 
-Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts or when its configuration changes.
+Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts, when its configuration changes, and when it retries after a failed read.
 Otherwise, `poll_frequency` must be at least `"1m"`.
 
 With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.
@@ -58,7 +58,7 @@ If you set neither, `remote.aws.secrets_manager` reads the version with the `AWS
 AWS charges for each Secrets Manager API call.
 Each `remote.aws.secrets_manager` component makes one call at each poll.
 It also reads the secret at startup, at each configuration change, and at each retry after a failed read.
-The AWS SDK can retry a failed call up to 3 times.
+The AWS SDK makes up to 3 attempts for each call.
 If you use the `assume_role` block, the component also calls AWS STS when the role credentials expire.
 Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
 {{< /admonition >}}
@@ -148,6 +148,9 @@ After a successful read, the component returns to the `poll_frequency` schedule.
 
 If a read with new arguments fails after a configuration change, the component keeps the last values it read and is reported as unhealthy.
 It keeps retrying with the new arguments.
+
+If you then restore the previous configuration exactly, {{< param "PRODUCT_NAME" >}} doesn't apply the restored configuration, because it sees no change.
+To recover, change the configuration again or restart {{< param "PRODUCT_NAME" >}}.
 
 ## Debug information
 
