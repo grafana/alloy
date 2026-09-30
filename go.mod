@@ -30,7 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.111.0
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.48.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/buger/jsonparser v1.6.1
 	github.com/burningalchemist/sql_exporter v0.0.0-20260312184457-9bf25f71582f
