@@ -146,10 +146,17 @@ func convertSizer(sizer string) (*otelexporterhelper.RequestSizerType, error) {
 }
 
 type BatchConfig struct {
-	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
-	MinSize      int64         `alloy:"min_size,attr,optional"`
-	MaxSize      int64         `alloy:"max_size,attr,optional"`
-	Sizer        string        `alloy:"sizer,attr,optional"`
+	FlushTimeout time.Duration         `alloy:"flush_timeout,attr,optional"`
+	MinSize      int64                 `alloy:"min_size,attr,optional"`
+	MaxSize      int64                 `alloy:"max_size,attr,optional"`
+	Sizer        string                `alloy:"sizer,attr,optional"`
+	Partition    *BatchPartitionConfig `alloy:"partition,block,optional"`
+}
+
+type BatchPartitionConfig struct {
+	MetadataKeys []string      `alloy:"metadata_keys,attr,optional"`
+	CacheSize    int64         `alloy:"cache_size,attr,optional"`
+	IdleTimeout  time.Duration `alloy:"idle_timeout,attr,optional"`
 }
 
 var _ syntax.Defaulter = (*BatchConfig)(nil)
