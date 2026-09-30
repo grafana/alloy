@@ -19,6 +19,7 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 		SinkID:   "pipelinetest.sink.out",
 		DataPath: cfg.DataPath,
 		Source:   withPrelude(schema),
+		Features: schema.Features,
 	})
 	if err != nil {
 		return err
