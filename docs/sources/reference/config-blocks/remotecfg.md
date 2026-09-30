@@ -53,9 +53,12 @@ You can use the following arguments with `remotecfg`:
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |           | no       |
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`   | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             | `""`      | no       |
+| `tunnel_url`             | `string`            | The address of the API used for tunnel connections.                                              | `url`     | no       |
 | `url`                    | `string`            | The address of the API to poll for configuration.                                                | `""`      | no       |
 
 If you don't set the `url`, the `remotecfg` block has no effect.
+You can't set `tunnel_url` unless you also set `url`.
+If you don't set `tunnel_url`, tunnel connections use `url`.
 
 If you don't set `id`, {{< param "PRODUCT_NAME" >}} generates a random, anonymous unique ID (UUID) and stores it in an `alloy_seed.json` file in the {{< param "PRODUCT_NAME" >}} storage path.
 This allows the ID to persist across restarts.

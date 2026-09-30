@@ -13,6 +13,7 @@ import (
 // Arguments holds runtime settings for the remotecfg service.
 type Arguments struct {
 	URL              string                   `alloy:"url,attr,optional"`
+	TunnelURL        string                   `alloy:"tunnel_url,attr,optional"`
 	ID               string                   `alloy:"id,attr,optional"`
 	Name             string                   `alloy:"name,attr,optional"`
 	Attributes       map[string]string        `alloy:"attributes,attr,optional"`
@@ -43,6 +44,10 @@ func (a *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
+	if a.URL == "" && a.TunnelURL != "" {
+		return fmt.Errorf("tunnel_url requires url to be set")
+	}
+
 	if a.PollFrequency < 10*time.Second {
 		return fmt.Errorf("poll_frequency must be at least \"10s\", got %q", a.PollFrequency)
 	}
@@ -60,6 +65,13 @@ func (a *Arguments) Validate() error {
 	}
 
 	return nil
+}
+
+func (a Arguments) getTunnelURL() string {
+	if a.TunnelURL != "" {
+		return a.TunnelURL
+	}
+	return a.URL
 }
 
 // Hash marshals the Arguments and returns a hash representation.

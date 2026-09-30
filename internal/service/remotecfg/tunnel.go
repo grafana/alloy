@@ -55,6 +55,7 @@ func newTunnelRunner(logger *slog.Logger, httpClient *http.Client, httpServerURL
 func (r *tunnelRunner) Update(args Arguments) {
 	r.mut.Lock()
 	changed := r.desired.URL != args.URL ||
+		r.desired.TunnelURL != args.TunnelURL ||
 		r.desired.ID != args.ID ||
 		!reflect.DeepEqual(r.desired.HTTPClientConfig, args.HTTPClientConfig)
 	r.desired = args
@@ -128,7 +129,7 @@ func (r *tunnelRunner) runReconnectLoop(ctx context.Context, args Arguments) {
 	for {
 		r.logger.Info(
 			"Establishing Fleet Management tunnel",
-			"url", args.URL,
+			"url", args.getTunnelURL(),
 			"collector_id", args.ID,
 		)
 		tunnelClient, err := r.factory(args)
@@ -180,7 +181,7 @@ func runTunnelSession(
 	return err
 }
 
-// runTunnelSessionAttempt sends the collector hello, then processes requests
+// runTunnelSessionAttempt registers the collector, then processes requests
 // synchronously until the stream closes.
 func runTunnelSessionAttempt(
 	ctx context.Context,
@@ -197,15 +198,12 @@ func runTunnelSessionAttempt(
 		_ = stream.CloseResponse()
 	}()
 
-	if err := stream.Send(&tunnelv1.CollectorMessage{
-		Message: &tunnelv1.CollectorMessage_Hello{
-			Hello: &tunnelv1.CollectorHelloMessage{CollectorId: collectorID},
-		},
-	}); err != nil {
-		return false, fmt.Errorf("send collector hello: %w", err)
+	stream.RequestHeader().Set("X-Collector-ID", collectorID)
+	if err := stream.Send(nil); err != nil {
+		return false, fmt.Errorf("send collector registration headers: %w", err)
 	}
 	logger.Info(
-		"Fleet Management tunnel established; collector hello sent",
+		"Fleet Management tunnel established; collector registered",
 		"collector_id", collectorID,
 	)
 
@@ -218,7 +216,18 @@ func runTunnelSessionAttempt(
 			return true, fmt.Errorf("receive server message: %w", err)
 		}
 
-		request := message.GetRequest()
+		request := message.GetRemoteRequest()
+		if request == nil {
+			if cancelRequest := message.GetCancelRequest(); cancelRequest != nil {
+				logger.Info(
+					"Ignoring Fleet Management tunnel cancellation",
+					"request_id", cancelRequest.GetRequestId(),
+				)
+			} else {
+				logger.Warn("Ignoring Fleet Management tunnel message with no request")
+			}
+			continue
+		}
 		logger.Info(
 			"Fleet Management tunnel request received",
 			"request_id", request.GetRequestId(),

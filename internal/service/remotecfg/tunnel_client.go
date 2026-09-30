@@ -12,7 +12,8 @@ import (
 )
 
 func newTunnelClient(args Arguments) (tunnelv1connect.TunnelServiceClient, error) {
-	endpoint, err := url.Parse(args.URL)
+	tunnelURL := args.getTunnelURL()
+	endpoint, err := url.Parse(tunnelURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse Fleet Management URL: %w", err)
 	}
@@ -32,7 +33,7 @@ func newTunnelClient(args Arguments) (tunnelv1connect.TunnelServiceClient, error
 
 	return tunnelv1connect.NewTunnelServiceClient(
 		httpClient,
-		args.URL,
+		tunnelURL,
 		connect.WithInterceptors(newAgentInterceptor()),
 	), nil
 }

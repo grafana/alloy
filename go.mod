@@ -1189,4 +1189,4 @@ replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/d
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
 
 // Hackathon: use the fork of alloy-remote-config that contains the tunnel/v1 protos. (auto-synced from collector/builder-config.yaml)
-replace github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260929194540-e8fd7aeba4b7
+replace github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260930023822-945bd02557f6

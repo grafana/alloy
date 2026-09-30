@@ -27,7 +27,7 @@ type tunnelTestHarness struct {
 	t           *testing.T
 	collectorID string
 	requests    chan tunnelTestExchange
-	hello       chan *tunnelv1.CollectorHelloMessage
+	registered  chan string
 
 	alloyHTTPServer *httptest.Server
 	tunnelServer    *httptest.Server
@@ -54,7 +54,7 @@ func newTunnelTestHarness(t *testing.T) *tunnelTestHarness {
 		t:           t,
 		collectorID: "collector-1",
 		requests:    make(chan tunnelTestExchange),
-		hello:       make(chan *tunnelv1.CollectorHelloMessage, 1),
+		registered:  make(chan string, 1),
 		sessionStop: make(chan struct{}),
 	}
 }
@@ -91,7 +91,8 @@ func (h *tunnelTestHarness) Start() {
 	httpConfig := config.CloneDefaultHTTPClientConfig()
 	httpConfig.TLSConfig.InsecureSkipVerify = true
 	args := Arguments{
-		URL:              h.tunnelServer.URL,
+		URL:              "https://remote-config.example.com",
+		TunnelURL:        h.tunnelServer.URL,
 		ID:               h.collectorID,
 		HTTPClientConfig: httpConfig,
 	}
@@ -114,13 +115,13 @@ func (h *tunnelTestHarness) Start() {
 	}()
 
 	select {
-	case hello := <-h.hello:
-		require.Equal(h.t, h.collectorID, hello.GetCollectorId())
+	case collectorID := <-h.registered:
+		require.Equal(h.t, h.collectorID, collectorID)
 	case <-h.sessionDone:
 		require.NoError(h.t, h.sessionErr)
-		h.t.Fatal("tunnel closed before Alloy sent its hello")
+		h.t.Fatal("tunnel closed before Alloy registered")
 	case <-time.After(tunnelTestTimeout):
-		h.t.Fatal("timed out waiting for Alloy's hello")
+		h.t.Fatal("timed out waiting for Alloy to register")
 	}
 }
 
@@ -186,14 +187,7 @@ func (h *tunnelTestHarness) awaitReply(
 }
 
 func (h *tunnelTestHarness) RegisterCollector(ctx context.Context, stream *connect.BidiStream[tunnelv1.CollectorMessage, tunnelv1.ServerMessage]) error {
-	message, err := stream.Receive()
-	if err != nil {
-		return err
-	}
-	if message.GetHello() == nil {
-		return fmt.Errorf("first collector message was not a hello")
-	}
-	h.hello <- message.GetHello()
+	h.registered <- stream.RequestHeader().Get("X-Collector-ID")
 
 	for {
 		select {
@@ -264,7 +258,7 @@ func sendTunnelTestRequest(
 ) error {
 
 	return stream.Send(&tunnelv1.ServerMessage{
-		Message: &tunnelv1.ServerMessage_Request{Request: request},
+		Message: &tunnelv1.ServerMessage_RemoteRequest{RemoteRequest: request},
 	})
 }
 

@@ -163,5 +163,5 @@ replaces:
   # TODO - tracks the prometheus-314-metadata-shard-calculator-patch branch of the Grafana fork; drop at the Prometheus 3.15 bump, which has the fix upstream.
   - github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
   # Hackathon: use the fork of alloy-remote-config that contains the tunnel/v1 protos.
-  - github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260929194540-e8fd7aeba4b7
+  - github.com/grafana/alloy-remote-config => github.com/x1unix/alloy-remote-config v0.0.0-20260930023822-945bd02557f6
   # <END_SHARED_REPLACE_DIRECTIVES>
