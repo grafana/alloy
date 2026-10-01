@@ -1237,12 +1237,13 @@ func TestLogsCollector_ServerLog_ReplicationCommand_NoArgs(t *testing.T) {
 
 // TestLogsCollector_ServerLog_UnrecognizedLogLineDroppedSilently pins the
 // registry's closed-world policy: a LOG-severity line that matches none of
-// the 7 categories is dropped without error, never captured as an
-// unstructured blob.
+// the registered categories (nor op="slow_query"/op="explain_plan_output",
+// which are checked before the registry) is dropped without error, never
+// captured as an unstructured blob.
 func TestLogsCollector_ServerLog_UnrecognizedLogLineDroppedSilently(t *testing.T) {
 	c, entryCh := newServerLogCollector(t)
 
-	msg := "duration: 0.001 ms  statement: SELECT 1"
+	msg := "some made-up LOG message that matches no known category"
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "112", msg)}}))
 
 	got := drainEntries(t, entryCh, 1, 300*time.Millisecond)

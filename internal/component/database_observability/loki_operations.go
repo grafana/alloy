@@ -10,6 +10,7 @@ const (
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 	OP_QUERY_SAMPLE            = "query_sample"
 	OP_SERVER_LOG              = "server_log"
+	OP_SLOW_QUERY              = "slow_query"
 	OP_TABLE_DETECTION         = "table_detection"
 	OP_WAIT_EVENT              = "wait_event"
 	OP_WAIT_EVENT_V2           = "wait_event_v2"

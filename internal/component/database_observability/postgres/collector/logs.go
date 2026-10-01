@@ -512,7 +512,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		(strings.Contains(line, "STATEMENT:") || strings.Contains(line, "DETAIL:") ||
 			strings.Contains(line, "HINT:") || strings.Contains(line, "CONTEXT:"))
 	mayFlush := l.enableErrorLogsProcessing && l.pending != nil && l.pending.hasStatement
-	hasServerLogKeyword := anyServerLogGateMatches(line) || strings.Contains(line, autoExplainGate)
+	hasServerLogKeyword := anyServerLogGateMatches(line) || strings.Contains(line, autoExplainGate) || strings.Contains(line, slowQueryGate)
 	if !hasErrorKeyword && !hasContinuationKeyword && !mayFlush && !hasServerLogKeyword {
 		return nil
 	}
@@ -670,29 +670,33 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	// LOG/WARNING/NOTICE lines never join the ERROR/FATAL/PANIC pipeline below
 	// (no pg_errors_total counting, no STATEMENT pairing): they're dispatched
-	// through the server-log pattern registry instead, independently of
-	// enable_error_logs_processing (these categories need no SQL
-	// fingerprinting). An unrecognized LOG/WARNING/NOTICE message is dropped
-	// silently — Alloy only ever emits the categories it has explicitly
-	// modeled, never an unstructured capture of arbitrary log text.
+	// through tryEmitSlowQuery/tryEmitAutoExplainPlan or the server-log
+	// pattern registry instead, independently of enable_error_logs_processing.
+	// An unrecognized LOG/WARNING/NOTICE message is dropped silently — Alloy
+	// only ever emits the categories it has explicitly modeled, never an
+	// unstructured capture of arbitrary log text.
 	if label == "LOG" || label == "WARNING" || label == "NOTICE" {
 		msgStart := searchFrom + labelAt + len(label) + 1
 		message := strings.TrimSpace(line[msgStart:])
+		meta := serverLogMeta{
+			pid:              pid,
+			user:             user,
+			datname:          database,
+			lineNumber:       lineNumber,
+			sessionStartTime: sessionStartTime,
+			vxid:             vxid,
+			xid:              xid,
+			sessionID:        sessionID,
+			applicationName:  applicationName,
+		}
 		if l.tryEmitAutoExplainPlan(message, database, parsedTimestamp) {
 			return nil
 		}
+		if l.tryEmitSlowQuery(message, parsedTimestamp, meta) {
+			return nil
+		}
 		if category, fields, ok := matchServerLog(message); ok {
-			l.emitServerLogEntry(category, fields, parsedTimestamp, serverLogMeta{
-				pid:              pid,
-				user:             user,
-				datname:          database,
-				lineNumber:       lineNumber,
-				sessionStartTime: sessionStartTime,
-				vxid:             vxid,
-				xid:              xid,
-				sessionID:        sessionID,
-				applicationName:  applicationName,
-			})
+			l.emitServerLogEntry(category, fields, parsedTimestamp, meta)
 		}
 		return nil
 	}
