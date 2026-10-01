@@ -432,7 +432,7 @@ func TestStartupWhenMimirIsDown(t *testing.T) {
 	clientfeaturestesting.SetFeatureDuringTest(t, clientfeatures.WatchListClient, false)
 
 	reg := prometheus.NewPedanticRegistry()
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 
 	leader := &fakeLeadership{}
 	health := &fakeHealthReporter{}
