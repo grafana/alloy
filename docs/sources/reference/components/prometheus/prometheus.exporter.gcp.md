@@ -76,8 +76,8 @@ If you are supplying a list of strings for the `extra_filters` argument, any str
 For example, `loadbalancing.googleapis.com:resource.labels.backend_target_name="sample-value"` must be encoded as `"loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""` in the {{< param "PRODUCT_NAME" >}} configuration.
 {{< /admonition >}}
 
-For `extra_filters`, the `targeted_metric_prefix` is used to ensure the filter is only applied to the metric_prefix(es) where it makes sense.
-It doesn't explicitly have to match a value from `metric_prefixes`, but the `targeted_metric_prefix` must be at least a prefix to one or more `metric_prefixes`.
+For `extra_filters`, the `targeted_metric_prefix` is used to ensure the filter is only applied to the `metrics_prefixes` values where it makes sense.
+It doesn't explicitly have to match a value from `metrics_prefixes`, but the `targeted_metric_prefix` must be at least a prefix to one or more `metrics_prefixes` values.
 The `filter_query` is applied to a final metrics API query when querying for metric data.
 The final query sent to the metrics API already includes filters for project and metric type.
 Each applicable `filter_query` is appended to the query with an AND.
