@@ -18,6 +18,7 @@ collector/
 │   ├── generator.go           # Generator tool that post-processes OCB output
 │   ├── componentpkgs/         # Helper that maps native Alloy component names to Go packages
 │   ├── main_alloy.tpl         # Template for main_alloy.go
+│   ├── main_native.tpl        # Template for main.go when building without the OTel Engine
 │   └── main_windows.tpl       # Template for main_windows.go
 ├── otelsupervisor/            # The `alloy otel-supervisor` command (source)
 │
@@ -83,7 +84,34 @@ converters: false
 
 OTel Collector components used by the OTel Engine are selected as usual with the OCB `receivers`, `processors`, `exporters`, `connectors`, and `extensions` sections.
 
-To build a reduced binary, edit `alloy-components.yaml` and run `make alloy`.
+### Building without the OTel Engine
+
+If `builder-config.yaml` has none of the `extensions`, `receivers`, `processors`, `exporters`, or `connectors` sections, Alloy is built without the OTel Engine.
+The generator replaces the OCB `main.go` with one that only runs the Alloy CLI, and empties `components.go`, `main_alloy.go`, `main_others.go`, and `main_windows.go`.
+The resulting binary has no `alloy otel` or `alloy otel-supervisor` commands, and doesn't link any OTel Collector components.
+
+For example, this `builder-config.yaml` has no OTel Collector components:
+
+```yaml
+dist:
+  module: github.com/grafana/alloy/otel_engine
+  name: alloy
+  output_path: .
+
+replaces:
+  - github.com/grafana/alloy => ../
+  - github.com/grafana/alloy/syntax => ../syntax
+  # ... keep the shared replace directives ...
+```
+
+Together with this `alloy-components.yaml`, it builds a logs-only Alloy:
+
+```yaml
+components: [loki.source.file, loki.relabel, loki.process, loki.write]
+converters: false
+```
+
+To build a reduced binary, edit `builder-config.yaml` and `alloy-components.yaml`, and run `make alloy`.
 
 ## Building Locally
 
