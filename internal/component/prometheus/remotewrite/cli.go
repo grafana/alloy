@@ -6,10 +6,15 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/grafana/alloy/internal/alloycli/clitools"
 	"github.com/grafana/alloy/internal/static/agentctl/waltools"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	clitools.Register(clitools.Tool{Name: "prometheus.remote_write", Install: InstallTools})
+}
 
 // InstallTools installs command line utilities as subcommands of the provided
 // cmd.
