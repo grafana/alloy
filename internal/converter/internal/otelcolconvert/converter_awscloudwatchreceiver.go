@@ -79,9 +79,9 @@ func toMetricsConfig(cfg awscloudwatchreceiver.MetricsConfig) *awscloudwatch.Met
 
 	out := &awscloudwatch.MetricsConfig{
 		Controller: otelcol.ScraperControllerArguments{
-			CollectionInterval: cfg.CollectionInterval,
-			InitialDelay:       cfg.InitialDelay,
-			Timeout:            cfg.Timeout,
+			CollectionInterval: cfg.ControllerConfig.CollectionInterval,
+			InitialDelay:       cfg.ControllerConfig.InitialDelay,
+			Timeout:            cfg.ControllerConfig.Timeout,
 		},
 		Period:    cfg.Period,
 		Delay:     cfg.Delay,
