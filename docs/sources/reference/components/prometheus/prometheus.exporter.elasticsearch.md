@@ -59,6 +59,8 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 By default, the component requests stats for the local node only.
 Set `all` to `true` to request stats for every node in the cluster, which ignores `node`.
 
+The component sets the `instance` label on its exported targets to the host and port from `address`.
+
 ## Blocks
 
 You can use the following block with `prometheus.exporter.elasticsearch`:
