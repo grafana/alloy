@@ -107,7 +107,7 @@ This example uses a [`prometheus.scrape`][scrape] component to collect metrics f
 
 ```alloy
 prometheus.exporter.elasticsearch "example" {
-  address = "http://localhost:9200"
+  address = "https://elasticsearch.example.com:9200"
   basic_auth {
     username = "<USERNAME>"
     password = "<PASSWORD>"

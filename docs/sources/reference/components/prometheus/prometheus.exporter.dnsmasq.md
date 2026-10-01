@@ -63,7 +63,7 @@ The following example uses a [`prometheus.scrape`][scrape] component to collect 
 
 ```alloy
 prometheus.exporter.dnsmasq "example" {
-  address = "localhost:53"
+  address = "dnsmasq.example.com:53"
 }
 
 // Configure a prometheus.scrape component to collect dnsmasq metrics.
