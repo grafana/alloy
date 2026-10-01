@@ -66,6 +66,8 @@ type alloyFmt struct {
 	test  bool
 }
 
+type writeFileFunc func(filename string, fi os.FileInfo, r io.Reader) error
+
 func (ff *alloyFmt) Run(configFile string) error {
 	if ff.write && ff.test {
 		return fmt.Errorf("cannot use -w/--write and -t/--test at the same time")
@@ -76,7 +78,7 @@ func (ff *alloyFmt) Run(configFile string) error {
 		if ff.write {
 			return fmt.Errorf("cannot use -w with standard input")
 		}
-		return format("<stdin>", nil, os.Stdin, false, ff.test)
+		return format("<stdin>", nil, os.Stdin, false, ff.test, writeFile)
 
 	default:
 		fi, err := os.Stat(configFile)
@@ -92,11 +94,11 @@ func (ff *alloyFmt) Run(configFile string) error {
 			return err
 		}
 		defer f.Close()
-		return format(configFile, fi, f, ff.write, ff.test)
+		return format(configFile, fi, f, ff.write, ff.test, writeFile)
 	}
 }
 
-func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool) error {
+func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool, writeFileFn writeFileFunc) error {
 	bb, err := io.ReadAll(r)
 	if err != nil {
 		return err
@@ -115,9 +117,11 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool)
 	// Add a newline at the end of the file.
 	_, _ = buf.Write([]byte{'\n'})
 
-	// If -t/--test flag is check, only check if file is formatted correctly
+	unchanged := reflect.DeepEqual(bb, buf.Bytes())
+
+	// If -t/--test is set, only check if the file is formatted correctly.
 	if test {
-		if !reflect.DeepEqual(bb, buf.Bytes()) {
+		if !unchanged {
 			return fmt.Errorf("file %s is not formatted correctly", filename)
 		}
 		return nil
@@ -128,12 +132,20 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool)
 		return err
 	}
 
+	if unchanged {
+		return nil
+	}
+
+	return writeFileFn(filename, fi, &buf)
+}
+
+func writeFile(filename string, fi os.FileInfo, r io.Reader) error {
 	wf, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, fi.Mode().Perm())
 	if err != nil {
 		return err
 	}
 	defer wf.Close()
 
-	_, err = io.Copy(wf, &buf)
+	_, err = io.Copy(wf, r)
 	return err
 }

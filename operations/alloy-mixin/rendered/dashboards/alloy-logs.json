@@ -234,7 +234,7 @@
             "label": "Cluster",
             "multi": true,
             "name": "cluster",
-            "query": "label_values(alloy_build_info, cluster)",
+            "query": "label_values(alloy_build_info{}, cluster)",
             "refresh": 2,
             "sort": 1,
             "type": "query"

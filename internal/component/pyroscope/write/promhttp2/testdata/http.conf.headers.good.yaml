@@ -4,4 +4,4 @@ http_headers:
   two:
     secrets: [value2]
   three:
-    files: [testdata/headers-file]
+    files: [headers-file]

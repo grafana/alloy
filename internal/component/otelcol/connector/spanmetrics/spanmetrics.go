@@ -138,26 +138,17 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	// Stricter than upstream, which allows 0 (Convert always sets a non-nil
+	// TimestampCacheSize, so upstream's own check can't catch this case).
 	if args.MetricsFlushInterval <= 0 {
 		return fmt.Errorf("metrics_flush_interval must be greater than 0")
 	}
 
-	switch args.AggregationTemporality {
-	case AggregationTemporalityCumulative, AggregationTemporalityDelta:
-		// Valid
-	default:
-		return fmt.Errorf("invalid aggregation_temporality: %v", args.AggregationTemporality)
+	cfg, err := args.Convert()
+	if err != nil {
+		return err
 	}
-
-	if args.AggregationCardinalityLimit < 0 {
-		return fmt.Errorf("invalid aggregation_cardinality_limit: %v, the limit should be positive", args.AggregationCardinalityLimit)
-	}
-
-	if args.AggregationTemporality == AggregationTemporalityDelta && args.TimestampCacheSize <= 0 {
-		return fmt.Errorf("invalid metric_timestamp_cache_size: %v, the cache size should be positive", args.TimestampCacheSize)
-	}
-
-	return nil
+	return cfg.(*spanmetricsconnector.Config).Validate()
 }
 
 func convertAggregationTemporality(temporality string) (string, error) {

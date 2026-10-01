@@ -61,7 +61,7 @@ You can use the following arguments with `discovery.aws`:
 
 The `clusters` and `request_concurrency` arguments only apply to the `ecs`, `elasticache`, `msk`, and `rds` roles.
 When `request_concurrency` isn't set, it defaults to `20` for the `ecs` role and `10` for the `elasticache`, `msk`, and `rds` roles.
-The [`filter`][filter] block only applies to the `ec2` role.
+The [`filter`][filter] block only applies to the `ec2` and `rds` roles.
 
 At most, one of the following can be provided:
 
@@ -83,7 +83,7 @@ You can use the following blocks with `discovery.aws`:
 | ------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
-| [`filter`][filter]                    | Filters discoverable resources. Only used with the `ec2` role. | no   |
+| [`filter`][filter]                    | Filters discoverable resources. Only used with the `ec2` and `rds` roles. | no   |
 | [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
@@ -110,17 +110,19 @@ The `basic_auth` block configures basic authentication to the endpoint.
 
 ### `filter`
 
-The `filter` block filters the EC2 instance list by other criteria. It only applies to the `ec2` role.
-Refer to the [Amazon EC2 documentation][amazon] for more information about filters.
+The `filter` block filters the discovered instance list by other criteria. It only applies to the `ec2` and `rds` roles.
+Refer to the [Amazon EC2 documentation][amazon] for more information about EC2 filters, or the
+[Amazon RDS documentation][amazon rds] for RDS filters.
 
 | Name     | Type           | Description                   | Default | Required |
 | -------- | -------------- | ----------------------------- | ------- | -------- |
 | `name`   | `string`       | Filter name to use.           |         | yes      |
 | `values` | `list(string)` | Values to pass to the filter. |         | yes      |
 
-Refer to the [Filter API AWS EC2 documentation][filter api] for the list of supported filters and their descriptions.
+Refer to the [Filter API AWS EC2 documentation][filter api] for the list of supported `ec2` filters and their descriptions.
 
 [amazon]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_DescribeInstances.html
+[amazon rds]: https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_DescribeDBInstances.html
 [filter api]: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_Filter.html
 
 ### `oauth2`

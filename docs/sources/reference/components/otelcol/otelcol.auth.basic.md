@@ -69,12 +69,18 @@ You can use the following block with `otelcol.auth.basic`:
 
 The `client_auth` block configures credentials that client extensions (such as exporters) use to authenticate to servers.
 
-| Name            | Type     | Description                                                                       | Default | Required |
-| --------------- | -------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `password`      | `secret` | Password to use for basic authentication requests.                                | `""`    | no       |
-| `password_file` | `string` | Path to a file containing the password. If set, takes precedence over `password`. | `""`    | no       |
-| `username`      | `string` | Username to use for basic authentication requests.                                | `""`    | no       |
-| `username_file` | `string` | Path to a file containing the username. If set, takes precedence over `username`. | `""`    | no       |
+| Name            | Type     | Description                                        | Default | Required |
+| --------------- | -------- | -------------------------------------------------- | ------- | -------- |
+| `password`      | `secret` | Password to use for basic authentication requests. | `""`    | no       |
+| `password_file` | `string` | Path to a file that contains the password.         | `""`    | no       |
+| `username`      | `string` | Username to use for basic authentication requests. | `""`    | no       |
+| `username_file` | `string` | Path to a file that contains the username.         | `""`    | no       |
+
+If you set both `password` and `password_file`, `password_file` takes precedence.
+
+If you set both `username` and `username_file`, `username_file` takes precedence.
+
+In `client_auth`, the OpenTelemetry Collector `basicauth` extension watches `password_file` and `username_file` and reloads them on change. In most non-OpenTelemetry components, `password_file` is read on every outgoing request.
 
 {{< admonition type="note" >}}
 When you specify both the `client_auth` block and the deprecated top-level `username` and `password` attributes, the `client_auth` block takes precedence and {{< param "PRODUCT_NAME" >}} ignores the top-level attributes for client authentication.

@@ -23,8 +23,18 @@ otelcol.exporter.otlp "default" {
 }
 
 otelcol.connector.spanmetrics "default" {
+	dimension {
+		glob = "http.*"
+	}
+
 	histogram {
 		explicit { }
+	}
+
+	events {
+		dimension {
+			glob = "http.*"
+		}
 	}
 
 	output {

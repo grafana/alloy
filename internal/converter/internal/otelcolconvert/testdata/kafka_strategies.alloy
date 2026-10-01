@@ -1,0 +1,29 @@
+otelcol.receiver.kafka "default" {
+	brokers                    = ["broker:9092"]
+	protocol_version           = "2.0.0"
+	group_rebalance_strategies = ["cooperative-sticky", "range"]
+
+	output {
+		logs = [otelcol.exporter.kafka.default.input]
+	}
+}
+
+otelcol.exporter.kafka "default" {
+	protocol_version = "2.0.0"
+	brokers          = ["redpanda:9092"]
+
+	logs {
+		topic    = "otlp_logs"
+		encoding = "otlp_proto"
+	}
+
+	metrics {
+		topic    = "otlp_metrics"
+		encoding = "otlp_proto"
+	}
+
+	traces {
+		topic    = "otlp_spans"
+		encoding = "otlp_proto"
+	}
+}

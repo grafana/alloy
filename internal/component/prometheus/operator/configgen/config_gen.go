@@ -23,6 +23,8 @@ import (
 type ConfigGenerator struct {
 	Client                   *k8sConfig.ClientArguments
 	Secrets                  SecretFetcher
+	AllowArbitraryFileAccess bool
+
 	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
 }
@@ -149,7 +151,7 @@ func (cg *ConfigGenerator) generateOauth2(oa promopv1.OAuth2, namespace string) 
 	}
 	return &commonConfig.OAuth2{
 		Scopes:         oa.Scopes,
-		TokenURL:       oa.TokenURL,
+		TokenURL:       string(oa.TokenURL),
 		EndpointParams: oa.EndpointParams,
 		ClientID:       clid,
 		ClientSecret:   commonConfig.Secret(clisecret),
@@ -176,7 +178,10 @@ func (cg *ConfigGenerator) generateAuthorization(a promopv1.SafeAuthorization, n
 func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	opt := cg.ScrapeOptions
 
-	copyScrapeNativeHistograms := opt.ScrapeNativeHistograms // make a copy as Prometheus wants a pointer.
+	// Copies required because Prometheus ScrapeConfig fields take pointers.
+	copyScrapeNativeHistograms := opt.ScrapeNativeHistograms
+	copyScrapeClassicHistograms := opt.ScrapeClassicHistograms
+	copyConvertClassicHistogramsToNHCB := opt.ConvertClassicHistogramsToNHCB
 
 	c := config.DefaultScrapeConfig
 	c.ScrapeInterval = config.DefaultGlobalConfig.ScrapeInterval
@@ -184,6 +189,10 @@ func (cg *ConfigGenerator) generateDefaultScrapeConfig() *config.ScrapeConfig {
 	c.ScrapeProtocols = config.DefaultGlobalConfig.ScrapeProtocols
 	c.ScrapeFallbackProtocol = config.PrometheusText0_0_4 // Keep the same as Prometheus V2
 	c.ScrapeNativeHistograms = &copyScrapeNativeHistograms
+	c.AlwaysScrapeClassicHistograms = &copyScrapeClassicHistograms
+	c.ConvertClassicHistogramsToNHCB = &copyConvertClassicHistogramsToNHCB
+	c.NativeHistogramBucketLimit = opt.NativeHistogramBucketLimit
+	c.NativeHistogramMinBucketFactor = opt.NativeHistogramMinBucketFactor
 
 	if opt.DefaultScrapeInterval != 0 {
 		c.ScrapeInterval = model.Duration(opt.DefaultScrapeInterval)
@@ -263,7 +272,10 @@ func (r *relabeler) addFromV1(cfgs ...promopv1.RelabelConfig) (err error) {
 				return err
 			}
 		}
-		cfg.Modulus = c.Modulus
+		if c.Modulus < 0 {
+			return fmt.Errorf("modulus must not be negative, got %d", c.Modulus)
+		}
+		cfg.Modulus = uint64(c.Modulus)
 		if c.Replacement != nil {
 			cfg.Replacement = *c.Replacement
 		}

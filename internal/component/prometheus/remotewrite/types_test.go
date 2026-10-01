@@ -230,6 +230,8 @@ func TestAlloyConfig(t *testing.T) {
 					profile               = "example_profile"
 					role_arn              = "example_role_arn"
 					external_id           = "example_external_id"
+					session_name          = "example_session_name"
+					tags                  = {team = "example_team"}
 					use_fips_sts_endpoint = true
 					service_name          = "aps"
 				}
@@ -242,6 +244,8 @@ func TestAlloyConfig(t *testing.T) {
 					Profile:            "example_profile",
 					RoleARN:            "example_role_arn",
 					ExternalID:         "example_external_id",
+					SessionName:        "example_session_name",
+					Tags:               map[string]string{"team": "example_team"},
 					UseFIPSSTSEndpoint: true,
 					ServiceName:        "aps",
 				}

@@ -50,7 +50,7 @@ type Arguments interface {
 }
 
 // Exports is a common Exports type for Alloy components which expose
-// OpenTelemetry Collector storage extensions.
+// OpenTelemetry Collector extensions.
 type Exports struct {
 	// Handler is the managed component. Handler is updated any time the
 	// extension is updated.

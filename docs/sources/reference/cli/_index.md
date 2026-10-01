@@ -19,6 +19,7 @@ Available commands:
 * [`gql`][gql]: Run a GraphQL query against a running {{< param "PRODUCT_NAME" >}} instance.
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}} with the Default Engine, given an Alloy syntax configuration file.
 * [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an OpenTelemetry Collector YAML configuration file.
+* [`otel-supervisor`][otel-supervisor]: Manage the experimental OTel Engine with Grafana Fleet Management.
 * [`tools`][tools]: Read the WAL and provide statistical information.
 * [`validate`][validate]: Validate an {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 * `completion`: Generate shell completion for the `alloy` CLI.
@@ -29,5 +30,6 @@ Available commands:
 [gql]: ./gql/
 [convert]: ./convert/
 [otel]: ./otel/
+[otel-supervisor]: ./otel-supervisor/
 [tools]: ./tools/
 [validate]: ./validate/

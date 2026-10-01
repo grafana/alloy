@@ -72,6 +72,11 @@ You can use the following block with `prometheus.exporter.elasticsearch`:
 
 {{< docs/shared lookup="reference/components/basic-auth-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+{{< admonition type="note" >}}
+`prometheus.exporter.elasticsearch` reads `password_file` once when it starts or reloads its configuration.
+It doesn't read the file on every outgoing request.
+{{< /admonition >}}
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}

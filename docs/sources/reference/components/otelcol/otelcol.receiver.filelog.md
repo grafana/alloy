@@ -67,6 +67,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `preserve_leading_whitespaces`  | `bool`                     | Preserves leading whitespace in messages when set to `true`.                               | `false`   | no       |
 | `preserve_trailing_whitespaces` | `bool`                     | Preserves trailing whitespace in messages when set to `true`.                              | `false`   | no       |
 | `resource`                      | `map(string)`              | A map of resource attributes to associate with each log entry.                             | `{}`      | no       |
+| `skip_unmodified_files`         | `bool`                     | Skip a file whose path and modification time are unchanged since the previous poll.        | `false`   | no       |
 | `start_at`                      | `string`                   | The position to start reading the file from.                                               | `"end"`   | no       |
 | `storage`                       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state.                   |           | no       |
 
@@ -79,6 +80,12 @@ Refer to the upstream receiver [documentation][encoding-documentation] for more 
 Currently, only gzip compressed files are auto detected. This allows for mix of compressed and uncompressed files to be ingested with the same filelogreceiver.
 
 To persist state between restarts of the {{< param "PRODUCT_NAME" >}} process, set the `storage` attribute to the `handler` exported from an `otelcol.storage.*` component.
+
+When `skip_unmodified_files` is `true`, a file whose path and modification time are unchanged since the previous poll is skipped without being opened, fingerprinted, or read. This trades pure fingerprint-based identification for a faster path and modification time check. Only enable it in environments where an unchanged modification time reliably means unchanged content.
+
+{{< admonition type="note" >}}
+On Windows, matching patterns in `include` and `exclude` are case-insensitive by default. This doesn't affect other operating systems.
+{{< /admonition >}}
 
 [encoding-documentation]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md#supported-encodings
 
@@ -203,6 +210,12 @@ The following arguments are supported:
 | `regex`    | `string` | A regular expression to capture elements of log files to use in ordering calculations. | `""`    | no       |
 | `top_n`    | `int`    | The number of top log files to track when using file ordering.                         | `1`     | no       |
 
+`top_n` has three possible states:
+
+* Not set: track the default number of files (`1`).
+* Set to `0`: track all files.
+* Set to a positive number: track that many files.
+
 ### `sort_by`
 
 The `sort_by` repeatable block configures the way the fields parsed in the `ordering_criteria` block will be applied to sort the discovered log files.
@@ -216,8 +229,8 @@ The following arguments are supported:
 | `location`  | `string` | The location of the timestamp.                                               | `"UTC"` | no       |
 | `regex_key` | `string` | The named capture group from the `regex` attribute to use for sorting.       | `""`    | no       |
 
-`sort_type` must be one of `numeric`, `lexicographic`, `timestamp`, or `mtime`.
-When using `numeric`, `lexicographic`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
+`sort_type` must be one of `numeric`, `alphabetical`, `timestamp`, or `mtime`.
+When using `numeric`, `alphabetical`, or `timestamp` `sort_type`, a named capture group defined in the `regex` attribute in `ordering_criteria` must be provided in `regex_key`.
 When using `mtime` `sort_type`, the file's modified time will be used to sort.
 
 The `location` and `layout` arguments are only applicable when `sort_type` is `timestamp`.

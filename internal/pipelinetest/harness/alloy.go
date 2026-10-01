@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultTimeout  = 10 * time.Second
+	defaultTimeout  = 30 * time.Second
 	defaultInterval = 50 * time.Millisecond
 )
 
@@ -39,7 +39,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		Logger:       logger,
 		DataPath:     cfg.DataPath,
 		MinStability: featuregate.StabilityExperimental,
-		Services:     defaultServices(logger.Slog()),
+		Services:     defaultServices(logger),
 	})
 	if err != nil {
 		return nil, err

@@ -40,6 +40,21 @@ func TestAWSConvertEC2(t *testing.T) {
 	require.Equal(t, []string{"prod"}, cfg.EC2SDConfig.Filters[0].Values)
 }
 
+func TestAWSConvertRDSFilters(t *testing.T) {
+	args := AWSArguments{
+		Role:             "rds",
+		Region:           "us-east-1",
+		Filters:          []*EC2Filter{{Name: "tag:env", Values: []string{"prod"}}},
+		HTTPClientConfig: config.DefaultHTTPClientConfig,
+	}
+
+	cfg := args.Convert().(*promaws.SDConfig)
+	require.NotNil(t, cfg.RDSSDConfig)
+	require.Len(t, cfg.RDSSDConfig.Filters, 1)
+	require.Equal(t, "tag:env", cfg.RDSSDConfig.Filters[0].Name)
+	require.Equal(t, []string{"prod"}, cfg.RDSSDConfig.Filters[0].Values)
+}
+
 // TestAWSRequestConcurrencyDefault guards the per-role default: upstream uses 20
 // for ecs and 10 for elasticache/msk/rds. An explicit value overrides both.
 func TestAWSRequestConcurrencyDefault(t *testing.T) {
@@ -182,11 +197,18 @@ func TestAWSValidate(t *testing.T) {
 		require.ErrorContains(t, args.Validate(), "filter values cannot be empty")
 	})
 
-	t.Run("filter with non-ec2 role", func(t *testing.T) {
+	t.Run("valid rds filter", func(t *testing.T) {
+		args := base()
+		args.Role = "rds"
+		args.Filters = []*EC2Filter{{Name: "tag:env", Values: []string{"prod"}}}
+		require.NoError(t, args.Validate())
+	})
+
+	t.Run("filter with unsupported role", func(t *testing.T) {
 		args := base()
 		args.Role = "ecs"
 		args.Filters = []*EC2Filter{{Name: "tag:env", Values: []string{"prod"}}}
-		require.ErrorContains(t, args.Validate(), "only supported with the ec2 role")
+		require.ErrorContains(t, args.Validate(), "only supported with the ec2 and rds roles")
 	})
 
 	t.Run("clusters with ec2 role", func(t *testing.T) {

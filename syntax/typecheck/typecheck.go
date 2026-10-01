@@ -219,23 +219,31 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 
 	s.seenAttrs[a.Name.Name] = struct{}{}
 
-	var diags diag.Diagnostics
+	diags := typecheckExpr(a.Value, reflectutil.GetOrAlloc(rv, tf))
+	if diags != nil {
+		return diags
+	}
 
-	switch expr := a.Value.(type) {
-	case *ast.ArrayExpr:
-		diags.Merge(typecheckArrayExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
-	case *ast.ObjectExpr:
-		diags.Merge(typecheckObjectExpr(expr, reflectutil.GetOrAlloc(rv, tf)))
+	return nil
+}
+
+func typecheckExpr(expr ast.Expr, rv reflect.Value) diag.Diagnostics {
+	var diags diag.Diagnostics
+	switch expr := expr.(type) {
 	case *ast.LiteralExpr:
-		if d := typecheckLiteralExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+		if d := typecheckLiteralExpr(expr, rv); d != nil {
 			diags.Add(*d)
 		}
+	case *ast.ArrayExpr:
+		diags.Merge(typecheckArrayExpr(expr, rv))
+	case *ast.ObjectExpr:
+		diags.Merge(typecheckObjectExpr(expr, rv))
 	case *ast.UnaryExpr:
-		if d := typecheckUnaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+		if d := typecheckUnaryExpr(expr, rv); d != nil {
 			diags.Add(*d)
 		}
 	case *ast.BinaryExpr:
-		if d := typecheckBinaryExpr(expr, reflectutil.GetOrAlloc(rv, tf)); d != nil {
+		if d := typecheckBinaryExpr(expr, rv); d != nil {
 			diags.Add(*d)
 		}
 	default:
@@ -245,7 +253,6 @@ func checkStructAttr(s *structState, a *ast.AttributeStmt, rv reflect.Value) dia
 	if diags != nil {
 		return diags
 	}
-
 	return nil
 }
 
@@ -275,26 +282,7 @@ func typecheckArrayExpr(expr *ast.ArrayExpr, rv reflect.Value) diag.Diagnostics 
 
 	var diags diag.Diagnostics
 	for _, e := range expr.Elements {
-		switch expr := e.(type) {
-		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(expr, expected); d != nil {
-				diags.Add(*d)
-			}
-		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(expr, expected))
-		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(expr, expected))
-		case *ast.UnaryExpr:
-			if d := typecheckUnaryExpr(expr, expected); d != nil {
-				diags.Add(*d)
-			}
-		case *ast.BinaryExpr:
-			if d := typecheckBinaryExpr(expr, expected); d != nil {
-				diags.Add(*d)
-			}
-		default:
-			// ignore rest for now.
-		}
+		diags.Merge(typecheckExpr(e, expected))
 	}
 
 	if diags != nil {
@@ -326,8 +314,13 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 		return nil
 	}
 
-	// Check if the expected type is actually a map before trying to get its element type
-	if rv.Kind() != reflect.Map {
+	rv = reflectutil.DeferencePointer(rv)
+	switch rv.Kind() {
+	case reflect.Map:
+		return typecheckMapExpr(expr, rv)
+	case reflect.Struct:
+		return typecheckStructExpr(expr, rv)
+	default:
 		expectedType := value.AlloyType(rv.Type())
 		return diag.Diagnostics{{
 			Severity: diag.SeverityLevelError,
@@ -336,7 +329,52 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 			Message:  fmt.Sprintf("expected %s, got object", expectedType),
 		}}
 	}
+}
 
+func typecheckStructExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
+	tags := tagcache.Get(rv.Type())
+
+	var diags diag.Diagnostics
+	seen := make(map[string]struct{}, len(expr.Fields))
+
+	for _, f := range expr.Fields {
+		name := f.Name.Name
+		tag, ok := tags.TagLookup[name]
+		if !ok {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(f.Name).Position(),
+				EndPos:   ast.EndPos(f.Value).Position(),
+				Message:  fmt.Sprintf("unrecognized attribute name %q", name),
+			})
+			continue
+		}
+
+		seen[name] = struct{}{}
+		diags.Merge(typecheckExpr(f.Value, reflectutil.DeferencePointer(reflectutil.GetOrAlloc(rv, tag))))
+	}
+
+	// Report any required attributes that were not provided.
+	for _, t := range tags.Tags {
+		if t.IsOptional() || !t.IsAttr() {
+			continue
+		}
+
+		name := strings.Join(t.Name, ".")
+		if _, ok := seen[name]; !ok {
+			diags.Add(diag.Diagnostic{
+				Severity: diag.SeverityLevelError,
+				StartPos: ast.StartPos(expr).Position(),
+				EndPos:   ast.EndPos(expr).Position(),
+				Message:  fmt.Sprintf("missing required attribute %q", name),
+			})
+		}
+	}
+
+	return diags
+}
+
+func typecheckMapExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostics {
 	// Extract value from map.
 	expectedValue := reflectutil.DeferencePointer(reflect.New(rv.Type().Elem()))
 	// If values of map can be any type we don't have to check further.
@@ -346,26 +384,7 @@ func typecheckObjectExpr(expr *ast.ObjectExpr, rv reflect.Value) diag.Diagnostic
 
 	var diags diag.Diagnostics
 	for _, f := range expr.Fields {
-		switch expr := f.Value.(type) {
-		case *ast.LiteralExpr:
-			if d := typecheckLiteralExpr(expr, expectedValue); d != nil {
-				diags.Add(*d)
-			}
-		case *ast.ArrayExpr:
-			diags.Merge(typecheckArrayExpr(expr, expectedValue))
-		case *ast.ObjectExpr:
-			diags.Merge(typecheckObjectExpr(expr, expectedValue))
-		case *ast.UnaryExpr:
-			if d := typecheckUnaryExpr(expr, expectedValue); d != nil {
-				diags.Add(*d)
-			}
-		case *ast.BinaryExpr:
-			if d := typecheckBinaryExpr(expr, expectedValue); d != nil {
-				diags.Add(*d)
-			}
-		default:
-			// ignore rest for now.
-		}
+		diags.Merge(typecheckExpr(f.Value, expectedValue))
 	}
 
 	if diags != nil {

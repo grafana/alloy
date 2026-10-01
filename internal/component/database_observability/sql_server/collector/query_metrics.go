@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,15 +14,6 @@ import (
 )
 
 const QueryMetricsCollector = "query_metrics"
-
-// selectQueryStoreState reads the connected database's Query Store state
-const selectQueryStoreState = `
-SELECT
-	DB_NAME(),
-	actual_state_desc,
-	query_capture_mode_desc,
-	readonly_reason
-FROM sys.database_query_store_options`
 
 // selectQueryMetrics ranks the top-N queries by duration within the recent lookback
 // window, then sums their full retained Query Store history so the emitted
@@ -80,6 +69,7 @@ type QueryMetricsArguments struct {
 	DB              *sql.DB
 	Registry        *prometheus.Registry
 	CollectInterval time.Duration
+	QueryTimeout    time.Duration
 	Limit           int
 	Lookback        time.Duration
 	Logger          *slog.Logger
@@ -88,6 +78,7 @@ type QueryMetricsArguments struct {
 type QueryMetrics struct {
 	dbConnection    *sql.DB
 	registry        *prometheus.Registry
+	queryTimeout    time.Duration
 	collectInterval time.Duration
 	limit           int
 	lookback        time.Duration
@@ -133,6 +124,7 @@ func NewQueryMetrics(args QueryMetricsArguments) (*QueryMetrics, error) {
 		dbConnection:     args.DB,
 		registry:         args.Registry,
 		collectInterval:  args.CollectInterval,
+		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		limit:            args.Limit,
 		lookback:         args.Lookback,
 		logger:           args.Logger.With("collector", QueryMetricsCollector),
@@ -147,6 +139,14 @@ func NewQueryMetrics(args QueryMetricsArguments) (*QueryMetrics, error) {
 
 func (c *QueryMetrics) Name() string {
 	return QueryMetricsCollector
+}
+
+// Tracker exposes the collector's query-tracking state so other collectors
+// (e.g. query_details) can restrict their work to the query_hashes that are
+// currently tracked here. The returned value is safe for concurrent use and
+// remains valid across collector restarts.
+func (c *QueryMetrics) Tracker() QueryTracker {
+	return c.state
 }
 
 func (c *QueryMetrics) Start(ctx context.Context) error {
@@ -174,7 +174,7 @@ func (c *QueryMetrics) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -208,14 +208,8 @@ func (c *QueryMetrics) Stop() {
 	c.state.reset()
 }
 
-func (c *QueryMetrics) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *QueryMetrics) collect(ctx context.Context) error {
-	database, ok := c.checkQueryStoreState(ctx)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		// Query Store is unavailable on the connected database, skip this cycle.
 		// Existing counters and baselines are preserved if this is a transient error.
@@ -231,69 +225,47 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 	return nil
 }
 
-// checkQueryStoreState reports whether Query Store is available on the connected database
-// and returns that database's name.
-func (c *QueryMetrics) checkQueryStoreState(ctx context.Context) (string, bool) {
-	var database, actualState, captureMode sql.NullString
-	var readonlyReason sql.NullInt64
-
-	err := c.dbConnection.QueryRowContext(ctx, selectQueryStoreState).
-		Scan(&database, &actualState, &captureMode, &readonlyReason)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		c.logger.Warn("Query Store options are unavailable: the login may lack VIEW DATABASE STATE, or the connected database has no Query Store")
-		return "", false
-	}
-	if err != nil {
-		c.logger.Warn("failed to inspect Query Store state; skipping collection", "err", err)
-		return "", false
-	}
-
-	if state := strings.ToUpper(strings.TrimSpace(actualState.String)); state != "READ_WRITE" {
-		c.logger.Warn("Query Store is not READ_WRITE; skipping collection",
-			"actual_state", actualState.String,
-			"capture_mode", captureMode.String,
-			"readonly_reason", readonlyReason.Int64)
-		return "", false
-	}
-
-	return database.String, true
-}
-
 func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
-	rows, err := c.dbConnection.QueryContext(ctx, selectQueryMetrics,
-		sql.Named("limit", c.limit),
-		sql.Named("lookback_window", int(c.lookback/time.Second)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query Query Store metrics: %w", err)
-	}
-	defer rows.Close()
-
 	var sources []queryMetricSource
-	for rows.Next() {
-		var hash []byte
-		var executions, errorExecutions int64
-		var durationMicroseconds float64
-		if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
-			return nil, fmt.Errorf("failed to scan Query Store metrics: %w", err)
-		}
-
-		queryHash, err := formatQueryHash(hash)
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rows, err := c.dbConnection.QueryContext(
+			queryCtx, selectQueryMetrics,
+			sql.Named("limit", c.limit),
+			sql.Named("lookback_window", int(c.lookback/time.Second)),
+		)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("failed to query Query Store metrics: %w", err)
 		}
+		defer rows.Close()
 
-		sources = append(sources, queryMetricSource{
-			database:        database,
-			queryHash:       queryHash,
-			executions:      executions,
-			errors:          errorExecutions,
-			durationSeconds: durationMicroseconds / 1e6,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read Query Store metrics: %w", err)
+		for rows.Next() {
+			var hash []byte
+			var executions, errorExecutions int64
+			var durationMicroseconds float64
+			if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
+				return fmt.Errorf("failed to scan Query Store metrics: %w", err)
+			}
+
+			queryHash, err := formatQueryHash(hash)
+			if err != nil {
+				return err
+			}
+
+			sources = append(sources, queryMetricSource{
+				database:        database,
+				queryHash:       queryHash,
+				executions:      executions,
+				errors:          errorExecutions,
+				durationSeconds: durationMicroseconds / 1e6,
+			})
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to read Query Store metrics: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return sources, nil

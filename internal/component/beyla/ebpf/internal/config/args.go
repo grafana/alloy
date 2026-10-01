@@ -117,7 +117,6 @@ type Metrics struct {
 	Network                         Network               `alloy:"network,block,optional"`
 	ExtraResourceLabels             []string              `alloy:"extra_resource_labels,attr,optional"`
 	ExtraSpanResourceLabels         []string              `alloy:"extra_span_resource_labels,attr,optional"`
-	NativeHistograms                bool                  `alloy:"native_histograms,attr,optional"`
 	ExemplarFilter                  string                `alloy:"exemplar_filter,attr,optional"`
 	TTL                             time.Duration         `alloy:"ttl,attr,optional"`
 	Buckets                         Buckets               `alloy:"buckets,block,optional"`

@@ -5,8 +5,7 @@ package sampling
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
+	"math/rand/v2"
 )
 
 // maxRandomNumber is the maximum value used for the sampling boundary (0x7fffffffffffffff).
@@ -25,7 +24,6 @@ func ValidateRate(rate float64) error {
 type Sampler struct {
 	rate     float64
 	boundary uint64
-	source   rand.Source
 }
 
 // NewSampler returns a Sampler for the given rate. Rate must be in [0.0, 1.0];
@@ -40,35 +38,23 @@ func NewSampler(rate float64) *Sampler {
 // Rate must be in [0.0, 1.0]; call ValidateRate first or behavior is undefined.
 func (s *Sampler) Update(rate float64) {
 	s.rate = rate
-	if rate > 0 && rate < 1 {
-		s.boundary = uint64(float64(maxRandomNumber) * rate)
-		s.source = rand.NewSource(time.Now().UnixNano())
-	} else {
+	switch {
+	case rate <= 0:
 		s.boundary = 0
-		s.source = nil
+	case rate >= 1:
+		s.boundary = maxRandomNumber
+	default:
+		s.boundary = uint64(float64(maxRandomNumber) * rate)
 	}
 }
 
 // ShouldSample returns true with probability equal to the rate used to create or update the sampler.
 // Rate 0 → always false; rate 1 → always true; otherwise uses the same probabilistic algorithm as Jaeger's ProbabilisticSampler.
 func (s *Sampler) ShouldSample() bool {
-	if s.rate >= 1.0 {
-		return true
-	}
-	if s.rate <= 0.0 {
-		return false
-	}
-	return s.boundary >= s.randomID()&maxRandomNumber
+	return s.boundary >= s.randomID()
 }
 
 // randomID returns a random uint64 in [1, maxRandomNumber] for sampling.
 func (s *Sampler) randomID() uint64 {
-	if s.source == nil {
-		return maxRandomNumber
-	}
-	val := uint64(s.source.Int63())
-	for val == 0 {
-		val = uint64(s.source.Int63())
-	}
-	return val
+	return rand.Uint64N(maxRandomNumber) + 1
 }

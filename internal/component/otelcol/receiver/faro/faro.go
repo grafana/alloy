@@ -15,7 +15,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "otelcol.receiver.faro",
-		Stability: featuregate.StabilityExperimental,
+		Stability: featuregate.StabilityPublicPreview,
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -60,9 +60,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	return &faroreceiver.Config{
-		ServerConfig: *httpServerConfig,
-	}, nil
+	cfg := faroreceiver.NewFactory().CreateDefaultConfig().(*faroreceiver.Config)
+	cfg.ServerConfig = *httpServerConfig
+	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.

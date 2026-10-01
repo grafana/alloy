@@ -51,10 +51,10 @@ func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerre
 
 	return &jaeger.Arguments{
 		Protocols: jaeger.ProtocolsArguments{
-			GRPC:          toJaegerGRPCArguments(cfg.GRPC),
-			ThriftHTTP:    toJaegerThriftHTTPArguments(cfg.ThriftHTTP),
-			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.ThriftBinaryUDP),
-			ThriftCompact: toJaegerThriftCompactArguments(cfg.ThriftCompactUDP),
+			GRPC:          toJaegerGRPCArguments(cfg.Protocols.GRPC),
+			ThriftHTTP:    toJaegerThriftHTTPArguments(cfg.Protocols.ThriftHTTP),
+			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.Protocols.ThriftBinaryUDP),
+			ThriftCompact: toJaegerThriftCompactArguments(cfg.Protocols.ThriftCompactUDP),
 		},
 
 		DebugMetrics: common.DefaultValue[jaeger.Arguments]().DebugMetrics,
@@ -93,10 +93,10 @@ func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.Proto
 
 	return &jaeger.ProtocolUDP{
 		Endpoint:         cfg.Endpoint,
-		QueueSize:        cfg.QueueSize,
-		MaxPacketSize:    units.Base2Bytes(cfg.MaxPacketSize),
-		Workers:          cfg.Workers,
-		SocketBufferSize: units.Base2Bytes(cfg.SocketBufferSize),
+		QueueSize:        cfg.ServerConfigUDP.QueueSize,
+		MaxPacketSize:    units.Base2Bytes(cfg.ServerConfigUDP.MaxPacketSize),
+		Workers:          cfg.ServerConfigUDP.Workers,
+		SocketBufferSize: units.Base2Bytes(cfg.ServerConfigUDP.SocketBufferSize),
 	}
 }
 

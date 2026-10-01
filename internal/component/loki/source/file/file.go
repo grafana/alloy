@@ -217,7 +217,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	newPositionsPath := filepath.Join(o.DataPath, "positions.yml")
 	// Check to see if we can convert the legacy positions file to the new format.
 	if args.LegacyPositionsFile != "" {
-		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
+		if err := positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger); err != nil {
+			return nil, err
+		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,

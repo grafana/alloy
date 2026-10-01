@@ -83,11 +83,11 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &metricstarttimeprocessor.Config{
-		Strategy:             args.Strategy,
-		GCInterval:           args.GCInterval,
-		StartTimeMetricRegex: args.StartTimeMetricRegex,
-	}, nil
+	cfg := metricstarttimeprocessor.NewFactory().CreateDefaultConfig().(*metricstarttimeprocessor.Config)
+	cfg.Strategy = args.Strategy
+	cfg.GCInterval = args.GCInterval
+	cfg.StartTimeMetricRegex = args.StartTimeMetricRegex
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

@@ -42,6 +42,10 @@ Raw {{< param "PRODUCT_NAME" >}} syntax strings can be used to write OTTL statem
 For example, the OTTL statement `attributes["grpc"] == true` is written in {{< param "PRODUCT_NAME" >}} syntax as \`attributes["grpc"] == true\`
 {{< /admonition >}}
 
+{{< admonition type="caution" >}}
+The upstream OpenTelemetry Collector removed the `Base64Decode` OTTL converter function. Use the `Decode` converter with the `base64` encoding instead, for example `Decode(value, "base64")`.
+{{< /admonition >}}
+
 {{< admonition type="note" >}}
 `otelcol.processor.filter` is a wrapper over the upstream OpenTelemetry Collector [`filter`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.
@@ -61,6 +65,16 @@ Exercise caution when using `otelcol.processor.filter`:
   Dropping a span may lead to orphaned logs if the log references the dropped span.
 
 [Orphaned Telemetry]: https://github.com/open-telemetry/opentelemetry-collector/blob/v0.85.0/docs/standard-warnings.md#orphaned-telemetry
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+Span-level only. `otelcol.processor.filter` evaluates each span (or log/metric) independently.
+It doesn't keep or drop an entire trace based on a child span matching a URL or attribute, and it doesn't rewrite the root span's name or service after filtering siblings.
+
+For whole-trace keep/drop decisions, use [`otelcol.processor.tail_sampling`][otelcol.processor.tail_sampling].
+Tail sampling makes a trace decision from buffered data, and `decision_wait` controls how long it waits after the first span before deciding.
+
+[otelcol.processor.tail_sampling]: ../otelcol.processor.tail_sampling/
 {{< /admonition >}}
 
 ## Usage

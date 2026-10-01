@@ -29,6 +29,7 @@ Otherwise, `fmt` reads and formats the file from disk specified by the argument.
 
 The `--write` flag can be specified to replace the contents of the original file on disk with the formatted results.
 `--write` can only be provided when `fmt` isn't reading from standard input.
+If the formatted result is identical to the file contents, `--write` doesn't write to the file.
 
 The `--test` flag can be specified to test if the contents of the file are formatted correctly.
 

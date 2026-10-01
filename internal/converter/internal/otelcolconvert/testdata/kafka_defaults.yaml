@@ -1,0 +1,20 @@
+receivers:
+  kafka:
+    brokers:
+      - broker:9092
+    protocol_version: 2.0.0
+    # group_rebalance_strategy is deliberately unset. Upstream leaves it empty and
+    # lets franz-go pick cooperative-sticky, so the converter must emit that
+    # explicitly rather than fall back to Alloy's differing "range" default.
+
+exporters:
+  kafka:
+    brokers:
+      - redpanda:9092
+    protocol_version: 2.0.0
+
+service:
+  pipelines:
+    logs:
+      receivers: [kafka]
+      exporters: [kafka]

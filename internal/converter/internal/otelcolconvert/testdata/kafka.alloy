@@ -5,24 +5,14 @@ otelcol.receiver.kafka "default" {
 	heartbeat_interval = "4s"
 
 	authentication {
-		plaintext {
-			username = "fakeusername"
-			password = "fakepassword"
-		}
-
 		sasl {
 			username  = "fakeusername"
 			password  = "fakepassword"
 			mechanism = "AWS_MSK_IAM_OAUTHBEARER"
-			version   = 1
 
 			aws_msk {
 				region = "us-east-1"
 			}
-		}
-
-		tls {
-			insecure = true
 		}
 
 		kerberos {
@@ -32,14 +22,18 @@ otelcol.receiver.kafka "default" {
 			password     = "fakepassword"
 		}
 	}
-	min_fetch_size           = 2
-	max_fetch_size           = 2000000
-	max_partition_fetch_size = 2097152
-	max_fetch_wait           = "11s"
-	group_rebalance_strategy = "roundrobin"
-	group_instance_id        = "fakeinstanceid"
-	rack_id                  = "test-rack"
-	use_leader_epoch         = false
+
+	tls {
+		insecure = true
+	}
+	min_fetch_size             = 2
+	max_fetch_size             = 2000000
+	max_partition_fetch_size   = 2097152
+	max_fetch_wait             = "11s"
+	group_rebalance_strategies = ["roundrobin"]
+	group_instance_id          = "fakeinstanceid"
+	rack_id                    = "test-rack"
+	use_leader_epoch           = false
 
 	error_backoff {
 		enabled              = true
@@ -60,13 +54,13 @@ otelcol.receiver.kafka "default" {
 otelcol.exporter.kafka "default" {
 	protocol_version                         = "2.0.0"
 	brokers                                  = ["redpanda:9092"]
-	resolve_canonical_bootstrap_servers_only = true
 	client_id                                = "otelcol"
 	topic_from_attribute                     = "my_topic"
 	partition_traces_by_id                   = true
 	partition_metrics_by_resource_attributes = true
 	partition_logs_by_resource_attributes    = true
 	partition_logs_by_trace_id               = true
+	signal_header                            = true
 	timeout                                  = "11s"
 	include_metadata_keys                    = ["key1", "key2"]
 
@@ -86,24 +80,14 @@ otelcol.exporter.kafka "default" {
 	}
 
 	authentication {
-		plaintext {
-			username = "fakeusername"
-			password = "fakepassword"
-		}
-
 		sasl {
 			username  = "fakeusername"
 			password  = "fakepassword"
 			mechanism = "SCRAM-SHA-256"
-			version   = 1
 
 			aws_msk {
 				region = "us-east-1"
 			}
-		}
-
-		tls {
-			insecure = true
 		}
 
 		kerberos {
@@ -115,13 +99,19 @@ otelcol.exporter.kafka "default" {
 	}
 
 	producer {
-		max_message_bytes = 1000001
-		compression       = "gzip"
+		max_message_bytes      = 209715200
+		max_broker_write_bytes = 209715200
+		compression            = "gzip"
 
 		compression_params {
 			level = 9
 		}
 		flush_max_messages        = 11
 		allow_auto_topic_creation = true
+		linger                    = "250ms"
+	}
+
+	tls {
+		insecure = true
 	}
 }

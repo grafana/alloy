@@ -1,0 +1,28 @@
+SQL Server showplan XML with a Hash Match whose LogicalOp doesn't match any
+of the categories populateHashDetails disambiguates (Join/Semi, Aggregate,
+Union, Distinct). Per the Showplan operator reference, Hash Match only
+implements those four logical operations, so this LogicalOp is fabricated
+to exercise the defensive default branch rather than a real query shape.
+
+-- unmodeled_hash_match_logical_op.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Hash Match" LogicalOp="Flow Distinct" EstimateRows="300" EstimatedTotalSubtreeCost="0.9">
+              <Hash>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.6">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Hash>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

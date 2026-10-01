@@ -3,12 +3,14 @@
 package process
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/user"
 	"path"
+	"strconv"
 
 	gopsutil "github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
@@ -43,7 +45,7 @@ func (p process) String() string {
 }
 
 func convertProcesses(ps []process) []discovery.Target {
-	var res []discovery.Target
+	res := make([]discovery.Target, 0, len(ps))
 	for _, p := range ps {
 		t := convertProcess(p)
 		res = append(res, t)
@@ -79,12 +81,12 @@ func convertProcess(p process) discovery.Target {
 }
 
 func discover(l *slog.Logger, cfg *DiscoverConfig) ([]process, error) {
-	processes, err := gopsutil.Processes()
+	pids, err := gopsutil.Pids()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list processes: %w", err)
+		return nil, fmt.Errorf("failed to list pids: %w", err)
 	}
-	res := make([]process, 0, len(processes))
-	loge := func(pid int, e error) {
+	res := make([]process, 0, len(pids))
+	loge := func(pid int32, e error) {
 		if errors.Is(e, unix.ESRCH) {
 			return
 		}
@@ -93,29 +95,30 @@ func discover(l *slog.Logger, cfg *DiscoverConfig) ([]process, error) {
 		}
 		l.Error("failed to get process info", "err", e, "pid", pid)
 	}
-	for _, p := range processes {
-		spid := fmt.Sprintf("%d", p.Pid)
+	for _, pid := range pids {
+		p := &gopsutil.Process{Pid: pid}
+		spid := strconv.Itoa(int(pid))
 		var (
 			exe, cwd, commandline, containerID, cgroupPath, username, uid string
 		)
 		if cfg.Exe {
 			exe, err = p.Exe()
 			if err != nil {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 				continue
 			}
 		}
 		if cfg.Cwd {
 			cwd, err = p.Cwd()
 			if err != nil {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 				continue
 			}
 		}
 		if cfg.Commandline {
 			commandline, err = p.Cmdline()
 			if err != nil {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 				continue
 			}
 		}
@@ -123,29 +126,22 @@ func discover(l *slog.Logger, cfg *DiscoverConfig) ([]process, error) {
 			username, err = p.Username()
 			var uerr user.UnknownUserIdError
 			if err != nil && !errors.As(err, &uerr) {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 			}
 		}
 		if cfg.UID {
 			uids, err := p.Uids()
 			if err != nil {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 			}
 			if len(uids) > 0 {
-				uid = fmt.Sprintf("%d", uids[0])
+				uid = strconv.Itoa(int(uids[0]))
 			}
 		}
-		if cfg.ContainerID {
-			containerID, err = getLinuxProcessContainerID(spid)
+		if cfg.ContainerID || cfg.CgroupPath {
+			containerID, cgroupPath, err = getLinuxProcessCgroupInfo(spid, cfg.ContainerID, cfg.CgroupPath)
 			if err != nil {
-				loge(int(p.Pid), err)
-				continue
-			}
-		}
-		if cfg.CgroupPath {
-			cgroupPath, err = getLinuxProcessCgroupPath(spid)
-			if err != nil {
-				loge(int(p.Pid), err)
+				loge(pid, err)
 				continue
 			}
 		}
@@ -164,29 +160,16 @@ func discover(l *slog.Logger, cfg *DiscoverConfig) ([]process, error) {
 	return res, nil
 }
 
-func getLinuxProcessContainerID(pid string) (string, error) {
-	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
+func getLinuxProcessCgroupInfo(pid string, wantContainerID, wantCgroupPath bool) (containerID, cgroupPath string, err error) {
+	data, err := os.ReadFile(path.Join("/proc", pid, "cgroup"))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	defer cgroup.Close()
-	cid := getContainerIDFromCGroup(cgroup)
-	if cid != "" {
-		return cid, nil
+	if wantContainerID {
+		containerID = getContainerIDFromCGroup(bytes.NewReader(data))
 	}
-
-	return "", nil
-}
-
-func getLinuxProcessCgroupPath(pid string) (string, error) {
-	cgroup, err := os.Open(path.Join("/proc", pid, "cgroup"))
-	if err != nil {
-		return "", err
+	if wantCgroupPath {
+		cgroupPath = getPathFromCGroup(bytes.NewReader(data))
 	}
-	defer cgroup.Close()
-	if cgroupPath := getPathFromCGroup(cgroup); cgroupPath != "" {
-		return cgroupPath, nil
-	}
-
-	return "", nil
+	return containerID, cgroupPath, nil
 }

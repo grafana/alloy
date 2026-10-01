@@ -13,6 +13,8 @@ processors:
 
 connectors:
   spanmetrics:
+    dimensions:
+      - glob: http.*
 
 service:
   pipelines:

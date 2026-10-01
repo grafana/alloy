@@ -11,10 +11,12 @@ import (
 // submitted after the consumer has been stopped.
 var ErrConsumerStopped = errors.New("consumer stopped")
 
+// Consumer consumes batches of log entries.
 type Consumer interface {
+	// Consume consumes batch. The batch is only valid until Consume returns and
+	// may be reused by the caller afterwards, so an implementation that retains
+	// it must retain a Clone.
 	Consume(ctx context.Context, batch Batch) error
-	// TODO: Remove this when we have moved over to batching.
-	ConsumeEntry(ctx context.Context, entry Entry) error
 }
 
 var _ Consumer = (*CollectingConsumer)(nil)
@@ -23,29 +25,18 @@ func NewCollectingConsumer() *CollectingConsumer {
 	return &CollectingConsumer{}
 }
 
-// CollectingConsumer is a Consumer that will collect all received entries
-// and batches so it can be inspected later.
-// Used in tests.
+// CollectingConsumer is a Consumer that will collect all received batches
+// so it can be inspected later. Used in tests.
 type CollectingConsumer struct {
 	mut     sync.Mutex
 	batches []Batch
-	entries []Entry
 }
 
 func (c *CollectingConsumer) Consume(_ context.Context, batch Batch) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.batches = append(c.batches, batch)
-
-	return nil
-}
-
-func (c *CollectingConsumer) ConsumeEntry(_ context.Context, entry Entry) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	c.entries = append(c.entries, entry)
+	c.batches = append(c.batches, batch.Clone())
 	return nil
 }
 
@@ -56,8 +47,14 @@ func (c *CollectingConsumer) Batches() []Batch {
 	return slices.Clone(c.batches)
 }
 
-func (c *CollectingConsumer) Entries() []Entry {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	return slices.Clone(c.entries)
+var _ Consumer = (*NopConsumer)(nil)
+
+func NewNopConsumer() *NopConsumer {
+	return &NopConsumer{}
+}
+
+type NopConsumer struct{}
+
+func (n *NopConsumer) Consume(_ context.Context, _ Batch) error {
+	return nil
 }

@@ -5,6 +5,14 @@ receivers:
       http:
         compression_algorithms:
         - "zlib"
+        cors:
+          allowed_origins:
+          - "https://*.example.com"
+          allowed_headers:
+          - "X-Custom-Header"
+          exposed_headers:
+          - "X-Request-Id"
+          max_age: 7200
 
 exporters:
   otlp:

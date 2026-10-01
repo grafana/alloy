@@ -1,0 +1,8 @@
+controller:
+  type: deployment
+  replicas: 1
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  extraArgs:
+    - --server.http.enable-graphql=true

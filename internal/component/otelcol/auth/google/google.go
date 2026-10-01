@@ -42,6 +42,10 @@ type Arguments struct {
 	// default: access_token
 	TokenType string `alloy:"token_type,attr,optional"`
 
+	// TokenHeader controls which HTTP header carries the token. It must be
+	// authorization or proxy-authorization. The default is authorization.
+	TokenHeader string `alloy:"token_header,attr,optional"`
+
 	// Audience specifies the audience claim used for generating ID token.
 	Audience string `alloy:"audience,attr,optional"`
 
@@ -68,6 +72,7 @@ func (args *Arguments) SetToDefault() {
 		"https://www.googleapis.com/auth/trace.append",
 	}
 	args.TokenType = upstreamDefault.TokenType
+	args.TokenHeader = upstreamDefault.TokenHeader
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -79,15 +84,14 @@ func (args Arguments) Validate() error {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	return &collectorgoogleauth.Config{
-		Config: googleclientauthextension.Config{
-			Project:      args.Project,
-			QuotaProject: args.QuotaProject,
-			TokenType:    args.TokenType,
-			Audience:     args.Audience,
-			Scopes:       args.Scopes,
-		},
-	}, nil
+	cfg := collectorgoogleauth.NewFactory().CreateDefaultConfig().(*collectorgoogleauth.Config)
+	cfg.Config.Project = args.Project
+	cfg.Config.QuotaProject = args.QuotaProject
+	cfg.Config.TokenType = args.TokenType
+	cfg.Config.Audience = args.Audience
+	cfg.Config.TokenHeader = args.TokenHeader
+	cfg.Config.Scopes = args.Scopes
+	return cfg, nil
 }
 
 // ConvertServer returns nil since the ouath2 client extension does not support server auth.

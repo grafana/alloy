@@ -2,6 +2,7 @@
 package kafka
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -15,7 +16,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -65,7 +66,7 @@ func GetSignalType(opts component.Options, args component.Arguments) exporter.Ty
 type Arguments struct {
 	ProtocolVersion                      string        `alloy:"protocol_version,attr"`
 	Brokers                              []string      `alloy:"brokers,attr,optional"`
-	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool          `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 	ClientID                             string        `alloy:"client_id,attr,optional"`
 	Topic                                string        `alloy:"topic,attr,optional"` // Deprecated
 	TopicFromAttribute                   string        `alloy:"topic_from_attribute,attr,optional"`
@@ -74,6 +75,7 @@ type Arguments struct {
 	PartitionMetricsByResourceAttributes bool          `alloy:"partition_metrics_by_resource_attributes,attr,optional"`
 	PartitionLogsByResourceAttributes    bool          `alloy:"partition_logs_by_resource_attributes,attr,optional"`
 	PartitionLogsByTraceID               bool          `alloy:"partition_logs_by_trace_id,attr,optional"`
+	SignalHeader                         bool          `alloy:"signal_header,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 	ConnIdleTimeout                      time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 	IncludeMetadataKeys                  []string      `alloy:"include_metadata_keys,attr,optional"`
@@ -175,6 +177,11 @@ type Producer struct {
 	// Maximum message bytes the producer will accept to produce.
 	MaxMessageBytes int `alloy:"max_message_bytes,attr,optional"`
 
+	// MaxBrokerWriteBytes is the maximum bytes the producer will write to a broker
+	// in a single request. Must be greater than or equal to max_message_bytes, and
+	// at least 100 MiB
+	MaxBrokerWriteBytes int `alloy:"max_broker_write_bytes,attr,optional"`
+
 	// RequiredAcks Number of acknowledgements required to assume that a message has been sent.
 	// https://docs.confluent.io/platform/current/installation/configuration/producer-configs.html#acks
 	// The options are:
@@ -198,18 +205,24 @@ type Producer struct {
 
 	// Whether or not to allow automatic topic creation.
 	AllowAutoTopicCreation bool `alloy:"allow_auto_topic_creation,attr,optional"`
+
+	// Linger is how long individual topic partitions wait for more records before
+	// a request is built. Set to "0s" to send records as soon as they arrive.
+	Linger time.Duration `alloy:"linger,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
 func (args Producer) Convert() configkafka.ProducerConfig {
-	return configkafka.ProducerConfig{
-		MaxMessageBytes:        args.MaxMessageBytes,
-		RequiredAcks:           configkafka.RequiredAcks(args.RequiredAcks),
-		Compression:            args.Compression,
-		CompressionParams:      args.CompressionParams.Convert(),
-		FlushMaxMessages:       args.FlushMaxMessages,
-		AllowAutoTopicCreation: args.AllowAutoTopicCreation,
-	}
+	cfg := configkafka.NewDefaultProducerConfig()
+	cfg.MaxMessageBytes = args.MaxMessageBytes
+	cfg.MaxBrokerWriteBytes = args.MaxBrokerWriteBytes
+	cfg.RequiredAcks = configkafka.RequiredAcks(args.RequiredAcks)
+	cfg.Compression = args.Compression
+	cfg.CompressionParams = args.CompressionParams.Convert()
+	cfg.FlushMaxMessages = args.FlushMaxMessages
+	cfg.AllowAutoTopicCreation = args.AllowAutoTopicCreation
+	cfg.Linger = args.Linger
+	return cfg
 }
 
 type CompressionParams struct {
@@ -230,6 +243,8 @@ var (
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	producerDefaults := configkafka.NewDefaultProducerConfig()
+
 	*args = Arguments{
 		Brokers:         []string{"localhost:9092"},
 		ClientID:        "otel-collector",
@@ -244,14 +259,16 @@ func (args *Arguments) SetToDefault() {
 			},
 		},
 		Producer: Producer{
-			MaxMessageBytes: 1000000,
-			RequiredAcks:    1,
-			Compression:     "none",
+			MaxMessageBytes:     1000000,
+			MaxBrokerWriteBytes: producerDefaults.MaxBrokerWriteBytes,
+			RequiredAcks:        1,
+			Compression:         "none",
 			CompressionParams: CompressionParams{
 				Level: 0, // Default compression level
 			},
 			FlushMaxMessages:       10000,
 			AllowAutoTopicCreation: true,
+			Linger:                 producerDefaults.Linger,
 		},
 		RecordPartitioner: &RecordPartitionerConfig{
 			StickyKey: &StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
@@ -262,6 +279,19 @@ func (args *Arguments) SetToDefault() {
 	args.DebugMetrics.SetToDefault()
 }
 
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	args.Authentication.LogDeprecations(logger)
+}
+
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	otelCfg, err := args.Convert()
@@ -269,7 +299,7 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 	kafkaCfg := otelCfg.(*kafkaexporter.Config)
-	return xconfmap.Validate(kafkaCfg)
+	return confmap.Validate(kafkaCfg)
 }
 
 // Convert implements exporter.Arguments.
@@ -283,10 +313,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	result.Brokers = args.Brokers
-	result.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
-	result.ProtocolVersion = args.ProtocolVersion
-	result.ClientID = args.ClientID
+	result.ClientConfig.Brokers = args.Brokers
+	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
+	result.ClientConfig.ClientID = args.ClientID
 	result.TopicFromAttribute = args.TopicFromAttribute
 	// Do not set the encoding argument - it is deprecated.
 	// result.Encoding = args.Encoding
@@ -294,12 +323,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.PartitionMetricsByResourceAttributes = args.PartitionMetricsByResourceAttributes
 	result.PartitionLogsByResourceAttributes = args.PartitionLogsByResourceAttributes
 	result.PartitionLogsByTraceID = args.PartitionLogsByTraceID
+	result.SignalHeader = args.SignalHeader
 	result.IncludeMetadataKeys = args.IncludeMetadataKeys
 	result.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}
-	result.ConnIdleTimeout = args.ConnIdleTimeout
-	result.Metadata = args.Metadata.Convert()
+	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
+	result.ClientConfig.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 
 	result.Logs = args.Logs.convert(
@@ -337,7 +367,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
+		result.ClientConfig.TLS = tlsCfg
 	}
 
 	q, err := args.Queue.Convert()
@@ -353,11 +383,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		result.RecordPartitioner = kafkaexporter.RecordPartitionerConfig{
 			StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
 		}
-	}
-
-	if args.TLS != nil {
-		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
 	}
 
 	return &result, nil

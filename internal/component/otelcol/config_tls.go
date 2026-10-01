@@ -55,19 +55,20 @@ func (args *TLSClientArguments) Convert() *configtls.ClientConfig {
 }
 
 type TLSSetting struct {
-	CA                       string            `alloy:"ca_pem,attr,optional"`
-	CAFile                   string            `alloy:"ca_file,attr,optional"`
-	Cert                     string            `alloy:"cert_pem,attr,optional"`
-	CertFile                 string            `alloy:"cert_file,attr,optional"`
-	Key                      alloytypes.Secret `alloy:"key_pem,attr,optional"`
-	KeyFile                  string            `alloy:"key_file,attr,optional"`
-	MinVersion               string            `alloy:"min_version,attr,optional"`
-	MaxVersion               string            `alloy:"max_version,attr,optional"`
-	ReloadInterval           time.Duration     `alloy:"reload_interval,attr,optional"`
-	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
-	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
-	CurvePreferences         []string          `alloy:"curve_preferences,attr,optional"`
-	TPMConfig                *TPMConfig        `alloy:"tpm,block,optional"`
+	CA                          string            `alloy:"ca_pem,attr,optional"`
+	CAFile                      string            `alloy:"ca_file,attr,optional"`
+	Cert                        string            `alloy:"cert_pem,attr,optional"`
+	CertFile                    string            `alloy:"cert_file,attr,optional"`
+	Key                         alloytypes.Secret `alloy:"key_pem,attr,optional"`
+	KeyFile                     string            `alloy:"key_file,attr,optional"`
+	MinVersion                  string            `alloy:"min_version,attr,optional"`
+	MaxVersion                  string            `alloy:"max_version,attr,optional"`
+	ReloadInterval              time.Duration     `alloy:"reload_interval,attr,optional"`
+	CipherSuites                []string          `alloy:"cipher_suites,attr,optional"`
+	IncludeInsecureCipherSuites bool              `alloy:"include_insecure_cipher_suites,attr,optional"`
+	IncludeSystemCACertsPool    bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
+	CurvePreferences            []string          `alloy:"curve_preferences,attr,optional"`
+	TPMConfig                   *TPMConfig        `alloy:"tpm,block,optional"`
 }
 
 func (args *TLSSetting) Convert() *configtls.Config {
@@ -76,19 +77,20 @@ func (args *TLSSetting) Convert() *configtls.Config {
 	}
 
 	t := &configtls.Config{
-		CAPem:                    configopaque.String(args.CA),
-		CAFile:                   args.CAFile,
-		CertPem:                  configopaque.String(args.Cert),
-		CertFile:                 args.CertFile,
-		KeyPem:                   configopaque.String(string(args.Key)),
-		KeyFile:                  args.KeyFile,
-		MinVersion:               args.MinVersion,
-		MaxVersion:               args.MaxVersion,
-		ReloadInterval:           args.ReloadInterval,
-		CipherSuites:             args.CipherSuites,
-		IncludeSystemCACertsPool: args.IncludeSystemCACertsPool,
-		CurvePreferences:         args.CurvePreferences,
-		TPMConfig:                args.TPMConfig.Convert(),
+		CAPem:                       configopaque.String(args.CA),
+		CAFile:                      args.CAFile,
+		CertPem:                     configopaque.String(args.Cert),
+		CertFile:                    args.CertFile,
+		KeyPem:                      configopaque.String(string(args.Key)),
+		KeyFile:                     args.KeyFile,
+		MinVersion:                  args.MinVersion,
+		MaxVersion:                  args.MaxVersion,
+		ReloadInterval:              args.ReloadInterval,
+		CipherSuites:                args.CipherSuites,
+		IncludeInsecureCipherSuites: args.IncludeInsecureCipherSuites,
+		IncludeSystemCACertsPool:    args.IncludeSystemCACertsPool,
+		CurvePreferences:            args.CurvePreferences,
+		TPMConfig:                   args.TPMConfig.Convert(),
 	}
 	return t
 }

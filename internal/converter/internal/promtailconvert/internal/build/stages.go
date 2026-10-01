@@ -164,7 +164,7 @@ func convertLabelAllow(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bo
 		return stages.StageConfig{}, false
 	}
 	return stages.StageConfig{
-		LabelAllowConfig: &stages.LabelAllowConfig{
+		LabelKeepConfig: &stages.LabelKeepConfig{
 			Values: *pCfg,
 		},
 	}, true

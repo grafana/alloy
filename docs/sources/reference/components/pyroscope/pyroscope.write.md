@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-09-11
 title: pyroscope.write
 ---
 
@@ -15,8 +16,8 @@ title: pyroscope.write
 `pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints.
 When `pyroscope.write` forwards profiles, all labels starting with double underscore (`__`) are dropped before the data is sent, with the following exceptions:
 
-* `__name__` is preserved because it identifies the profile type.
-* `__delta__`is preserved because it's required for delta profiles.
+- `__name__` is preserved because it identifies the profile type.
+- `__delta__` is preserved because it's required for delta profiles.
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
@@ -74,9 +75,9 @@ The following arguments are supported:
 
 | Name                     | Type                | Description                                                                                      | Default   | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------- | -------- |
-| `url`                    | `string`            | Full URL to send metrics to.                                                                     |           | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
+| `url`                    | `string`            | Full URL to send profiles to.                                                                    |           | yes      |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
 | `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
 | `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
@@ -94,11 +95,11 @@ The following arguments are supported:
 
  At most, one of the following can be provided:
 
-* [`authorization`](#authorization) block
-* [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`](#endpoint) argument
-* [`bearer_token`](#endpoint) argument
-* [`oauth2`](#oauth2) block
+- [`authorization`](#authorization) block
+- [`basic_auth`](#basic_auth) block
+- [`bearer_token_file`](#endpoint) argument
+- [`bearer_token`](#endpoint) argument
+- [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -141,27 +142,30 @@ In those cases, exported fields are kept at their last healthy values.
 
 `pyroscope.write` doesn't expose any component-specific debug information.
 
-## Metrics
+## Debug metrics
 
-`pyroscope.write` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
-| Metric                                   | Type      | Description                                                      |
-|------------------------------------------|-----------|------------------------------------------------------------------|
-| `pyroscope_write_sent_bytes_total`       | Counter   | Total number of compressed bytes sent to Pyroscope endpoints.    |
-| `pyroscope_write_dropped_bytes_total`    | Counter   | Total number of compressed bytes dropped by Pyroscope endpoints. |
-| `pyroscope_write_sent_profiles_total`    | Counter   | Total number of profiles sent to Pyroscope endpoints.            |
-| `pyroscope_write_dropped_profiles_total` | Counter   | Total number of profiles dropped by Pyroscope endpoints.         |
-| `pyroscope_write_retries_total`          | Counter   | Total number of retries to Pyroscope endpoints.                  |
-| `pyroscope_write_latency`                | Histogram | Write latency for sending profiles to Pyroscope endpoints.       |
+| Name                                     | Type        | Description                                                      |
+| ---------------------------------------- | ----------- | ---------------------------------------------------------------- |
+| `pyroscope_write_sent_bytes_total`       | `counter`   | Total number of compressed bytes sent to Pyroscope endpoints.    |
+| `pyroscope_write_dropped_bytes_total`    | `counter`   | Total number of compressed bytes dropped by Pyroscope endpoints. |
+| `pyroscope_write_sent_profiles_total`    | `counter`   | Total number of profiles sent to Pyroscope endpoints.            |
+| `pyroscope_write_dropped_profiles_total` | `counter`   | Total number of profiles dropped by Pyroscope endpoints.         |
+| `pyroscope_write_retries_total`          | `counter`   | Total number of retries to Pyroscope endpoints.                  |
+| `pyroscope_write_latency`                | `histogram` | Write latency for sending profiles to Pyroscope endpoints.       |
 
-All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
+All metrics include an `endpoint` label identifying the specific endpoint URL.
+The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 
 - `push_total`: Total latency for push operations
-- `push_endpoint`: Per-endpoint latency for push operations  
+- `push_endpoint`: Per-endpoint latency for push operations
 - `push_downstream`: Downstream request latency for push operations
 - `ingest_total`: Total latency for ingest operations
 - `ingest_endpoint`: Per-endpoint latency for ingest operations
 - `ingest_downstream`: Downstream request latency for ingest operations
+
+For the `push_total` and `ingest_total` types, the `endpoint` label is set to `-` because these series aggregate across all endpoints rather than identifying a single one.
 
 ## Troubleshoot
 
@@ -171,7 +175,7 @@ All metrics include an `endpoint` label identifying the specific endpoint URL. T
 
 ```alloy
 pyroscope.write "staging" {
-  // Send metrics to a locally running Pyroscope instance.
+  // Send profiles to a locally running Pyroscope instance.
   endpoint {
     url = "http://pyroscope:4040"
     headers = {

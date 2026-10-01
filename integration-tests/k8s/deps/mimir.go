@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,6 +35,22 @@ type metricsResponse struct {
 type metadataResponse struct {
 	Status string                        `json:"status"`
 	Data   map[string][]ExpectedMetadata `json:"data"`
+}
+
+type instantQueryResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Metric    map[string]string `json:"metric"`
+			Value     []any             `json:"value"`
+			Histogram []any             `json:"histogram"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+type seriesResponse struct {
+	Status string              `json:"status"`
+	Data   []map[string]string `json:"data"`
 }
 
 // ExpectedMetadata is both the JSON payload shape from Mimir's metadata
@@ -136,6 +153,183 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 	}, timeout, retryInterval)
 }
 
+// QueryPositive polls an instant query for each metric (scoped to testName) and
+// asserts at least one returned sample is greater than zero. It checks a metric
+// is not just present but reports real data.
+func (m *Mimir) QueryPositive(t *testing.T, testName string, metrics []string) {
+	t.Helper()
+	base := m.endpoint("/prometheus/api/v1/query")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for _, metric := range metrics {
+			queryURL, err := url.Parse(base)
+			require.NoError(c, err)
+			values := queryURL.Query()
+			values.Set("query", metric+"{"+testNameLabel+"=\""+testName+"\"}")
+			queryURL.RawQuery = values.Encode()
+			resp := curl(c, queryURL.String(), nil)
+
+			var parsed instantQueryResponse
+			require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse query response: %s", resp)
+			require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+			require.NotEmptyf(c, parsed.Data.Result, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+
+			var maxValue float64
+			for _, result := range parsed.Data.Result {
+				if len(result.Value) != 2 {
+					continue
+				}
+				sample, ok := result.Value[1].(string)
+				if !ok {
+					continue
+				}
+				value, convErr := strconv.ParseFloat(sample, 64)
+				if convErr == nil && value > maxValue {
+					maxValue = value
+				}
+			}
+			require.Greaterf(c, maxValue, 0.0, "%s: expected a positive sample", metric)
+		}
+	}, timeout, retryInterval)
+}
+
+// HistogramSample is one native histogram sample returned by an instant query.
+type HistogramSample struct {
+	Labels  map[string]string
+	Count   float64
+	Sum     float64
+	Buckets []HistogramBucket
+}
+
+// Name returns the sample's metric name.
+func (h HistogramSample) Name() string { return h.Labels["__name__"] }
+
+// HistogramBucket is one bucket of a native histogram. BoundaryRule follows
+// Prometheus' encoding: 0 open both ends, 1 closed left, 2 closed right,
+// 3 closed both ends.
+type HistogramBucket struct {
+	BoundaryRule int
+	Lower        float64
+	Upper        float64
+	Count        float64
+}
+
+// QueryHistograms polls an instant query for each metric (scoped to testName)
+// and asserts it arrives as a native histogram rather than a float sample. It
+// then calls assertSample for every returned sample so callers decide what to
+// check. Assertions are retried, so use the supplied CollectT rather than t.
+func (m *Mimir) QueryHistograms(t *testing.T, testName string, metrics []string, assertSample func(c *assert.CollectT, sample HistogramSample)) {
+	t.Helper()
+	base := m.endpoint("/prometheus/api/v1/query")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for _, metric := range metrics {
+			queryURL, err := url.Parse(base)
+			require.NoError(c, err)
+			values := queryURL.Query()
+			values.Set("query", metric+"{"+testNameLabel+"=\""+testName+"\"}")
+			queryURL.RawQuery = values.Encode()
+			resp := curl(c, queryURL.String(), nil)
+
+			var parsed instantQueryResponse
+			require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse query response: %s", resp)
+			require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+			require.NotEmptyf(c, parsed.Data.Result, "%s: no samples for %s=%s", metric, testNameLabel, testName)
+
+			for _, result := range parsed.Data.Result {
+				require.Emptyf(c, result.Value, "%s: expected a native histogram, got a float sample", metric)
+				sample, convErr := toHistogramSample(result.Metric, result.Histogram)
+				require.NoErrorf(c, convErr, "%s: %v", metric, convErr)
+				assertSample(c, sample)
+			}
+		}
+	}, timeout, retryInterval)
+}
+
+func toHistogramSample(labels map[string]string, raw []any) (HistogramSample, error) {
+	if len(raw) != 2 {
+		return HistogramSample{}, fmt.Errorf("expected a native histogram sample, got %d fields", len(raw))
+	}
+	data, ok := raw[1].(map[string]any)
+	if !ok {
+		return HistogramSample{}, fmt.Errorf("unexpected histogram shape %T", raw[1])
+	}
+
+	sample := HistogramSample{Labels: labels}
+	var err error
+	if sample.Count, err = numericField(data, "count"); err != nil {
+		return HistogramSample{}, err
+	}
+	if sample.Sum, err = numericField(data, "sum"); err != nil {
+		return HistogramSample{}, err
+	}
+
+	buckets, _ := data["buckets"].([]any)
+	for i, rawBucket := range buckets {
+		fields, isSlice := rawBucket.([]any)
+		if !isSlice || len(fields) != 4 {
+			return HistogramSample{}, fmt.Errorf("bucket %d: expected 4 fields, got %v", i, rawBucket)
+		}
+		bucket := HistogramBucket{}
+		for j, target := range []*float64{nil, &bucket.Lower, &bucket.Upper, &bucket.Count} {
+			if j == 0 {
+				rule, isNumber := fields[0].(float64)
+				if !isNumber {
+					return HistogramSample{}, fmt.Errorf("bucket %d: boundary rule is %T", i, fields[0])
+				}
+				bucket.BoundaryRule = int(rule)
+				continue
+			}
+			text, isString := fields[j].(string)
+			if !isString {
+				return HistogramSample{}, fmt.Errorf("bucket %d field %d: expected a string, got %T", i, j, fields[j])
+			}
+			if *target, err = strconv.ParseFloat(text, 64); err != nil {
+				return HistogramSample{}, fmt.Errorf("bucket %d field %d: %w", i, j, err)
+			}
+		}
+		sample.Buckets = append(sample.Buckets, bucket)
+	}
+
+	return sample, nil
+}
+
+func numericField(data map[string]any, field string) (float64, error) {
+	text, ok := data[field].(string)
+	if !ok {
+		return 0, fmt.Errorf("missing histogram %s", field)
+	}
+	return strconv.ParseFloat(text, 64)
+}
+
+// QueryMetricWithLabelsPresent asserts that metricName has at least one series
+// for testName carrying every given label with a non-empty value. Passing
+// multiple labels requires them on the same series. Naming the metric confirms
+// the labels are attached to a real cAdvisor metric, not just any series.
+func (m *Mimir) QueryMetricWithLabelsPresent(t *testing.T, testName, metricName string, labelNames ...string) {
+	t.Helper()
+
+	matchers := testNameLabel + "=\"" + testName + "\""
+	for _, labelName := range labelNames {
+		matchers += "," + labelName + "=~\".+\""
+	}
+	selector := metricName + "{" + matchers + "}"
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		queryURL, err := url.Parse(m.endpoint("/prometheus/api/v1/series"))
+		require.NoError(c, err)
+		values := queryURL.Query()
+		values.Add("match[]", selector)
+		queryURL.RawQuery = values.Encode()
+		resp := curl(c, queryURL.String(), nil)
+
+		var parsed seriesResponse
+		require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse series response: %s", resp)
+		require.Equal(c, "success", parsed.Status, "mimir series query failed: %s", resp)
+		require.NotEmptyf(c, parsed.Data, "no %s series carrying labels %v for %s=%s", metricName, labelNames, testNameLabel, testName)
+	}, timeout, retryInterval)
+}
+
 // QueryMetadata asserts each expected metric appears in Mimir's
 // /api/v1/metadata with the requested Type/Help/Unit.
 func (m *Mimir) QueryMetadata(t *testing.T, expected map[string]ExpectedMetadata) {
@@ -156,6 +350,10 @@ func (m *Mimir) QueryMetadata(t *testing.T, expected map[string]ExpectedMetadata
 			entries, ok := parsed.Data[name]
 			if !ok || len(entries) == 0 {
 				missing = append(missing, name)
+				continue
+			}
+			if len(entries) != 1 {
+				mismatched = append(mismatched, fmt.Sprintf("%s: want exactly 1 metadata entry, got %d", name, len(entries)))
 				continue
 			}
 			got := entries[0]
