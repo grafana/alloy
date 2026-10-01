@@ -47,7 +47,7 @@ When running on Kubernetes without `privileged: true`, grant the following Linux
 | `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                |
 | `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                              |
 
-Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
+Mount `/sys/kernel/tracing` (on older kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
 
 ## Supported languages
 
@@ -78,7 +78,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `collect_interval`            | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`          | no       |
 | `collect_kernel_profile`      | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`           | no       |
 | `collect_user_profile`        | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`           | no       |
-| `comm`                        | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"`         | no       |
+| `comm`                        | `string`                 | How the component includes the process command name in profiles. One of `none`, `label`, `stackframe`, or `both`.        | `"none"`         | no       |
 | `container_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> container ID table LRU cache.                       | `1024`           | no       |
 | `demangle`                    | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"`         | no       |
 | `dotnet_enabled`              | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`           | no       |

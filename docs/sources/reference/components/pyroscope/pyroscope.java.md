@@ -221,7 +221,7 @@ In those cases, exported fields retain their last healthy values.
 
 The following example profiles every Java process on the current host:
 
-```alloyIt's ok to make these changes on this branch. I
+```alloy
 pyroscope.write "staging" {
   endpoint {
     url = "http://localhost:4040"
