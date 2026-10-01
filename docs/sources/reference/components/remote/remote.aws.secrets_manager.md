@@ -22,14 +22,14 @@ The raw secret string is always available in the `content` export.
 You can specify multiple `remote.aws.secrets_manager` components by giving them different labels.
 
 By default, `remote.aws.secrets_manager` uses the [AWS SDK default credential chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
-This includes environment variables, shared configuration files, IAM Roles for Service Accounts (IRSA), and EC2 or ECS instance roles.
+This includes environment variables, shared configuration files, AWS Identity and Access Management (IAM) Roles for Service Accounts (IRSA), and Amazon Elastic Compute Cloud (Amazon EC2) or Amazon Elastic Container Service (Amazon ECS) instance roles.
 Use the `client` block to set static credentials, a region, a profile, a custom endpoint, or a role to assume.
 
 The identity that {{< param "PRODUCT_NAME" >}} uses needs these IAM permissions:
 
-* `secretsmanager:GetSecretValue` on the secret.
-* `kms:Decrypt` on the key, if the secret uses a customer managed AWS KMS key.
-* `sts:AssumeRole` on the role, if you use the `assume_role` block.
+- `secretsmanager:GetSecretValue` on the secret.
+- `kms:Decrypt` on the key, if the secret uses a customer managed AWS Key Management Service (AWS KMS) key.
+- `sts:AssumeRole` on the role, if you use the `assume_role` block.
 
 ## Usage
 
@@ -66,7 +66,7 @@ AWS charges for each Secrets Manager API call.
 Each `remote.aws.secrets_manager` component makes one call at each poll.
 It also reads the secret at startup and at each configuration change.
 The AWS SDK makes up to 3 attempts for each call.
-If you use the `assume_role` block, the component also calls AWS STS when the role credentials expire.
+If you use the `assume_role` block, the component also calls AWS Security Token Service (AWS STS) when the role credentials expire.
 Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
 {{< /admonition >}}
 
@@ -109,7 +109,7 @@ If you set them, they replace the default credential chain.
 1. The `region` argument.
 1. The `AWS_REGION` or `AWS_DEFAULT_REGION` environment variable.
 1. The region in the shared configuration profile. The profile comes from the `profile` argument or, if you don't set it, from the `AWS_PROFILE` environment variable.
-1. The EC2 instance metadata service.
+1. The Amazon EC2 instance metadata service.
 
 If none of these gives a region, the component returns an error.
 
@@ -117,10 +117,10 @@ Each read, including all SDK attempts, must finish within 30 seconds.
 The AWS SDK makes up to 3 attempts for each call by default.
 The SDK reads these environment variables:
 
-* `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` set the retry behavior.
-* `HTTPS_PROXY` and `NO_PROXY` set the proxy.
-* `AWS_CA_BUNDLE` sets a custom certificate authority.
-* `AWS_PROFILE` sets the shared configuration profile. The `profile` argument overrides it.
+- `AWS_MAX_ATTEMPTS` and `AWS_RETRY_MODE` set the retry behavior.
+- `HTTPS_PROXY` and `NO_PROXY` set the proxy.
+- `AWS_CA_BUNDLE` sets a custom certificate authority.
+- `AWS_PROFILE` sets the shared configuration profile. The `profile` argument overrides it.
 
 Refer to the [AWS SDK settings reference](https://docs.aws.amazon.com/sdkref/latest/guide/settings-reference.html) for more information.
 
@@ -128,8 +128,8 @@ Refer to the [AWS SDK settings reference](https://docs.aws.amazon.com/sdkref/lat
 
 The `assume_role` block makes `remote.aws.secrets_manager` call AWS STS `AssumeRole` with its base credentials.
 `remote.aws.secrets_manager` then reads the secret with the credentials of the assumed role.
-The STS call uses the default regional STS endpoint.
-The `endpoint` argument in the `client` block doesn't change the STS endpoint.
+The AWS STS call uses the default regional AWS STS endpoint.
+The `endpoint` argument in the `client` block doesn't change the AWS STS endpoint.
 
 | Name           | Type               | Description                                          | Default              | Required |
 | -------------- | ------------------ | ---------------------------------------------------- | -------------------- | -------- |
@@ -138,7 +138,7 @@ The `endpoint` argument in the `client` block doesn't change the STS endpoint.
 | `session_name` | `string`           | The name of the role session.                        | `"alloy-<HOSTNAME>"` | no       |
 
 The default `session_name` is `alloy-` followed by the host name.
-Characters that STS doesn't allow are replaced by `-`, and the name has at most 64 characters.
+Characters that AWS STS doesn't allow are replaced by `-`, and the name has at most 64 characters.
 
 ## Exported fields
 
@@ -151,10 +151,10 @@ The following fields are exported and can be referenced by other components:
 
 `remote.aws.secrets_manager` fills `data` with these rules:
 
-* If the secret isn't a JSON object, `data` is empty.
-* A string field value is exported as the plain string.
-* A number, boolean, `null`, object, or array field value is exported as its JSON text.
-* If the JSON object has duplicate keys, the last value wins.
+- If the secret isn't a JSON object, `data` is empty.
+- A string field value is exported as the plain string.
+- A number, boolean, `null`, object, or array field value is exported as its JSON text.
+- If the JSON object has duplicate keys, the last value wins.
 
 `remote.aws.secrets_manager` doesn't support binary secrets.
 
@@ -171,8 +171,8 @@ After a failed poll, the component retries after the `poll_frequency` interval o
 After a successful read, the component returns to the `poll_frequency` schedule.
 
 If a read with new arguments fails after a configuration change, the component keeps the previous arguments and the last values it read, and it keeps polling with the previous arguments.
-{{< param "PRODUCT_NAME" >}} reports the component as unhealthy, with the configuration error, until you load a configuration with working arguments.
-To apply the change, fix the configuration and reload it.
+{{< param "PRODUCT_NAME" >}} reports the component as unhealthy, with the configuration error, until you load a configuration that works.
+This includes restoring the previous configuration.
 If the arguments come from the exports of another component that change often, each failed change runs the read again and restarts the poll schedule.
 
 ## Debug information
