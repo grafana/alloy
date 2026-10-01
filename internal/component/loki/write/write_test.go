@@ -241,7 +241,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("should not be able to create component with experimental config without correct flag", func(t *testing.T) {
+	t.Run("should not be able to create component with experimental config without required stability level", func(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(`
 			endpoint {
@@ -262,7 +262,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("should be able to create component with experimental config correct flag", func(t *testing.T) {
+	t.Run("should be able to create component with experimental config with required stability level", func(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(`
 			endpoint {
@@ -280,6 +280,67 @@ func TestComponentExperimentalConfig(t *testing.T) {
 			OnStateChange: func(e component.Exports) {},
 		}, args)
 
+		require.NoError(t, err)
+	})
+
+	t.Run("should be able to create component with disabled wal without required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = false
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.NoError(t, err)
+	})
+
+	t.Run("should not be able to create component with enabled wal without required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = true
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.ErrorContains(t, err, "enabling wal requires stability.level flag to be experimental")
+	})
+
+	t.Run("should be able to create component with enabled wal with required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = true
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityExperimental,
+			DataPath:      t.TempDir(),
+			OnStateChange: func(e component.Exports) {},
+		}, args)
 		require.NoError(t, err)
 	})
 }

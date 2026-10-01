@@ -473,7 +473,8 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 	args.SetToDefault()
 	args.ExcludeCurrentUser = true
 	c := &Component{
-		args: args,
+		args:     args,
+		instance: &dbInstance{},
 		openSQL: func(_, _ string) (*sql.DB, error) {
 			return db, nil
 		},

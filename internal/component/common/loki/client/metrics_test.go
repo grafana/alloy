@@ -15,13 +15,13 @@ func TestNewMetricsReusedRegistryInitializesRegisteredCounters(t *testing.T) {
 	newMetrics(reg)
 	m := newMetrics(reg)
 
-	for _, counter := range m.countersWithHostTenantReason {
+	for _, counter := range m.countersWithHostReason {
 		for _, reason := range reasons {
-			counter.WithLabelValues("host", "tenant", reason).Add(0)
+			counter.WithLabelValues("host", reason).Add(0)
 		}
 	}
-	for _, counter := range m.countersWithHostTenant {
-		counter.WithLabelValues("host", "tenant").Add(0)
+	for _, counter := range m.countersWithHost {
+		counter.WithLabelValues("host").Add(0)
 	}
 
 	for _, name := range []string{
