@@ -54,6 +54,9 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 | `ssl_skip_verify`      | `bool`     | Skip SSL verification when connecting to Elasticsearch.                                                |                           | no       |
 | `timeout`              | `duration` | Timeout for trying to get stats from Elasticsearch.                                                    | `"5s"`                    | no       |
 
+By default, the component requests stats for the local node only.
+Set `all` to `true` to request stats for every node in the cluster, which ignores `node`.
+
 ## Blocks
 
 You can use the following block with `prometheus.exporter.elasticsearch`:
