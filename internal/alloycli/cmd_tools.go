@@ -3,8 +3,9 @@ package alloycli
 import (
 	"fmt"
 
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/internal/alloycli/clitools"
 )
 
 func toolsCommand() *cobra.Command {
@@ -14,9 +15,9 @@ func toolsCommand() *cobra.Command {
 		Long:  `The tools command contains a collection of utilities for components.`,
 	}
 
-	cmd.AddCommand(
-		getTools("prometheus.remote_write", remotewrite.InstallTools),
-	)
+	for _, t := range clitools.All() {
+		cmd.AddCommand(getTools(t.Name, t.Install))
+	}
 
 	return cmd
 }
