@@ -62,7 +62,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.catchpoint`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.catchpoint`:
 
 ```alloy
 prometheus.exporter.catchpoint "example" {

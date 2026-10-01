@@ -228,7 +228,7 @@ The following examples show you how to configure `prometheus.exporter.cadvisor` 
 
 ### Component configuration
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.cadvisor`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.cadvisor`:
 
 ```alloy
 prometheus.exporter.cadvisor "example" {

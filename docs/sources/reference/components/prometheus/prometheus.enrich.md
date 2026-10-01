@@ -80,6 +80,8 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug metrics
 
+The following Prometheus metrics are exposed:
+
 | Name                                 | Type      | Description                                                  |
 | ------------------------------------ | --------- | ------------------------------------------------------------ |
 | `prometheus_fanout_latency`          | histogram | Write latency for sending to direct and indirect components. |
