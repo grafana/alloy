@@ -16,6 +16,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
 	"go.uber.org/atomic"
@@ -354,7 +356,7 @@ func (c *Component) loadInstances() []*dbInstance {
 func (c *Component) storeInstances(instances []*dbInstance) {
 	mux := http.NewServeMux()
 	for _, inst := range instances {
-		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{}))
+		mux.Handle(metricsPath(inst.cfg.name), util.PromHTTPHandlerFor(inst.registry, c.opts.Logger, promhttp.HandlerOpts{}))
 	}
 	c.instances.Store(&instances)
 	c.handlerMux.Store(mux)
@@ -810,6 +812,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
+		collector.TableStatsCollector:     false,
+		collector.IndexStatsCollector:     false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -840,24 +844,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryDetailsCollector] {
-		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.QueryDetailsCollector, "create", err)
-		} else {
-			if err := qtCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryDetailsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, qtCollector)
-		}
-	}
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
@@ -880,10 +867,31 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+			DB:              inst.dbConnection,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			EntryHandler:    entryHandler,
+			TableRegistry:   tableRegistry,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qtCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, qtCollector)
 		}
 	}
 
@@ -994,6 +1002,40 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, epCollector)
+		}
+	}
+
+	if collectors[collector.TableStatsCollector] {
+		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
+			DB:             inst.dbConnection,
+			ExcludeSchemas: c.args.ExcludeSchemas,
+			Registry:       inst.registry,
+			Logger:         c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.TableStatsCollector, "create", err)
+		} else {
+			if err := tsCollector.Start(context.Background()); err != nil {
+				logStartError(collector.TableStatsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, tsCollector)
+		}
+	}
+
+	if collectors[collector.IndexStatsCollector] {
+		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
+			DB:             inst.dbConnection,
+			ExcludeSchemas: c.args.ExcludeSchemas,
+			Registry:       inst.registry,
+			Logger:         c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.IndexStatsCollector, "create", err)
+		} else {
+			if err := isCollector.Start(context.Background()); err != nil {
+				logStartError(collector.IndexStatsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, isCollector)
 		}
 	}
 

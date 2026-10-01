@@ -1,0 +1,33 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT CustomerId, COUNT(*)
+FROM Orders
+GROUP BY CustomerId
+```
+
+-- hash_match_aggregate.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Hash Match" LogicalOp="Aggregate" EstimateRows="300" EstimatedTotalSubtreeCost="0.9">
+              <Hash>
+                <GroupBy>
+                  <ColumnReference Database="[MyDb]" Schema="[dbo]" Table="[Orders]" Column="[CustomerId]" />
+                </GroupBy>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.6">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Hash>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

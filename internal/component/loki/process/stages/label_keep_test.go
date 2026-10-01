@@ -4,60 +4,123 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestLabelAllow(t *testing.T) {
+func TestValidateLabelslKeepConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         *LabelAllowConfig
-		inputLabels    model.LabelSet
-		expectedLabels model.LabelSet
+		name      string
+		config    string
+		expectErr bool
 	}{
 		{
-			name:   "allow single label",
-			config: &LabelAllowConfig{Values: []string{"testLabel1"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
-			},
-			expectedLabels: model.LabelSet{
-				"testLabel1": "testValue",
-			},
+			name:   "valid single label",
+			config: `values = [ "testLabel1" ]`,
 		},
 		{
-			name:   "allow multiple labels",
-			config: &LabelAllowConfig{Values: []string{"testLabel1", "testLabel2"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
-				"testLabel3": "testValue",
-			},
-			expectedLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
-			},
+			name:   "valid multiple labels",
+			config: `values = [ "testLabel1", "testLabel2" ]`,
 		},
 		{
-			name:   "allow non-existing label",
-			config: &LabelAllowConfig{Values: []string{"foobar"}},
-			inputLabels: model.LabelSet{
-				"testLabel1": "testValue",
-				"testLabel2": "testValue",
-			},
-			expectedLabels: model.LabelSet{},
+			name:      "empty list of values",
+			config:    `values = [ ]`,
+			expectErr: true,
+		},
+		{
+			name:      "missing values attribute",
+			config:    ``,
+			expectErr: true,
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			st, err := newLabelAllowStage(*test.config)
-			if err != nil {
-				t.Fatal(err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg LabelKeepConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
-			out := processEntries(st, newEntry(nil, test.inputLabels, "", time.Now()))[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
+		})
+	}
+}
+
+func TestLabelKeepStage(t *testing.T) {
+	now := time.Now()
+
+	type testCase struct {
+		name     string
+		cfg      LabelKeepConfig
+		entries  []Entry
+		expected []Entry
+	}
+
+	tests := []testCase{
+		{
+			name: "allow single label",
+			cfg:  LabelKeepConfig{Values: []string{"testLabel1"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{
+					"testLabel1": "testValue",
+				}, "", now),
+			},
+		},
+		{
+			name: "allow multiple labels",
+			cfg:  LabelKeepConfig{Values: []string{"testLabel1", "testLabel2"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+					"testLabel3": "testValue",
+				}, "", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+					"testLabel3": "testValue",
+				}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
+			},
+		},
+		{
+			name: "allow non-existing label",
+			cfg:  LabelKeepConfig{Values: []string{"foobar"}},
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, "", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"testLabel1": "testValue",
+					"testLabel2": "testValue",
+				}, model.LabelSet{}, "", now),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, []StageConfig{{LabelKeepConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }

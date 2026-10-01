@@ -30,6 +30,7 @@ import (
 func TestGenerateServiceMonitorConfig(t *testing.T) {
 	var (
 		falsePtr    = ptr.To(false)
+		truePtr     = ptr.To(true)
 		proxyURL    = "https://proxy:8080"
 		httpsScheme = promopv1.Scheme("https")
 	)
@@ -384,12 +385,16 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					ScrapeProtocols: []promopv1.ScrapeProtocol{
 						promopv1.ScrapeProtocol(config.PrometheusProto),
 					},
+					NativeHistogramConfig: promopv1.NativeHistogramConfig{
+						ScrapeNativeHistograms:  truePtr,
+						ScrapeClassicHistograms: truePtr,
+					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
-					SampleLimit:           ptr.To(uint64(101)),
-					TargetLimit:           ptr.To(uint64(102)),
-					LabelLimit:            ptr.To(uint64(103)),
-					LabelNameLengthLimit:  ptr.To(uint64(104)),
-					LabelValueLengthLimit: ptr.To(uint64(105)),
+					SampleLimit:           ptr.To(int64(101)),
+					TargetLimit:           ptr.To(int64(102)),
+					LabelLimit:            ptr.To(int64(103)),
+					LabelNameLengthLimit:  ptr.To(int64(104)),
+					LabelValueLengthLimit: ptr.To(int64(105)),
 					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
 					BodySizeLimit:         ptr.To(promopv1.ByteSize("15MiB")),
 				},
@@ -540,8 +545,8 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				LabelValueLengthLimit:          105,
 				BodySizeLimit:                  15 * units.MiB,
 				ExtraScrapeMetrics:             falsePtr,
-				ScrapeNativeHistograms:         falsePtr,
-				AlwaysScrapeClassicHistograms:  falsePtr,
+				ScrapeNativeHistograms:         truePtr,
+				AlwaysScrapeClassicHistograms:  truePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
 				MetricNameValidationScheme:     model.LegacyValidation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),

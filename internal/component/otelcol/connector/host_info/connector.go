@@ -48,21 +48,18 @@ func (c *connectorImp) Capabilities() consumer.Capabilities {
 }
 
 // ConsumeTraces implements connector.Traces.
-func (c *connectorImp) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+func (c *connectorImp) ConsumeTraces(_ context.Context, td ptrace.Traces) error {
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
 		resourceSpan := td.ResourceSpans().At(i)
+		attrs := resourceSpan.Resource().Attributes()
+		mapping := attrs.AsRaw()
 
-		for j := 0; j < resourceSpan.ScopeSpans().Len(); j++ {
-			attrs := resourceSpan.Resource().Attributes()
-			mapping := attrs.AsRaw()
-
-			for key, val := range mapping {
-				for _, attrName := range c.config.HostIdentifiers {
-					if key == attrName {
-						c.hostMetrics.add(val.(string))
-						break
-					}
+		for _, attrName := range c.config.HostIdentifiers {
+			if val, ok := mapping[attrName]; ok {
+				if v, ok := val.(string); ok {
+					c.hostMetrics.add(v)
 				}
+				break
 			}
 		}
 	}

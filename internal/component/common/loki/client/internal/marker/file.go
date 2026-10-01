@@ -20,21 +20,23 @@ const (
 	markerWindowsFileMode   os.FileMode = 0o666
 )
 
-type File struct {
+// baseFile holds the marker file logic shared by all platforms. Each platform
+// defines a File type that embeds baseFile. On Windows, File adds a mutex to
+// serialize file access. See file_windows.go and file_unix.go.
+type baseFile struct {
 	logger                    *slog.Logger
 	lastMarkedSegmentDir      string
 	lastMarkedSegmentFilePath string
 }
 
-// NewFile creates a new marker File.
-func NewFile(logger *slog.Logger, dir string) (*File, error) {
+func newBaseFile(logger *slog.Logger, dir string) (baseFile, error) {
 	markerDir := filepath.Join(dir, markerFolderName)
 	// attempt to create dir if doesn't exist
 	if err := os.MkdirAll(markerDir, markerFolderMode); err != nil {
-		return nil, fmt.Errorf("error creating segment marker folder %q: %w", markerDir, err)
+		return baseFile{}, fmt.Errorf("error creating segment marker folder %q: %w", markerDir, err)
 	}
 
-	return &File{
+	return baseFile{
 		logger:                    logger,
 		lastMarkedSegmentDir:      filepath.Join(markerDir),
 		lastMarkedSegmentFilePath: filepath.Join(markerDir, markerFileName),
@@ -42,7 +44,7 @@ func NewFile(logger *slog.Logger, dir string) (*File, error) {
 }
 
 // LastMarkedSegment implements wlog.Marker.
-func (f *File) LastMarkedSegment() int {
+func (f *baseFile) LastMarkedSegment() int {
 	bs, err := os.ReadFile(f.lastMarkedSegmentFilePath)
 	if os.IsNotExist(err) {
 		f.logger.Warn("marker segment file does not exist", "file", f.lastMarkedSegmentFilePath)
@@ -62,7 +64,7 @@ func (f *File) LastMarkedSegment() int {
 }
 
 // MarkSegment stores segment as the last marked WAL segment.
-func (f *File) MarkSegment(segment int) {
+func (f *baseFile) MarkSegment(segment int) {
 	if err := f.atomicallyWriteMarker(encodeV1(uint64(segment))); err != nil {
 		f.logger.Error("could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return
@@ -75,6 +77,6 @@ func (f *File) MarkSegment(segment int) {
 // https://github.com/natefinch/atomic/blob/master/atomic.go, that first handles atomic file renaming for UNIX and
 // Windows systems. Also, atomic.WriteFile will first write the contents to a temporal file, and then perform the atomic
 // rename, swapping the marker, or not at all.
-func (f *File) atomicallyWriteMarker(bs []byte) error {
+func (f *baseFile) atomicallyWriteMarker(bs []byte) error {
 	return atomic.WriteFile(f.lastMarkedSegmentFilePath, bytes.NewReader(bs))
 }

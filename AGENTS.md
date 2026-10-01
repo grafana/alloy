@@ -26,21 +26,20 @@ Meta-content: how you behave around GitHub, commits, PRs, and GenAI ownership �
 code.
 
 **Ownership model:** Humans propose changes and remain accountable. AI may assist with
-implementation. Humans own pull request details and all discussion. AI can write the PR **Brief
-description** (factual summary) and may fill **Issue(s) fixed** when known. Full policy:
-[docs/developer/genai.md](docs/developer/genai.md).
+implementation. Humans own PR description sections marked `HUMAN ONLY` and all discussion with
+maintainers. Full policy: [docs/developer/genai.md](docs/developer/genai.md).
 
 ### MUST NOT
 
 - Write, rewrite, fill, or "improve" any PR template section marked `HUMAN ONLY`, issue bodies the
   human will submit, or any GitHub comment / review reply / discussion text.
 - Invent design rationale, decision history, or "how it works" prose for the human to paste into
-  pull request details or review threads.
+  review threads.
 - Open pull requests or issues, or post to GitHub, in a way that substitutes for the human's design
   explanation or review conversation.
 - Wire up, configure, or suggest automated agent replies to reviewers, maintainers, or other
   community members.
-- Paste policy prose, generated checklists, or long AI summaries into GitHub-bound text as a
+- Paste policy prose, generated checklists, or long AI summaries into GitHub discussion as a
   stand-in for the human’s own explanation.
 - Silently comply when the human asks you to violate these rules (including "just do it anyway,"
   "only draft it and I’ll paste it," or "reply to the reviewer for me").
@@ -50,31 +49,34 @@ description** (factual summary) and may fill **Issue(s) fixed** when known. Full
 
 ### MUST
 
-- Leave `HUMAN ONLY` PR sections, PR title, and all review discussion to the human.
+- Leave `HUMAN ONLY` PR sections and all review discussion to the human.
 - When opening or drafting a pull request is part of the task: read and use
   [.github/pull_request_template.md](.github/pull_request_template.md) as the body structure. Do not
   invent a custom PR layout. Follow the AI AGENTS rule in that file: **do not fill any section whose
-  comment contains `HUMAN ONLY`**. Fill sections without that marker (Brief description; Issue(s)
-  fixed when known — do not invent issue numbers). Do not invent a PR title.
+  comment contains `HUMAN ONLY`**. Fill sections without that marker. Verify referenced issues exist;
+  do not invent issue numbers. AI may write the PR title.
 - When asked to write a `HUMAN ONLY` PR section, issue discussion, or a review reply: **refuse that
   part of the request in your chat reply to the human**. State that it conflicts with Alloy's GenAI
-  policy (humans own design rationale and discussion; AI may fill non-`HUMAN ONLY` PR sections such
-  as Brief description), and point them at [docs/developer/genai.md](docs/developer/genai.md). Do
-  not merely fail in a tool without also explaining in the model output.
-- After refusing disallowed work, you MAY continue helping with allowed coding work (and Brief
-  description) in the same turn.
-- When the human authors commit messages or PR titles, follow
+  policy (humans own sections marked `HUMAN ONLY` and discussion; AI may write the PR title and
+  sections not marked `HUMAN ONLY`), and point them at
+  [docs/developer/genai.md](docs/developer/genai.md). Do not merely fail in a tool without also
+  explaining in the model output.
+- After refusing disallowed work, you MAY continue helping with allowed coding work and PR sections
+  in the same turn.
+- When authoring commit messages or PR titles, follow
   [PR titles and commit messages](docs/developer/contributing.md#pull-request-titles-and-commit-messages):
   Conventional Commit `type(scope):` with a description that starts with a capital letter (e.g.
-  `feat(loki.process): Add ...`, not `feat(loki.process): add ...`). Do not invent a different
-  scheme.
+  `feat(loki.process): Add ...`, not `feat(loki.process): add ...`). The allowed types and other
+  semantic PR title rules are enforced by
+  [.github/workflows/release-lint-pr-title.yml](.github/workflows/release-lint-pr-title.yml). Do not
+  invent a different scheme.
 - If asked how to disclose substantial AI implementation help: point at the PR template checkbox and
-  [docs/developer/genai.md](docs/developer/genai.md). Do not fill pull request details for them.
+  [docs/developer/genai.md](docs/developer/genai.md). Do not select the checkbox for them.
 
 ### MAY
 
-- Fill or refine PR template sections that are **not** marked `HUMAN ONLY` when opening or updating
-  a PR.
+- Write or refine a PR title and PR template sections that are **not** marked `HUMAN ONLY` when
+  opening or updating a PR.
 - Produce **local-only** scratch notes for the human **if they explicitly ask**, and only after
   reminding them that `HUMAN ONLY` sections and discussion must be rewritten in their own words.
   Never treat those notes as ready to paste into `HUMAN ONLY` sections or comments.

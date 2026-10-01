@@ -35,16 +35,25 @@ You can use the following arguments with `database_observability.sql_server`:
 | `targets`           | `list(map(string))`  | List of external targets to scrape.                                      |         | no       |
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
+| `exclude_current_user` | `bool`            | Exclude query samples from sessions opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
+
+The `query_timeout` applies separately to each SQL statement.
+The timeout includes waiting for an available connection and reading the statement results.
+A collection cycle can run multiple statements and can take longer than `query_timeout`.
 
 The following collectors are configurable:
 
 | Name              | Description                                                                   | Enabled by default |
 |-------------------|-------------------------------------------------------------------------------|--------------------|
-| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
-| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `explain_plans`   | Collect and parse query execution plans already captured by Query Store.      | yes                |
 | `query_details`   | Collect query text and parsed table names from Query Store.                   | yes                |
+| `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
+| `query_samples`   | Collect query samples and wait events for tracked queries.                    | yes                |
+| `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 
 ## Blocks
 
@@ -58,17 +67,21 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
+| [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
+| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
+| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
-[schema_details]: #schema_details
-[query_metrics]: #query_metrics
+[explain_plans]: #explain_plans
 [query_details]: #query_details
+[query_metrics]: #query_metrics
+[query_samples]: #query_samples
+[schema_details]: #schema_details
 
 {{< /docs/alloy-config >}}
 
@@ -112,13 +125,29 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
-### `schema_details`
+### `explain_plans`
 
-| Name               | Type       | Description                                          | Default | Required |
-|--------------------|------------|------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+| Name               | Type       | Description                                    | Default | Required |
+|--------------------|------------|-------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to check for a changed execution plan. | `"1m"`  | no       |
 
-The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+The `explain_plans` collector reads the execution plan [Query Store][query_store] already captured for each query tracked by the `query_metrics` collector.
+It doesn't compile or run a fresh plan.
+Only queries that `query_metrics` is currently tracking are eligible.
+When `query_metrics` is disabled, `explain_plans` produces no output.
+
+The collector checks for a changed plan every `collect_interval`.
+It forwards a log entry only when the plan's shape has changed since the last entry.
+It also forwards a log entry when 30 minutes have passed since the last entry.
+This keeps log volume low and ensures a fresh entry at least every 30 minutes.
+
+### `query_details`
+
+| Name               | Type       | Description                                            | Default | Required |
+|--------------------|------------|--------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+
+The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
 
 ### `query_metrics`
 
@@ -136,13 +165,27 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
 
-### `query_details`
+### `query_samples`
 
-| Name               | Type       | Description                                            | Default | Required |
-|--------------------|------------|--------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
+| Name                      | Type       | Description                                                   | Default | Required |
+|---------------------------|------------|---------------------------------------------------------------|---------|----------|
+| `collect_interval`        | `duration` | How frequently to collect query samples.                      | `"10s"` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 
-The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
+The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+
+The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
+For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
+
+The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
+
+### `schema_details`
+
+| Name               | Type       | Description                                          | Default | Required |
+|--------------------|------------|------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
 
 ## Example
 

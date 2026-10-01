@@ -13,6 +13,7 @@ import (
 	cjournal "github.com/coreos/go-systemd/v22/journal"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,6 +64,36 @@ func TestJournal(t *testing.T) {
 	`
 		err = testutil.GatherAndCompare(ctrl.PromRegistry, strings.NewReader(expectedMetrics))
 		require.NoError(t, err)
+	})
+
+	t.Run("job label from configured labels overrides component id", func(t *testing.T) {
+		ctrl, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.source.journal")
+		require.NoError(t, err)
+
+		collector := loki.NewCollectingHandler()
+		defer collector.Stop()
+
+		id := uuid.New()
+
+		go func() {
+			_ = ctrl.Run(t.Context(), Arguments{
+				ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+				MaxAge:    7 * time.Hour,
+				Matches:   "ALLOY_TEST_ID=" + id.String(),
+				Labels:    map[string]string{"job": "custom"},
+			})
+		}()
+
+		err = cjournal.Send(strconv.Itoa(1), cjournal.PriInfo, map[string]string{
+			"ALLOY_TEST_ID": id.String(),
+		})
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector.Received(), 1)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collected := collector.Received()
+		require.Equal(t, model.LabelValue("custom"), collected[0].Labels["job"])
 	})
 }
 

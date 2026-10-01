@@ -251,7 +251,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
+    tag: v0.94.0@sha256:142a1f11df8dd165f00375b0b1826aecb9c9adeb05c39855893138d7c7575ff7
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.
@@ -305,6 +305,9 @@ controller:
 
   # -- Configures the DNS policy for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
   dnsPolicy: ClusterFirst
+
+  # -- Configures the DNS config for the pod. https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: {}
 
   # -- Termination grace period in seconds for the Grafana Alloy pods.
   # The default value used by Kubernetes if unspecifed is 30 seconds.
@@ -519,6 +522,8 @@ service:
   internalTrafficPolicy: Cluster
   # -- Value for external traffic policy. 'Cluster' or 'Local'
   externalTrafficPolicy: Cluster
+  # -- Value for traffic distribution. 'PreferSameNode' or 'PreferSameZone' (k8s >= 1.34)
+  trafficDistribution: ""
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 

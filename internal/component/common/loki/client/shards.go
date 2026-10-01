@@ -110,8 +110,8 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
 		}
-		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Add(float64(entry.Size()))
-		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, tenantID, reason).Inc()
+		q.metrics.droppedBytes.WithLabelValues(q.cfg.URL.Host, reason).Add(float64(entry.Size()))
+		q.metrics.droppedEntries.WithLabelValues(q.cfg.URL.Host, reason).Inc()
 	}
 
 	return true
@@ -228,9 +228,17 @@ func newShards(metrics *metrics, logger *slog.Logger, tracker sentDataTracker, c
 		metrics: metrics,
 		client:  client,
 		tracker: tracker,
-		tenants: make(map[string]struct{}),
 	}, nil
 }
+
+var (
+	// errHardShutdown is used as a signal so that we don't mark data as sent
+	// when we force stop all requests during shutdown.
+	errHardShutdown = errors.New("shutdown")
+	// errQueueIsFull signals that the entry was not accepted, leaving it to the
+	// caller to retry it or drop it.
+	errQueueIsFull = errors.New("queue is full")
+)
 
 // shards manages multiple parallel queues for processing and sending log entries to Loki.
 // It uses sharding to distribute entries across multiple worker goroutines based on label fingerprints,
@@ -243,9 +251,8 @@ type shards struct {
 	client  *http.Client
 	tracker sentDataTracker
 
-	mut     sync.Mutex
-	tenants map[string]struct{}
-	queues  []*queue
+	mut    sync.Mutex
+	queues []*queue
 
 	// running is used to track the number of running shards.
 	running  atomic.Int32
@@ -257,7 +264,7 @@ type shards struct {
 	softShutdown chan struct{}
 	ctx          context.Context
 	// cancel is used to cancel the context when a hard shutdown is initiated.
-	cancel context.CancelFunc
+	cancel context.CancelCauseFunc
 }
 
 // start initializes n shards and starts worker goroutines for each one.
@@ -276,14 +283,29 @@ func (s *shards) start(n int) {
 	}
 
 	s.queues = queues
-	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.ctx, s.cancel = context.WithCancelCause(context.Background())
 	s.running.Store(int32(n))
 	s.onceDone = sync.Once{}
 	s.done = make(chan struct{})
 	s.softShutdown = make(chan struct{})
+	s.initMetrics()
 
 	for i := range n {
 		go s.runShard(s.queues[i])
+	}
+}
+
+func (s *shards) initMetrics() {
+	// Initialize counters to 0 so the metrics are exported before the first
+	// occurrence of incrementing to avoid missing metrics.
+	for _, counter := range s.metrics.countersWithHostReason {
+		for _, reason := range reasons {
+			counter.WithLabelValues(s.cfg.URL.Host, reason).Add(0)
+		}
+	}
+
+	for _, counter := range s.metrics.countersWithHost {
+		counter.WithLabelValues(s.cfg.URL.Host).Add(0)
 	}
 }
 
@@ -311,7 +333,7 @@ func (s *shards) stop() {
 	s.logger.Warn("failed to flush all queues during shutdown")
 
 	// Perform hard shutdown
-	s.cancel()
+	s.cancel(errHardShutdown)
 	<-s.done
 }
 
@@ -362,46 +384,42 @@ func (s *shards) runShard(q *queue) {
 }
 
 // enqueue routes a log entry to the appropriate shard based on its label fingerprint.
-// Returns false if we could not enqueue the entry, either because the shard is shutting down or the queue is full.
-// It is up to the caller to retry or drop the entry.
-func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) bool {
+// Returns loki.ErrConsumerStopped if the shard is shutting down, in which case retrying will never
+// succeed, and errQueueIsFull if the queue is full, which the caller may retry or drop the entry.
+func (s *shards) enqueue(tenantID string, entry loki.Entry, segmentNum int) error {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	if _, ok := s.tenants[tenantID]; !ok {
-		s.tenants[tenantID] = struct{}{}
-		s.initBatchMetrics(tenantID)
+	select {
+	case <-s.softShutdown:
+		return loki.ErrConsumerStopped
+	default:
 	}
 
 	fingerprint := entry.Labels.FastFingerprint()
 	shard := uint64(fingerprint) % uint64(len(s.queues))
 
-	select {
-	case <-s.softShutdown:
-		return false
-	default:
-		return s.queues[shard].append(tenantID, entry, segmentNum)
+	if !s.queues[shard].append(tenantID, entry, segmentNum) {
+		return errQueueIsFull
 	}
-}
-
-func (s *shards) initBatchMetrics(tenantID string) {
-	// Initialize counters to 0 so the metrics are exported before the first
-	// occurrence of incrementing to avoid missing metrics.
-	for _, counter := range s.metrics.countersWithHostTenantReason {
-		for _, reason := range reasons {
-			counter.WithLabelValues(s.cfg.URL.Host, tenantID, reason).Add(0)
-		}
-	}
-
-	for _, counter := range s.metrics.countersWithHostTenant {
-		counter.WithLabelValues(s.cfg.URL.Host, tenantID).Add(0)
-	}
+	return nil
 }
 
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
-	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
-	defer batch.reportAsSentData(s.tracker, obs)
+	var shutdown bool
+	defer func() {
+		// If request was canceled due to shutdown we don't want to report data as sent.
+		if !shutdown {
+			batch.reportAsSentData(
+				s.tracker,
+				s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host),
+			)
+		}
+	}()
+
+	// batch.size is the uncompressed size of all stream labels and entries.
+	s.metrics.batchSize.WithLabelValues(s.cfg.URL.Host).Observe(float64(batch.size))
 
 	r, entriesCount := batch.request()
 
@@ -419,7 +437,12 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	}
 
 	bufBytes := float64(len(buf))
-	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host, tenantID).Observe(bufBytes)
+	s.metrics.requestSize.WithLabelValues(s.cfg.URL.Host).Observe(bufBytes)
+
+	// entriesBytes is the uncompressed size of all entries in the batch. It is
+	// different from bufBytes which is the compressed size of the encoded
+	// protobuf request.
+	entriesBytes := float64(batch.entriesSize)
 
 	backoff := backoff.New(s.ctx, s.cfg.BackoffConfig)
 	var status int
@@ -428,19 +451,19 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		// We pass s.ctx so that all inflight requests are canceled when we are doing a hard shutdown.
 		status, err = s.send(s.ctx, tenantID, buf)
 
-		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host, tenantID).Observe(time.Since(start).Seconds())
+		s.metrics.requestDuration.WithLabelValues(strconv.Itoa(status), s.cfg.URL.Host).Observe(time.Since(start).Seconds())
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if s.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
 			s.logger.Warn("dropping batch due to rate limiting applied at ingester")
-			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(bufBytes)
-			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(float64(entriesCount))
+			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, reasonRateLimited).Add(entriesBytes)
+			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, reasonRateLimited).Add(float64(entriesCount))
 			return
 		}
 
 		if err == nil {
-			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host, tenantID).Add(bufBytes)
-			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host, tenantID).Add(float64(entriesCount))
+			s.metrics.sentBytes.WithLabelValues(s.cfg.URL.Host).Add(entriesBytes)
+			s.metrics.sentEntries.WithLabelValues(s.cfg.URL.Host).Add(float64(entriesCount))
 			return
 		}
 
@@ -450,11 +473,12 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		}
 
 		s.logger.Debug("error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
-		s.metrics.batchRetries.WithLabelValues(s.cfg.URL.Host, tenantID).Inc()
+		s.metrics.batchRetries.WithLabelValues(s.cfg.URL.Host).Inc()
 		backoff.Wait()
 
 		// Make sure it sends at least once before checking for retry.
 		if !backoff.Ongoing() {
+			shutdown = errors.Is(context.Cause(s.ctx), errHardShutdown)
 			break
 		}
 	}
@@ -465,9 +489,11 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 	dropReason := reasonGeneric
 	if batchIsRateLimited(status) {
 		dropReason = reasonRateLimited
+	} else if batchIsTooLarge(status) {
+		dropReason = reasonBatchTooLarge
 	}
-	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(bufBytes)
-	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, dropReason).Add(float64(entriesCount))
+	s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, dropReason).Add(entriesBytes)
+	s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, dropReason).Add(float64(entriesCount))
 }
 
 var userAgent = useragent.Get()
@@ -538,4 +564,8 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 
 func batchIsRateLimited(status int) bool {
 	return status == 429
+}
+
+func batchIsTooLarge(status int) bool {
+	return status == 413
 }

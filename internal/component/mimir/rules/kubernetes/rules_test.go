@@ -126,6 +126,10 @@ func (f fakeCluster) Ready() bool {
 	return true
 }
 
+func (f fakeCluster) Enabled() bool {
+	return true
+}
+
 type fakeLeadership struct {
 	leader    bool
 	changed   bool

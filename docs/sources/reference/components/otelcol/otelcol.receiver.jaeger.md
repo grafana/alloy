@@ -63,6 +63,7 @@ You can use the following blocks with `otelcol.receiver.jaeger`:
 | `protocols` > `grpc` > `keepalive` > [`server_parameters`][server_parameters]   | Server parameters used to configure keepalive settings.                    | no       |
 | `protocols` > `grpc` > `keepalive` > [`enforcement_policy`][enforcement_policy] | Enforcement policy for keepalive settings.                                 | no       |
 | `protocols` > [`thrift_http`][thrift_http]                                      | Configures a Thrift HTTP server to receive traces.                         | no       |
+| `protocols` > `thrift_http` > [`keepalive` http][keepalive_http]                | Configures keepalive settings for the `thrift_http` server.                | no       |
 | `protocols` > `thrift_http` > [`cors`][cors]                                    | Configures CORS for the Thrift HTTP server.                                | no       |
 | `protocols` > `thrift_http` > [`tls`][tls]                                      | Configures TLS for the Thrift HTTP server.                                 | no       |
 | `protocols` > `thrift_http` > `tls` > [`tpm`][tpm]                              | Configures TPM settings for the TLS `key_file`.                            | no       |
@@ -75,6 +76,7 @@ You can use the following blocks with `otelcol.receiver.jaeger`:
 [tls]: #tls
 [tpm]: #tpm
 [keepalive]: #keepalive
+[keepalive_http]: #keepalive-http
 [server_parameters]: #server_parameters
 [enforcement_policy]: #enforcement_policy
 [thrift_http]: #thrift_http
@@ -184,6 +186,12 @@ The following arguments are supported:
 | `read_header_timeout`    | `duration`                 | Maximum time allowed to read request headers.                                | `"1m"`                                                     | no       |
 | `read_timeout`           | `duration`                 | Maximum time allowed to read an HTTP request, including the body.            | `""`                                                       | no       |
 | `write_timeout`          | `duration`                 | Maximum time allowed to write an HTTP response.                              | `"30s"`                                                    | no       |
+
+### `keepalive` http
+
+The `keepalive` block configures HTTP keep-alive settings for the `thrift_http` server.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `cors`
 
