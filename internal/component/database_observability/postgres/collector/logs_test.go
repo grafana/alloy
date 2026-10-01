@@ -1611,8 +1611,15 @@ func TestLogsCollector_SessionIDMismatch_RejectsStatementDespitePidMatch(t *test
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:999/111111:0:ffffffff.ffff:psql:STATEMENT:  SELECT * FROM missing"}}
 
-	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
-	require.Len(t, got, 0, "session id mismatch must reject the STATEMENT despite the matching pid")
+	// The rejected STATEMENT leaves the original pending without one, so it
+	// surfaces as categoryUnmatchedError once the timeout fires, rather than
+	// a (wrongly) paired op="error_message" entry.
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	require.Equal(t, "unmatched_error", fields["category"], "session id mismatch must reject the STATEMENT despite the matching pid")
+	_, hasFP := fields["query_fingerprint"]
+	require.False(t, hasFP, "the rejected STATEMENT must never be fingerprinted into this entry")
 }
 
 // TestLogsCollector_FallsBackToPid_WhenSessionIDUnavailable pins that pairing
@@ -1786,7 +1793,7 @@ func TestLogsCollector_EmitsErrorEntry_IncludesHintAndContextFields(t *testing.T
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[" + pid + "]:2:42703:HINT:  Perhaps you meant to reference the column \"users.email\"."}}
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
-		Line: ts + "::user@books_store:[" + pid + "]:3:42703:CONTEXT:  PL/pgSQL function get_user() line 3 at RETURN"}}
+		Line: ts + "::user@books_store:[" + pid + "]:3:42703:CONTEXT:  SQL statement \"SELECT emial FROM users\""}}
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[" + pid + "]:4:42703:STATEMENT:  SELECT emial FROM users"}}
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
@@ -1797,7 +1804,61 @@ func TestLogsCollector_EmitsErrorEntry_IncludesHintAndContextFields(t *testing.T
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
 
 	require.Contains(t, fields["hint"], `Perhaps you meant to reference the column "users.email"`)
-	require.Contains(t, fields["context"], "PL/pgSQL function get_user() line 3 at RETURN")
+	require.Contains(t, fields["context"], `SQL statement "SELECT emial FROM users"`)
+}
+
+// TestLogsCollector_EmitsErrorEntry_ExtractsPlpgsqlContext and
+// TestLogsCollector_EmitsErrorEntry_ExtractsPlpgsqlContext_NoLine pin that a
+// PL/pgSQL call-site CONTEXT is surfaced as structured plpgsql_function/
+// plpgsql_line/plpgsql_statement fields instead of the generic redacted
+// context field -- function name and line number are never PII, the same
+// class of safe structured data as a deadlock's relation name.
+func TestLogsCollector_EmitsErrorEntry_ExtractsPlpgsqlContext(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70012"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:P0001:ERROR:  boom from plpgsql"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:P0001:CONTEXT:  PL/pgSQL function inline_code_block line 3 at RAISE"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:P0001:STATEMENT:  DO $$ BEGIN RAISE EXCEPTION 'boom from plpgsql'; END $$;"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "inline_code_block", fields["plpgsql_function"])
+	require.Equal(t, "3", fields["plpgsql_line"])
+	require.Equal(t, "RAISE", fields["plpgsql_statement"])
+	_, hasContext := fields["context"]
+	require.False(t, hasContext, "a matched PL/pgSQL context is replaced by its structured fields, not duplicated")
+}
+
+func TestLogsCollector_EmitsErrorEntry_ExtractsPlpgsqlContext_NoLine(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70013"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:2F005:ERROR:  control reached end of function without RETURN"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:2F005:CONTEXT:  PL/pgSQL function bad_func()"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:2F005:STATEMENT:  SELECT bad_func()"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "bad_func()", fields["plpgsql_function"])
+	_, hasLine := fields["plpgsql_line"]
+	require.False(t, hasLine, "no line to blame for this error shape")
 }
 
 // TestLogsCollector_EmitsErrorEntry_RedactsPIIInHintAndContext closes a
@@ -1861,11 +1922,13 @@ func TestLogsCollector_MultiLineDetailThenStatement_RoutesContinuationsCorrectly
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
 }
 
-// TestLogsCollector_LostStatement_NoEntryEmittedDespiteCapturedDetail pins
-// that when the STATEMENT line never arrives (e.g. dropped by the log
-// forwarder), no op="error_message" entry is emitted at all — captured
-// message/DETAIL text never leaks on its own, half-paired to nothing.
-func TestLogsCollector_LostStatement_NoEntryEmittedDespiteCapturedDetail(t *testing.T) {
+// TestLogsCollector_LostStatement_EmitsUnmatchedError pins that when the
+// STATEMENT line never arrives (e.g. dropped by the log forwarder, or
+// PostgreSQL simply never logs one for this error shape -- confirmed live,
+// e.g. a jsonpath syntax error), the captured message/DETAIL still reaches
+// Loki once the timeout fires, as categoryUnmatchedError rather than a
+// (fabricated) op="error_message" entry -- never silently dropped.
+func TestLogsCollector_LostStatement_EmitsUnmatchedError(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
 	pid := "70006"
@@ -1876,8 +1939,17 @@ func TestLogsCollector_LostStatement_NoEntryEmittedDespiteCapturedDetail(t *test
 		Line: ts + "::user@books_store:[" + pid + "]:2:23505:DETAIL:  Key (email)=(john@example.com) already exists."}}
 	// STATEMENT line lost in transit — never arrives.
 
-	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
-	require.Len(t, got, 0, "no STATEMENT → no entry, even though message/detail were captured")
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "unmatched_error", fields["category"])
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, "23505", fields["sqlstate"])
+	require.Equal(t, `duplicate key value violates unique constraint "users_email_key"`, fields["message"])
+	require.NotContains(t, fields["detail"], "john@example.com", "PII in detail must still be redacted on this path")
+	_, hasFP := fields["query_fingerprint"]
+	require.False(t, hasFP, "there's no query to fingerprint without a STATEMENT")
 }
 
 // TestLogsCollector_LostDetail_EntryStillEmittedWithoutDetailField pins that
@@ -1995,7 +2067,7 @@ func TestLogsCollector_LostErrorLine_OrphanedContinuationsSafelyIgnored(t *testi
 	require.Len(t, got, 0, "no ERROR line ever opened a pendingError, so its orphaned continuations must not fabricate one")
 }
 
-func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
+func TestLogsCollector_TimedOutPendingEmitsUnmatchedError(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
 
@@ -2008,12 +2080,22 @@ func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")) == 1
 	}, 1*time.Second, 50*time.Millisecond)
 
-	// No entry should arrive even after the timeout window.
-	got := drainEntries(t, entryCh, 1, 400*time.Millisecond)
-	require.Len(t, got, 0, "no STATEMENT → no Loki entry")
+	// categoryUnmatchedError arrives once the timeout fires -- no STATEMENT
+	// ever came, so it's not op="error_message", but it's not dropped either.
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	require.Equal(t, "unmatched_error", fields["category"])
+	require.Equal(t, "FATAL", fields["severity"])
+	require.Equal(t, "too many connections", fields["message"])
 }
 
-func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
+// TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry pins
+// that ERROR #1, displaced before its STATEMENT ever arrived, is emitted as
+// categoryUnmatchedError right when ERROR #2 displaces it -- not fabricated
+// into a mispaired op="error_message" entry, and not silently dropped
+// either. ERROR #2 still completes normally once its own STATEMENT arrives.
+func TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 0)
 	ts := logTS(c)
 	pid := "55555"
@@ -2030,10 +2112,16 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
 
 	got := drainEntries(t, entryCh, 2, 1*time.Second)
-	require.Len(t, got, 1, "exactly one entry: only the second error's STATEMENT was matched")
+	require.Len(t, got, 2, "err one (unmatched) and err two (matched) both reach Loki")
 
-	body := strings.TrimPrefix(got[0].Line, `level="info" `)
-	fields := parseLogfmt(t, body)
+	unmatchedFields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	require.Equal(t, "server_log", string(got[0].Labels["op"]))
+	require.Equal(t, "unmatched_error", unmatchedFields["category"])
+	require.Equal(t, "err one", unmatchedFields["message"])
+	require.Equal(t, "42P01", unmatchedFields["sqlstate"])
+
+	fields := parseLogfmt(t, strings.TrimPrefix(got[1].Line, `level="info" `))
+	require.Equal(t, "error_message", string(got[1].Labels["op"]))
 	expectedFP, fpErr := fingerprint.Fingerprint("SELECT 2")
 	require.NoError(t, fpErr)
 	require.Equal(t, "ERROR", fields["severity"])
@@ -2467,8 +2555,10 @@ func TestLogsCollector_DeadlockDetail_MultiLineQuery_FingerprintsAcrossLines(t *
 }
 
 // TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:
-// a STATEMENT line from another backend must not attach to the pending error,
-// so interleaved streams cannot emit a mispaired op="error_message" entry.
+// a STATEMENT line from another backend must not attach to the pending
+// error, so interleaved streams cannot emit a mispaired op="error_message"
+// entry -- it surfaces as categoryUnmatchedError once the timeout fires
+// instead.
 func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
@@ -2480,6 +2570,11 @@ func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[222]:2:00000:LOG:  duration: 0.001 ms"}}
 
-	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
-	require.Len(t, got, 0, "a STATEMENT from a different PID must not pair with the pending error")
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	require.Equal(t, "unmatched_error", fields["category"], "a STATEMENT from a different PID must not pair with the pending error")
+	require.Equal(t, "111", fields["pid"])
+	_, hasFP := fields["query_fingerprint"]
+	require.False(t, hasFP)
 }

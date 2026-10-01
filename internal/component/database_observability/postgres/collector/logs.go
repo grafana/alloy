@@ -116,6 +116,32 @@ var deadlockRelationRegex = regexp.MustCompile(`in relation "([^"]+)"`)
 // instrumentation adds to the query text itself.
 var traceparentCommentRegex = regexp.MustCompile(`/\*traceparent='([^']+)'\*/`)
 
+// plpgsqlContextRegex matches a PL/pgSQL call-site CONTEXT, e.g.
+// "PL/pgSQL function inline_code_block line 3 at RAISE" -- or, when there's
+// no specific line to blame (e.g. "control reached end of function without
+// RETURN"), just "PL/pgSQL function bad_func()". The function name and line
+// number are safe to surface structured, the same way a deadlock's relation
+// name already is: never PII, unlike arbitrary CONTEXT text. Only matches a
+// single-frame CONTEXT (the whole string, anchored both ends); a nested
+// call stack's multi-line CONTEXT falls back to the generic redacted field.
+var plpgsqlContextRegex = regexp.MustCompile(`^PL/pgSQL function (\S+)(?: line (\d+) at (.+))?$`)
+
+// categoryUnmatchedError is the op="server_log" category for an
+// ERROR/FATAL/PANIC that never got a STATEMENT to pair with (so it has no
+// query to fingerprint): op="error_message" is reserved for errors matched
+// to the query that caused them, so one that never got that match is
+// emitted here instead, rather than silently dropped. pg_errors_total
+// counts it regardless of which path it takes.
+const categoryUnmatchedError = "unmatched_error"
+
+// fieldSeverity and fieldSqlstate name the two categoryUnmatchedError fields
+// that are also pg_errors_total label names and serverLogNumericFields
+// entries, named once since they're referenced from all three places.
+const (
+	fieldSeverity = "severity"
+	fieldSqlstate = "sqlstate"
+)
+
 // deadlockInfo is the structured, query-text-free view of a deadlock's
 // DETAIL/CONTEXT. Every field is a plain identifier (pid, lock type,
 // relation name) or a SQL fingerprint -- never raw query text. The victim
@@ -326,7 +352,7 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, "user"},
+		[]string{fieldSeverity, fieldSqlstate, "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
@@ -691,9 +717,13 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	msgStart := searchFrom + labelAt + len(label) + 1
 	message := strings.TrimSpace(line[msgStart:])
 
-	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
-	// pending is displaced here (no STATEMENT captured → no op="error_message" entry);
-	// pg_errors_total still counted it above.
+	// Start a new pending error awaiting its STATEMENT, emitting any prior
+	// un-flushed pending as categoryUnmatchedError first: it never got a
+	// STATEMENT (op="error_message" needs one to fingerprint), and this new
+	// arrival means none is coming now either.
+	if l.pending != nil && !l.pending.hasStatement {
+		l.emitUnmatchedError(l.pending)
+	}
 	l.pending = &pendingError{
 		receivedAt:       time.Now(),
 		pid:              pid,
@@ -816,7 +846,9 @@ func (l *Logs) attachContinuation(pid, sessionID, label, text string) {
 
 // flushPending emits the pending error if its STATEMENT was captured, then
 // clears it. A pending without a STATEMENT is left in place — it is displaced
-// by the next error or dropped on timeout.
+// by the next error (see the l.pending assignment above) or dropped on
+// timeout (see flushExpiredPending); both of those paths emit it as
+// categoryUnmatchedError rather than discarding it.
 func (l *Logs) flushPending() {
 	p := l.pending
 	if p == nil || !p.hasStatement {
@@ -825,6 +857,72 @@ func (l *Logs) flushPending() {
 	l.pending = nil
 
 	l.emitErrorEntry(p)
+}
+
+// plpgsqlContextFields returns the structured plpgsql_function (and, when
+// present, plpgsql_line/plpgsql_statement) fields extracted from a PL/pgSQL
+// call-site CONTEXT, or nil when context isn't that shape -- the caller
+// falls back to a generic redacted context field in that case.
+func plpgsqlContextFields(context string) map[string]string {
+	m := plpgsqlContextRegex.FindStringSubmatch(context)
+	if m == nil {
+		return nil
+	}
+	fields := map[string]string{"plpgsql_function": m[1]}
+	if m[2] != "" {
+		fields["plpgsql_line"] = m[2]
+	}
+	if m[3] != "" {
+		fields["plpgsql_statement"] = m[3]
+	}
+	return fields
+}
+
+// emitUnmatchedError sends an ERROR/FATAL/PANIC that never got a STATEMENT
+// as a categoryUnmatchedError op="server_log" entry: severity, sqlstate(+name),
+// message, and detail/hint/context (redacted, or structured for a PL/pgSQL
+// CONTEXT -- see plpgsqlContextFields), but no query_fingerprint, since
+// there's no query to fingerprint. p.sql is intentionally never read here.
+func (l *Logs) emitUnmatchedError(p *pendingError) {
+	fields := map[string]string{
+		fieldSeverity: p.severity,
+		fieldSqlstate: p.sqlstate,
+		"message":     l.redact(p.message),
+	}
+	if n := sqlstateName(p.sqlstate); n != "" {
+		fields["sqlstate_name"] = n
+	}
+	if n := sqlstateClassName(p.sqlstateClass); n != "" {
+		fields["sqlstate_class_name"] = n
+	}
+	if p.hasDetail {
+		fields["detail"] = l.redact(strings.TrimSpace(p.detail.String()))
+	}
+	if p.hasHint {
+		fields["hint"] = l.redact(strings.TrimSpace(p.hint.String()))
+	}
+	if p.hasContext {
+		contextText := strings.TrimSpace(p.context.String())
+		if pf := plpgsqlContextFields(contextText); pf != nil {
+			for k, v := range pf {
+				fields[k] = v
+			}
+		} else {
+			fields["context"] = l.redact(contextText)
+		}
+	}
+
+	l.emitServerLogEntry(categoryUnmatchedError, fields, p.timestamp, serverLogMeta{
+		pid:              p.pid,
+		user:             p.user,
+		datname:          p.datname,
+		lineNumber:       p.lineNumber,
+		sessionStartTime: p.sessionStartTime,
+		vxid:             p.vxid,
+		xid:              p.xid,
+		sessionID:        p.sessionID,
+		applicationName:  p.applicationName,
+	})
 }
 
 // redact masks any PII the engine recognizes in free-form error text (message,
@@ -918,9 +1016,23 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 		body += fmt.Sprintf(" hint=%q", l.redact(strings.TrimSpace(p.hint.String())))
 	}
 	// CONTEXT is dropped for a handled deadlock: deadlock_relation above
-	// already carries the one thing in it worth keeping.
+	// already carries the one thing in it worth keeping. Otherwise, a
+	// PL/pgSQL call-site CONTEXT is surfaced structured (see
+	// plpgsqlContextFields); anything else still goes through the generic,
+	// SQL-unaware redactor.
 	if p.hasContext && !deadlockHandled {
-		body += fmt.Sprintf(" context=%q", l.redact(strings.TrimSpace(p.context.String())))
+		contextText := strings.TrimSpace(p.context.String())
+		if pf := plpgsqlContextFields(contextText); pf != nil {
+			body += fmt.Sprintf(" plpgsql_function=%q", pf["plpgsql_function"])
+			if v, ok := pf["plpgsql_line"]; ok {
+				body += fmt.Sprintf(" plpgsql_line=%s", v)
+			}
+			if v, ok := pf["plpgsql_statement"]; ok {
+				body += fmt.Sprintf(" plpgsql_statement=%q", v)
+			}
+		} else {
+			body += fmt.Sprintf(" context=%q", l.redact(contextText))
+		}
 	}
 
 	// Blocking send by design (backpressure over dropping entries), but guarded
@@ -1045,8 +1157,9 @@ func (l *Logs) emitServerLogEntry(category string, fields map[string]string, ts 
 }
 
 // flushExpiredPending handles a pending error older than pendingErrorTimeout
-// that no following log line has flushed: emit it if its STATEMENT was captured
-// (its continuations have all arrived by now), otherwise drop it.
+// that no following log line has flushed: emit it as op="error_message" if
+// its STATEMENT was captured (its continuations have all arrived by now),
+// otherwise as categoryUnmatchedError.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
 
@@ -1058,6 +1171,8 @@ func (l *Logs) flushExpiredPending() {
 
 	if p.hasStatement {
 		l.emitErrorEntry(p)
+	} else {
+		l.emitUnmatchedError(p)
 	}
 }
 
