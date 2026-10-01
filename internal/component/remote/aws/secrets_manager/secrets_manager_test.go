@@ -68,6 +68,14 @@ func (f *fakeGetter) returnSecret(secret string) {
 	})
 }
 
+// returnOutput makes the fake return a copy of out for each call.
+func (f *fakeGetter) returnOutput(out secretsmanager.GetSecretValueOutput) {
+	f.setFn(func(context.Context, *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		o := out
+		return &o, nil
+	})
+}
+
 func (f *fakeGetter) returnError(err error) {
 	f.setFn(func(context.Context, *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
 		return nil, err
@@ -299,7 +307,11 @@ func TestPoll_ErrorKeepsExportsAndRecovers(t *testing.T) {
 
 	fake.returnError(errors.New("AccessDeniedException: denied"))
 	require.Eventually(t, func() bool { return c.CurrentHealth().Health == component.HealthTypeUnhealthy }, waitFor, tick)
-	require.Equal(t, `fetching secret "a": AccessDeniedException: denied`, c.CurrentHealth().Message)
+	info := c.DebugInfo().(debugInfo)
+	require.NotEmpty(t, info.LastError)
+	require.Equal(t,
+		`fetching secret "a": AccessDeniedException: denied; exporting values fetched at `+info.LastAccessed.Format(time.RFC3339),
+		c.CurrentHealth().Message)
 	require.Equal(t, []string{"1"}, rec.values())
 	require.Positive(t, testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
 
@@ -679,4 +691,68 @@ func TestNewSDKClient(t *testing.T) {
 			require.Equal(t, alloytypes.Secret("u"), e.Data["username"])
 		})
 	}
+}
+
+const testARN = "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf"
+
+func richOutput(secret string) secretsmanager.GetSecretValueOutput {
+	return secretsmanager.GetSecretValueOutput{
+		SecretString:  aws.String(secret),
+		ARN:           aws.String(testARN),
+		VersionId:     aws.String("v-1"),
+		VersionStages: []string{"AWSCURRENT", "custom"},
+		CreatedDate:   aws.Time(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)),
+	}
+}
+
+func TestDebugInfo_AfterSuccess(t *testing.T) {
+	fake := newFakeGetter("")
+	fake.returnOutput(richOutput(`{"v":"1"}`))
+	before := time.Now()
+	c, _, err := newTestComponent(t, testArgs("a", 0), fake)
+	require.NoError(t, err)
+
+	info := c.DebugInfo().(debugInfo)
+	require.Equal(t, testARN, info.ARN)
+	require.Equal(t, "v-1", info.VersionID)
+	require.Equal(t, []string{"AWSCURRENT", "custom"}, info.VersionStages)
+	require.True(t, info.CreatedDate.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)))
+	require.False(t, info.LastAccessed.Before(before.Truncate(time.Second)))
+	require.Empty(t, info.LastError)
+	require.True(t, info.NextPoll.IsZero())
+}
+
+func TestDebugInfo_AfterFailedPoll(t *testing.T) {
+	fake := newFakeGetter("")
+	fake.returnOutput(richOutput(`{"v":"1"}`))
+	c, _, err := newTestComponent(t, testArgs("a", fastPoll), fake)
+	require.NoError(t, err)
+	want := c.DebugInfo().(debugInfo)
+	runComponent(t, c)
+
+	fake.returnError(errors.New("AccessDeniedException: denied"))
+	require.Eventually(t, func() bool { return c.DebugInfo().(debugInfo).LastError != "" }, waitFor, tick)
+
+	got := c.DebugInfo().(debugInfo)
+	require.Equal(t, `fetching secret "a": AccessDeniedException: denied`, got.LastError)
+	require.Equal(t, want.ARN, got.ARN)
+	require.Equal(t, want.VersionID, got.VersionID)
+	require.Equal(t, want.VersionStages, got.VersionStages)
+	require.True(t, want.CreatedDate.Equal(got.CreatedDate))
+	require.True(t, want.LastAccessed.Equal(got.LastAccessed))
+}
+
+func TestDebugInfo_NextPollIsInTheFuture(t *testing.T) {
+	c, _, err := newTestComponent(t, testArgs("a", time.Hour), newFakeGetter(`{"v":"1"}`))
+	require.NoError(t, err)
+	runComponent(t, c)
+
+	require.Eventually(t, func() bool { return c.DebugInfo().(debugInfo).NextPoll.After(time.Now()) }, waitFor, tick)
+}
+
+func TestHealth_NeverSucceededHasPlainError(t *testing.T) {
+	// New returns the error of a first failed fetch, so call report directly.
+	c := &Component{metrics: newMetrics(prometheus.NewRegistry())}
+	c.report(Exports{}, secretMeta{}, errors.New("boom"))
+	require.Equal(t, "boom", c.CurrentHealth().Message)
 }

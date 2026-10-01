@@ -3,6 +3,7 @@ package secrets_manager
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -78,11 +79,17 @@ type Component struct {
 	// failing is true when the last poll with the stored arguments failed.
 	// A failed Update does not change it, because the stored arguments stay in use.
 	failing bool
+	// The fields below only feed DebugInfo and the health message.
+	meta         secretMeta // Metadata of the last successful fetch.
+	lastAccessed time.Time  // Time of the last successful fetch. It is zero before the first one.
+	lastError    string     // Error of the last fetch. It is empty after a success.
+	nextPoll     time.Time  // Time of the next scheduled poll. It is zero when no poll is scheduled.
 }
 
 var (
 	_ component.Component       = (*Component)(nil)
 	_ component.HealthComponent = (*Component)(nil)
+	_ component.DebugComponent  = (*Component)(nil)
 )
 
 // New creates a remote.aws.secrets_manager component. It fetches the secret
@@ -109,19 +116,22 @@ func newComponent(opts component.Options, args Arguments, newClient clientFactor
 func (c *Component) Run(ctx context.Context) error {
 	var ticker *time.Ticker
 	var tick <-chan time.Time
+	var interval time.Duration
 	stopTicker := func() {
 		if ticker != nil {
 			ticker.Stop()
 			ticker, tick = nil, nil
 		}
+		c.setNextPoll(0)
 	}
 	defer stopTicker()
 
 	resetTicker := func() {
 		stopTicker()
-		if interval := c.nextInterval(); interval > 0 {
+		if interval = c.nextInterval(); interval > 0 {
 			ticker = time.NewTicker(interval)
 			tick = ticker.C
+			c.setNextPoll(interval)
 		}
 	}
 	resetTicker()
@@ -133,6 +143,8 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.reset:
 			resetTicker()
 		case <-tick:
+			// The ticker keeps its own schedule, so the next tick is one interval from now.
+			c.setNextPoll(interval)
 			if c.poll(ctx) {
 				resetTicker()
 			}
@@ -165,7 +177,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer cancel()
 
 	// Always make a new client, so that changes to the environment or credentials apply.
-	client, exports, err := c.fetch(ctx, nil, newArgs)
+	client, exports, meta, err := c.fetch(ctx, nil, newArgs)
 
 	c.mut.Lock()
 	c.pending--
@@ -176,7 +188,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Unlock()
 
 	if current {
-		c.report(exports, err)
+		c.report(exports, meta, err)
 	}
 
 	select {
@@ -191,6 +203,42 @@ func (c *Component) CurrentHealth() component.Health {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 	return c.health
+}
+
+// DebugInfo implements component.DebugComponent. It never includes secret values.
+func (c *Component) DebugInfo() any {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	return debugInfo{
+		ARN:           c.meta.ARN,
+		VersionID:     c.meta.VersionID,
+		VersionStages: slices.Clone(c.meta.VersionStages),
+		CreatedDate:   c.meta.CreatedDate,
+		LastAccessed:  c.lastAccessed,
+		LastError:     c.lastError,
+		NextPoll:      c.nextPoll,
+	}
+}
+
+type debugInfo struct {
+	ARN           string    `alloy:"arn,attr,optional"`
+	VersionID     string    `alloy:"version_id,attr,optional"`
+	VersionStages []string  `alloy:"version_stages,attr,optional"`
+	CreatedDate   time.Time `alloy:"created_date,attr,optional"`
+	LastAccessed  time.Time `alloy:"last_accessed,attr,optional"`
+	LastError     string    `alloy:"last_error,attr,optional"`
+	NextPoll      time.Time `alloy:"next_poll,attr,optional"`
+}
+
+// setNextPoll records when the next poll runs. A zero interval means no poll is scheduled.
+func (c *Component) setNextPoll(interval time.Duration) {
+	var next time.Time
+	if interval > 0 {
+		next = time.Now().Add(interval)
+	}
+	c.mut.Lock()
+	c.nextPoll = next
+	c.mut.Unlock()
 }
 
 // nextInterval returns the wait before the next poll, or 0 for no poll.
@@ -223,7 +271,7 @@ func (c *Component) poll(runCtx context.Context) bool {
 	c.mut.Unlock()
 	defer cancel()
 
-	newClient, exports, err := c.fetch(ctx, client, args)
+	newClient, exports, meta, err := c.fetch(ctx, client, args)
 
 	c.mut.Lock()
 	// Polls do not overlap, so pollCancel is still this poll's cancel or nil.
@@ -240,60 +288,72 @@ func (c *Component) poll(runCtx context.Context) bool {
 
 	if err != nil {
 		c.opts.Logger.Warn("failed to poll secret", "err", err)
+	} else if wasFailing {
+		c.opts.Logger.Info("secret fetch recovered", "secret_id", args.SecretID)
 	}
-	c.report(exports, err)
+	c.report(exports, meta, err)
 	return wasFailing != (err != nil)
 }
 
 // fetch reads the secret. If client is nil, fetch first makes a client from args.
 // It returns the client that it used, or nil if it could not make one.
-func (c *Component) fetch(ctx context.Context, client secretsGetter, args Arguments) (secretsGetter, Exports, error) {
+func (c *Component) fetch(ctx context.Context, client secretsGetter, args Arguments) (secretsGetter, Exports, secretMeta, error) {
 	if client == nil {
 		var err error
 		if client, err = c.newClient(ctx, args.Client); err != nil {
-			return nil, Exports{}, fmt.Errorf("creating AWS client: %w", err)
+			return nil, Exports{}, secretMeta{}, fmt.Errorf("creating AWS client: %w", err)
 		}
 	}
-	exports, err := getExports(ctx, client, args)
+	exports, meta, err := getExports(ctx, client, args)
 	if err != nil {
-		return client, Exports{}, fmt.Errorf("fetching secret %q: %w", args.SecretID, err)
+		return client, Exports{}, secretMeta{}, fmt.Errorf("fetching secret %q: %w", args.SecretID, err)
 	}
-	return client, exports, nil
+	// Log only the id and the version. Never log the value.
+	c.opts.Logger.Debug("fetched secret", "secret_id", args.SecretID, "version_id", meta.VersionID)
+	return client, exports, meta, nil
 }
 
 // report records the result of a fetch that is not stale. The caller must hold fetchMut.
 // The controller ignores exports that did not change, so report always exports.
-func (c *Component) report(exports Exports, err error) {
-	if err != nil {
-		c.metrics.fetchesTotal.WithLabelValues("error").Inc()
-		c.setHealth(err)
-		return
-	}
-	c.metrics.fetchesTotal.WithLabelValues("success").Inc()
-	c.metrics.lastAccessed.SetToCurrentTime()
-	c.opts.OnStateChange(exports)
-	c.setHealth(nil)
-}
-
-func getExports(ctx context.Context, client secretsGetter, args Arguments) (Exports, error) {
-	out, err := client.GetSecretValue(ctx, args.input())
-	if err != nil {
-		return Exports{}, err
-	}
-	return toExports(out)
-}
-
-func (c *Component) setHealth(err error) {
+func (c *Component) report(exports Exports, meta secretMeta, err error) {
+	now := time.Now().UTC()
 	h := component.Health{
 		Health:     component.HealthTypeHealthy,
 		Message:    "secret fetched",
-		UpdateTime: time.Now(),
+		UpdateTime: now,
 	}
 	if err != nil {
+		c.metrics.fetchesTotal.WithLabelValues("error").Inc()
 		h.Health = component.HealthTypeUnhealthy
 		h.Message = err.Error()
+	} else {
+		c.metrics.fetchesTotal.WithLabelValues("success").Inc()
+		c.metrics.lastAccessed.SetToCurrentTime()
+		c.opts.OnStateChange(exports)
 	}
+
 	c.mut.Lock()
+	defer c.mut.Unlock()
+	if err != nil {
+		c.lastError = err.Error()
+		// Tell the user that the exports are old. Report is the only writer of lastAccessed.
+		if !c.lastAccessed.IsZero() {
+			h.Message += "; exporting values fetched at " + c.lastAccessed.Format(time.RFC3339)
+		}
+	} else {
+		c.meta, c.lastAccessed, c.lastError = meta, now, ""
+	}
 	c.health = h
-	c.mut.Unlock()
+}
+
+func getExports(ctx context.Context, client secretsGetter, args Arguments) (Exports, secretMeta, error) {
+	out, err := client.GetSecretValue(ctx, args.input())
+	if err != nil {
+		return Exports{}, secretMeta{}, err
+	}
+	exports, err := toExports(out)
+	if err != nil {
+		return Exports{}, secretMeta{}, err
+	}
+	return exports, toMeta(out), nil
 }

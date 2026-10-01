@@ -3,7 +3,10 @@ package secrets_manager
 import (
 	"encoding/json"
 	"errors"
+	"slices"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -17,6 +20,24 @@ type Exports struct {
 	Data map[string]alloytypes.Secret `alloy:"data,attr"`
 	// Content holds the raw secret string.
 	Content alloytypes.Secret `alloy:"content,attr"`
+}
+
+// secretMeta holds the safe fields of a GetSecretValue response.
+// It never holds the secret value, so DebugInfo can show it.
+type secretMeta struct {
+	ARN           string
+	VersionID     string
+	VersionStages []string
+	CreatedDate   time.Time
+}
+
+func toMeta(out *secretsmanager.GetSecretValueOutput) secretMeta {
+	return secretMeta{
+		ARN:           aws.ToString(out.ARN),
+		VersionID:     aws.ToString(out.VersionId),
+		VersionStages: slices.Clone(out.VersionStages),
+		CreatedDate:   aws.ToTime(out.CreatedDate),
+	}
 }
 
 func toExports(out *secretsmanager.GetSecretValueOutput) (Exports, error) {
