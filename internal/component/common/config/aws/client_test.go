@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -329,8 +330,9 @@ func TestClient_LoadConfig_MissingProfile(t *testing.T) {
 	require.NoError(t, isolateAWSEnv(t))
 	require.NoError(t, writeProfileConfig(t))
 
-	_, err := Client{Profile: "absent"}.LoadConfig(t.Context())
-	require.Error(t, err)
+	_, err := Client{Profile: "absent", Region: "us-east-1"}.LoadConfig(t.Context())
+	var target config.SharedConfigProfileNotExistError
+	require.ErrorAs(t, err, &target)
 }
 
 func TestClient_Unmarshal_Profile(t *testing.T) {

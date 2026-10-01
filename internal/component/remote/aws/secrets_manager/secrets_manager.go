@@ -122,7 +122,7 @@ func (c *Component) Run(ctx context.Context) error {
 			ticker.Stop()
 			ticker, tick = nil, nil
 		}
-		c.setNextPoll(0)
+		c.setNextPoll(time.Time{})
 	}
 	defer stopTicker()
 
@@ -131,7 +131,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if interval = c.nextInterval(); interval > 0 {
 			ticker = time.NewTicker(interval)
 			tick = ticker.C
-			c.setNextPoll(interval)
+			c.setNextPoll(time.Now().Add(interval))
 		}
 	}
 	resetTicker()
@@ -142,9 +142,9 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		case <-c.reset:
 			resetTicker()
-		case <-tick:
-			// The ticker keeps its own schedule, so the next tick is one interval from now.
-			c.setNextPoll(interval)
+		case t := <-tick:
+			// The ticker keeps its own schedule. The next tick is one interval after this tick.
+			c.setNextPoll(t.Add(interval))
 			if c.poll(ctx) {
 				resetTicker()
 			}
@@ -230,12 +230,8 @@ type debugInfo struct {
 	NextPoll      time.Time `alloy:"next_poll,attr,optional"`
 }
 
-// setNextPoll records when the next poll runs. A zero interval means no poll is scheduled.
-func (c *Component) setNextPoll(interval time.Duration) {
-	var next time.Time
-	if interval > 0 {
-		next = time.Now().Add(interval)
-	}
+// setNextPoll records when the next poll runs. A zero time means no poll is scheduled.
+func (c *Component) setNextPoll(next time.Time) {
 	c.mut.Lock()
 	c.nextPoll = next
 	c.mut.Unlock()

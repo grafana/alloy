@@ -1,10 +1,12 @@
 package secrets_manager
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -149,8 +151,15 @@ func staticFactory(getter secretsGetter) clientFactory {
 }
 
 func newTestComponent(t *testing.T, args Arguments, getter secretsGetter) (*Component, *recorder, error) {
+	return newTestComponentWithLogger(t, args, getter, util.TestLogger(t))
+}
+
+// newTestComponentWithLogger is like newTestComponent, but it uses logger.
+func newTestComponentWithLogger(t *testing.T, args Arguments, getter secretsGetter, logger *slog.Logger) (*Component, *recorder, error) {
 	rec := &recorder{}
-	c, err := newComponent(testOptions(t, prometheus.NewRegistry(), rec), args, staticFactory(getter))
+	opts := testOptions(t, prometheus.NewRegistry(), rec)
+	opts.Logger = logger
+	c, err := newComponent(opts, args, staticFactory(getter))
 	return c, rec, err
 }
 
@@ -317,6 +326,60 @@ func TestPoll_ErrorKeepsExportsAndRecovers(t *testing.T) {
 
 	fake.returnSecret(`{"v":"1"}`)
 	require.Eventually(t, func() bool { return c.CurrentHealth().Health == component.HealthTypeHealthy }, waitFor, tick)
+}
+
+// syncBuffer is a bytes.Buffer that is safe for concurrent use.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+// records returns every log record that was written, in order.
+func (b *syncBuffer) records(t *testing.T) []map[string]any {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var out []map[string]any
+	for _, line := range bytes.Split(bytes.TrimSpace(b.buf.Bytes()), []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+		var rec map[string]any
+		require.NoError(t, json.Unmarshal(line, &rec))
+		out = append(out, rec)
+	}
+	return out
+}
+
+func TestPoll_RecoveryLogsInfo(t *testing.T) {
+	logs := &syncBuffer{}
+	logger := slog.New(slog.NewJSONHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, _, err := newTestComponentWithLogger(t, testArgs("my-secret", fastPoll), fake, logger)
+	require.NoError(t, err)
+	runComponent(t, c)
+
+	fake.returnError(errors.New("AccessDeniedException: denied"))
+	require.Eventually(t, func() bool { return c.CurrentHealth().Health == component.HealthTypeUnhealthy }, waitFor, tick)
+	fake.returnSecret(`{"v":"1"}`)
+
+	var recovered map[string]any
+	require.Eventually(t, func() bool {
+		for _, rec := range logs.records(t) {
+			if rec["msg"] == "secret fetch recovered" {
+				recovered = rec
+				return true
+			}
+		}
+		return false
+	}, waitFor, tick)
+	require.Equal(t, "INFO", recovered["level"])
+	require.Equal(t, "my-secret", recovered["secret_id"])
 }
 
 func TestUpdate_TogglesPolling(t *testing.T) {
@@ -717,9 +780,8 @@ func TestDebugInfo_AfterSuccess(t *testing.T) {
 	require.Equal(t, "v-1", info.VersionID)
 	require.Equal(t, []string{"AWSCURRENT", "custom"}, info.VersionStages)
 	require.True(t, info.CreatedDate.Equal(time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)))
-	require.False(t, info.LastAccessed.Before(before.Truncate(time.Second)))
+	require.False(t, info.LastAccessed.Before(before))
 	require.Empty(t, info.LastError)
-	require.True(t, info.NextPoll.IsZero())
 }
 
 func TestDebugInfo_AfterFailedPoll(t *testing.T) {
@@ -743,11 +805,30 @@ func TestDebugInfo_AfterFailedPoll(t *testing.T) {
 }
 
 func TestDebugInfo_NextPollIsInTheFuture(t *testing.T) {
-	c, _, err := newTestComponent(t, testArgs("a", time.Hour), newFakeGetter(`{"v":"1"}`))
+	const interval = fastPoll * 20
+	const slack = time.Second
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, _, err := newTestComponent(t, testArgs("a", interval), fake)
 	require.NoError(t, err)
 	runComponent(t, c)
 
-	require.Eventually(t, func() bool { return c.DebugInfo().(debugInfo).NextPoll.After(time.Now()) }, waitFor, tick)
+	// Wait for one tick, so that NextPoll comes from the tick and not from the start.
+	require.Eventually(t, func() bool { return fake.callCount() >= 2 }, waitFor, tick)
+
+	now := time.Now()
+	next := c.DebugInfo().(debugInfo).NextPoll
+	require.True(t, next.After(now.Add(-interval)), "next poll %s is too old", next)
+	require.True(t, next.Before(now.Add(interval+slack)), "next poll %s is too far away", next)
+}
+
+func TestDebugInfo_NextPollClearedWhenPollingStops(t *testing.T) {
+	c, _, err := newTestComponent(t, testArgs("a", fastPoll*20), newFakeGetter(`{"v":"1"}`))
+	require.NoError(t, err)
+	runComponent(t, c)
+	require.Eventually(t, func() bool { return !c.DebugInfo().(debugInfo).NextPoll.IsZero() }, waitFor, tick)
+
+	require.NoError(t, c.Update(testArgs("a", 0)))
+	require.Eventually(t, func() bool { return c.DebugInfo().(debugInfo).NextPoll.IsZero() }, waitFor, tick)
 }
 
 func TestHealth_NeverSucceededHasPlainError(t *testing.T) {
