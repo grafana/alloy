@@ -512,7 +512,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		(strings.Contains(line, "STATEMENT:") || strings.Contains(line, "DETAIL:") ||
 			strings.Contains(line, "HINT:") || strings.Contains(line, "CONTEXT:"))
 	mayFlush := l.enableErrorLogsProcessing && l.pending != nil && l.pending.hasStatement
-	hasServerLogKeyword := anyServerLogGateMatches(line)
+	hasServerLogKeyword := anyServerLogGateMatches(line) || strings.Contains(line, autoExplainGate)
 	if !hasErrorKeyword && !hasContinuationKeyword && !mayFlush && !hasServerLogKeyword {
 		return nil
 	}
@@ -678,6 +678,9 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	if label == "LOG" || label == "WARNING" || label == "NOTICE" {
 		msgStart := searchFrom + labelAt + len(label) + 1
 		message := strings.TrimSpace(line[msgStart:])
+		if l.tryEmitAutoExplainPlan(message, database, parsedTimestamp) {
+			return nil
+		}
 		if category, fields, ok := matchServerLog(message); ok {
 			l.emitServerLogEntry(category, fields, parsedTimestamp, serverLogMeta{
 				pid:              pid,
