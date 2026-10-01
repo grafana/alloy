@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.gcp
 ---
 
@@ -24,11 +25,13 @@ The following example shows a load balancing metric:
 
 The metric has the following attributes:
 
-* `monitored_resource` = `https_lb_rule`
-* `metric_type_prefix` = `loadbalancing.googleapis.com/`
-* `metric_type` = `https/backend_latencies`
+- `monitored_resource` = `https_lb_rule`
+- `metric_type_prefix` = `loadbalancing.googleapis.com/`
+- `metric_type` = `https/backend_latencies`
 
 These attributes result in a final metric name of `stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_backend_latencies`
+
+You can specify multiple `prometheus.exporter.gcp` components by giving them different labels.
 
 ## Authentication
 
@@ -42,17 +45,17 @@ Since the exporter gathers all of its data from [GCP monitoring APIs](https://cl
 ## Usage
 
 ```alloy
-prometheus.exporter.gcp "pubsub" {
-        project_ids = [
-                "<PROJECT_ID_1>",
-                "<PROJECT_ID_2>",
-        ]
+prometheus.exporter.gcp "<LABEL>" {
+  project_ids = [
+    "<PROJECT_ID_1>",
+    "<PROJECT_ID_2>",
+  ]
 
-        metrics_prefixes = [
-                "pubsub.googleapis.com/snapshot",
-                "pubsub.googleapis.com/subscription/num_undelivered_messages",
-                "pubsub.googleapis.com/subscription/oldest_unacked_message_age",
-        ]
+  metrics_prefixes = [
+    "pubsub.googleapis.com/snapshot",
+    "pubsub.googleapis.com/subscription/num_undelivered_messages",
+    "pubsub.googleapis.com/subscription/oldest_unacked_message_age",
+  ]
 }
 ```
 
@@ -86,7 +89,7 @@ You can read more about the metric API filter options in the [GCP documentation]
 
 For `request_interval`, most of the time the default works perfectly fine.
 Most documented metrics include a comments of the form `Sampled every X seconds. After sampling, data is not visible for up to Y seconds.`
-As long as your `request_interval` is >= `Y` you should have no issues.
+As long as your `request_interval` is greater than or equal to `Y` you should have no issues.
 Consider using `ingest_delay` if you would like this to be done programmatically or are gathering slower moving metrics.
 
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
@@ -120,74 +123,74 @@ In those cases, exported fields retain their last healthy values.
 
 ```alloy
 prometheus.exporter.gcp "pubsub_full_config" {
-        project_ids = [
-                "foo",
-                "bar",
-        ]
+  project_ids = [
+    "foo",
+    "bar",
+  ]
 
-        // Using pubsub metrics (https://cloud.google.com/monitoring/api/metrics_gcp/gcp-pubsub) as an example
-        // all metrics.
-        //   [
-        //     "pubsub.googleapis.com/"
-        //   ]
-        // all snapshot specific metrics
-        //   [
-        //     "pubsub.googleapis.com/snapshot"
-        //   ]
-        // all snapshot specific metrics and a few subscription metrics
-        metrics_prefixes = [
-                "pubsub.googleapis.com/snapshot",
-                "pubsub.googleapis.com/subscription/num_undelivered_messages",
-                "pubsub.googleapis.com/subscription/oldest_unacked_message_age",
-        ]
+  // Using pubsub metrics (https://cloud.google.com/monitoring/api/metrics_gcp/gcp-pubsub) as an example
+  // all metrics.
+  //   [
+  //     "pubsub.googleapis.com/"
+  //   ]
+  // all snapshot specific metrics
+  //   [
+  //     "pubsub.googleapis.com/snapshot"
+  //   ]
+  // all snapshot specific metrics and a few subscription metrics
+  metrics_prefixes = [
+    "pubsub.googleapis.com/snapshot",
+    "pubsub.googleapis.com/subscription/num_undelivered_messages",
+    "pubsub.googleapis.com/subscription/oldest_unacked_message_age",
+  ]
 
-        // Given the above metrics_prefixes list, some examples of
-        // targeted_metric_prefix option behavior with respect to the filter string
-        // format <targeted_metric_prefix>:<filter_query> would be:
-        //   pubsub.googleapis.com (apply to all defined prefixes)
-        //   pubsub.googleapis.com/snapshot (apply to only snapshot metrics)
-        //   pubsub.googleapis.com/subscription (apply to only subscription metrics)
-        //   pubsub.googleapis.com/subscription/num_undelivered_messages (apply to only the specific subscription metric)
-        extra_filters = [
-                "pubsub.googleapis.com/subscription:resource.labels.subscription_id=monitoring.regex.full_match(\"my-subs-prefix.*\")",
-        ]
+  // Given the above metrics_prefixes list, some examples of
+  // targeted_metric_prefix option behavior with respect to the filter string
+  // format <targeted_metric_prefix>:<filter_query> would be:
+  //   pubsub.googleapis.com (apply to all defined prefixes)
+  //   pubsub.googleapis.com/snapshot (apply to only snapshot metrics)
+  //   pubsub.googleapis.com/subscription (apply to only subscription metrics)
+  //   pubsub.googleapis.com/subscription/num_undelivered_messages (apply to only the specific subscription metric)
+  extra_filters = [
+    "pubsub.googleapis.com/subscription:resource.labels.subscription_id=monitoring.regex.full_match(\"my-subs-prefix.*\")",
+  ]
 
-        request_interval        = "5m"
-        request_offset          = "0s"
-        ingest_delay            = false
-        drop_delegated_projects = false
-        gcp_client_timeout      = "15s"
+  request_interval        = "5m"
+  request_offset          = "0s"
+  ingest_delay            = false
+  drop_delegated_projects = false
+  gcp_client_timeout      = "15s"
 }
 ```
 
 ```alloy
 prometheus.exporter.gcp "lb_with_filter" {
-        project_ids = [
-                "foo",
-                "bar",
-        ]
-        metrics_prefixes = [
-                "loadbalancing.googleapis.com",
-        ]
-        extra_filters = [
-                "loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\"",
-        ]
+  project_ids = [
+    "foo",
+    "bar",
+  ]
+  metrics_prefixes = [
+    "loadbalancing.googleapis.com",
+  ]
+  extra_filters = [
+    "loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\"",
+  ]
 }
 ```
 
 ```alloy
 prometheus.exporter.gcp "lb_subset_with_filter" {
-        project_ids = [
-                "foo",
-                "bar",
-        ]
-        metrics_prefixes = [
-                "loadbalancing.googleapis.com/https/request_bytes_count",
-                "loadbalancing.googleapis.com/https/total_latencies",
-        ]
-        extra_filters = [
-                "loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\"",
-        ]
+  project_ids = [
+    "foo",
+    "bar",
+  ]
+  metrics_prefixes = [
+    "loadbalancing.googleapis.com/https/request_bytes_count",
+    "loadbalancing.googleapis.com/https/total_latencies",
+  ]
+  extra_filters = [
+    "loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\"",
+  ]
 }
 ```
 
