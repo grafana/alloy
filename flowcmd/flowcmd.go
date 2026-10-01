@@ -9,9 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/nodeconf/importsource"
 
-	// Enable config conversion from other formats
-	_ "github.com/grafana/alloy/internal/converter/enable"
-
 	// Embed a set of fallback X.509 trusted roots
 	// Allows the app to work correctly even when the OS does not provide a verifier or systems roots pool
 	_ "golang.org/x/crypto/x509roots/fallback"

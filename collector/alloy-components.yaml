@@ -1,0 +1,11 @@
+# Selects the native Alloy components compiled into the Alloy binary.
+# OpenTelemetry Collector components are selected in builder-config.yaml.
+
+# "all", or a list of native component names, for example:
+#   components: [local.file_match, loki.source.file, loki.process, loki.write]
+components: all
+
+# Include `alloy convert` and `alloy run --config.format`.
+# The converters depend on most native components, so set this to false when
+# you select only some components.
+converters: true
