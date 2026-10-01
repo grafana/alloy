@@ -7,12 +7,13 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.consul
 ---
 
 # `prometheus.exporter.consul`
 
-The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) to collect metrics from a Consul installation.
+The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) to collect metrics from a Consul cluster.
 
 ## Usage
 
@@ -35,7 +36,7 @@ You can use the following arguments with `prometheus.exporter.consul`:
 | `insecure_skip_verify`     | `bool`     | Disables TLS host verification.                                                                       | `false`                   | no       |
 | `key_file`                 | `string`   | Path to the client private key. Requires `cert_file`.                                                 |                           | no       |
 | `kv_filter`                | `string`   | Exports only keys that match this regular expression pattern.                                         | `".*"`                    | no       |
-| `kv_prefix`                | `string`   | Prefix under which to look for KV pairs.                                                              |                           | no       |
+| `kv_prefix`                | `string`   | Prefix to search for KV pairs. Required to collect KV metrics.                                        |                           | no       |
 | `require_consistent`       | `bool`     | Forces the read to be fully consistent.                                                               | `false`                   | no       |
 | `server`                   | `string`   | Address of the Consul agent or server to connect to.                                                  | `"http://localhost:8500"` | no       |
 | `server_name`              | `string`   | Overrides the hostname used to verify the TLS certificate.                                            |                           | no       |
@@ -50,7 +51,8 @@ The component falls back to the system certificate bundle when you don't set `ca
 Use `server_name` when the hostname you connect to doesn't match the name in the server's certificate.
 
 Set `cert_file` and `key_file` together to authenticate the component to Consul with a client certificate.
-Set `insecure_skip_verify` to `true` to disable TLS host verification in development.
+Set `insecure_skip_verify` to `true` to disable TLS host verification.
+Use this setting only in development.
 
 Consul access control list tokens come from the environment rather than from an argument.
 Set `CONSUL_HTTP_TOKEN` or `CONSUL_HTTP_TOKEN_FILE` before you start {{< param "PRODUCT_NAME" >}} to authenticate against a cluster that uses access control lists.
@@ -116,7 +118,7 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write`-compatible server to send metrics to.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
@@ -152,7 +154,7 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write`-compatible server to send metrics to.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
