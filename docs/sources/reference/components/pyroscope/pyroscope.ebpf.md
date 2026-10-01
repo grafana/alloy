@@ -253,8 +253,9 @@ Otherwise the process isn't profiled.
 
 ### Service name
 
-Every target must include a `service_name` label.
-If you don't set it, the component infers a value, in order, from the following sources:
+Every profile carries a `service_name` label.
+You can set it on the target yourself.
+If you don't, the component adds the label and infers a value, in order, from the following sources:
 
 * `__meta_kubernetes_pod_annotation_pyroscope_io_service_name`, which is a `pyroscope.io/service_name` Pod annotation.
 * `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `ebpf/<namespace>/<container_name>`.

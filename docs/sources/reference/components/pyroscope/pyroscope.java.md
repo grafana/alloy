@@ -104,8 +104,9 @@ It logs an error and silently skips profiling that target instead.
 
 The component treats labels that start with a double underscore as _internal_ and removes them before scraping.
 
-Every target must include a `service_name` label.
-If it's not specified, `pyroscope.java` attempts to infer it from either of the following sources, in this order:
+Every profile carries a `service_name` label.
+You can set it on the target yourself.
+If you don't, `pyroscope.java` adds the label and infers a value from the following sources, in this order:
 
 1. `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
 1. `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `java/<namespace>/<container_name>`.
