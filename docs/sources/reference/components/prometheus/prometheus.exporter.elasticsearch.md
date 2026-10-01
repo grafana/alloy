@@ -12,21 +12,23 @@ title: prometheus.exporter.elasticsearch
 
 # `prometheus.exporter.elasticsearch`
 
-The `prometheus.exporter.elasticsearch` component embeds the [`elasticsearch_exporter`](https://github.com/prometheus-community/elasticsearch_exporter) for the collection of metrics from ElasticSearch servers.
+The `prometheus.exporter.elasticsearch` component embeds the [`elasticsearch_exporter`](https://github.com/prometheus-community/elasticsearch_exporter) to collect metrics from Elasticsearch servers.
+
+You can specify multiple `prometheus.exporter.elasticsearch` components by giving them different labels.
 
 {{< admonition type="note" >}}
-Currently, {{< param "PRODUCT_NAME" >}} can only collect metrics from a single ElasticSearch server.
+Currently, {{< param "PRODUCT_NAME" >}} can only collect metrics from a single Elasticsearch server.
 However, the exporter can collect the metrics from all nodes through that server configured.
 {{< /admonition >}}
 
-We strongly recommend that you configure a separate user for {{< param "PRODUCT_NAME" >}}, and give it only the strictly mandatory security privileges necessary for monitoring your node.
+Configure a separate user for {{< param "PRODUCT_NAME" >}}, and give it only the security privileges necessary for monitoring your node.
 Refer to the [Elasticsearch security privileges](https://github.com/prometheus-community/elasticsearch_exporter#elasticsearch-7x-security-privileges) documentation for more information.
 
 ## Usage
 
 ```alloy
 prometheus.exporter.elasticsearch "<LABEL>" {
-    address = "<ELASTICSEARCH_ADDRESS>"
+  address = "<ELASTICSEARCH_ADDRESS>"
 }
 ```
 
@@ -38,16 +40,16 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 | ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------------- | -------- |
 | `address`              | `string`   | HTTP API address of an Elasticsearch node.                                                             | `"http://localhost:9200"` | no       |
 | `aliases`              | `bool`     | Include informational aliases metrics.                                                                 |                           | no       |
-| `all`                  | `bool`     | Export stats for all nodes in the cluster. If used, this flag overrides the flag `node`.               |                           | no       |
+| `all`                  | `bool`     | Export stats for all nodes in the cluster. Overrides the `node` argument.                              |                           | no       |
 | `ca`                   | `string`   | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.       |                           | no       |
 | `client_cert`          | `string`   | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. |                           | no       |
 | `client_private_key`   | `string`   | Path to PEM file that contains the private key for client auth when connecting to Elasticsearch.       |                           | no       |
 | `cluster_settings`     | `bool`     | Export stats for cluster settings.                                                                     |                           | no       |
 | `clusterinfo_interval` | `duration` | Cluster info update interval for the cluster label.                                                    | `"5m"`                    | no       |
 | `data_stream`          | `bool`     | Export stats for Data Streams.                                                                         |                           | no       |
-| `indices_settings`     | `bool`     | Export stats for settings of all indices of the cluster.                                               |                           | no       |
 | `indices`              | `bool`     | Export stats for indices in the cluster.                                                               |                           | no       |
-| `node`                 | `string`   | Node's name of which metrics should be exposed                                                         |                           | no       |
+| `indices_settings`     | `bool`     | Export stats for settings of all indices of the cluster.                                               |                           | no       |
+| `node`                 | `string`   | Name of the node whose metrics the component exposes.                                                  |                           | no       |
 | `shards`               | `bool`     | Export stats for shards in the cluster (implies indices).                                              |                           | no       |
 | `slm`                  | `bool`     | Export stats for SLM (Snapshot Lifecycle Management).                                                  |                           | no       |
 | `snapshots`            | `bool`     | Export stats for the cluster snapshots.                                                                |                           | no       |
@@ -99,7 +101,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.elasticsearch`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.elasticsearch`:
 
 ```alloy
 prometheus.exporter.elasticsearch "example" {
