@@ -39,7 +39,7 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 | Name                   | Type       | Description                                                                                            | Default                   | Required |
 | ---------------------- | ---------- | ------------------------------------------------------------------------------------------------------ | ------------------------- | -------- |
 | `address`              | `string`   | HTTP API address of an Elasticsearch node.                                                             | `"http://localhost:9200"` | no       |
-| `aliases`              | `bool`     | Include informational aliases metrics.                                                                 |                           | no       |
+| `aliases`              | `bool`     | Include informational aliases metrics.                                                                 | `true`                    | no       |
 | `all`                  | `bool`     | Export stats for all nodes in the cluster. Overrides the `node` argument.                              |                           | no       |
 | `ca`                   | `string`   | Path to PEM file that contains trusted Certificate Authorities for the Elasticsearch connection.       |                           | no       |
 | `client_cert`          | `string`   | Path to PEM file that contains the corresponding cert for the private key to connect to Elasticsearch. |                           | no       |
@@ -49,7 +49,7 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 | `data_stream`          | `bool`     | Export stats for Data Streams.                                                                         |                           | no       |
 | `indices`              | `bool`     | Export stats for indices in the cluster.                                                               |                           | no       |
 | `indices_settings`     | `bool`     | Export stats for settings of all indices of the cluster.                                               |                           | no       |
-| `node`                 | `string`   | Name of the node whose metrics the component exposes.                                                  |                           | no       |
+| `node`                 | `string`   | Name of the node whose metrics the component exposes.                                                  | `"_local"`                | no       |
 | `shards`               | `bool`     | Export stats for shards in the cluster (implies indices).                                              |                           | no       |
 | `slm`                  | `bool`     | Export stats for SLM (Snapshot Lifecycle Management).                                                  |                           | no       |
 | `snapshots`            | `bool`     | Export stats for the cluster snapshots.                                                                |                           | no       |
