@@ -53,6 +53,7 @@ type Arguments struct {
 	ProcessingTimeout time.Duration       `alloy:"processing_timeout,attr,optional"` // Maximum time allowed to process a single log entry. 0 (default) disables the timeout.
 	DropOnTimeout     bool                `alloy:"drop_on_timeout,attr,optional"`    // When true, entries that exceed processing_timeout are dropped instead of forwarded unredacted. Requires processing_timeout to be set.
 	LabelTimedOut     bool                `alloy:"label_timed_out,attr,optional"`    // When true, adds the label secretfilter="timed-out" to entries forwarded after a processing timeout. False (default) disables the label.
+	PII               PIIArguments        `alloy:"pii,block,optional"`               // Optional PII redaction after secret redaction, see pii.go.
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -72,6 +73,7 @@ const defaultRedactPercent uint = 80
 var DefaultArguments = Arguments{
 	Rate:          defaultRate,
 	RedactPercent: defaultRedactPercent,
+	PII:           DefaultPIIArguments,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -84,7 +86,7 @@ func (args *Arguments) Validate() error {
 	if err := sampling.ValidateRate(args.Rate); err != nil {
 		return fmt.Errorf("secretfilter: %w", err)
 	}
-	return nil
+	return args.PII.validate()
 }
 
 var _ syntax.Validator = (*Arguments)(nil)
@@ -113,6 +115,9 @@ type Component struct {
 
 	// sampling state (used when 0 < Rate < 1)
 	sampler *sampling.Sampler
+
+	// pii redacts PII after secret redaction; nil when disabled.
+	pii *piiStage
 
 	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
@@ -333,6 +338,11 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.Lock()
 		defer c.mut.Unlock()
 		c.stopped = true
+		if c.pii != nil {
+			if err := c.pii.close(); err != nil {
+				c.log.Warn("failed to close PII redactor", "err", err)
+			}
+		}
 	}()
 
 	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
@@ -412,11 +422,14 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 		}
 	}
 
-	if len(findings) == 0 {
-		return entry, nil
+	if len(findings) > 0 {
+		c.log.Debug("secrets detected in line", "findings", len(findings))
+		entry = c.redactLine(entry, findings)
 	}
-	c.log.Debug("secrets detected in line", "findings", len(findings))
-	return c.redactLine(entry, findings), nil
+	if c.pii != nil {
+		entry = c.pii.redactEntry(entry)
+	}
+	return entry, nil
 }
 
 // redactLine redacts each finding in the log line and records metrics.
@@ -479,12 +492,26 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("failed to create gitleaks detector: %w", err)
 	}
 
+	c.mut.RLock()
+	currentPII := c.pii
+	c.mut.RUnlock()
+	pii, err := buildPIIStage(currentPII, newArgs.PII, c.opts.Registerer)
+	if err != nil {
+		return fmt.Errorf("failed to create PII redactor: %w", err)
+	}
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.args = newArgs
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 	c.detector = detector
+	if c.pii != nil && c.pii != pii {
+		if err := c.pii.close(); err != nil {
+			c.log.Warn("failed to close previous PII redactor", "err", err)
+		}
+	}
+	c.pii = pii
 	if newArgs.RedactPercent >= 1 && newArgs.RedactPercent <= 100 {
 		c.redactPercent = newArgs.RedactPercent
 	} else {
@@ -510,6 +537,7 @@ func (c *Component) Update(args component.Arguments) error {
 		"processing_timeout", newArgs.ProcessingTimeout,
 		"drop_on_timeout", newArgs.DropOnTimeout,
 		"label_timed_out", newArgs.LabelTimedOut,
+		"pii_enabled", newArgs.PII.Enabled,
 	)
 
 	return nil

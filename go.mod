@@ -944,6 +944,8 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
 	github.com/charmbracelet/huh v1.0.0
 	github.com/google/cadvisor/lib v0.0.0
+	github.com/hoophq/alcatraz v0.21.0
+	github.com/hoophq/alcatraz/ner v0.21.0
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.161.0
@@ -1033,13 +1035,21 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/containerd/containerd/api v1.10.0 // indirect
+	github.com/daulet/tokenizers v1.27.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/semgroup v1.2.0 // indirect
 	github.com/gitleaks/go-gitdiff v0.9.1 // indirect
+	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.33.1 // indirect
 	github.com/go-openapi/swag/pools v0.29.2 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/gomlx/compute v0.1.2 // indirect
+	github.com/gomlx/exceptions v0.0.3 // indirect
+	github.com/gomlx/go-huggingface v0.4.1 // indirect
+	github.com/gomlx/go-xla v0.4.1 // indirect
+	github.com/gomlx/gomlx v0.28.2 // indirect
+	github.com/gomlx/onnx-gomlx v0.5.2 // indirect
 	github.com/google/gnostic v0.7.1 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/grafana/clusterurl v0.2.1 // indirect
@@ -1047,6 +1057,8 @@ require (
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
+	github.com/knights-analytics/hugot v0.7.7 // indirect
+	github.com/knights-analytics/ortgenai v0.3.2 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mholt/archives v0.1.5 // indirect
@@ -1081,10 +1093,12 @@ require (
 	github.com/twmb/franz-go/plugin/kslog v1.0.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/urfave/cli/v3 v3.9.0 // indirect
+	github.com/viant/afs v1.30.0 // indirect
 	github.com/vultr/govultr/v3 v3.32.0 // indirect
 	github.com/wasilibs/go-re2 v1.12.0 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20250123031827-cd30c44769bb // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
+	github.com/yalue/onnxruntime_go v1.32.0 // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.161.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/ecs v1.45.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/eks v1.45.0 // indirect
@@ -1101,6 +1115,7 @@ require (
 	go.uber.org/mock v0.6.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
+	golang.org/x/image v0.44.0 // indirect
 	gopkg.in/telebot.v3 v3.3.8 // indirect
 )
 

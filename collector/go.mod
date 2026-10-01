@@ -390,6 +390,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/databricks/databricks-sql-go v1.11.0 // indirect
+	github.com/daulet/tokenizers v1.27.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/dennwc/btrfs v0.0.0-20230312211831-a1f570bd01a1 // indirect
@@ -439,6 +440,7 @@ require (
 	github.com/github/smimesign v0.2.0 // indirect
 	github.com/githubexporter/github-exporter v1.3.1 // indirect
 	github.com/gitleaks/go-gitdiff v0.9.1 // indirect
+	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
@@ -496,6 +498,12 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
+	github.com/gomlx/compute v0.1.2 // indirect
+	github.com/gomlx/exceptions v0.0.3 // indirect
+	github.com/gomlx/go-huggingface v0.4.1 // indirect
+	github.com/gomlx/go-xla v0.4.1 // indirect
+	github.com/gomlx/gomlx v0.28.2 // indirect
+	github.com/gomlx/onnx-gomlx v0.5.2 // indirect
 	github.com/gomodule/redigo v1.9.3 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cadvisor v0.60.5 // indirect
@@ -585,6 +593,8 @@ require (
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hetznercloud/hcloud-go/v2 v2.47.0 // indirect
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
+	github.com/hoophq/alcatraz v0.21.0 // indirect
+	github.com/hoophq/alcatraz/ner v0.21.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/ianlancetaylor/demangle v0.0.0-20260505044615-1ff4bf46051f // indirect
@@ -628,6 +638,8 @@ require (
 	github.com/knadh/koanf/maps v0.1.3 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.1 // indirect
 	github.com/knadh/koanf/v2 v2.3.6 // indirect
+	github.com/knights-analytics/hugot v0.7.7 // indirect
+	github.com/knights-analytics/ortgenai v0.3.2 // indirect
 	github.com/kolo/xmlrpc v0.0.0-20220921171641-a4b6fa1dd06b // indirect
 	github.com/krallistic/kazoo-go v0.0.0-20170526135507-a15279744f4e // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -901,6 +913,7 @@ require (
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.36 // indirect
 	github.com/vertica/vertica-sql-go v1.3.5 // indirect
+	github.com/viant/afs v1.30.0 // indirect
 	github.com/vincent-petithory/dataurl v1.0.0 // indirect
 	github.com/vmware/govmomi v0.56.0 // indirect
 	github.com/vultr/govultr/v3 v3.32.0 // indirect
@@ -920,6 +933,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	github.com/xo/dburl v0.24.2 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
+	github.com/yalue/onnxruntime_go v1.32.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
@@ -1050,6 +1064,7 @@ require (
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91 // indirect
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa // indirect
+	golang.org/x/image v0.44.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
