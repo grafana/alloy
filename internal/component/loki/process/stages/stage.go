@@ -121,10 +121,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(*cfg.TenantConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newTenantStage(*cfg.TenantConfig, opts)
 	case cfg.ReplaceConfig != nil:
 		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
 		if err != nil {
@@ -151,10 +148,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelKeepConfig != nil:
-		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
 	case cfg.LabelDropConfig != nil:
 		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {
