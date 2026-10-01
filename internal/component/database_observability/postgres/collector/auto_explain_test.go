@@ -14,8 +14,8 @@ import (
 )
 
 // decodeExplainPlanOutput parses an op="explain_plan_output" entry's body
-// (schema="..." digest="..." explain_plan_output="<base64 JSON>") back into
-// its structured form, for assertions.
+// (schema="..." query_fingerprint=... sourced_from=logs explain_plan_output="<base64 JSON>")
+// back into its structured form, for assertions.
 func decodeExplainPlanOutput(t *testing.T, line string) (fields map[string]string, output database_observability.ExplainPlanOutput) {
 	t.Helper()
 	fields = parseLogfmt(t, line)
@@ -55,21 +55,23 @@ func TestLogsCollector_AutoExplain_RealSample(t *testing.T) {
 
 	fields, output := decodeExplainPlanOutput(t, got[0].Line)
 	require.Equal(t, "books_store", fields["schema"])
-	require.NotEmpty(t, fields["digest"])
+	require.Equal(t, "logs", fields["sourced_from"])
+	require.NotEmpty(t, fields["query_fingerprint"])
 
 	require.Equal(t, "PostgreSQL", output.Metadata.DatabaseEngine)
 	require.Equal(t, database_observability.ExplainProcessingResultSuccess, output.Metadata.ProcessingResult)
-	require.Equal(t, fields["digest"], output.Metadata.QueryIdentifier)
+	require.Equal(t, fields["query_fingerprint"], output.Metadata.QueryIdentifier)
 	require.Equal(t, database_observability.ExplainPlanOutputOperation("Result"), output.Plan.Operation)
 	require.Equal(t, int64(1), output.Plan.Details.EstimatedRows)
 	require.Equal(t, 0.26, *output.Plan.Details.EstimatedCost)
 }
 
-// TestLogsCollector_AutoExplain_SameQueryMatchesLiveDigest pins that this
-// log-sourced digest is a fingerprint of the query text, not a
-// pg_stat_statements queryid -- so the same query explained by both this
-// path and the live EXPLAIN (FORMAT JSON) collector end up with the *same*
-// digest here (both fingerprint-based), by construction.
+// TestLogsCollector_AutoExplain_DigestIsQueryFingerprint pins that this
+// log-sourced identifier is a fingerprint of the query text, not a
+// pg_stat_statements queryid -- the same query_fingerprint this collector
+// uses everywhere else (op="error_message", deadlock's
+// query_fingerprint_blocker, ...), not comparable to the live EXPLAIN
+// (FORMAT JSON) collector's own queryid-based "digest" field.
 func TestLogsCollector_AutoExplain_DigestIsQueryFingerprint(t *testing.T) {
 	c, entryCh := newServerLogCollector(t)
 	ts := logTS(c)
@@ -94,7 +96,7 @@ func TestLogsCollector_AutoExplain_DigestIsQueryFingerprint(t *testing.T) {
 
 	expectedFP, err := fingerprint.Fingerprint("SELECT 1")
 	require.NoError(t, err)
-	require.Equal(t, expectedFP, fields["digest"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
 }
 
 // TestLogsCollector_AutoExplain_RedactsFilterLiterals pins that a plan

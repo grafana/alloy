@@ -54,11 +54,15 @@ type autoExplainPayload struct {
 // pattern registry in that case, which doesn't model this shape either, so
 // it's dropped the same way an unrecognized LOG line always is.
 //
-// QueryIdentifier is a fingerprint of the query text, not a
-// pg_stat_statements queryid (unavailable from a log line) -- the same
-// query explained by both paths will carry two different identifiers,
-// a known, accepted difference between the two collectors' digest
-// namespaces.
+// QueryIdentifier is query_fingerprint -- the same SQL fingerprint used
+// everywhere else in this collector (op="error_message", deadlock's
+// query_fingerprint_blocker, ...) -- not a pg_stat_statements queryid
+// (unavailable from a log line). It's comparable to this collector's own
+// other query_fingerprint fields for the same query, but not to the live
+// EXPLAIN (FORMAT JSON) collector's own op="explain_plan_output" entries,
+// which still key on "digest" (that queryid): a known, accepted difference
+// between the two collectors' identifier namespaces. sourced_from=logs
+// marks which of the two produced a given entry.
 func (l *Logs) tryEmitAutoExplainPlan(message string, datname string, ts time.Time) bool {
 	if !strings.Contains(message, autoExplainGate) {
 		return false
@@ -79,7 +83,7 @@ func (l *Logs) tryEmitAutoExplainPlan(message string, datname string, ts time.Ti
 	}
 
 	queryText := strings.TrimSpace(payload.QueryText)
-	digest, err := fingerprint.Fingerprint(queryText)
+	queryFingerprint, err := fingerprint.Fingerprint(queryText)
 	if err != nil {
 		return false
 	}
@@ -91,7 +95,7 @@ func (l *Logs) tryEmitAutoExplainPlan(message string, datname string, ts time.Ti
 	output := database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
 			DatabaseEngine:   "PostgreSQL",
-			QueryIdentifier:  digest,
+			QueryIdentifier:  queryFingerprint,
 			GeneratedAt:      ts.Format(time.RFC3339),
 			ProcessingResult: database_observability.ExplainProcessingResultSuccess,
 		},
@@ -103,10 +107,16 @@ func (l *Logs) tryEmitAutoExplainPlan(message string, datname string, ts time.Ti
 		return false
 	}
 
+	// query_fingerprint (unquoted, like every other op's query_fingerprint
+	// field -- never raw SQL) and sourced_from=logs distinguish this
+	// log-parsed plan from the live EXPLAIN (FORMAT JSON) collector's own
+	// op="explain_plan_output" entries, which still key on "digest" (a
+	// pg_stat_statements queryid, not a fingerprint -- see
+	// tryEmitAutoExplainPlan's doc comment on the two digest namespaces).
 	logMessage := fmt.Sprintf(
-		`schema=%q digest=%q explain_plan_output="%s"`,
+		`schema=%q query_fingerprint=%s sourced_from=logs explain_plan_output="%s"`,
 		datname,
-		digest,
+		queryFingerprint,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 	)
 
