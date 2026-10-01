@@ -24,45 +24,61 @@ var (
 	templateMainAlloy []byte
 	//go:embed main_windows.tpl
 	templateMainWindows []byte
+	//go:embed main_native.tpl
+	templateMainNative []byte
 )
 
 const fileHeader = "// GENERATED CODE: DO NOT EDIT\n\n"
 
 func main() {
 	log.Println("Generating Alloy OTel Collector main file...")
-	var path, alloyComponentsPath string
+	var path, configPath, alloyComponentsPath string
 	flag.StringVar(&path, "path", "", "path to put generated files")
+	flag.StringVar(&configPath, "config", "", "path to the OCB builder config")
 	flag.StringVar(&alloyComponentsPath, "alloy-components", "", "path to the file which selects the native Alloy components; every component is included if empty")
 	flag.Parse()
 
 	log.Printf("path: %v", path)
 
-	if err := generate(path, alloyComponentsPath); err != nil {
+	if err := generate(path, configPath, alloyComponentsPath); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// generate post-processes the OCB output in path according to the native
-// component selection at alloyComponentsPath.
-func generate(path, alloyComponentsPath string) error {
-	cfg, err := readAlloyConfig(alloyComponentsPath)
+// generate post-processes the OCB output in path according to the builder
+// config at configPath and the native component selection at
+// alloyComponentsPath.
+func generate(path, configPath, alloyComponentsPath string) error {
+	cfg, err := readBuilderConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read builder config: %w", err)
+	}
+
+	alloyCfg, err := readAlloyConfig(alloyComponentsPath)
 	if err != nil {
 		return fmt.Errorf("failed to read alloy components config: %w", err)
 	}
 
-	if err := copyAlloyMainTemplateFromFile(path); err != nil {
-		return fmt.Errorf("failed to copy alloy main template: %w", err)
+	if cfg.nativeOnly() {
+		log.Println("No OTel components configured: building Alloy without the OTel Engine")
+		if err := writeNativeMain(path); err != nil {
+			return fmt.Errorf("failed to write native main file: %w", err)
+		}
+	} else {
+		if err := copyAlloyMainTemplateFromFile(path); err != nil {
+			return fmt.Errorf("failed to copy alloy main template: %w", err)
+		}
+
+		if err := replaceSectionsOfGeneratedMainFile(path); err != nil {
+			return fmt.Errorf("failed to replace command factory: %w", err)
+		}
+
+		if err := replaceMainWindows(path); err != nil {
+			return fmt.Errorf("failed to replace main_windows.go: %w", err)
+		}
 	}
 
-	if err := replaceSectionsOfGeneratedMainFile(path); err != nil {
-		return fmt.Errorf("failed to replace command factory: %w", err)
-	}
-
-	if err := replaceMainWindows(path); err != nil {
-		return fmt.Errorf("failed to replace main_windows.go: %w", err)
-	}
-
-	if err := writeAlloyComponents(path, cfg); err != nil {
+	if err := writeAlloyComponents(path, alloyCfg); err != nil {
 		return fmt.Errorf("failed to generate components_alloy.go: %w", err)
 	}
 	return nil
@@ -170,6 +186,40 @@ const (
 	converterPackage     = "github.com/grafana/alloy/internal/converter/enable"
 )
 
+// otelOnlyFiles are generated files which wire up the OTel Engine. When
+// building Alloy without it, they are emptied rather than deleted, because
+// `go generate` fails if files it is about to scan disappear.
+var otelOnlyFiles = []string{"components.go", "main_alloy.go", "main_others.go", "main_windows.go"}
+
+const emptyOtelFile = fileHeader + "// Alloy is built without the OTel Engine, so this file is intentionally empty.\n\npackage main\n"
+
+// writeNativeMain replaces the OCB generated main.go with one that only runs
+// the Alloy CLI, and empties the files which would import the OTel Engine.
+func writeNativeMain(path string) error {
+	for _, name := range otelOnlyFiles {
+		if err := os.WriteFile(filepath.Join(path, name), []byte(emptyOtelFile), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", name, err)
+		}
+	}
+	return os.WriteFile(filepath.Join(path, "main.go"), append([]byte(fileHeader), templateMainNative...), 0o644)
+}
+
+// builderConfig is the subset of the OCB builder config read by the generator.
+type builderConfig struct {
+	// OTel Collector components built into the OTel Engine.
+	Extensions []yaml.Node `yaml:"extensions"`
+	Receivers  []yaml.Node `yaml:"receivers"`
+	Processors []yaml.Node `yaml:"processors"`
+	Exporters  []yaml.Node `yaml:"exporters"`
+	Connectors []yaml.Node `yaml:"connectors"`
+}
+
+// nativeOnly reports whether Alloy should be built without the OTel Engine.
+// This is the case when the config has no OTel Collector components.
+func (c builderConfig) nativeOnly() bool {
+	return len(c.Extensions)+len(c.Receivers)+len(c.Processors)+len(c.Exporters)+len(c.Connectors) == 0
+}
+
 // alloyConfig is the content of alloy-components.yaml, which selects the
 // native Alloy components. It is separate from the OCB builder config because
 // OCB doesn't know about native components.
@@ -207,6 +257,22 @@ func writeAlloyComponents(path string, cfg alloyConfig) error {
 	}
 
 	return os.WriteFile(filepath.Join(path, "components_alloy.go"), buf.Bytes(), 0o644)
+}
+
+func readBuilderConfig(configPath string) (builderConfig, error) {
+	var cfg builderConfig
+	if configPath == "" {
+		return cfg, nil
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return cfg, fmt.Errorf("read config: %w", err)
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return cfg, fmt.Errorf("parse config: %w", err)
+	}
+	return cfg, nil
 }
 
 // readAlloyConfig reads alloy-components.yaml. If path is empty, or the file

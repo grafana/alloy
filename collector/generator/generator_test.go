@@ -44,6 +44,20 @@ func runInteractive(params otelcol.CollectorSettings) error {
 }
 `
 
+// otelComponents is a builder config with OTel Collector components.
+const otelComponents = `
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.161.0
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.161.0
+`
+
+// noOtelComponents is a builder config without OTel Collector components.
+const noOtelComponents = `
+dist:
+  name: alloy
+`
+
 func TestGenerate_ComponentsAlloy(t *testing.T) {
 	tests := []struct {
 		name string
@@ -149,15 +163,15 @@ package main
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := runGenerate(t, tt.alloy)
+			dir := runGenerate(t, otelComponents, tt.alloy)
 			require.Equal(t, tt.expect, readFile(t, dir, "components_alloy.go"))
 		})
 	}
 }
 
 func TestGenerate_MissingAlloyComponentsFile(t *testing.T) {
-	dir := setupOCBOutput(t, "")
-	require.NoError(t, generate(dir, ""))
+	dir := setupOCBOutput(t, otelComponents, "")
+	require.NoError(t, generate(dir, filepath.Join(dir, "builder-config.yaml"), ""))
 
 	require.Equal(t, `// GENERATED CODE: DO NOT EDIT
 
@@ -172,7 +186,7 @@ import (
 }
 
 func TestGenerate_WithOTelEngine(t *testing.T) {
-	dir := runGenerate(t, `
+	dir := runGenerate(t, otelComponents, `
 components: [loki.source.file, loki.write]
 `)
 
@@ -186,6 +200,41 @@ components: [loki.source.file, loki.write]
 	require.Contains(t, readFile(t, dir, "main_alloy.go"), "func newAlloyCommand(")
 	require.Contains(t, readFile(t, dir, "main_alloy.go"), "otelsupervisor.NewCommand()")
 	require.Contains(t, readFile(t, dir, "main_windows.go"), "//go:build windows")
+}
+
+func TestGenerate_WithoutOTelEngine(t *testing.T) {
+	dir := runGenerate(t, noOtelComponents, `
+components: [loki.source.file, loki.process, loki.write]
+converters: false
+`)
+
+	require.Equal(t, `// GENERATED CODE: DO NOT EDIT
+
+// Program alloy is Grafana Alloy built without the OTel Engine.
+package main
+
+import (
+	"os"
+
+	"github.com/grafana/alloy/flowcmd"
+)
+
+func main() {
+	if err := flowcmd.RootCommand().Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+`, readFile(t, dir, "main.go"))
+
+	// Files which would import the OTel Engine are emptied.
+	for _, name := range []string{"components.go", "main_alloy.go", "main_others.go", "main_windows.go"} {
+		require.Equal(t, `// GENERATED CODE: DO NOT EDIT
+
+// Alloy is built without the OTel Engine, so this file is intentionally empty.
+
+package main
+`, readFile(t, dir, name), name)
+	}
 }
 
 func TestGenerate_Errors(t *testing.T) {
@@ -224,8 +273,8 @@ components:
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := setupOCBOutput(t, tt.alloy)
-			err := generate(dir, filepath.Join(dir, "alloy-components.yaml"))
+			dir := setupOCBOutput(t, otelComponents, tt.alloy)
+			err := generate(dir, filepath.Join(dir, "builder-config.yaml"), filepath.Join(dir, "alloy-components.yaml"))
 			require.ErrorContains(t, err, tt.expectErr)
 		})
 	}
@@ -251,17 +300,17 @@ func TestKnownComponentPackages(t *testing.T) {
 
 // runGenerate runs the generator against a fake OCB output directory and
 // returns its path.
-func runGenerate(t *testing.T, alloyComponents string) string {
+func runGenerate(t *testing.T, builderConfig, alloyComponents string) string {
 	t.Helper()
 
-	dir := setupOCBOutput(t, alloyComponents)
-	require.NoError(t, generate(dir, filepath.Join(dir, "alloy-components.yaml")))
+	dir := setupOCBOutput(t, builderConfig, alloyComponents)
+	require.NoError(t, generate(dir, filepath.Join(dir, "builder-config.yaml"), filepath.Join(dir, "alloy-components.yaml")))
 	return dir
 }
 
 // setupOCBOutput creates a directory which looks like OCB output, with the
-// given alloy-components.yaml.
-func setupOCBOutput(t *testing.T, alloyComponents string) string {
+// given builder config and alloy-components.yaml.
+func setupOCBOutput(t *testing.T, builderConfig, alloyComponents string) string {
 	t.Helper()
 
 	lookup := lookupComponentPackages
@@ -270,6 +319,7 @@ func setupOCBOutput(t *testing.T, alloyComponents string) string {
 
 	dir := t.TempDir()
 	files := map[string]string{
+		"builder-config.yaml":   builderConfig,
 		"alloy-components.yaml": alloyComponents,
 		"main.go":               ocbMainFile,
 		"components.go":         "package main\n",
