@@ -201,6 +201,9 @@ By default, cAdvisor disables the following metric kinds:
 
 {{< /column-list >}}
 
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
+
 ## Blocks
 
 The `prometheus.exporter.cadvisor` component doesn't support any blocks. You can configure this component with arguments.

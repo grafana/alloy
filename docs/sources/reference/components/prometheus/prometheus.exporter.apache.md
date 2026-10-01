@@ -34,6 +34,8 @@ You can use the following arguments with `prometheus.exporter.apache`:
 | `insecure`      | `bool`   | Ignore server certificate if using HTTPS. | `false`                                 | no       |
 | `scrape_uri`    | `string` | URI to Apache stub status page.           | `"http://localhost/server-status?auto"` | no       |
 
+The component sets the `instance` label on its exported targets to the host and port from `scrape_uri`.
+
 ## Blocks
 
 The `prometheus.exporter.apache` component doesn't support any blocks. You can configure this component with arguments.

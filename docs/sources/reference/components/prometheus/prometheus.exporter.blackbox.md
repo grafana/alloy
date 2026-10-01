@@ -76,6 +76,8 @@ The component passes any additional labels to the exported target.
 
 Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for more information about generating a configuration file.
 
+The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.blackbox.example`.
+
 ## Blocks
 
 You can use the following blocks with `prometheus.exporter.blackbox`:

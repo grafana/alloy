@@ -39,6 +39,8 @@ You can use the following arguments with `prometheus.exporter.catchpoint`:
 | `verbose_logging` | `bool`   | Enables verbose logging to provide more detailed output for debugging purposes. | `false`                 | no       |
 | `webhook_path`    | `string` | Defines the path where the exporter receives webhook data from Catchpoint.      | `"/catchpoint-webhook"` | no       |
 
+The component sets the `instance` label on its exported targets to the value of `port`.
+
 ## Blocks
 
 The `prometheus.exporter.catchpoint` component doesn't support any blocks. You can configure this component with arguments.
