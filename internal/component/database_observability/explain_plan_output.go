@@ -166,7 +166,9 @@ type ExplainPlanNode struct {
 }
 
 type ExplainPlanNodeDetails struct {
-	EstimatedRows int64                     `json:"estimatedRows"`
+	EstimatedRows int64 `json:"estimatedRows"`
+	// EstimatedCost is the cost attributable to this operation alone. Summing
+	// it across a plan tree approximates the database's total query cost.
 	EstimatedCost *float64                  `json:"estimatedCost,omitempty"`
 	TableName     *string                   `json:"tableName,omitempty"`
 	Alias         *string                   `json:"alias,omitempty"`

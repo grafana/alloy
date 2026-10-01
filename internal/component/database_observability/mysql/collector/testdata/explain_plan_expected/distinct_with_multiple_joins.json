@@ -1,0 +1,53 @@
+{
+  "operation": "Ordering Operation",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Duplicates Removal",
+      "details": {
+        "estimatedRows": 0
+      },
+      "children": [
+        {
+          "operation": "Unique Key Lookup",
+          "details": {
+            "estimatedRows": 4920,
+            "estimatedCost": 5412.98,
+            "alias": "d",
+            "accessType": "eq_ref",
+            "keyUsed": "PRIMARY",
+            "joinAlgorithm": "nested_loop"
+          },
+          "children": [
+            {
+              "operation": "Non-Unique Key Lookup",
+              "details": {
+                "estimatedRows": 4920,
+                "estimatedCost": 38035.18,
+                "alias": "t",
+                "accessType": "ref",
+                "keyUsed": "PRIMARY",
+                "joinAlgorithm": "nested_loop",
+                "condition": "( `employees` . `t` . `to_date` = date ? )"
+              },
+              "children": [
+                {
+                  "operation": "Full Table Scan",
+                  "details": {
+                    "estimatedRows": 33114,
+                    "estimatedCost": 33851.3,
+                    "alias": "de",
+                    "accessType": "all",
+                    "condition": "( `employees` . `de` . `to_date` = date ? )"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

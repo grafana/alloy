@@ -1,7 +1,10 @@
 package collector
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,22 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
-
-func stringPtr(s string) *string {
-	return &s
-}
-
-func floatPtr(f float64) *float64 {
-	return &f
-}
-
-func explainPlanAccessTypePtr(s database_observability.ExplainPlanAccessType) *database_observability.ExplainPlanAccessType {
-	return &s
-}
-
-func explainPlanJoinAlgorithmPtr(s database_observability.ExplainPlanJoinAlgorithm) *database_observability.ExplainPlanJoinAlgorithm {
-	return &s
-}
 
 func TestExplainPlansRedactor(t *testing.T) {
 	tests := []struct {
@@ -299,1172 +286,216 @@ func TestExplainPlansRedactor(t *testing.T) {
 
 func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
-		notJsonData := []byte("not json data")
-		logger := util.TestAlloyLogger(t).Slog()
-		_, err := newExplainPlansOutput(logger, notJsonData)
-		require.Error(t, err)
+		_, err := newExplainPlansOutput(util.TestAlloyLogger(t).Slog(), []byte("not json data"))
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		logger := util.TestAlloyLogger(t).Slog()
-		explainPlanOutput, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"))
+		output, err := newExplainPlansOutput(util.TestAlloyLogger(t).Slog(), []byte(`{"query_block":{"operation":"unknown"}}`))
 		require.NoError(t, err)
-		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
+		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, output.Operation)
 	})
 
 	t.Run("zero rows", func(t *testing.T) {
-		logger := util.TestAlloyLogger(t).Slog()
-		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
+		_, err := newExplainPlansOutput(util.TestAlloyLogger(t).Slog(), []byte(`{"query_block":{"message":"no matching row in const table"}}`))
 		require.NoError(t, err)
 	})
+}
 
-	currentTime := time.Now().Format(time.RFC3339)
-	tests := []struct {
-		dbVersion string
-		digest    string
-		fname     string
-		result    *database_observability.ExplainPlanOutput
-	}{
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "complex_aggregation_with_case",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("d"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-												EstimatedRows: 9,
-												EstimatedCost: floatPtr(1.90),
-												KeyUsed:       stringPtr("dept_name"),
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("de"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-												EstimatedRows: 37253,
-												EstimatedCost: floatPtr(57154.49),
-												KeyUsed:       stringPtr("dept_no"),
-												Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-											},
-										},
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 37253,
-										EstimatedCost: floatPtr(98133.43),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "complex_join_with_aggregate_subquery",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("d"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-												EstimatedRows: 9,
-												EstimatedCost: floatPtr(1.90),
-												KeyUsed:       stringPtr("dept_name"),
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("de"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-												EstimatedRows: 37253,
-												EstimatedCost: floatPtr(57154.49),
-												KeyUsed:       stringPtr("dept_no"),
-												Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-											},
-										},
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 37253,
-										EstimatedCost: floatPtr(98133.43),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "complex_query_with_multiple_conditions_and_functions",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-											Details: database_observability.ExplainPlanNodeDetails{
-												JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-											},
-											Children: []database_observability.ExplainPlanNode{
-												{
-													Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-													Details: database_observability.ExplainPlanNodeDetails{
-														JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-													},
-													Children: []database_observability.ExplainPlanNode{
-														{
-															Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-															Details: database_observability.ExplainPlanNodeDetails{
-																JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-															},
-															Children: []database_observability.ExplainPlanNode{
-																{
-																	Operation: database_observability.ExplainPlanOutputOperationTableScan,
-																	Details: database_observability.ExplainPlanNodeDetails{
-																		Alias:         stringPtr("de"),
-																		AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-																		EstimatedRows: 33114,
-																		EstimatedCost: floatPtr(33851.30),
-																		Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-																	},
-																},
-																{
-																	Operation: database_observability.ExplainPlanOutputOperationTableScan,
-																	Details: database_observability.ExplainPlanNodeDetails{
-																		Alias:         stringPtr("t"),
-																		AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-																		EstimatedRows: 4920,
-																		EstimatedCost: floatPtr(71886.48),
-																		KeyUsed:       stringPtr("PRIMARY"),
-																		Condition:     stringPtr("( `employees` . `t` . `to_date` = date ? )"),
-																	},
-																},
-															},
-														},
-														{
-															Operation: database_observability.ExplainPlanOutputOperationTableScan,
-															Details: database_observability.ExplainPlanNodeDetails{
-																Alias:         stringPtr("d"),
-																AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-																EstimatedRows: 4920,
-																EstimatedCost: floatPtr(77299.46),
-																KeyUsed:       stringPtr("PRIMARY"),
-															},
-														},
-													},
-												},
-												{
-													Operation: database_observability.ExplainPlanOutputOperationTableScan,
-													Details: database_observability.ExplainPlanNodeDetails{
-														Alias:         stringPtr("e"),
-														AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-														EstimatedRows: 1640,
-														EstimatedCost: floatPtr(82708.26),
-														KeyUsed:       stringPtr("PRIMARY"),
-														Condition:     stringPtr("( `employees` . `e` . `hire_date` > date ? )"),
-													},
-												},
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("s"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-												EstimatedRows: 1542,
-												EstimatedCost: floatPtr(85905.59),
-												KeyUsed:       stringPtr("PRIMARY"),
-												Condition:     stringPtr("( `employees` . `s` . `to_date` = date ? )"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "complex_subquery_in_select_clause",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationTableScan,
-					Details: database_observability.ExplainPlanNodeDetails{
-						Alias:         stringPtr("e"),
-						AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRange),
-						EstimatedRows: 49,
-						EstimatedCost: floatPtr(10.86),
-						KeyUsed:       stringPtr("PRIMARY"),
-						Condition:     stringPtr("( `employees` . `e` . `emp_no` < ? )"),
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "conditional_aggregation_with_case",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("employees"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 299556,
-										EstimatedCost: floatPtr(30884.60),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "correlated_subquery",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 299556,
-										EstimatedCost: floatPtr(30884.60),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("t"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-										EstimatedRows: 44514,
-										EstimatedCost: floatPtr(374955.51),
-										KeyUsed:       stringPtr("PRIMARY"),
-										Condition:     stringPtr("( `employees` . `t` . `to_date` = date ? )"),
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:      stringPtr("<subquery2>"),
-								AccessType: explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-								KeyUsed:    stringPtr("<auto_distinct_key>"),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationMaterializedSubquery,
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-											Details: database_observability.ExplainPlanNodeDetails{
-												JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-											},
-											Children: []database_observability.ExplainPlanNode{
-												{
-													Operation: database_observability.ExplainPlanOutputOperationTableScan,
-													Details: database_observability.ExplainPlanNodeDetails{
-														Alias:         stringPtr("salaries"),
-														AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-														EstimatedRows: 94604,
-														EstimatedCost: floatPtr(289962.60),
-														Condition:     stringPtr("( ( `employees` . `salaries` . `to_date` = date ? ) and ( `employees` . `salaries` . `salary` > ? ) )"),
-													},
-												},
-												{
-													Operation: database_observability.ExplainPlanOutputOperationTableScan,
-													Details: database_observability.ExplainPlanNodeDetails{
-														Alias:         stringPtr("titles"),
-														AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-														EstimatedRows: 140585,
-														EstimatedCost: floatPtr(400924.92),
-														KeyUsed:       stringPtr("PRIMARY"),
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "date_manipulation_with_conditions",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationTableScan,
-					Details: database_observability.ExplainPlanNodeDetails{
-						Alias:         stringPtr("e"),
-						AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-						EstimatedRows: 99842,
-						EstimatedCost: floatPtr(30884.60),
-						Condition:     stringPtr("( ( month ( `employees` . `e` . `hire_date` ) = < cache > ( month ( curdate ( ) ) ) ) and ( `employees` . `e` . `hire_date` < date ? ) )"),
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "derived_table_with_aggregates",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("de"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-												EstimatedRows: 33114,
-												EstimatedCost: floatPtr(33851.30),
-												Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("s"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-												EstimatedRows: 31146,
-												EstimatedCost: floatPtr(98405.51),
-												KeyUsed:       stringPtr("PRIMARY"),
-												Condition:     stringPtr("( `employees` . `s` . `to_date` = date ? )"),
-											},
-										},
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 31146,
-										EstimatedCost: floatPtr(132640.69),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("dept_salary_stats"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-								EstimatedRows: 138443,
-								EstimatedCost: floatPtr(278020.70),
-								KeyUsed:       stringPtr("<auto_key1>"),
-								Condition:     stringPtr("( `employees` . `s` . `salary` > `dept_salary_stats` . `avg_salary` )"),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationMaterializedSubquery,
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-											Children: []database_observability.ExplainPlanNode{
-												{
-													Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-													Details: database_observability.ExplainPlanNodeDetails{
-														JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-													},
-													Children: []database_observability.ExplainPlanNode{
-														{
-															Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-															Details: database_observability.ExplainPlanNodeDetails{
-																JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-															},
-															Children: []database_observability.ExplainPlanNode{
-																{
-																	Operation: database_observability.ExplainPlanOutputOperationTableScan,
-																	Details: database_observability.ExplainPlanNodeDetails{
-																		Alias:         stringPtr("de"),
-																		AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-																		EstimatedRows: 33114,
-																		EstimatedCost: floatPtr(33851.30),
-																		Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-																	},
-																},
-																{
-																	Operation: database_observability.ExplainPlanOutputOperationTableScan,
-																	Details: database_observability.ExplainPlanNodeDetails{
-																		Alias:         stringPtr("s"),
-																		AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-																		EstimatedRows: 31146,
-																		EstimatedCost: floatPtr(98405.51),
-																		KeyUsed:       stringPtr("PRIMARY"),
-																		Condition:     stringPtr("( `employees` . `s` . `to_date` = date ? )"),
-																	},
-																},
-															},
-														},
-														{
-															Operation: database_observability.ExplainPlanOutputOperationTableScan,
-															Details: database_observability.ExplainPlanNodeDetails{
-																Alias:         stringPtr("d"),
-																AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-																EstimatedRows: 31146,
-																EstimatedCost: floatPtr(132667.05),
-																KeyUsed:       stringPtr("PRIMARY"),
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "distinct_with_multiple_joins",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationDuplicatesRemoval,
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-											Details: database_observability.ExplainPlanNodeDetails{
-												JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-											},
-											Children: []database_observability.ExplainPlanNode{
-												{
-													Operation: database_observability.ExplainPlanOutputOperationTableScan,
-													Details: database_observability.ExplainPlanNodeDetails{
-														Alias:         stringPtr("de"),
-														AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-														EstimatedRows: 33114,
-														EstimatedCost: floatPtr(33851.30),
-														Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-													},
-												},
-												{
-													Operation: database_observability.ExplainPlanOutputOperationTableScan,
-													Details: database_observability.ExplainPlanNodeDetails{
-														Alias:         stringPtr("t"),
-														AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-														EstimatedRows: 4920,
-														EstimatedCost: floatPtr(71886.48),
-														KeyUsed:       stringPtr("PRIMARY"),
-														Condition:     stringPtr("( `employees` . `t` . `to_date` = date ? )"),
-													},
-												},
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("d"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-												EstimatedRows: 4920,
-												EstimatedCost: floatPtr(77299.46),
-												KeyUsed:       stringPtr("PRIMARY"),
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "group_by_with_having",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("d"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-										EstimatedRows: 9,
-										EstimatedCost: floatPtr(1.90),
-										KeyUsed:       stringPtr("dept_name"),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("de"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-										EstimatedRows: 37253,
-										EstimatedCost: floatPtr(57154.49),
-										KeyUsed:       stringPtr("dept_no"),
-										Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "join_and_order",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("d"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-												EstimatedRows: 9,
-												EstimatedCost: floatPtr(1.90),
-												KeyUsed:       stringPtr("dept_name"),
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("de"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-												EstimatedRows: 37253,
-												EstimatedCost: floatPtr(57154.49),
-												KeyUsed:       stringPtr("dept_no"),
-												Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-											},
-										},
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 37253,
-										EstimatedCost: floatPtr(98133.43),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "multiple_aggregate_functions_with_having",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("t"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 44260,
-										EstimatedCost: floatPtr(45512.50),
-										Condition:     stringPtr("( `employees` . `t` . `to_date` = date ? )"),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("s"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-										EstimatedRows: 41630,
-										EstimatedCost: floatPtr(131795.52),
-										KeyUsed:       stringPtr("PRIMARY"),
-										Condition:     stringPtr("( `employees` . `s` . `to_date` = date ? )"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "multiple_joins_with_date_functions",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("d"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-										EstimatedRows: 9,
-										EstimatedCost: floatPtr(1.90),
-										KeyUsed:       stringPtr("dept_name"),
-										// JoinType is unknown, we could run the tree explain plan as well to determine this.
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("de"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-										EstimatedRows: 37253,
-										EstimatedCost: floatPtr(57154.49),
-										KeyUsed:       stringPtr("dept_no"),
-										Condition:     stringPtr("( `employees` . `de` . `to_date` = date ? )"),
-										// JoinType is unknown, we could run the tree explain plan as well to determine this.
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("e"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-								EstimatedRows: 37253,
-								EstimatedCost: floatPtr(98133.43),
-								KeyUsed:       stringPtr("PRIMARY"),
-								Condition:     stringPtr("( year ( `employees` . `e` . `hire_date` ) = ? )"),
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "nested_subqueries_with_exists",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("dm"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
-										EstimatedRows: 24,
-										EstimatedCost: floatPtr(3.51),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("s"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeRef),
-										EstimatedRows: 7,
-										EstimatedCost: floatPtr(50.19),
-										KeyUsed:       stringPtr("PRIMARY"),
-										Condition:     stringPtr("( ( `employees` . `s` . `to_date` = date ? ) and ( `employees` . `s` . `salary` > ? ) )"),
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("e"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-								EstimatedRows: 1,
-								EstimatedCost: floatPtr(58.57),
-								KeyUsed:       stringPtr("PRIMARY"),
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "self_join_with_date_comparison",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationHashJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-									Details: database_observability.ExplainPlanNodeDetails{
-										JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-									},
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("de1"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-												EstimatedRows: 33114,
-												EstimatedCost: floatPtr(33851.30),
-												Condition:     stringPtr("( `employees` . `de1` . `to_date` = date ? )"),
-											},
-										},
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("e1"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-												EstimatedRows: 33114,
-												EstimatedCost: floatPtr(70249.00),
-												KeyUsed:       stringPtr("PRIMARY"),
-											},
-										},
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("de2"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 137069612,
-										EstimatedCost: floatPtr(110342868.42),
-										Condition:     stringPtr("( ( `employees` . `de2` . `dept_no` = `employees` . `de1` . `dept_no` ) and ( `employees` . `de2` . `to_date` = date ? ) and ( `employees` . `de1` . `emp_no` < `employees` . `de2` . `emp_no` ) )"),
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("e2"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-								EstimatedRows: 13706961,
-								EstimatedCost: floatPtr(124053965.42),
-								KeyUsed:       stringPtr("PRIMARY"),
-								Condition:     stringPtr("( `employees` . `e2` . `hire_date` = `employees` . `e1` . `hire_date` )"),
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "string_functions_with_grouping",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("employees"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 299556,
-										EstimatedCost: floatPtr(30884.60),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "subquery_with_aggregate",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-					Details: database_observability.ExplainPlanNodeDetails{
-						JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-					},
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("s"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-								EstimatedRows: 94604,
-								EstimatedCost: floatPtr(289962.60),
-								Condition:     stringPtr("( ( `employees` . `s` . `to_date` = date ? ) and ( `employees` . `s` . `salary` > ( select ( avg ( `employees` . `salaries` . `salary` ) * ? ) from `employees` . `salaries` ) ) )"),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationAttachedSubquery,
-									Children: []database_observability.ExplainPlanNode{
-										{
-											Operation: database_observability.ExplainPlanOutputOperationTableScan,
-											Details: database_observability.ExplainPlanNodeDetails{
-												Alias:         stringPtr("salaries"),
-												AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-												EstimatedRows: 2838426,
-												EstimatedCost: floatPtr(289962.60),
-											},
-										},
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationTableScan,
-							Details: database_observability.ExplainPlanNodeDetails{
-								Alias:         stringPtr("e"),
-								AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-								EstimatedRows: 94604,
-								EstimatedCost: floatPtr(394027.81),
-								KeyUsed:       stringPtr("PRIMARY"),
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			dbVersion: "8.0.32",
-			digest:    "1234567890",
-			fname:     "union_with_different_conditions",
-			result: &database_observability.ExplainPlanOutput{
-				Metadata: database_observability.ExplainPlanMetadataInfo{
-					QueryIdentifier:  "1234567890",
-					GeneratedAt:      currentTime,
-					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
-				},
-				Plan: database_observability.ExplainPlanNode{
-					Operation: database_observability.ExplainPlanOutputOperationUnion,
-					Children: []database_observability.ExplainPlanNode{
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("dm"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 2,
-										EstimatedCost: floatPtr(3.40),
-										Condition:     stringPtr("( `employees` . `dm` . `to_date` = date ? )"),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 2,
-										EstimatedCost: floatPtr(6.04),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-						{
-							Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-							Details: database_observability.ExplainPlanNodeDetails{
-								JoinAlgorithm: explainPlanJoinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
-							},
-							Children: []database_observability.ExplainPlanNode{
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("t"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeAll),
-										EstimatedRows: 4426,
-										EstimatedCost: floatPtr(45512.50),
-										Condition:     stringPtr("( ( `employees` . `t` . `to_date` = date ? ) and ( `employees` . `t` . `title` = ? ) )"),
-									},
-								},
-								{
-									Operation: database_observability.ExplainPlanOutputOperationTableScan,
-									Details: database_observability.ExplainPlanNodeDetails{
-										Alias:         stringPtr("e"),
-										AccessType:    explainPlanAccessTypePtr(database_observability.ExplainPlanAccessTypeEqRef),
-										EstimatedRows: 4426,
-										EstimatedCost: floatPtr(50381.16),
-										KeyUsed:       stringPtr("PRIMARY"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		// TODO: Window functions yet. However, mysql workbench also does not visualize them. Maybe we can add support for them in the future.
+func TestMySQLAccessTypeOperation(t *testing.T) {
+	tests := map[string]database_observability.ExplainPlanOutputOperation{
+		"system":          "Single Row (system constant)",
+		"const":           "Single Row (constant)",
+		"eq_ref":          "Unique Key Lookup",
+		"ref":             "Non-Unique Key Lookup",
+		"fulltext":        "Fulltext Index Search",
+		"ref_or_null":     "Key Lookup + Fetch NULL Values",
+		"index_merge":     "Index Merge",
+		"unique_subquery": "Unique Key Lookup into table of subquery",
+		"index_subquery":  "Non-Unique Key Lookup into table of subquery",
+		"range":           "Index Range Scan",
+		"index":           "Full Index Scan",
+		"ALL":             "Full Table Scan",
+		"unexpected":      database_observability.ExplainPlanOutputOperationUnknown,
 	}
 
-	for _, test := range tests {
-		t.Run(test.fname, func(t *testing.T) {
-			archive, err := txtar.ParseFile(fmt.Sprintf("./testdata/explain_plan/%s.txtar", test.fname))
+	for accessType, expectedOperation := range tests {
+		t.Run(accessType, func(t *testing.T) {
+			tableJSON := fmt.Sprintf(`{"table_name":"t","access_type":%q}`, accessType)
+			node, err := parseTableNode(util.TestAlloyLogger(t).Slog(), []byte(tableJSON))
 			require.NoError(t, err)
-			require.Equal(t, 1, len(archive.Files))
-			jsonFile := archive.Files[0]
-			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
-			jsonData := jsonFile.Data
-			logger := util.TestAlloyLogger(t).Slog()
-			output, err := newExplainPlansOutput(logger, jsonData)
-			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
-			require.Equal(t, test.result.Plan, *output)
+			require.Equal(t, expectedOperation, node.Operation)
+			require.Equal(t, strings.ToLower(accessType), string(*node.Details.AccessType))
 		})
 	}
+}
+
+func TestMySQLNestedLoopNormalization(t *testing.T) {
+	output := loadMySQLExplainPlanFixture(t, "join_and_order")
+
+	require.Equal(t, database_observability.ExplainPlanOutputOperationOrderingOperation, output.Operation)
+	require.InDelta(t, 37253.59, *output.Details.EstimatedCost, 0.001)
+	require.Len(t, output.Children, 1)
+
+	e := output.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperation("Unique Key Lookup"), e.Operation)
+	require.Equal(t, "e", *e.Details.Alias)
+	require.Equal(t, database_observability.ExplainPlanJoinAlgorithmNestedLoop, *e.Details.JoinAlgorithm)
+	require.InDelta(t, 40978.94, *e.Details.EstimatedCost, 0.001)
+	require.Len(t, e.Children, 1)
+
+	de := e.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperation("Non-Unique Key Lookup"), de.Operation)
+	require.Equal(t, "de", *de.Details.Alias)
+	require.Equal(t, database_observability.ExplainPlanJoinAlgorithmNestedLoop, *de.Details.JoinAlgorithm)
+	require.InDelta(t, 57152.59, *de.Details.EstimatedCost, 0.001)
+	require.Len(t, de.Children, 1)
+
+	d := de.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperation("Full Index Scan"), d.Operation)
+	require.Equal(t, "d", *d.Details.Alias)
+	require.Nil(t, d.Details.JoinAlgorithm)
+	require.InDelta(t, 1.9, *d.Details.EstimatedCost, 0.001)
+	require.Empty(t, d.Children)
+
+	require.InDelta(t, 135387.02, sumExplainPlanCosts(output), 0.001)
+}
+
+func TestMySQLExplicitHashJoinIsPreserved(t *testing.T) {
+	output := loadMySQLExplainPlanFixture(t, "self_join_with_date_comparison")
+
+	require.Equal(t, 1, countExplainPlanOperations(output, database_observability.ExplainPlanOutputOperationHashJoin))
+	require.Zero(t, countExplainPlanOperations(output, database_observability.ExplainPlanOutputOperationNestedLoopJoin))
+}
+
+func TestMySQLIndependentlyCostedMaterializedSubquery(t *testing.T) {
+	output := loadMySQLExplainPlanFixture(t, "materialized_subquery_with_duplicates_removal")
+
+	require.Equal(t, database_observability.ExplainPlanOutputOperationOrderingOperation, output.Operation)
+	require.Nil(t, output.Details.EstimatedCost)
+	require.Len(t, output.Children, 1)
+
+	outerLookup := output.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperation("Non-Unique Key Lookup"), outerLookup.Operation)
+	require.Equal(t, "rl", *outerLookup.Details.Alias)
+	require.InDelta(t, 81784.59, *outerLookup.Details.EstimatedCost, 0.001)
+	require.Len(t, outerLookup.Children, 2)
+
+	outerScan := outerLookup.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperation("Index Range Scan"), outerScan.Operation)
+	require.InDelta(t, 14051.77, *outerScan.Details.EstimatedCost, 0.001)
+
+	materializedSubquery := outerLookup.Children[1]
+	require.Equal(t, database_observability.ExplainPlanOutputOperationMaterializedSubquery, materializedSubquery.Operation)
+	require.Len(t, materializedSubquery.Children, 1)
+
+	subqueryOrdering := materializedSubquery.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperationOrderingOperation, subqueryOrdering.Operation)
+	require.Nil(t, subqueryOrdering.Details.EstimatedCost)
+	require.Len(t, subqueryOrdering.Children, 1)
+
+	duplicatesRemoval := subqueryOrdering.Children[0]
+	require.Equal(t, database_observability.ExplainPlanOutputOperationDuplicatesRemoval, duplicatesRemoval.Operation)
+	require.InDelta(t, 2304463.25, *duplicatesRemoval.Details.EstimatedCost, 0.001)
+
+	require.InDelta(t, 2634900.96, sumExplainPlanCosts(output), 0.02)
+}
+
+func TestMySQLCostsReconcileWithQueryCost(t *testing.T) {
+	tests := map[string]float64{
+		"conditional_aggregation_with_case": 330440.60,
+		"correlated_subquery":               868450.61,
+		"derived_table_with_aggregates":     278020.69,
+		"join_and_order":                    135387.02,
+		"subquery_with_aggregate":           394027.81,
+	}
+
+	for fixture, queryCost := range tests {
+		t.Run(fixture, func(t *testing.T) {
+			output := loadMySQLExplainPlanFixture(t, fixture)
+			require.InDelta(t, queryCost, sumExplainPlanCosts(output), 0.02)
+		})
+	}
+}
+
+func TestMySQLExplainPlanFixtures(t *testing.T) {
+	fixtures := []string{
+		"complex_aggregation_with_case",
+		"complex_join_with_aggregate_subquery",
+		"complex_query_with_multiple_conditions_and_functions",
+		"complex_subquery_in_select_clause",
+		"conditional_aggregation_with_case",
+		"correlated_subquery",
+		"date_manipulation_with_conditions",
+		"derived_table_with_aggregates",
+		"distinct_with_multiple_joins",
+		"group_by_with_having",
+		"join_and_order",
+		"materialized_subquery_with_duplicates_removal",
+		"multiple_aggregate_functions_with_having",
+		"multiple_joins_with_date_functions",
+		"nested_subqueries_with_exists",
+		"self_join_with_date_comparison",
+		"string_functions_with_grouping",
+		"subquery_with_aggregate",
+		"union_with_different_conditions",
+	}
+
+	for _, fixture := range fixtures {
+		t.Run(fixture, func(t *testing.T) {
+			output := loadMySQLExplainPlanFixture(t, fixture)
+			actual, err := json.Marshal(output)
+			require.NoError(t, err)
+			expected, err := os.ReadFile(fmt.Sprintf("./testdata/explain_plan_expected/%s.json", fixture))
+			require.NoError(t, err)
+			require.JSONEq(t, string(expected), string(actual))
+			require.Zero(t, countExplainPlanOperations(output, database_observability.ExplainPlanOutputOperationNestedLoopJoin))
+		})
+	}
+}
+
+func TestMySQLTableCostValidation(t *testing.T) {
+	logger := util.TestAlloyLogger(t).Slog()
+
+	withoutCost, err := parseTableNode(logger, []byte(`{"table_name":"t","access_type":"ALL"}`))
+	require.NoError(t, err)
+	require.Nil(t, withoutCost.Details.EstimatedCost)
+
+	_, err = parseTableNode(logger, []byte(`{"table_name":"t","access_type":"ALL","cost_info":{"prefix_cost":"invalid"}}`))
+	require.ErrorContains(t, err, "failed to parse estimated cost as float")
+}
+
+func loadMySQLExplainPlanFixture(t *testing.T, name string) database_observability.ExplainPlanNode {
+	t.Helper()
+	archive, err := txtar.ParseFile(fmt.Sprintf("./testdata/explain_plan/%s.txtar", name))
+	require.NoError(t, err)
+	require.Len(t, archive.Files, 1)
+
+	output, err := newExplainPlansOutput(util.TestAlloyLogger(t).Slog(), archive.Files[0].Data)
+	require.NoError(t, err)
+	return *output
+}
+
+func countExplainPlanOperations(node database_observability.ExplainPlanNode, operation database_observability.ExplainPlanOutputOperation) int {
+	count := 0
+	if node.Operation == operation {
+		count++
+	}
+	for _, child := range node.Children {
+		count += countExplainPlanOperations(child, operation)
+	}
+	return count
+}
+
+func sumExplainPlanCosts(node database_observability.ExplainPlanNode) float64 {
+	var total float64
+	if node.Details.EstimatedCost != nil {
+		total = *node.Details.EstimatedCost
+	}
+	for _, child := range node.Children {
+		total += sumExplainPlanCosts(child)
+	}
+	return total
 }
 
 func TestExplainPlans(t *testing.T) {
@@ -1483,6 +514,7 @@ func TestExplainPlans(t *testing.T) {
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
+			DBVersion:       "8.0.32",
 			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
@@ -1556,6 +588,7 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1613,6 +646,7 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1705,6 +739,7 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1758,6 +793,7 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1818,6 +854,7 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
+		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -1866,6 +903,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			Logger:       util.TestAlloyLogger(t).Slog(),
 			EntryHandler: lokiClient,
+			DBVersion:    "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -1905,6 +943,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 			Logger:         util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio: 1,
 			EntryHandler:   lokiClient,
+			DBVersion:      "8.0.32",
 		})
 		require.NoError(t, err)
 
@@ -1997,6 +1036,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 			PerScrapeRatio:  1,
 			InitialLookback: base.Add(-time.Hour),
 			EntryHandler:    lokiClient,
+			DBVersion:       "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -2139,6 +1179,7 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
 		EntryHandler:   lokiClient,
+		DBVersion:      "8.0.32",
 	})
 	require.NoError(t, err)
 
