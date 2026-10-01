@@ -454,7 +454,8 @@ func TestUpdate_FailureRevertsToPreviousArgs(t *testing.T) {
 	failForSecret(fake, "typo")
 	err = c.Update(testArgs("typo", fastPoll))
 	require.EqualError(t, err, `fetching secret "typo": ResourceNotFoundException: not found`)
-	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+	// The component keeps the health of the previous arguments.
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 	require.Equal(t, "good", lastDataValue(rec))
 	require.Equal(t, "good", c.currentSecretID())
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
@@ -487,6 +488,9 @@ func TestUpdate_ClientErrorRevertsToPreviousArgs(t *testing.T) {
 	clientFails.Store(true)
 	require.EqualError(t, c.Update(testArgs("b", fastPoll)), "creating AWS client: no region")
 	require.Equal(t, "a", c.currentSecretID())
+	// The component keeps the health of the previous arguments.
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
 
 	// The previous client stays in use, so the polls work while client creation still fails.
 	start := good.callCount()
@@ -496,6 +500,48 @@ func TestUpdate_ClientErrorRevertsToPreviousArgs(t *testing.T) {
 	for _, id := range good.secretIDsSince(start) {
 		require.Equal(t, "a", id)
 	}
+}
+
+// A failed Update must not change the health of the component. The controller
+// shows the Update error in its own health. If the user restores the previous
+// arguments, the controller skips Update, so nothing would clear an error here.
+func TestUpdate_FailureKeepsComponentHealth(t *testing.T) {
+	fake := newFakeGetter(`{"v":"good"}`)
+	c, _, err := newTestComponent(t, testArgs("good", 0), fake)
+	require.NoError(t, err)
+	before := c.CurrentHealth()
+	require.Equal(t, component.HealthTypeHealthy, before.Health)
+
+	failForSecret(fake, "typo")
+	err = c.Update(testArgs("typo", 0))
+	require.EqualError(t, err, `fetching secret "typo": ResourceNotFoundException: not found`)
+
+	require.Equal(t, before, c.CurrentHealth())
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
+	require.Equal(t, err.Error(), c.DebugInfo().(debugInfo).LastError)
+	require.Equal(t, "good", c.currentSecretID())
+}
+
+// A failed Update must not change the health that a failed poll set.
+func TestUpdate_FailureKeepsUnhealthyPollHealth(t *testing.T) {
+	fake := newFakeGetter(`{"v":"good"}`)
+	c, _, err := newTestComponent(t, testArgs("good", time.Hour), fake)
+	require.NoError(t, err)
+
+	// Call poll directly, so that no background poll changes the health.
+	fake.returnError(errors.New("AccessDeniedException: denied"))
+	c.poll(context.Background())
+	before := c.CurrentHealth()
+	require.Equal(t, component.HealthTypeUnhealthy, before.Health)
+	require.Contains(t, before.Message, "AccessDeniedException: denied")
+	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
+
+	err = c.Update(testArgs("typo", time.Hour))
+	require.EqualError(t, err, `fetching secret "typo": AccessDeniedException: denied`)
+
+	require.Equal(t, before, c.CurrentHealth())
+	require.Equal(t, float64(2), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
+	require.Equal(t, err.Error(), c.DebugInfo().(debugInfo).LastError)
 }
 
 // blockPollUntilCtxDone makes calls for "old" block until their ctx is done.
@@ -834,6 +880,6 @@ func TestDebugInfo_NextPollClearedWhenPollingStops(t *testing.T) {
 func TestHealth_NeverSucceededHasPlainError(t *testing.T) {
 	// New returns the error of a first failed fetch, so call report directly.
 	c := &Component{metrics: newMetrics(prometheus.NewRegistry())}
-	c.report(Exports{}, secretMeta{}, errors.New("boom"))
+	c.report(Exports{}, secretMeta{}, errors.New("boom"), true)
 	require.Equal(t, "boom", c.CurrentHealth().Message)
 }

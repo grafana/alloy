@@ -188,7 +188,8 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Unlock()
 
 	if current {
-		c.report(exports, meta, err)
+		// A failed Update keeps the health of the previous arguments.
+		c.report(exports, meta, err, err == nil)
 	}
 
 	select {
@@ -287,7 +288,7 @@ func (c *Component) poll(runCtx context.Context) bool {
 	} else if wasFailing {
 		c.opts.Logger.Info("secret fetch recovered", "secret_id", args.SecretID)
 	}
-	c.report(exports, meta, err)
+	c.report(exports, meta, err, true)
 	return wasFailing != (err != nil)
 }
 
@@ -311,7 +312,10 @@ func (c *Component) fetch(ctx context.Context, client secretsGetter, args Argume
 
 // report records the result of a fetch that is not stale. The caller must hold fetchMut.
 // The controller ignores exports that did not change, so report always exports.
-func (c *Component) report(exports Exports, meta secretMeta, err error) {
+// If setHealth is false, report does not change the health of the component.
+// A failed Update uses this. The controller shows that error in its own health,
+// and it does not call Update again if the user restores the previous arguments.
+func (c *Component) report(exports Exports, meta secretMeta, err error, setHealth bool) {
 	now := time.Now().UTC()
 	h := component.Health{
 		Health:     component.HealthTypeHealthy,
@@ -339,7 +343,9 @@ func (c *Component) report(exports Exports, meta secretMeta, err error) {
 	} else {
 		c.meta, c.lastAccessed, c.lastError = meta, now, ""
 	}
-	c.health = h
+	if setHealth {
+		c.health = h
+	}
 }
 
 func getExports(ctx context.Context, client secretsGetter, args Arguments) (Exports, secretMeta, error) {
