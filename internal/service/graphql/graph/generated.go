@@ -188,6 +188,14 @@ type ComplexityRoot struct {
 		Services          func(childComplexity int) int
 	}
 
+	ScrapeTargetRuntime struct {
+		Health       func(childComplexity int) int
+		LastAttempt  func(childComplexity int) int
+		LastDuration func(childComplexity int) int
+		LastError    func(childComplexity int) int
+		URL          func(childComplexity int) int
+	}
+
 	ServiceConsumer struct {
 		ID   func(childComplexity int) int
 		Type func(childComplexity int) int
@@ -198,6 +206,7 @@ type ComplexityRoot struct {
 		Labels        func(childComplexity int) int
 		NonMetaHash   func(childComplexity int) int
 		NonMetaLabels func(childComplexity int) int
+		Scrape        func(childComplexity int) int
 	}
 }
 
@@ -866,6 +875,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Services(childComplexity), true
 
+	case "ScrapeTargetRuntime.health":
+		if e.ComplexityRoot.ScrapeTargetRuntime.Health == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ScrapeTargetRuntime.Health(childComplexity), true
+	case "ScrapeTargetRuntime.lastAttempt":
+		if e.ComplexityRoot.ScrapeTargetRuntime.LastAttempt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ScrapeTargetRuntime.LastAttempt(childComplexity), true
+	case "ScrapeTargetRuntime.lastDuration":
+		if e.ComplexityRoot.ScrapeTargetRuntime.LastDuration == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ScrapeTargetRuntime.LastDuration(childComplexity), true
+	case "ScrapeTargetRuntime.lastError":
+		if e.ComplexityRoot.ScrapeTargetRuntime.LastError == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ScrapeTargetRuntime.LastError(childComplexity), true
+	case "ScrapeTargetRuntime.url":
+		if e.ComplexityRoot.ScrapeTargetRuntime.URL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ScrapeTargetRuntime.URL(childComplexity), true
+
 	case "ServiceConsumer.id":
 		if e.ComplexityRoot.ServiceConsumer.ID == nil {
 			break
@@ -903,6 +943,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Target.NonMetaLabels(childComplexity), true
+	case "Target.scrape":
+		if e.ComplexityRoot.Target.Scrape == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Target.Scrape(childComplexity), true
 
 	}
 	return 0, false
@@ -1219,6 +1265,22 @@ func (ec *executionContext) childFields_Module(ctx context.Context, field graphq
 	return nil, fmt.Errorf("no field named %q was found under type Module", field.Name)
 }
 
+func (ec *executionContext) childFields_ScrapeTargetRuntime(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "url":
+		return ec.fieldContext_ScrapeTargetRuntime_url(ctx, field)
+	case "health":
+		return ec.fieldContext_ScrapeTargetRuntime_health(ctx, field)
+	case "lastAttempt":
+		return ec.fieldContext_ScrapeTargetRuntime_lastAttempt(ctx, field)
+	case "lastDuration":
+		return ec.fieldContext_ScrapeTargetRuntime_lastDuration(ctx, field)
+	case "lastError":
+		return ec.fieldContext_ScrapeTargetRuntime_lastError(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ScrapeTargetRuntime", field.Name)
+}
+
 func (ec *executionContext) childFields_ServiceConsumer(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "type":
@@ -1239,6 +1301,8 @@ func (ec *executionContext) childFields_Target(ctx context.Context, field graphq
 		return ec.fieldContext_Target_hash(ctx, field)
 	case "nonMetaHash":
 		return ec.fieldContext_Target_nonMetaHash(ctx, field)
+	case "scrape":
+		return ec.fieldContext_Target_scrape(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Target", field.Name)
 }
@@ -4102,6 +4166,121 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _ScrapeTargetRuntime_url(ctx context.Context, field graphql.CollectedField, obj *model.ScrapeTargetRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ScrapeTargetRuntime_url(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.URL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ScrapeTargetRuntime_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ScrapeTargetRuntime", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ScrapeTargetRuntime_health(ctx context.Context, field graphql.CollectedField, obj *model.ScrapeTargetRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ScrapeTargetRuntime_health(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Health, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.ScrapeTargetHealth) graphql.Marshaler {
+			return ec.marshalNScrapeTargetHealth2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐScrapeTargetHealth(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ScrapeTargetRuntime_health(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ScrapeTargetRuntime", field, false, false, errors.New("field of type ScrapeTargetHealth does not have child fields"))
+}
+
+func (ec *executionContext) _ScrapeTargetRuntime_lastAttempt(ctx context.Context, field graphql.CollectedField, obj *model.ScrapeTargetRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ScrapeTargetRuntime_lastAttempt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastAttempt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ScrapeTargetRuntime_lastAttempt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ScrapeTargetRuntime", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _ScrapeTargetRuntime_lastDuration(ctx context.Context, field graphql.CollectedField, obj *model.ScrapeTargetRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ScrapeTargetRuntime_lastDuration(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastDuration, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.Duration) graphql.Marshaler {
+			return ec.marshalODuration2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐDuration(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ScrapeTargetRuntime_lastDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ScrapeTargetRuntime", field, false, false, errors.New("field of type Duration does not have child fields"))
+}
+
+func (ec *executionContext) _ScrapeTargetRuntime_lastError(ctx context.Context, field graphql.CollectedField, obj *model.ScrapeTargetRuntime) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ScrapeTargetRuntime_lastError(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastError, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ScrapeTargetRuntime_lastError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ScrapeTargetRuntime", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _ServiceConsumer_type(ctx context.Context, field graphql.CollectedField, obj *model.ServiceConsumer) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -4256,6 +4435,38 @@ func (ec *executionContext) _Target_nonMetaHash(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Target_nonMetaHash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Target", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Target_scrape(ctx context.Context, field graphql.CollectedField, obj *model.Target) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Target_scrape(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Scrape, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.ScrapeTargetRuntime) graphql.Marshaler {
+			return ec.marshalOScrapeTargetRuntime2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐScrapeTargetRuntime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Target_scrape(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Target",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ScrapeTargetRuntime(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -7116,6 +7327,65 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
+var scrapeTargetRuntimeImplementors = []string{"ScrapeTargetRuntime"}
+
+func (ec *executionContext) _ScrapeTargetRuntime(ctx context.Context, sel ast.SelectionSet, obj *model.ScrapeTargetRuntime) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, scrapeTargetRuntimeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ScrapeTargetRuntime")
+		case "url":
+			out.Values[i] = ec._ScrapeTargetRuntime_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "health":
+			out.Values[i] = ec._ScrapeTargetRuntime_health(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastAttempt":
+			out.Values[i] = ec._ScrapeTargetRuntime_lastAttempt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lastDuration":
+			out.Values[i] = ec._ScrapeTargetRuntime_lastDuration(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lastError":
+			out.Values[i] = ec._ScrapeTargetRuntime_lastError(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var serviceConsumerImplementors = []string{"ServiceConsumer"}
 
 func (ec *executionContext) _ServiceConsumer(ctx context.Context, sel ast.SelectionSet, obj *model.ServiceConsumer) graphql.Marshaler {
@@ -7189,6 +7459,11 @@ func (ec *executionContext) _Target(ctx context.Context, sel ast.SelectionSet, o
 		case "nonMetaHash":
 			out.Values[i] = ec._Target_nonMetaHash(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scrape":
+			out.Values[i] = ec._Target_scrape(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -7880,6 +8155,16 @@ func (ec *executionContext) marshalNModule2ᚕgithubᚗcomᚋgrafanaᚋalloyᚋi
 	return ret
 }
 
+func (ec *executionContext) unmarshalNScrapeTargetHealth2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐScrapeTargetHealth(ctx context.Context, v any) (model.ScrapeTargetHealth, error) {
+	var res model.ScrapeTargetHealth
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNScrapeTargetHealth2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐScrapeTargetHealth(ctx context.Context, sel ast.SelectionSet, v model.ScrapeTargetHealth) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNServiceConsumer2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐServiceConsumer(ctx context.Context, sel ast.SelectionSet, v model.ServiceConsumer) graphql.Marshaler {
 	return ec._ServiceConsumer(ctx, sel, &v)
 }
@@ -8181,6 +8466,22 @@ func (ec *executionContext) marshalOComponentDefinition2ᚖgithubᚗcomᚋgrafan
 	return ec._ComponentDefinition(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalODuration2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐDuration(ctx context.Context, v any) (*model.Duration, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.Duration)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODuration2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐDuration(ctx context.Context, sel ast.SelectionSet, v *model.Duration) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOInt2ᚖint32(ctx context.Context, v any) (*int32, error) {
 	if v == nil {
 		return nil, nil
@@ -8206,6 +8507,13 @@ func (ec *executionContext) marshalOModule2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋi
 	return ec._Module(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOScrapeTargetRuntime2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐScrapeTargetRuntime(ctx context.Context, sel ast.SelectionSet, v *model.ScrapeTargetRuntime) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ScrapeTargetRuntime(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {
 	if v == nil {
 		return nil, nil
@@ -8221,6 +8529,24 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = sel
 	_ = ctx
 	res := graphql.MarshalString(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOTime2ᚖtimeᚐTime(ctx context.Context, v any) (*time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalTime(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalTime(*v)
 	return res
 }
 

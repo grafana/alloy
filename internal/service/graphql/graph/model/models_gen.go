@@ -264,6 +264,20 @@ type LabelPair struct {
 type Query struct {
 }
 
+// Runtime state owned by the Prometheus scrape manager for one target.
+type ScrapeTargetRuntime struct {
+	// Redacted URL used to scrape the target.
+	URL string `json:"url"`
+	// Result of the latest scrape attempt.
+	Health ScrapeTargetHealth `json:"health"`
+	// Time when the latest scrape attempt started, or null before the first attempt.
+	LastAttempt *time.Time `json:"lastAttempt,omitempty"`
+	// Duration of the latest scrape attempt, or null before the first attempt.
+	LastDuration *Duration `json:"lastDuration,omitempty"`
+	// Bounded, redacted latest scrape error, or null when the latest scrape succeeded or has not run.
+	LastError *string `json:"lastError,omitempty"`
+}
+
 // A runtime object that consumes an Alloy service.
 type ServiceConsumer struct {
 	// Kind of runtime consumer.
@@ -282,6 +296,8 @@ type Target struct {
 	Hash string `json:"hash"`
 	// Stable hash of the label set excluding internal metadata labels.
 	NonMetaHash string `json:"nonMetaHash"`
+	// Prometheus scrape runtime state, when this is an active scrape target.
+	Scrape *ScrapeTargetRuntime `json:"scrape,omitempty"`
 }
 
 // How a component schema field is represented in Alloy configuration.
@@ -346,6 +362,67 @@ func (e *ComponentSchemaFieldKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e ComponentSchemaFieldKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Health reported by the Prometheus scrape manager.
+type ScrapeTargetHealth string
+
+const (
+	// The target has not completed a scrape attempt.
+	ScrapeTargetHealthUnknown ScrapeTargetHealth = "UNKNOWN"
+	// The latest scrape attempt succeeded.
+	ScrapeTargetHealthUp ScrapeTargetHealth = "UP"
+	// The latest scrape attempt failed.
+	ScrapeTargetHealthDown ScrapeTargetHealth = "DOWN"
+)
+
+var AllScrapeTargetHealth = []ScrapeTargetHealth{
+	ScrapeTargetHealthUnknown,
+	ScrapeTargetHealthUp,
+	ScrapeTargetHealthDown,
+}
+
+func (e ScrapeTargetHealth) IsValid() bool {
+	switch e {
+	case ScrapeTargetHealthUnknown, ScrapeTargetHealthUp, ScrapeTargetHealthDown:
+		return true
+	}
+	return false
+}
+
+func (e ScrapeTargetHealth) String() string {
+	return string(e)
+}
+
+func (e *ScrapeTargetHealth) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ScrapeTargetHealth(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ScrapeTargetHealth", str)
+	}
+	return nil
+}
+
+func (e ScrapeTargetHealth) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ScrapeTargetHealth) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ScrapeTargetHealth) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

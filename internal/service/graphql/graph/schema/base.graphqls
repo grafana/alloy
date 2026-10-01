@@ -8,3 +8,8 @@ type Query
 A timestamp.
 """
 scalar Time
+
+"""
+A duration formatted as a Go duration string, such as "250ms" or "1.5s".
+"""
+scalar Duration

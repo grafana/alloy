@@ -245,6 +245,43 @@ type Target {
 
   "Stable hash of the label set excluding internal metadata labels."
   nonMetaHash: String!
+
+  "Prometheus scrape runtime state, when this is an active scrape target."
+  scrape: ScrapeTargetRuntime
+}
+
+"""
+Runtime state owned by the Prometheus scrape manager for one target.
+"""
+type ScrapeTargetRuntime {
+  "Redacted URL used to scrape the target."
+  url: String!
+
+  "Result of the latest scrape attempt."
+  health: ScrapeTargetHealth!
+
+  "Time when the latest scrape attempt started, or null before the first attempt."
+  lastAttempt: Time
+
+  "Duration of the latest scrape attempt, or null before the first attempt."
+  lastDuration: Duration
+
+  "Bounded, redacted latest scrape error, or null when the latest scrape succeeded or has not run."
+  lastError: String
+}
+
+"""
+Health reported by the Prometheus scrape manager.
+"""
+enum ScrapeTargetHealth {
+  "The target has not completed a scrape attempt."
+  UNKNOWN
+
+  "The latest scrape attempt succeeded."
+  UP
+
+  "The latest scrape attempt failed."
+  DOWN
 }
 
 """
