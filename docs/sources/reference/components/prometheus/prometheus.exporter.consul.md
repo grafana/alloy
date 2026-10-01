@@ -41,6 +41,21 @@ You can use the following arguments with `prometheus.exporter.consul`:
 | `server_name`              | `string`   | Overrides the hostname used to verify the TLS certificate.                                            |                           | no       |
 | `timeout`                  | `duration` | Timeout on HTTP requests to Consul.                                                                   | `"500ms"`                 | no       |
 
+The `server` argument accepts an address with or without a scheme.
+If you omit the scheme, the component adds `http://`.
+The address must include a host, and the scheme must be `http` or `https`.
+
+Set `ca_file`, `cert_file`, and `key_file` to connect to Consul over HTTPS with TLS client authentication.
+Use `server_name` when the hostname you connect to doesn't match the name in the server's certificate.
+Set `insecure_skip_verify` to `true` to disable certificate verification in development.
+
+The `allow_stale` and `require_consistent` arguments select the read consistency mode.
+The component sends both settings to Consul without validating them, so set `allow_stale` to `false` when you set `require_consistent` to `true`.
+
+The component collects KV metrics only when you set `kv_prefix`.
+The `kv_filter` argument then selects which keys under that prefix to export.
+The component exports only the values it can parse as numbers.
+
 ## Blocks
 
 The `prometheus.exporter.consul` component doesn't support any blocks. You can configure this component with arguments.
