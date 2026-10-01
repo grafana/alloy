@@ -376,6 +376,99 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 			},
 		},
+		{
+			// Guards backwards compatibility: a configuration without a metrics
+			// block must leave the upstream Metrics config at its zero value, so
+			// existing logs-only users gain no CloudWatch GetMetricData calls.
+			testName: "no metrics block leaves metrics at zero value",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					poll_interval = "1m"
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs: awscloudwatchreceiver.LogsConfig{
+					PollInterval:        time.Minute,
+					MaxEventsPerRequest: 1000,
+					Groups: awscloudwatchreceiver.GroupConfig{
+						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+							Limit:   50,
+							Streams: awscloudwatchreceiver.StreamConfig{},
+						},
+						NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+					},
+				},
+			},
+		},
+		{
+			// Guards against a nil dereference in AutodiscoverConfig.Convert.
+			// SetToDefault populates the limit when the block is present, but an
+			// explicit `limit = null` leaves the pointer nil, which used to panic
+			// while loading the configuration.
+			testName: "autodiscover with null limit falls back to default",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					groups {
+						autodiscover {
+							prefix = "app-"
+							limit = null
+						}
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs: awscloudwatchreceiver.LogsConfig{
+					PollInterval:        time.Minute,
+					MaxEventsPerRequest: 1000,
+					Groups: awscloudwatchreceiver.GroupConfig{
+						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+							Prefix:  "app-",
+							Limit:   50,
+							Streams: awscloudwatchreceiver.StreamConfig{},
+						},
+						NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+					},
+				},
+			},
+		},
+		{
+			// Guards the pointer semantics of include_linked_accounts. Upstream
+			// only forwards the field to AWS when it is non-nil, so omitting the
+			// attribute must not send an explicit false.
+			testName: "autodiscover omits include_linked_accounts and account_identifiers by default",
+			cfg: `
+				region = "us-west-2"
+				logs {
+					groups {
+						autodiscover {
+							prefix = "app-"
+						}
+					}
+				}
+				output {}
+			`,
+			expected: awscloudwatchreceiver.Config{
+				Region: "us-west-2",
+				Logs: awscloudwatchreceiver.LogsConfig{
+					PollInterval:        time.Minute,
+					MaxEventsPerRequest: 1000,
+					Groups: awscloudwatchreceiver.GroupConfig{
+						AutodiscoverConfig: &awscloudwatchreceiver.AutodiscoverConfig{
+							Prefix:  "app-",
+							Limit:   50,
+							Streams: awscloudwatchreceiver.StreamConfig{},
+						},
+						NamedConfigs: map[string]awscloudwatchreceiver.StreamConfig{},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -392,88 +485,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			require.Equal(t, tc.expected, *actual)
 		})
 	}
-}
-
-// TestArguments_NoMetricsBlock guards backwards compatibility: a configuration
-// without a metrics block must leave the upstream Metrics config at its zero
-// value, so existing logs-only users gain no CloudWatch GetMetricData calls.
-func TestArguments_NoMetricsBlock(t *testing.T) {
-	cfg := `
-		region = "us-west-2"
-		logs {
-			poll_interval = "1m"
-		}
-		output {}
-	`
-
-	var args awscloudwatch.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-	require.Nil(t, args.Metrics)
-
-	actual, err := args.Convert()
-	require.NoError(t, err)
-
-	require.Equal(t,
-		awscloudwatchreceiver.MetricsConfig{},
-		actual.(*awscloudwatchreceiver.Config).Metrics,
-	)
-}
-
-// TestArguments_AutodiscoverNullLimit guards against a nil dereference in
-// AutodiscoverConfig.Convert. SetToDefault populates the limit when the block is
-// present, but an explicit `limit = null` leaves the pointer nil, which used to
-// panic while loading the configuration.
-func TestArguments_AutodiscoverNullLimit(t *testing.T) {
-	cfg := `
-		region = "us-west-2"
-		logs {
-			groups {
-				autodiscover {
-					prefix = "app-"
-					limit = null
-				}
-			}
-		}
-		output {}
-	`
-
-	var args awscloudwatch.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	actual, err := args.Convert()
-	require.NoError(t, err)
-
-	autodiscover := actual.(*awscloudwatchreceiver.Config).Logs.Groups.AutodiscoverConfig
-	require.NotNil(t, autodiscover)
-	require.Equal(t, 50, autodiscover.Limit)
-}
-
-// TestArguments_IncludeLinkedAccountsUnset guards the pointer semantics of
-// include_linked_accounts. Upstream only forwards the field to AWS when it is
-// non-nil, so omitting the attribute must not send an explicit false.
-func TestArguments_IncludeLinkedAccountsUnset(t *testing.T) {
-	cfg := `
-		region = "us-west-2"
-		logs {
-			groups {
-				autodiscover {
-					prefix = "app-"
-				}
-			}
-		}
-		output {}
-	`
-
-	var args awscloudwatch.Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-	actual, err := args.Convert()
-	require.NoError(t, err)
-
-	autodiscover := actual.(*awscloudwatchreceiver.Config).Logs.Groups.AutodiscoverConfig
-	require.NotNil(t, autodiscover)
-	require.Nil(t, autodiscover.IncludeLinkedAccounts)
-	require.Nil(t, autodiscover.AccountIdentifiers)
 }
 
 func TestArguments_Validate(t *testing.T) {

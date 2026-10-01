@@ -8,18 +8,7 @@ import (
 	"go.opentelemetry.io/collector/config/configoptional"
 )
 
-var (
-	defaultLogGroupLimit = 50
-
-	// Defaults for the metrics block. These mirror upstream's createDefaultConfig
-	// rather than otelcol.DefaultScraperControllerArguments, whose generic
-	// collection_interval of 1m would poll CloudWatch five times as often as the
-	// equivalent OpenTelemetry Collector configuration.
-	defaultMetricsCollectionInterval = 5 * time.Minute
-	defaultMetricsPeriod             = 5 * time.Minute
-	defaultMetricsDelay              = 10 * time.Minute
-	defaultMetricsDiscoveryLimit     = 100
-)
+var defaultLogGroupLimit = 50
 
 // LogsConfig is the configuration for the logs portion of this receiver
 type LogsConfig struct {
@@ -83,11 +72,15 @@ func (args *MetricsConfig) SetToDefault() {
 	}
 
 	*args = MetricsConfig{
-		Period: defaultMetricsPeriod,
-		Delay:  defaultMetricsDelay,
+		Period: 5 * time.Minute,
+		Delay:  10 * time.Minute,
 	}
 	args.Controller.SetToDefault()
-	args.Controller.CollectionInterval = defaultMetricsCollectionInterval
+	// Mirror upstream's createDefaultConfig rather than
+	// otelcol.DefaultScraperControllerArguments, whose generic collection_interval
+	// of 1m would poll CloudWatch five times as often as the equivalent
+	// OpenTelemetry Collector configuration.
+	args.Controller.CollectionInterval = 5 * time.Minute
 }
 
 // MetricQuery defines a single CloudWatch metric to scrape via GetMetricData.
@@ -133,7 +126,7 @@ func (args *MetricsDiscoveryConfig) SetToDefault() {
 	}
 
 	*args = MetricsDiscoveryConfig{
-		Limit: defaultMetricsDiscoveryLimit,
+		Limit: 100,
 	}
 }
 

@@ -184,25 +184,6 @@ The `metrics` block supports the following blocks:
 
 The `query` and `discovery` blocks are mutually exclusive.
 
-#### `metrics` > `query`
-
-The `query` block configures a single CloudWatch metric to collect.
-You can specify multiple `query` blocks.
-
-The following arguments are supported:
-
-| Name          | Type                | Description                                        | Default | Required |
-|---------------|---------------------|----------------------------------------------------|---------|----------|
-| `metric_name` | `string`            | Name of the CloudWatch metric.                     |         | yes      |
-| `namespace`   | `string`            | CloudWatch namespace of the metric.                |         | yes      |
-| `dimensions`  | `map(string)`       | Dimensions used to narrow the metric.              |         | no       |
-| `stats`       | `[]string`          | CloudWatch statistics to collect.                  |         | no       |
-
-Valid `stats` values include `Sum`, `Average`, `Minimum`, `Maximum`, `SampleCount`, and percentiles such as `p95` and `p99`.
-
-If you don't set `stats`, {{< param "PRODUCT_NAME" >}} collects `Sum`, `SampleCount`, `Minimum`, and `Maximum`, and combines them into a single OpenTelemetry Summary metric.
-If you set `stats`, {{< param "PRODUCT_NAME" >}} emits each statistic as a separate Gauge data point with a `stat` attribute identifying the statistic.
-
 #### `metrics` > `discovery`
 
 The `discovery` block configures automatic discovery of metrics with the `ListMetrics` API.
@@ -232,6 +213,25 @@ The following arguments are supported:
 |---------------|----------|--------------------------------------|---------|----------|
 | `metric_name` | `string` | Metric name to filter by.            |         | no       |
 | `namespace`   | `string` | CloudWatch namespace to filter by.   |         | no       |
+
+#### `metrics` > `query`
+
+The `query` block configures a single CloudWatch metric to collect.
+You can specify multiple `query` blocks.
+
+The following arguments are supported:
+
+| Name          | Type                | Description                                        | Default | Required |
+|---------------|---------------------|----------------------------------------------------|---------|----------|
+| `metric_name` | `string`            | Name of the CloudWatch metric.                     |         | yes      |
+| `namespace`   | `string`            | CloudWatch namespace of the metric.                |         | yes      |
+| `dimensions`  | `map(string)`       | Dimensions used to narrow the metric.              |         | no       |
+| `stats`       | `[]string`          | CloudWatch statistics to collect.                  |         | no       |
+
+Valid `stats` values include `Sum`, `Average`, `Minimum`, `Maximum`, `SampleCount`, and percentiles such as `p95` and `p99`.
+
+If you don't set `stats`, {{< param "PRODUCT_NAME" >}} collects `Sum`, `SampleCount`, `Minimum`, and `Maximum`, and combines them into a single OpenTelemetry Summary metric.
+If you set `stats`, {{< param "PRODUCT_NAME" >}} emits each statistic as a separate Gauge data point with a `stat` attribute identifying the statistic.
 
 ## Exported fields
 
