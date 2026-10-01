@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +21,35 @@ import (
 )
 
 const maxTunnelResponseBodySize = 5 * 1024 * 1024
+
+type tunnelRouteGuard struct {
+	path    string
+	methods []tunnelv1.HTTPRequestMethod
+	exact   bool
+}
+
+var allowedTunnelRoutes = []tunnelRouteGuard{
+	{
+		path:    "/graphql",
+		methods: []tunnelv1.HTTPRequestMethod{tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_POST},
+		exact:   true,
+	},
+	{
+		path:    "/metrics",
+		methods: []tunnelv1.HTTPRequestMethod{tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_GET},
+		exact:   true,
+	},
+	{
+		path:    "/debug/pprof",
+		methods: []tunnelv1.HTTPRequestMethod{tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_GET},
+		exact:   false,
+	},
+	{
+		path:    "/-/support",
+		methods: []tunnelv1.HTTPRequestMethod{tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_GET},
+		exact:   true,
+	},
+}
 
 type tunnelClientFactory func(Arguments) (tunnelv1connect.TunnelServiceClient, error)
 
@@ -271,11 +302,11 @@ func handleTunnelRequest(ctx context.Context, remote *tunnelv1.RemoteRequest, ht
 		result.Response = tunnelHTTPResponse(http.StatusBadRequest, requestURI, "malformed request URI")
 		return result
 	}
-	if parsedURI.IsAbs() || parsedURI.Host != "" || parsedURI.Path != "/graphql" {
+	if parsedURI.IsAbs() || parsedURI.Host != "" || !isTunnelRoutePath(parsedURI.Path) {
 		result.Response = tunnelHTTPResponse(http.StatusNotFound, requestURI, http.StatusText(http.StatusNotFound))
 		return result
 	}
-	if request.GetMethod() != tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_POST {
+	if !isAllowedTunnelRoute(parsedURI.Path, request.GetMethod()) {
 		result.Response = tunnelHTTPResponse(http.StatusMethodNotAllowed, requestURI, http.StatusText(http.StatusMethodNotAllowed))
 		return result
 	}
@@ -286,7 +317,7 @@ func handleTunnelRequest(ctx context.Context, remote *tunnelv1.RemoteRequest, ht
 
 	localRequest, err := http.NewRequestWithContext(
 		ctx,
-		http.MethodPost,
+		httpMethodForTunnelRequest(request.GetMethod()),
 		httpServerURL+requestURI,
 		bytes.NewReader(request.GetBody()),
 	)
@@ -314,6 +345,41 @@ func handleTunnelRequest(ctx context.Context, remote *tunnelv1.RemoteRequest, ht
 		Body:       body,
 	}
 	return result
+}
+
+func isTunnelRoutePath(path string) bool {
+	for _, route := range allowedTunnelRoutes {
+		if route.matchesPath(path) {
+			return true
+		}
+	}
+	return false
+}
+
+func isAllowedTunnelRoute(path string, method tunnelv1.HTTPRequestMethod) bool {
+	for _, route := range allowedTunnelRoutes {
+		if route.matchesPath(path) {
+			if slices.Contains(route.methods, method) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (r tunnelRouteGuard) matchesPath(path string) bool {
+	return path == r.path || !r.exact && strings.HasPrefix(path, r.path+"/")
+}
+
+func httpMethodForTunnelRequest(method tunnelv1.HTTPRequestMethod) string {
+	switch method {
+	case tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_GET:
+		return http.MethodGet
+	case tunnelv1.HTTPRequestMethod_HTTP_REQUEST_METHOD_POST:
+		return http.MethodPost
+	default:
+		return ""
+	}
 }
 
 func tunnelHTTPResponse(status int, requestURI, body string) *tunnelv1.HTTPResponse {
