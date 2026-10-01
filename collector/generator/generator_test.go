@@ -185,6 +185,62 @@ alloy:
 	require.Contains(t, readFile(t, dir, "main_windows.go"), "//go:build windows")
 }
 
+func TestGenerate_WithoutOTelEngine(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+	}{
+		{
+			name: "alloy section without OTel components",
+			config: `
+alloy:
+  components: [loki.source.file, loki.process, loki.write]
+  converters: false
+`,
+		},
+		{
+			name: "empty alloy section",
+			config: `
+alloy:
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := runGenerate(t, tt.config)
+
+			require.Equal(t, `// GENERATED CODE: DO NOT EDIT
+
+// Program alloy is Grafana Alloy built without the OTel Engine.
+package main
+
+import (
+	"os"
+
+	"github.com/grafana/alloy/flowcmd"
+)
+
+func main() {
+	if err := flowcmd.RootCommand().Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+`, readFile(t, dir, "main.go"))
+
+			// Files which would import the OTel Engine are emptied.
+			for _, name := range []string{"components.go", "main_alloy.go", "main_others.go", "main_windows.go"} {
+				require.Equal(t, `// GENERATED CODE: DO NOT EDIT
+
+// Alloy is built without the OTel Engine, so this file is intentionally empty.
+
+package main
+`, readFile(t, dir, name), name)
+			}
+		})
+	}
+}
+
 func TestGenerate_Errors(t *testing.T) {
 	tests := []struct {
 		name      string
