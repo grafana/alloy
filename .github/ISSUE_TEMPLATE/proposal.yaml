@@ -200,6 +200,7 @@ body:
       - pyroscope.relabel
       - pyroscope.scrape
       - pyroscope.write
+      - remote.aws.secrets_manager
       - remote.http
       - remote.kubernetes.configmap
       - remote.kubernetes.secret
