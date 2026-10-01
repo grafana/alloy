@@ -46,7 +46,7 @@ If you omit the scheme, the component adds `http://`.
 The address must include a host, and the scheme must be `http` or `https`.
 
 Set `ca_file` to validate the Consul server's certificate.
-The component falls back to the system certificate bundle when you don't set it.
+The component falls back to the system certificate bundle when you don't set `ca_file`.
 Use `server_name` when the hostname you connect to doesn't match the name in the server's certificate.
 
 Set `cert_file` and `key_file` together to authenticate the component to Consul with a client certificate.
@@ -54,6 +54,9 @@ Set `insecure_skip_verify` to `true` to disable TLS host verification in develop
 
 The `allow_stale` and `require_consistent` arguments select the read consistency mode.
 The component sends both settings to Consul without validating them, so set `allow_stale` to `false` when you set `require_consistent` to `true`.
+
+Consul access control list tokens come from the environment rather than from an argument.
+Set `CONSUL_HTTP_TOKEN` or `CONSUL_HTTP_TOKEN_FILE` before you start {{< param "PRODUCT_NAME" >}} to authenticate against a cluster that uses access control lists.
 
 The component collects KV metrics only when you set `kv_prefix`.
 The `kv_filter` argument then selects which keys under that prefix to export.
@@ -80,7 +83,11 @@ In those cases, exported fields retain their last healthy values.
 
 `prometheus.exporter.consul` doesn't expose any component-specific debug metrics.
 
-## Example
+## Examples
+
+The following examples demonstrate metric collection over HTTP and over TLS.
+
+### Collect metrics from Consul
 
 The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.consul`:
 
@@ -109,7 +116,43 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write`-compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Collect metrics over TLS
+
+The following example validates the Consul server's certificate with a private certificate authority and authenticates with a client certificate:
+
+```alloy
+prometheus.exporter.consul "example" {
+  server    = "https://consul.example.com:8500"
+  ca_file   = "/etc/alloy/consul-ca.pem"
+  cert_file = "/etc/alloy/consul-client.pem"
+  key_file  = "/etc/alloy/consul-client-key.pem"
+}
+
+// Configure a prometheus.scrape component to collect Consul metrics.
+prometheus.scrape "demo" {
+  targets    = prometheus.exporter.consul.example.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
+    }
+  }
+}
+```
+
+Replace the following:
+
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write`-compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
