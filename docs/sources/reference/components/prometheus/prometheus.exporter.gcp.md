@@ -92,6 +92,9 @@ Consider using `ingest_delay` if you would like this to be done programmatically
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
 Since the GCP ingestion delay is an "at worst", this is off by default to ensure data is gathered as soon as it's available.
 
+The component sets the `instance` label on its exported targets to an MD5 hash of its configuration, because no single argument identifies a GCP scrape.
+The label changes if you change any argument.
+
 ## Blocks
 
 The `prometheus.exporter.gcp` component doesn't support any blocks. You can configure this component with arguments.
