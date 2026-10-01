@@ -28,16 +28,16 @@ You can use the following arguments with `prometheus.exporter.consul`:
 | Name                       | Type       | Description                                                                                           | Default                   | Required |
 | -------------------------- | ---------- | ----------------------------------------------------------------------------------------------------- | ------------------------- | -------- |
 | `allow_stale`              | `bool`     | Allows any Consul server, including non-leaders, to service a read.                                   | `true`                    | no       |
-| `ca_file`                  | `string`   | The optional certificate authority file for TLS client authentication.                                |                           | no       |
-| `cert_file`                | `string`   | The optional certificate file for TLS client authentication.                                          |                           | no       |
+| `ca_file`                  | `string`   | Path to the certificate authority that validates the Consul server's certificate.                     |                           | no       |
+| `cert_file`                | `string`   | Path to the client certificate. Requires `key_file`.                                                  |                           | no       |
 | `concurrent_request_limit` | `int`      | Limits the number of concurrent requests to Consul. `0` means no limit.                               | `0`                       | no       |
 | `generate_health_summary`  | `bool`     | Collects information about each registered service and exports `consul_catalog_service_node_healthy`. | `true`                    | no       |
 | `insecure_skip_verify`     | `bool`     | Disables TLS host verification.                                                                       | `false`                   | no       |
-| `key_file`                 | `string`   | The optional key file for TLS client authentication.                                                  |                           | no       |
-| `kv_filter`                | `string`   | Stores only keys that match this regular expression pattern.                                          | `".*"`                    | no       |
+| `key_file`                 | `string`   | Path to the client private key. Requires `cert_file`.                                                 |                           | no       |
+| `kv_filter`                | `string`   | Exports only keys that match this regular expression pattern.                                         | `".*"`                    | no       |
 | `kv_prefix`                | `string`   | Prefix under which to look for KV pairs.                                                              |                           | no       |
 | `require_consistent`       | `bool`     | Forces the read to be fully consistent.                                                               | `false`                   | no       |
-| `server`                   | `string`   | Address, including host and port, of the Consul agent or server to connect to.                        | `"http://localhost:8500"` | no       |
+| `server`                   | `string`   | Address of the Consul agent or server to connect to.                                                  | `"http://localhost:8500"` | no       |
 | `server_name`              | `string`   | Overrides the hostname used to verify the TLS certificate.                                            |                           | no       |
 | `timeout`                  | `duration` | Timeout on HTTP requests to Consul.                                                                   | `"500ms"`                 | no       |
 
@@ -45,9 +45,12 @@ The `server` argument accepts an address with or without a scheme.
 If you omit the scheme, the component adds `http://`.
 The address must include a host, and the scheme must be `http` or `https`.
 
-Set `ca_file`, `cert_file`, and `key_file` to connect to Consul over HTTPS with TLS client authentication.
+Set `ca_file` to validate the Consul server's certificate.
+The component falls back to the system certificate bundle when you don't set it.
 Use `server_name` when the hostname you connect to doesn't match the name in the server's certificate.
-Set `insecure_skip_verify` to `true` to disable certificate verification in development.
+
+Set `cert_file` and `key_file` together to authenticate the component to Consul with a client certificate.
+Set `insecure_skip_verify` to `true` to disable TLS host verification in development.
 
 The `allow_stale` and `require_consistent` arguments select the read consistency mode.
 The component sends both settings to Consul without validating them, so set `allow_stale` to `false` when you set `require_consistent` to `true`.
