@@ -305,3 +305,36 @@ func TestClient_LoadConfig_AssumeRoleSessionName(t *testing.T) {
 		})
 	}
 }
+
+// writeProfileConfig writes a shared config file with a "test" profile and points AWS_CONFIG_FILE at it.
+func writeProfileConfig(t *testing.T) error {
+	path := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(path, []byte("[profile test]\nregion = eu-north-1\n"), 0o600); err != nil {
+		return err
+	}
+	t.Setenv("AWS_CONFIG_FILE", path)
+	return nil
+}
+
+func TestClient_LoadConfig_Profile(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	require.NoError(t, writeProfileConfig(t))
+
+	cfg, err := Client{Profile: "test"}.LoadConfig(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "eu-north-1", cfg.Region)
+}
+
+func TestClient_LoadConfig_MissingProfile(t *testing.T) {
+	require.NoError(t, isolateAWSEnv(t))
+	require.NoError(t, writeProfileConfig(t))
+
+	_, err := Client{Profile: "absent"}.LoadConfig(t.Context())
+	require.Error(t, err)
+}
+
+func TestClient_Unmarshal_Profile(t *testing.T) {
+	var c Client
+	require.NoError(t, syntax.Unmarshal([]byte(`profile = "test"`), &c))
+	require.Equal(t, "test", c.Profile)
+}

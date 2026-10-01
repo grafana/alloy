@@ -58,6 +58,7 @@ const imdsRegionTimeout = 2 * time.Second
 // Client configures how a component connects to AWS.
 type Client struct {
 	Region     string            `alloy:"region,attr,optional"`
+	Profile    string            `alloy:"profile,attr,optional"`
 	Endpoint   string            `alloy:"endpoint,attr,optional"`
 	AccessKey  string            `alloy:"key,attr,optional"`
 	Secret     alloytypes.Secret `alloy:"secret,attr,optional"`
@@ -87,6 +88,10 @@ func (c Client) LoadConfig(ctx context.Context) (awssdk.Config, error) {
 	var opts []func(*config.LoadOptions) error
 	if c.Region != "" {
 		opts = append(opts, config.WithRegion(c.Region))
+	}
+	// The same opts go to the reload below, so the profile also applies there.
+	if c.Profile != "" {
+		opts = append(opts, config.WithSharedConfigProfile(c.Profile))
 	}
 	if c.AccessKey != "" {
 		opts = append(opts, config.WithCredentialsProvider(
