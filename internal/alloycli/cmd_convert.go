@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/diag"
 )
@@ -94,6 +93,11 @@ func (fc *alloyConvert) Run(configFile string) error {
 		return fmt.Errorf("source-format is a required flag")
 	}
 
+	// Fail before reading the input, which would otherwise block on stdin.
+	if convertFn == nil {
+		return errConverterNotIncluded
+	}
+
 	if configFile == "-" {
 		return convert(os.Stdin, fc)
 	}
@@ -125,7 +129,7 @@ func convert(r io.Reader, fc *alloyConvert) error {
 		return err
 	}
 
-	alloyBytes, diags := converter.Convert(inputBytes, converter.Input(fc.sourceFormat), ea)
+	alloyBytes, diags := convertFn(inputBytes, fc.sourceFormat, ea)
 	err = generateConvertReport(diags, fc)
 	if err != nil {
 		return err
@@ -181,8 +185,8 @@ func hasErrorLevel(ds convert_diag.Diagnostics, sev convert_diag.Severity) bool 
 }
 
 func supportedFormatsList() string {
-	var ret = make([]string, len(converter.SupportedFormats))
-	for i, f := range converter.SupportedFormats {
+	var ret = make([]string, len(convertFormats))
+	for i, f := range convertFormats {
 		ret[i] = fmt.Sprintf("%q", f)
 	}
 	return strings.Join(ret, ", ")
