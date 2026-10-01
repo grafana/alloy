@@ -71,13 +71,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.consul` doesn't expose any component-specific
-debug information.
+`prometheus.exporter.consul` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.consul` doesn't expose any component-specific
-debug metrics.
+`prometheus.exporter.consul` doesn't expose any component-specific debug metrics.
 
 ## Example
 
