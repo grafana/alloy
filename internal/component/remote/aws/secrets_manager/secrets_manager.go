@@ -270,7 +270,7 @@ func (c *Component) report(exports Exports, err error) {
 		return
 	}
 	c.metrics.fetchesTotal.WithLabelValues("success").Inc()
-	c.metrics.lastSuccess.SetToCurrentTime()
+	c.metrics.lastAccessed.SetToCurrentTime()
 	c.opts.OnStateChange(exports)
 	c.setHealth(nil)
 }

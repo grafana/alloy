@@ -29,7 +29,7 @@ func TestRemoteAWSSecretsManager(t *testing.T) {
 
 	mimir.QueryMetrics(t, testName, []string{
 		"remote_aws_secrets_manager_fetches_total",
-		"remote_aws_secrets_manager_timestamp_last_success_unix_seconds",
+		"remote_aws_secrets_manager_timestamp_last_accessed_unix_seconds",
 	})
 	// Both calls add the alloy_test_name selector to the metric that they get.
 	// The first fetch at startup succeeds, so a success series is positive.

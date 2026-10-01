@@ -178,7 +178,7 @@ func TestNew_ExportsSecret(t *testing.T) {
 	require.Equal(t, component.HealthTypeHealthy, h.Health)
 	require.Equal(t, "secret fetched", h.Message)
 	require.Equal(t, 1.0, testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("success")))
-	require.Positive(t, testutil.ToFloat64(c.metrics.lastSuccess))
+	require.Positive(t, testutil.ToFloat64(c.metrics.lastAccessed))
 }
 
 func TestNew_Fails(t *testing.T) {

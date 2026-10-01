@@ -167,7 +167,7 @@ To apply the change, fix the configuration and reload it.
 | Name                                                             | Type      | Description                                                                    |
 | ---------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------ |
 | `remote_aws_secrets_manager_fetches_total`                       | `counter` | Total number of secret fetches, with a `result` label of `success` or `error`. |
-| `remote_aws_secrets_manager_timestamp_last_success_unix_seconds` | `gauge`   | Time of the last successful fetch, in Unix seconds.                            |
+| `remote_aws_secrets_manager_timestamp_last_accessed_unix_seconds` | `gauge`   | The last successful access in Unix seconds.                                 |
 
 ## Required permissions
 
