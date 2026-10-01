@@ -66,6 +66,8 @@ The component collects KV metrics only when you set `kv_prefix`.
 The `kv_filter` argument then selects which keys under that prefix to export.
 The component exports only the values it can parse as numbers.
 
+The component sets the `instance` label on its exported targets to the host and port from `server`.
+
 ## Blocks
 
 The `prometheus.exporter.consul` component doesn't support any blocks. You can configure this component with arguments.
