@@ -233,6 +233,9 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
 	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
+	if args.WAL.Enabled && !canUseExperimentalConfig {
+		return errors.New("enabling wal requires stability.level flag to be experimental")
+	}
 	for _, e := range args.Endpoints {
 		if e.QueueConfig != defaultQueueConfigArguments && !canUseExperimentalConfig {
 			return errors.New("changing queue_config requires stability.level flag to be experimental")
