@@ -1,4 +1,5 @@
-package main
+// Package otelsupervisor implements the `alloy otel-supervisor` command.
+package otelsupervisor
 
 import (
 	"context"
@@ -56,7 +57,9 @@ Configuration can be provided in two ways:
      Path for supervisor storage directory.
 `
 
-func newOtelSupervisorCommand() *cobra.Command {
+// NewCommand returns the `otel-supervisor` command, which runs the embedded
+// OpAMP supervisor for Alloy's OTel Engine.
+func NewCommand() *cobra.Command {
 	var configPath string
 
 	cmd := &cobra.Command{
