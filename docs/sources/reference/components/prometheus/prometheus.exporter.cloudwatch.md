@@ -316,7 +316,7 @@ You can use the following arguments with the `role` block:
 
 | Name          | Type     | Description                                                                          | Default | Required |
 | ------------- | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `role_arn`    | `string` | Amazon Resource Name (ARN) of the IAM role to assume for AWS API calls.              |         | yes      |
+| `role_arn`    | `string` | Amazon Resource Name of the IAM role to assume for AWS API calls.                    |         | yes      |
 | `external_id` | `string` | External ID for the STS AssumeRole API call. Refer to the [IAM User Guide][details]. | `""`    | no       |
 
 If you omit this block, {{< param "PRODUCT_NAME" >}} uses the AWS role that corresponds to the credentials configured in the environment.
