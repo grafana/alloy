@@ -7,7 +7,7 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-09-15
+review_date: 2026-10-01
 title: prometheus.exporter.catchpoint
 ---
 
@@ -16,6 +16,8 @@ title: prometheus.exporter.catchpoint
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) to collect statistics from a Catchpoint account.
+
+You can specify multiple `prometheus.exporter.catchpoint` components by giving them different labels.
 
 ## Usage
 

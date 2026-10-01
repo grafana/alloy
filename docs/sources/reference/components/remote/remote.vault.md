@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.vault
 ---
 
@@ -290,7 +290,7 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 
 ## Debug metrics
 
-`remote.vault` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
 | Name                                      | Type      | Description                                                                 |
 | ----------------------------------------- | --------- | --------------------------------------------------------------------------- |

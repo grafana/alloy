@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-15
+review_date: 2026-10-01
 title: prometheus.exporter.blackbox
 ---
 
@@ -15,6 +15,8 @@ title: prometheus.exporter.blackbox
 
 The `prometheus.exporter.blackbox` component embeds the [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter).
 The `blackbox_exporter` lets you collect blackbox probe metrics and expose them as Prometheus metrics.
+
+You can specify multiple `prometheus.exporter.blackbox` components by giving them different labels.
 
 ## Usage
 

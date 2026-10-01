@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: pyroscope.ebpf
 ---
 

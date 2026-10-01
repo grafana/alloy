@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-29
+review_date: 2026-10-01
 title: prometheus.exporter.cloudwatch
 ---
 
@@ -99,6 +99,8 @@ The following AWS IAM policy grants every permission the exporter needs for its 
 ```
 
 The [`role`][role] block also requires the source credentials to have `sts:AssumeRole` permission on each target role.
+
+You can specify multiple `prometheus.exporter.cloudwatch` components by giving them different labels.
 
 [AWS SDK for Go]: https://aws.github.io/aws-sdk-go-v2/docs/getting-started/
 [AWS default credential chain]: https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-credentials

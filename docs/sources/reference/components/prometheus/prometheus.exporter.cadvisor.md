@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-15
+review_date: 2026-10-01
 title: prometheus.exporter.cadvisor
 ---
 
@@ -108,6 +108,8 @@ For a complete Docker container deployment example, refer to the [Docker deploym
 
 {{< /tab-content >}}
 {{< /tabs >}}
+
+You can specify multiple `prometheus.exporter.cadvisor` components by giving them different labels.
 
 ## Usage
 

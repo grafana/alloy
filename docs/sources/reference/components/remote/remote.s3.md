@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.s3
 ---
 
@@ -100,7 +100,7 @@ Instances of `remote.s3` report as healthy if the most recent read of the watche
 
 ## Debug metrics
 
-`remote.s3` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
 | Name                                             | Type      | Description                                 |
 | ------------------------------------------------ | --------- | ------------------------------------------- |

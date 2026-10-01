@@ -7,13 +7,15 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.exporter.apache
 ---
 
 # `prometheus.exporter.apache`
 
 The `prometheus.exporter.apache` component embeds [`apache_exporter`](https://github.com/Lusitaniae/apache_exporter) for collecting `mod_status` statistics from an Apache server.
+
+You can specify multiple `prometheus.exporter.apache` components by giving them different labels.
 
 ## Usage
 

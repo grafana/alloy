@@ -5,7 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.enrich
 ---
 
@@ -24,6 +24,8 @@ The `target_match_label` and `metrics_match_label` arguments are deprecated in f
 If `target_to_metric_match` is set, it takes precedence. Replace `target_match_label = "hostname"` with `target_to_metric_match = {"hostname" = "hostname"}`.
 These deprecated arguments will be removed in a future release.
 {{< /admonition >}}
+
+You can specify multiple `prometheus.enrich` components by giving them different labels.
 
 ## Usage
 

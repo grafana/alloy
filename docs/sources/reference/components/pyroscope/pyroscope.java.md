@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: pyroscope.java
 ---
 
@@ -18,6 +18,8 @@ title: pyroscope.java
 {{< admonition type="note" >}}
 To use the  `pyroscope.java` component you must run {{< param "PRODUCT_NAME" >}} as root and inside host PID namespace.
 {{< /admonition >}}
+
+You can specify multiple `pyroscope.java` components by giving them different labels.
 
 ## Usage
 
@@ -204,7 +206,8 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 ## Component health
 
-`pyroscope.java` is only reported as unhealthy when given an invalid configuration.
+`pyroscope.java` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

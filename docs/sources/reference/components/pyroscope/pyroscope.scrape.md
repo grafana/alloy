@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: pyroscope.scrape
 ---
 
@@ -443,6 +443,7 @@ When the `delta` argument is `true`:
 ## Component health
 
 `pyroscope.scrape` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 

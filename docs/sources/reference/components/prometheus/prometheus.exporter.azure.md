@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.exporter.azure
 ---
 
@@ -46,6 +46,8 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 
 - When using an Azure Resource Graph query, [read access to the resources that Resource Graph queries][].
 - Permissions to call the [`Microsoft.Insights` Metrics API][Microsoft.Insights Metrics API] which should be the `Microsoft.Insights/Metrics/Read` permission.
+
+You can specify multiple `prometheus.exporter.azure` components by giving them different labels.
 
 [authentication]: https://learn.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication?tabs=bash#2-authenticate-with-azure
 [read access to the resources that Resource Graph queries]: https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph
