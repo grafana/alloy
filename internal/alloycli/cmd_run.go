@@ -50,9 +50,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
-
-	// Install Components
-	_ "github.com/grafana/alloy/internal/component/all"
 )
 
 func newAlloyRun() *alloyRun {

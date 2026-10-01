@@ -101,6 +101,7 @@ require (
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.161.0
 	go.opentelemetry.io/collector/service v0.161.0
 	go.uber.org/zap v1.28.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -1077,7 +1078,6 @@ require (
 	gopkg.in/telebot.v3 v3.3.8 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
 	howett.net/plist v1.0.0 // indirect
 	k8s.io/api v0.37.0 // indirect
