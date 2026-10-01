@@ -491,6 +491,7 @@ func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
 
 				go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
 				require.NoError(t, ctrl.WaitExports(5*time.Second))
+				require.NoError(t, ctrl.WaitRunning(5*time.Second))
 
 				require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})}, ctrl))
 				waitForLine(t, firstReceived, "first")
@@ -535,6 +536,7 @@ func TestUpdateTogglesWAL(t *testing.T) {
 
 		go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
 		require.NoError(t, ctrl.WaitExports(5*time.Second))
+		require.NoError(t, ctrl.WaitRunning(5*time.Second))
 
 		require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})}, ctrl))
 		waitForLine(t, received, "with wal")
