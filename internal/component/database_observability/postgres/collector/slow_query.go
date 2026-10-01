@@ -34,11 +34,17 @@ var slowQueryRegex = regexp.MustCompile(`(?s)^duration: (?P<duration_ms>[\d.]+) 
 // the raw statement text itself, consistent with every other log-sourced
 // op in this collector. query_fingerprint is the join key back to this
 // query's other appearances in this collector's own output (deadlock's
-// query_fingerprint_blocker, op="error_message", ...); pid/xid/session_id
-// are the join keys to a concurrent op="server_log" category="lock_wait"
-// entry on the same backend -- there is no shared query identifier between
-// the two, only backend identity plus the time window lock_wait's
-// timestamp falls inside (this statement's duration ending at ts).
+// query_fingerprint_blocker, op="error_message", op="explain_plan_output"
+// sourced_from=logs, ...), and transitively to the queryid-keyed ops
+// (op="query_sample", the live EXPLAIN-based op="explain_plan_output") via
+// op="query_association", which already emits both queryid and
+// query_fingerprint side by side for the same pg_stat_statements row (see
+// query_details.go's fetchAndAssociate) -- no log_line_prefix change needed.
+// pid+xid (the executing backend's own transaction, not a lock_wait
+// target's) is an exact match, not a time-window heuristic, back to a
+// concurrent op="server_log" category="lock_wait" entry on the same
+// backend: a backend's xid identifies one transaction, so the same pid+xid
+// pair appearing on both entries means the same execution.
 //
 // Returns false for anything that isn't this exact shape (an empty
 // statement after trimming, for instance): the caller falls through to the
