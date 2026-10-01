@@ -482,4 +482,7 @@ type noopDebugDataPublisher struct{}
 
 func (n noopDebugDataPublisher) IsActive(livedebugging.ComponentID) bool { return false }
 
+func (n noopDebugDataPublisher) RecordRate(livedebugging.ComponentID, livedebugging.DataType, uint64, []string) {
+}
+
 func (n noopDebugDataPublisher) PublishIfActive(livedebugging.Data) {}

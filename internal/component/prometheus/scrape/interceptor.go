@@ -19,6 +19,7 @@ func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher li
 	return prometheus.NewInterceptor(appendable,
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.Append(globalRef, l, t, v)
+			debugDataPublisher.RecordRate(componentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(componentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					componentID,
@@ -33,6 +34,7 @@ func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher li
 		}),
 		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.AppendHistogram(globalRef, l, t, h, fh)
+			debugDataPublisher.RecordRate(componentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(componentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					componentID,
@@ -55,6 +57,7 @@ func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher li
 		}),
 		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.UpdateMetadata(globalRef, l, m)
+			debugDataPublisher.RecordRate(componentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(componentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					componentID,
@@ -69,6 +72,7 @@ func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher li
 		}),
 		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.AppendExemplar(globalRef, l, e)
+			debugDataPublisher.RecordRate(componentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(componentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					componentID,

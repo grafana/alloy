@@ -127,7 +127,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 					count = uint64(len(stream.Entries))
 				}
 
-				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 					livedebugging.ComponentID(c.opts.ID),
 					livedebugging.LokiLog,
 					count,
@@ -174,7 +174,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if !ok {
 			count = 0
 		}
-		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 			livedebugging.ComponentID(c.opts.ID),
 			livedebugging.LokiLog,
 			count,

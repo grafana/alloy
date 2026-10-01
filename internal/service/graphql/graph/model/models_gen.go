@@ -3,33 +3,350 @@
 package model
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 )
+
+// Common metadata exposed by every registered Alloy service.
+type AlloyService interface {
+	IsAlloyService()
+	// Registered service name.
+	GetName() string
+	// Stability level of the service.
+	GetStability() string
+	// Names of services this service depends on.
+	GetDependsOn() []string
+	// Runtime consumers that depend on this service.
+	GetConsumers() []ServiceConsumer
+	// Whether the service exposes service-specific runtime data.
+	GetHasRuntimeData() bool
+}
 
 // Represents build and runtime information for an Alloy instance.
 // Contains version control and build environment details.
 type Alloy struct {
-	// The Git branch from which this build was created
+	// Git branch from which this build was created.
 	Branch string `json:"branch"`
-	// The timestamp of when this build was created
+	// Timestamp at which this build was created.
 	BuildDate string `json:"buildDate"`
-	// The user account that initiated this build
+	// User account that initiated this build.
 	BuildUser string `json:"buildUser"`
-	// Whether the Alloy instance is up and running
+	// Whether the Alloy instance is ready to serve requests.
 	IsReady bool `json:"isReady"`
-	// The Git commit hash from which this build was created
+	// Git commit hash from which this build was created.
 	Revision string `json:"revision"`
-	// The semantic version of this Alloy build
+	// Semantic version of this Alloy build.
 	Version string `json:"version"`
 }
 
+// Runtime state of Alloy clustering.
+type Cluster struct {
+	// Whether clustering is enabled.
+	Enabled bool `json:"enabled"`
+	// Peers currently known to this Alloy instance.
+	Peers []ClusterPeer `json:"peers"`
+}
+
+// One Alloy instance participating in the cluster.
+type ClusterPeer struct {
+	// Advertised peer name.
+	Name string `json:"name"`
+	// Advertised peer network address.
+	Addr string `json:"addr"`
+	// Current membership state of the peer.
+	State string `json:"state"`
+	// Whether this peer represents the current Alloy instance.
+	IsSelf bool `json:"isSelf"`
+}
+
+// Observed throughput for one data type on a data-flow connection.
+type ComponentDataRate struct {
+	// Data type counted on the connection.
+	Type string `json:"type"`
+	// Average number of items per second during the requested window.
+	Rate float64 `json:"rate"`
+}
+
+// Static schema and metadata for a registered component type.
+type ComponentDefinition struct {
+	// Registered component name.
+	Name string `json:"name"`
+	// Stability level of the component.
+	Stability string `json:"stability"`
+	// Whether the component is maintained by the community.
+	IsCommunity bool `json:"isCommunity"`
+	// Data types accepted and exported by the component.
+	Metadata ComponentMetadata `json:"metadata"`
+	// Configuration argument schema.
+	Arguments []ComponentSchemaField `json:"arguments"`
+	// Exported value schema.
+	Exports []ComponentSchemaField `json:"exports"`
+	// Validation capabilities implemented by the component.
+	Validation ComponentValidationMetadata `json:"validation"`
+	// Running instances of this component type, optionally limited to one module.
+	Instances []Component `json:"instances"`
+}
+
+// Data types accepted and exported by a component type.
+type ComponentMetadata struct {
+	// Names of data types accepted by the component.
+	Accepts []string `json:"accepts"`
+	// Names of data types exported by the component.
+	Exports []string `json:"exports"`
+}
+
+// Registry of component types available to Alloy configuration.
+type ComponentRegistry struct {
+	// All registered component definitions.
+	Components []ComponentDefinition `json:"components"`
+	// A registered component definition by name.
+	Component *ComponentDefinition `json:"component,omitempty"`
+}
+
+// One field in a component argument or export schema.
+type ComponentSchemaField struct {
+	// Field name.
+	Name string `json:"name"`
+	// Path from the schema root to this field.
+	Path []string `json:"path"`
+	// Alloy configuration representation of this field.
+	Kind ComponentSchemaFieldKind `json:"kind"`
+	// Whether configuration must provide this field.
+	IsRequired bool `json:"isRequired"`
+	// Whether the field may occur more than once.
+	IsRepeated bool `json:"isRepeated"`
+	// Go type implementing the field.
+	GoType string `json:"goType"`
+	// Alloy language type exposed for the field.
+	AlloyType string `json:"alloyType"`
+	// Nested fields contained by this field.
+	Children []ComponentSchemaField `json:"children"`
+}
+
+// Custom configuration validation capabilities implemented by a component type.
+type ComponentValidationMetadata struct {
+	// Whether the component implements custom validation.
+	HasCustomValidator bool `json:"hasCustomValidator"`
+	// Whether the component applies custom default values.
+	HasCustomDefaults bool `json:"hasCustomDefaults"`
+	// Whether the component implements custom Alloy unmarshaling.
+	HasCustomUnmarshaler bool `json:"hasCustomUnmarshaler"`
+}
+
+// Metadata for a service without service-specific runtime fields.
+type GenericService struct {
+	// Registered service name.
+	Name string `json:"name"`
+	// Stability level of the service.
+	Stability string `json:"stability"`
+	// Names of services this service depends on.
+	DependsOn []string `json:"dependsOn"`
+	// Runtime consumers that depend on this service.
+	Consumers []ServiceConsumer `json:"consumers"`
+	// Whether the service exposes service-specific runtime data.
+	HasRuntimeData bool `json:"hasRuntimeData"`
+}
+
+func (GenericService) IsAlloyService() {}
+
+// Registered service name.
+func (this GenericService) GetName() string { return this.Name }
+
+// Stability level of the service.
+func (this GenericService) GetStability() string { return this.Stability }
+
+// Names of services this service depends on.
+func (this GenericService) GetDependsOn() []string {
+	if this.DependsOn == nil {
+		return nil
+	}
+	interfaceSlice := make([]string, 0, len(this.DependsOn))
+	for _, concrete := range this.DependsOn {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+// Runtime consumers that depend on this service.
+func (this GenericService) GetConsumers() []ServiceConsumer {
+	if this.Consumers == nil {
+		return nil
+	}
+	interfaceSlice := make([]ServiceConsumer, 0, len(this.Consumers))
+	for _, concrete := range this.Consumers {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+// Whether the service exposes service-specific runtime data.
+func (this GenericService) GetHasRuntimeData() bool { return this.HasRuntimeData }
+
+// Runtime data for Alloy's HTTP service.
+type HTTPService struct {
+	// Registered service name.
+	Name string `json:"name"`
+	// Stability level of the service.
+	Stability string `json:"stability"`
+	// Names of services this service depends on.
+	DependsOn []string `json:"dependsOn"`
+	// Runtime consumers that depend on this service.
+	Consumers []ServiceConsumer `json:"consumers"`
+	// Whether the service exposes service-specific runtime data.
+	HasRuntimeData bool `json:"hasRuntimeData"`
+	// Network address on which the HTTP server listens.
+	HTTPListenAddr string `json:"httpListenAddr"`
+	// In-memory address used by internal HTTP clients.
+	MemoryListenAddr string `json:"memoryListenAddr"`
+	// Base path under which the HTTP service exposes endpoints.
+	BaseHTTPPath string `json:"baseHTTPPath"`
+	// HTTP path associated with a component.
+	ComponentHTTPPath string `json:"componentHTTPPath"`
+}
+
+func (HTTPService) IsAlloyService() {}
+
+// Registered service name.
+func (this HTTPService) GetName() string { return this.Name }
+
+// Stability level of the service.
+func (this HTTPService) GetStability() string { return this.Stability }
+
+// Names of services this service depends on.
+func (this HTTPService) GetDependsOn() []string {
+	if this.DependsOn == nil {
+		return nil
+	}
+	interfaceSlice := make([]string, 0, len(this.DependsOn))
+	for _, concrete := range this.DependsOn {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+// Runtime consumers that depend on this service.
+func (this HTTPService) GetConsumers() []ServiceConsumer {
+	if this.Consumers == nil {
+		return nil
+	}
+	interfaceSlice := make([]ServiceConsumer, 0, len(this.Consumers))
+	for _, concrete := range this.Consumers {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+// Whether the service exposes service-specific runtime data.
+func (this HTTPService) GetHasRuntimeData() bool { return this.HasRuntimeData }
+
 // Health status of the component.
 type Health struct {
+	// State of the health status.
+	State string `json:"state"`
 	// Message of the health status.
 	Message string `json:"message"`
 	// Last updated time of the health status.
 	LastUpdated time.Time `json:"lastUpdated"`
 }
 
+// A label name and value.
+type LabelPair struct {
+	// Label name.
+	Name string `json:"name"`
+	// Label value.
+	Value string `json:"value"`
+}
+
+// Entry point for querying Alloy runtime state.
 type Query struct {
+}
+
+// A runtime object that consumes an Alloy service.
+type ServiceConsumer struct {
+	// Kind of runtime consumer.
+	Type string `json:"type"`
+	// Identifier of the runtime consumer.
+	ID string `json:"id"`
+}
+
+// A runtime target exported by a component.
+type Target struct {
+	// Complete target label set, including internal metadata labels.
+	Labels []LabelPair `json:"labels"`
+	// Target label set excluding internal metadata labels.
+	NonMetaLabels []LabelPair `json:"nonMetaLabels"`
+	// Stable hash of the complete label set.
+	Hash string `json:"hash"`
+	// Stable hash of the label set excluding internal metadata labels.
+	NonMetaHash string `json:"nonMetaHash"`
+}
+
+// How a component schema field is represented in Alloy configuration.
+type ComponentSchemaFieldKind string
+
+const (
+	// An Alloy attribute.
+	ComponentSchemaFieldKindAttribute ComponentSchemaFieldKind = "ATTRIBUTE"
+	// An Alloy block.
+	ComponentSchemaFieldKindBlock ComponentSchemaFieldKind = "BLOCK"
+	// An enumerated value.
+	ComponentSchemaFieldKindEnum ComponentSchemaFieldKind = "ENUM"
+	// A block label.
+	ComponentSchemaFieldKindLabel ComponentSchemaFieldKind = "LABEL"
+	// Fields squashed into their parent schema.
+	ComponentSchemaFieldKindSquash ComponentSchemaFieldKind = "SQUASH"
+)
+
+var AllComponentSchemaFieldKind = []ComponentSchemaFieldKind{
+	ComponentSchemaFieldKindAttribute,
+	ComponentSchemaFieldKindBlock,
+	ComponentSchemaFieldKindEnum,
+	ComponentSchemaFieldKindLabel,
+	ComponentSchemaFieldKindSquash,
+}
+
+func (e ComponentSchemaFieldKind) IsValid() bool {
+	switch e {
+	case ComponentSchemaFieldKindAttribute, ComponentSchemaFieldKindBlock, ComponentSchemaFieldKindEnum, ComponentSchemaFieldKindLabel, ComponentSchemaFieldKindSquash:
+		return true
+	}
+	return false
+}
+
+func (e ComponentSchemaFieldKind) String() string {
+	return string(e)
+}
+
+func (e *ComponentSchemaFieldKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ComponentSchemaFieldKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ComponentSchemaFieldKind", str)
+	}
+	return nil
+}
+
+func (e ComponentSchemaFieldKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ComponentSchemaFieldKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ComponentSchemaFieldKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

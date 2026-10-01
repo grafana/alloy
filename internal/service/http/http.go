@@ -568,6 +568,21 @@ type Data struct {
 	EnablePProf bool
 }
 
+// HTTPListenAddress returns the network address used by the HTTP service.
+func (d Data) HTTPListenAddress() string {
+	return d.HTTPListenAddr
+}
+
+// MemoryListenAddress returns the address used for in-memory HTTP traffic.
+func (d Data) MemoryListenAddress() string {
+	return d.MemoryListenAddr
+}
+
+// ComponentBaseHTTPPath returns the base path for component HTTP routes.
+func (d Data) ComponentBaseHTTPPath() string {
+	return d.BaseHTTPPath
+}
+
 // HTTPPathForComponent returns the full HTTP path for a given global component
 // ID.
 func (d Data) HTTPPathForComponent(componentID string) string {

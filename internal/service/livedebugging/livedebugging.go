@@ -3,6 +3,7 @@ package livedebugging
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service"
@@ -28,30 +29,55 @@ type CallbackManager interface {
 	DeleteCallbackMulti(host service.Host, callbackID CallbackID, moduleID ModuleID)
 }
 
+// RateSnapshotter returns bounded rolling count snapshots for data-flow rates.
+type RateSnapshotter interface {
+	// RateSnapshot returns counts from completed one-second buckets in the requested window.
+	RateSnapshot(windowSeconds int) ([]Data, error)
+}
+
 // DebugDataPublisher is used by components to push information to live debugging consumers.
 type DebugDataPublisher interface {
 	// IsActive reports whether a least one consumer is listening for debugging data for the given componentID.
 	IsActive(componentID ComponentID) bool
-	// Publish sends debugging data for a given componentID if a least one consumer is listening for debugging data for the given componentID.
+	// RecordRate records a count without computing or publishing debug payload data.
+	RecordRate(componentID ComponentID, dataType DataType, count uint64, targetComponentIDs []string)
+	// PublishIfActive sends debugging data when a consumer is listening.
 	PublishIfActive(data Data)
+}
+
+// Publish records the rate and publishes debug data when a consumer is active.
+func Publish(publisher DebugDataPublisher, data Data) {
+	publisher.RecordRate(data.ComponentID, data.Type, data.Count, data.TargetComponentIDs)
+	publisher.PublishIfActive(data)
 }
 
 type liveDebugging struct {
 	loadMut   sync.RWMutex
 	callbacks map[ComponentID]map[CallbackID]func(Data)
 	enabled   bool
+	rates     *rateCollector
 }
 
 var (
 	_ CallbackManager    = &liveDebugging{}
 	_ DebugDataPublisher = &liveDebugging{}
+	_ RateSnapshotter    = &liveDebugging{}
 )
 
 // NewLiveDebugging creates a new instance of liveDebugging.
 func NewLiveDebugging() *liveDebugging {
 	return &liveDebugging{
 		callbacks: make(map[ComponentID]map[CallbackID]func(Data)),
+		rates:     newRateCollector(),
 	}
+}
+
+func (s *liveDebugging) RecordRate(componentID ComponentID, dataType DataType, count uint64, targetComponentIDs []string) {
+	s.rates.record(componentID, dataType, count, targetComponentIDs)
+}
+
+func (s *liveDebugging) RateSnapshot(windowSeconds int) ([]Data, error) {
+	return s.rates.snapshot(time.Now(), windowSeconds)
 }
 
 func (s *liveDebugging) IsActive(componentID ComponentID) bool {

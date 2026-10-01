@@ -209,6 +209,7 @@ func TestRelabelDebuggingRespectsActivity(t *testing.T) {
 			relabeller.relabel(1, labels.FromStrings("__name__", "test_metric"))
 			require.Equal(t, 1, publisher.isActiveCalls)
 			require.Equal(t, componentID, publisher.isActiveComponentID)
+			require.Equal(t, 1, publisher.recordRateCalls)
 			require.Equal(t, tc.wantPublishCalls, publisher.publishCalls)
 
 			if tc.active {
@@ -223,9 +224,10 @@ func TestRelabelDebuggingRespectsActivity(t *testing.T) {
 }
 
 type debugDataPublisherSpy struct {
-	active        bool
-	isActiveCalls int
-	publishCalls  int
+	active          bool
+	isActiveCalls   int
+	publishCalls    int
+	recordRateCalls int
 
 	isActiveComponentID livedebugging.ComponentID
 	publishedData       livedebugging.Data
@@ -235,6 +237,10 @@ func (p *debugDataPublisherSpy) IsActive(componentID livedebugging.ComponentID) 
 	p.isActiveCalls++
 	p.isActiveComponentID = componentID
 	return p.active
+}
+
+func (p *debugDataPublisherSpy) RecordRate(livedebugging.ComponentID, livedebugging.DataType, uint64, []string) {
+	p.recordRateCalls++
 }
 
 func (p *debugDataPublisherSpy) PublishIfActive(data livedebugging.Data) {

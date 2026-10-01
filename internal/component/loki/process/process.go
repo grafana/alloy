@@ -104,7 +104,7 @@ func (c *Component) Run(ctx context.Context) error {
 		loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 				livedebugging.ComponentID(c.opts.ID),
 				livedebugging.LokiLog,
 				1,
@@ -171,7 +171,7 @@ func (c *Component) handleIn(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case entry := <-c.receiver.Chan():
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 				livedebugging.ComponentID(c.opts.ID),
 				livedebugging.LokiLog,
 				0, // does not count because we count only the data that exists

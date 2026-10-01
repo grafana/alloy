@@ -334,6 +334,7 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 		count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
 	}
 	componentID := livedebugging.ComponentID(c.opts.ID)
+	c.debugDataPublisher.RecordRate(componentID, livedebugging.PrometheusMetric, count, nil)
 	if c.debugDataPublisher.IsActive(componentID) {
 		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 			componentID,

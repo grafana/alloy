@@ -3,6 +3,7 @@ package livedebugging
 
 import (
 	"context"
+	"time"
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
@@ -12,14 +13,16 @@ import (
 const ServiceName = "livedebugging"
 
 type Service struct {
-	liveDebugging *liveDebugging
+	liveDebugging        *liveDebugging
+	rateSnapshotInterval time.Duration
 }
 
 var _ service.Service = (*Service)(nil)
 
 func New() *Service {
 	return &Service{
-		liveDebugging: NewLiveDebugging(),
+		liveDebugging:        NewLiveDebugging(),
+		rateSnapshotInterval: time.Second,
 	}
 }
 
@@ -45,8 +48,17 @@ func (*Service) Definition() service.Definition {
 
 // Run implements service.Service.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	<-ctx.Done()
-	return nil
+	ticker := time.NewTicker(s.rateSnapshotInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case now := <-ticker.C:
+			s.liveDebugging.rates.rotate(now)
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 // Update implements service.Service.

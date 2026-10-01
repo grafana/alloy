@@ -1,15 +1,29 @@
 extend type Query {
   """
-  All components running in Alloy.
+  All components running in Alloy, optionally limited to one module.
   """
-  components: [Component!]!
+  components(
+    "Optional module ID used to return only components directly contained in that module."
+    moduleID: String
+  ): [Component!]!
 
   """
-  Component by ID.
+  A running component by its fully qualified ID.
   """
-  component(id: ID!): Component
+  component(
+    "Fully qualified component ID."
+    id: ID!
+  ): Component
+
+  """
+  Static definitions for the component types registered with Alloy.
+  """
+  componentRegistry: ComponentRegistry!
 }
 
+"""
+A configured component instance running in Alloy.
+"""
 type Component {
   "Health status of the component."
   health: Health!
@@ -17,8 +31,29 @@ type Component {
   "Fully qualified ID of the component."
   id: ID!
 
+  "Module ID the component is running in."
+  moduleID: String!
+
+  "Module containing this component."
+  parentModule: Module!
+
+  "Modules directly created by this component."
+  childModules: [Module!]!
+
   "Name of the component."
   name: String!
+
+  "Label of the component, when present."
+  label: String
+
+  "Runtime type of the component."
+  type: String!
+
+  "Incoming and outgoing component edges."
+  edges: ComponentEdges!
+
+  "Whether live debugging is enabled for the component."
+  liveDebuggingEnabled: Boolean!
 
   "Arguments of the component."
   arguments: String!
@@ -28,12 +63,208 @@ type Component {
 
   "Debug info of the component."
   debugInfo: String
+
+  "Static registry definition for this component."
+  definition: ComponentDefinition
+
+  "Targets exported by this component."
+  targets: [Target!]!
+}
+
+"""
+Data-flow connections entering and leaving a component.
+"""
+type ComponentEdges {
+  "Data-flow connections that terminate at the component."
+  incoming: [ComponentEdge!]!
+
+  "Data-flow connections that originate from the component."
+  outgoing: [ComponentEdge!]!
+}
+
+"""
+A directed data-flow connection between two components.
+"""
+type ComponentEdge {
+  "Fully qualified ID of the component at the other end of the connection."
+  componentID: ID!
+
+  "Component at the other end of the connection, when it still exists."
+  component: Component
+
+  "Observed data rates grouped by data type."
+  dataRates(
+    "Rolling window, in seconds, used to calculate rates."
+    windowSeconds: Int = 60
+  ): [ComponentDataRate!]!
+}
+
+"""
+Observed throughput for one data type on a data-flow connection.
+"""
+type ComponentDataRate {
+  "Data type counted on the connection."
+  type: String!
+
+  "Average number of items per second during the requested window."
+  rate: Float!
+}
+
+"""
+Registry of component types available to Alloy configuration.
+"""
+type ComponentRegistry {
+  "All registered component definitions."
+  components: [ComponentDefinition!]!
+
+  "A registered component definition by name."
+  component(
+    "Registered component name."
+    name: String!
+  ): ComponentDefinition
+}
+
+"""
+Static schema and metadata for a registered component type.
+"""
+type ComponentDefinition {
+  "Registered component name."
+  name: String!
+
+  "Stability level of the component."
+  stability: String!
+
+  "Whether the component is maintained by the community."
+  isCommunity: Boolean!
+
+  "Data types accepted and exported by the component."
+  metadata: ComponentMetadata!
+
+  "Configuration argument schema."
+  arguments: [ComponentSchemaField!]!
+
+  "Exported value schema."
+  exports: [ComponentSchemaField!]!
+
+  "Validation capabilities implemented by the component."
+  validation: ComponentValidationMetadata!
+
+  "Running instances of this component type, optionally limited to one module."
+  instances(
+    "Optional module ID used to filter running instances."
+    moduleID: String
+  ): [Component!]!
+}
+
+"""
+Data types accepted and exported by a component type.
+"""
+type ComponentMetadata {
+  "Names of data types accepted by the component."
+  accepts: [String!]!
+
+  "Names of data types exported by the component."
+  exports: [String!]!
+}
+
+"""
+Custom configuration validation capabilities implemented by a component type.
+"""
+type ComponentValidationMetadata {
+  "Whether the component implements custom validation."
+  hasCustomValidator: Boolean!
+
+  "Whether the component applies custom default values."
+  hasCustomDefaults: Boolean!
+
+  "Whether the component implements custom Alloy unmarshaling."
+  hasCustomUnmarshaler: Boolean!
+}
+
+"""
+How a component schema field is represented in Alloy configuration.
+"""
+enum ComponentSchemaFieldKind {
+  "An Alloy attribute."
+  ATTRIBUTE
+
+  "An Alloy block."
+  BLOCK
+
+  "An enumerated value."
+  ENUM
+
+  "A block label."
+  LABEL
+
+  "Fields squashed into their parent schema."
+  SQUASH
+}
+
+"""
+One field in a component argument or export schema.
+"""
+type ComponentSchemaField {
+  "Field name."
+  name: String!
+
+  "Path from the schema root to this field."
+  path: [String!]!
+
+  "Alloy configuration representation of this field."
+  kind: ComponentSchemaFieldKind!
+
+  "Whether configuration must provide this field."
+  isRequired: Boolean!
+
+  "Whether the field may occur more than once."
+  isRepeated: Boolean!
+
+  "Go type implementing the field."
+  goType: String!
+
+  "Alloy language type exposed for the field."
+  alloyType: String!
+
+  "Nested fields contained by this field."
+  children: [ComponentSchemaField!]!
+}
+
+"""
+A runtime target exported by a component.
+"""
+type Target {
+  "Complete target label set, including internal metadata labels."
+  labels: [LabelPair!]!
+
+  "Target label set excluding internal metadata labels."
+  nonMetaLabels: [LabelPair!]!
+
+  "Stable hash of the complete label set."
+  hash: String!
+
+  "Stable hash of the label set excluding internal metadata labels."
+  nonMetaHash: String!
+}
+
+"""
+A label name and value.
+"""
+type LabelPair {
+  "Label name."
+  name: String!
+
+  "Label value."
+  value: String!
 }
 
 """
 Health status of the component.
 """
 type Health {
+  "State of the health status."
+  state: String!
+
   "Message of the health status."
   message: String!
 

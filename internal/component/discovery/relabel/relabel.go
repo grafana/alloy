@@ -97,7 +97,7 @@ func (c *Component) Update(args component.Arguments) error {
 			targets = append(targets, relabelled)
 		}
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 			componentID,
 			livedebugging.Target,
 			1,

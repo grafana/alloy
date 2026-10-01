@@ -7,11 +7,36 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
-	"github.com/grafana/alloy/internal/service/graphql/utils"
+	"github.com/grafana/alloy/internal/service/graphql/rates"
+	"github.com/grafana/alloy/internal/service/graphql/registry"
+	graphqlruntime "github.com/grafana/alloy/internal/service/graphql/runtime"
+	"github.com/grafana/alloy/internal/service/graphql/targets"
 	"github.com/grafana/alloy/syntax/encoding/alloyjson"
 )
+
+// ParentModule is the resolver for the parentModule field.
+func (r *componentResolver) ParentModule(ctx context.Context, obj *model.Component) (model.Module, error) {
+	if obj.RuntimeGraph == nil {
+		return model.Module{}, fmt.Errorf("component %q is not attached to the runtime graph", obj.ID)
+	}
+	module := obj.RuntimeGraph.Module(obj.ModuleID)
+	if module == nil {
+		return model.Module{}, fmt.Errorf("parent module %q for component %q not found", obj.ModuleID, obj.ID)
+	}
+	return *module, nil
+}
+
+// ChildModules is the resolver for the childModules field.
+func (r *componentResolver) ChildModules(ctx context.Context, obj *model.Component) ([]model.Module, error) {
+	if obj.RuntimeGraph == nil || obj.ComponentInfo == nil {
+		return nil, nil
+	}
+	return obj.RuntimeGraph.ModulesByID(obj.ComponentInfo.ModuleIDs), nil
+}
 
 // Arguments is the resolver for the arguments field.
 func (r *componentResolver) Arguments(ctx context.Context, obj *model.Component) (string, error) {
@@ -48,32 +73,113 @@ func (r *componentResolver) DebugInfo(ctx context.Context, obj *model.Component)
 	return &result, nil
 }
 
-// Components is the resolver for the components field.
-func (r *queryResolver) Components(ctx context.Context) ([]model.Component, error) {
-	allComponents, err := utils.GetAllComponents(r.Host)
+// Definition is the resolver for the definition field.
+func (r *componentResolver) Definition(ctx context.Context, obj *model.Component) (*model.ComponentDefinition, error) {
+	return registry.Definition(obj.Name), nil
+}
+
+// Targets is the resolver for the targets field.
+func (r *componentResolver) Targets(ctx context.Context, obj *model.Component) ([]model.Target, error) {
+	return targets.FromComponent(obj.ComponentInfo), nil
+}
+
+// Instances is the resolver for the instances field.
+func (r *componentDefinitionResolver) Instances(ctx context.Context, obj *model.ComponentDefinition, moduleID *string) ([]model.Component, error) {
+	var module string
+	if moduleID != nil {
+		module = *moduleID
+	}
+
+	runtimeGraph, err := graphqlruntime.LoadGraph(r.Host, componentInfoOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]model.Component, len(allComponents))
-	for i, comp := range allComponents {
-		result[i] = model.NewComponent(comp)
+	return registry.InstancesForDefinition(*obj, runtimeGraph.Components(), module), nil
+}
+
+// Component is the resolver for the component field.
+func (r *componentEdgeResolver) Component(ctx context.Context, obj *model.ComponentEdge) (*model.Component, error) {
+	if obj.RuntimeGraph != nil {
+		return obj.RuntimeGraph.Component(obj.ComponentID), nil
 	}
 
-	return result, nil
+	runtimeGraph, err := graphqlruntime.LoadGraph(r.Host, componentInfoOptions)
+	if err != nil {
+		return nil, err
+	}
+	return runtimeGraph.Component(obj.ComponentID), nil
+}
+
+// DataRates is the resolver for the dataRates field.
+func (r *componentEdgeResolver) DataRates(ctx context.Context, obj *model.ComponentEdge, windowSeconds *int32) ([]model.ComponentDataRate, error) {
+	window := rates.DefaultWindowSeconds
+	if windowSeconds != nil {
+		window = int(*windowSeconds)
+	}
+
+	snapshot, err := rates.CollectSnapshot(r.CallbackManager, window)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot.DataRatesForEdge(*obj), nil
+}
+
+// Component is the resolver for the component field.
+func (r *componentRegistryResolver) Component(ctx context.Context, obj *model.ComponentRegistry, name string) (*model.ComponentDefinition, error) {
+	return registry.Definition(name), nil
+}
+
+// Components is the resolver for the components field.
+func (r *queryResolver) Components(ctx context.Context, moduleID *string) ([]model.Component, error) {
+	runtimeGraph, err := graphqlruntime.LoadGraph(r.Host, componentInfoOptions)
+	if err != nil {
+		return nil, err
+	}
+	if moduleID == nil {
+		return runtimeGraph.Components(), nil
+	}
+
+	module := runtimeGraph.Module(*moduleID)
+	if module == nil {
+		return nil, component.ErrModuleNotFound
+	}
+	return runtimeGraph.ComponentsByID(module.ComponentIDs), nil
 }
 
 // Component is the resolver for the component field.
 func (r *queryResolver) Component(ctx context.Context, id string) (*model.Component, error) {
-	comp, err := utils.GetComponentByID(r.Host, id)
+	runtimeGraph, err := graphqlruntime.LoadGraph(r.Host, componentInfoOptions)
 	if err != nil {
 		return nil, err
 	}
-	result := model.NewComponent(comp)
-	return &result, nil
+	return runtimeGraph.Component(id), nil
+}
+
+// ComponentRegistry is the resolver for the componentRegistry field.
+func (r *queryResolver) ComponentRegistry(ctx context.Context) (model.ComponentRegistry, error) {
+	return model.ComponentRegistry{
+		Components: registry.Definitions(),
+	}, nil
 }
 
 // Component returns ComponentResolver implementation.
 func (r *Resolver) Component() ComponentResolver { return &componentResolver{r} }
 
+// ComponentDefinition returns ComponentDefinitionResolver implementation.
+func (r *Resolver) ComponentDefinition() ComponentDefinitionResolver {
+	return &componentDefinitionResolver{r}
+}
+
+// ComponentEdge returns ComponentEdgeResolver implementation.
+func (r *Resolver) ComponentEdge() ComponentEdgeResolver { return &componentEdgeResolver{r} }
+
+// ComponentRegistry returns ComponentRegistryResolver implementation.
+func (r *Resolver) ComponentRegistry() ComponentRegistryResolver {
+	return &componentRegistryResolver{r}
+}
+
 type componentResolver struct{ *Resolver }
+type componentDefinitionResolver struct{ *Resolver }
+type componentEdgeResolver struct{ *Resolver }
+type componentRegistryResolver struct{ *Resolver }

@@ -1,0 +1,32 @@
+extend type Query {
+  "Clustering state, when clustering is available."
+  cluster: Cluster
+}
+
+"""
+Runtime state of Alloy clustering.
+"""
+type Cluster {
+  "Whether clustering is enabled."
+  enabled: Boolean!
+
+  "Peers currently known to this Alloy instance."
+  peers: [ClusterPeer!]!
+}
+
+"""
+One Alloy instance participating in the cluster.
+"""
+type ClusterPeer {
+  "Advertised peer name."
+  name: String!
+
+  "Advertised peer network address."
+  addr: String!
+
+  "Current membership state of the peer."
+  state: String!
+
+  "Whether this peer represents the current Alloy instance."
+  isSelf: Boolean!
+}

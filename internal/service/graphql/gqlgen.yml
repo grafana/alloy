@@ -168,3 +168,29 @@ models:
       arguments: {resolver: true}
       exports: {resolver: true}
       debugInfo: {resolver: true}
+      parentModule: {resolver: true}
+      childModules: {resolver: true}
+
+  ComponentEdge:
+    fields:
+      component: {resolver: true}
+      dataRates: {resolver: true}
+
+  Module:
+    fields:
+      parentModule: {resolver: true}
+      createdBy: {resolver: true}
+      childModules: {resolver: true}
+      components: {resolver: true}
+
+  ComponentRegistry:
+    fields:
+      component: {resolver: true}
+
+  ComponentDefinition:
+    fields:
+      instances: {resolver: true}
+
+  HTTPService:
+    fields:
+      componentHTTPPath: {resolver: true}

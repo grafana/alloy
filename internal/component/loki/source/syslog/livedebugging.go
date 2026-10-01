@@ -43,7 +43,7 @@ func newLiveDebuggingListener(opts component.Options) syslogtarget.DebugListener
 }
 
 func (l liveDebuggingWriter) pushData(thunk func() string) {
-	l.pub.PublishIfActive(livedebugging.Data{
+	livedebugging.Publish(l.pub, livedebugging.Data{
 		ComponentID: l.componentID,
 		Type:        livedebugging.LokiLog,
 		Count:       1,

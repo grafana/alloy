@@ -60,6 +60,10 @@ func TestInterceptorDataHooksDebuggingRespectsActivity(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, 1, publisher.isActiveCalls)
 					require.Equal(t, componentID, publisher.isActiveComponentID)
+					require.Equal(t, 1, publisher.recordRateCalls)
+					require.Equal(t, componentID, publisher.recordedComponentID)
+					require.Equal(t, livedebugging.PrometheusMetric, publisher.recordedType)
+					require.Equal(t, uint64(1), publisher.recordedCount)
 
 					if active {
 						require.Equal(t, 1, publisher.publishCalls)
@@ -108,6 +112,7 @@ func TestInterceptorMetadataDebuggingRespectsActivity(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, 1, publisher.isActiveCalls)
 			require.Equal(t, componentID, publisher.isActiveComponentID)
+			require.Equal(t, 1, publisher.recordRateCalls)
 			require.Equal(t, tc.wantPublishCalls, publisher.publishCalls)
 
 			if tc.active {
@@ -130,18 +135,29 @@ func TestInterceptorMetadataDebuggingRespectsActivity(t *testing.T) {
 }
 
 type debugDataPublisherSpy struct {
-	active        bool
-	isActiveCalls int
-	publishCalls  int
+	active          bool
+	isActiveCalls   int
+	publishCalls    int
+	recordRateCalls int
 
 	isActiveComponentID livedebugging.ComponentID
 	publishedData       livedebugging.Data
+	recordedComponentID livedebugging.ComponentID
+	recordedType        livedebugging.DataType
+	recordedCount       uint64
 }
 
 func (p *debugDataPublisherSpy) IsActive(componentID livedebugging.ComponentID) bool {
 	p.isActiveCalls++
 	p.isActiveComponentID = componentID
 	return p.active
+}
+
+func (p *debugDataPublisherSpy) RecordRate(componentID livedebugging.ComponentID, dataType livedebugging.DataType, count uint64, _ []string) {
+	p.recordRateCalls++
+	p.recordedComponentID = componentID
+	p.recordedType = dataType
+	p.recordedCount = count
 }
 
 func (p *debugDataPublisherSpy) PublishIfActive(data livedebugging.Data) {

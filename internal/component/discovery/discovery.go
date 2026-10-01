@@ -181,7 +181,7 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 	send := func() {
 		allTargets := toAlloyTargets(cache)
 		componentID := livedebugging.ComponentID(c.opts.ID)
-		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 			componentID,
 			livedebugging.Target,
 			uint64(len(allTargets)),

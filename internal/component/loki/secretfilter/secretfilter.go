@@ -305,7 +305,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 					return false
 				}
 
-				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 					livedebugging.ComponentID(c.opts.ID),
 					livedebugging.LokiLog,
 					1,
@@ -345,7 +345,7 @@ func (c *Component) Run(ctx context.Context) error {
 			return loki.Entry{}, false
 		}
 
-		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		livedebugging.Publish(c.debugDataPublisher, livedebugging.NewData(
 			livedebugging.ComponentID(c.opts.ID),
 			livedebugging.LokiLog,
 			1,

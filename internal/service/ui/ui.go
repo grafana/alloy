@@ -102,6 +102,7 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 			Logger:           s.opts.Logger,
 			URLPrefix:        s.opts.UIPrefix,
 			Host:             host,
+			CallbackManager:  s.opts.CallbackManager,
 			EnablePlayground: s.opts.EnableGraphQLPlayground,
 		})
 	} else {

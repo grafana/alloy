@@ -10,7 +10,7 @@ import (
 )
 
 func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, ld plog.Logs, nextLogs []otelcol.ComponentMetadata) {
-	debugDataPublisher.PublishIfActive(livedebugging.NewData(
+	livedebugging.Publish(debugDataPublisher, livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelLog,
 		uint64(ld.LogRecordCount()),
@@ -26,7 +26,7 @@ func PublishLogsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, co
 }
 
 func PublishTracesIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, td ptrace.Traces, nextTraces []otelcol.ComponentMetadata) {
-	debugDataPublisher.PublishIfActive(livedebugging.NewData(
+	livedebugging.Publish(debugDataPublisher, livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelTrace,
 		uint64(td.SpanCount()),
@@ -42,7 +42,7 @@ func PublishTracesIfActive(debugDataPublisher livedebugging.DebugDataPublisher, 
 }
 
 func PublishMetricsIfActive(debugDataPublisher livedebugging.DebugDataPublisher, componentID string, md pmetric.Metrics, nextMetrics []otelcol.ComponentMetadata) {
-	debugDataPublisher.PublishIfActive(livedebugging.NewData(
+	livedebugging.Publish(debugDataPublisher, livedebugging.NewData(
 		livedebugging.ComponentID(componentID),
 		livedebugging.OtelMetric,
 		uint64(md.MetricCount()),

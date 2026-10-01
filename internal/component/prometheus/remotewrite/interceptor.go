@@ -70,6 +70,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.Append(ref, l, t, v)
 			}
 
+			debugDataPublisher.RecordRate(liveDebuggingComponentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					liveDebuggingComponentID,
@@ -101,6 +102,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.AppendHistogram(ref, l, t, h, fh)
 			}
 
+			debugDataPublisher.RecordRate(liveDebuggingComponentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					liveDebuggingComponentID,
@@ -140,6 +142,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.UpdateMetadata(ref, l, m)
 			}
 
+			debugDataPublisher.RecordRate(liveDebuggingComponentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					liveDebuggingComponentID,
@@ -171,6 +174,7 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.AppendExemplar(ref, l, e)
 			}
 
+			debugDataPublisher.RecordRate(liveDebuggingComponentID, livedebugging.PrometheusMetric, 1, nil)
 			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
 				debugDataPublisher.PublishIfActive(livedebugging.NewData(
 					liveDebuggingComponentID,

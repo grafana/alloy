@@ -1,0 +1,37 @@
+extend type Query {
+  """
+  All runtime modules known to Alloy.
+  """
+  modules: [Module!]!
+
+  """
+  A runtime module by its globally unique ID.
+  """
+  module(
+    "Globally unique runtime module ID."
+    id: ID!
+  ): Module
+}
+
+"""
+A runtime configuration scope containing component instances.
+
+Non-root modules are created by components. The local and remote configuration
+root modules have no creator or parent.
+"""
+type Module {
+  "Globally unique runtime module ID. The local root module has an empty ID."
+  id: ID!
+
+  "Module containing the component that created this module."
+  parentModule: Module
+
+  "Component that created this module. Root modules have no creator."
+  createdBy: Component
+
+  "Modules created by components directly contained in this module."
+  childModules: [Module!]!
+
+  "Components directly contained in this module."
+  components: [Component!]!
+}

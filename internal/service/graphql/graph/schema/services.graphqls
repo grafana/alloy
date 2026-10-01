@@ -1,0 +1,96 @@
+extend type Query {
+  "All services registered with the Alloy runtime."
+  services: [AlloyService!]!
+
+  "A registered Alloy service by name."
+  service(
+    "Registered service name."
+    name: String!
+  ): AlloyService
+}
+
+"""
+Common metadata exposed by every registered Alloy service.
+"""
+interface AlloyService {
+  "Registered service name."
+  name: String!
+
+  "Stability level of the service."
+  stability: String!
+
+  "Names of services this service depends on."
+  dependsOn: [String!]!
+
+  "Runtime consumers that depend on this service."
+  consumers: [ServiceConsumer!]!
+
+  "Whether the service exposes service-specific runtime data."
+  hasRuntimeData: Boolean!
+}
+
+"""
+Runtime data for Alloy's HTTP service.
+"""
+type HTTPService implements AlloyService {
+  "Registered service name."
+  name: String!
+
+  "Stability level of the service."
+  stability: String!
+
+  "Names of services this service depends on."
+  dependsOn: [String!]!
+
+  "Runtime consumers that depend on this service."
+  consumers: [ServiceConsumer!]!
+
+  "Whether the service exposes service-specific runtime data."
+  hasRuntimeData: Boolean!
+
+  "Network address on which the HTTP server listens."
+  httpListenAddr: String!
+
+  "In-memory address used by internal HTTP clients."
+  memoryListenAddr: String!
+
+  "Base path under which the HTTP service exposes endpoints."
+  baseHTTPPath: String!
+
+  "HTTP path associated with a component."
+  componentHTTPPath(
+    "Fully qualified component ID."
+    componentID: ID!
+  ): String!
+}
+
+"""
+Metadata for a service without service-specific runtime fields.
+"""
+type GenericService implements AlloyService {
+  "Registered service name."
+  name: String!
+
+  "Stability level of the service."
+  stability: String!
+
+  "Names of services this service depends on."
+  dependsOn: [String!]!
+
+  "Runtime consumers that depend on this service."
+  consumers: [ServiceConsumer!]!
+
+  "Whether the service exposes service-specific runtime data."
+  hasRuntimeData: Boolean!
+}
+
+"""
+A runtime object that consumes an Alloy service.
+"""
+type ServiceConsumer {
+  "Kind of runtime consumer."
+  type: String!
+
+  "Identifier of the runtime consumer."
+  id: String!
+}

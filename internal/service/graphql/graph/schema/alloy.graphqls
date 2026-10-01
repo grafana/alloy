@@ -10,21 +10,21 @@ Represents build and runtime information for an Alloy instance.
 Contains version control and build environment details.
 """
 type Alloy {
-  "The Git branch from which this build was created"
+  "Git branch from which this build was created."
   branch: String!
 
-  "The timestamp of when this build was created"
+  "Timestamp at which this build was created."
   buildDate: String!
 
-  "The user account that initiated this build"
+  "User account that initiated this build."
   buildUser: String!
 
-  "Whether the Alloy instance is up and running"
+  "Whether the Alloy instance is ready to serve requests."
   isReady: Boolean!
 
-  "The Git commit hash from which this build was created"
+  "Git commit hash from which this build was created."
   revision: String!
 
-  "The semantic version of this Alloy build"
+  "Semantic version of this Alloy build."
   version: String!
 }
