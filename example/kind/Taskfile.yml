@@ -7,6 +7,13 @@ env:
   KUBECONFIG: '{{.KUBECONFIG}}'
   CLUSTERNAME: '{{.CLUSTERNAME}}'
 tasks:
+  ui:ta:
+    desc: Open the TA allocation explorer through a local port-forward
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+    cmds:
+      - 'echo "Target Allocator: http://localhost:{{.PORT}}/debug/allocation"'
+      - 'kubectl --context kind-{{.CLUSTERNAME}} -n target-allocation port-forward --address 127.0.0.1 service/target-allocator {{.PORT}}:8080'
   cluster:up:
     desc: Start the single-node demo cluster (only one kind cluster at a time)
     cmds: [bash config/target-allocation/cluster.sh up]

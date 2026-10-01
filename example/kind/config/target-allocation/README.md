@@ -7,6 +7,7 @@ task cluster:up
 task deploy:vanilla      # Alloy clustering; every peer discovers targets
 task deploy:ta-hashing   # Local TA; Alloy uses HTTP discovery
 task deploy:ta-packing   # Local TA load-shedding; asynchronous size probes
+task ui:ta               # Print the allocation UI URL and forward localhost:8080 (PORT=8081 to override)
 task cluster:down        # Deletes the cluster and stops ingestion
 ```
 
@@ -17,6 +18,9 @@ Milestone verified with operator commit [`74567406`](https://github.com/thampiot
 For a newer containerd cluster, override the repo-pinned kind 0.24 with a compatible
 binary: `KIND=/opt/homebrew/bin/kind task deploy:ta-packing` (tested with kind 0.33).
 Only one kind cluster may run. The demo uses one node, three Alloy pods and one TA.
+The 60 targets represent inventory, checkout, catalog search and billing services.
+Try UI searches such as `payments`, `invoice-worker` or `ap-southeast-2`; search runs
+on TA and returns 25 results per page, with matching text highlighted.
 Edit `common/targets.yaml` for target counts/series; shared Helm values and metrics
 are in `common/`; both TA modes share `common/allocator.yaml` and `common/ta.alloy`.
 Edit `ta-packing/allocator.yaml` for sizing/probe settings (default size 100,
