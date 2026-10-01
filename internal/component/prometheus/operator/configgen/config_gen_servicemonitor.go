@@ -52,6 +52,11 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 		cfg.ScrapeNativeHistograms = &vCopy
 	}
 
+	if m.Spec.ConvertClassicHistogramsToNHCB != nil {
+		vCopy := *m.Spec.ConvertClassicHistogramsToNHCB
+		cfg.ConvertClassicHistogramsToNHCB = &vCopy
+	}
+
 	if ep.Interval != "" {
 		if cfg.ScrapeInterval, err = model.ParseDuration(string(ep.Interval)); err != nil {
 			return nil, fmt.Errorf("parsing interval from serviceMonitor: %w", err)
