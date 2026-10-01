@@ -69,7 +69,7 @@ You can use the following arguments with `prometheus.exporter.gcp`:
 | `gcp_client_timeout`      | `duration`     | Sets a timeout on the client used to make API calls to GCP. A single scrape can initiate numerous calls to GCP, so be mindful if you choose to override this value.                                                                   | `"15s"` | no       |
 | `ingest_delay`            | `bool`         | When enabled, this automatically adjusts the time range used when querying for metrics backwards based on the metadata GCP has published for how long the data can take to be ingested.                                               | `false` | no       |
 | `request_interval`        | `duration`     | The time range used when querying for metrics.                                                                                                                                                                                        | `"5m"`  | no       |
-| `request_offset`          | `duration`     | When enabled this offsets the time range used when querying for metrics by a set amount.                                                                                                                                              | `"0s"`  | no       |
+| `request_offset`          | `duration`     | Offsets the time range used when querying for metrics by a set amount.                                                                                                                                                                | `"0s"`  | no       |
 
 {{< admonition type="note" >}}
 If you are supplying a list of strings for the `extra_filters` argument, any string values within a particular filter string must be enclosed in escaped double quotes.
