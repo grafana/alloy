@@ -50,7 +50,8 @@ You can use the following arguments with `remote.aws.secrets_manager`:
 | `version_id`     | `string`   | The unique identifier of the secret version to read. |         | no       |
 | `version_stage`  | `string`   | The staging label of the secret version to read.     |         | no       |
 
-Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and at each configuration change.
+Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and when its arguments change.
+A reload that doesn't change the arguments of `remote.aws.secrets_manager` doesn't read the secret again.
 Otherwise, `poll_frequency` must be at least `"1m"`.
 
 With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.
@@ -64,7 +65,7 @@ If you set neither, `remote.aws.secrets_manager` reads the version with the `AWS
 {{< admonition type="note" >}}
 AWS charges for each Secrets Manager API call.
 Each `remote.aws.secrets_manager` component makes one call at each poll.
-It also reads the secret at startup and at each configuration change.
+It also reads the secret at startup and when its arguments change.
 The AWS SDK makes up to 3 attempts for each call.
 If you use the `assume_role` block, the component also calls AWS Security Token Service (AWS STS) when the role credentials expire.
 Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
@@ -197,7 +198,7 @@ This information contains no secret values.
 | `remote_aws_secrets_manager_fetches_total`                        | `counter` | Total number of secret fetches, with a `result` label of `success` or `error`. |
 | `remote_aws_secrets_manager_timestamp_last_accessed_unix_seconds` | `gauge`   | The last successful access in Unix seconds.                                    |
 
-## Example
+## Examples
 
 This example reads a JSON secret with the fields `username` and `password` and uses them for basic authentication.
 The `username` argument takes a string, so the example uses [convert.nonsensitive][] to convert the secret value:
