@@ -865,6 +865,566 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
 }
 
+// newServerLogCollector builds a Logs collector without enable_error_logs_processing
+// (the server-log categories need no SQL fingerprinting, so they work on a
+// cgo-less build too) and returns it with its entry channel.
+func newServerLogCollector(t *testing.T) (*Logs, chan loki.Entry) {
+	t.Helper()
+	entryCh := make(chan loki.Entry, 8)
+	c, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     prometheus.NewRegistry(),
+	})
+	require.NoError(t, err)
+	return c, entryCh
+}
+
+// serverLogLine builds a prefixed LOG-severity line for msg (which may embed
+// literal newlines, e.g. autovacuum's multi-line ereport text).
+func serverLogLine(c *Logs, pid, msg string) string {
+	return logTS(c) + "::user@books_store:[" + pid + "]:1:00000:LOG:  " + msg
+}
+
+// preAuthServerLogLine builds a prefixed LOG-severity line shaped like a
+// pre-authentication event (SSL handshake failure, client I/O error before
+// login succeeds): PostgreSQL logs %u@%d as the literal "[unknown]@[unknown]"
+// in this case, and %v (vxid) is empty since no backend transaction has been
+// assigned yet.
+func preAuthServerLogLine(c *Logs, pid, sqlstate, msg string) string {
+	return logTS(c) + ":10.0.0.5(54321):[unknown]@[unknown]:[" + pid + "]:1:" + sqlstate + ":" + logTS(c) + "::0:6abe0000.0001:[unknown]:LOG:  " + msg
+}
+
+// fullPrefixServerLogLine builds a prefixed LOG-severity line with a
+// complete %s:%v:%x:%c:%q%a run, so sessionMetaRegex matches and
+// session_start_time/vxid/xid/session_id/application_name are all populated
+// from the log_line_prefix meta -- unlike serverLogLine, which omits that
+// run entirely.
+func fullPrefixServerLogLine(c *Logs, pid, vxid, xid, msg string) string {
+	ts := logTS(c)
+	return ts + ":10.0.0.5(54321):user@books_store:[" + pid + "]:1:00000:" + ts + ":" + vxid + ":" + xid + ":6abe0000.0001:myapp:LOG:  " + msg
+}
+
+func TestLogsCollector_ServerLog_Checkpoint(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "checkpoint complete: wrote 344 buffers (2.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.202 s, sync=0.005 s, total=0.215 s; sync files=6, longest=0.003 s, average=0.001 s; distance=1234 kB, estimate=1234 kB"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "100", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	require.Equal(t, "server_log", string(got[0].Labels["op"]))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "checkpoint", fields["category"])
+	require.Equal(t, "344", fields["buffers_written"])
+	require.Equal(t, "0", fields["wal_added"])
+	require.Equal(t, "0", fields["wal_removed"])
+	require.Equal(t, "0", fields["wal_recycled"])
+	require.Equal(t, "0.202", fields["write_seconds"])
+	require.Equal(t, "0.005", fields["sync_seconds"])
+	require.Equal(t, "0.215", fields["total_seconds"])
+
+	_, hasSqlstate := fields["sqlstate"]
+	require.False(t, hasSqlstate, `sqlstate="00000" is the case for every non-error log line and adds nothing`)
+	_, hasSqlstateName := fields["sqlstate_name"]
+	require.False(t, hasSqlstateName)
+}
+
+func TestLogsCollector_ServerLog_AutovacuumVacuum(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "automatic vacuum of table \"books_store.public.books\": index scans: 1\n" +
+		"pages: 0 removed, 443 remain, 0 skipped due to pins, 0 skipped frozen\n" +
+		"tuples: 10000 removed, 50000 remain, 0 are dead but not yet removable\n" +
+		"system usage: CPU: user: 0.01 s, system: 0.00 s, elapsed: 0.05 s"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "101", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "autovacuum", fields["category"])
+	require.Equal(t, "vacuum", fields["operation"])
+	require.Equal(t, "books_store.public.books", fields["table"])
+	require.Equal(t, "0.05", fields["elapsed_seconds"])
+}
+
+func TestLogsCollector_ServerLog_AutovacuumAnalyze(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "automatic analyze of table \"books_store.public.books\"\n" +
+		"system usage: CPU: user: 0.01 s, system: 0.00 s, elapsed: 0.03 s"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "102", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "autovacuum", fields["category"])
+	require.Equal(t, "analyze", fields["operation"])
+	require.Equal(t, "books_store.public.books", fields["table"])
+	require.Equal(t, "0.03", fields["elapsed_seconds"])
+}
+
+func TestLogsCollector_ServerLog_ConnectionAuthorized(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "connection authorized: user=app_user database=books_store application_name=myapp"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "103", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "connection", fields["category"])
+	// user/datname come from the general log_line_prefix meta (the test
+	// helper's "user"/"books_store"), not the message's own "app_user" --
+	// the meta field is preferred whenever it's available, and the
+	// pattern's own "database" capture is suppressed entirely rather than
+	// emitted redundantly under a second key.
+	require.Equal(t, "user", fields["user"])
+	require.Equal(t, "books_store", fields["datname"])
+	_, hasDatabase := fields["database"]
+	require.False(t, hasDatabase, "pattern's own database capture is suppressed in favor of the meta datname field")
+	require.Equal(t, "myapp", fields["application_name"])
+	_, hasHost := fields["host"]
+	require.False(t, hasHost, "client_addr stays deferred for connections")
+}
+
+func TestLogsCollector_ServerLog_ConnectionAuthorized_NoApplicationName(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "connection authorized: user=app_user database=books_store"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "104", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "user", fields["user"])
+	require.Equal(t, "books_store", fields["datname"])
+	_, hasAppName := fields["application_name"]
+	require.False(t, hasAppName, "absent application_name must not appear as an empty field")
+}
+
+// TestLogsCollector_ServerLog_ConnectionReceivedIsDropped pins that
+// "connection received:" (host/port only, no user/database) is never
+// captured: client_addr stays deferred, and that line carries nothing else
+// useful.
+func TestLogsCollector_ServerLog_ConnectionReceivedIsDropped(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "connection received: host=10.0.1.5 port=54321"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "105", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 300*time.Millisecond)
+	require.Len(t, got, 0, `"connection received:" must never be captured`)
+}
+
+func TestLogsCollector_ServerLog_Disconnection(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "disconnection: session time: 1:02:03.456 user=app_user database=books_store host=127.0.0.1 port=54321"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "106", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "disconnection", fields["category"])
+	require.Equal(t, "1:02:03.456", fields["session_time"])
+	require.Equal(t, "user", fields["user"])
+	require.Equal(t, "books_store", fields["datname"])
+	_, hasDatabase := fields["database"]
+	require.False(t, hasDatabase, "pattern's own database capture is suppressed in favor of the meta datname field")
+	_, hasHost := fields["host"]
+	require.False(t, hasHost, "client_addr stays deferred for disconnections")
+}
+
+func TestLogsCollector_ServerLog_LockWait_StillWaiting(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 still waiting for ShareLock on transaction 67890 after 1000.000 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "107", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "lock_wait", fields["category"])
+	// pid comes from the general log_line_prefix meta (the test helper's
+	// "107"), not the message's own "process 12345" -- the same dedup as
+	// connection/disconnection's user/datname, since this is always the
+	// same backend reporting on itself.
+	require.Equal(t, "107", fields["pid"])
+	// PostgreSQL's own wording is "still waiting for"; normalized to the
+	// shorter "waiting" here.
+	require.Equal(t, "waiting", fields["phase"])
+	require.Equal(t, "ShareLock", fields["lock_type"])
+	require.Equal(t, "67890", fields["xid"], "a transaction-shaped target is split out, not left as the opaque target string")
+	require.Equal(t, "1000.000", fields["wait_ms"])
+	_, hasTarget := fields["target"]
+	require.False(t, hasTarget)
+}
+
+// TestLogsCollector_ServerLog_LockWait_XidPrefersPatternOverMeta pins that
+// lock_wait's own xid (the transaction actually being waited on, parsed
+// from the message text) wins over the general log_line_prefix meta's own
+// xid (this backend's own transaction, often 0 for a read-only waiter, and
+// unrelated to what it's blocked on) when both are present.
+func TestLogsCollector_ServerLog_LockWait_XidPrefersPatternOverMeta(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 still waiting for ShareLock on transaction 67890 after 1000.000 ms"
+	line := fullPrefixServerLogLine(c, "119", "22/9", "555", msg)
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "67890", fields["xid"], "the waited-on transaction wins over this backend's own (555)")
+	require.Equal(t, "22/9", fields["vxid"], "vxid has no pattern-level counterpart, so the meta value still comes through")
+}
+
+func TestLogsCollector_ServerLog_LockWait_Acquired(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 acquired ShareLock on transaction 67890 after 1234.567 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "108", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "lock_wait", fields["category"])
+	require.Equal(t, "acquired", fields["phase"])
+	require.Equal(t, "1234.567", fields["wait_ms"])
+}
+
+// TestLogsCollector_ServerLog_LockWait_FailedToAcquire pins PostgreSQL's
+// third log_lock_waits phase: lock_timeout expiring instead of the lock
+// eventually being granted. This was previously unrecognized entirely
+// (only "still waiting for"/"acquired" matched), so the line was silently
+// dropped.
+func TestLogsCollector_ServerLog_LockWait_FailedToAcquire(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 failed to acquire ShareLock on transaction 67890 after 5000.123 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "113", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "lock_wait", fields["category"])
+	require.Equal(t, "failed to acquire", fields["phase"])
+	require.Equal(t, "67890", fields["xid"])
+}
+
+// TestLogsCollector_ServerLog_LockWait_RelationTarget pins the other common
+// lock_wait target shape: a relation OID within a database OID. PostgreSQL
+// never resolves this to a table name in a plain log_lock_waits message
+// (unlike a deadlock's DETAIL+CONTEXT), so only the OIDs are available.
+func TestLogsCollector_ServerLog_LockWait_RelationTarget(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 still waiting for AccessExclusiveLock on relation 16394 of database 16388 after 1000.000 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "114", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "16394", fields["relation_oid"])
+	require.Equal(t, "16388", fields["database_oid"])
+	_, hasTarget := fields["target"]
+	require.False(t, hasTarget)
+	_, hasXid := fields["xid"]
+	require.False(t, hasXid)
+}
+
+// TestLogsCollector_ServerLog_LockWait_TupleTarget pins the tuple-level lock
+// shape: two sessions contending for the same row (e.g. both running
+// SELECT ... FOR UPDATE on it) log a wait on a specific tuple (page, offset)
+// within a relation/database, confirmed live against a real instance -- a
+// common case, not a rare one like the doc comment on the regexes once
+// assumed.
+func TestLogsCollector_ServerLog_LockWait_TupleTarget(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 7026 still waiting for AccessExclusiveLock on tuple (1677,98) of relation 20944 of database 20582 after 1000.312 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "116", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "1677,98", fields["tuple"])
+	require.Equal(t, "20944", fields["relation_oid"])
+	require.Equal(t, "20582", fields["database_oid"])
+	_, hasTarget := fields["target"]
+	require.False(t, hasTarget)
+}
+
+// TestLogsCollector_ServerLog_LockWait_AdvisoryTargetStaysOpaque pins that a
+// target shape splitLockWaitTarget doesn't recognize (e.g. an advisory
+// lock's own 4-tuple format) is left as the raw target string, rather than
+// dropped or mis-split.
+func TestLogsCollector_ServerLog_LockWait_AdvisoryTargetStaysOpaque(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "process 12345 acquired ExclusiveLock on advisory lock [5,0,999888,1] after 2012.793 ms"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "115", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "advisory lock [5,0,999888,1]", fields["target"])
+	_, hasRelationOID := fields["relation_oid"]
+	require.False(t, hasRelationOID)
+	_, hasXid := fields["xid"]
+	require.False(t, hasXid)
+}
+
+func TestLogsCollector_ServerLog_TempFile(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `temporary file: path "base/pgsql_tmp/pgsql_tmp12345.0", size 1048576`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "109", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "temp_file", fields["category"])
+	require.Equal(t, "base/pgsql_tmp/pgsql_tmp12345.0", fields["path"])
+	require.Equal(t, "1048576", fields["size_bytes"])
+}
+
+func TestLogsCollector_ServerLog_ReplicationCommand(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `received replication command: START_REPLICATION SLOT "sub1" LOGICAL 0/1634FF8`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "110", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "replication_command", fields["category"])
+	require.Equal(t, "START_REPLICATION", fields["command"])
+	require.Equal(t, `SLOT "sub1" LOGICAL 0/1634FF8`, fields["args"])
+}
+
+func TestLogsCollector_ServerLog_ReplicationCommand_NoArgs(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "received replication command: IDENTIFY_SYSTEM"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "111", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "IDENTIFY_SYSTEM", fields["command"])
+	_, hasArgs := fields["args"]
+	require.False(t, hasArgs)
+}
+
+// TestLogsCollector_ServerLog_UnrecognizedLogLineDroppedSilently pins the
+// registry's closed-world policy: a LOG-severity line that matches none of
+// the 7 categories is dropped without error, never captured as an
+// unstructured blob.
+func TestLogsCollector_ServerLog_UnrecognizedLogLineDroppedSilently(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "duration: 0.001 ms  statement: SELECT 1"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "112", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 300*time.Millisecond)
+	require.Len(t, got, 0, "an unrecognized LOG line must never be captured")
+}
+
+// TestLogsCollector_ServerLog_WarningAndNoticeSeveritiesDispatch pins that
+// WARNING and NOTICE (not just LOG) also reach the server-log registry.
+func TestLogsCollector_ServerLog_WarningAndNoticeSeveritiesDispatch(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+	ts := logTS(c)
+
+	warnLine := ts + "::user@books_store:[113]:1:00000:WARNING:  temporary file: path \"base/pgsql_tmp/pgsql_tmp1.0\", size 2048"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: warnLine}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	require.Equal(t, "temp_file", fields["category"])
+}
+
+func TestLogsCollector_ServerLog_ConnectionAuthenticated(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `connection authenticated: identity="postgres" method=scram-sha-256 (/rdsdbdata/config/pg_hba.conf:1)`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "116", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "connection_authenticated", fields["category"])
+	// user comes from the general log_line_prefix meta (the test helper's
+	// "user"), not the message's own identity="postgres" -- same dedup as
+	// connection/disconnection, since %u is already set to the authenticated
+	// identity by the time this line is logged.
+	require.Equal(t, "user", fields["user"])
+	_, hasIdentity := fields["identity"]
+	require.False(t, hasIdentity, "the authenticated identity is named user, not identity")
+	require.Equal(t, "scram-sha-256", fields["method"])
+	require.Equal(t, "1", fields["pg_hba_line"])
+}
+
+func TestLogsCollector_ServerLog_ClientIOError(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "could not receive data from client: Connection reset by peer"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "117", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "client_io_error", fields["category"])
+	require.Equal(t, "Connection reset by peer", fields["reason"])
+}
+
+func TestLogsCollector_ServerLog_TLSHandshakeFailure(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "could not accept SSL connection: EOF detected"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "118", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "tls_handshake_failure", fields["category"])
+	require.Equal(t, "EOF detected", fields["reason"])
+}
+
+// TestLogsCollector_ServerLog_ClientIOError_PreAuth and
+// TestLogsCollector_ServerLog_TLSHandshakeFailure_PreAuth pin a real crash:
+// client_io_error and tls_handshake_failure happen almost exclusively on
+// pre-authentication connections, where PostgreSQL logs %u@%d as the literal
+// "[unknown]@[unknown]". parseTextLog located the PID's closing "]" with
+// strings.Index(afterAt, "]") searched from the start of afterAt, which
+// matched the "]" closing "[unknown]" instead of the PID's own "]" --
+// producing a negative slice range and panicking on every real occurrence of
+// these two categories.
+func TestLogsCollector_ServerLog_ClientIOError_PreAuth(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "could not receive data from client: Connection reset by peer"
+	line := preAuthServerLogLine(c, "21696", "08006", msg)
+	require.NotPanics(t, func() {
+		require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+	})
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "client_io_error", fields["category"])
+	require.Equal(t, "Connection reset by peer", fields["reason"])
+	_, hasSqlstateName := fields["sqlstate_name"]
+	require.False(t, hasSqlstateName, "sqlstate is never included on server_log entries")
+}
+
+func TestLogsCollector_ServerLog_TLSHandshakeFailure_PreAuth(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "could not accept SSL connection: EOF detected"
+	line := preAuthServerLogLine(c, "22847", "08P01", msg)
+	require.NotPanics(t, func() {
+		require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+	})
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "tls_handshake_failure", fields["category"])
+	require.Equal(t, "EOF detected", fields["reason"])
+	_, hasSqlstateName := fields["sqlstate_name"]
+	require.False(t, hasSqlstateName, "sqlstate is never included on server_log entries")
+}
+
+// TestLogsCollector_ServerLog_ConfigReload_Sighup through
+// TestLogsCollector_ServerLog_ConfigReload_InvalidParameter pin
+// config_reload's 4 sub-shapes, distinguished by the "kind" field since they
+// all share one category name.
+func TestLogsCollector_ServerLog_ConfigReload_Sighup(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := "received SIGHUP, reloading configuration files"
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "119", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "config_reload", fields["category"])
+	require.Equal(t, "sighup", fields["kind"])
+}
+
+func TestLogsCollector_ServerLog_ConfigReload_ParameterChanged(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `parameter "log_lock_waits" changed to "on"`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "120", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "config_reload", fields["category"])
+	require.Equal(t, "parameter_changed", fields["kind"])
+	require.Equal(t, "log_lock_waits", fields["param_name"])
+	require.Equal(t, "on", fields["param_value"])
+}
+
+func TestLogsCollector_ServerLog_ConfigReload_FileError(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `configuration file "/rdsdbdata/config/postgresql.conf" contains errors; unaffected changes were applied`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "121", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "config_reload", fields["category"])
+	require.Equal(t, "file_error", fields["kind"])
+	require.Equal(t, "/rdsdbdata/config/postgresql.conf", fields["config_file"])
+}
+
+func TestLogsCollector_ServerLog_ConfigReload_InvalidParameter(t *testing.T) {
+	c, entryCh := newServerLogCollector(t)
+
+	msg := `invalid configuration parameter name "foo_bar"`
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: serverLogLine(c, "122", msg)}}))
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "config_reload", fields["category"])
+	require.Equal(t, "invalid_parameter", fields["kind"])
+	require.Equal(t, "foo_bar", fields["param_name"])
+}
+
 // drainEntries reads up to want entries from the handler's channel within
 // timeout. Returns whatever arrived in order.
 func drainEntries(t *testing.T, ch chan loki.Entry, want int, timeout time.Duration) []loki.Entry {
@@ -977,7 +1537,7 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 
 	// client_addr and the SQL text itself are deferred; this fixture's prefix
 	// omits the %s:%v:%x:%c run, so those fields are absent too.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "sqlstate_name", "sqlstate_class_name", "message", "line_number")
 }
 
 // TestLogsCollector_EmitsErrorEntry_IncludesMessageField pins that the ERROR
@@ -1445,7 +2005,7 @@ func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 
 	// pg_errors_total increments immediately.
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")) == 1
 	}, 1*time.Second, 50*time.Millisecond)
 
 	// No entry should arrive even after the timeout window.
@@ -1480,7 +2040,7 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
 	require.Equal(t, pid, fields["pid"])
 	require.Equal(t, "42P02", fields["sqlstate"], "the second error's SQLSTATE is the one matched")
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "sqlstate_name", "sqlstate_class_name", "message", "line_number")
 }
 
 // TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
@@ -1515,7 +2075,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	require.Equal(t, "app-user", fields["user"])
 	require.Equal(t, pid, fields["pid"])
 	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "sqlstate_name", "sqlstate_class_name", "message", "line_number")
 }
 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
@@ -1570,7 +2130,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 	// Wait for the buffering / flush logic to settle. pg_errors_total should
 	// have incremented (gating doesn't touch it).
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
 	}, 2*time.Second, 50*time.Millisecond)
 
 	// No Loki entries should have flowed.
@@ -1607,7 +2167,7 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 
 	// Counter should still increment.
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
 	}, 2*time.Second, 50*time.Millisecond)
 
 	// And no Loki entry should appear.
@@ -1642,7 +2202,7 @@ func TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42601", "42", "books_store", "user"))
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42601", "42", "syntax_error", "syntax_error_or_access_rule_violation", "books_store", "user"))
 	require.Equal(t, float64(1), got, "an ERROR line with an embedded STATEMENT keyword must still be counted")
 }
 
@@ -1670,7 +2230,7 @@ func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
 	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
 }
 
@@ -1707,7 +2267,7 @@ func TestLogsCollector_ForgedAppNameDoesNotHideError(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
 	require.Equal(t, float64(1), got, `a forged "LOG:  " application_name must not hide the real ERROR`)
 }
 
@@ -1744,8 +2304,166 @@ func TestLogsCollector_MultipleForgedAppNameLabels(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "testdb", "conn_user"))
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "testdb", "conn_user"))
 	require.Equal(t, float64(1), got, "multiple forged application_name labels must all be skipped to the real FATAL")
+}
+
+// TestLogsCollector_DeadlockDetail_FingerprintsCompetingQueries pins the
+// motivating fix: a deadlock's DETAIL/CONTEXT get parsed into structured,
+// query-text-free fields -- blocker pid, lock type, locked relation, and
+// the blocker's query fingerprint (the victim's own fingerprint is just the
+// existing top-level query_fingerprint, from STATEMENT) -- instead of a
+// free-text detail/context pair that would otherwise carry raw SQL.
+func TestLogsCollector_DeadlockDetail_FingerprintsCompetingQueries(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "18765"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:40P01:ERROR:  deadlock detected"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:40P01:DETAIL:  Process 18765 waits for ShareLock on transaction 596; blocked by process 18766."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 18766 waits for ShareLock on transaction 595; blocked by process 18765."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 18765: UPDATE accounts SET balance = balance - 100 WHERE id = 1;"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 18766: UPDATE accounts SET balance = balance - 100 WHERE id = 2;"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:40P01:CONTEXT:  while locking tuple (3,90) in relation \"accounts\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:40P01:STATEMENT:  UPDATE accounts SET balance = balance - 100 WHERE id = 1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:5:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	victimFP, err := fingerprint.Fingerprint("UPDATE accounts SET balance = balance - 100 WHERE id = 1")
+	require.NoError(t, err)
+	blockerFP, err := fingerprint.Fingerprint("UPDATE accounts SET balance = balance - 100 WHERE id = 2;")
+	require.NoError(t, err)
+
+	require.Equal(t, "18766", fields["pid_blocker"])
+	require.Equal(t, "ShareLock", fields["lock_type"])
+	require.Equal(t, "accounts", fields["relation"])
+	require.Equal(t, victimFP, fields["query_fingerprint"], "the victim's fingerprint is just the existing top-level field, from STATEMENT")
+	require.Equal(t, blockerFP, fields["query_fingerprint_blocker"])
+	for _, raw := range []string{"WHERE id = 1", "WHERE id = 2", "UPDATE accounts"} {
+		require.NotContains(t, fields["query_fingerprint_blocker"], raw, "no raw query text may survive anywhere in the entry")
+	}
+	_, hasDetail := fields["detail"]
+	require.False(t, hasDetail, "a handled deadlock must not also emit the generic, query-text-bearing detail field")
+	_, hasContext := fields["context"]
+	require.False(t, hasContext, "deadlock_relation already carries the one thing in CONTEXT worth keeping")
+}
+
+// TestLogsCollector_DeadlockDetail_BlockerFingerprintOmittedWhenEmpty pins
+// that when the blocker's query text isn't available (here, an empty
+// capture after its "Process N: " marker), the entry still emits with the
+// structural fields (blocker pid, lock type) present, but
+// query_fingerprint_blocker omitted -- never fabricated, and never falling
+// back to raw/redacted query text.
+func TestLogsCollector_DeadlockDetail_BlockerFingerprintOmittedWhenEmpty(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "18767"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:40P01:ERROR:  deadlock detected"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:40P01:DETAIL:  Process 18767 waits for ShareLock on transaction 1; blocked by process 18769."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 18769 waits for ShareLock on transaction 2; blocked by process 18767."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 18769:    "}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:40P01:STATEMENT:  SELECT 1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1, "entry must still be emitted despite the blocker query being unavailable")
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "18769", fields["pid_blocker"])
+	require.Equal(t, "ShareLock", fields["lock_type"])
+	_, hasFingerprint := fields["query_fingerprint_blocker"]
+	require.False(t, hasFingerprint, "no query text was available for the blocker, so the fingerprint field must be omitted rather than fabricated")
+	_, hasDetail := fields["detail"]
+	require.False(t, hasDetail)
+}
+
+// TestLogsCollector_DeadlockDetail_OnlyAppliesToDeadlockSQLState pins that the
+// fingerprint-based redaction only runs for sqlstate=40P01: a "Process N: ..."
+// shaped DETAIL under any other SQLSTATE goes through the normal alcatraz
+// redaction path unchanged (a false-positive match on unrelated text should
+// not be fingerprinted as SQL).
+func TestLogsCollector_DeadlockDetail_OnlyAppliesToDeadlockSQLState(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "18768"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:ERROR:  duplicate key value violates unique constraint"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:DETAIL:  Process 18768: contact john@example.com"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:23505:STATEMENT:  INSERT INTO users (email) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["detail"], "john@example.com", "non-deadlock DETAIL still goes through normal PII redaction")
+	require.Contains(t, fields["detail"], "Process 18768:")
+}
+
+// TestLogsCollector_DeadlockDetail_MultiLineQuery_FingerprintsAcrossLines pins
+// the real-world shape production traffic actually produces: a
+// "Process <pid>: " marker with nothing after it on that physical line, and
+// the competing query itself spread across the following continuation
+// line(s) (pretty-printed, multi-line SQL is routine from real application
+// code) -- including a traceparent SQL comment on both sides, which must
+// come through as its own field rather than vanish with the discarded query
+// text.
+func TestLogsCollector_DeadlockDetail_MultiLineQuery_FingerprintsAcrossLines(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "17236"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:40P01:ERROR:  deadlock detected"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:40P01:DETAIL:  Process 17236 waits for ShareLock on transaction 1; blocked by process 16906."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 16906 waits for ShareLock on transaction 2; blocked by process 17236."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 17236: "}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t\tWITH candidates AS ("}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t\t\tSELECT id FROM books WHERE stock > 10"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t\t)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t\tSELECT * FROM candidates FOR UPDATE /*traceparent='00-aaaa-bbbb-01'*/"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tProcess 16906: "}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t\tSELECT * FROM books WHERE id = 1 FOR UPDATE /*traceparent='00-cccc-dddd-01'*/"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:40P01:STATEMENT:  WITH candidates AS (SELECT id FROM books WHERE stock > 10) SELECT * FROM candidates FOR UPDATE /*traceparent='00-aaaa-bbbb-01'*/"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	blockerFP, err := fingerprint.Fingerprint("SELECT * FROM books WHERE id = 1 FOR UPDATE /*traceparent='00-cccc-dddd-01'*/")
+	require.NoError(t, err)
+
+	require.Equal(t, "16906", fields["pid_blocker"])
+	require.Equal(t, "ShareLock", fields["lock_type"])
+	require.Equal(t, blockerFP, fields["query_fingerprint_blocker"])
+	require.Equal(t, "00-aaaa-bbbb-01", fields["traceparent"])
+	require.Equal(t, "00-cccc-dddd-01", fields["traceparent_blocker"])
+	for _, raw := range []string{"FOR UPDATE", "stock > 10", "candidates"} {
+		require.NotContains(t, fields["query_fingerprint_blocker"], raw, "no raw multi-line query text may survive anywhere in the entry")
+	}
+	_, hasDetail := fields["detail"]
+	require.False(t, hasDetail)
 }
 
 // TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:

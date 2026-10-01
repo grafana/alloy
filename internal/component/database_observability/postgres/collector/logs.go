@@ -81,6 +81,105 @@ var pgLogLabels = []string{
 // message text.
 const pgLabelSeparator = ":  "
 
+// deadlockSQLState is the SQLSTATE PostgreSQL reports for "deadlock
+// detected". Its DETAIL/CONTEXT embed the full competing query text of
+// every blocked process plus the locked relation, which get parsed into
+// deadlockInfo instead of passed through the general-purpose alcatraz
+// redactor (which has no notion of SQL syntax): every field there is a
+// plain identifier or a fingerprint, never raw query text.
+const deadlockSQLState = "40P01"
+
+// deadlockWaitLineRegex matches one participant's line in a deadlock's
+// DETAIL: "Process <pid> waits for <lockType> on <target>; blocked by
+// process <blockerPid>." PostgreSQL emits one such line per process in the
+// cycle; parseDeadlockDetail uses the one whose pid is the erroring
+// session's own (already available as the top-level pid field) to find the
+// lock type and the other side of the wait.
+var deadlockWaitLineRegex = regexp.MustCompile(`(?m)^Process (\d+) waits for (\S+) on .*?; blocked by process (\d+)\.$`)
+
+// deadlockProcessLineRegex matches the "Process <pid>: " marker that
+// introduces a competing query within a deadlock DETAIL. The wait lines
+// above have no colon after the pid, so they never match this one. The
+// query itself is NOT captured by this regex: real application queries are
+// routinely multi-line (pretty-printed SQL), so the text starts on its own
+// following line as often as it starts right after the marker --
+// parseDeadlockDetail takes everything up to the next marker (or end of
+// DETAIL) as the query, regardless of which.
+var deadlockProcessLineRegex = regexp.MustCompile(`(?m)^Process (\d+): `)
+
+// deadlockRelationRegex extracts the locked table from a deadlock's
+// CONTEXT, e.g. `while locking tuple (1441,14) in relation "books"`.
+var deadlockRelationRegex = regexp.MustCompile(`in relation "([^"]+)"`)
+
+// traceparentCommentRegex extracts a W3C traceparent embedded as a SQL
+// comment (e.g. `/*traceparent='00-...-...-01'*/`), as some query
+// instrumentation adds to the query text itself.
+var traceparentCommentRegex = regexp.MustCompile(`/\*traceparent='([^']+)'\*/`)
+
+// deadlockInfo is the structured, query-text-free view of a deadlock's
+// DETAIL/CONTEXT. Every field is a plain identifier (pid, lock type,
+// relation name) or a SQL fingerprint -- never raw query text. The victim
+// (the process PostgreSQL chose to error out) is already identified by the
+// pendingError's own pid/query_fingerprint fields (plus the general-purpose
+// traceparent field, extracted from STATEMENT for any error, not just
+// deadlocks); this only adds the other side of the wait.
+type deadlockInfo struct {
+	blockerPID              string
+	lockType                string
+	relation                string
+	blockerQueryFingerprint string
+	blockerTraceparent      string
+}
+
+// parseDeadlockDetail extracts deadlockInfo from a deadlock's raw DETAIL and
+// CONTEXT text. victimPID is the pendingError's own pid (the process
+// PostgreSQL chose as the victim). ok is false when DETAIL doesn't contain a
+// recognizable wait line for victimPID (an unexpected DETAIL shape), in
+// which case callers fall back to the generic detail/context handling
+// rather than emitting a half-populated deadlockInfo.
+func parseDeadlockDetail(detail, context, victimPID string) (info deadlockInfo, ok bool) {
+	for _, m := range deadlockWaitLineRegex.FindAllStringSubmatch(detail, -1) {
+		if m[1] == victimPID {
+			info.lockType = m[2]
+			info.blockerPID = m[3]
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return deadlockInfo{}, false
+	}
+
+	if m := deadlockRelationRegex.FindStringSubmatch(context); m != nil {
+		info.relation = m[1]
+	}
+
+	matches := deadlockProcessLineRegex.FindAllStringSubmatchIndex(detail, -1)
+	for i, m := range matches {
+		if detail[m[2]:m[3]] != info.blockerPID {
+			continue
+		}
+		payloadEnd := len(detail)
+		if i+1 < len(matches) {
+			payloadEnd = matches[i+1][0]
+		}
+		// TrimSpace absorbs the newline a multi-line query starts on (its
+		// marker has nothing after it on its own physical line) the same way
+		// it absorbs a same-line query's surrounding whitespace.
+		query := strings.TrimSpace(detail[m[1]:payloadEnd])
+
+		if tm := traceparentCommentRegex.FindStringSubmatch(query); tm != nil {
+			info.blockerTraceparent = tm[1]
+		}
+		if fp, err := fingerprint.Fingerprint(query); err == nil {
+			info.blockerQueryFingerprint = fp
+		}
+		break
+	}
+
+	return info, true
+}
+
 // leadingLogLabel returns the PostgreSQL log label that s begins with (i.e. s
 // starts with "<label>:  "), or "" if s does not start with a known label.
 func leadingLogLabel(s string) string {
@@ -227,7 +326,7 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", labelDatname, "user"},
+		[]string{"severity", "sqlstate", "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
@@ -387,7 +486,8 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		(strings.Contains(line, "STATEMENT:") || strings.Contains(line, "DETAIL:") ||
 			strings.Contains(line, "HINT:") || strings.Contains(line, "CONTEXT:"))
 	mayFlush := l.enableErrorLogsProcessing && l.pending != nil && l.pending.hasStatement
-	if !hasErrorKeyword && !hasContinuationKeyword && !mayFlush {
+	hasServerLogKeyword := anyServerLogGateMatches(line)
+	if !hasErrorKeyword && !hasContinuationKeyword && !mayFlush && !hasServerLogKeyword {
 		return nil
 	}
 
@@ -399,7 +499,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		l.flushPending()
 	}
 
-	if !hasErrorKeyword && !hasContinuationKeyword {
+	if !hasErrorKeyword && !hasContinuationKeyword && !hasServerLogKeyword {
 		return nil
 	}
 
@@ -463,7 +563,12 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	pidEndIdx := strings.Index(afterAt, "]")
+	// Search for the pid's closing "]" starting at pidMarkerIdx, not from the
+	// start of afterAt: when %u or %d is itself "[unknown]" (pre-authentication
+	// connections -- SSL handshake failures, client I/O errors before login),
+	// that literal "]" appears earlier in afterAt and would be matched instead,
+	// producing a negative slice (panic) or a truncated pid.
+	pidEndIdx := pidMarkerIdx + strings.Index(afterAt[pidMarkerIdx:], "]")
 	pid := afterAt[pidMarkerIdx+2 : pidEndIdx]
 	afterPid := afterAt[pidEndIdx+1:]
 
@@ -537,8 +642,34 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	// A non-error message (LOG/WARNING/DETAIL/…) or no recognizable label:
-	// don't count it, even if it contains an error keyword in its text.
+	// LOG/WARNING/NOTICE lines never join the ERROR/FATAL/PANIC pipeline below
+	// (no pg_errors_total counting, no STATEMENT pairing): they're dispatched
+	// through the server-log pattern registry instead, independently of
+	// enable_error_logs_processing (these categories need no SQL
+	// fingerprinting). An unrecognized LOG/WARNING/NOTICE message is dropped
+	// silently — Alloy only ever emits the categories it has explicitly
+	// modeled, never an unstructured capture of arbitrary log text.
+	if label == "LOG" || label == "WARNING" || label == "NOTICE" {
+		msgStart := searchFrom + labelAt + len(label) + 1
+		message := strings.TrimSpace(line[msgStart:])
+		if category, fields, ok := matchServerLog(message); ok {
+			l.emitServerLogEntry(category, fields, parsedTimestamp, serverLogMeta{
+				pid:              pid,
+				user:             user,
+				datname:          database,
+				lineNumber:       lineNumber,
+				sessionStartTime: sessionStartTime,
+				vxid:             vxid,
+				xid:              xid,
+				sessionID:        sessionID,
+				applicationName:  applicationName,
+			})
+		}
+		return nil
+	}
+
+	// A non-error message (DETAIL/HINT/…) or no recognizable label: don't
+	// count it, even if it contains an error keyword in its text.
 	if _, ok := supportedSeverities[label]; !ok {
 		return nil
 	}
@@ -547,6 +678,8 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		label,
 		sqlstateCode,
 		sqlstateClass,
+		sqlstateName(sqlstateCode),
+		sqlstateClassName(sqlstateClass),
 		database,
 		user,
 	).Inc()
@@ -725,6 +858,15 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s message=%q",
 		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass, l.redact(p.message))
 
+	// Names from the official SQLSTATE appendix, omitted (rather than printed
+	// empty) for a code this build's table doesn't recognize.
+	if n := sqlstateName(p.sqlstate); n != "" {
+		body += fmt.Sprintf(" sqlstate_name=%s", n)
+	}
+	if n := sqlstateClassName(p.sqlstateClass); n != "" {
+		body += fmt.Sprintf(" sqlstate_class_name=%s", n)
+	}
+
 	if p.lineNumber != "" {
 		body += fmt.Sprintf(" line_number=%s", p.lineNumber)
 	}
@@ -744,13 +886,40 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 		body += fmt.Sprintf(" application_name=%q", l.redact(p.applicationName))
 	}
 
-	if p.hasDetail {
+	// traceparent is general-purpose, not deadlock-specific: some query
+	// instrumentation embeds a W3C traceparent as a SQL comment, which lets
+	// this error be correlated back to the distributed trace that issued it.
+	if m := traceparentCommentRegex.FindStringSubmatch(stmt); m != nil {
+		body += fmt.Sprintf(" traceparent=%q", m[1])
+	}
+
+	deadlockHandled := false
+	if p.sqlstate == deadlockSQLState && p.hasDetail {
+		if info, ok := parseDeadlockDetail(p.detail.String(), p.context.String(), p.pid); ok {
+			deadlockHandled = true
+			body += fmt.Sprintf(" pid_blocker=%s lock_type=%q", info.blockerPID, info.lockType)
+			if info.relation != "" {
+				body += fmt.Sprintf(" relation=%q", info.relation)
+			}
+			if info.blockerQueryFingerprint != "" {
+				body += fmt.Sprintf(" query_fingerprint_blocker=%s", info.blockerQueryFingerprint)
+			}
+			if info.blockerTraceparent != "" {
+				body += fmt.Sprintf(" traceparent_blocker=%q", info.blockerTraceparent)
+			}
+		}
+	}
+	// Non-deadlock DETAIL (or a deadlock whose DETAIL didn't match the
+	// expected shape) still goes through the generic, SQL-unaware redactor.
+	if p.hasDetail && !deadlockHandled {
 		body += fmt.Sprintf(" detail=%q", l.redact(strings.TrimSpace(p.detail.String())))
 	}
 	if p.hasHint {
 		body += fmt.Sprintf(" hint=%q", l.redact(strings.TrimSpace(p.hint.String())))
 	}
-	if p.hasContext {
+	// CONTEXT is dropped for a handled deadlock: deadlock_relation above
+	// already carries the one thing in it worth keeping.
+	if p.hasContext && !deadlockHandled {
 		body += fmt.Sprintf(" context=%q", l.redact(strings.TrimSpace(p.context.String())))
 	}
 
@@ -760,6 +929,114 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		database_observability.OP_ERROR_MESSAGE,
+		body,
+		ts.UnixNano(),
+	):
+	case <-l.ctx.Done():
+	}
+}
+
+// serverLogMeta carries the general log_line_prefix fields (everything but
+// %r/client address, which stays deferred -- same policy as op="error_message")
+// through to emitServerLogEntry. Any of these can be empty: %v/%x/%c/%s are
+// absent on pre-authentication lines (no backend transaction assigned yet),
+// and a log_line_prefix variant missing the %s:%v:%x:%c run leaves all four
+// empty (see sessionMetaRegex).
+type serverLogMeta struct {
+	pid              string
+	user             string
+	datname          string
+	lineNumber       string
+	sessionStartTime string
+	vxid             string
+	xid              string
+	sessionID        string
+	applicationName  string
+}
+
+// emitServerLogEntry sends one of the server-log categories as an
+// op="server_log" Loki entry, parallel to emitErrorEntry but without the
+// fingerprint/pending bookkeeping: these categories are single
+// self-contained lines with no STATEMENT/DETAIL continuation to pair.
+// Pattern-captured fields are sorted for deterministic output; none need
+// redaction (see serverLogPattern) except application_name, which is
+// client-controlled like it is for op="error_message". sqlstate is never
+// included -- these are non-error log lines, always "00000" in practice,
+// so it adds nothing.
+func (l *Logs) emitServerLogEntry(category string, fields map[string]string, ts time.Time, meta serverLogMeta) {
+	if ts.IsZero() {
+		ts = time.Now()
+	}
+
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
+	// sqlstate is never included: it's "00000"/successful_completion on
+	// every one of these non-error log lines and adds nothing.
+	body := fmt.Sprintf("category=%s", category)
+	if meta.pid != "" {
+		body += fmt.Sprintf(" pid=%s", meta.pid)
+	}
+	if meta.user != "" {
+		body += fmt.Sprintf(" user=%q", meta.user)
+	}
+	if meta.datname != "" {
+		body += fmt.Sprintf(" datname=%q", meta.datname)
+	}
+	if meta.lineNumber != "" {
+		body += fmt.Sprintf(" line_number=%s", meta.lineNumber)
+	}
+	if meta.sessionStartTime != "" {
+		body += fmt.Sprintf(" session_start_time=%q", meta.sessionStartTime)
+	}
+	if meta.vxid != "" {
+		body += fmt.Sprintf(" vxid=%s", meta.vxid)
+	}
+	// meta.xid is the current backend's own transaction id (often 0, e.g. a
+	// read-only waiter): when the pattern itself captured a more specific
+	// xid (lock_wait's own "transaction <xid>" target -- the transaction
+	// actually being waited on), that one is far more useful and wins
+	// instead.
+	if meta.xid != "" && fields["xid"] == "" {
+		body += fmt.Sprintf(" xid=%s", meta.xid)
+	}
+	if meta.sessionID != "" {
+		body += fmt.Sprintf(" session_id=%s", meta.sessionID)
+	}
+	if meta.applicationName != "" {
+		body += fmt.Sprintf(" application_name=%q", l.redact(meta.applicationName))
+	}
+	// Some patterns' own message-text captures carry the same information as
+	// a general log_line_prefix meta field above (e.g. lock_wait's own "process
+	// <pid>" is always this same backend's %p). The meta field, sourced from
+	// the structured prefix, is preferred when available; the pattern's own
+	// capture is kept only as a fallback for a future log_line_prefix variant
+	// this parser doesn't fully recognize (where the meta field comes back
+	// empty) -- never emitted alongside the meta field it would duplicate.
+	redundantWithMeta := map[string]string{
+		"pid":              meta.pid,
+		"user":             meta.user,
+		"database":         meta.datname,
+		"application_name": meta.applicationName,
+	}
+	for _, k := range keys {
+		if metaVal, tracked := redundantWithMeta[k]; tracked && metaVal != "" {
+			continue
+		}
+		if _, numeric := serverLogNumericFields[k]; numeric {
+			body += fmt.Sprintf(" %s=%s", k, fields[k])
+		} else {
+			body += fmt.Sprintf(" %s=%q", k, fields[k])
+		}
+	}
+
+	select {
+	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		database_observability.OP_SERVER_LOG,
 		body,
 		ts.UnixNano(),
 	):
