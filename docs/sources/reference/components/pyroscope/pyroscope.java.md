@@ -61,7 +61,7 @@ These capabilities enable {{< param "PRODUCT_NAME" >}} to access performance mon
 {{< admonition type="note" >}}
 Adjust capabilities based on your specific security requirements and environment, following the principle of least privilege.
 The capability behavior depends on Container Runtime Interface (CRI) settings.
-For example, in Docker, capabilities that aren't on the allowlist are dropped by default.
+For example, Docker drops capabilities that aren't on the allowlist by default.
 {{< /admonition >}}
 
 ## Arguments
@@ -89,7 +89,8 @@ After process profiling startup, the component detects `libc` type and copies th
 The `asprof` binary runs with root permissions.
 If you change the `tmp_dir` argument to something other than `/tmp`, then you must ensure that the directory is only writable by root.
 
-The filesystem mounted at `tmp_dir` in the {{< param "PRODUCT_NAME" >}} and target containers, needs to allow execution of files stored there. Typically a mount option called `noexec` would prevent files from being executed.
+The filesystem mounted at `tmp_dir` in the {{< param "PRODUCT_NAME" >}} and target containers must allow file execution.
+A mount option such as `noexec` prevents this.
 {{< /admonition >}}
 
 Each target in the `targets` argument must always include the special `__process_pid__` label, which corresponds to the process PID that's used for profiling.
@@ -99,9 +100,9 @@ Each target in the `targets` argument must always include the special `__process
 It logs an error and silently skips profiling that target instead.
 {{< /admonition >}}
 
-Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
+The component treats labels that start with a double underscore as _internal_ and removes them before scraping.
 
-The special label `service_name` is required and must always be present.
+Every target must include a `service_name` label.
 If it's not specified, `pyroscope.java` attempts to infer it from either of the following sources, in this order:
 
 1. `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
@@ -109,7 +110,7 @@ If it's not specified, `pyroscope.java` attempts to infer it from either of the 
 1. `__meta_docker_container_name`
 1. `__meta_dockerswarm_container_label_service_name` or `__meta_dockerswarm_service_name`
 
-If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
+When you don't set `service_name` and the component can't infer a value, it uses `unspecified`.
 
 ### Injected labels
 
@@ -139,23 +140,23 @@ You can use the following block with `pyroscope.java`:
 
 ### `profiling_config`
 
-The `profiling_config` block describes how async-profiler is invoked.
+The `profiling_config` block describes how the component invokes async-profiler.
 
-The following arguments are supported:
+You can use the following arguments with the `profiling_config` block:
 
-| Name                              | Type            | Description                                                                                                                        | Default    | Required |
-| --------------------------------- | --------------- | -----------------------------------------------------------------------------------------------------------------------------------| ---------- | -------- |
-| `alloc`                           | `string`        | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.                               | `"512k"`   | no       |
-| `cpu`                             | `bool`          | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                                    | `true`     | no       |
-| `custom_arguments`                | `list(string)`  | Sends raw args to async-profiler, skipping all Alloy arguments except `interval`. Refer to [`custom_arguments`](#custom_arguments).| `[]`       | no       |
-| `event`                           | `string`        | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                                     | `"itimer"` | no       |
-| `interval`                        | `duration`      | How frequently to collect profiles from the targets.                                                                               | `"60s"`    | no       |
-| `lock`                            | `string`        | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                                      | `"10ms"`   | no       |
-| `log_level`                       | `string`        | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                                 | `"INFO"`   | no       |
-| `per_thread`                      | `bool`          | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                         | `false`    | no       |
-| `quiet`                           | `bool`          | If set, suppresses the `Profiling started/stopped` log message.                                                                    | `false`    | no       |
-| `sample_rate`                     | `int`           | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                    | `100`      | no       |
-| `tlab`                            | `bool`          | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc` to be set.                            | `false`    | no       |
+| Name               | Type           | Description                                                                                                                                                | Default    | Required |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| `alloc`            | `string`       | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.                                                       | `"512k"`   | no       |
+| `cpu`              | `bool`         | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                                                            | `true`     | no       |
+| `custom_arguments` | `list(string)` | Sends raw args to async-profiler, skipping all {{< param "PRODUCT_NAME" >}} arguments except `interval`. Refer to [`custom_arguments`](#custom_arguments). | `[]`       | no       |
+| `event`            | `string`       | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                                                             | `"itimer"` | no       |
+| `interval`         | `duration`     | How frequently to collect profiles from the targets.                                                                                                       | `"60s"`    | no       |
+| `lock`             | `string`       | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                                                              | `"10ms"`   | no       |
+| `log_level`        | `string`       | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                                                         | `"INFO"`   | no       |
+| `per_thread`       | `bool`         | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                                                 | `false`    | no       |
+| `quiet`            | `bool`         | If set, suppresses the `Profiling started/stopped` log message.                                                                                            | `false`    | no       |
+| `sample_rate`      | `int`          | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                                            | `100`      | no       |
+| `tlab`             | `bool`         | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc`.                                                              | `false`    | no       |
 
 Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
 
@@ -163,11 +164,11 @@ Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab
 
 `custom_arguments` passes async-profiler `start` flags directly.
 
-When `custom_arguments` is set, Alloy skips these options from this block:
+When you set `custom_arguments`, {{< param "PRODUCT_NAME" >}} skips these options from this block:
 
 `cpu`, `event`, `per_thread`, `sample_rate`, `alloc`, `lock`, `log_level`, `tlab`.
 
-For example, this enables multi-event profiling (`cpu`, `alloc`, and `lock`) with custom thresholds:
+For example, this configuration enables multi-event profiling for `cpu`, `alloc`, and `lock` with custom thresholds:
 
 ```alloy
 pyroscope.java "java" {
@@ -199,7 +200,7 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 ## Exported fields
 
-`pyroscope.java` doesn't export any fields that can be referenced by other components.
+`pyroscope.java` doesn't export any fields.
 
 ## Component health
 
@@ -213,11 +214,11 @@ For more details, refer to [Options applicable to any output format except JFR](
 
 `pyroscope.java` doesn't expose any component-specific debug metrics.
 
-## Examples
+## Example
 
-### Profile every java process on the current host
+The following example profiles every Java process on the current host:
 
-```alloy
+```alloyIt's ok to make these changes on this branch. I
 pyroscope.write "staging" {
   endpoint {
     url = "http://localhost:4040"

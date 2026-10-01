@@ -125,9 +125,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Examples
 
+The following examples demonstrate how to configure `prometheus.exporter.blackbox` with a configuration file, an embedded configuration, dynamic targets, and a custom instance label.
+
 ### Collect metrics using a blackbox exporter configuration file
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.blackbox`.
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.blackbox`.
 It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` target.
 The `example` target doesn't have any added labels.
 
