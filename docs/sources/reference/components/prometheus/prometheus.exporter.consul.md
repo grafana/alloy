@@ -37,8 +37,8 @@ You can use the following arguments with `prometheus.exporter.consul`:
 | `kv_filter`                | `string`   | Only store keys that match this regular expression pattern.                                                                                              | `".*"`                    | no       |
 | `kv_prefix`                | `string`   | Prefix under which to look for KV pairs.                                                                                                                 |                           | no       |
 | `require_consistent`       | `bool`     | Forces the read to be fully consistent.                                                                                                                  | `false`                   | no       |
-| `server_name`              | `string`   | When provided, this overrides the hostname for the TLS certificate. It can be used to ensure that the certificate name matches the hostname you declare. |                           | no       |
 | `server`                   | `string`   | Address (host and port) of the Consul instance to connect to. This could be a local Consul agent (localhost:8500), or the address of a Consul server.    | `"http://localhost:8500"` | no       |
+| `server_name`              | `string`   | When provided, this overrides the hostname for the TLS certificate. It can be used to ensure that the certificate name matches the hostname you declare. |                           | no       |
 | `timeout`                  | `duration` | Timeout on HTTP requests to consul.                                                                                                                      | `"500ms"`                 | no       |
 
 ## Blocks
