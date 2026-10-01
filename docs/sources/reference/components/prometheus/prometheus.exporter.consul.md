@@ -12,7 +12,7 @@ title: prometheus.exporter.consul
 
 # `prometheus.exporter.consul`
 
-The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) for collecting metrics from a Consul installation.
+The `prometheus.exporter.consul` component embeds the [`consul_exporter`](https://github.com/prometheus/consul_exporter) to collect metrics from a Consul installation.
 
 ## Usage
 
@@ -25,21 +25,21 @@ prometheus.exporter.consul "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.consul`:
 
-| Name                       | Type       | Description                                                                                                                                              | Default                   | Required |
-| -------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | -------- |
-| `allow_stale`              | `bool`     | Allows any Consul server (non-leader) to service a read.                                                                                                 | `true`                    | no       |
-| `ca_file`                  | `string`   | File path to a PEM-encoded certificate authority used to validate the authenticity of a server certificate.                                              |                           | no       |
-| `cert_file`                | `string`   | File path to a PEM-encoded certificate used with the private key to verify the exporter's authenticity.                                                  |                           | no       |
-| `concurrent_request_limit` | `int`      | Limit the maximum number of concurrent requests to consul, 0 means no limit.                                                                             | `0`                       | no       |
-| `generate_health_summary`  | `bool`     | Collects information about each registered service and exports `consul_catalog_service_node_healthy`.                                                    | `true`                    | no       |
-| `insecure_skip_verify`     | `bool`     | Disable TLS host verification.                                                                                                                           | `false`                   | no       |
-| `key_file`                 | `string`   | File path to a PEM-encoded private key used with the certificate to verify the exporter's authenticity.                                                  |                           | no       |
-| `kv_filter`                | `string`   | Only store keys that match this regular expression pattern.                                                                                              | `".*"`                    | no       |
-| `kv_prefix`                | `string`   | Prefix under which to look for KV pairs.                                                                                                                 |                           | no       |
-| `require_consistent`       | `bool`     | Forces the read to be fully consistent.                                                                                                                  | `false`                   | no       |
-| `server`                   | `string`   | Address (host and port) of the Consul instance to connect to. This could be a local Consul agent (localhost:8500), or the address of a Consul server.    | `"http://localhost:8500"` | no       |
-| `server_name`              | `string`   | When provided, this overrides the hostname for the TLS certificate. It can be used to ensure that the certificate name matches the hostname you declare. |                           | no       |
-| `timeout`                  | `duration` | Timeout on HTTP requests to consul.                                                                                                                      | `"500ms"`                 | no       |
+| Name                       | Type       | Description                                                                                           | Default                   | Required |
+| -------------------------- | ---------- | ----------------------------------------------------------------------------------------------------- | ------------------------- | -------- |
+| `allow_stale`              | `bool`     | Allows any Consul server, including non-leaders, to service a read.                                   | `true`                    | no       |
+| `ca_file`                  | `string`   | The optional certificate authority file for TLS client authentication.                                |                           | no       |
+| `cert_file`                | `string`   | The optional certificate file for TLS client authentication.                                          |                           | no       |
+| `concurrent_request_limit` | `int`      | Limits the number of concurrent requests to Consul. `0` means no limit.                               | `0`                       | no       |
+| `generate_health_summary`  | `bool`     | Collects information about each registered service and exports `consul_catalog_service_node_healthy`. | `true`                    | no       |
+| `insecure_skip_verify`     | `bool`     | Disables TLS host verification.                                                                       | `false`                   | no       |
+| `key_file`                 | `string`   | The optional key file for TLS client authentication.                                                  |                           | no       |
+| `kv_filter`                | `string`   | Stores only keys that match this regular expression pattern.                                          | `".*"`                    | no       |
+| `kv_prefix`                | `string`   | Prefix under which to look for KV pairs.                                                              |                           | no       |
+| `require_consistent`       | `bool`     | Forces the read to be fully consistent.                                                               | `false`                   | no       |
+| `server`                   | `string`   | Address, including host and port, of the Consul agent or server to connect to.                        | `"http://localhost:8500"` | no       |
+| `server_name`              | `string`   | Overrides the hostname used to verify the TLS certificate.                                            |                           | no       |
+| `timeout`                  | `duration` | Timeout on HTTP requests to Consul.                                                                   | `"500ms"`                 | no       |
 
 ## Blocks
 
@@ -73,7 +73,7 @@ prometheus.exporter.consul "example" {
   server = "https://consul.example.com:8500"
 }
 
-// Configure a prometheus.scrape component to collect consul metrics.
+// Configure a prometheus.scrape component to collect Consul metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.consul.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
