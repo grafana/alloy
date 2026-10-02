@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"reflect"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 )
 
@@ -24,17 +25,24 @@ type TenantConfig struct {
 	Value  string `alloy:"value,attr,optional"`
 }
 
-// validateTenantConfig validates the tenant stage configuration
-func validateTenantConfig(c TenantConfig) error {
-	if c.Source == "" && c.Value == "" && c.Label == "" {
+var _ syntax.Validator = (*TenantConfig)(nil)
+
+func (t *TenantConfig) Validate() error {
+	var set int
+	for _, v := range []string{t.Label, t.Source, t.Value} {
+		if v != "" {
+			set++
+		}
+	}
+
+	switch {
+	case set == 0:
 		return errTenantStageEmptyLabelSourceOrValue
-	}
-
-	if c.Source != "" && c.Value != "" || c.Label != "" && c.Value != "" || c.Source != "" && c.Label != "" {
+	case set > 1:
 		return errTenantStageConflictingLabelSourceAndValue
+	default:
+		return nil
 	}
-
-	return nil
 }
 
 var (
@@ -43,17 +51,12 @@ var (
 )
 
 // newTenantStage creates a new tenant stage to override the tenant ID from extracted data
-func newTenantStage(cfg TenantConfig, opts stageOpts) (*tenantStage, error) {
-	err := validateTenantConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
+func newTenantStage(cfg TenantConfig, opts stageOpts) *tenantStage {
 	return &tenantStage{
 		next:   opts.next,
 		cfg:    cfg,
 		logger: opts.slogger.With("stage", "tenant"),
-	}, nil
+	}
 }
 
 type tenantStage struct {

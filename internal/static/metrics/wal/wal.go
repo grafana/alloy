@@ -445,12 +445,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				// stripeSeries.exemplars in the next block by using setLatestExemplar.
 				continue
 			default:
-				errCh <- &wlog.CorruptionErr{
-					Err:     fmt.Errorf("invalid record type %v", dec.Type(rec)),
-					Segment: r.Segment(),
-					Offset:  r.Offset(),
-				}
-				return
+				// Unknown record type, probably from a newer version. Treating it as
+				// corruption would discard the rest of the WAL.
 			}
 		}
 	}()
