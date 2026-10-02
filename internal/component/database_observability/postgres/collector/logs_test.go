@@ -1524,7 +1524,7 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.Len(t, got, 1)
 	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	expectedFP, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1")
 	require.NoError(t, fpErr)
 
@@ -1617,7 +1617,7 @@ func TestLogsCollector_SessionIDMismatch_RejectsStatementDespitePidMatch(t *test
 	// a (wrongly) paired op="error_message" entry.
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	require.Equal(t, "unmatched_error", fields["category"], "session id mismatch must reject the STATEMENT despite the matching pid")
 	_, hasFP := fields["query_fingerprint"]
 	require.False(t, hasFP, "the rejected STATEMENT must never be fingerprinted into this entry")
@@ -1942,7 +1942,7 @@ func TestLogsCollector_LostStatement_EmitsUnmatchedError(t *testing.T) {
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 
 	require.Equal(t, "unmatched_error", fields["category"])
 	require.Equal(t, "ERROR", fields["severity"])
@@ -2085,7 +2085,7 @@ func TestLogsCollector_TimedOutPendingEmitsUnmatchedError(t *testing.T) {
 	// ever came, so it's not op="error_message", but it's not dropped either.
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	require.Equal(t, "unmatched_error", fields["category"])
 	require.Equal(t, "FATAL", fields["severity"])
 	require.Equal(t, "too many connections", fields["message"])
@@ -2115,13 +2115,13 @@ func TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry(t *tes
 	got := drainEntries(t, entryCh, 2, 1*time.Second)
 	require.Len(t, got, 2, "err one (unmatched) and err two (matched) both reach Loki")
 
-	unmatchedFields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	unmatchedFields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	require.Equal(t, "server_log", string(got[0].Labels["op"]))
 	require.Equal(t, "unmatched_error", unmatchedFields["category"])
 	require.Equal(t, "err one", unmatchedFields["message"])
 	require.Equal(t, "42P01", unmatchedFields["sqlstate"])
 
-	fields := parseLogfmt(t, strings.TrimPrefix(got[1].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[1].Line, `level="error" `))
 	require.Equal(t, "error_message", string(got[1].Labels["op"]))
 	expectedFP, fpErr := fingerprint.Fingerprint("SELECT 2")
 	require.NoError(t, fpErr)
@@ -2153,7 +2153,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 
 	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
 	expectedFP, fpErr := fingerprint.Fingerprint(expectedSQL)
@@ -2573,7 +2573,7 @@ func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	require.Equal(t, "unmatched_error", fields["category"], "a STATEMENT from a different PID must not pair with the pending error")
 	require.Equal(t, "111", fields["pid"])
 	_, hasFP := fields["query_fingerprint"]

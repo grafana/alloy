@@ -959,7 +959,11 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	}
 
 	// severity, pid, sqlstate, sqlstate_class, and fp never need quoting;
-	// %q escapes datname, user, and message.
+	// %q escapes datname, user, and message. level="error" (see the
+	// BuildLokiEntryWithTimestamp call below) is Loki's own detected_level,
+	// uniform across ERROR/FATAL/PANIC since this package's Level type has
+	// no finer distinction; severity keeps PostgreSQL's own original
+	// ERROR/FATAL/PANIC value in the body for anyone filtering on that.
 	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s message=%q",
 		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass, l.redact(p.message))
 
@@ -1046,7 +1050,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	// by the collector context so a stalled downstream can't wedge Stop().
 	select {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
+		logging.LevelError,
 		database_observability.OP_ERROR_MESSAGE,
 		body,
 		ts.UnixNano(),
@@ -1152,9 +1156,18 @@ func (l *Logs) emitServerLogEntry(category string, fields map[string]string, ts 
 		}
 	}
 
+	// categoryUnmatchedError carries a real PostgreSQL ERROR/FATAL/PANIC
+	// severity (see emitUnmatchedError's fieldSeverity) and gets Loki's
+	// level="error" like op="error_message" does; every other category
+	// here is an informational server log line, level="info".
+	level := logging.LevelInfo
+	if category == categoryUnmatchedError {
+		level = logging.LevelError
+	}
+
 	select {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		logging.LevelInfo,
+		level,
 		database_observability.OP_SERVER_LOG,
 		body,
 		ts.UnixNano(),
