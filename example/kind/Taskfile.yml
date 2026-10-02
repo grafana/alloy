@@ -1,31 +1,81 @@
-# Install the task command from here: https://taskfile.dev
-# It's a much more human-friendly version of Makefiles.
-
 version: "3"
-
-dotenv:
-  - .env.credentials
-
+dotenv: [.env.credentials]
 vars:
   KUBECONFIG: build/kubeconfig.yaml
   CLUSTERNAME: alloy-example
-
+env:
+  KUBECONFIG: '{{.KUBECONFIG}}'
+  CLUSTERNAME: '{{.CLUSTERNAME}}'
 tasks:
-  cluster:create:
-    desc: Create a kind cluster
-    run: once
-    status:
-      - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
+  demo:simulations:
+    desc: Serve the simulation comparison page for recording (localhost:8091)
+    cmds: [node config/target-allocation/simulation-report/serve.mjs]
+  demo:dashboard:
+    desc: Publish the checked-in comparison dashboard to the private demo stack
     cmds:
-      - mkdir -p build
-      - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
-
-  cluster:delete:
-    desc: Delete the kind cluster
-    run: once
+      - gcx --context thampiotr resources validate -p config/target-allocation/dashboard -o json
+      - gcx --context thampiotr resources push -p config/target-allocation/dashboard
+  demo:prepare:
+    desc: Build and load demo images once before recording
     cmds:
-      - kind delete cluster --name {{.CLUSTERNAME}}
-      - rm -rf {{.KUBECONFIG}}
+      - task: demo:targets
+      - bash config/target-allocation/build-ta.sh
+  demo:mode:
+    desc: Switch deployment using prepared images (MODE=vanilla, ta-hashing or ta-packing)
+    requires:
+      vars: [MODE]
+    cmds: ['bash config/target-allocation/demo.sh mode "{{.MODE}}"']
+  demo:alloys:
+    desc: Scale Alloy to 3, 4 or 5 instances
+    requires:
+      vars: [REPLICAS]
+    cmds: ['bash config/target-allocation/demo.sh alloys "{{.REPLICAS}}"']
+  demo:targets:extra:
+    desc: Add eight mixed-size targets
+    cmds: [bash config/target-allocation/demo.sh extra]
+  demo:targets:reset:
+    desc: Remove the extra target batch
+    cmds: [bash config/target-allocation/demo.sh targets-reset]
+  demo:reset:
+    desc: Restore three Alloy instances and the base target pool
+    cmds: [bash config/target-allocation/demo.sh reset]
+  demo:profiles:
+    desc: Capture local Alloy heap and short CPU profiles
+    cmds: [bash config/target-allocation/demo.sh profiles]
+  ui:ta:
+    desc: Open the TA allocation explorer through a local port-forward
+    vars:
+      PORT: '{{.PORT | default "8080"}}'
+    cmds:
+      - 'echo "Target Allocator: http://localhost:{{.PORT}}/debug/allocation"'
+      - 'kubectl --context kind-{{.CLUSTERNAME}} -n target-allocation port-forward --address 127.0.0.1 service/target-allocator {{.PORT}}:8080'
+  cluster:up:
+    desc: Start the single-node demo cluster (only one kind cluster at a time)
+    cmds: [bash config/target-allocation/cluster.sh up]
+  cluster:down:
+    desc: Delete the demo cluster and stop its workloads
+    cmds: [bash config/target-allocation/cluster.sh down]
+  deploy:vanilla:
+    desc: Deploy Alloy clustering with discovery on every peer
+    cmds:
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh vanilla
+  deploy:ta-hashing:
+    desc: Build local TA and deploy consistent hashing with Alloy HTTP discovery
+    cmds:
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh ta-hashing
+  deploy:ta-packing:
+    desc: Build local TA and deploy sticky allocation with asynchronous size probes
+    cmds:
+      - task: demo:targets
+      - bash config/target-allocation/deploy.sh ta-packing
+  demo:targets:
+    internal: true
+    cmds:
+      - bash config/target-allocation/cluster.sh check
+      - make -C ../.. prom-gen-image
+      - '{{.KIND | default "kind"}} load docker-image prom-gen:latest --name {{.CLUSTERNAME}}'
 
   update-helm-repos:
     desc: Update helm repositories
@@ -37,7 +87,7 @@ tasks:
 
   deploy:alloy-helm:
     desc: Deploy local Grafana Alloy helm chart
-    deps: [cluster:create]
+    deps: [cluster:up]
     vars:
       ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
       ALLOY_CHART_PATH: '{{.TASK_DIR}}/../../operations/helm/charts/alloy'
@@ -51,7 +101,7 @@ tasks:
 
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart
-    deps: [cluster:create, update-helm-repos]
+    deps: [cluster:up, update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
         -n monitoring --create-namespace
@@ -64,7 +114,7 @@ tasks:
 
   deploy:otelcol:
     desc: Deploy OpenTelemetry Collector helm chart using Alloy OTel Engine
-    deps: [cluster:create, update-helm-repos]
+    deps: [cluster:up, update-helm-repos]
     vars:
       OTELCOL_VALUES_FILE: '{{.OTELCOL_VALUES_FILE | default "config/otelcol-helm/values.yaml"}}'
     preconditions:

@@ -1,0 +1,36 @@
+logging {
+	level = "info"
+}
+
+discovery.http "demo" {
+	url              = "http://target-allocator:8080/jobs/target-allocation/targets?collector_id=" + sys.env("POD_NAME")
+	refresh_interval = sys.env("DEMO_HTTP_REFRESH_INTERVAL")
+}
+
+// TA filters targets but returns their original discovery labels.
+discovery.relabel "demo" {
+	targets = discovery.http.demo.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "instance"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+		target_label  = "endpoint"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_size_class"]
+		target_label  = "size_class"
+	}
+}
+
+// TA has already allocated this subset: do not shard it a second time.
+prometheus.scrape "demo" {
+	targets         = discovery.relabel.demo.output
+	job_name        = "target-allocation"
+	scrape_interval = sys.env("DEMO_SCRAPE_INTERVAL")
+	forward_to      = [prometheus.remote_write.cloud.receiver]
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Target allocation · Simulation results</title>
+<style>
+:root{color-scheme:light;--ink:#152f38;--muted:#526670;--line:#dce4e5;--paper:#f5f6f2;--hash:#8161bd;--sticky:#008571;--soft:#e7f3ef;--amber:#855514}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}main{max-width:1320px;margin:auto;padding:28px 40px 20px}button{font:inherit;cursor:pointer}button:focus-visible,summary:focus-visible{outline:3px solid #f3943b;outline-offset:4px}.eyebrow{display:flex;align-items:center;justify-content:space-between;font-size:12px;letter-spacing:1.8px;font-weight:750;text-transform:uppercase;color:var(--muted)}.brand{display:flex;gap:10px;align-items:center}.mark{display:flex;gap:3px;align-items:flex-end;height:18px}.mark i{display:block;width:5px;background:var(--sticky);border-radius:2px;height:18px}.mark i:nth-child(2){height:12px}.mark i:nth-child(3){height:15px}.stamp{letter-spacing:.5px;font-weight:500}h1{font-size:clamp(30px,3.3vw,46px);line-height:1.12;letter-spacing:-1.7px;margin:20px 0 9px;font-weight:720}.intro{margin:0;color:var(--muted);font-size:17px}.intro strong{color:var(--ink);font-weight:600}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}.tabs,.switch{display:flex;gap:3px;border:1px solid var(--line);border-radius:10px;padding:4px;background:#edf0ed}.tabs button,.switch button{border:0;border-radius:7px;background:transparent;color:var(--muted);padding:8px 16px;font-size:14px;font-weight:600}.tabs button[aria-selected=true],.switch button[aria-pressed=true]{background:white;color:var(--ink);box-shadow:0 1px 4px #152f3814}.switch button{padding:6px 13px;font-size:13px}.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:20px 24px 14px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}h2{font-size:19px;letter-spacing:-.3px;margin:0 0 3px}.subtitle{font-size:13px;color:var(--muted);margin:0}.legend{display:flex;gap:20px;font-size:13px;white-space:nowrap}.legend span{display:flex;align-items:center;gap:7px}.dot{width:9px;height:9px;background:var(--hash);border-radius:3px}.dot.sticky{background:var(--sticky)}table{border-collapse:collapse;table-layout:fixed;width:100%}th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:650;padding:12px 0;border-bottom:1px solid var(--line)}th:first-child{width:30%}th:nth-child(2){width:38%}th small{display:block;font-size:11px;letter-spacing:0;text-transform:none;font-weight:400;margin-top:3px}td{padding:13px 0;border-bottom:1px solid #eef1ef;vertical-align:middle}tr:last-child td{border:0}.scenario{font-weight:650;font-size:15px}.context{display:block;color:var(--muted);font-size:12px;margin-top:2px;font-weight:400}.pair{display:flex;gap:6px;flex-direction:column;padding-right:34px}.barrow{display:grid;grid-template-columns:1fr 60px;gap:12px;align-items:center;height:18px}.track{height:8px;background:#f0f2f1;border-radius:4px;overflow:hidden}.bar{height:100%;border-radius:4px;background:var(--hash);transition:width .28s ease}.bar.sticky{background:var(--sticky)}.value{font-size:14px;font-weight:600;text-align:right;color:var(--hash)}.value.sticky{color:var(--sticky)}.move-pair{display:flex;gap:20px;align-items:center}.move-num{width:76px;font-size:20px;font-weight:650;color:var(--hash);letter-spacing:-.4px}.move-num.sticky{color:var(--sticky)}.move-num small{font-size:11px;display:block;font-weight:450;letter-spacing:0;color:var(--muted)}.callout{display:flex;align-items:baseline;gap:10px;margin:13px 0 1px;padding:11px 14px;border-radius:8px;background:var(--soft);font-size:13px}.callout strong{white-space:nowrap;color:var(--sticky)}.callout.warning{background:#fff4e4}.callout.warning strong{color:var(--amber)}.sensitivity td{padding:7px 0}.sensitivity .scenario{font-size:14px}.sensitivity .pair{gap:3px}.sensitivity .move-num{font-size:17px}.sensitivity .context{display:none}.sensitivity .barrow{height:15px}.sensitivity .track{height:6px}.footnote{font-size:12px;color:var(--muted);margin:12px 0 0}.footer{display:flex;justify-content:space-between;gap:20px;margin-top:14px;color:var(--muted);font-size:11px}.footer p{margin:0}.footer a{color:var(--sticky)}details{max-width:830px}summary{cursor:pointer;font-weight:600}details p{padding-top:8px;line-height:1.7}code{font-size:11px}#scope{white-space:nowrap}@media(min-width:1450px){main{padding-top:40px}.panel{padding:24px 28px 18px}td{padding:17px 0}.sensitivity td{padding:9px 0}}@media(max-width:760px){main{padding:20px 16px}.stamp{display:none}.toolbar,.panel-head{align-items:flex-start;flex-direction:column}.panel{padding:16px 12px}.pair{padding-right:12px}.move-pair{gap:6px}.move-num{width:55px;font-size:16px}.barrow{grid-template-columns:1fr 45px;gap:4px}.value{font-size:12px}.context{display:none}th:first-child{width:29%}th:nth-child(2){width:37%}.scenario{font-size:13px}.callout,.footer{flex-direction:column;gap:4px}#scope{white-space:normal}}
+.workload{display:flex;align-items:center;gap:30px;margin:18px 0 24px;padding:13px 18px;border:1px solid var(--line);border-radius:10px;background:#ecf0ed}
+.workload-item{display:flex;flex-direction:column;gap:1px}.workload strong{font-size:22px;letter-spacing:-.5px}.workload span{font-size:12px;color:var(--muted)}.workload .duration{margin-left:auto;font-size:13px;text-align:right}
+th:nth-child(2){width:44%}th:first-child{width:30%}.direction{display:inline-block;margin-left:9px;padding:3px 7px;background:var(--soft);border-radius:5px;color:var(--sticky);font-size:11px;text-transform:none;letter-spacing:0}
+.axis{height:31px;position:relative;margin:9px 106px 0 0;border-bottom:1px solid #b9c9ca;letter-spacing:0;text-transform:none;font-size:13px;font-weight:600}
+.tick{position:absolute;bottom:7px;transform:translateX(-50%);white-space:nowrap}.tick:first-child{transform:none;color:var(--sticky)}.tick:last-of-type{transform:translateX(-100%)}.tick-mark{position:absolute;bottom:-3px;width:1px;height:7px;background:#a7bbbe}.tick-mark:first-of-type{background:var(--sticky);height:11px;width:2px}
+.track{border-radius:0;height:12px;border-left:2px solid var(--sticky);background:repeating-linear-gradient(to right,transparent 0,transparent calc(33.333% - 1px),#dce4e5 calc(33.333% - 1px),#dce4e5 33.333%),#f3f5f3;overflow:visible;display:flex;align-items:center}
+.bar{height:8px;border-radius:0 3px 3px 0;min-width:2px}.sensitivity .track{height:12px}.sensitivity .bar{height:6px}
+.sensitivity .move-num small{display:none}
+@media(max-width:760px){.workload{flex-wrap:wrap;gap:14px}.workload strong{font-size:18px}.workload .duration{margin-left:0}.axis{margin-right:61px;font-size:10px}.direction{margin:4px 0}.tick:first-child{font-size:9px}th:nth-child(2){width:40%}th:first-child{width:26%}}
+@media(min-width:761px) and (max-height:1000px){main{padding-top:20px}.sensitivity td{padding:5px 0}.panel{padding-top:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+<div class="eyebrow"><span class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span> Target allocator / simulation lab</span><span class="stamp">Deterministic simulations · 01 Oct 2026</span></div>
+<h1>Balance the load. Keep targets settled.</h1>
+<p class="intro">TA consistent hashing vs. <strong>ta-packing</strong> — our sticky, size-aware strategy.</p>
+<section class="workload" aria-label="Simulated workload scale">
+<div class="workload-item"><strong id="target-count">1,100–2,000</strong><span id="target-scope">targets · baseline churn</span></div>
+<div class="workload-item"><strong>50–400,000</strong><span>series per target · base size mix¹</span></div>
+<div class="workload-item"><strong id="instance-count">3–10</strong><span>Alloy instances</span></div>
+<span class="duration"><strong>30 min</strong><br>per simulated run</span>
+</section>
+
+<div class="toolbar"><div class="tabs" role="tablist" aria-label="Simulation results"><button role="tab" id="tab-scenarios" aria-selected="true" aria-controls="results" data-view="scenarios">01 &nbsp; Workload changes</button><button role="tab" id="tab-sensitivity" aria-selected="false" aria-controls="results" tabindex="-1" data-view="sensitivity">02 &nbsp; Sensitivity</button></div><div class="switch" role="group" aria-label="Cycle statistic"><button aria-pressed="true" data-stat="average">Average cycle</button><button aria-pressed="false" data-stat="worst">Worst cycle</button></div></div>
+<section class="panel" id="results" role="tabpanel" aria-labelledby="tab-scenarios">
+<div class="panel-head"><div><h2 id="heading"></h2><p class="subtitle" id="subtitle"></p></div><div class="legend"><span><i class="dot"></i>Consistent hashing</span><span><i class="dot sticky"></i>ta-packing · sticky</span></div></div>
+<table><thead><tr><th id="row-heading">Scenario</th><th>Load max / mean <span class="direction">← Lower is better</span><small id="balance-caption"></small><div class="axis" id="balance-axis" aria-label="Load imbalance scale"></div></th><th>Targets moved / cycle <small>Hashing → sticky · lower is better</small></th></tr></thead><tbody id="rows"></tbody></table>
+<div class="callout" id="takeaway" aria-live="polite"></div>
+<p class="footnote">¹ Base sizes span small exporters to whales; growth/shrink and sensitivity multipliers change these sizes. Moves count surviving targets that change owner, including instance departures. Initial placement and new/deleted targets are excluded. Averages include quiet cycles.</p>
+</section>
+<div class="footer"><details><summary>Method &amp; source</summary><p>Each run: 360 cycles × 5 seconds = 30 simulated minutes; major changes every 30 cycles. Baseline: 1,100–2,000 targets with churn, 1,500 otherwise; six instances, or 3–10 with membership changes. Size mix: 75% at 50–500 series, 20% at 1k–5k, 4.5% at 10k–30k, 0.5% at 100k–400k. Size scenarios include growth/shrink and ±5% noise. Sticky uses K=6 windows and six-cycle sustained overload before repairs. Load uses current raw sizes, including idle instances. Sensitivity changes one parameter at a time with fixed deterministic identities: not random-seed trials or production traces. Sizes are supplied immediately; async probing is not modeled. Worst balance and worst movement can occur in different cycles. Source: <a href="https://github.com/grafana/alloy/blob/b511563715eb6c58ebcc39fbed6c9c3eede095d2/ALGO.md">recorded simulation results</a>, “Sticky placement experiment” and “Parameter sensitivity”; operator <code>simulation_test.go</code> and <code>simulation_sticky_test.go</code>.</p></details><p id="scope">Simulation results · failover excluded · not a savings forecast</p></div>
+</main>
+<script>
+// [hashing, sticky]; each tuple is [average load, worst load, average moved %, worst moved %].
+// Results recorded in Alloy b511563715eb6c58ebcc39fbed6c9c3eede095d2, ALGO.md.
+// Sensitivity covers the combined scenario only.
+const scenarios = [
+ {name:'Targets arrive & leave', note:'1,100–2,000 targets · 6 instances', values:[[1.528,1.733,0,0],[1.090,1.322,.001,.080]]},
+ {name:'Targets grow & shrink', note:'1,500 targets · 6 instances', values:[[1.271,1.317,0,0],[1.028,1.070,0,0]]},
+ {name:'Instances join & leave', note:'1,500 targets · 3–10 instances', values:[[1.493,2.094,1.259,58.067],[1.131,2.011,.052,3.667]]},
+ {name:'All changes combined', note:'Target, size and membership churn', values:[[1.642,2.945,1.262,58.274],[1.148,2.240,.143,12.960]]}
+];
+const sensitivity = [
+ {name:'Baseline',values:[[1.642,2.945,1.262,58.274],[1.148,2.240,.143,12.960]]},
+ {name:'Target count ×0.5',values:[[1.481,2.350,1.26,57.53],[1.190,3.251,.346,33.597]]},
+ {name:'Target count ×2',values:[[1.422,2.070,1.26,58.39],[1.124,2.504,.139,12.875]]},
+ {name:'Instance count ×0.5',values:[[1.215,1.556,.87,57.24],[1.092,2.164,.081,10.375]]},
+ {name:'Instance count ×2',values:[[2.212,3.134,1.41,68.65],[1.244,3.081,.617,50.435]]},
+ {name:'Whale sizes ×0.5',values:[[1.425,2.309,1.26,58.27],[1.125,2.645,.152,14.062]]},
+ {name:'Whale sizes ×2',values:[[1.941,3.714,1.26,58.27],[1.165,2.838,.309,24.307]]},
+ {name:'Size variation ×0.5',values:[[1.642,2.907,1.26,58.27],[1.135,2.219,.143,12.720]]},
+ {name:'Size variation ×2',values:[[1.641,3.013,1.26,58.27],[1.177,2.286,.149,14.640]]}
+];
+let view='scenarios',stat='average';
+const el=id=>document.getElementById(id);
+const number=(value,digits)=>value.toLocaleString('en-GB',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+function render(){
+ const sweep=view==='sensitivity', worst=stat==='worst', data=sweep?sensitivity:scenarios, idx=worst?1:0;
+ el('results').classList.toggle('sensitivity',sweep);
+ el('results').setAttribute('aria-labelledby','tab-'+view);
+ el('heading').textContent=sweep?'Does it hold when the workload changes scale?':'Four kinds of change. The same two strategies.';
+ el('subtitle').textContent=sweep?'Combined workload · one parameter varied at a time · 550–4,000 targets / 2–20 instances':'30 simulated minutes per scenario · identical inputs for both strategies';
+ el('row-heading').textContent=sweep?'Parameter variant':'Scenario';
+ el('target-count').textContent=sweep?'550–4,000':'1,100–2,000';
+ el('target-scope').textContent=sweep?'targets · sensitivity range':'targets · baseline churn';
+ el('instance-count').textContent=sweep?'2–20':'3–10';
+ el('balance-caption').textContent=(worst?'Worst':'Average')+' cycle · excess above ideal load (1.0×)';
+ const max=worst?4:2.5;
+ const ticks=worst?[1,2,3,4]:[1,1.5,2,2.5];
+ el('balance-axis').innerHTML=ticks.map((value,i)=>{
+   const position=(value-1)/(max-1)*100;
+   return `<span class="tick" style="left:${position}%">${number(value,1)}${i===0?' ideal':'×'}</span>`;
+ }).join('')+ticks.map(value=>`<i class="tick-mark" style="left:${(value-1)/(max-1)*100}%" aria-hidden="true"></i>`).join('');
+ el('rows').innerHTML=data.map(row=>`<tr><td class="scenario">${row.name}${row.note?`<span class="context">${row.note}</span>`:''}</td><td><div class="pair">${row.values.map((v,i)=>`<div class="barrow"><div class="track" aria-hidden="true"><div class="bar ${i?'sticky':''}" style="width:${(v[idx]-1)/(max-1)*100}%"></div></div><span class="value ${i?'sticky':''}" aria-label="${i?'Sticky':'Hashing'} load ${v[idx].toFixed(3)}">${number(v[idx],2)}×</span></div>`).join('')}</div></td><td><div class="move-pair">${row.values.map((v,i)=>`<div class="move-num ${i?'sticky':''}">${number(v[idx+2],sweep?2:3)}%<small>${i?'Sticky':'Hashing'}</small></div>`).join('')}</div></td></tr>`).join('');
+ const caution=sweep&&worst;
+ el('takeaway').classList.toggle('warning',caution);
+ el('takeaway').innerHTML=caution?'<strong>The trade-off is visible.</strong><span>Worst balance improves in 5/9 variants; worsens in 4/9. Waiting before rebalancing permits temporary spikes.</span>':sweep?'<strong>Average gains survive all 9 variants.</strong><span>Both balance and target movement improve. Switch to worst cycle to see the limits.</span>':worst?'<strong>Movement spikes still matter.</strong><span>In combined churn, the worst cycle moves 58.3% → 13.0% of surviving targets. No claim of gap-free handoff.</span>':'<strong>Stable owners, selective repairs.</strong><span>Hashing has zero moves when membership stays fixed. Sticky improves balance with very few additional moves.</span>';
+ document.querySelectorAll('[data-view]').forEach(b=>{const active=b.dataset.view===view;b.setAttribute('aria-selected',active);b.tabIndex=active?0:-1;});
+ document.querySelectorAll('[data-stat]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.stat===stat));
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.view;render();}));
+document.querySelectorAll('[data-stat]').forEach(b=>b.addEventListener('click',()=>{stat=b.dataset.stat;render();}));
+document.querySelector('[role=tablist]').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();view=e.key==='Home'?'scenarios':e.key==='End'?'sensitivity':view==='scenarios'?'sensitivity':'scenarios';render();el('tab-'+view).focus();});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: target-allocator
+  namespace: target-allocation
+data:
+  targetallocator.yaml: |
+    collector_namespace: target-allocation
+    collector_selector:
+      matchLabels:
+        app.kubernetes.io/name: alloy
+        app.kubernetes.io/instance: alloy-target-allocation
+    allocation_strategy: consistent-hashing
+    filter_strategy: relabel-config
+    prometheus_cr:
+      enabled: false
+    listen_addr: ":8080"
+    config:
+      scrape_configs:
+      - job_name: target-allocation
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        kubernetes_sd_configs:
+        - role: pod
+          namespaces:
+            names:
+            - target-allocation
+            - kube-system
+        relabel_configs:
+        - source_labels:
+          - __meta_kubernetes_pod_ready
+          - __meta_kubernetes_pod_container_port_name
+          regex: true;(metrics|http-metrics|telemetry)
+          action: keep
+        - source_labels:
+          - __meta_kubernetes_pod_name
+          target_label: instance
+        - source_labels:
+          - __meta_kubernetes_pod_container_port_name
+          target_label: endpoint
+        - source_labels:
+          - __meta_kubernetes_pod_label_size_class
+          target_label: size_class

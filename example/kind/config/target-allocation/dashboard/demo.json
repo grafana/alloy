@@ -1,0 +1,253 @@
+{
+  "apiVersion": "dashboard.grafana.app/v1beta1",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "target-allocation-demo",
+    "annotations": {
+      "grafana.app/folder": "integration---alloy-health"
+    }
+  },
+  "spec": {
+    "title": "Target allocation · Discover once, balance by size",
+    "uid": "target-allocation-demo",
+    "tags": [
+      "target-allocation-demo",
+      "hackathon"
+    ],
+    "schemaVersion": 39,
+    "timezone": "browser",
+    "refresh": "15s",
+    "time": {
+      "from": "now-15m",
+      "to": "now"
+    },
+    "editable": true,
+    "graphTooltip": 1,
+    "links": [
+      {
+        "title": "TA target explorer (local port-forward)",
+        "url": "http://localhost:8080/debug/allocation",
+        "type": "link",
+        "targetBlank": true
+      },
+      {
+        "title": "Alloy Prometheus details",
+        "url": "/d/e324cc55567d7f3a8e32860ff8e6d0d9",
+        "type": "link",
+        "targetBlank": true
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Demo actions",
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": false,
+          "iconColor": "#FF9830",
+          "target": {
+            "type": "tags",
+            "tags": [
+              "target-allocation-demo"
+            ],
+            "matchAny": false,
+            "limit": 100
+          }
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "mode",
+          "label": "Deployment",
+          "type": "custom",
+          "query": "vanilla,ta-hashing,ta-packing",
+          "current": {
+            "text": "ta-packing",
+            "value": "ta-packing"
+          },
+          "options": [
+            {
+              "text": "vanilla",
+              "value": "vanilla",
+              "selected": false
+            },
+            {
+              "text": "ta-hashing",
+              "value": "ta-hashing",
+              "selected": false
+            },
+            {
+              "text": "ta-packing",
+              "value": "ta-packing",
+              "selected": true
+            }
+          ],
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": false
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Active scrape endpoints",
+        "type": "stat",
+        "description": "Most recent owner per endpoint; samples older than 75s excluded.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":0,"y":0,"w":6,"h":4},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"colorMode":"value","graphMode":"none","justifyMode":"center","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+        "targets": [{"refId":"A","expr":"count((up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))","legendFormat":"Endpoints","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 2,
+        "title": "Observed samples / scrape",
+        "type": "stat",
+        "description": "Samples scraped across the pool, not active WAL series or TA estimates.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":6,"y":0,"w":6,"h":4},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"colorMode":"value","graphMode":"none","justifyMode":"center","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+        "targets": [{"refId":"A","expr":"sum(sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75))))","legendFormat":"Samples","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 3,
+        "title": "Load skew · max / mean",
+        "type": "stat",
+        "description": "1× is perfectly even. Whole targets and stability constraints limit achievable balance.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":12,"y":0,"w":6,"h":4},
+        "fieldConfig": {"defaults":{"unit":"suffix:×","decimals":2,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"orange","value":1.2},{"color":"red","value":1.5}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"colorMode":"value","graphMode":"none","justifyMode":"center","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+        "targets": [{"refId":"A","expr":"max(sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))) / avg(sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75))))","legendFormat":"Max / mean","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 4,
+        "title": "Healthy endpoints",
+        "type": "stat",
+        "description": "Fraction of recently scraped endpoints that succeeded; does not prove discovery completeness or gap-free handoff.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":18,"y":0,"w":6,"h":4},
+        "fieldConfig": {"defaults":{"unit":"percentunit","decimals":1,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"colorMode":"value","graphMode":"none","justifyMode":"center","textMode":"auto","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false}},
+        "targets": [{"refId":"A","expr":"sum((up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75))) / count((up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))","legendFormat":"Healthy","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 5,
+        "title": "Scrape load by Alloy",
+        "type": "bargauge",
+        "description": "Measured samples per scrape, deduplicated to the newest owner during handoff.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":0,"y":4,"w":12,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"displayMode":"gradient","orientation":"horizontal","showUnfilled":true,"reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"sizing":"auto"},
+        "targets": [{"refId":"A","expr":"sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))","legendFormat":"{{scraper}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 6,
+        "title": "Targets by Alloy",
+        "type": "bargauge",
+        "description": "Target counts can look similar despite very different scrape loads.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":12,"y":4,"w":12,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"displayMode":"gradient","orientation":"horizontal","showUnfilled":true,"reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"sizing":"auto"},
+        "targets": [{"refId":"A","expr":"count by (scraper) ((up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(up{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))","legendFormat":"{{scraper}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":false,"instant":true}]
+      },
+      {
+        "id": 7,
+        "title": "Load through changes",
+        "type": "timeseries",
+        "description": "Same measured load over time. Deployment and scaling events are annotated.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":0,"y":12,"w":12,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))","legendFormat":"{{scraper}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 8,
+        "title": "Balance through changes",
+        "type": "timeseries",
+        "description": "Aim near 1, without making unnecessary target moves.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":12,"y":12,"w":12,"h":8},
+        "fieldConfig": {"defaults":{"unit":"suffix:×","decimals":2,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"max(sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75)))) / avg(sum by (scraper) ((scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"} and topk by (instance, endpoint) (1, timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})) and (timestamp(scrape_samples_scraped{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}) > time() - 75))))","legendFormat":"Max / mean","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 9,
+        "title": "CPU · Alloy + TA",
+        "type": "timeseries",
+        "description": "Includes the allocator overhead. CPU uses a 2-minute window; total resource usage is not discovery-only cost.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":0,"y":20,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"cores","decimals":3,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"max by (instance) (rate(process_cpu_seconds_total{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}[2m]))","legendFormat":"{{instance}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false},{"refId":"B","expr":"sum(max by (instance) (rate(process_cpu_seconds_total{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}[2m])))","legendFormat":"Total","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 10,
+        "title": "Go heap · Alloy + TA",
+        "type": "timeseries",
+        "description": "Includes the allocator overhead. CPU uses a 2-minute window; total resource usage is not discovery-only cost.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":8,"y":20,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"bytes","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"max by (instance) ((go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"} and topk by (instance, endpoint) (1, timestamp(go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"})) and (timestamp(go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}) > time() - 75)))","legendFormat":"{{instance}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false},{"refId":"B","expr":"sum(max by (instance) ((go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"} and topk by (instance, endpoint) (1, timestamp(go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"})) and (timestamp(go_memstats_heap_alloc_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}) > time() - 75))))","legendFormat":"Total","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 11,
+        "title": "RSS · Alloy + TA",
+        "type": "timeseries",
+        "description": "Includes the allocator overhead. CPU uses a 2-minute window; total resource usage is not discovery-only cost.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":16,"y":20,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"bytes","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"max by (instance) ((process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"} and topk by (instance, endpoint) (1, timestamp(process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"})) and (timestamp(process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}) > time() - 75)))","legendFormat":"{{instance}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false},{"refId":"B","expr":"sum(max by (instance) ((process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"} and topk by (instance, endpoint) (1, timestamp(process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"})) and (timestamp(process_resident_memory_bytes{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}) > time() - 75))))","legendFormat":"Total","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 12,
+        "title": "Processes doing Kubernetes discovery",
+        "type": "timeseries",
+        "description": "Processes with pod discovery events, fresh within 75s. Clustered Alloy discovers on every peer; standalone TA centralizes it. This counts processes, not API requests or memory.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":0,"y":28,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"count(max by (instance) (prometheus_sd_kubernetes_events_total{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",role=\"pod\",event=\"add\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"} and (timestamp(prometheus_sd_kubernetes_events_total{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\",role=\"pod\",event=\"add\",instance=~\"alloy-target-allocation-.*|target-allocator-.*\"}) > time() - 75)) > 0)","legendFormat":"Discovery processes","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 13,
+        "title": "Sticky ownership moves / minute",
+        "type": "timeseries",
+        "description": "Sticky/load-shedding only. Excludes initial placement and target removals. Restart resets the counter; cold-start reassignment is not measured. Empty in hashing/vanilla is intentional. Scraper labels are collapsed before calculating increase so moving TA itself does not lose counter increments.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":8,"y":28,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false},"axisSoftMax":5},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"sum(increase((max by (instance) (opentelemetry_allocator_target_moves_total{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"}))[1m:15s]))","legendFormat":"Retained targets moved","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      },
+      {
+        "id": 14,
+        "title": "TA estimated series by Alloy",
+        "type": "timeseries",
+        "description": "Sticky/load-shedding only. Async estimates use smoothing windows and can lag observed samples. Empty in hashing/vanilla is intentional.",
+        "datasource": {"type":"prometheus","uid":"grafanacloud-prom"},
+        "gridPos": {"x":16,"y":28,"w":8,"h":8},
+        "fieldConfig": {"defaults":{"unit":"short","decimals":0,"color":{"mode":"palette-classic"},"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null}]},"custom":{"drawStyle":"line","lineInterpolation":"smooth","fillOpacity":8,"showPoints":"never","lineWidth":2,"spanNulls":false,"axisLabel":"","axisPlacement":"auto","hideFrom":{"legend":false,"tooltip":false,"viz":false}},"min":0},"overrides":[{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-0.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#5794F2"}},{"id":"displayName","value":"Alloy 0"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-1.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#B877D9"}},{"id":"displayName","value":"Alloy 1"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-2.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#FF9830"}},{"id":"displayName","value":"Alloy 2"}]},{"matcher":{"id":"byRegexp","options":".*alloy-target-allocation-3.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#56A64B"}},{"id":"displayName","value":"Alloy 3"}]},{"matcher":{"id":"byRegexp","options":"^target-allocator-.*"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#009688"}},{"id":"displayName","value":"Target Allocator"}]},{"matcher":{"id":"byName","options":"Total"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"#606b7a"}}]}]},
+        "options": {"legend":{"displayMode":"list","placement":"bottom","calcs":["lastNotNull"]},"tooltip":{"mode":"multi","sort":"desc"}},
+        "targets": [{"refId":"A","expr":"max by (collector_name) (opentelemetry_allocator_estimated_series_per_collector{experiment=\"target-allocation\",job=\"target-allocation\",run_id=~\"$mode\"})","legendFormat":"{{collector_name}}","datasource":{"type":"prometheus","uid":"grafanacloud-prom"},"range":true,"instant":false}]
+      }
+    ]
+  }
+}

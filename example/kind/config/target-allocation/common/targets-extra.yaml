@@ -1,0 +1,88 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: targets-extra-search
+  namespace: target-allocation
+spec:
+  serviceName: targets
+  podManagementPolicy: Parallel
+  replicas: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: target-allocation-targets
+      size_class: medium
+      service: burst-search
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: target-allocation-targets
+        size_class: medium
+        service: burst-search
+        team: discovery
+        region: us-east-1
+        environment: demo
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        command:
+        - "/app/main"
+        args:
+        - "--series=733"
+        ports:
+        - name: metrics
+          containerPort: 9001
+        readinessProbe:
+          httpGet:
+            path: "/metrics"
+            port: metrics
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: targets-extra-worker
+  namespace: target-allocation
+spec:
+  serviceName: targets
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: target-allocation-targets
+      service: burst-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: target-allocation-targets
+        size_class: medium
+        service: burst-worker
+        team: payments
+        region: us-west-2
+        environment: demo
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        command:
+        - "/app/main"
+        args:
+        - "--series=1571"
+        ports:
+        - name: metrics
+          containerPort: 9001
+        readinessProbe:
+          httpGet:
+            path: "/metrics"
+            port: metrics
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi

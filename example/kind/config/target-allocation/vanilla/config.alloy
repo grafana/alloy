@@ -1,0 +1,49 @@
+logging {
+	level = "info"
+}
+
+// Every peer discovers and relabels the same complete target set.
+discovery.kubernetes "demo" {
+	role = "pod"
+
+	namespaces {
+		names = [sys.env("POD_NAMESPACE"), "kube-system"]
+	}
+
+}
+
+discovery.relabel "demo" {
+	targets = discovery.kubernetes.demo.targets
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_ready", "__meta_kubernetes_pod_container_port_name"]
+		regex         = "true;(metrics|http-metrics|telemetry)"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_name"]
+		target_label  = "instance"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+		target_label  = "endpoint"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_label_size_class"]
+		target_label  = "size_class"
+	}
+}
+
+prometheus.scrape "demo" {
+	targets         = discovery.relabel.demo.output
+	job_name        = "target-allocation"
+	scrape_interval = sys.env("DEMO_SCRAPE_INTERVAL")
+
+	clustering {
+		enabled = true
+	}
+	forward_to = [prometheus.remote_write.cloud.receiver]
+}

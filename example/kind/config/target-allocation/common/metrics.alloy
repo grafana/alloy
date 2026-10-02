@@ -1,0 +1,17 @@
+prometheus.remote_write "cloud" {
+	// Apply the scraper identity after ownership selection, outside the hash input.
+	external_labels = {
+		experiment = "target-allocation",
+		run_id     = sys.env("DEMO_RUN_ID"),
+		scraper    = sys.env("POD_NAME"),
+	}
+
+	endpoint {
+		url = sys.env("GRAFANA_CLOUD_PROMETHEUS_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_CLOUD_PROMETHEUS_USERNAME")
+			password = sys.env("GRAFANA_CLOUD_METRICS_WRITE_TOKEN")
+		}
+	}
+}
