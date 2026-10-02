@@ -228,7 +228,7 @@ loki.process "endpoint" {
       }
   }
 
-  stage.eventlogmessage {
+  stage.windowsevent {
       source = "message"
       overwrite_existing = true
   }
