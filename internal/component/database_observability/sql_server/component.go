@@ -86,6 +86,7 @@ type Arguments struct {
 	QuerySamplesArguments  QuerySamplesArguments  `alloy:"query_samples,block,optional"`
 	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
 }
 
 type CloudProvider struct {
@@ -131,6 +132,10 @@ type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type HealthCheckArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 func defaultArguments() Arguments {
 	return Arguments{
 		QueryTimeout: defaultQueryTimeout,
@@ -160,6 +165,10 @@ func defaultArguments() Arguments {
 
 		ExplainPlansArguments: ExplainPlansArguments{
 			CollectInterval: 1 * time.Minute,
+		},
+
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
 		},
 	}
 }
@@ -207,6 +216,11 @@ func (a *Arguments) Validate() error {
 		if a.ExplainPlansArguments.CollectInterval <= 0 {
 			return fmt.Errorf("explain_plans.collect_interval must be greater than zero")
 		}
+	}
+
+	// health_check is always enabled, so this isn't gated by enableOrDisableCollectors.
+	if a.HealthCheckArguments.CollectInterval <= 0 {
+		return fmt.Errorf("health_check.collect_interval must be greater than zero")
 	}
 
 	if a.CloudProvider != nil {
@@ -622,6 +636,24 @@ func (c *Component) startCollectors(ctx context.Context, serverID string, engine
 			logStartError(collector.ConnectionInfoName, "start", err)
 		}
 		c.instance.collectors = append(c.instance.collectors, ciCollector)
+	}
+
+	// HealthCheck collector is always enabled
+	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
+		DB:               c.dbConnection,
+		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
+		QueryTimeout:     c.args.QueryTimeout,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		EntryHandler:     entryHandler,
+		Logger:           c.opts.Logger,
+	})
+	if err != nil {
+		logStartError(collector.HealthCheckCollector, "create", err)
+	} else {
+		if err := hcCollector.Start(ctx); err != nil {
+			logStartError(collector.HealthCheckCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, hcCollector)
 	}
 
 	if len(startErrors) > 0 {
