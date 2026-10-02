@@ -46,8 +46,7 @@ You can use the following arguments with `prometheus.exporter.consul`:
 | `server_name`              | `string`   | Overrides the hostname used to verify the TLS certificate.                                            |                           | no       |
 | `timeout`                  | `duration` | Timeout on HTTP requests to Consul.                                                                   | `"500ms"`                 | no       |
 
-The `server` argument accepts an address with or without a scheme.
-If you omit the scheme, the component adds `http://`.
+Set `server` to an address that includes a scheme, for example `https://consul.example.com:8500`.
 The address must include a host, and the scheme must be `http` or `https`.
 
 Set `ca_file` to validate the Consul server's certificate.
