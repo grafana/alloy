@@ -850,8 +850,8 @@ var expectedCustomNamespaceJobPeriodConfig = yaceModel.JobsConfig{
 // add_cloudwatch_timestamp jobs
 //==============================
 
-// Shows that add_cloudwatch_timestamp is not supported on static jobs will be set to false on metrics.
-const staticJobAddCloudwatchTimestampConfig = `
+// Shows that historical data-point export can be enabled on a static-job metric.
+const staticJobHistoricalDataPointsConfig = `
 sts_region = "us-east-2"
 debug = true
 static "test_instance" {
@@ -864,11 +864,32 @@ static "test_instance" {
 		name = "CPUUtilization"
 		statistics = ["Average"]
 		period = "5m"
+		add_cloudwatch_timestamp = true
+		export_all_data_points = true
 	}
 }
 `
 
-var expectedStaticJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
+// Shows that historical data-point export requires CloudWatch timestamps.
+const staticJobExportAllDataPointsWithoutTimestampConfig = `
+sts_region = "us-east-2"
+debug = true
+static "test_instance" {
+	regions = ["us-east-2"]
+	namespace = "AWS/EC2"
+	dimensions = {
+		"InstanceId" = "i-test",
+	}
+	metric {
+		name = "CPUUtilization"
+		statistics = ["Average"]
+		period = "5m"
+		export_all_data_points = true
+	}
+}
+`
+
+var expectedStaticJobHistoricalDataPointsConfig = yaceModel.JobsConfig{
 	StsRegion: "us-east-2",
 	StaticJobs: []yaceModel.StaticJob{
 		{
@@ -890,7 +911,8 @@ var expectedStaticJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 				Length:                 300,
 				Delay:                  0,
 				NilToZero:              defaultNilToZero,
-				AddCloudwatchTimestamp: falsePtr,
+				AddCloudwatchTimestamp: truePtr,
+				ExportAllDataPoints:    truePtr,
 			}},
 		},
 	},
@@ -1027,6 +1049,21 @@ var expectedDiscoveryJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 		},
 	},
 }
+
+const discoveryJobHistoricalDataPointsWithInheritedTimestampConfig = `
+sts_region = "us-east-2"
+discovery {
+	type = "AWS/SQS"
+	regions = ["us-east-2"]
+	add_cloudwatch_timestamp = true
+	metric {
+		name = "NumberOfMessagesSent"
+		statistics = ["Sum"]
+		period = "1m"
+		export_all_data_points = true
+	}
+}
+`
 
 // ==========
 // delay jobs
@@ -1286,9 +1323,13 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			raw:      customNameSpaceJobPeriodConfig,
 			expected: expectedCustomNamespaceJobPeriodConfig,
 		},
-		"static job add cloudwatch timestamp config": {
-			raw:      staticJobAddCloudwatchTimestampConfig,
-			expected: expectedStaticJobAddCloudwatchTimestampConfig,
+		"export all data points requires CloudWatch timestamps": {
+			raw:              staticJobExportAllDataPointsWithoutTimestampConfig,
+			expectConvertErr: true,
+		},
+		"static job historical data points config": {
+			raw:      staticJobHistoricalDataPointsConfig,
+			expected: expectedStaticJobHistoricalDataPointsConfig,
 		},
 		"custom namespace job add cloudwatch timestamp config": {
 			raw:      customNamespaceAddCloudwatchTimestampConfig,
@@ -1332,4 +1373,22 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			require.EqualValues(t, tc.expected, converted)
 		})
 	}
+}
+
+func TestDiscoveryJobHistoricalDataPointsWithInheritedTimestamp(t *testing.T) {
+	args := Arguments{}
+	err := syntax.Unmarshal([]byte(discoveryJobHistoricalDataPointsWithInheritedTimestampConfig), &args)
+	require.NoError(t, err)
+
+	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	converted, err := ConvertToYACE(args, logger.Slog())
+	require.NoError(t, err)
+	require.Len(t, converted.DiscoveryJobs, 1)
+	require.Len(t, converted.DiscoveryJobs[0].Metrics, 1)
+
+	metric := converted.DiscoveryJobs[0].Metrics[0]
+	require.True(t, metric.AddCloudwatchTimestamp)
+	require.True(t, metric.ExportAllDataPoints)
 }
