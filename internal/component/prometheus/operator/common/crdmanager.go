@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -26,6 +27,7 @@ import (
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/grafana/alloy/internal/component"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -38,6 +40,22 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
+
+// init installs controller-runtime's process-global logger.
+//
+// controller-runtime has one process-global logger. If SetLogger is never
+// called, the first use after 30 seconds prints a missing-logger warning and
+// stack trace. Prometheus operator components reach that path from
+// runInformers when creating Kubernetes caches, including across reloads.
+//
+// A component-scoped logger must not be installed into that process-global
+// slot. Several prometheus.operator components can run at once, and a reload
+// replaces them, so those messages would be attributed to an arbitrary
+// component or dropped when it stops. Discard the unscoped global messages.
+// Manager and informer errors are still reported through c.logger.
+func init() {
+	log.SetLogger(logr.Discard())
+}
 
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
