@@ -5,9 +5,13 @@ dist:
   version: v1.20.0 # x-release-please-version
   output_path: .
 
+alloy:
+  components: all
+  converters: true
+
 extensions:
   - gomod: github.com/grafana/alloy v1.20.0 # x-release-please-version
-    import: github.com/grafana/alloy/extension/alloyengine
+    import: github.com/grafana/alloy/extension/alloyengine/engine
     name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.161.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.161.0

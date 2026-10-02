@@ -1,4 +1,4 @@
-package main
+package otelsupervisor
 
 import (
 	"path/filepath"

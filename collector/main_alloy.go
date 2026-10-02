@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/flowcmd"
 	"github.com/grafana/alloy/internal/usagestats"
 	"github.com/grafana/alloy/internal/useragent"
+	"github.com/grafana/alloy/otel_engine/otelsupervisor"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/otelcol"
@@ -55,7 +56,7 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
 
 	flowCmd := flowcmd.RootCommand()
 	flowCmd.AddCommand(otelCmd)
-	flowCmd.AddCommand(newOtelSupervisorCommand())
+	flowCmd.AddCommand(otelsupervisor.NewCommand())
 
 	return flowCmd
 }
