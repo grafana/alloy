@@ -13,13 +13,14 @@ title: prometheus.exporter.cloudwatch
 
 # `prometheus.exporter.cloudwatch`
 
-The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-exporter`][], letting you collect [Amazon CloudWatch metrics][] in a Prometheus-compatible format.
+The `prometheus.exporter.cloudwatch` component embeds [`yet-another-cloudwatch-exporter`][] to collect [Amazon CloudWatch metrics][] in a Prometheus-compatible format.
 
-This component lets you scrape CloudWatch metrics in a set of configurations called _jobs_.
-There are three kinds of jobs: [`custom_namespace`][custom_namespace], [`discovery`][discovery] and [`static`][static].
+Use this component to scrape CloudWatch metrics in a set of configurations called _jobs_.
+Three kinds of jobs exist: [`custom_namespace`][custom_namespace], [`discovery`][discovery], and [`static`][static].
 
 [`yet-another-cloudwatch-exporter`]: https://github.com/prometheus-community/yet-another-cloudwatch-exporter
 [Amazon CloudWatch metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html
+[custom_namespace]: #custom_namespace
 [discovery]: #discovery
 [static]: #static
 [metric]: #metric
@@ -276,7 +277,6 @@ Refer to the [View available metrics][] topic in the Amazon CloudWatch documenta
 In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, the `add_cloudwatch_timestamp`, `length`, `nil_to_zero`, and `period` arguments default to the parent block's value when the parent sets one.
 In [`static`][static] blocks, only `nil_to_zero` defaults to the parent block's value.
 
-[custom_namespace]: #custom_namespace
 [period]: #period-and-length
 [View available metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html
 
