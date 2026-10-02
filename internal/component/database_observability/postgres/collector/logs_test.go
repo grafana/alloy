@@ -2089,6 +2089,35 @@ func TestLogsCollector_TimedOutPendingEmitsErrorEntryWithoutFingerprint(t *testi
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 	require.Equal(t, "FATAL", fields["severity"])
 	require.Equal(t, "too many connections", fields["message"])
+
+	// pg_errors_without_query_total -- a subset of pg_errors_total -- also
+	// increments, since this error never got attributed to a query.
+	require.Equal(t, float64(1), testutil.ToFloat64(c.errorsWithoutQuery.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")))
+}
+
+// TestLogsCollector_MatchedError_DoesNotIncrementErrorsWithoutQuery pins
+// that an ERROR+STATEMENT pair that resolves normally -- it got attributed
+// to a query -- never increments pg_errors_without_query_total; only the
+// no-STATEMENT path (see TestLogsCollector_TimedOutPendingEmitsErrorEntryWithoutFingerprint) does.
+func TestLogsCollector_MatchedError_DoesNotIncrementErrorsWithoutQuery(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70020"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
+	_, hasFP := fields["query_fingerprint"]
+	require.True(t, hasFP, "this error was matched to a query")
+
+	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsWithoutQuery.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")))
 }
 
 // TestLogsCollector_DisplacedPendingEmitsErrorEntryThenNormalEntry pins

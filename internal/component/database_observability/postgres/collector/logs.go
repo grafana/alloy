@@ -277,6 +277,7 @@ type Logs struct {
 	lastLogTimezone atomic.Pointer[string]
 
 	errorsBySQLState      *prometheus.CounterVec
+	errorsWithoutQuery    *prometheus.CounterVec
 	parseErrors           prometheus.Counter
 	logsProcessingEnabled prometheus.Gauge
 
@@ -343,7 +344,20 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{fieldSeverity, fieldSqlstate, "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, "user"},
+		[]string{fieldSeverity, fieldSqlstate, "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, labelUser},
+	)
+
+	// Server-level errors that never got a STATEMENT to pair with (see
+	// emitErrorEntry): a subset of pg_errors_total, for distinguishing
+	// errors attributable to a specific query from ones that aren't
+	// (connection/resource/auth failures, a STATEMENT lost in transit, ...).
+	l.errorsWithoutQuery = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "pg_errors_without_query_total",
+			Help:      "Number of error-severity log lines that could not be attributed to a specific query (no STATEMENT was captured for them)",
+		},
+		[]string{fieldSeverity, fieldSqlstate, "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, labelUser},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
@@ -366,6 +380,7 @@ func (l *Logs) initMetrics() {
 
 	l.registry.MustRegister(
 		l.errorsBySQLState,
+		l.errorsWithoutQuery,
 		l.parseErrors,
 		l.logsProcessingEnabled,
 	)
@@ -441,6 +456,7 @@ func (l *Logs) Stop() {
 	l.wg.Wait()
 
 	l.registry.Unregister(l.errorsBySQLState)
+	l.registry.Unregister(l.errorsWithoutQuery)
 	l.registry.Unregister(l.parseErrors)
 	l.registry.Unregister(l.logsProcessingEnabled)
 }
@@ -896,7 +912,9 @@ func (l *Logs) redact(text string) string {
 // the entry is still sent with query_fingerprint simply omitted -- severity,
 // sqlstate, message, and detail/hint/context are already enough to act on,
 // and PostgreSQL only ever reaches this with a non-"00000" (non-successful)
-// sqlstate to begin with.
+// sqlstate to begin with. The no-STATEMENT case also increments
+// pg_errors_without_query_total (a subset of pg_errors_total), for a
+// server-level view of errors that can't be attributed to a specific query.
 func (l *Logs) emitErrorEntry(p *pendingError) {
 	stmt := strings.TrimSpace(p.sql.String())
 	var fp string
@@ -906,6 +924,17 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 		if err != nil {
 			fp = ""
 		}
+	}
+	if fp == "" {
+		l.errorsWithoutQuery.WithLabelValues(
+			p.severity,
+			p.sqlstate,
+			p.sqlstateClass,
+			sqlstateName(p.sqlstate),
+			sqlstateClassName(p.sqlstateClass),
+			p.datname,
+			p.user,
+		).Inc()
 	}
 
 	ts := p.timestamp
