@@ -104,7 +104,7 @@ Use `ingest_delay` if you want the component to make this adjustment automatical
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
 Since the GCP ingestion delay is an "at worst", this is off by default so the component gathers data without waiting for that delay to elapse.
 
-The component sets the `instance` label on its exported targets to an MD5 hash of its configuration, because no single argument identifies a GCP scrape.
+The component sets the `instance` label on its exported targets to a hash of its own configuration, because no single argument identifies a GCP scrape.
 The label changes if you change any argument.
 
 [gcp-metrics]: https://cloud.google.com/monitoring/api/metrics_gcp
