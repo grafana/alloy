@@ -14,7 +14,7 @@ title: prometheus.exporter.gcp
 # `prometheus.exporter.gcp`
 
 The `prometheus.exporter.gcp` component embeds the [`stackdriver_exporter`][stackdriver-exporter].
-You can use this component to collect [GCP Cloud Monitoring (formerly stackdriver)][cloud-monitoring] metrics, translate them to Prometheus-compatible format, and remote write.
+You can use this component to collect [GCP Cloud Monitoring][cloud-monitoring] metrics, translate them to Prometheus-compatible format, and remote write.
 The component supports all metrics available through the [GCP monitoring API][gcp-metrics].
 
 Metric names follow the template `stackdriver_<monitored_resource>_<metric_type_prefix>_<metric_type>`.
@@ -42,7 +42,7 @@ You can specify multiple `prometheus.exporter.gcp` components by giving them dif
 The exporter uses the Google Golang Client Library, which offers a variety of ways to [provide credentials][credentials].
 Choose the option that works best for you.
 
-After deciding how {{< param "PRODUCT_NAME" >}} obtains credentials, ensure the account is set up with the IAM role `roles/monitoring.viewer`.
+After you decide how {{< param "PRODUCT_NAME" >}} obtains credentials, give the account the IAM role `roles/monitoring.viewer`.
 Since the exporter gathers all of its data from [GCP monitoring APIs][monitoring-api], this is the only permission needed.
 
 [credentials]: https://developers.google.com/identity/protocols/application-default-credentials
@@ -81,16 +81,16 @@ You can use the following arguments with `prometheus.exporter.gcp`:
 | `request_offset`          | `duration`     | Offsets the time range used when querying for metrics by a set amount.                                    | `"0s"`  | no       |
 
 {{< admonition type="note" >}}
-If you are supplying a list of strings for the `extra_filters` argument, any string values within a particular filter string must be enclosed in escaped double quotes.
-For example, `loadbalancing.googleapis.com:resource.labels.backend_target_name="sample-value"` must be encoded as `"loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""` in the {{< param "PRODUCT_NAME" >}} configuration.
+If you supply a list of strings for the `extra_filters` argument, you must enclose any string values within a filter string in escaped double quotes.
+For example, encode `loadbalancing.googleapis.com:resource.labels.backend_target_name="sample-value"` as `"loadbalancing.googleapis.com:resource.labels.backend_target_name=\"sample-value\""` in the {{< param "PRODUCT_NAME" >}} configuration.
 {{< /admonition >}}
 
-For `extra_filters`, the `targeted_metric_prefix` is used to ensure the filter is only applied to the `metrics_prefixes` values where it makes sense.
+For `extra_filters`, the `targeted_metric_prefix` ensures the component applies the filter only to the `metrics_prefixes` values where it makes sense.
 It doesn't explicitly have to match a value from `metrics_prefixes`, but the `targeted_metric_prefix` must be at least a prefix to one or more `metrics_prefixes` values.
 The component fails to start if an `extra_filters` entry omits the `:` separator, or if its `targeted_metric_prefix` doesn't match any `metrics_prefixes` value.
-The `filter_query` is applied to a final metrics API query when querying for metric data.
+The component applies the `filter_query` to the final metrics API query when it queries for metric data.
 The final query sent to the metrics API already includes filters for project and metric type.
-Each applicable `filter_query` is appended to the query with an AND.
+The component appends each applicable `filter_query` to the query with an AND.
 You can read more about the metric API filter options in the [GCP documentation][filters].
 
 For `gcp_client_timeout`, be mindful when you override the default.
@@ -99,10 +99,10 @@ A single scrape can initiate numerous calls to GCP.
 For `request_interval`, most of the time the default works perfectly fine.
 Most documented metrics include a comments of the form `Sampled every X seconds. After sampling, data is not visible for up to Y seconds.`
 As long as your `request_interval` is greater than or equal to `Y` you should have no issues.
-Consider using `ingest_delay` if you would like this to be done programmatically or are gathering slower moving metrics.
+Use `ingest_delay` if you want the component to make this adjustment automatically, or if you gather slower moving metrics.
 
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
-Since the GCP ingestion delay is an "at worst", this is off by default to ensure data is gathered as soon as it's available.
+Since the GCP ingestion delay is an "at worst", this is off by default so the component gathers data as soon as it's available.
 
 The component sets the `instance` label on its exported targets to an MD5 hash of its configuration, because no single argument identifies a GCP scrape.
 The label changes if you change any argument.
