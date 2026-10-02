@@ -280,7 +280,7 @@ For more information about the `delta` argument, see the [delta argument][] sect
 
 ### `profile.custom`
 
-The `profile.custom` block allows for collecting profiles from custom endpoints.
+The `profile.custom` block collects profiles from custom endpoints.
 You must give each block a label:
 
 ```alloy

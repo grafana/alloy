@@ -135,7 +135,7 @@ If an individual key stored in `data` doesn't hold sensitive data, you can conve
 convert.nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 ```
 
-Using `convert.nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that don't support secrets.
+Use `convert.nonsensitive` to pass the exports of `remote.kubernetes.secret` to attributes in components that don't support secrets.
 
 [convert]: ../../../stdlib/convert/
 

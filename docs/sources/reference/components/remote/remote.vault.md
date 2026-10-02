@@ -272,7 +272,7 @@ If an individual key stored in `data` doesn't hold sensitive data, you can conve
 convert.nonsensitive(remote.vault.LABEL.data.KEY_NAME)
 ```
 
-Using `convert.nonsensitive` allows for using the exports of `remote.vault` for attributes in components that don't support secrets.
+Use `convert.nonsensitive` to pass the exports of `remote.vault` to attributes in components that don't support secrets.
 
 [convert.nonsensitive]: ../../../stdlib/convert/
 
