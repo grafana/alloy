@@ -338,22 +338,23 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 }
 
 func (l *Logs) initMetrics() {
-	// Every ERROR/FATAL/PANIC log line, by severity and sql state code --
-	// including ones that never get attributed to a specific query (see
-	// pg_non_query_errors_total below, a subset of this one).
+	// pg_query_errors_total and pg_non_query_errors_total partition every
+	// ERROR/FATAL/PANIC log line exactly once between them: this one is
+	// for errors attributed to the query that caused them (a STATEMENT was
+	// captured for them -- see emitErrorEntry).
 	l.queryErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "database_observability",
 			Name:      "pg_query_errors_total",
-			Help:      "Number of log lines with errors by severity and sql state code",
+			Help:      "Number of error-severity log lines attributed to the specific query that caused them",
 		},
 		[]string{fieldSeverity, fieldSqlstate, "sqlstate_class", "sqlstate_name", "sqlstate_class_name", labelDatname, labelUser},
 	)
 
-	// Server-level errors that never got a STATEMENT to pair with (see
-	// emitErrorEntry): the subset of pg_query_errors_total that couldn't be
-	// attributed to a specific query (connection/resource/auth failures, a
-	// STATEMENT lost in transit, ...).
+	// The other half of the partition: server-level errors that couldn't be
+	// attributed to a specific query -- no STATEMENT was ever captured for
+	// them (connection/resource/auth failures, a STATEMENT lost in transit,
+	// enable_error_logs_processing disabled entirely, ...).
 	l.nonQueryErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "database_observability",
@@ -717,17 +718,22 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	l.queryErrors.WithLabelValues(
-		label,
-		sqlstateCode,
-		sqlstateClass,
-		sqlstateName(sqlstateCode),
-		sqlstateClassName(sqlstateClass),
-		database,
-		user,
-	).Inc()
-
+	// With processing disabled, no STATEMENT is ever looked for, so this
+	// error can never be attributed to one -- counted as non-query here,
+	// immediately, since emitErrorEntry (where the query/non-query split
+	// otherwise happens) is never reached in that case. pg_query_errors_total
+	// and pg_non_query_errors_total always partition every ERROR/FATAL/PANIC
+	// line exactly once between them, however processing is configured.
 	if !l.enableErrorLogsProcessing {
+		l.nonQueryErrors.WithLabelValues(
+			label,
+			sqlstateCode,
+			sqlstateClass,
+			sqlstateName(sqlstateCode),
+			sqlstateClassName(sqlstateClass),
+			database,
+			user,
+		).Inc()
 		return nil
 	}
 
@@ -915,9 +921,9 @@ func (l *Logs) redact(text string) string {
 // the entry is still sent with query_fingerprint simply omitted -- severity,
 // sqlstate, message, and detail/hint/context are already enough to act on,
 // and PostgreSQL only ever reaches this with a non-"00000" (non-successful)
-// sqlstate to begin with. The no-STATEMENT case also increments
-// pg_non_query_errors_total (a subset of pg_query_errors_total), for a
-// server-level view of errors that can't be attributed to a specific query.
+// sqlstate to begin with. It also increments pg_query_errors_total or
+// pg_non_query_errors_total, whichever side of that partition this error
+// falls on, same as the fp check this body already makes.
 func (l *Logs) emitErrorEntry(p *pendingError) {
 	stmt := strings.TrimSpace(p.sql.String())
 	var fp string
@@ -928,17 +934,22 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 			fp = ""
 		}
 	}
-	if fp == "" {
-		l.nonQueryErrors.WithLabelValues(
-			p.severity,
-			p.sqlstate,
-			p.sqlstateClass,
-			sqlstateName(p.sqlstate),
-			sqlstateClassName(p.sqlstateClass),
-			p.datname,
-			p.user,
-		).Inc()
+	// Exactly one of the two: this error is either attributed to the query
+	// that caused it, or it isn't -- see the !enableErrorLogsProcessing
+	// branch above for the other place this same partition is maintained.
+	counter := l.nonQueryErrors
+	if fp != "" {
+		counter = l.queryErrors
 	}
+	counter.WithLabelValues(
+		p.severity,
+		p.sqlstate,
+		p.sqlstateClass,
+		sqlstateName(p.sqlstate),
+		sqlstateClassName(p.sqlstateClass),
+		p.datname,
+		p.user,
+	).Inc()
 
 	ts := p.timestamp
 	if ts.IsZero() {

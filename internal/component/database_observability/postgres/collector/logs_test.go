@@ -104,7 +104,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 			require.Eventuallyf(t, func() bool {
 				mfs, _ := registry.Gather()
 				for _, mf := range mfs {
-					if mf.GetName() == "database_observability_pg_query_errors_total" {
+					if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 						for _, metric := range mf.GetMetric() {
 							labels := make(map[string]string)
 							for _, label := range metric.GetLabel() {
@@ -155,7 +155,7 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	// Should have 0 metrics since all were skipped
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			require.Equal(t, 0, len(mf.GetMetric()), "should not create metrics for non-error logs")
 		}
 	}
@@ -191,7 +191,7 @@ func TestLogsCollector_DoesNotCountEmbeddedSeverityKeyword(t *testing.T) {
 
 	mfs, _ := registry.Gather()
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			require.Equal(t, 0, len(mf.GetMetric()), "a LOG line with an embedded ERROR: keyword must not be counted")
 		}
 	}
@@ -270,7 +270,7 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		mfs, _ := registry.Gather()
 		counts := make(map[metricKey]float64)
 		for _, mf := range mfs {
-			if mf.GetName() == "database_observability_pg_query_errors_total" {
+			if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 				for _, metric := range mf.GetMetric() {
 					labels := make(map[string]string)
 					for _, label := range metric.GetLabel() {
@@ -367,7 +367,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	require.Eventually(t, func() bool {
 		mfs, _ := registry.Gather()
 		for _, mf := range mfs {
-			if mf.GetName() == "database_observability_pg_query_errors_total" && len(mf.GetMetric()) == 1 {
+			if mf.GetName() == "database_observability_pg_non_query_errors_total" && len(mf.GetMetric()) == 1 {
 				return mf.GetMetric()[0].GetCounter().GetValue() == 1
 			}
 		}
@@ -377,7 +377,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			errorMetrics = mf
 			break
 		}
@@ -520,7 +520,7 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 			require.Eventuallyf(t, func() bool {
 				mfs, _ := registry.Gather()
 				for _, mf := range mfs {
-					if mf.GetName() == "database_observability_pg_query_errors_total" {
+					if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 						for _, metric := range mf.GetMetric() {
 							labels := make(map[string]string)
 							for _, label := range metric.GetLabel() {
@@ -572,7 +572,7 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -608,7 +608,7 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -651,7 +651,7 @@ func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 		mfs, _ := registry.Gather()
 		var totalCount float64
 		for _, mf := range mfs {
-			if mf.GetName() == "database_observability_pg_query_errors_total" {
+			if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 				for _, metric := range mf.GetMetric() {
 					totalCount += metric.GetCounter().GetValue()
 				}
@@ -695,7 +695,7 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 		mfs, _ := registry.Gather()
 		var totalCount float64
 		for _, mf := range mfs {
-			if mf.GetName() == "database_observability_pg_query_errors_total" {
+			if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 				for _, metric := range mf.GetMetric() {
 					totalCount += metric.GetCounter().GetValue()
 				}
@@ -733,7 +733,7 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				totalCount += metric.GetCounter().GetValue()
 			}
@@ -775,7 +775,7 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 		mfs, _ := registry.Gather()
 		var totalCount float64
 		for _, mf := range mfs {
-			if mf.GetName() == "database_observability_pg_query_errors_total" {
+			if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 				for _, metric := range mf.GetMetric() {
 					totalCount += metric.GetCounter().GetValue()
 				}
@@ -811,7 +811,7 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				labels := make(map[string]string)
 				for _, label := range metric.GetLabel() {
@@ -851,7 +851,7 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	mfs, _ := registry.Gather()
 	var totalCount float64
 	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_query_errors_total" {
+		if mf.GetName() == "database_observability_pg_non_query_errors_total" {
 			for _, metric := range mf.GetMetric() {
 				labels := make(map[string]string)
 				for _, label := range metric.GetLabel() {
@@ -2076,11 +2076,6 @@ func TestLogsCollector_TimedOutPendingEmitsErrorEntryWithoutFingerprint(t *testi
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[99999]:1:53300:FATAL:  too many connections"}}
 
-	// pg_query_errors_total increments immediately.
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.queryErrors.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")) == 1
-	}, 1*time.Second, 50*time.Millisecond)
-
 	// op="error_message" arrives once the timeout fires -- no STATEMENT ever
 	// came, so there's no query_fingerprint, but it's not dropped either.
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
@@ -2090,9 +2085,11 @@ func TestLogsCollector_TimedOutPendingEmitsErrorEntryWithoutFingerprint(t *testi
 	require.Equal(t, "FATAL", fields["severity"])
 	require.Equal(t, "too many connections", fields["message"])
 
-	// pg_non_query_errors_total -- a subset of pg_query_errors_total -- also
-	// increments, since this error never got attributed to a query.
+	// pg_non_query_errors_total increments once the timeout flushes it,
+	// since this error never got attributed to a query; pg_query_errors_total
+	// never does for this one.
 	require.Equal(t, float64(1), testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")))
+	require.Equal(t, float64(0), testutil.ToFloat64(c.queryErrors.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")))
 }
 
 // TestLogsCollector_MatchedError_DoesNotIncrementErrorsWithoutQuery pins
@@ -2247,10 +2244,11 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
 		Line: ts + "::user@books_store:[12345]:3:00000:LOG:  duration: 0.001 ms"}}
 
-	// Wait for the buffering / flush logic to settle. pg_query_errors_total should
-	// have incremented (gating doesn't touch it).
+	// Wait for the buffering / flush logic to settle. pg_non_query_errors_total
+	// should have incremented immediately: with processing off, no STATEMENT
+	// is ever looked for, so this can never be attributed to one.
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.queryErrors.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
+		return testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
 	}, 2*time.Second, 50*time.Millisecond)
 
 	// No Loki entries should have flowed.
@@ -2264,7 +2262,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 
 // TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
 // EnableErrorLogsProcessing from LogsArguments yields the disabled behavior:
-// pg_query_errors_total still increments, but no op="error_message" Loki entry appears.
+// pg_non_query_errors_total still increments, but no op="error_message" Loki entry appears.
 func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 	receiver := loki.NewLogsReceiver()
 	entryCh := make(chan loki.Entry, 8)
@@ -2287,7 +2285,7 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 
 	// Counter should still increment.
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.queryErrors.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
+		return testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("ERROR", "42P01", "42", "undefined_table", "syntax_error_or_access_rule_violation", "books_store", "user")) >= 1
 	}, 2*time.Second, 50*time.Millisecond)
 
 	// And no Loki entry should appear.
@@ -2300,30 +2298,20 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 }
 
 // TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword pins that an
-// ERROR line whose message text contains a STATEMENT keyword is still counted
-// in pg_query_errors_total when enable_error_logs_processing is on: the line is classified by
-// its leftmost real label (ERROR), not diverted to the statement-attach path.
+// ERROR line whose message text contains a STATEMENT keyword is classified
+// by its leftmost real label (ERROR), not diverted to the statement-attach
+// path -- it's still counted once it flushes (here, via timeout, since no
+// real STATEMENT ever arrives for it), in pg_non_query_errors_total.
 func TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword(t *testing.T) {
-	if !fingerprint.Supported() {
-		t.Skip("enable_error_logs_processing requires a cgo build")
-	}
-	registry := prometheus.NewRegistry()
-	c, err := NewLogs(LogsArguments{
-		Receiver:                  loki.NewLogsReceiver(),
-		EntryHandler:              loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
-		Logger:                    logging.NewSlogNop(),
-		Registry:                  registry,
-		EnableErrorLogsProcessing: true,
-	})
-	require.NoError(t, err)
-
-	ts := c.startTime.Add(10 * time.Second).UTC().Format("2006-01-02 15:04:05.000 MST")
+	c, receiver, _ := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
 	line := ts + `::user@books_store:[123]:1:42601:ERROR:  syntax error at or near "STATEMENT:  SELECT"`
 
-	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: line}}
 
-	got := testutil.ToFloat64(c.queryErrors.WithLabelValues("ERROR", "42601", "42", "syntax_error", "syntax_error_or_access_rule_violation", "books_store", "user"))
-	require.Equal(t, float64(1), got, "an ERROR line with an embedded STATEMENT keyword must still be counted")
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("ERROR", "42601", "42", "syntax_error", "syntax_error_or_access_rule_violation", "books_store", "user")) == 1
+	}, 2*time.Second, 50*time.Millisecond, "an ERROR line with an embedded STATEMENT keyword must still be counted")
 }
 
 // TestLogsCollector_AppNameLabelDoesNotShadowSeverity pins that a label-like
@@ -2350,7 +2338,7 @@ func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.queryErrors.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
+	got := testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
 	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
 }
 
@@ -2387,7 +2375,7 @@ func TestLogsCollector_ForgedAppNameDoesNotHideError(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.queryErrors.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
+	got := testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("ERROR", "57014", "57", "query_canceled", "operator_intervention", "books_store", "app-user"))
 	require.Equal(t, float64(1), got, `a forged "LOG:  " application_name must not hide the real ERROR`)
 }
 
@@ -2424,7 +2412,7 @@ func TestLogsCollector_MultipleForgedAppNameLabels(t *testing.T) {
 
 	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
 
-	got := testutil.ToFloat64(c.queryErrors.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "testdb", "conn_user"))
+	got := testutil.ToFloat64(c.nonQueryErrors.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "testdb", "conn_user"))
 	require.Equal(t, float64(1), got, "multiple forged application_name labels must all be skipped to the real FATAL")
 }
 
