@@ -245,7 +245,7 @@ func (o *WALOptions) Validate() error {
 // Exports are the set of fields exposed by the prometheus.remote_write
 // component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 func convertConfigs(cfg Arguments) (*config.Config, error) {

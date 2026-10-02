@@ -13,8 +13,22 @@ import (
 type Noop struct {
 }
 
+var (
+	_ storage.Appendable   = Noop{}
+	_ storage.AppendableV2 = Noop{}
+)
+
 func (n Noop) Appender(_ context.Context) storage.Appender {
 	return n
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration step 2): implement AppenderV2 for real. It currently
+// panics because nothing calls it in production yet; all active append
+// paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
+func (n Noop) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not yet implemented for Noop")
 }
 
 func (n Noop) Append(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
