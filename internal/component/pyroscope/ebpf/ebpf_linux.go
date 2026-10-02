@@ -63,6 +63,9 @@ var (
 )
 
 func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
+	if err := args.Validate(); err != nil {
+		return nil, err
+	}
 	// ebpfmetrics.Start writes to package-level globals in the upstream library,
 	// so it must only be called once. All instances share the same OTel registry.
 	ebpfMetricsOnce.Do(func() {
@@ -140,6 +143,7 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
 		PIDLabel:                  args.PIDLabel,
+		AggregateProfiles:         args.AggregateProfiles,
 		CommMode:                  rargs.CommMode(args.Comm),
 		KernelFrames:              args.KernelFrames,
 	}, discovery,
@@ -148,6 +152,7 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 			res.sendProfiles(ctx, ps)
 		})
 
+	res.reporter = r
 	cfg.Reporter = r
 	cfg.ExecutableReporter = res
 
@@ -166,8 +171,9 @@ type Component struct {
 	appendable             *pyroscope.Fanout
 	targetFinder           alloydiscovery.TargetProducer
 
-	metrics *metrics
-	cfg     *controller.Config
+	reporter *reporter.PPROFReporter
+	metrics  *metrics
+	cfg      *controller.Config
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -228,6 +234,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 func (c *Component) updateArgs(newArgs Arguments) {
 	c.args = newArgs
+	c.reporter.UpdateProfileOptions(newArgs.PIDLabel, newArgs.AggregateProfiles)
 	c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 	c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
@@ -249,6 +256,9 @@ func (c *Component) waitForTargets(ctx context.Context) error {
 
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
+	if err := newArgs.Validate(); err != nil {
+		return err
+	}
 	select {
 	case c.argsUpdate <- newArgs:
 	default:
