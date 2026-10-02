@@ -24,7 +24,9 @@ The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`
 {{< admonition type="note" >}}
 To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 On Kubernetes, the simplest option is to set `securityContext.privileged: true`.
-Users who prefer least-privilege can instead grant the [specific capabilities required](#required-privileges).
+Users who prefer least-privilege can instead grant the [specific capabilities required][required-privileges].
+
+[required-privileges]: #required-privileges
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -215,7 +217,9 @@ Notable metrics include:
 | `HashmapNumStackDeltaPages`   | `gauge` | Current size of the stack delta pages hash map.          |
 | `UnwindInfoArraySize`         | `gauge` | Current size of the unwind info array.                   |
 
-The [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json) file defines the full list of metrics.
+The [`opentelemetry-ebpf-profiler` metrics.json][ebpf-profiler-metrics] file defines the full list of metrics.
+
+[ebpf-profiler-metrics]: https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json
 
 ## Profile collecting behavior
 

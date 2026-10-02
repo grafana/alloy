@@ -163,7 +163,9 @@ By specifying the namespace argument in `auth.custom`, you can authenticate to a
 
 You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} automatically load.
 This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
-Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
+Refer to the [Vault Environment variables][vault-env-vars] documentation for more information.
+
+[vault-env-vars]: https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables
 
 ### `auth.gcp`
 

@@ -418,7 +418,7 @@ For more information about the `delta` argument, see the [delta argument][] sect
 
 ## Common configuration
 
-The following configuration applies across the profile types described in [Blocks](#blocks).
+The following configuration applies across the profile types described in [Blocks][blocks].
 
 ### `delta` argument
 
@@ -436,6 +436,7 @@ When the `delta` argument is `true`:
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query becomes `/debug/pprof/profile?seconds=14`
 
 [pprof]: https://github.com/google/pprof/blob/main/doc/README.md
+[blocks]: #blocks
 
 ## Exported fields
 

@@ -13,10 +13,12 @@ title: prometheus.exporter.blackbox
 
 # `prometheus.exporter.blackbox`
 
-The `prometheus.exporter.blackbox` component embeds the [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter).
+The `prometheus.exporter.blackbox` component embeds the [`blackbox_exporter`][blackbox-exporter].
 The `blackbox_exporter` lets you collect blackbox probe metrics and expose them as Prometheus metrics.
 
 You can specify multiple `prometheus.exporter.blackbox` components by giving them different labels.
+
+[blackbox-exporter]: https://github.com/prometheus/blackbox_exporter
 
 ## Usage
 
@@ -60,9 +62,9 @@ The `config` argument must be a YAML document as string defining which `blackbox
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-The `timeout` attribute in `config` or `config_file` has an effective upper limit of 10 seconds. Refer to the Prometheus blackbox exporter [issue 751](https://github.com/prometheus/blackbox_exporter/issues/751) for more information.
+The `timeout` attribute in `config` or `config_file` has an effective upper limit of 10 seconds. Refer to the Prometheus blackbox exporter [issue 751][issue-751] for more information.
 
-You can't use both the `targets` argument and the [target](#target) block in the same configuration file.
+You can't use both the `targets` argument and the [target][target] block in the same configuration file.
 Use the `targets` argument when another component supplies blackbox targets that you can't pass as a `target` block.
 
 You can set the following labels to a target:
@@ -74,9 +76,13 @@ You can set the following labels to a target:
 
 The component passes any additional labels to the exported target.
 
-Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml) for more information about generating a configuration file.
+Refer to [`blackbox_exporter`][blackbox-example] for more information about generating a configuration file.
 
 The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.blackbox.example`.
+
+[issue-751]: https://github.com/prometheus/blackbox_exporter/issues/751
+[target]: #target
+[blackbox-example]: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml
 
 ## Blocks
 
@@ -138,7 +144,7 @@ It adds an extra label, `env="dev"`, to the metrics emitted by the `grafana` tar
 The `example` target doesn't have any added labels.
 
 The `config_file` argument defines which `blackbox_exporter` modules to use.
-You can use the [blackbox example configuration file](https://github.com/prometheus/blackbox_exporter/blob/master/example.yml).
+You can use the [blackbox example configuration file][blackbox-example].
 
 ```alloy
 prometheus.exporter.blackbox "example" {

@@ -13,9 +13,11 @@ title: prometheus.exporter.apache
 
 # `prometheus.exporter.apache`
 
-The `prometheus.exporter.apache` component embeds [`apache_exporter`](https://github.com/Lusitaniae/apache_exporter) for collecting `mod_status` statistics from an Apache server.
+The `prometheus.exporter.apache` component embeds [`apache_exporter`][apache-exporter] for collecting `mod_status` statistics from an Apache server.
 
 You can specify multiple `prometheus.exporter.apache` components by giving them different labels.
+
+[apache-exporter]: https://github.com/Lusitaniae/apache_exporter
 
 ## Usage
 

@@ -13,7 +13,7 @@ title: prometheus.exporter.cadvisor
 
 # `prometheus.exporter.cadvisor`
 
-The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor](https://github.com/google/cadvisor).
+The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor][cadvisor].
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -47,7 +47,9 @@ For Docker, grant permissions using one of these approaches:
 
   {{< admonition type="note" >}}
   The `docker` group grants privileges equivalent to the `root` user.
-  For more information about the security implications, refer to [Docker security](https://docs.docker.com/engine/security/#docker-daemon-attack-surface).
+  For more information about the security implications, refer to [Docker security][docker-security].
+
+  [docker-security]: https://docs.docker.com/engine/security/#docker-daemon-attack-surface
   {{< /admonition >}}
 
 - **Using ACLs**: Grant the `alloy` user read and execute permissions to `/var/lib/docker/`:
@@ -94,7 +96,7 @@ The DaemonSet requires:
 - **Volume mounts**: Access to the container runtime socket and system directories
 - **Security context**: Privileged access or specific capabilities
 
-For detailed guidance, refer to the [Kubernetes DaemonSet example](#kubernetes-daemonset-example) section.
+For detailed guidance, refer to the [Kubernetes DaemonSet example][k8s-daemonset] section.
 
 {{< /tab-content >}}
 {{< tab-content name="Docker container" >}}
@@ -104,7 +106,7 @@ When you run {{< param "PRODUCT_NAME" >}} itself as a Docker container to monito
 - **Privileged mode**: Access to host resources
 - **Volume mounts**: Access to the container runtime socket and system directories
 
-For a complete Docker container deployment example, refer to the [Docker deployment example](#docker-deployment-example) section.
+For a complete Docker container deployment example, refer to the [Docker deployment example][docker-deployment] section.
 
 {{< /tab-content >}}
 {{< /tabs >}}
@@ -407,6 +409,9 @@ Consider using Pod Security Standards and RBAC to limit exposure, and only deplo
 For more information about deploying {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy].
 
 [deploy]: ../../../../set-up/deploy/
+[cadvisor]: https://github.com/google/cadvisor
+[k8s-daemonset]: #kubernetes-daemonset-example
+[docker-deployment]: #docker-deployment-example
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

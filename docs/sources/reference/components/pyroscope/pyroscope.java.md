@@ -13,7 +13,7 @@ title: pyroscope.java
 
 # `pyroscope.java`
 
-`pyroscope.java` continuously profiles Java processes running on the local Linux OS using [async-profiler](https://github.com/async-profiler/async-profiler).
+`pyroscope.java` continuously profiles Java processes running on the local Linux OS using [async-profiler][async-profiler].
 
 {{< admonition type="note" >}}
 To use the  `pyroscope.java` component you must run {{< param "PRODUCT_NAME" >}} as root and inside host PID namespace.
@@ -39,7 +39,7 @@ Add the following flags to your Java application's startup command:
 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints
 ```
 
-For more details, refer to [Restrictions/Limitations](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#restrictionslimitations) in the async-profiler documentation.
+For more details, refer to [Restrictions/Limitations][restrictions] in the async-profiler documentation.
 
 ## Additional configuration for Linux capabilities
 
@@ -147,21 +147,21 @@ The `profiling_config` block describes how the component invokes async-profiler.
 
 You can use the following arguments with the `profiling_config` block:
 
-| Name               | Type           | Description                                                                                                                                                | Default    | Required |
-| ------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `alloc`            | `string`       | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.                                                       | `"512k"`   | no       |
-| `cpu`              | `bool`         | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                                                            | `true`     | no       |
-| `custom_arguments` | `list(string)` | Sends raw args to async-profiler, skipping all {{< param "PRODUCT_NAME" >}} arguments except `interval`. Refer to [`custom_arguments`](#custom_arguments). | `[]`       | no       |
-| `event`            | `string`       | Sets the CPU profiling event. Refer to [`event`](#event) for supported values.                                                                             | `"itimer"` | no       |
-| `interval`         | `duration`     | How frequently to collect profiles from the targets.                                                                                                       | `"60s"`    | no       |
-| `lock`             | `string`       | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                                                              | `"10ms"`   | no       |
-| `log_level`        | `string`       | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                                                         | `"INFO"`   | no       |
-| `per_thread`       | `bool`         | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                                                 | `false`    | no       |
-| `quiet`            | `bool`         | If set, suppresses the `Profiling started/stopped` log message.                                                                                            | `false`    | no       |
-| `sample_rate`      | `int`          | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                                            | `100`      | no       |
-| `tlab`             | `bool`         | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc`.                                                              | `false`    | no       |
+| Name               | Type           | Description                                                                                                                                               | Default    | Required |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| `alloc`            | `string`       | Allocation profiling sampling configuration. It's passed as an `--alloc` argument to async-profiler.                                                      | `"512k"`   | no       |
+| `cpu`              | `bool`         | A flag to enable CPU profiling, using `itimer` async-profiler event by default.                                                                           | `true`     | no       |
+| `custom_arguments` | `list(string)` | Sends raw args to async-profiler, skipping all {{< param "PRODUCT_NAME" >}} arguments except `interval`. Refer to [`custom_arguments`][custom_arguments]. | `[]`       | no       |
+| `event`            | `string`       | Sets the CPU profiling event. Refer to [`event`][event] for supported values.                                                                             | `"itimer"` | no       |
+| `interval`         | `duration`     | How frequently to collect profiles from the targets.                                                                                                      | `"60s"`    | no       |
+| `lock`             | `string`       | Lock profiling sampling configuration. It's passed as an `--lock` argument to async-profiler.                                                             | `"10ms"`   | no       |
+| `log_level`        | `string`       | Sets the log level in async profiler. One of `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, or `NONE`.                                                        | `"INFO"`   | no       |
+| `per_thread`       | `bool`         | Sets per thread mode on async profiler. It's passed as an `-t` argument to async-profiler.                                                                | `false`    | no       |
+| `quiet`            | `bool`         | If set, suppresses the `Profiling started/stopped` log message.                                                                                           | `false`    | no       |
+| `sample_rate`      | `int`          | CPU profiling sample rate. It's converted from Hz to interval and passed as an `-i` argument to async-profiler.                                           | `100`      | no       |
+| `tlab`             | `bool`         | Enables TLAB-based allocation events. Passed as `--tlab` to async-profiler. Requires `alloc`.                                                             | `false`    | no       |
 
-Refer to [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for more information about async-profiler configuration.
+Refer to [profiler-options][profiler-options] for more information about async-profiler configuration.
 
 ### `custom_arguments`
 
@@ -185,20 +185,22 @@ pyroscope.java "java" {
 }
 ```
 
-Refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) and [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options) for the complete async-profiler option list.
+Refer to [Profiling modes][profiling-modes] and [profiler-options][profiler-options] for the complete async-profiler option list.
 
 ### `event`
 
 The `event` argument configures the profiling mode used by async-profiler.
 async-profiler supports various profiling modes including CPU profiling, wall-clock profiling, and hardware performance monitoring events.
-For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md) in the async-profiler documentation.
+For a complete overview of all available profiling modes and their use cases, refer to [Profiling modes][profiling-modes] in the async-profiler documentation.
 
 ### `per_thread`
 
 {{< admonition type="warning" >}}
 The `per_thread` option doesn't apply when using JFR output format.
 Since `pyroscope.java` uses JFR format exclusively, this option has no effect.
-For more details, refer to [Options applicable to any output format except JFR](https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr) in the async-profiler documentation.
+For more details, refer to [Options applicable to any output format except JFR][non-jfr-options] in the async-profiler documentation.
+
+[non-jfr-options]: https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilerOptions.md#options-applicable-to-any-output-format-except-jfr
 {{< /admonition >}}
 
 ## Exported fields
@@ -262,6 +264,13 @@ pyroscope.java "java" {
   }
 }
 ```
+
+[async-profiler]: https://github.com/async-profiler/async-profiler
+[restrictions]: https://github.com/async-profiler/async-profiler?tab=readme-ov-file#restrictionslimitations
+[profiler-options]: https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options
+[profiling-modes]: https://github.com/async-profiler/async-profiler/blob/master/docs/ProfilingModes.md
+[custom_arguments]: #custom_arguments
+[event]: #event
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

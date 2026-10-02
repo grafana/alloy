@@ -13,10 +13,13 @@ title: pyroscope.receive_http
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
-The HTTP API exposed is compatible with both the Pyroscope [HTTP ingest API](https://grafana.com/docs/pyroscope/latest/reference-server-api/) and the [pushv1.PusherService](https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto) Connect API.
+The HTTP API exposed is compatible with both the Pyroscope [HTTP ingest API][ingest-api] and the [pushv1.PusherService][pusher-service] Connect API.
 This allows `pyroscope.receive_http` to act as a proxy for Pyroscope profiles, enabling flexible routing and distribution of profile data.
 
 You can specify multiple `pyroscope.receive_http` components by giving them different labels.
+
+[ingest-api]: https://grafana.com/docs/pyroscope/latest/reference-server-api/
+[pusher-service]: https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto
 
 ## Usage
 
