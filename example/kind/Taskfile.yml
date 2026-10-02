@@ -7,6 +7,9 @@ env:
   KUBECONFIG: '{{.KUBECONFIG}}'
   CLUSTERNAME: '{{.CLUSTERNAME}}'
 tasks:
+  demo:simulations:
+    desc: Serve the simulation comparison page for recording (localhost:8091)
+    cmds: [node config/target-allocation/simulation-report/serve.mjs]
   demo:dashboard:
     desc: Publish the checked-in comparison dashboard to the private demo stack
     cmds:
