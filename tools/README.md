@@ -159,6 +159,11 @@ go run -C tools ./cmd lint go
 
 Pass `--binary=<path>` to use a specific `golangci-lint` binary (defaults to
 `golangci-lint` on `PATH`), and `--root=<path>` to override the repository root.
+Pass targets after `--` when using the Task wrapper to lint specific packages:
+
+```bash
+task lint:go -- internal/alloycli/
+```
 
 ### `lint shell`
 
