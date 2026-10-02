@@ -14,11 +14,15 @@ title: prometheus.receive_http
 
 `prometheus.receive_http` listens for HTTP requests containing Prometheus metric samples and forwards them to other components capable of receiving metrics.
 
-The HTTP API exposed is compatible with [Prometheus `remote_write` API][prometheus-remote-write-docs].
-This means that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for Prometheus metrics.
+The component exposes two HTTP APIs:
+
+* The [Prometheus `remote_write` API][prometheus-remote-write-docs], so that other [`prometheus.remote_write`][prometheus.remote_write] components can be used as a client and send requests to `prometheus.receive_http`.
+  This enables using {{< param "PRODUCT_NAME" >}} as a proxy for Prometheus metrics.
+* The [Pushgateway push API][pushgateway-docs], so that short-lived jobs can push metrics with the Prometheus client library or tooling they already use.
 
 [prometheus.remote_write]: ../prometheus.remote_write/
 [prometheus-remote-write-docs]: https://prometheus.io/docs/prometheus/latest/querying/api/#remote-write-receiver
+[pushgateway-docs]: https://github.com/prometheus/pushgateway#api
 
 ## Usage
 
@@ -32,11 +36,16 @@ prometheus.receive_http "<LABEL>" {
 }
 ```
 
-The component starts an HTTP server supporting the following endpoint:
+The component starts an HTTP server supporting the following endpoints.
+Both endpoints forward the metrics they receive to the receivers configured in the `forward_to` argument.
 
-* `POST /api/v1/metrics/write`: Sends metrics to the component, which in turn is forwarded to the receivers as configured in `forward_to` argument.
+* `POST /api/v1/metrics/write`: Sends metrics to the component.
   The request format must be compatible with the [Prometheus remote_write API][prometheus-remote-write-docs] and can use either the v1 or v2 format.
   One way to send valid requests to this component is to use another {{< param "PRODUCT_NAME" >}} with a [`prometheus.remote_write`][prometheus.remote_write] component.
+* `POST|PUT /metrics/job/<JOB_NAME>{/<LABEL_NAME>/<LABEL_VALUE>}`: Pushes metrics to the component.
+  The request body must be in the Prometheus text, OpenMetrics, or protobuf exposition format, selected with the `Content-Type` header.
+  {{< param "PRODUCT_NAME" >}} assumes the Prometheus text format when the header is missing.
+  Refer to [Push metrics](#push-metrics) for details.
 
 ## Arguments
 
@@ -51,7 +60,7 @@ You can use the following arguments with `prometheus.receive_http`:
 
 > **EXPERIMENTAL**: The `append_metadata`, `enable_type_and_unit_labels`, and using `"io.prometheus.write.v2.Request"` in `accepted_remote_write_protobuf_messages` are [experimental][] features.
 >
-> The `append_metadata` and `enable_type_and_unit_labels` arguments only apply to remote write v2 payloads and only when metadata is included in those payloads.
+> The `append_metadata` and `enable_type_and_unit_labels` arguments only apply to pushed exposition payloads and remote write v2 payloads, and only when metadata is included in those payloads.
 > Enabling support for remote write v2 payloads requires that `"io.prometheus.write.v2.Request"` is included in `accepted_remote_write_protobuf_messages`.
 > Remote write v1 payloads (`accepted_remote_write_protobuf_messages = ["prometheus.WriteRequest"]`) cannot support these features.
 >
@@ -107,6 +116,33 @@ The metrics include labels such as `status_code` where relevant, which can be us
 * `prometheus_receive_http_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
 * `prometheus_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
 
+## Push metrics
+
+The `POST|PUT /metrics/job/<JOB_NAME>{/<LABEL_NAME>/<LABEL_VALUE>}` endpoint accepts the same requests as [Pushgateway][pushgateway-docs].
+Short-lived jobs that can't be scraped can push their metrics to it with the Prometheus client library or the tooling they already use.
+
+The following example pushes a metric to a component listening on port `9999`:
+
+```shell
+echo 'job_last_success_timestamp 1700000000' | \
+  curl --data-binary @- http://localhost:9999/metrics/job/demo_batch/instance/worker-1
+```
+
+The path following `/metrics/` sets the grouping labels {{< param "PRODUCT_NAME" >}} adds to every series in the request body.
+The `job` label is required and must come first.
+These labels replace any label of the same name in the request body.
+Add a `@base64` suffix to a label name to encode its value with the [base64url][] alphabet, which is how you push a value that contains a `/`.
+
+Unlike Pushgateway, {{< param "PRODUCT_NAME" >}} doesn't store the metrics it receives.
+It forwards them to the receivers in `forward_to` the same way it forwards a remote write request, which has the following consequences:
+
+* {{< param "PRODUCT_NAME" >}} doesn't expose the pushed metrics for scraping, and doesn't repeat a sample until the job pushes it again.
+  Push at the interval you want the samples to appear at.
+* {{< param "PRODUCT_NAME" >}} keeps the timestamp of the samples that carry one, and stamps the other samples with the time the request arrived.
+* {{< param "PRODUCT_NAME" >}} doesn't group the metrics, so `POST` and `PUT` do the same thing, and the `DELETE` method of the Pushgateway API isn't supported and responds with `405 Method Not Allowed`.
+
+[base64url]: https://datatracker.ietf.org/doc/html/rfc4648#section-5
+
 ## Example
 
 ### Receive metrics over HTTP
@@ -137,6 +173,33 @@ prometheus.remote_write "local" {
 }
 ```
 
+### Receive metrics from a batch job
+
+The following example creates a `prometheus.receive_http` component that a batch job can push to.
+
+```alloy
+prometheus.receive_http "pushes" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port = 9999
+  }
+  forward_to = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+```
+
+The job pushes the timestamp of its last successful run when it finishes:
+
+```shell
+printf 'job_last_success_timestamp %s\n' "$(date +%s)" \
+  | curl --data-binary @- http://alloy:9999/metrics/job/demo_batch/instance/worker-1
+```
+
 ### Proxy metrics
 
 To send metrics to the `prometheus.receive_http` component defined in the previous example, another {{< param "PRODUCT_NAME" >}} can run with the following configuration:
@@ -161,7 +224,8 @@ prometheus.remote_write "local" {
 
 ## Technical details
 
-`prometheus.receive_http` uses [snappy](<https://en.wikipedia.org/wiki/Snappy_(compression)>) for compression.
+`prometheus.receive_http` uses [snappy](<https://en.wikipedia.org/wiki/Snappy_(compression)>) for compression of remote write requests.
+Requests to the push endpoint aren't compressed.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
