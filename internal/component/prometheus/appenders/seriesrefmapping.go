@@ -15,80 +15,43 @@ import (
 )
 
 type MappingStore interface {
-	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
+	// ResolveMapping returns the unique ref and child refs of the mapping for
+	// uniqueRef, or for lbls if uniqueRef is zero. It returns (0, nil) if no
+	// mapping exists.
+	ResolveMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) (storage.SeriesRef, []storage.SeriesRef)
 	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
 	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels)
 	TrackAppendedSeries(ts int64, cell *Cell)
 	GetCellForAppendedSeries() *Cell
 }
 
-type seriesRefMapping struct {
-	start    time.Time
-	children []storage.Appender
-	store    MappingStore
+// seriesRefMappingCore holds the state and logic shared by the V1
+// (seriesRefMapping) and V2 (seriesRefMappingV2) appenders.
+type seriesRefMappingCore struct {
+	start time.Time
+	store MappingStore
 
 	uniqueRefCell *Cell
 
-	// childRefs is reused for each append call to avoid allocations. This is safe because storage.Appender should never
+	// childRefs is reused for each append call to avoid allocations. This is safe because appenders should never
 	// have concurrent calls to Append methods.
 	childRefs        []storage.SeriesRef
 	writeLatency     prometheus.Histogram
 	samplesForwarded prometheus.Counter
 }
 
-func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
-	uniqueRefCell := store.GetCellForAppendedSeries()
-
-	return &seriesRefMapping{
-		children:         children,
+func newSeriesRefMappingCore(numChildren int, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) seriesRefMappingCore {
+	return seriesRefMappingCore{
 		store:            store,
 		writeLatency:     writeLatency,
 		samplesForwarded: samplesForwarded,
 
-		uniqueRefCell: uniqueRefCell,
-		childRefs:     make([]storage.SeriesRef, 0, len(children)),
+		uniqueRefCell: store.GetCellForAppendedSeries(),
+		childRefs:     make([]storage.SeriesRef, 0, numChildren),
 	}
 }
 
-func (s *seriesRefMapping) SetOptions(opts *storage.AppendOptions) {
-	for _, c := range s.children {
-		c.SetOptions(opts)
-	}
-}
-
-func (s *seriesRefMapping) Commit() error {
-	defer s.recordLatency()
-
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
-
-	var multiErr error
-	for _, c := range s.children {
-		err := c.Commit()
-		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
-		}
-	}
-	return multiErr
-}
-
-func (s *seriesRefMapping) Rollback() error {
-	defer s.recordLatency()
-
-	// We still track rolled back series so we can properly
-	// clean up any series that was appended
-	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
-
-	var multiErr error
-	for _, c := range s.children {
-		err := c.Rollback()
-		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
-		}
-	}
-	return multiErr
-}
-
-func (s *seriesRefMapping) recordLatency() {
+func (s *seriesRefMappingCore) recordLatency() {
 	if s.start.IsZero() {
 		return
 	}
@@ -97,72 +60,53 @@ func (s *seriesRefMapping) recordLatency() {
 	s.writeLatency.Observe(duration.Seconds())
 }
 
-func (s *seriesRefMapping) resetFields() {
+func (s *seriesRefMappingCore) resetFields() {
 	// Reset childRefs slice length to 0 for reuse
 	s.childRefs = s.childRefs[:0]
 }
 
-func (s *seriesRefMapping) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		newRef, err := appender.Append(ref, l, t, v)
-		if err == nil {
-			s.samplesForwarded.Inc()
+// finish tracks the series appended by this appender and then runs fn (Commit
+// or Rollback) against every child.
+func finish[A storage.AppenderTransaction](s *seriesRefMappingCore, children []A, fn func(A) error) error {
+	defer s.recordLatency()
+
+	// Rolled back series are tracked too, so we can properly clean up any
+	// series that was appended.
+	s.store.TrackAppendedSeries(time.Now().Unix(), s.uniqueRefCell)
+
+	var multiErr error
+	for _, c := range children {
+		if err := fn(c); err != nil {
+			multiErr = multierror.Append(multiErr, err)
 		}
-		return newRef, err
-	})
+	}
+	return multiErr
 }
 
-func (s *seriesRefMapping) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendExemplar(ref, l, e)
-	})
-}
-
-func (s *seriesRefMapping) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendHistogram(ref, l, t, h, fh)
-	})
-}
-
-func (s *seriesRefMapping) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
-	})
-}
-
-func (s *seriesRefMapping) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.UpdateMetadata(ref, l, m)
-	})
-}
-
-func (s *seriesRefMapping) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
-	return s.appendToChildren(ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
-		return appender.AppendSTZeroSample(ref, l, t, st)
-	})
-}
-
-type appenderFunc func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error)
-
-func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.Labels, af appenderFunc) (storage.SeriesRef, error) {
+// appendToChildren forwards a single append to every child, translating
+// between the unique ref handed to the caller and the per-child refs.
+func appendToChildren[A any](s *seriesRefMappingCore, children []A, ref storage.SeriesRef, lbls labels.Labels, af func(appender A, ref storage.SeriesRef) (storage.SeriesRef, error)) (storage.SeriesRef, error) {
 	defer s.resetFields()
 
 	if s.start.IsZero() {
 		s.start = time.Now()
 	}
 
-	// Check if the incoming ref has ref mappings
-	existingChildRefs := s.store.GetMapping(ref, lbls)
+	// Check if the incoming ref has ref mappings. If the caller passed a zero
+	// ref, the mapping is looked up by labels and its unique ref is returned
+	// to the caller, so that it can pass the ref on subsequent appends.
+	mappedRef, existingChildRefs := s.store.ResolveMapping(ref, lbls)
 
 	var appendErr error
 
 	// Sanity check: if we have existing child refs, they must match the number of children
-	if existingChildRefs != nil && len(existingChildRefs) == len(s.children) {
+	if existingChildRefs != nil && len(existingChildRefs) == len(children) {
+		ref = mappedRef
 		s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, ref)
 
 		refUpdateRequired := false
 		for childIndex, childRef := range existingChildRefs {
-			newChildRef, err := af(s.children[childIndex], childRef)
+			newChildRef, err := af(children[childIndex], childRef)
 			if err != nil {
 				appendErr = multierror.Append(appendErr, err)
 			}
@@ -189,7 +133,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	// No mapping for this ref, so pass 0: each child resolves by labels rather than
 	// risking the ref matching an unrelated series of its own.
 	var nonZeroCount int
-	for _, child := range s.children {
+	for _, child := range children {
 		childRef, err := af(child, 0)
 		if err != nil {
 			appendErr = multierror.Append(appendErr, err)
@@ -214,6 +158,117 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
 	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
+}
+
+type seriesRefMapping struct {
+	seriesRefMappingCore
+	children []storage.Appender
+}
+
+func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+	return &seriesRefMapping{
+		seriesRefMappingCore: newSeriesRefMappingCore(len(children), store, writeLatency, samplesForwarded),
+		children:             children,
+	}
+}
+
+func (s *seriesRefMapping) SetOptions(opts *storage.AppendOptions) {
+	for _, c := range s.children {
+		c.SetOptions(opts)
+	}
+}
+
+func (s *seriesRefMapping) Commit() error {
+	return finish(&s.seriesRefMappingCore, s.children, storage.Appender.Commit)
+}
+
+func (s *seriesRefMapping) Rollback() error {
+	return finish(&s.seriesRefMappingCore, s.children, storage.Appender.Rollback)
+}
+
+func (s *seriesRefMapping) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		newRef, err := appender.Append(ref, l, t, v)
+		if err == nil {
+			s.samplesForwarded.Inc()
+		}
+		return newRef, err
+	})
+}
+
+func (s *seriesRefMapping) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		return appender.AppendExemplar(ref, l, e)
+	})
+}
+
+func (s *seriesRefMapping) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		return appender.AppendHistogram(ref, l, t, h, fh)
+	})
+}
+
+func (s *seriesRefMapping) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		return appender.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
+	})
+}
+
+func (s *seriesRefMapping) UpdateMetadata(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		return appender.UpdateMetadata(ref, l, m)
+	})
+}
+
+func (s *seriesRefMapping) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels, t, st int64) (storage.SeriesRef, error) {
+	return appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		return appender.AppendSTZeroSample(ref, l, t, st)
+	})
+}
+
+// seriesRefMappingV2 is the storage.AppenderV2 counterpart of seriesRefMapping.
+type seriesRefMappingV2 struct {
+	seriesRefMappingCore
+	children []storage.AppenderV2
+}
+
+func NewSeriesRefMappingV2(children []storage.AppenderV2, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.AppenderV2 {
+	return &seriesRefMappingV2{
+		seriesRefMappingCore: newSeriesRefMappingCore(len(children), store, writeLatency, samplesForwarded),
+		children:             children,
+	}
+}
+
+func (s *seriesRefMappingV2) Commit() error {
+	return finish(&s.seriesRefMappingCore, s.children, storage.AppenderV2.Commit)
+}
+
+func (s *seriesRefMappingV2) Rollback() error {
+	return finish(&s.seriesRefMappingCore, s.children, storage.AppenderV2.Rollback)
+}
+
+// Append forwards the sample to every child. A *storage.AppendPartialError
+// from a child means its sample was appended but some exemplars were not;
+// it doesn't fail the append, and all partial errors are merged into the
+// returned error.
+func (s *seriesRefMappingV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	var partialErr *storage.AppendPartialError
+	isFloat := h == nil && fh == nil
+
+	newRef, err := appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.AppenderV2, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		newRef, err := appender.Append(ref, l, st, t, v, h, fh, opts)
+		partialErr, err = partialErr.Handle(err)
+		// Only float samples are counted, to match the V1 seriesRefMapping
+		// which only counts calls to Append.
+		if err == nil && isFloat {
+			s.samplesForwarded.Inc()
+		}
+		return newRef, err
+	})
+	if err != nil {
+		return newRef, err
+	}
+	return newRef, partialErr.ToError()
 }
 
 type uniqRefChildren struct {
@@ -314,6 +369,14 @@ type Cell struct {
 // self-correcting - using a stale ref will cause the child appender to return a new ref
 // on the next append.
 func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+	_, childRefs := s.ResolveMapping(uniqueRef, lbls)
+	return childRefs
+}
+
+// ResolveMapping is like GetMapping, but also returns the unique ref of the
+// mapping. This is the ref that was looked up by labels if uniqueRef is zero.
+// It returns (0, nil) if no mapping exists.
+func (s *SeriesRefMappingStore) ResolveMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) (storage.SeriesRef, []storage.SeriesRef) {
 	s.refMappingMu.RLock()
 	defer s.refMappingMu.RUnlock()
 
@@ -322,7 +385,7 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 		labelHash := lbls.Hash()
 		gotRef, ok := s.labelHashToUniqueRef[labelHash]
 		if !ok {
-			return nil
+			return 0, nil
 		}
 
 		uniqueRef = gotRef
@@ -331,17 +394,17 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 	// Refs below firstRefOfCurrentGeneration were issued before the last Clear() and are
 	// no longer valid — the children they mapped to may have changed.
 	if uniqueRef < s.firstRefOfCurrentGeneration {
-		return nil
+		return 0, nil
 	}
 
 	if mapping, ok := s.uniqueRefToChildRefs[uniqueRef]; ok {
 		// Guard against numeric collisions with refs cached from a previous generation.
 		if mapping.labelHash != lbls.Hash() {
-			return nil
+			return 0, nil
 		}
-		return mapping.childRefs
+		return uniqueRef, mapping.childRefs
 	}
-	return nil
+	return 0, nil
 }
 
 // CreateMapping creates a new unique ref mapping for the given child ref results.

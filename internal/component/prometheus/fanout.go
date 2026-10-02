@@ -126,24 +126,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 
-	// We should only change the context if
-	// it already doesn't have a target or metadata store.
-	// It will have these if the scrape loop was started
-	// with the PassMetadataInContext option set to true.
-	t, ok := scrape.TargetFromContext(ctx)
-	if !ok || t == nil {
-		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
-			labels.EmptyLabels(),
-			&config.DefaultScrapeConfig,
-			model.LabelSet{},
-			model.LabelSet{},
-		))
-	}
-
-	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
-	if !ok || s == nil {
-		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
-	}
+	ctx = withScrapeContext(ctx)
 
 	children := make([]storage.Appender, 0, len(f.children))
 	for _, c := range f.children {
@@ -178,12 +161,50 @@ func (f *Fanout) Clear() {
 }
 
 // AppenderV2 satisfies the AppendableV2 interface.
+func (f *Fanout) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+
+	ctx = withScrapeContext(ctx)
+
+	children := make([]storage.AppenderV2, 0, len(f.children))
+	for _, c := range f.children {
+		children = append(children, c.AppenderV2(ctx))
+	}
+
+	if f.useLabelStore {
+		return &appenderV2{
+			children:          children,
+			fanout:            f,
+			stalenessTrackers: make([]labelstore.StalenessTracker, 0, f.lastSeriesCount.Load()),
+		}
+	}
+
+	return appenders.NewV2(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
+}
+
+// withScrapeContext makes sure ctx carries a scrape target and a metadata
+// store, which some downstream appenders expect.
 //
-// TODO(v2 migration step 2): implement AppenderV2 for real. It currently
-// panics because nothing calls it in production yet; all active append
-// paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
-func (f *Fanout) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not yet implemented for Fanout")
+// We should only change the context if it doesn't already have a target or
+// metadata store. It will have these if the scrape loop was started with the
+// PassMetadataInContext option set to true.
+func withScrapeContext(ctx context.Context) context.Context {
+	t, ok := scrape.TargetFromContext(ctx)
+	if !ok || t == nil {
+		ctx = scrape.ContextWithTarget(ctx, scrape.NewTarget(
+			labels.EmptyLabels(),
+			&config.DefaultScrapeConfig,
+			model.LabelSet{},
+			model.LabelSet{},
+		))
+	}
+
+	s, ok := scrape.MetricMetadataStoreFromContext(ctx)
+	if !ok || s == nil {
+		ctx = scrape.ContextWithMetricMetadataStore(ctx, NoopMetadataStore{})
+	}
+	return ctx
 }
 
 type appender struct {
@@ -355,4 +376,94 @@ func (a *appender) AppendHistogramSTZeroSample(ref storage.SeriesRef, l labels.L
 		}
 	}
 	return ref, multiErr
+}
+
+// appenderV2 is the storage.AppenderV2 counterpart of appender, used when the
+// label store is enabled.
+type appenderV2 struct {
+	children          []storage.AppenderV2
+	start             time.Time
+	stalenessTrackers []labelstore.StalenessTracker
+	fanout            *Fanout
+}
+
+var _ storage.AppenderV2 = (*appenderV2)(nil)
+
+// Append satisfies the AppenderV2 interface.
+func (a *appenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
+	}
+
+	// Staleness is only tracked, and samples are only counted, for float
+	// samples. This matches the V1 appender, which only does so in Append.
+	isFloat := h == nil && fh == nil
+	if isFloat {
+		a.stalenessTrackers = append(a.stalenessTrackers, labelstore.StalenessTracker{
+			GlobalRefID: uint64(ref),
+			Labels:      l,
+			Value:       v,
+		})
+	}
+
+	var (
+		multiErr   error
+		partialErr *storage.AppendPartialError
+		updated    bool
+	)
+	for _, x := range a.children {
+		_, err := x.Append(ref, l, st, t, v, h, fh, opts)
+		partialErr, err = partialErr.Handle(err)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		} else {
+			updated = true
+		}
+	}
+	if updated && isFloat {
+		a.fanout.samplesCounter.Inc()
+	}
+	if multiErr != nil {
+		return ref, multiErr
+	}
+	return ref, partialErr.ToError()
+}
+
+// Commit satisfies the AppenderV2 interface.
+func (a *appenderV2) Commit() error {
+	defer a.recordLatency()
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
+	var multiErr error
+	for _, x := range a.children {
+		if err := x.Commit(); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+// Rollback satisfies the AppenderV2 interface.
+func (a *appenderV2) Rollback() error {
+	defer a.recordLatency()
+	a.fanout.lastSeriesCount.Store(int64(len(a.stalenessTrackers)))
+	a.fanout.ls.TrackStaleness(a.stalenessTrackers)
+	var multiErr error
+	for _, x := range a.children {
+		if err := x.Rollback(); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
+}
+
+func (a *appenderV2) recordLatency() {
+	if a.start.IsZero() {
+		return
+	}
+	duration := time.Since(a.start)
+	a.fanout.writeLatency.Observe(duration.Seconds())
 }
