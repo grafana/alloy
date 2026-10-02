@@ -187,8 +187,9 @@ func TestDispatch_FastPathRaceRoutesToEventLogAsInfo(t *testing.T) {
 	mock := &testutil.MockEventLog{}
 	var inner bytes.Buffer
 	w := &writerVar{
-		innerWriter: &inner,
-		eventLog:    mock,
+		activeDestination: LogDestinationWindowsEventLog,
+		innerWriter:       &inner,
+		eventLog:          mock,
 	}
 
 	require.NoError(t, w.Dispatch([]byte("fast-path race bytes\n"), nil))
