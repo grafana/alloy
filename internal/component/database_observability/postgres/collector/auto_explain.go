@@ -114,7 +114,7 @@ func (l *Logs) tryEmitAutoExplainPlan(message string, datname string, ts time.Ti
 	// pg_stat_statements queryid, not a fingerprint -- see
 	// tryEmitAutoExplainPlan's doc comment on the two digest namespaces).
 	logMessage := fmt.Sprintf(
-		`schema=%q query_fingerprint=%s sourced_from=logs explain_plan_output="%s"`,
+		`datname=%q query_fingerprint=%s sourced_from=logs explain_plan_output="%s"`,
 		datname,
 		queryFingerprint,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),

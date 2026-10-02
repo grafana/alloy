@@ -14,7 +14,7 @@ import (
 )
 
 // decodeExplainPlanOutput parses an op="explain_plan_output" entry's body
-// (schema="..." query_fingerprint=... sourced_from=logs explain_plan_output="<base64 JSON>")
+// (datname="..." query_fingerprint=... sourced_from=logs explain_plan_output="<base64 JSON>")
 // back into its structured form, for assertions.
 func decodeExplainPlanOutput(t *testing.T, line string) (fields map[string]string, output database_observability.ExplainPlanOutput) {
 	t.Helper()
@@ -54,7 +54,7 @@ func TestLogsCollector_AutoExplain_RealSample(t *testing.T) {
 	require.Equal(t, "explain_plan_output", string(got[0].Labels["op"]))
 
 	fields, output := decodeExplainPlanOutput(t, got[0].Line)
-	require.Equal(t, "books_store", fields["schema"])
+	require.Equal(t, "books_store", fields["datname"])
 	require.Equal(t, "logs", fields["sourced_from"])
 	require.NotEmpty(t, fields["query_fingerprint"])
 
