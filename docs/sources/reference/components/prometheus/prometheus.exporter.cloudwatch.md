@@ -175,6 +175,9 @@ The argument has no effect because CloudWatch exporter logging follows the globa
 <!-- vale Grafana.GoogleWill = YES -->
 <!-- vale Grafana.Timeless = YES -->
 
+The component sets the `instance` label on its exported targets to a hash of its own configuration, because no single argument identifies a CloudWatch scrape.
+The label changes if you change any argument.
+
 ## Blocks
 
 You can use the following blocks with `prometheus.exporter.cloudwatch`:
