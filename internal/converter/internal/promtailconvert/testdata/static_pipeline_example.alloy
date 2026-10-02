@@ -75,16 +75,16 @@ loki.source.file "example" {
 	forward_to = [loki.process.example.receiver]
 	encoding   = "UTF-16"
 
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+
 	decompression {
 		enabled       = true
 		initial_delay = "30s"
 		format        = "z"
 	}
-
-	file_match {
-		enabled = true
-	}
-	legacy_positions_file = "/var/log/positions.yaml"
 }
 
 loki.write "default" {
