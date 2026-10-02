@@ -46,7 +46,7 @@ To allow more API requests, we recommend that you configure either token or GitH
 * **Token authentication**: Set `api_token` or `api_token_file` with a personal access token or classic token.
 * **GitHub App authentication**: Set `github_app_id`, `github_app_installation_id`, and `github_app_key_path` to authenticate as a GitHub App.
 
-When provided, `api_token_file` takes precedence over `api_token`.
+When you set both, `api_token` takes precedence over `api_token_file`.
 
 You can't use both token authentication and GitHub App authentication simultaneously.
 
