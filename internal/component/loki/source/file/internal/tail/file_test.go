@@ -54,6 +54,73 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, nil, io.EOF)
 	})
 
+	t.Run("splits oversized line", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size", "abcdefghij\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 8}, nil)
+		verifyResult(t, file, &Line{Text: "ij", Offset: 11}, nil)
+	})
+
+	t.Run("does not emit empty line when newline lands on split boundary", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 9}, nil)
+	})
+
+	t.Run("does not emit empty line when newline lands on split boundary with cr", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\r\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 10}, nil)
+	})
+
+	t.Run("splits oversized compressed final line", func(t *testing.T) {
+		fileName := createCompressedFile(t, "split-max-line-size.gz", "gz", strings.NewReader("abcdefghij"))
+		defer removeFile(t, fileName)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename:    fileName,
+			Compression: "gz",
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 8}, nil)
+		verifyResult(t, file, nil, io.EOF)
+		line, err := file.Flush()
+		require.NoError(t, err)
+		require.Equal(t, "ij", line.Text)
+		require.Equal(t, int64(10), line.Offset)
+	})
+
 	t.Run("read", func(t *testing.T) {
 		name := createFile(t, "read", "hello\nworld\ntest\n")
 		defer removeFile(t, name)
