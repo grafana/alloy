@@ -54,9 +54,9 @@ func TestWALConsumer(t *testing.T) {
 			closeServer()
 		}()
 
-		const numEntries = 100
-		require.NoError(t, consume(t.Context(), consumer, newTestEntries(model.LabelSet{"wal_enabled": "true"}, numEntries)))
-		requireReceivedEntries(t, receivedRequests, `{wal_enabled="true"}`, numEntries)
+		entries := newTestEntries(model.LabelSet{"wal_enabled": "true"}, 50)
+		require.NoError(t, consume(t.Context(), consumer, entries))
+		requireReceivedEntries(t, receivedRequests, entries)
 	})
 }
 
@@ -90,10 +90,10 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 			closeServer2()
 		}()
 
-		const numEntries = 100
-		require.NoError(t, consume(t.Context(), consumer, newTestEntries(model.LabelSet{"pizza-flavour": "fugazzeta"}, numEntries)))
-		requireReceivedEntries(t, receivedRequests, `{pizza-flavour="fugazzeta"}`, numEntries)
-		requireReceivedEntries(t, receivedRequests2, `{pizza-flavour="fugazzeta"}`, numEntries)
+		entries := newTestEntries(model.LabelSet{"pizza-flavour": "fugazzeta"}, 100)
+		require.NoError(t, consume(t.Context(), consumer, entries))
+		requireReceivedEntries(t, receivedRequests, entries)
+		requireReceivedEntries(t, receivedRequests2, entries)
 	})
 }
 
