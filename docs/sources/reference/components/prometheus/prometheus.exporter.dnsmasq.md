@@ -7,12 +7,17 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.dnsmasq
 ---
 
 # `prometheus.exporter.dnsmasq`
 
-The `prometheus.exporter.dnsmasq` component embeds the [`dnsmasq_exporter`](https://github.com/google/dnsmasq_exporter) for collecting statistics from a dnsmasq server.
+The `prometheus.exporter.dnsmasq` component embeds the [`dnsmasq_exporter`][dnsmasq-exporter] to collect statistics from a dnsmasq server.
+
+You can specify multiple `prometheus.exporter.dnsmasq` components by giving them different labels.
+
+[dnsmasq-exporter]: https://github.com/google/dnsmasq_exporter
 
 ## Usage
 
@@ -25,11 +30,13 @@ prometheus.exporter.dnsmasq "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.dnsmasq`:
 
-| Name            | Type     | Description                                          | Default                          | Required |
-| --------------- | -------- | ---------------------------------------------------- | -------------------------------- | -------- |
-| `address`       | `string` | The address of the dnsmasq server.                   | `"localhost:53"`                 | no       |
-| `expose_leases` | `bool`   | Expose dnsmasq leases as metrics (high cardinality). | `false`                          | no       |
-| `leases_file`   | `string` | The path to the dnsmasq leases file.                 | `"/var/lib/misc/dnsmasq.leases"` | no       |
+| Name            | Type     | Description                                                   | Default                          | Required |
+| --------------- | -------- | ------------------------------------------------------------- | -------------------------------- | -------- |
+| `address`       | `string` | The address of the dnsmasq server.                            | `"localhost:53"`                 | no       |
+| `expose_leases` | `bool`   | Expose dnsmasq leases as metrics. Can cause high cardinality. | `false`                          | no       |
+| `leases_file`   | `string` | The path to the dnsmasq leases file.                          | `"/var/lib/misc/dnsmasq.leases"` | no       |
+
+The component sets the `instance` label on its exported targets to the value of `address`.
 
 ## Blocks
 
@@ -46,24 +53,22 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.dnsmasq` doesn't expose any component-specific
-debug information.
+`prometheus.exporter.dnsmasq` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.dnsmasq` doesn't expose any component-specific
-debug metrics.
+`prometheus.exporter.dnsmasq` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-The following example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.dnsmasq`:
+The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.dnsmasq`:
 
 ```alloy
 prometheus.exporter.dnsmasq "example" {
-  address = "localhost:53"
+  address = "dnsmasq.example.com:53"
 }
 
-// Configure a prometheus.scrape component to collect github metrics.
+// Configure a prometheus.scrape component to collect dnsmasq metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.dnsmasq.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
