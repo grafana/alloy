@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: pyroscope.scrape
 ---
 
@@ -19,10 +19,10 @@ title: pyroscope.scrape
 Similarly to how Prometheus scrapes metrics via HTTP, `pyroscope.scrape` collects profiles via HTTP requests.
 
 Unlike Prometheus, which usually only scrapes one `/metrics` endpoint per target, `pyroscope.scrape` may need to scrape multiple endpoints for the same target.
-This is because different types of profiles are scraped on different endpoints.
-For example, mutex profiles may be scraped on a `/debug/pprof/delta_mutex` HTTP endpoint, whereas memory consumption may be scraped on a `/debug/pprof/allocs` HTTP endpoint.
+This is because the component scrapes different profile types from different endpoints.
+For example, the component may scrape mutex profiles from a `/debug/pprof/delta_mutex` HTTP endpoint, and memory consumption from a `/debug/pprof/allocs` HTTP endpoint.
 
-The profile paths, protocol scheme, scrape interval, scrape timeout, query parameters, as well as any other settings can be configured within `pyroscope.scrape`.
+You can configure the profile paths, protocol scheme, scrape interval, scrape timeout, query parameters, and any other settings within `pyroscope.scrape`.
 
 The `pyroscope.scrape` component regards a scrape as successful if it responded with an HTTP `200 OK` status code and returned the body of a valid [pprof] profile.
 
@@ -32,9 +32,9 @@ If a scrape request fails, the [debug UI][] for `pyroscope.scrape` shows:
 * The time of the last successful scrape.
 * The labels last used for scraping.
 
-The scraped performance profiles can be forwarded to components such as `pyroscope.write` via the `forward_to` argument.
+The component can forward the scraped performance profiles to components such as `pyroscope.write` through the `forward_to` argument.
 
-Multiple `pyroscope.scrape` components can be specified by giving them different labels.
+You can specify multiple `pyroscope.scrape` components by giving them different labels.
 
 [debug UI]: ../../../../troubleshoot/debug/
 
@@ -49,8 +49,8 @@ pyroscope.scrape "<LABEL>" {
 
 ## Arguments
 
-`pyroscope.scrape` starts a new scrape job to scrape all of the input targets.
-Multiple scrape jobs can be started for a single input target when scraping multiple profile types.
+`pyroscope.scrape` starts a scrape job to scrape all of the input targets.
+The component can start multiple scrape jobs for a single input target when it scrapes multiple profile types.
 
 You can use the following arguments with `pyroscope.scrape`:
 
@@ -60,13 +60,13 @@ You can use the following arguments with `pyroscope.scrape`:
 | `targets`                  | `list(map(string))`      | List of targets to scrape.                                                                       |                | yes      |
 | `bearer_token`             | `secret`                 | Bearer token to authenticate with.                                                               |                | no       |
 | `bearer_token_file`        | `string`                 | File containing a bearer token to authenticate with.                                             |                | no       |
-| `delta_profiling_duration` | `duration`               | The duration for a delta profiling to be scraped. Must be larger than 1 second.                  | `"14s"`        | no       |
-| `enable_http2`             | `bool`                   | Whether HTTP2 is supported for requests.                                                         | `true`         | no       |
-| `follow_redirects`         | `bool`                   | Whether redirects returned by the server should be followed.                                     | `true`         | no       |
-| `http_headers`             | `map(list(secret))`      | Custom HTTP headers to be sent along with each request. The map key is the header name.          |                | no       |
+| `delta_profiling_duration` | `duration`               | How long to scrape a delta profile. Must be larger than 1 second.                                | `"14s"`        | no       |
+| `enable_http2`             | `bool`                   | Whether to support HTTP2 for requests.                                                           | `true`         | no       |
+| `follow_redirects`         | `bool`                   | Whether to follow redirects from the server.                                                     | `true`         | no       |
+| `http_headers`             | `map(list(secret))`      | Custom HTTP headers to send with each request. The map key is the header name.                   |                | no       |
 | `job_name`                 | `string`                 | The job name to override the job label with.                                                     | component name | no       |
 | `no_proxy`                 | `string`                 | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                | no       |
-| `params`                   | `map(list(string))`      | A set of query parameters with which the target is scraped.                                      |                | no       |
+| `params`                   | `map(list(string))`      | A set of query parameters to send when scraping the target.                                      |                | no       |
 | `proxy_connect_header`     | `map(list(secret))`      | Specifies headers to send to proxies during CONNECT requests.                                    |                | no       |
 | `proxy_from_environment`   | `bool`                   | Use the proxy URL indicated by environment variables.                                            | `false`        | no       |
 | `proxy_url`                | `string`                 | HTTP proxy to send requests through.                                                             |                | no       |
@@ -74,7 +74,7 @@ You can use the following arguments with `pyroscope.scrape`:
 | `scrape_interval`          | `duration`               | How frequently to scrape the targets of this scrape configuration.                               | `"15s"`        | no       |
 | `scrape_timeout`           | `duration`               | The timeout for scraping targets of this configuration.                                          | `"10s"`        | no       |
 
- At most, one of the following can be provided:
+You can provide at most one of the following:
 
 * [`authorization`][authorization] block
 * [`basic_auth`][basic_auth] block
@@ -83,7 +83,7 @@ You can use the following arguments with `pyroscope.scrape`:
 * [`oauth2`][oauth2] block
 
 Any omitted arguments take on their default values.
-If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` fails to start and reports an error.
+If you pass conflicting arguments, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` fails to start and reports an error.
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -101,29 +101,30 @@ For example, the `job_name` of `pyroscope.scrape "local" { ... }` is `"pyroscope
 
 ### `targets`
 
-The list of `targets` can be provided [statically][example_static_targets], [dynamically][example_dynamic_targets], or a [combination of both][example_static_and_dynamic_targets].
+You can define the list of `targets` [statically][example_static_targets], [dynamically][example_dynamic_targets], or as a [combination of both][example_static_and_dynamic_targets].
 
 The following special labels can change the behavior of `pyroscope.scrape`:
 
 * `__address__` is the special label that _must always_ be present and corresponds to the `<host>:<port>` that's used for the scrape request.
-* `__name__` is the special label that indicates the profile type being collected.
+* `__name__` is the special label that indicates which profile type the component collects.
 * `__profile_path__` is the special label that holds the path to the profile endpoint on the target (for example, "/debug/pprof/allocs").
 * `__profile_path_prefix__` is the special label that holds an optional prefix to prepend to the profile path (for example, `"/mimir-prometheus"`).
-* `service_name` is a required label that identifies the service being profiled.
+* `service_name` is a required label that identifies the service you profile.
 
-Labels starting with a double underscore (`__`) are treated as _internal_, and are removed prior to scraping.
+The component treats labels that start with a double underscore as _internal_ and removes them before scraping.
 
-The special label `service_name` is required and must always be present.
-If it's not specified, `pyroscope.scrape` attempts to infer it from either of the following sources, in this order:
+Every profile carries a `service_name` label.
+You can set it on the target yourself.
+If you don't, `pyroscope.scrape` adds the label and infers a value from the following sources, in this order:
 
 1. `__meta_kubernetes_pod_annotation_pyroscope_io_service_name` which is a `pyroscope.io/service_name` Pod annotation.
 1. `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`
 1. `__meta_docker_container_name`
 1. `__meta_dockerswarm_container_label_service_name` or `__meta_dockerswarm_service_name`
 
-If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
+When you don't set `service_name` and the component can't infer a value, it uses `unspecified`.
 
-The following labels are automatically injected to the scraped profiles so that they can be linked to a scrape target:
+The component injects the following labels into the scraped profiles so that you can link them to a scrape target:
 
 | Label                  | Description                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------- |
@@ -149,7 +150,7 @@ This parameter is important for controlling the trade-off between resource usage
 If `scrape_interval` is short:
 
 * Advantages:
-  * Fewer profiles may be lost if the application being scraped crashes.
+  * The component loses fewer profiles if the scraped application crashes.
 * Disadvantages:
   * Greater consumption of CPU, memory, and network resources during scrapes and remote writes.
   * The backend database (Pyroscope) consumes more storage space.
@@ -159,16 +160,16 @@ If `scrape_interval` is long:
 * Advantages:
   * Lower resource consumption.
 * Disadvantages:
-  * More profiles may be lost if the application being scraped crashes.
-  * If the [delta argument][] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
-    The Pyroscope database may need to be tuned with higher limits.
-  * If the [delta argument][] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
+  * The component loses more profiles if the scraped application crashes.
+  * If you set the [delta argument][] to `true`, the batch size of each remote write to Pyroscope may be bigger.
+    You may need to tune the Pyroscope database with higher limits.
+  * If you set the [delta argument][] to `true`, you run a larger risk of reaching the HTTP server timeouts of the scraped application.
 
 For example, consider this situation:
 
-* `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
-* The application being scraped is running an HTTP server with a timeout of 30 seconds.
-* Any scrape HTTP requests where the [delta argument][] is set to `true` fail, because they attempt to run for 59 seconds.
+* You configure `pyroscope.scrape` with a `scrape_interval` of `"60s"`.
+* The scraped application runs an HTTP server with a timeout of 30 seconds.
+* Any scrape HTTP requests where you set the [delta argument][] to `true` fail, because they attempt to run for 59 seconds.
 
 [delta argument]: #delta-argument
 
@@ -220,7 +221,7 @@ You can use the following blocks with `pyroscope.scrape`:
 {{< /docs/alloy-config >}}
 
 Any omitted blocks take on their default values.
-For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex][] are used.
+For example, if you don't specify `profile.mutex` in the configuration, the component uses the defaults documented in [profile.mutex][].
 
 [profile.mutex]: #profilemutex
 
@@ -238,12 +239,12 @@ For example, if `profile.mutex` isn't specified in the configuration, the defaul
 | --------- | ------ | ------------------------------------------------- | ------- | -------- |
 | `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
 
-When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `pyroscope.scrape` component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and you set `enabled` to true, this `pyroscope.scrape` component instance opts in to participating in the cluster to distribute scrape load between all cluster nodes.
 
 Clustering causes the set of targets to be locally filtered down to a unique subset per node, where each node is roughly assigned the same number of targets.
-If the state of the cluster changes, such as a new node joins, then the subset of targets to scrape per node is recalculated.
+If the state of the cluster changes, such as when a node joins, the cluster recalculates the subset of targets to scrape per node.
 
-When clustering mode is enabled, all {{< param "PRODUCT_NAME" >}} instances participating in the cluster must use the same configuration file and have access to the same service discovery APIs.
+When you enable clustering mode, all {{< param "PRODUCT_NAME" >}} instances participating in the cluster must use the same configuration file and have access to the same service discovery APIs.
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block is a no-op.
 
@@ -257,7 +258,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, this block i
 
 The `profiling_config` block configures the profiling settings when scraping targets.
 
-The following arguments are supported:
+You can use the following arguments with the `profiling_config` block:
 
 | Name          | Type     | Description                                   | Default | Required |
 | ------------- | -------- | --------------------------------------------- | ------- | -------- |
@@ -267,20 +268,20 @@ The following arguments are supported:
 
 The `profile.block` block collects profiles on process blocking.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.block` block:
 
 | Name      | Type      | Description                                 | Default                | Required |
 | --------- | --------- | ------------------------------------------- | ---------------------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `false`                | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/block"` | no       |
 
 For more information about the `delta` argument, see the [delta argument][] section.
 
 ### `profile.custom`
 
-The `profile.custom` block allows for collecting profiles from custom endpoints.
-Blocks must be specified with a label:
+The `profile.custom` block collects profiles from custom endpoints.
+You must give each block a label:
 
 ```alloy
 profile.custom "<PROFILE_TYPE>" {
@@ -292,12 +293,12 @@ profile.custom "<PROFILE_TYPE>" {
 You can specify multiple `profile.custom` blocks.
 Labels assigned to `profile.custom` blocks must be unique across the component.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.custom` block:
 
 | Name      | Type      | Description                                 | Default | Required |
 | --------- | --------- | ------------------------------------------- | ------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `false` | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     |         | yes      |
+| `enabled` | `boolean` | Enable scraping for this profile type.      |         | yes      |
 | `path`    | `string`  | The path to the profile type on the target. |         | yes      |
 
 When the `delta` argument is `true`, a `seconds` query parameter is automatically added to requests.
@@ -307,12 +308,12 @@ The `seconds` used is equal to `scrape_interval - 1`.
 
 The `profile.fgprof` block collects profiles from an [fgprof][] endpoint.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.fgprof` block:
 
 | Name      | Type      | Description                                 | Default           | Required |
 | --------- | --------- | ------------------------------------------- | ----------------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `true`            | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`           | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `false`           | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/fgprof"` | no       |
 
 For more information about the `delta` argument, see the [delta argument][] section.
@@ -321,50 +322,50 @@ For more information about the `delta` argument, see the [delta argument][] sect
 
 ### `profile.godeltaprof_block`
 
-The `profile.godeltaprof_block` block collects profiles from [godeltaprof][] block endpoint. The delta is computed on the target.
+The `profile.godeltaprof_block` block collects profiles from the [godeltaprof][] block endpoint. The target computes the delta.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.godeltaprof_block` block:
 
 | Name      | Type      | Description                                 | Default                      | Required |
 | --------- | --------- | ------------------------------------------- | ---------------------------- | -------- |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`                      | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `false`                      | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/delta_block"` | no       |
 
 [godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
 
 ### `profile.godeltaprof_memory`
 
-The `profile.godeltaprof_memory` block collects profiles from [godeltaprof][] memory endpoint. The delta is computed on the target.
+The `profile.godeltaprof_memory` block collects profiles from the [godeltaprof][] memory endpoint. The target computes the delta.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.godeltaprof_memory` block:
 
 | Name      | Type      | Description                                 | Default                     | Required |
 | --------- | --------- | ------------------------------------------- | --------------------------- | -------- |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`                     | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `false`                     | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/delta_heap"` | no       |
 
 ### `profile.godeltaprof_mutex`
 
-The `profile.godeltaprof_mutex` block collects profiles from [godeltaprof][] mutex endpoint.
-The delta is computed on the target.
+The `profile.godeltaprof_mutex` block collects profiles from the [godeltaprof][] mutex endpoint.
+The target computes the delta.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.godeltaprof_mutex` block:
 
 | Name      | Type      | Description                                 | Default                      | Required |
 | --------- | --------- | ------------------------------------------- | ---------------------------- | -------- |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`                      | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `false`                      | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/delta_mutex"` | no       |
 
 ### `profile.goroutine`
 
 The `profile.goroutine` block collects profiles on the number of goroutines.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.goroutine` block:
 
 | Name      | Type      | Description                                 | Default                    | Required |
 | --------- | --------- | ------------------------------------------- | -------------------------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `false`                    | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                     | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `true`                     | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/goroutine"` | no       |
 
 Refer to [delta argument][] for more information about the `delta` argument.
@@ -373,12 +374,12 @@ Refer to [delta argument][] for more information about the `delta` argument.
 
 The `profile.memory` block collects profiles on memory consumption.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.memory` block:
 
 | Name      | Type      | Description                                 | Default                 | Required |
 | --------- | --------- | ------------------------------------------- | ----------------------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `false`                 | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                  | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `true`                  | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/allocs"` | no       |
 
 Refer to [delta argument][] for more information about the `delta` argument.
@@ -387,12 +388,12 @@ Refer to [delta argument][] for more information about the `delta` argument.
 
 The `profile.mutex` block collects profiles on mutexes.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.mutex` block:
 
 | Name      | Type      | Description                                 | Default                | Required |
 | --------- | --------- | ------------------------------------------- | ---------------------- | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `false`                | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/mutex"` | no       |
 
 Refer to [delta argument][] for more information about the `delta` argument.
@@ -401,12 +402,12 @@ Refer to [delta argument][] for more information about the `delta` argument.
 
 The `profile.process_cpu` block collects profiles on CPU consumption for the process.
 
-The following arguments are supported:
+You can use the following arguments with the `profile.process_cpu` block:
 
 | Name      | Type      | Description                                 | Default                  | Required |
 | --------- | --------- | ------------------------------------------- | ------------------------ | -------- |
 | `delta`   | `boolean` | Whether to scrape the profile as a delta.   | `true`                   | no       |
-| `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                   | no       |
+| `enabled` | `boolean` | Enable scraping for this profile type.      | `true`                   | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/profile"` | no       |
 
 For more information about the `delta` argument, see the [delta argument][] section.
@@ -417,7 +418,7 @@ For more information about the `delta` argument, see the [delta argument][] sect
 
 ## Common configuration
 
-The following configuration applies across the profile types described in [Blocks](#blocks).
+The following configuration applies across the profile types described in [Blocks][blocks].
 
 ### `delta` argument
 
@@ -428,21 +429,23 @@ When the `delta` argument is `true`:
 * The [pprof][] HTTP query runs for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
 * The default value for the `seconds` query parameter is `scrape_interval - 1`.
-  If you set `delta_profiling_duration`, then `seconds` is assigned the same value as `delta_profiling_duration`.
+  If you set `delta_profiling_duration`, then `seconds` takes the same value as `delta_profiling_duration`.
   However, the `delta_profiling_duration` can't be larger than `scrape_interval`.
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
-  If you set `delta_profiling_duration` to `16s`, then `scrape_interval` must be set to at least `17s`.
+  If you set `delta_profiling_duration` to `16s`, then you must set `scrape_interval` to at least `17s`.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query becomes `/debug/pprof/profile?seconds=14`
 
 [pprof]: https://github.com/google/pprof/blob/main/doc/README.md
+[blocks]: #blocks
 
 ## Exported fields
 
-`pyroscope.scrape` doesn't export any fields that can be referenced by other components.
+`pyroscope.scrape` doesn't export any fields.
 
 ## Component health
 
 `pyroscope.scrape` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -464,7 +467,7 @@ The following examples show how to scrape profiles from static and dynamically d
 ### Default endpoints of static targets
 
 The following example sets up a scrape job of a statically configured list of targets - {{< param "PRODUCT_NAME" >}} itself and Pyroscope.
-The scraped profiles are sent to `pyroscope.write` which remote writes them to a Pyroscope database.
+The component sends the scraped profiles to `pyroscope.write`, which remote writes them to a Pyroscope database.
 
 ```alloy
 pyroscope.scrape "local" {
@@ -483,7 +486,7 @@ pyroscope.write "local" {
 }
 ```
 
-These endpoints are scraped every 15 seconds:
+The component scrapes these endpoints every 15 seconds:
 
 ```text
 http://localhost:4040/debug/pprof/allocs
@@ -499,12 +502,12 @@ http://localhost:12345/debug/pprof/mutex
 http://localhost:12345/debug/pprof/profile?seconds=14
 ```
 
-`seconds=14` is added to the `/debug/pprof/profile` endpoint, because:
+The component adds `seconds=14` to the `/debug/pprof/profile` endpoint, because:
 
 * The `delta` argument of the `profile.process_cpu` block is `true` by default.
 * `scrape_interval` is `"15s"` by default.
 
-The `/debug/fgprof` endpoint won't be scraped, because the `enabled` argument of the `profile.fgprof` block is `false` by default.
+The component doesn't scrape the `/debug/fgprof` endpoint, because the `enabled` argument of the `profile.fgprof` block is `false` by default.
 
 ### Default endpoints of dynamic targets
 
@@ -575,7 +578,7 @@ pyroscope.scrape "local" {
 }
 ```
 
-These endpoints are scraped every 15 seconds:
+The component scrapes these endpoints every 15 seconds:
 
 ```text
 http://localhost:12345/debug/pprof/allocs
