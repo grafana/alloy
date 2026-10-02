@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
@@ -24,6 +25,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -50,11 +52,12 @@ type Arguments struct {
 	Targets              []discovery.Target   `alloy:"targets,attr"`
 	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
 	Encoding             string               `alloy:"encoding,attr,optional"`
-	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
+	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
+	Line                 LineConfig           `alloy:"line,block,optional"`
 	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
 	FileMatch            FileMatch            `alloy:"file_match,block,optional"`
-	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
+	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
 	OnPositionsFileError OnPositionsFileError `alloy:"on_positions_file_error,attr,optional"`
 }
 
@@ -82,6 +85,7 @@ func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 }
 
 func (a *Arguments) SetToDefault() {
+	a.Line.SetToDefault()
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
 	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
@@ -134,6 +138,17 @@ func (d DecompressionConfig) GetFormat() string {
 		return d.Format.String()
 	}
 	return ""
+}
+
+var _ syntax.Defaulter = (*LineConfig)(nil)
+
+type LineConfig struct {
+	MaxSize units.Base2Bytes `alloy:"max_size,attr,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (l *LineConfig) SetToDefault() {
+	l.MaxSize = 1 * units.MiB
 }
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -370,6 +385,7 @@ func (c *Component) scheduleSources() {
 				decompressionConfig:  c.args.DecompressionConfig,
 				fileWatch:            c.args.FileWatch,
 				tailFromEnd:          c.args.TailFromEnd,
+				lineConfig:           c.args.Line,
 				onPositionsFileError: c.args.OnPositionsFileError,
 				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 			})
@@ -411,6 +427,7 @@ type sourceOptions struct {
 	decompressionConfig  DecompressionConfig
 	fileWatch            FileWatch
 	tailFromEnd          bool
+	lineConfig           LineConfig
 	onPositionsFileError OnPositionsFileError
 	legacyPositionUsed   bool
 }

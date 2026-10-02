@@ -11,6 +11,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,10 @@ func Test_UnmarshalConfig(t *testing.T) {
 				forward_to = []
 				targets = []`,
 			expected: Arguments{
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
+
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,
@@ -61,6 +66,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 					sync_period = "14s"
 				}`,
 			expected: Arguments{
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,
@@ -90,6 +98,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 					sync_period = "14s"
 				}`,
 			expected: Arguments{
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,

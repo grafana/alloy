@@ -32,6 +32,7 @@ type tailer struct {
 	tailFromEnd          bool
 	onPositionsFileError OnPositionsFileError
 	watcherConfig        tail.WatcherConfig
+	maxLineSize          int
 
 	running *atomic.Bool
 
@@ -69,6 +70,7 @@ func newTailer(
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
+		maxLineSize:       int(opts.lineConfig.MaxSize),
 		componentStopping: componentStopping,
 		report:            sync.Once{},
 		encoding:          opts.encoding,
@@ -147,6 +149,7 @@ func (t *tailer) initRun() (int64, error) {
 		Filename:      t.key.Path,
 		Offset:        pos,
 		StartFromEnd:  startFromEnd,
+		MaxLineSize:   t.maxLineSize,
 		Encoding:      t.encoding,
 		Compression:   t.decompression.GetFormat(),
 		WatcherConfig: t.watcherConfig,
