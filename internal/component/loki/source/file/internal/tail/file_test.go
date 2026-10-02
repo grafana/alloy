@@ -114,8 +114,11 @@ func TestFile(t *testing.T) {
 
 		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
 		verifyResult(t, file, &Line{Text: "efgh", Offset: 8}, nil)
-		verifyResult(t, file, &Line{Text: "ij", Offset: 10}, nil)
 		verifyResult(t, file, nil, io.EOF)
+		line, err := file.Flush()
+		require.NoError(t, err)
+		require.Equal(t, "ij", line.Text)
+		require.Equal(t, int64(10), line.Offset)
 	})
 
 	t.Run("read", func(t *testing.T) {
