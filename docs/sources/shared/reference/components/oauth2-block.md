@@ -34,7 +34,7 @@ Value of `grant_type` decides which variables will be used inside the `oauth2` b
 
 {{< admonition type="warning" >}}
 Using `client_secret_file`/`client_certificate_key_file` causes the file to be read on every outgoing request.
-Use the `local.file` component to read the file value once with the `client_secret`/`client_certificate_key_file` attribute instead to avoid unnecessary reads.
+Use the `local.file` component to read the file value once with the `client_secret`/`client_certificate_key` attribute instead to avoid unnecessary reads.
 {{< /admonition >}}
 
 The `oauth2` block may also contain a separate `tls_config` sub-block.
