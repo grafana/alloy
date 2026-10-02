@@ -311,3 +311,31 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 func (c *Component) DebugInfoClients() []*debuginfoclient.Client {
 	return c.fanout.DebugInfoClients()
 }
+
+// AppendBatch preserves batch delivery while relabeling each series independently.
+func (c *Component) AppendBatch(ctx context.Context, series []pyroscope.RawProfileSeries) error {
+	if c.exited.Load() {
+		return fmt.Errorf("%s has exited", c.opts.ID)
+	}
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	out := make([]pyroscope.RawProfileSeries, 0, len(series))
+	for _, s := range series {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		c.metrics.profilesProcessed.Inc()
+		if !s.Labels.IsEmpty() {
+			var keep bool
+			s.Labels, keep = c.relabel(s.Labels)
+			if !keep {
+				c.metrics.profilesDropped.Inc()
+				continue
+			}
+		}
+		c.metrics.profilesOutgoing.Inc()
+		out = append(out, s)
+	}
+	return pyroscope.AppendBatch(ctx, c.fanout.Appender(), out)
+}

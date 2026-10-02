@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 )
 
 type PushFunc func(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
@@ -859,6 +861,103 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 				require.Contains(t, err.Error(), tc.errMsg)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWriteBatch(t *testing.T) {
+	calls := atomic.NewInt32(0)
+	_, handler := pushv1connect.NewPusherServiceHandler(PushFunc(func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+		calls.Inc()
+		require.Len(t, req.Msg.Series, 128)
+		for i, series := range req.Msg.Series {
+			require.Equal(t, []*typesv1.LabelPair{
+				{Name: "cluster", Value: "test"},
+				{Name: "service_name", Value: fmt.Sprintf("service-%d", i)},
+			}, series.Labels)
+			require.Equal(t, fmt.Sprintf("profile-%d", i), string(series.Samples[0].RawProfile))
+		}
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	}))
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	args := DefaultArguments()
+	endpoint := GetDefaultEndpointOptions()
+	endpoint.URL = server.URL
+	args.Endpoints = []*EndpointOptions{&endpoint}
+	args.ExternalLabels = map[string]string{"cluster": "test"}
+	var receiver pyroscope.Appendable
+	_, err := New(pyrotestlogger.TestLogger(t), noop.Tracer{}, prometheus.NewRegistry(), func(e Exports) {
+		receiver = e.Receiver
+	}, "test", "", t.TempDir(), args)
+	require.NoError(t, err)
+	series := make([]pyroscope.RawProfileSeries, 128)
+	for i := range series {
+		series[i] = pyroscope.RawProfileSeries{
+			Labels:  labels.FromStrings("service_name", fmt.Sprintf("service-%d", i), "__private__", "removed"),
+			Samples: []*pyroscope.RawSample{{RawProfile: []byte(fmt.Sprintf("profile-%d", i))}},
+		}
+	}
+	require.NoError(t, pyroscope.AppendBatch(t.Context(), receiver.Appender(), series))
+	require.EqualValues(t, 1, calls.Load())
+	require.NoError(t, pyroscope.AppendBatch(t.Context(), receiver.Appender(), nil))
+	require.EqualValues(t, 1, calls.Load())
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	require.ErrorIs(t, pyroscope.AppendBatch(ctx, receiver.Appender(), series), context.Canceled)
+	require.EqualValues(t, 1, calls.Load())
+	series[len(series)-1].Labels = labels.EmptyLabels()
+	require.ErrorIs(t, pyroscope.AppendBatch(t.Context(), receiver.Appender(), series), labelset.ErrServiceNameIsRequired)
+	require.EqualValues(t, 1, calls.Load())
+
+}
+
+func BenchmarkBatchProfileSeries(b *testing.B) {
+	f := &fanOutClient{config: DefaultArguments()}
+	lbs := labels.FromStrings("service_name", "benchmark", "instance", "host")
+	samples := []*pyroscope.RawSample{{RawProfile: make([]byte, 4096)}}
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := f.profileSeries(lbs, samples); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkWriteProfiles includes protobuf encoding but excludes network latency.
+func BenchmarkWriteProfiles(b *testing.B) {
+	for _, batch := range []bool{false, true} {
+		b.Run(fmt.Sprintf("batch=%t", batch), func(b *testing.B) {
+			options := GetDefaultEndpointOptions()
+			f := &fanOutClient{
+				config: DefaultArguments(), metrics: newMetrics(prometheus.NewRegistry()),
+				tracer: noop.Tracer{}, logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				endpoints: []*endpointClient{{options: &options, pushClient: PushFunc(func(_ context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
+					_, err := proto.Marshal(req.Msg)
+					return connect.NewResponse(&pushv1.PushResponse{}), err
+				})}},
+			}
+			series := make([]pyroscope.RawProfileSeries, 1000)
+			for i := range series {
+				series[i] = pyroscope.RawProfileSeries{
+					Labels:  labels.FromStrings("service_name", fmt.Sprintf("service-%d", i)),
+					Samples: []*pyroscope.RawSample{{RawProfile: make([]byte, 4096)}},
+				}
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				if batch {
+					if err := f.AppendBatch(b.Context(), series); err != nil {
+						b.Fatal(err)
+					}
+				} else {
+					for _, s := range series {
+						if err := f.Append(b.Context(), s.Labels, s.Samples); err != nil {
+							b.Fatal(err)
+						}
+					}
+				}
 			}
 		})
 	}
