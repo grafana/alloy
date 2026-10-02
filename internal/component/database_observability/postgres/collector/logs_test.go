@@ -2464,6 +2464,52 @@ func TestLogsCollector_DeadlockDetail_FingerprintsCompetingQueries(t *testing.T)
 	require.False(t, hasContext, "deadlock_relation already carries the one thing in CONTEXT worth keeping")
 }
 
+// TestLogsCollector_DeadlockDetail_MergedMultilineEntry_FingerprintsBlocker
+// pins the production delivery shape, not the line-by-line one every other
+// deadlock test above uses: in the real pipeline, loki.process's multiline
+// stage reconstructs the whole multi-line DETAIL into one loki.Entry before
+// parseTextLog ever sees it, so every continuation line keeps its original
+// raw-log leading tab -- unlike sending each line separately (as the other
+// tests do), which routes through appendToActiveField's
+// strings.TrimLeft(line, "\t") instead and silently strips it. Without \t?
+// in deadlockProcessLineRegex (and defensively in deadlockWaitLineRegex),
+// this exact shape fails to extract the blocker's query_fingerprint_blocker
+// at all -- this was a real, confirmed production gap the line-by-line
+// tests never caught.
+func TestLogsCollector_DeadlockDetail_MergedMultilineEntry_FingerprintsBlocker(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "9835"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:40P01:ERROR:  deadlock detected"}}
+	// One single Entry for the whole DETAIL, exactly as the multiline stage
+	// would deliver it: embedded \n and \t, never split across sends.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:40P01:DETAIL:  Process 9835 waits for ShareLock on transaction 5097; blocked by process 9828.\n" +
+			"\tProcess 9828 waits for ShareLock on transaction 5098; blocked by process 9835.\n" +
+			"\tProcess 9835: UPDATE books SET title = title WHERE id = 1;\n" +
+			"\tProcess 9828: UPDATE books SET title = title WHERE id = 2;"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:40P01:CONTEXT:  while locking tuple (3,87) in relation \"books\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:40P01:STATEMENT:  UPDATE books SET title = title WHERE id = 1;"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:5:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
+
+	blockerFP, err := fingerprint.Fingerprint("UPDATE books SET title = title WHERE id = 2;")
+	require.NoError(t, err)
+
+	require.Equal(t, "9828", fields["pid_blocker"])
+	require.Equal(t, "ShareLock", fields["lock_type"])
+	require.Equal(t, "books", fields["relation"])
+	require.Equal(t, blockerFP, fields["query_fingerprint_blocker"], "the blocker's query, on a tab-prefixed continuation line, must still be fingerprinted")
+}
+
 // TestLogsCollector_DeadlockDetail_BlockerFingerprintOmittedWhenEmpty pins
 // that when the blocker's query text isn't available (here, an empty
 // capture after its "Process N: " marker), the entry still emits with the

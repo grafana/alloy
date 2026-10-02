@@ -94,8 +94,14 @@ const deadlockSQLState = "40P01"
 // process <blockerPid>." PostgreSQL emits one such line per process in the
 // cycle; parseDeadlockDetail uses the one whose pid is the erroring
 // session's own (already available as the top-level pid field) to find the
-// lock type and the other side of the wait.
-var deadlockWaitLineRegex = regexp.MustCompile(`(?m)^Process (\d+) waits for (\S+) on .*?; blocked by process (\d+)\.$`)
+// lock type and the other side of the wait. The erroring backend's own line
+// is always the first (DETAIL's own first line, never tab-prefixed) by
+// construction -- it's the backend whose deadlock check woke up and found
+// the cycle, which is why it's the one raising the ERROR -- but \t? still
+// guards every line here against the tab every *other* participant's line
+// carries (see deadlockProcessLineRegex below for why that tab exists and
+// matters).
+var deadlockWaitLineRegex = regexp.MustCompile(`(?m)^\t?Process (\d+) waits for (\S+) on .*?; blocked by process (\d+)\.$`)
 
 // deadlockProcessLineRegex matches the "Process <pid>: " marker that
 // introduces a competing query within a deadlock DETAIL. The wait lines
@@ -104,8 +110,17 @@ var deadlockWaitLineRegex = regexp.MustCompile(`(?m)^Process (\d+) waits for (\S
 // routinely multi-line (pretty-printed SQL), so the text starts on its own
 // following line as often as it starts right after the marker --
 // parseDeadlockDetail takes everything up to the next marker (or end of
-// DETAIL) as the query, regardless of which.
-var deadlockProcessLineRegex = regexp.MustCompile(`(?m)^Process (\d+): `)
+// DETAIL) as the query, regardless of which. \t? matters here: in
+// production, the Loki pipeline's multiline stage reconstructs the whole
+// multi-line DETAIL into one string before parseTextLog ever sees it, and
+// every line but the DETAIL label's own first one keeps its original
+// raw-log leading tab -- unlike this collector's unit tests, which
+// (unrealistically) send each continuation line as its own loki.Entry and
+// so go through appendToActiveField's strings.TrimLeft(line, "\t") instead,
+// masking this. Without \t?, this anchor never matches any participant
+// after the first, and their query text (and traceparent, if any) is
+// silently never extracted.
+var deadlockProcessLineRegex = regexp.MustCompile(`(?m)^\t?Process (\d+): `)
 
 // deadlockRelationRegex extracts the locked table from a deadlock's
 // CONTEXT, e.g. `while locking tuple (1441,14) in relation "books"`.
