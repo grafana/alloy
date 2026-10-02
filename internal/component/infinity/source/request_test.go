@@ -129,7 +129,7 @@ func TestRedactURL(t *testing.T) {
 	tests := map[string]string{
 		"http://example.com/api":                    "http://example.com/api",
 		"http://example.com/api?key=abc&page=2":     "http://example.com/api?key=REDACTED&page=REDACTED",
-		"https://user:pass@example.com/api?token=x": "https://example.com/api?token=REDACTED",
+		"https://user:pass@example.com/api?token=x": "https://example.com/api?token=REDACTED", // trufflehog:ignore
 		"::not a url": "<invalid url>",
 	}
 	for in, want := range tests {

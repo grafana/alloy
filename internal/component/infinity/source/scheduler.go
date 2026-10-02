@@ -2,7 +2,8 @@ package source
 
 import (
 	"context"
-	"math/rand/v2"
+	// Poll jitter needs no cryptographic randomness.
+	"math/rand/v2" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used
 	"time"
 )
 

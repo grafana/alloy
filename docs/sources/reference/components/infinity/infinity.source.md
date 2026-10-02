@@ -169,7 +169,7 @@ Specify `column` zero or more times.
 | `selector`          | `string` | Selects the field to extract from the response.    |                | yes      |
 | `text`              | `string` | Name of the resulting column.                      | from `selector`| no       |
 | `timestamp_format`  | `string` | Format used to parse a `type = "timestamp"` value. |                | no       |
-| `type`              | `string` | Type to convert the extracted value to.            | autodetected   | no       |
+| `type`              | `string` | Type to convert the extracted value to.            | inferred from the data | no       |
 
 The following strings are valid `type` values: `"string"`, `"number"`, `"boolean"`, `"timestamp"`, `"timestamp_epoch"`, and `"timestamp_epoch_s"`.
 The `timestamp_format` argument is valid only when `type` is `"timestamp"`.
@@ -201,7 +201,7 @@ The `csv_options` block configures parsing for `type = "csv"` and `type = "tsv"`
 
 For `type = "tsv"` queries, `infinity.source` ignores `delimiter` and always splits fields on a tab.
 
-Set `columns` to `"-"` or `"none"` to treat the response as headerless, so `infinity.source` generates column names automatically.
+Set `columns` to `"-"` or `"none"` when the response has no header line, so `infinity.source` generates column names automatically.
 Any other non-empty value for `columns` is added before the response body as a header line.
 `infinity.source` doesn't drop the response's own first line: it becomes a data row.
 
@@ -316,7 +316,7 @@ Each body argument must match `body_type`, or it's a configuration error:
 * `body_form` requires `body_type = "form-data"` or `body_type = "x-www-form-urlencoded"`.
 * `body_graphql_query` and `body_graphql_variables` require `body_type = "graphql"`.
 
-`infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the request URL's existing query string.
+`infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the existing query string of the request URL.
 A header name in both `headers` and `client`'s `http_headers` argument is a configuration error, and so is a parameter name in both `params` and the `url` argument's own query string.
 Header names are case-insensitive, so two `headers` keys that differ only in case, such as `"x-key"` and `"X-Key"`, are a configuration error.
 
@@ -403,7 +403,7 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * Time columns don't become samples or labels.
 * CSV, TSV, XML, and HTML columns are strings unless a `column` block sets `type = "number"`.
   JSON string values that hold numbers, for example `"5"`, are also strings.
-  An untyped string column becomes a label, so a query without a numeric column sends only `up`.
+  A string column without a `type` becomes a label, so a query without a numeric column sends only `up`.
 * Every sample from one poll shares the poll's start time.
 * Every series has a `job` label set to the component's ID, and an `instance` label set to the query's label.
   A column named `job` or `instance` doesn't override these two labels; `infinity.source` logs a warning the first time this happens for a query.
@@ -414,7 +414,7 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
 * When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends nothing for the poll in progress, even if its fetch already succeeded.
 * A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends.
-* When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series go stale by the metrics backend's lookback period instead. Losing ownership also clears the query's health on this node.
+* When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series become stale when the lookback period of the metrics backend ends. Losing ownership also clears the query's health on this node.
 
 This example parses inline CSV data and sets `type = "number"` on the `count` column, so `count` becomes a sample and `name` becomes a label:
 
@@ -462,19 +462,19 @@ infinity.source "inline_csv" {
 * `infinity.source` doesn't remove duplicate log entries across polls. If the API returns an overlapping time window, Loki receives the same entries again. Use API query parameters to request only new entries.
 * Metrics show the current state only. `infinity.source` doesn't ingest historical points.
 * Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
-* `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the UQL, GROQ, and simple parsers.
+* `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the `uql`, `groq`, and `simple` parsers.
 * A JSON, GraphQL, XML, or HTML frame can have at most 2,000,000 cells, where cells are rows times columns.
   The parser makes one column for each distinct key in any row, so a small response with many distinct keys can need a very large frame.
   `infinity.source` checks this after `root_selector` and before it builds the frame, and fails the poll with the `too_large` reason.
   One poll near this budget can still use a few hundred MB of memory. Set `metrics.series_limit` or `logs.entry_limit` to limit what a query sends.
-* `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large or untrusted APIs.
-* The parser libraries can't stop a `jq` or JSONata expression that doesn't end.
+* `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large APIs and for APIs you don't control.
+* The parser libraries can't stop a `jq` or `jsonata` expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
   While it runs, `infinity.source` starts no new poll for that query.
   Each skipped poll fails with the `timeout` reason and the message `the previous poll is still running`.
   A configuration reload that changes `interval` while a query parses has the same effect: the first poll of the new loop can fail with this message until the old parse ends.
-  A JSONata expression with unbounded recursion can crash {{< param "PRODUCT_NAME" >}} with a stack overflow, which Go can't recover from.
-  Keep `root_selector` expressions simple.
+  A `jsonata` expression with unbounded recursion can crash {{< param "PRODUCT_NAME" >}} with a stack overflow, which Go can't recover from.
+  Keep `root_selector` expressions short and without recursion.
 
 ## Translate a Grafana panel query
 
@@ -515,7 +515,7 @@ The health message names the first failed query in label order, its failure reas
 query "orders" failed: status 503 (and 2 other queries)
 ```
 
-Health messages and logs never show a URL's query parameter values; `infinity.source` replaces every query parameter value with `REDACTED`.
+Health messages and logs never show the query parameter values of a URL; `infinity.source` replaces every query parameter value with `REDACTED`.
 This includes URLs inside HTTP errors, for example a bad redirect `Location` header, with or without a scheme.
 When such a URL doesn't parse, `infinity.source` replaces its whole query string with `REDACTED`.
 `infinity.source` also removes user info, such as `user:password@`, from every URL in these messages.
