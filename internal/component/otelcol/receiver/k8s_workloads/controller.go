@@ -100,8 +100,9 @@ func (c *controller) run(ctx context.Context) error {
 	}
 	go func() { <-ctx.Done(); c.queue.ShutDown(); c.imageQueue.ShutDown() }()
 	var workers sync.WaitGroup
-	workers.Add(1)
+	workers.Add(2)
 	go func() { defer workers.Done(); c.resolveImages(ctx) }()
+	go func() { defer workers.Done(); c.heartbeats(ctx) }()
 	defer workers.Wait()
 	c.opts.logger.Info("Kubernetes Deployment rollout watcher ready")
 	for {

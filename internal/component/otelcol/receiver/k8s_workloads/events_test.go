@@ -214,6 +214,12 @@ func TestWatcherUsesDeploymentReplicaSetAndPodWatches(t *testing.T) {
 		}
 		return false
 	}, time.Second, 10*time.Millisecond)
+	select {
+	case logs := <-received:
+		require.Equal(t, "grafana.sdlc.k8s.cluster.heartbeat", logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).EventName())
+	case <-time.After(3 * time.Second):
+		t.Fatal("no initial heartbeat after cache sync")
+	}
 	revision(d, 2)
 	d.Spec.Template.Spec.Containers[0].Image = "nginx:1.28"
 	_, err := client.AppsV1().Deployments(d.Namespace).Update(ctx, d, metav1.UpdateOptions{})
