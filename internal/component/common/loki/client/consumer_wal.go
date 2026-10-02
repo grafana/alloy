@@ -2,9 +2,11 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
@@ -31,31 +33,43 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 	}
 
 	var (
-		metrics        = newMetrics(reg)
-		endpointsCheck = make(map[string]struct{})
-
-		walWatcherMetrics  = wal.NewWatcherMetrics(reg)
-		walMarkerMetrics   = marker.NewMetrics(reg)
-		walEndpointMetrics = newWALEndpointMetrics(reg)
+		metrics             = newMetrics(reg)
+		walWatcherMetrics   = wal.NewWatcherMetrics(reg)
+		walSavepointMetrics = savepoint.NewMetrics(reg)
+		walEndpointMetrics  = newWALEndpointMetrics(reg)
 	)
 
+	// Don't allow duplicate endpoints, the name is both the label value of endpoint specific metrics and the key an
+	// endpoint stores its savepoint under.
+	names := make([]string, 0, len(cfgs))
 	for _, cfg := range cfgs {
-		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
-		name := getEndpointName(cfg)
-		if _, ok := endpointsCheck[name]; ok {
-			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
+		name := getStableEndpointName(cfg)
+		if slices.Contains(names, name) {
+			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", name)
 		}
-		endpointsCheck[name] = struct{}{}
+		names = append(names, name)
+	}
 
+	if err := savepoint.MigrateLegacyMarker(wl.Dir(), names); err != nil {
+		logger.Error("failed to migrate legacy marker file to savepoint.json, continuing without savepoints, previously unsent segments may be skipped", "err", err)
+	}
+
+	savepointFile, err := savepoint.NewFile(logger, wl.Dir())
+	if err != nil {
+		return nil, err
+	}
+
+	for i, cfg := range cfgs {
 		pair, err := newEndpointWatcherPair(
-			name,
+			names[i],
 			logger,
 			wl.Dir(),
 			walCfg,
 			cfg,
 			writer,
 			metrics,
-			walMarkerMetrics,
+			savepointFile,
+			walSavepointMetrics,
 			walWatcherMetrics,
 			walEndpointMetrics,
 		)
@@ -77,16 +91,13 @@ func newEndpointWatcherPair(
 	cfg Config,
 	writer *wal.Writer,
 	metrics *metrics,
-	markerMetrics *marker.Metrics,
+	savepointFile *savepoint.File,
+	savepointMetrics *savepoint.Metrics,
 	watcherMetrics *wal.WatcherMetrics,
 	endpointMetrics *walEndpointMetrics,
 ) (endpointWatcherPair, error) {
 
-	markerFile, err := marker.NewFile(logger, walDir)
-	if err != nil {
-		return endpointWatcherPair{}, err
-	}
-	tracker := marker.NewSegmentTracker(markerFile, walCfg.MaxSegmentAge, logger, markerMetrics.CurryWithId(name))
+	tracker := savepoint.NewSegmentTracker(savepointFile, name, walCfg.MaxSegmentAge, logger, savepointMetrics)
 
 	endpoint, err := newEndpoint(metrics, cfg, logger, tracker)
 	if err != nil {
@@ -193,7 +204,7 @@ func (c *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger *slog.Logger, metrics *walEndpointMetrics, tracker marker.Tracker) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger *slog.Logger, metrics *walEndpointMetrics, tracker savepoint.Tracker) *walEndpointAdapter {
 	c := &walEndpointAdapter{
 		logger:   logger.With("component", "waladapter"),
 		metrics:  metrics,
@@ -222,7 +233,7 @@ type walEndpointAdapter struct {
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
-	tracker marker.Tracker
+	tracker savepoint.Tracker
 }
 
 func (c *walEndpointAdapter) SeriesReset(segmentNum int) {
@@ -301,4 +312,16 @@ func (c *walEndpointAdapter) stop() {
 	// tracker is stopped after endpoint since endpoint will report sent data while it drains.
 	c.endpoint.stop()
 	c.tracker.Stop()
+}
+
+// getStableEndpointName computes the name of an endpoint config. The name is either the configured name
+// or a hash of the fields that identify where data is sent.
+func getStableEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%q%q", cfg.URL.String(), cfg.TenantID)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }

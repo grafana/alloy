@@ -28,7 +28,7 @@ type Config struct {
 	// Max number of streams that can be added to a batch.
 	MaxStreams int
 
-	// When enabled, Promtail will not retry batches that get a
+	// When enabled, client will not retry batches that get a
 	// 429 'Too Many Requests' response from the distributor. Helps
 	// prevent HOL blocking in multitenant deployments.
 	DropRateLimitedBatches bool
