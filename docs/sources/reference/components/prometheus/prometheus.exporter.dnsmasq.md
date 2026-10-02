@@ -13,9 +13,11 @@ title: prometheus.exporter.dnsmasq
 
 # `prometheus.exporter.dnsmasq`
 
-The `prometheus.exporter.dnsmasq` component embeds the [`dnsmasq_exporter`](https://github.com/google/dnsmasq_exporter) to collect statistics from a dnsmasq server.
+The `prometheus.exporter.dnsmasq` component embeds the [`dnsmasq_exporter`][dnsmasq-exporter] to collect statistics from a dnsmasq server.
 
 You can specify multiple `prometheus.exporter.dnsmasq` components by giving them different labels.
+
+[dnsmasq-exporter]: https://github.com/google/dnsmasq_exporter
 
 ## Usage
 

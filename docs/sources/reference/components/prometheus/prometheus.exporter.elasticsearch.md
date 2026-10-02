@@ -13,7 +13,7 @@ title: prometheus.exporter.elasticsearch
 
 # `prometheus.exporter.elasticsearch`
 
-The `prometheus.exporter.elasticsearch` component embeds the [`elasticsearch_exporter`](https://github.com/prometheus-community/elasticsearch_exporter) to collect metrics from Elasticsearch servers.
+The `prometheus.exporter.elasticsearch` component embeds the [`elasticsearch_exporter`][elasticsearch-exporter] to collect metrics from Elasticsearch servers.
 
 {{< admonition type="note" >}}
 Currently, {{< param "PRODUCT_NAME" >}} can only collect metrics from a single Elasticsearch server.
@@ -21,9 +21,12 @@ However, the exporter can collect the metrics from all nodes through that server
 {{< /admonition >}}
 
 Configure a separate user for {{< param "PRODUCT_NAME" >}}, and give it only the security privileges necessary for monitoring your node.
-Refer to the [Elasticsearch security privileges](https://github.com/prometheus-community/elasticsearch_exporter#elasticsearch-7x-security-privileges) documentation for more information.
+Refer to the [Elasticsearch security privileges][security-privileges] documentation for more information.
 
 You can specify multiple `prometheus.exporter.elasticsearch` components by giving them different labels.
+
+[elasticsearch-exporter]: https://github.com/prometheus-community/elasticsearch_exporter
+[security-privileges]: https://github.com/prometheus-community/elasticsearch_exporter#elasticsearch-7x-security-privileges
 
 ## Usage
 

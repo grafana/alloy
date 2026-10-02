@@ -13,9 +13,11 @@ title: prometheus.exporter.databricks
 
 # `prometheus.exporter.databricks`
 
-The `prometheus.exporter.databricks` component embeds the [`databricks-prometheus-exporter`](https://github.com/grafana/databricks-prometheus-exporter) to collect billing, jobs, pipelines, and SQL warehouse metrics from Databricks System Tables.
+The `prometheus.exporter.databricks` component embeds the [`databricks-prometheus-exporter`][databricks-exporter] to collect billing, jobs, pipelines, and SQL warehouse metrics from Databricks System Tables.
 
 You can specify multiple `prometheus.exporter.databricks` components by giving them different labels.
+
+[databricks-exporter]: https://github.com/grafana/databricks-prometheus-exporter
 
 ## Prerequisites
 
@@ -25,7 +27,9 @@ Before you configure this component, make sure you have the following:
 - **Service principal**: Configure OAuth2 M2M authentication.
 - **SQL warehouse**: Query System Tables through an SQL warehouse. A serverless warehouse costs the least.
 
-Refer to the [Databricks documentation](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html) for detailed OAuth2 M2M setup instructions.
+Refer to the [Databricks documentation][oauth-m2m] for detailed OAuth2 M2M setup instructions.
+
+[oauth-m2m]: https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html
 
 ## Usage
 
