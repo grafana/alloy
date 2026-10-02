@@ -109,7 +109,7 @@ func TestBatchFailures(t *testing.T) {
 		if len(r.Fingerprints) != 2 || len(r.Failures) != 1 || r.Failures[0].Statement != 2 {
 			t.Fatalf("%s batch: %+v", dialect, r)
 		}
-		for _, tail := range []string{"SELECT 'unterminated; SELECT 3 FROM b", "BEGIN; SELECT 3 FROM b; END", "CREATE PROCEDURE p AS SELECT 3 FROM b; SELECT 4 FROM c"} {
+		for _, tail := range []string{"SELECT 'unterminated; SELECT 3 FROM b", "BEGIN ATOMIC; SELECT 3 FROM b; END", "CREATE PROCEDURE p AS SELECT 3 FROM b; SELECT 4 FROM c"} {
 			r := f.Fingerprint(dialect, "SELECT 1 FROM a;"+tail)
 			if len(r.Fingerprints) != 1 || len(r.Failures) != 1 {
 				t.Fatalf("%s tail %q: %+v", dialect, tail, r)
@@ -202,6 +202,10 @@ func FuzzFingerprint(f *testing.F) {
 		"SELECT %(missing",
 		"SELECT rating%(scale)s FROM reviews WHERE id=%(id)s",
 		"SELECT $$%(inside)s$$, %(id)s",
+		"BEGIN; SAVEPOINT a; ROLLBACK TO a; RELEASE a; COMMIT",
+		"START TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, NOT DEFERRABLE",
+		"COMMIT /*action='create',application='TapasFinder',controller='reviews'*/",
+		"BEGIN ATOMIC; SELECT 1; END",
 	} {
 		f.Add(seed)
 	}

@@ -17,10 +17,13 @@ import (
 
 func TestQueryDetails_OTelDBQueryFingerprint(t *testing.T) {
 	for _, tc := range []struct{ name, statistics, application string }{
+		{`commit with Rails comment`, `COMMIT /*action='create',application='TapasFinder',controller='reviews'*/`, `COMMIT`},
+		{`begin`, `BEGIN`, `begin /* trace */`},
+		{`savepoint`, `SAVEPOINT active_record_1`, `savepoint ACTIVE_RECORD_1`},
 		{`native list marker`, `SELECT * FROM t WHERE id IN ($1 /*, ... */)`, `SELECT * FROM t WHERE id IN (1,2,3)`},
 		{`unsupported before comment removal`, `SELECT /*+ hint */ * FROM t`, ``},
 		{`multiple shapes`, `SELECT * FROM t; SELECT * FROM u`, ``},
-		{`partial failure`, `SELECT * FROM t; START TRANSACTION`, ``},
+		{`partial failure`, `SELECT * FROM t; SET TRANSACTION READ ONLY`, ``},
 		{`over limit`, strings.Repeat(" ", 1<<20) + "SELECT 1", ``},
 		{`incomplete`, `SELECT * FROM t WHERE id =`, ``},
 	} {

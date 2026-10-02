@@ -116,8 +116,29 @@ func TestPipeline(t *testing.T) {
 	}
 }
 
-// TestForwardFailures verifies unsupported or malformed input never drops a span
-// and downstream failures remain visible to the upstream retry mechanism.
+// TestPostgresTransactionPipeline checks transaction commands through the trace consumer.
+func TestPostgresTransactionPipeline(t *testing.T) {
+	for _, query := range []string{"BEGIN", "COMMIT /*action='create',application='TapasFinder',controller='reviews'*/", "SAVEPOINT active_record_1", "BEGIN; SELECT 1; COMMIT"} {
+		t.Run(query, func(t *testing.T) {
+			var received ptrace.Traces
+			c, input, _ := buildComponent(t, &fakeconsumer.Consumer{ConsumeTracesFunc: func(_ context.Context, traces ptrace.Traces) error {
+				received = traces
+				return nil
+			}})
+			require.NoError(t, input.ConsumeTraces(t.Context(), sqlTraces("db.system.name", "postgresql", "db.query.text", query)))
+			f, err := queryfingerprint.New(queryfingerprint.Options{})
+			require.NoError(t, err)
+			result := f.Fingerprint(queryfingerprint.PostgreSQL, query)
+			require.Empty(t, result.Failures)
+			require.NotEmpty(t, result.Fingerprints)
+			require.Equal(t, result.Fingerprints, fingerprints(t, received))
+			require.Equal(t, float64(0), testutil.ToFloat64(c.failures.WithLabelValues("postgresql", "invalid_sql")))
+			require.Equal(t, float64(0), testutil.ToFloat64(c.failures.WithLabelValues("postgresql", "unsupported")))
+		})
+	}
+}
+
+// TestForwardFailures verifies failed fingerprints preserve spans and downstream errors.
 func TestForwardFailures(t *testing.T) {
 	downstreamError := errors.New("export failed")
 	var received ptrace.Traces

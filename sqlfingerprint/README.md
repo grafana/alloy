@@ -30,16 +30,16 @@ not read statistics itself. See [the example configuration](../example/sql-finge
 
 ## Correlation contract
 
-Fingerprints have the form `v5:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
+Fingerprints have the form `v6:<dialect>:<64 lowercase hex digits>`. SHA-256 hashes
 a version and dialect prefix followed by tokens framed with a kind byte and a
 big-endian, four-byte UTF-8 length. This avoids ambiguity between token boundaries.
 The fingerprint protocol includes token kinds and normalization rules; changing
 any equivalence rule requires a new version. It is independent of native database
 query IDs, sessions, and plans.
 
-Version 5 recognizes PostgreSQL named Python placeholders in value positions.
+Version 6 adds PostgreSQL transaction-control commands.
 Fingerprints differ from earlier versions for all dialects, since the protocol
-version is included in the hash. Use version 5 in both the
+version is included in the hash. Use version 6 in both the
 trace processor and the service that fingerprints database statistics.
 
 Values and bind names are erased. SQL operators, aliases, explicit schema names,
@@ -119,7 +119,15 @@ PostgreSQL 16/18 and MySQL 8.0/8.4 servers, and retained in `native_test.go`.
 A full live-server conformance matrix remains necessary before claiming complete
 coverage of the target versions; SQL Server currently has fixture tests only.
 
-Stored procedures, procedural/transaction blocks, execution wrappers, DDL,
+PostgreSQL transaction commands (`BEGIN`, `START TRANSACTION`, `COMMIT`, `END`,
+`ROLLBACK`, `ABORT`, `SAVEPOINT`, and `RELEASE`) are supported, including transaction
+modes, chaining, and rollback to savepoints. Keywords ignore case and ordinary
+comments. Aliases, explicit options, option order, and savepoint names remain
+part of the shape. Transaction state and savepoint existence are not validated.
+Prepared transactions and `SET TRANSACTION` remain unsupported. Upgrade the trace
+processor and database-statistics fingerprint consumers together to version 6.
+
+Stored procedures, procedural blocks, non-PostgreSQL transaction blocks, execution wrappers, DDL,
 client `GO`/`DELIMITER` commands, optimizer hints, executable comments, Unicode
 escape identifiers, and semicolon-free batches aren't supported. Procedural
 batches stop at the first unsafe boundary, retaining earlier successful statements.
@@ -147,7 +155,7 @@ in the backend.
 For an array attribute, Tempo can test element equality:
 
 ```traceql
-{ span.db.query.fingerprint = "v5:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v6:postgresql:<HASH>" }
 ```
 
 Replace `<HASH>` with the hash returned by this package. Use an array-capable

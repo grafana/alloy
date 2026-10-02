@@ -15,7 +15,7 @@ import (
 
 // Version identifies the canonicalization and hash format. Changes to query
 // equivalence rules must increment this value, even if the API stays the same.
-const Version = "v5"
+const Version = "v6"
 
 // Dialect selects the lexical and database statistics normalization rules.
 type Dialect string
@@ -130,7 +130,7 @@ func (f *Fingerprinter) Fingerprint(dialect Dialect, query string) Result {
 			result.Failures = append(result.Failures, Failure{statement, Limit})
 			break
 		}
-		if unsafeBatch(tokens) {
+		if unsafeBatch(tokens, dialect) {
 			reason, done = Unsupported, true
 		}
 		if reason == "" {

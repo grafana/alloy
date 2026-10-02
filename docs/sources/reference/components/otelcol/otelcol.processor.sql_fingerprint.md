@@ -44,6 +44,7 @@ You can use the following arguments with `otelcol.processor.sql_fingerprint`:
 | `sql_server_quoted_identifier_off` | `bool` | Interpret SQL Server double quotes as string delimiters. | `false` | no |
 
 Use the same options and library version in the trace pipeline and your backend.
+Version 6 changes fingerprints for every dialect. Upgrade both producers and consumers together.
 Route sources with different SQL modes or PostgreSQL versions through separate component instances.
 The component can't infer session modes from SQL text.
 
@@ -58,7 +59,7 @@ The legacy dialect values `postgres` and `mssql` are also accepted.
 Resource attributes aren't used to select the dialect.
 
 The output attribute `db.query.fingerprint` is always an array of unique strings, including for a single statement.
-Values have the form `v5:<DIALECT>:<SHA256>`.
+Values have the form `v6:<DIALECT>:<SHA256>`.
 The component replaces this attribute on recognized SQL spans and removes stale values if recomputation produces no fingerprints.
 It preserves SQL text, span timing, and other attributes.
 
@@ -71,6 +72,10 @@ All spans continue downstream, including spans without fingerprints.
 ### Normalization coverage
 
 The experimental normalizer handles literal and parameter substitution, quoted identifiers, comments, and native list markers for common data-manipulation statements.
+PostgreSQL also supports transaction commands: `BEGIN`, `START TRANSACTION`, `COMMIT`, `END`, `ROLLBACK`, `ABORT`, `SAVEPOINT`, and `RELEASE`.
+Transaction modes, chaining, and rollback to savepoints are supported.
+Command aliases, explicit options, option order, and savepoint names remain significant.
+Prepared transactions and `SET TRANSACTION` remain unsupported.
 PostgreSQL recognizes named Python `%(name)s` placeholders in expression value positions, including placeholders followed by casts such as `::INTEGER`.
 PostgreSQL 16 and 17 retain constant list lengths; PostgreSQL 18 constant `IN` and `ARRAY` lists and MySQL digest lists are collapsed.
 SQL Server list lengths are retained.
@@ -81,7 +86,7 @@ Column names, table qualification, and the distinction between single and repeat
 INSERTs with expressions, `DEFAULT`, `SELECT`, row aliases, or trailing clauses retain column order.
 
 This implementation is a structural normalizer, not a complete replica of each database parser.
-It doesn't support stored procedures, procedural or transaction blocks, DDL, execution wrappers, optimizer hints, executable comments, Unicode escape identifiers, client batch directives, or batches without semicolon separators.
+It doesn't support stored procedures, procedural blocks, MySQL or SQL Server transaction blocks, DDL, execution wrappers, optimizer hints, executable comments, Unicode escape identifiers, client batch directives, or batches without semicolon separators.
 Full compatibility across database versions hasn't been established by live-server conformance tests.
 
 Supply complete SQL rather than truncated UI text or query summaries.
@@ -188,7 +193,7 @@ Your backend can import `github.com/grafana/alloy/sqlfingerprint` and call `Fing
 For each returned value, search Tempo with an array-element equality query:
 
 ```traceql
-{ span.db.query.fingerprint = "v5:postgresql:<HASH>" }
+{ span.db.query.fingerprint = "v6:postgresql:<HASH>" }
 ```
 
 Replace _`<HASH>`_ with the returned SHA-256 value.

@@ -9,6 +9,7 @@ const (
 	deleteCommand = "delete"
 	mergeCommand  = "merge"
 	withCommand   = "with"
+	beginCommand  = "begin"
 )
 
 // keywords folds SQL syntax without lowercasing case-sensitive object names.
@@ -41,6 +42,9 @@ func normalize(tokens []token, dialect Dialect, options Options) ([]token, Reaso
 	if dialect == PostgreSQL {
 		tokens = stripPostgresObfuscatedComment(tokens)
 		tokens = normalizePostgresParameters(tokens)
+		if normalized, reason, handled := normalizePostgresTransaction(tokens); handled {
+			return normalized, reason
+		}
 	}
 	if dialect == SQLServer {
 		tokens = stripParameterDeclaration(tokens)
@@ -57,13 +61,19 @@ func normalize(tokens []token, dialect Dialect, options Options) ([]token, Reaso
 }
 
 // unsafeBatch detects procedural contexts where semicolons are not reliable
-// boundaries. It also excludes transaction wrappers and client DELIMITER syntax.
-func unsafeBatch(tokens []token) bool {
+// boundaries. PostgreSQL transaction starts have safe statement boundaries.
+func unsafeBatch(tokens []token, dialect Dialect) bool {
 	if len(tokens) == 0 || tokens[0].kind != word {
 		return false
 	}
 	switch strings.ToLower(tokens[0].text) {
-	case "begin", "declare", "do", "if", "while", "delimiter":
+	case beginCommand:
+		if dialect == PostgreSQL {
+			_, reason, handled := normalizePostgresTransaction(stripPostgresObfuscatedComment(tokens))
+			return !handled || reason != ""
+		}
+		return true
+	case "declare", "do", "if", "while", "delimiter":
 		return true
 	case "create", "alter":
 		for _, t := range tokens {
@@ -152,7 +162,7 @@ func validateBoundaries(tokens []token, first string) Reason {
 		}
 		if len(stack) == 0 && t.kind == word {
 			w := strings.ToLower(t.text)
-			if w == "go" || w == "begin" || w == "declare" || w == "exec" || w == "execute" {
+			if w == "go" || w == beginCommand || w == "declare" || w == "exec" || w == "execute" {
 				return Unsupported
 			}
 			if w == selectCommand {
