@@ -115,10 +115,10 @@ The following example uses GitHub App authentication to collect metrics:
 
 ```alloy
 prometheus.exporter.github "example" {
-  repositories                 = ["grafana/alloy"]
-  github_app_id                = 123456
-  github_app_installation_id   = 789012
-  github_app_key_path          = "/etc/github-app-key.pem"
+  repositories               = ["grafana/alloy"]
+  github_app_id              = 123456
+  github_app_installation_id = 789012
+  github_app_key_path        = "/etc/github-app-key.pem"
 }
 
 // Configure a prometheus.scrape component to collect GitHub metrics.
