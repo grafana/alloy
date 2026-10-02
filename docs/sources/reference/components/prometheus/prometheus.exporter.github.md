@@ -12,7 +12,11 @@ title: prometheus.exporter.github
 
 # `prometheus.exporter.github`
 
-The `prometheus.exporter.github` component embeds the [`github_exporter`](https://github.com/githubexporter/github-exporter) for collecting statistics from GitHub.
+The `prometheus.exporter.github` component embeds the [`github_exporter`][github-exporter] to collect statistics from GitHub.
+
+You can specify multiple `prometheus.exporter.github` components by giving them different labels.
+
+[github-exporter]: https://github.com/githubexporter/github-exporter
 
 ## Usage
 
@@ -37,6 +41,8 @@ You can use the following arguments with `prometheus.exporter.github`:
 | `organizations`               | `list(string)` | GitHub organizations for which to collect metrics.               |                            | no       |
 | `repositories`                | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
 | `users`                       | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
+
+The component sets the `instance` label on its exported targets to the host and port from `api_url`.
 
 ### Authentication
 
