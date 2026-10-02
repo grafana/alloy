@@ -210,12 +210,6 @@ var serverLogNumericFields = map[string]struct{}{
 	"relation_oid":    {},
 	"database_oid":    {},
 	"pg_hba_line":     {},
-	// categoryUnmatchedError's own fields (see emitUnmatchedError).
-	fieldSeverity:         {},
-	fieldSqlstate:         {},
-	"sqlstate_name":       {},
-	"sqlstate_class_name": {},
-	"plpgsql_line":        {},
 }
 
 // anyServerLogGateMatches reports whether line contains at least one of the

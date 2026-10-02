@@ -126,17 +126,8 @@ var traceparentCommentRegex = regexp.MustCompile(`/\*traceparent='([^']+)'\*/`)
 // call stack's multi-line CONTEXT falls back to the generic redacted field.
 var plpgsqlContextRegex = regexp.MustCompile(`^PL/pgSQL function (\S+)(?: line (\d+) at (.+))?$`)
 
-// categoryUnmatchedError is the op="server_log" category for an
-// ERROR/FATAL/PANIC that never got a STATEMENT to pair with (so it has no
-// query to fingerprint): op="error_message" is reserved for errors matched
-// to the query that caused them, so one that never got that match is
-// emitted here instead, rather than silently dropped. pg_errors_total
-// counts it regardless of which path it takes.
-const categoryUnmatchedError = "unmatched_error"
-
-// fieldSeverity and fieldSqlstate name the two categoryUnmatchedError fields
-// that are also pg_errors_total label names and serverLogNumericFields
-// entries, named once since they're referenced from all three places.
+// fieldSeverity and fieldSqlstate are pg_errors_total label names, named
+// once since they're referenced from both the metric and emitErrorEntry.
 const (
 	fieldSeverity = "severity"
 	fieldSqlstate = "sqlstate"
@@ -725,11 +716,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	message := strings.TrimSpace(line[msgStart:])
 
 	// Start a new pending error awaiting its STATEMENT, emitting any prior
-	// un-flushed pending as categoryUnmatchedError first: it never got a
-	// STATEMENT (op="error_message" needs one to fingerprint), and this new
-	// arrival means none is coming now either.
+	// un-flushed pending first: it never got a STATEMENT, and this new
+	// arrival means none is coming now either. Still op="error_message",
+	// just without query_fingerprint (see emitErrorEntry).
 	if l.pending != nil && !l.pending.hasStatement {
-		l.emitUnmatchedError(l.pending)
+		l.emitErrorEntry(l.pending)
 	}
 	l.pending = &pendingError{
 		receivedAt:       time.Now(),
@@ -852,10 +843,13 @@ func (l *Logs) attachContinuation(pid, sessionID, label, text string) {
 }
 
 // flushPending emits the pending error if its STATEMENT was captured, then
-// clears it. A pending without a STATEMENT is left in place — it is displaced
-// by the next error (see the l.pending assignment above) or dropped on
-// timeout (see flushExpiredPending); both of those paths emit it as
-// categoryUnmatchedError rather than discarding it.
+// clears it. A pending without a STATEMENT is left in place -- it might be
+// this very line's own STATEMENT about to be attached (see parseTextLog's
+// call site, ahead of the STATEMENT/DETAIL/HINT/CONTEXT switch below). It is
+// displaced by the next error (see the l.pending assignment above) or
+// dropped on timeout (see flushExpiredPending); both of those paths still
+// emit it as op="error_message", just without query_fingerprint, rather
+// than discarding it.
 func (l *Logs) flushPending() {
 	p := l.pending
 	if p == nil || !p.hasStatement {
@@ -885,53 +879,6 @@ func plpgsqlContextFields(context string) map[string]string {
 	return fields
 }
 
-// emitUnmatchedError sends an ERROR/FATAL/PANIC that never got a STATEMENT
-// as a categoryUnmatchedError op="server_log" entry: severity, sqlstate(+name),
-// message, and detail/hint/context (redacted, or structured for a PL/pgSQL
-// CONTEXT -- see plpgsqlContextFields), but no query_fingerprint, since
-// there's no query to fingerprint. p.sql is intentionally never read here.
-func (l *Logs) emitUnmatchedError(p *pendingError) {
-	fields := map[string]string{
-		fieldSeverity: p.severity,
-		fieldSqlstate: p.sqlstate,
-		"message":     l.redact(p.message),
-	}
-	if n := sqlstateName(p.sqlstate); n != "" {
-		fields["sqlstate_name"] = n
-	}
-	if n := sqlstateClassName(p.sqlstateClass); n != "" {
-		fields["sqlstate_class_name"] = n
-	}
-	if p.hasDetail {
-		fields["detail"] = l.redact(strings.TrimSpace(p.detail.String()))
-	}
-	if p.hasHint {
-		fields["hint"] = l.redact(strings.TrimSpace(p.hint.String()))
-	}
-	if p.hasContext {
-		contextText := strings.TrimSpace(p.context.String())
-		if pf := plpgsqlContextFields(contextText); pf != nil {
-			for k, v := range pf {
-				fields[k] = v
-			}
-		} else {
-			fields["context"] = l.redact(contextText)
-		}
-	}
-
-	l.emitServerLogEntry(categoryUnmatchedError, fields, p.timestamp, serverLogMeta{
-		pid:              p.pid,
-		user:             p.user,
-		datname:          p.datname,
-		lineNumber:       p.lineNumber,
-		sessionStartTime: p.sessionStartTime,
-		vxid:             p.vxid,
-		xid:              p.xid,
-		sessionID:        p.sessionID,
-		applicationName:  p.applicationName,
-	})
-}
-
 // redact masks any PII the engine recognizes in free-form error text (message,
 // DETAIL, HINT, CONTEXT) before it leaves the process. Structured fields
 // (severity, sqlstate, datname, user, pid) never go through this path.
@@ -943,14 +890,22 @@ func (l *Logs) redact(text string) string {
 	return anonymizer.Anonymize(text, hits, anonymizer.Redact())
 }
 
+// emitErrorEntry sends an ERROR/FATAL/PANIC as op="error_message". When a
+// STATEMENT was captured, query_fingerprint identifies it; when one wasn't
+// (never arrived, or this pending was displaced/timed out before it could),
+// the entry is still sent with query_fingerprint simply omitted -- severity,
+// sqlstate, message, and detail/hint/context are already enough to act on,
+// and PostgreSQL only ever reaches this with a non-"00000" (non-successful)
+// sqlstate to begin with.
 func (l *Logs) emitErrorEntry(p *pendingError) {
 	stmt := strings.TrimSpace(p.sql.String())
-	if stmt == "" {
-		return
-	}
-	fp, err := fingerprint.Fingerprint(stmt)
-	if err != nil {
-		return
+	var fp string
+	if stmt != "" {
+		var err error
+		fp, err = fingerprint.Fingerprint(stmt)
+		if err != nil {
+			fp = ""
+		}
 	}
 
 	ts := p.timestamp
@@ -964,8 +919,11 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	// uniform across ERROR/FATAL/PANIC since this package's Level type has
 	// no finer distinction; severity keeps PostgreSQL's own original
 	// ERROR/FATAL/PANIC value in the body for anyone filtering on that.
-	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s user=%q pid=%s sqlstate=%s sqlstate_class=%s message=%q",
-		p.severity, p.datname, fp, p.user, p.pid, p.sqlstate, p.sqlstateClass, l.redact(p.message))
+	body := fmt.Sprintf("severity=%s datname=%q user=%q pid=%s sqlstate=%s sqlstate_class=%s message=%q",
+		p.severity, p.datname, p.user, p.pid, p.sqlstate, p.sqlstateClass, l.redact(p.message))
+	if fp != "" {
+		body += fmt.Sprintf(" query_fingerprint=%s", fp)
+	}
 
 	// Names from the official SQLSTATE appendix, omitted (rather than printed
 	// empty) for a code this build's table doesn't recognize.
@@ -1156,18 +1114,9 @@ func (l *Logs) emitServerLogEntry(category string, fields map[string]string, ts 
 		}
 	}
 
-	// categoryUnmatchedError carries a real PostgreSQL ERROR/FATAL/PANIC
-	// severity (see emitUnmatchedError's fieldSeverity) and gets Loki's
-	// level="error" like op="error_message" does; every other category
-	// here is an informational server log line, level="info".
-	level := logging.LevelInfo
-	if category == categoryUnmatchedError {
-		level = logging.LevelError
-	}
-
 	select {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-		level,
+		logging.LevelInfo,
 		database_observability.OP_SERVER_LOG,
 		body,
 		ts.UnixNano(),
@@ -1177,9 +1126,9 @@ func (l *Logs) emitServerLogEntry(category string, fields map[string]string, ts 
 }
 
 // flushExpiredPending handles a pending error older than pendingErrorTimeout
-// that no following log line has flushed: emit it as op="error_message" if
-// its STATEMENT was captured (its continuations have all arrived by now),
-// otherwise as categoryUnmatchedError.
+// that no following log line has flushed: always emitted as
+// op="error_message" (see emitErrorEntry), with query_fingerprint only when
+// its STATEMENT was captured.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
 
@@ -1189,11 +1138,7 @@ func (l *Logs) flushExpiredPending() {
 	}
 	l.pending = nil
 
-	if p.hasStatement {
-		l.emitErrorEntry(p)
-	} else {
-		l.emitUnmatchedError(p)
-	}
+	l.emitErrorEntry(p)
 }
 
 func truncateString(s string, maxLen int) string {

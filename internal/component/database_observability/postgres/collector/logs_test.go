@@ -1613,12 +1613,12 @@ func TestLogsCollector_SessionIDMismatch_RejectsStatementDespitePidMatch(t *test
 		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:999/111111:0:ffffffff.ffff:psql:STATEMENT:  SELECT * FROM missing"}}
 
 	// The rejected STATEMENT leaves the original pending without one, so it
-	// surfaces as categoryUnmatchedError once the timeout fires, rather than
-	// a (wrongly) paired op="error_message" entry.
+	// still surfaces as op="error_message" once the timeout fires, just
+	// without query_fingerprint, rather than a (wrongly) paired one.
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
-	require.Equal(t, "unmatched_error", fields["category"], "session id mismatch must reject the STATEMENT despite the matching pid")
 	_, hasFP := fields["query_fingerprint"]
 	require.False(t, hasFP, "the rejected STATEMENT must never be fingerprinted into this entry")
 }
@@ -1923,13 +1923,13 @@ func TestLogsCollector_MultiLineDetailThenStatement_RoutesContinuationsCorrectly
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
 }
 
-// TestLogsCollector_LostStatement_EmitsUnmatchedError pins that when the
+// TestLogsCollector_LostStatement_EmitsErrorEntryWithoutFingerprint pins that when the
 // STATEMENT line never arrives (e.g. dropped by the log forwarder, or
 // PostgreSQL simply never logs one for this error shape -- confirmed live,
 // e.g. a jsonpath syntax error), the captured message/DETAIL still reaches
-// Loki once the timeout fires, as categoryUnmatchedError rather than a
-// (fabricated) op="error_message" entry -- never silently dropped.
-func TestLogsCollector_LostStatement_EmitsUnmatchedError(t *testing.T) {
+// Loki once the timeout fires, as op="error_message" without
+// query_fingerprint -- never silently dropped.
+func TestLogsCollector_LostStatement_EmitsErrorEntryWithoutFingerprint(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
 	pid := "70006"
@@ -1942,9 +1942,9 @@ func TestLogsCollector_LostStatement_EmitsUnmatchedError(t *testing.T) {
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
 
-	require.Equal(t, "unmatched_error", fields["category"])
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, "23505", fields["sqlstate"])
 	require.Equal(t, `duplicate key value violates unique constraint "users_email_key"`, fields["message"])
@@ -2068,7 +2068,7 @@ func TestLogsCollector_LostErrorLine_OrphanedContinuationsSafelyIgnored(t *testi
 	require.Len(t, got, 0, "no ERROR line ever opened a pendingError, so its orphaned continuations must not fabricate one")
 }
 
-func TestLogsCollector_TimedOutPendingEmitsUnmatchedError(t *testing.T) {
+func TestLogsCollector_TimedOutPendingEmitsErrorEntryWithoutFingerprint(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
 
@@ -2081,22 +2081,23 @@ func TestLogsCollector_TimedOutPendingEmitsUnmatchedError(t *testing.T) {
 		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "too_many_connections", "insufficient_resources", "books_store", "user")) == 1
 	}, 1*time.Second, 50*time.Millisecond)
 
-	// categoryUnmatchedError arrives once the timeout fires -- no STATEMENT
-	// ever came, so it's not op="error_message", but it's not dropped either.
+	// op="error_message" arrives once the timeout fires -- no STATEMENT ever
+	// came, so there's no query_fingerprint, but it's not dropped either.
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
-	require.Equal(t, "unmatched_error", fields["category"])
 	require.Equal(t, "FATAL", fields["severity"])
 	require.Equal(t, "too many connections", fields["message"])
 }
 
-// TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry pins
-// that ERROR #1, displaced before its STATEMENT ever arrived, is emitted as
-// categoryUnmatchedError right when ERROR #2 displaces it -- not fabricated
-// into a mispaired op="error_message" entry, and not silently dropped
-// either. ERROR #2 still completes normally once its own STATEMENT arrives.
-func TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry(t *testing.T) {
+// TestLogsCollector_DisplacedPendingEmitsErrorEntryThenNormalEntry pins
+// that ERROR #1, displaced before its STATEMENT ever arrived, is still
+// emitted as op="error_message" (just without query_fingerprint) right when
+// ERROR #2 displaces it -- never fabricated into a mispaired entry, and
+// never silently dropped. ERROR #2 still completes normally, with its own
+// query_fingerprint, once its own STATEMENT arrives.
+func TestLogsCollector_DisplacedPendingEmitsErrorEntryThenNormalEntry(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 0)
 	ts := logTS(c)
 	pid := "55555"
@@ -2116,10 +2117,11 @@ func TestLogsCollector_DisplacedPendingEmitsUnmatchedErrorThenNormalEntry(t *tes
 	require.Len(t, got, 2, "err one (unmatched) and err two (matched) both reach Loki")
 
 	unmatchedFields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
-	require.Equal(t, "server_log", string(got[0].Labels["op"]))
-	require.Equal(t, "unmatched_error", unmatchedFields["category"])
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 	require.Equal(t, "err one", unmatchedFields["message"])
 	require.Equal(t, "42P01", unmatchedFields["sqlstate"])
+	_, hasFP := unmatchedFields["query_fingerprint"]
+	require.False(t, hasFP, "err one never got a STATEMENT, so it must have no query_fingerprint")
 
 	fields := parseLogfmt(t, strings.TrimPrefix(got[1].Line, `level="error" `))
 	require.Equal(t, "error_message", string(got[1].Labels["op"]))
@@ -2558,8 +2560,8 @@ func TestLogsCollector_DeadlockDetail_MultiLineQuery_FingerprintsAcrossLines(t *
 // TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:
 // a STATEMENT line from another backend must not attach to the pending
 // error, so interleaved streams cannot emit a mispaired op="error_message"
-// entry -- it surfaces as categoryUnmatchedError once the timeout fires
-// instead.
+// entry -- it still surfaces as op="error_message" once the timeout fires,
+// just without query_fingerprint.
 func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
 	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
 	ts := logTS(c)
@@ -2573,9 +2575,9 @@ func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="error" `))
-	require.Equal(t, "unmatched_error", fields["category"], "a STATEMENT from a different PID must not pair with the pending error")
-	require.Equal(t, "111", fields["pid"])
+	require.Equal(t, "111", fields["pid"], "a STATEMENT from a different PID must not pair with the pending error")
 	_, hasFP := fields["query_fingerprint"]
 	require.False(t, hasFP)
 }
