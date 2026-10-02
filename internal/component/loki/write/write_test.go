@@ -3,10 +3,9 @@ package write
 import (
 	"context"
 	"fmt"
-	"math"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -17,10 +16,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/discovery"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/featuregate"
-	loki_util "github.com/grafana/alloy/internal/loki/util"
+	lokiutil "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
@@ -28,32 +25,22 @@ import (
 )
 
 func TestWriteToSingleEndpoint(t *testing.T) {
-	t.Run("wal disabled", func(t *testing.T) {
-		testSingleEndpoint(t, func(args *Arguments) {})
-	})
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		t.Run("wal disabled", func(t *testing.T) {
+			testSingleEndpoint(t, write, func(args *Arguments) {})
+		})
 
-	t.Run("wal enabled", func(t *testing.T) {
-		testSingleEndpoint(t, func(args *Arguments) {
-			args.WAL.Enabled = true
+		t.Run("wal enabled", func(t *testing.T) {
+			testSingleEndpoint(t, write, func(args *Arguments) {
+				args.WAL.Enabled = true
+			})
 		})
 	})
 }
 
-func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
-	// Set up the server that will receive the log entry, and expose it on ch.
-	ch := make(chan push.PushRequest)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq push.PushRequest
-		err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		tenantHeader := r.Header.Get("X-Scope-OrgID")
-		require.Equal(t, tenantHeader, "tenant-1")
-
-		ch <- pushReq
-	}))
+func testSingleEndpoint(t *testing.T, write writeFunc, alterConfig func(arguments *Arguments)) {
+	received := make(chan lokiutil.RemoteWriteRequest, 100)
+	srv := lokiutil.NewRemoteWriteServer(received, http.StatusOK)
 	defer srv.Close()
 
 	// Set up the component Arguments.
@@ -70,13 +57,14 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	alterConfig(&args)
 
 	// Set up and start the component.
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)
 		require.NoError(t, err)
 	}()
 	require.NoError(t, tc.WaitExports(time.Second))
+	require.NoError(t, tc.WaitRunning(time.Second))
 
 	// Send two log entries to the component's receiver
 	logEntry := loki.Entry{
@@ -87,9 +75,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 		},
 	}
 
-	exports := tc.Exports().(Exports)
-	exports.Receiver.Chan() <- logEntry
-	exports.Receiver.Chan() <- logEntry
+	require.NoError(t, write(t.Context(), []loki.Entry{logEntry, logEntry}, tc))
 
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	// Make sure the log entries were received correctly.
@@ -99,10 +85,11 @@ LOOP:
 		select {
 		case <-time.After(500 * time.Millisecond):
 			break LOOP
-		case req := <-ch:
-			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, logEntry.Labels.String())
-			entries = append(entries, req.Streams[0].Entries...)
+		case req := <-received:
+			require.Equal(t, "tenant-1", req.TenantID)
+			require.Len(t, req.Request.Streams, 1)
+			require.Equal(t, req.Request.Streams[0].Labels, logEntry.Labels.String())
+			entries = append(entries, req.Request.Streams[0].Entries...)
 		}
 	}
 	require.Len(t, entries, 2)
@@ -111,29 +98,23 @@ LOOP:
 }
 
 func TestEntrySentToTwoWriteComponents(t *testing.T) {
-	t.Run("wal disabled", func(t *testing.T) {
-		testMultipleEndpoint(t, func(arguments *Arguments) {})
-	})
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		t.Run("wal disabled", func(t *testing.T) {
+			testMultipleEndpoint(t, write, func(arguments *Arguments) {})
+		})
 
-	t.Run("wal enabled", func(t *testing.T) {
-		testMultipleEndpoint(t, func(arguments *Arguments) {
-			arguments.WAL.Enabled = true
+		t.Run("wal enabled", func(t *testing.T) {
+			testMultipleEndpoint(t, write, func(arguments *Arguments) {
+				arguments.WAL.Enabled = true
+			})
 		})
 	})
 }
 
-func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
-	ch1, ch2 := make(chan push.PushRequest), make(chan push.PushRequest)
-	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq push.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
-		ch1 <- pushReq
-	}))
-	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq push.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
-		ch2 <- pushReq
-	}))
+func testMultipleEndpoint(t *testing.T, write writeFunc, alterArgs func(arguments *Arguments)) {
+	ch1, ch2 := make(chan lokiutil.RemoteWriteRequest, 100), make(chan lokiutil.RemoteWriteRequest, 100)
+	srv1 := lokiutil.NewRemoteWriteServer(ch1, http.StatusOK)
+	srv2 := lokiutil.NewRemoteWriteServer(ch2, http.StatusOK)
 	defer srv1.Close()
 	defer srv2.Close()
 
@@ -156,69 +137,54 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	alterArgs(&args1)
 	alterArgs(&args2)
 
-	// Set up and start the component.
-	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
-	require.NoError(t, err)
-	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	// Set up and start the components.
+	ctrl1, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.write")
 	require.NoError(t, err)
 	go func() {
-		require.NoError(t, tc1.Run(componenttest.TestContext(t), args1))
+		require.NoError(t, ctrl1.Run(componenttest.TestContext(t), args1))
 	}()
+	require.NoError(t, ctrl1.WaitExports(time.Second))
+	require.NoError(t, ctrl1.WaitRunning(time.Second))
+
+	ctrl2, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.write")
+	require.NoError(t, err)
 	go func() {
-		require.NoError(t, tc2.Run(componenttest.TestContext(t), args2))
+		require.NoError(t, ctrl2.Run(componenttest.TestContext(t), args2))
 	}()
-	require.NoError(t, tc1.WaitExports(time.Second))
-	require.NoError(t, tc2.WaitExports(time.Second))
+	require.NoError(t, ctrl2.WaitExports(time.Second))
+	require.NoError(t, ctrl2.WaitRunning(time.Second))
 
-	// Create a file to log to.
-	f, err := os.CreateTemp(t.TempDir(), "example")
-	require.NoError(t, err)
-	defer f.Close()
-
-	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
-	require.NoError(t, err)
-
-	go func() {
-		err := ctrl.Run(t.Context(), lsf.Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
-			ForwardTo: []loki.LogsReceiver{
-				tc1.Exports().(Exports).Receiver,
-				tc2.Exports().(Exports).Receiver,
+	wantLabelSet := model.LabelSet{"somelbl": "somevalue"}
+	require.NoError(
+		t,
+		write(
+			t.Context(),
+			[]loki.Entry{
+				loki.NewEntry(wantLabelSet, push.Entry{
+					Timestamp: time.Now(),
+					Line:      "writing some text",
+				}),
 			},
-			FileMatch: lsf.FileMatch{
-				Enabled:    false,
-				SyncPeriod: 10 * time.Second,
-			},
-		})
-		require.NoError(t, err)
-	}()
-	ctrl.WaitRunning(time.Minute)
+			ctrl1,
+			ctrl2,
+		),
+	)
 
-	// Write a line to the file.
-	_, err = f.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-
-	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
-		"somelbl":  "somevalue",
-	}
-
-	// The two entries have been received with their
+	// Each endpoint receives the entry with its component's external labels merged in.
 	for i := 0; i < 2; i++ {
 		select {
 		case <-time.After(2 * time.Second):
 			require.FailNow(t, "failed waiting for logs")
 		case req := <-ch1:
-			require.Len(t, req.Streams, 1)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Streams[0].Labels)
-			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
+			require.Len(t, req.Request.Streams, 1)
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Request.Streams[0].Labels)
+			require.Len(t, req.Request.Streams[0].Entries, 1)
+			require.Equal(t, "writing some text", req.Request.Streams[0].Entries[0].Line)
 		case req := <-ch2:
-			require.Len(t, req.Streams, 1)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Streams[0].Labels)
-			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, "writing some text", req.Streams[0].Entries[0].Line)
+			require.Len(t, req.Request.Streams, 1)
+			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Request.Streams[0].Labels)
+			require.Len(t, req.Request.Streams[0].Entries, 1)
+			require.Equal(t, "writing some text", req.Request.Streams[0].Entries[0].Line)
 		}
 	}
 }
@@ -345,56 +311,51 @@ func TestComponentExperimentalConfig(t *testing.T) {
 	})
 }
 
-type testCase struct {
-	linesCount  int
-	seriesCount int
-}
-
 func BenchmarkLokiWrite(b *testing.B) {
-	for name, tc := range map[string]testCase{
-		"100 lines, single series": {
-			linesCount:  100,
-			seriesCount: 1,
+	type testCase struct {
+		name       string
+		numEntries int
+		numSeries  int
+	}
+
+	tests := []testCase{
+		{
+			name:       "100 lines, single series",
+			numEntries: 100,
+			numSeries:  1,
 		},
-		"100k lines, 100 series": {
-			linesCount:  100_000,
-			seriesCount: 100,
+		{
+			name:       "100k lines, 100 series",
+			numEntries: 100_000,
+			numSeries:  100,
 		},
-	} {
-		b.Run(name, func(b *testing.B) {
-			benchSingleEndpoint(b, tc, func(arguments *Arguments) {})
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			b.Run("Receiver", func(b *testing.B) { benchSingleEndpoint(b, tt.numSeries, tt.numEntries, writeReceiver) })
+			b.Run("Consume", func(b *testing.B) { benchSingleEndpoint(b, tt.numSeries, tt.numEntries, writeConsume) })
 		})
 	}
 }
 
-func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *Arguments)) {
+func benchSingleEndpoint(b *testing.B, numSeries, numEntries int, write writeFunc) {
 	// Set up the server that will receive the log entry, and expose it on ch.
 	var seenLines atomic.Int64
-	ch := make(chan push.PushRequest)
+	ch := make(chan lokiutil.RemoteWriteRequest)
 
 	// just count seenLines for each entry received
 	go func() {
-		for pr := range ch {
+		for req := range ch {
 			count := 0
-			for _, str := range pr.Streams {
+			for _, str := range req.Request.Streams {
 				count += len(str.Entries)
 			}
 			seenLines.Add(int64(count))
 		}
 	}()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq push.PushRequest
-		err := loki_util.ParseProtoReader(b.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		tenantHeader := r.Header.Get("X-Scope-OrgID")
-		require.Equal(b, tenantHeader, "tenant-1")
-
-		ch <- pushReq
-	}))
+	srv := lokiutil.NewRemoteWriteServer(ch, http.StatusOK)
 	defer srv.Close()
 
 	// Set up the component Arguments.
@@ -408,8 +369,6 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 	var args Arguments
 	require.NoError(b, syntax.Unmarshal([]byte(cfg), &args))
 
-	alterConfig(&args)
-
 	// Set up and start the component.
 	testComp, err := componenttest.NewControllerFromID(util.TestLogger(b), "loki.write")
 	require.NoError(b, err)
@@ -417,68 +376,72 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 		err = testComp.Run(componenttest.TestContext(b), args)
 		require.NoError(b, err)
 	}()
-	require.NoError(b, testComp.WaitExports(time.Second))
+	require.NoError(b, testComp.WaitExports(time.Minute))
+	require.NoError(b, testComp.WaitRunning(time.Minute))
 
-	// get exports from component
-	exports := testComp.Exports().(Exports)
+	entries := make([]loki.Entry, 0, numEntries)
+	for i := 0; i < numEntries; i++ {
+		entries = append(entries, loki.Entry{
+			Labels: model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%numSeries))},
+			Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "very important log",
+			},
+		})
+	}
 
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		for j := 0; j < tc.linesCount; j++ {
-			logEntry := loki.Entry{
-				Labels: model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%tc.seriesCount))},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "very important log",
-				},
-			}
-			exports.Receiver.Chan() <- logEntry
-		}
-
+		require.NoError(b, write(b.Context(), entries, testComp))
 		require.Eventually(b, func() bool {
-			return int64(tc.linesCount) == seenLines.Load()
-		}, time.Minute, time.Second, "haven't seen expected number of lines")
+			return int64((i+1)*numEntries) == seenLines.Load()
+		}, time.Minute, 100*time.Millisecond, "haven't seen expected number of lines")
 	}
 }
 
 func TestUpdateWhileSendingIsBlocked(t *testing.T) {
-	for _, walEnabled := range []bool{false, true} {
-		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		for _, walEnabled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
 
-			ctrl, _ := blockedComponent(t, ctx, walEnabled)
+				ctrl, _ := blockedComponent(t, ctx, walEnabled, write)
 
-			updated := make(chan error, 1)
-			go func() { updated <- ctrl.Update(blockedEndpointArgs(t, "http://localhost:1", walEnabled)) }()
+				updated := make(chan error, 1)
+				go func() { updated <- ctrl.Update(blockedEndpointArgs(t, "http://localhost:1", walEnabled)) }()
 
-			select {
-			case err := <-updated:
-				require.NoError(t, err)
-			case <-time.After(30 * time.Second):
-				t.Fatal("Update did not return while sending was blocked")
-			}
-		})
-	}
+				select {
+				case err := <-updated:
+					require.NoError(t, err)
+				case <-time.After(30 * time.Second):
+					t.Fatal("Update did not return while sending was blocked")
+				}
+			})
+		}
+	})
 }
 
 func TestStopWhileSendingIsBlocked(t *testing.T) {
-	for _, walEnabled := range []bool{false, true} {
-		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			_, stopped := blockedComponent(t, ctx, walEnabled)
-			cancel()
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		for _, walEnabled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				_, stopped := blockedComponent(t, ctx, walEnabled, write)
+				cancel()
 
-			select {
-			case err := <-stopped:
-				require.NoError(t, err)
-			case <-time.After(30 * time.Second):
-				t.Fatal("Run did not return while sending was blocked")
-			}
-		})
-	}
+				select {
+				case err := <-stopped:
+					require.NoError(t, err)
+				case <-time.After(30 * time.Second):
+					t.Fatal("Run did not return while sending was blocked")
+				}
+			})
+		}
+	})
 }
 
-func blockedComponent(t *testing.T, ctx context.Context, walEnabled bool) (*componenttest.Controller, <-chan error) {
+func blockedComponent(t *testing.T, ctx context.Context, walEnabled bool, write writeFunc) (*componenttest.Controller, <-chan error) {
 	t.Helper()
 
 	blocked := atomic.NewBool(false)
@@ -501,16 +464,13 @@ func blockedComponent(t *testing.T, ctx context.Context, walEnabled bool) (*comp
 
 	require.NoError(t, ctrl.WaitExports(5*time.Second))
 
-	ch := ctrl.Exports().(Exports).Receiver.Chan()
-
 	go func() {
 		entry := loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "very important log"})
-		for {
-			select {
-			case ch <- entry:
-			case <-ctx.Done():
-				return
-			}
+		// Writes block once the queue is full. Once the component is stopped a
+		// Consume write returns right away without an error, so ctx is checked
+		// to stop.
+		for ctx.Err() == nil {
+			_ = write(ctx, []loki.Entry{entry}, ctrl)
 		}
 	}()
 
@@ -548,114 +508,116 @@ func blockedEndpointArgs(t *testing.T, url string, walEnabled bool) Arguments {
 }
 
 func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
-	for _, walEnabled := range []bool{false, true} {
-		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
-			firstReceived := make(chan loki_util.RemoteWriteRequest, 100)
-			firstSrv := loki_util.NewRemoteWriteServer(firstReceived, http.StatusOK)
-			defer firstSrv.Close()
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		for _, walEnabled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+				firstReceived := make(chan lokiutil.RemoteWriteRequest, 100)
+				firstSrv := lokiutil.NewRemoteWriteServer(firstReceived, http.StatusOK)
+				defer firstSrv.Close()
 
-			secondReceived := make(chan loki_util.RemoteWriteRequest, 100)
-			secondSrv := loki_util.NewRemoteWriteServer(secondReceived, http.StatusOK)
-			defer secondSrv.Close()
+				secondReceived := make(chan lokiutil.RemoteWriteRequest, 100)
+				secondSrv := lokiutil.NewRemoteWriteServer(secondReceived, http.StatusOK)
+				defer secondSrv.Close()
 
-			firstEndpoint := fmt.Sprintf(`
-				endpoint {
-					url        = "%s"
-					batch_wait = "10ms"
-				}
-			`, firstSrv.URL)
+				firstEndpoint := fmt.Sprintf(`
+					endpoint {
+						url        = "%s"
+						batch_wait = "10ms"
+					}
+				`, firstSrv.URL)
 
-			secondEndpoint := fmt.Sprintf(`
-				endpoint {
-					url        = "%s"
-					batch_wait = "10ms"
-				}
-			`, secondSrv.URL)
+				secondEndpoint := fmt.Sprintf(`
+					endpoint {
+						url        = "%s"
+						batch_wait = "10ms"
+					}
+				`, secondSrv.URL)
 
-			var firstArgs Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(firstEndpoint), &firstArgs))
-			firstArgs.WAL.Enabled = walEnabled
+				var firstArgs Arguments
+				require.NoError(t, syntax.Unmarshal([]byte(firstEndpoint), &firstArgs))
+				firstArgs.WAL.Enabled = walEnabled
 
-			// Moves to the second server, but both endpoints hash to the same name so
-			// building the consumer fails.
-			var failingArgs Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint+secondEndpoint), &failingArgs))
-			failingArgs.WAL.Enabled = walEnabled
+				// Moves to the second server, but both endpoints hash to the same name so
+				// building the consumer fails.
+				var failingArgs Arguments
+				require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint+secondEndpoint), &failingArgs))
+				failingArgs.WAL.Enabled = walEnabled
 
-			var secondArgs Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint), &secondArgs))
-			secondArgs.WAL.Enabled = walEnabled
+				var secondArgs Arguments
+				require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint), &secondArgs))
+				secondArgs.WAL.Enabled = walEnabled
 
-			ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
-			require.NoError(t, err)
+				ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+				require.NoError(t, err)
 
-			go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
-			require.NoError(t, ctrl.WaitExports(5*time.Second))
+				go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
+				require.NoError(t, ctrl.WaitExports(5*time.Second))
+				require.NoError(t, ctrl.WaitRunning(5*time.Second))
 
-			recv := ctrl.Exports().(Exports).Receiver.Chan()
+				require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})}, ctrl))
+				waitForLine(t, firstReceived, "first")
 
-			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})
-			waitForLine(t, firstReceived, "first")
+				require.Error(t, ctrl.Update(failingArgs))
 
-			require.Error(t, ctrl.Update(failingArgs))
+				// The failed update left the previous consumer in place.
+				require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})}, ctrl))
+				waitForLine(t, firstReceived, "second")
 
-			// The failed update left the previous consumer in place.
-			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})
-			waitForLine(t, firstReceived, "second")
+				require.NoError(t, ctrl.Update(secondArgs))
 
-			require.NoError(t, ctrl.Update(secondArgs))
-
-			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})
-			waitForLine(t, secondReceived, "third")
-		})
-	}
+				require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})}, ctrl))
+				waitForLine(t, secondReceived, "third")
+			})
+		}
+	})
 }
 
 func TestUpdateTogglesWAL(t *testing.T) {
-	received := make(chan loki_util.RemoteWriteRequest, 100)
-	srv := loki_util.NewRemoteWriteServer(received, http.StatusOK)
-	defer srv.Close()
+	runWriteTest(t, func(t *testing.T, write writeFunc) {
+		received := make(chan lokiutil.RemoteWriteRequest, 100)
+		srv := lokiutil.NewRemoteWriteServer(received, http.StatusOK)
+		defer srv.Close()
 
-	endpoint := fmt.Sprintf(`
-		endpoint {
-			url        = "%s"
-			batch_wait = "10ms"
-		}
-	`, srv.URL)
+		endpoint := fmt.Sprintf(`
+			endpoint {
+				url        = "%s"
+				batch_wait = "10ms"
+			}
+		`, srv.URL)
 
-	var walArgs Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &walArgs))
-	walArgs.WAL.Enabled = true
+		var walArgs Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(endpoint), &walArgs))
+		walArgs.WAL.Enabled = true
 
-	var noWalArgs Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &noWalArgs))
+		var noWalArgs Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(endpoint), &noWalArgs))
 
-	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
-	require.NoError(t, err)
+		ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+		require.NoError(t, err)
 
-	go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
-	require.NoError(t, ctrl.WaitExports(5*time.Second))
+		go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
+		require.NoError(t, ctrl.WaitExports(5*time.Second))
+		require.NoError(t, ctrl.WaitRunning(5*time.Second))
 
-	recv := ctrl.Exports().(Exports).Receiver.Chan()
+		require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})}, ctrl))
+		waitForLine(t, received, "with wal")
 
-	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})
-	waitForLine(t, received, "with wal")
+		require.NoError(t, ctrl.Update(noWalArgs))
 
-	require.NoError(t, ctrl.Update(noWalArgs))
+		require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})}, ctrl))
+		waitForLine(t, received, "without wal")
 
-	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})
-	waitForLine(t, received, "without wal")
+		require.NoError(t, ctrl.Update(walArgs))
 
-	require.NoError(t, ctrl.Update(walArgs))
-
-	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})
-	waitForLine(t, received, "with wal again")
+		require.NoError(t, write(t.Context(), []loki.Entry{loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})}, ctrl))
+		waitForLine(t, received, "with wal again")
+	})
 }
 
 // waitForLine waits until an entry with the wanted line is received. Lines are matched
 // instead of asserting on the next request, a reload can re-deliver entries that the
 // previous consumer had already sent.
-func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want string) {
+func waitForLine(t *testing.T, received chan lokiutil.RemoteWriteRequest, want string) {
 	t.Helper()
 
 	timeout := time.After(10 * time.Second)
@@ -673,4 +635,45 @@ func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want 
 			t.Fatalf("timed out waiting for entry %q", want)
 		}
 	}
+}
+
+type writeFunc func(ctx context.Context, entries []loki.Entry, ctrls ...*componenttest.Controller) error
+
+// runWriteTest runs fn as a subtest once for the receiver channel and once for Consume.
+// The write func fans out entries to every given controller.
+func runWriteTest(t *testing.T, fn func(t *testing.T, write writeFunc)) {
+	t.Run("Receiver", func(t *testing.T) { fn(t, writeReceiver) })
+	t.Run("Consume", func(t *testing.T) { fn(t, writeConsume) })
+}
+
+func writeReceiver(ctx context.Context, entries []loki.Entry, ctrls ...*componenttest.Controller) error {
+	receivers := make([]loki.LogsReceiver, 0, len(ctrls))
+	for _, ctrl := range ctrls {
+		receivers = append(receivers, ctrl.Exports().(Exports).Receiver)
+	}
+
+	fanout := loki.NewFanout(receivers)
+	for _, e := range entries {
+		if err := fanout.Send(ctx, e); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeConsume(ctx context.Context, entries []loki.Entry, ctrls ...*componenttest.Controller) error {
+	consumers := make([]loki.Consumer, 0, len(ctrls))
+	for _, ctrl := range ctrls {
+		comp, err := ctrl.GetComponent()
+		if err != nil {
+			return err
+		}
+		consumers = append(consumers, comp.(*Component))
+	}
+
+	batch := loki.NewBatch()
+	for _, e := range entries {
+		batch.AddEntry(e.Labels, 0, e.Entry)
+	}
+	return loki.NewFanoutConsumer(consumers).Consume(ctx, batch)
 }

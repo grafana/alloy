@@ -9,10 +9,6 @@ import (
 	"github.com/prometheus/prometheus/util/compression"
 )
 
-var (
-	recordPool = NewRecordPool()
-)
-
 // WAL is an interface that allows us to abstract ourselves from Prometheus WAL implementation.
 type WAL interface {
 	// Log marshals the records and writes it into the WAL.
@@ -50,50 +46,17 @@ func (w *wrapper) Log(record *Record) error {
 		return nil
 	}
 
-	// The code below extracts the wal write operations to when possible, batch both series and records writes
-	if len(record.Series) > 0 && len(record.RefEntries) > 0 {
-		return w.logBatched(record)
-	}
-	return w.logSingle(record)
-}
-
-// logBatched logs to the WAL both series and records, batching the operation to prevent unnecessary page flushes.
-func (w *wrapper) logBatched(record *Record) error {
-	seriesBuf := recordPool.GetBytes()
-	entriesBuf := recordPool.GetBytes()
+	seriesBuf := getBytes()
+	entriesBuf := getBytes()
 	defer func() {
-		recordPool.PutBytes(seriesBuf)
-		recordPool.PutBytes(entriesBuf)
+		putBytes(seriesBuf)
+		putBytes(entriesBuf)
 	}()
 
 	*seriesBuf = record.EncodeSeries(*seriesBuf)
 	*entriesBuf = record.EncodeEntries(CurrentEntriesRec, *entriesBuf)
 	// Always write series then entries
 	return w.wal.Log(*seriesBuf, *entriesBuf)
-}
-
-// logSingle logs to the WAL series and records in separate WAL operation. This causes a page flush after each operation.
-func (w *wrapper) logSingle(record *Record) error {
-	buf := recordPool.GetBytes()
-	defer func() {
-		recordPool.PutBytes(buf)
-	}()
-
-	// Always write series then entries.
-	if len(record.Series) > 0 {
-		*buf = record.EncodeSeries(*buf)
-		if err := w.wal.Log(*buf); err != nil {
-			return err
-		}
-		*buf = (*buf)[:0]
-	}
-	if len(record.RefEntries) > 0 {
-		*buf = record.EncodeEntries(CurrentEntriesRec, *buf)
-		if err := w.wal.Log(*buf); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Sync flushes changes to disk. Mainly to be used for testing.
