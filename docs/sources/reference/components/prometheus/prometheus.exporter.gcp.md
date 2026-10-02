@@ -102,7 +102,7 @@ As long as your `request_interval` is greater than or equal to `Y` you should ha
 Use `ingest_delay` if you want the component to make this adjustment automatically, or if you gather slower moving metrics.
 
 For `ingest_delay`, you can find the values for this in documented metrics as `After sampling, data is not visible for up to Y seconds.`
-Since the GCP ingestion delay is an "at worst", this is off by default so the component gathers data as soon as it's available.
+Since the GCP ingestion delay is an "at worst", this is off by default so the component gathers data without waiting for that delay to elapse.
 
 The component sets the `instance` label on its exported targets to an MD5 hash of its configuration, because no single argument identifies a GCP scrape.
 The label changes if you change any argument.
@@ -132,6 +132,8 @@ In those cases, exported fields retain their last healthy values.
 `prometheus.exporter.gcp` doesn't expose any component-specific debug metrics.
 
 ## Examples
+
+The following example sets every argument, and uses comments to show how the granularity of `metrics_prefixes` and `targeted_metric_prefix` affects what the component collects:
 
 ```alloy
 prometheus.exporter.gcp "pubsub_full_config" {
@@ -175,6 +177,8 @@ prometheus.exporter.gcp "pubsub_full_config" {
 }
 ```
 
+The following example collects every load balancing metric, and filters the results to a single backend target:
+
 ```alloy
 prometheus.exporter.gcp "lb_with_filter" {
   project_ids = [
@@ -189,6 +193,9 @@ prometheus.exporter.gcp "lb_with_filter" {
   ]
 }
 ```
+
+The following example collects two specific load balancing metrics with the same backend target filter.
+The `targeted_metric_prefix` is shorter than either value in `metrics_prefixes`, which is enough for the filter to apply to both:
 
 ```alloy
 prometheus.exporter.gcp "lb_subset_with_filter" {
