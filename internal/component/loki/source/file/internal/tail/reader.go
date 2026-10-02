@@ -130,17 +130,15 @@ func (r *reader) decode(line []byte) (string, error) {
 	return unsafe.String(unsafe.SliceData(converted), len(converted)), nil
 }
 
-// consumeLine checks pending for the delimiter; if found, it splits
-// pending into line and remainder.
+// consumeLine checks if pending ends with the delimiter; if so, it returns
+// the line without the delimiter and resets pending.
 func (r *reader) consumeLine() ([]byte, bool) {
-	// Check if pending contains a full line.
-	i := bytes.Index(r.pending, r.nl)
-	if i < 0 {
+	if !bytes.HasSuffix(r.pending, r.nl) {
 		return nil, false
 	}
 
 	// Extract everything up until newline.
-	line := r.pending[:i]
+	line := r.pending[:len(r.pending)-len(r.nl)]
 
 	// Reset pending. We never buffer beyond newline so it is safe to reset.
 	r.pending = r.pending[:0]
