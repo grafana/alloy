@@ -120,6 +120,9 @@ You use `timespan` and `interval` to control how the exporter queries metrics fr
 The exporter queries metrics over the `timespan` and returns the most recent data point at the specified `interval`. 
 If you are having issues with missing metrics, try increasing the `timespan` to a larger value, such as `PT10M` for 10 minutes, or `PT15M` for 15 minutes.
 
+The component sets the `instance` label on its exported targets to a hash of its own configuration, because no single argument identifies an Azure scrape.
+The label changes if you change any argument.
+
 [Kusto query]: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
 [Azure Monitor essentials]: https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/metrics-supported
 [ISO8601 Duration]: https://en.wikipedia.org/wiki/ISO_8601#Durations
