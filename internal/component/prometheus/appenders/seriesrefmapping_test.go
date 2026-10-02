@@ -713,21 +713,21 @@ func newMockMappingStore() *mockMappingStore {
 	}
 }
 
-func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+func (m *mockMappingStore) ResolveMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) (storage.SeriesRef, []storage.SeriesRef) {
 	if uniqueRef == 0 {
 		mappedRef, ok := m.mappingByHash[lbls.Hash()]
 		if !ok {
-			return nil
+			return 0, nil
 		}
 		uniqueRef = mappedRef
 	}
 
 	refs, ok := m.mappingByRef[uniqueRef]
 	if !ok {
-		return nil
+		return 0, nil
 	}
 
-	return copyRefs(refs)
+	return uniqueRef, copyRefs(refs)
 }
 
 func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
@@ -843,4 +843,27 @@ func (m *mockAppender) SetOptions(opts *storage.AppendOptions) {
 	if m.setOptionsFn != nil {
 		m.setOptionsFn(opts)
 	}
+}
+
+func TestSeriesRefMapping_AppendWithZeroRefReturnsMappedRef(t *testing.T) {
+	store := newMockMappingStore()
+	lbls := labels.FromStrings("job", "test")
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+	store.mappingByHash[lbls.Hash()] = 77
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_zero_ref", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_zero_ref", Help: "test"})
+	child1 := &mockAppender{}
+	child2 := &mockAppender{}
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	// A caller that doesn't know the ref yet gets the mapping's unique ref
+	// back, and that ref is the one tracked for cleanup.
+	ref, err := app.Append(0, lbls, 123, 42)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(77), ref)
+	require.Equal(t, []storage.SeriesRef{101}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{202}, child2.appendRefs)
+	require.Equal(t, []storage.SeriesRef{77}, store.cell.Refs)
+	require.Empty(t, store.createCalls)
 }
