@@ -85,7 +85,7 @@ prometheus.exporter.github "example" {
   repositories   = ["grafana/alloy"]
 }
 
-// Configure a prometheus.scrape component to collect github metrics.
+// Configure a prometheus.scrape component to collect GitHub metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.github.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
@@ -121,7 +121,7 @@ prometheus.exporter.github "example" {
   github_app_key_path          = "/etc/github-app-key.pem"
 }
 
-// Configure a prometheus.scrape component to collect github metrics.
+// Configure a prometheus.scrape component to collect GitHub metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.github.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
