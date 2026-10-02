@@ -13,9 +13,9 @@ title: prometheus.exporter.gcp
 
 # `prometheus.exporter.gcp`
 
-The `prometheus.exporter.gcp` component embeds the [`stackdriver_exporter`](https://github.com/prometheus-community/stackdriver_exporter).
-You can use this component to collect [GCP Cloud Monitoring (formerly stackdriver)](https://cloud.google.com/monitoring/docs) metrics, translate them to Prometheus-compatible format, and remote write.
-The component supports all metrics available through the [GCP monitoring API](https://cloud.google.com/monitoring/api/metrics_gcp).
+The `prometheus.exporter.gcp` component embeds the [`stackdriver_exporter`][stackdriver-exporter].
+You can use this component to collect [GCP Cloud Monitoring (formerly stackdriver)][cloud-monitoring] metrics, translate them to Prometheus-compatible format, and remote write.
+The component supports all metrics available through the [GCP monitoring API][gcp-metrics].
 
 Metric names follow the template `stackdriver_<monitored_resource>_<metric_type_prefix>_<metric_type>`.
 
@@ -33,14 +33,20 @@ These attributes result in a final metric name of `stackdriver_https_lb_rule_loa
 
 You can specify multiple `prometheus.exporter.gcp` components by giving them different labels.
 
+[stackdriver-exporter]: https://github.com/prometheus-community/stackdriver_exporter
+[cloud-monitoring]: https://cloud.google.com/monitoring/docs
+
 ## Authentication
 
 {{< param "PRODUCT_NAME" >}} must be running in an environment with access to the GCP project it's scraping.
-The exporter uses the Google Golang Client Library, which offers a variety of ways to [provide credentials](https://developers.google.com/identity/protocols/application-default-credentials).
+The exporter uses the Google Golang Client Library, which offers a variety of ways to [provide credentials][credentials].
 Choose the option that works best for you.
 
 After deciding how {{< param "PRODUCT_NAME" >}} obtains credentials, ensure the account is set up with the IAM role `roles/monitoring.viewer`.
-Since the exporter gathers all of its data from [GCP monitoring APIs](https://cloud.google.com/monitoring/api/v3), this is the only permission needed.
+Since the exporter gathers all of its data from [GCP monitoring APIs][monitoring-api], this is the only permission needed.
+
+[credentials]: https://developers.google.com/identity/protocols/application-default-credentials
+[monitoring-api]: https://cloud.google.com/monitoring/api/v3
 
 ## Usage
 
@@ -63,16 +69,16 @@ prometheus.exporter.gcp "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.gcp`:
 
-| Name                      | Type           | Description                                                                                                                                                                                                                           | Default | Required |
-| ------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `metrics_prefixes`        | `list(string)` | One or more values from the supported [GCP Metrics](https://cloud.google.com/monitoring/api/metrics_gcp). These can be as targeted or loose as needed.                                                                                |         | yes      |
-| `project_ids`             | `list(string)` | Configure the GCP Projects to scrape for metrics.                                                                                                                                                                                     |         | yes      |
-| `drop_delegated_projects` | `bool`         | When enabled drops metrics from attached projects and only fetches metrics from the explicitly configured `project_ids`.                                                                                                              | `false` | no       |
-| `extra_filters`           | `list(string)` | Used to refine the resources you would like to collect metrics from. Any string value within a filter string must be enclosed in escaped double-quotes. The structure for these filters is `<targeted_metric_prefix>:<filter_query>`. | `[]`    | no       |
-| `gcp_client_timeout`      | `duration`     | Sets a timeout on the client used to make API calls to GCP. A single scrape can initiate numerous calls to GCP, so be mindful if you choose to override this value.                                                                   | `"15s"` | no       |
-| `ingest_delay`            | `bool`         | When enabled, this automatically adjusts the time range used when querying for metrics backwards based on the metadata GCP has published for how long the data can take to be ingested.                                               | `false` | no       |
-| `request_interval`        | `duration`     | The time range used when querying for metrics.                                                                                                                                                                                        | `"5m"`  | no       |
-| `request_offset`          | `duration`     | Offsets the time range used when querying for metrics by a set amount.                                                                                                                                                                | `"0s"`  | no       |
+| Name                      | Type           | Description                                                                                               | Default | Required |
+| ------------------------- | -------------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `metrics_prefixes`        | `list(string)` | One or more supported [GCP metrics][gcp-metrics]. These can be as targeted or loose as needed.            |         | yes      |
+| `project_ids`             | `list(string)` | Configure the GCP Projects to scrape for metrics.                                                         |         | yes      |
+| `drop_delegated_projects` | `bool`         | When enabled, drops metrics from projects attached to the configured `project_ids`.                       | `false` | no       |
+| `extra_filters`           | `list(string)` | Refine the resources to collect metrics from. The structure is `<targeted_metric_prefix>:<filter_query>`. | `[]`    | no       |
+| `gcp_client_timeout`      | `duration`     | Timeout for the client that makes API calls to GCP.                                                       | `"15s"` | no       |
+| `ingest_delay`            | `bool`         | When enabled, adjusts the query time range backwards to account for the GCP ingestion delay.              | `false` | no       |
+| `request_interval`        | `duration`     | The time range used when querying for metrics.                                                            | `"5m"`  | no       |
+| `request_offset`          | `duration`     | Offsets the time range used when querying for metrics by a set amount.                                    | `"0s"`  | no       |
 
 {{< admonition type="note" >}}
 If you are supplying a list of strings for the `extra_filters` argument, any string values within a particular filter string must be enclosed in escaped double quotes.
@@ -85,7 +91,10 @@ The component fails to start if an `extra_filters` entry omits the `:` separator
 The `filter_query` is applied to a final metrics API query when querying for metric data.
 The final query sent to the metrics API already includes filters for project and metric type.
 Each applicable `filter_query` is appended to the query with an AND.
-You can read more about the metric API filter options in the [GCP documentation](https://cloud.google.com/monitoring/api/v3/filters).
+You can read more about the metric API filter options in the [GCP documentation][filters].
+
+For `gcp_client_timeout`, be mindful when you override the default.
+A single scrape can initiate numerous calls to GCP.
 
 For `request_interval`, most of the time the default works perfectly fine.
 Most documented metrics include a comments of the form `Sampled every X seconds. After sampling, data is not visible for up to Y seconds.`
@@ -97,6 +106,9 @@ Since the GCP ingestion delay is an "at worst", this is off by default to ensure
 
 The component sets the `instance` label on its exported targets to an MD5 hash of its configuration, because no single argument identifies a GCP scrape.
 The label changes if you change any argument.
+
+[gcp-metrics]: https://cloud.google.com/monitoring/api/metrics_gcp
+[filters]: https://cloud.google.com/monitoring/api/v3/filters
 
 ## Blocks
 
