@@ -41,7 +41,6 @@ type eventProcessor struct {
 	matcherStrategy       monitoringv1.AlertmanagerConfigMatcherStrategyType
 	alertmanagerNamespace string
 	kclient               go_k8s.Interface
-	storeBuilder          *assets.StoreBuilder
 
 	baseCfg       alertmgr_cfg.Config
 	templateFiles map[string]string
@@ -267,7 +266,11 @@ func (e *eventProcessor) desiredStateFromKubernetes(ctx context.Context) (*alert
 		}
 	}
 
-	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, e.storeBuilder)
+	// Use a new store for every reconcile. The store caches every Secret and ConfigMap it reads
+	// and never reads them again, so a shared one would never see changes to them.
+	store := assets.NewStoreBuilder(e.kclient.CoreV1(), e.kclient.CoreV1())
+
+	cfg, err := e.provisionAlertmanagerConfiguration(ctx, amConfigs, store)
 	if err != nil {
 		return nil, fmt.Errorf("failed to provision Alertmanager configuration: %w", err)
 	}
