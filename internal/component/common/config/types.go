@@ -496,6 +496,8 @@ func (o *OAuth2Config) Validate() error {
 		if len(o.ClientSecret) > 0 && len(o.ClientSecretFile) > 0 {
 			return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
 		}
+	default:
+		return fmt.Errorf("unsupported oauth2 grant_type %q", o.GrantType)
 	}
 
 	return o.ProxyConfig.Validate()
