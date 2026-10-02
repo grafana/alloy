@@ -944,6 +944,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
 	github.com/charmbracelet/huh v1.0.0
 	github.com/google/cadvisor/lib v0.0.0
+	github.com/hoophq/alcatraz v0.21.0
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.161.0

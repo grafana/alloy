@@ -24,6 +24,7 @@ const selectTableScanStats = `
 	FROM pg_stat_user_tables`
 
 const labelDatname = "datname"
+const labelUser = "user"
 
 var tableLabels = []string{labelDatname, "schemaname", "relname"}
 
