@@ -27,8 +27,8 @@ You can use the following arguments with `prometheus.exporter.github`:
 
 | Name                          | Type           | Description                                                      | Default                    | Required |
 | ----------------------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
-| `api_token_file`              | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
 | `api_token`                   | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
+| `api_token_file`              | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
 | `api_url`                     | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
 | `github_app_id`               | `number`       | The GitHub App ID for authentication.                            |                            | no       |
 | `github_app_installation_id`  | `number`       | The GitHub App installation ID for authentication.               |                            | no       |
