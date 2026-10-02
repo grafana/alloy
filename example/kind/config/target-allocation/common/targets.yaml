@@ -21,7 +21,7 @@ metadata:
 spec:
   serviceName: targets
   podManagementPolicy: Parallel
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/part-of: target-allocation-targets
@@ -43,7 +43,7 @@ spec:
         command:
         - "/app/main"
         args:
-        - "--series=800"
+        - "--series=12007"
         ports:
         - name: metrics
           containerPort: 9001
@@ -64,7 +64,7 @@ metadata:
 spec:
   serviceName: targets
   podManagementPolicy: Parallel
-  replicas: 19
+  replicas: 33
   selector:
     matchLabels:
       app.kubernetes.io/part-of: target-allocation-targets
@@ -86,7 +86,7 @@ spec:
         command:
         - "/app/main"
         args:
-        - "--series=10"
+        - "--series=317"
         ports:
         - name: metrics
           containerPort: 9001
@@ -108,7 +108,7 @@ metadata:
 spec:
   serviceName: targets
   podManagementPolicy: Parallel
-  replicas: 19
+  replicas: 23
   selector:
     matchLabels:
       app.kubernetes.io/part-of: target-allocation-targets
@@ -131,7 +131,7 @@ spec:
         command:
         - "/app/main"
         args:
-        - "--series=20"
+        - "--series=733"
         ports:
         - name: metrics
           containerPort: 9001
@@ -153,7 +153,7 @@ metadata:
 spec:
   serviceName: targets
   podManagementPolicy: Parallel
-  replicas: 19
+  replicas: 17
   selector:
     matchLabels:
       app.kubernetes.io/part-of: target-allocation-targets
@@ -176,7 +176,136 @@ spec:
         command:
         - "/app/main"
         args:
-        - "--series=40"
+        - "--series=347"
+        ports:
+        - name: metrics
+          containerPort: 9001
+        readinessProbe:
+          httpGet:
+            path: "/metrics"
+            port: metrics
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: targets-worker
+  namespace: target-allocation
+spec:
+  serviceName: targets
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: target-allocation-targets
+      service: reconciliation-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: target-allocation-targets
+        size_class: medium
+        service: reconciliation-worker
+        team: payments
+        region: us-west-2
+        environment: demo
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        command:
+        - "/app/main"
+        args:
+        - "--series=1571"
+        ports:
+        - name: metrics
+          containerPort: 9001
+        readinessProbe:
+          httpGet:
+            path: "/metrics"
+            port: metrics
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: targets-database
+  namespace: target-allocation
+spec:
+  serviceName: targets
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: target-allocation-targets
+      size_class: whale-database
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: target-allocation-targets
+        size_class: whale-database
+        service: database-exporter
+        team: data
+        region: eu-central-1
+        environment: demo
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        command:
+        - "/app/main"
+        args:
+        - "--series=24011"
+        ports:
+        - name: metrics
+          containerPort: 9001
+        readinessProbe:
+          httpGet:
+            path: "/metrics"
+            port: metrics
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: targets-edge
+  namespace: target-allocation
+spec:
+  serviceName: targets
+  podManagementPolicy: Parallel
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: target-allocation-targets
+      size_class: whale-edge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: target-allocation-targets
+        size_class: whale-edge
+        service: edge-gateway
+        team: networking
+        region: us-west-2
+        environment: demo
+    spec:
+      containers:
+      - name: prom-gen
+        image: prom-gen:latest
+        imagePullPolicy: Never
+        command:
+        - "/app/main"
+        args:
+        - "--series=8009"
         ports:
         - name: metrics
           containerPort: 9001

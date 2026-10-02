@@ -7,13 +7,9 @@ discovery.kubernetes "demo" {
 	role = "pod"
 
 	namespaces {
-		names = [sys.env("POD_NAMESPACE")]
+		names = [sys.env("POD_NAMESPACE"), "kube-system"]
 	}
 
-	selectors {
-		role  = "pod"
-		label = "app.kubernetes.io/part-of=target-allocation-targets"
-	}
 }
 
 discovery.relabel "demo" {
@@ -21,13 +17,18 @@ discovery.relabel "demo" {
 
 	rule {
 		source_labels = ["__meta_kubernetes_pod_ready", "__meta_kubernetes_pod_container_port_name"]
-		regex         = "true;metrics"
+		regex         = "true;(metrics|http-metrics|telemetry)"
 		action        = "keep"
 	}
 
 	rule {
 		source_labels = ["__meta_kubernetes_pod_name"]
 		target_label  = "instance"
+	}
+
+	rule {
+		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+		target_label  = "endpoint"
 	}
 
 	rule {

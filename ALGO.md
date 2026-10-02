@@ -1,11 +1,11 @@
 # Allocation algorithm simulations
 
 Simulations live in the operator checkout's
-`cmd/otel-allocator/internal/allocation/simulation_test.go`. Load-shedding now uses
-the production strategy and size windows; the other algorithms remain comparison
-baselines. Standalone TA selects it with `allocation_strategy: load-shedding`;
+`cmd/otel-allocator/internal/allocation/simulation_test.go`. Load-shedding and Sticky use
+the production planners and shared size windows; the other algorithms remain comparison
+baselines. The demo selects `allocation_strategy: sticky`;
 configuration and asynchronous target probing are documented in that checkout's
-`docs/target-allocator/load-shedding.md`. Run simulations there:
+`docs/target-allocator/sticky.md`. Run simulations there:
 
 ```sh
 env -u GOROOT GOMAXPROCS=2 GOMEMLIMIT=1GiB go test -p=2 -mod=readonly \
@@ -350,3 +350,24 @@ O(KT), with O(T) published owners and sticky's persistent ownership state.
 Placement simplicity ranks hashing, then capacity-aware, then sticky/shedding
 at a similar level. For a robust HA implementation, sticky is the most complex,
 even though its basic placement loop is straightforward.
+
+## Production Sticky demo
+
+The load-shedding milestone is committed as Alloy `14b6b6141` and operator
+`56242506`. `task deploy:ta-packing` now builds the operator checkout and selects
+`allocation_strategy: sticky`. Probing, size windows, publication and inspection
+are shared by both production size-aware strategies. Simulator Sticky calls the
+production planner; baseline results match the earlier simulation exactly.
+The six-cycle overload delay is retained. Only one TA runs; state replication,
+leader election and staleness-aware handoff remain deferred.
+
+Verified local Sticky deployment: all 60 targets assigned, 20 per Alloy; estimated
+series 1,250 / 1,240 / 1,240 (99.5% efficiency). HTTP discovery and remote write
+are active. Focused planner/configuration/publication/probing/UI checks passed,
+as did the four baseline scenarios using the production planner.
+
+The expanded demo includes 76 synthetic targets plus Alloy, TA, CoreDNS and real
+kube-state-metrics: 84 endpoints. Real KSM contributes about 3,710 series and is
+assigned alone; the other Alloys own 41 and 42 endpoints (~2,902 / 3,322 series).
+Grafana Cloud confirms `up=1` for all 84 endpoints. Separate self/TA scrapes were
+removed; all metrics endpoints use the same allocation and HTTP discovery path.

@@ -8,6 +8,6 @@ alloy:
   extraArgs: ["--cluster.node-name=$(POD_NAME)"]
 rbac:
   create: true
-  namespaces: [target-allocation]
+  namespaces: [target-allocation, kube-system]
 serviceAccount:
   automountServiceAccountToken: true

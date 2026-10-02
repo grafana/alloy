@@ -26,18 +26,19 @@ data:
           namespaces:
             names:
             - target-allocation
-          selectors:
-          - role: pod
-            label: app.kubernetes.io/part-of=target-allocation-targets
+            - kube-system
         relabel_configs:
         - source_labels:
           - __meta_kubernetes_pod_ready
           - __meta_kubernetes_pod_container_port_name
-          regex: true;metrics
+          regex: true;(metrics|http-metrics|telemetry)
           action: keep
         - source_labels:
           - __meta_kubernetes_pod_name
           target_label: instance
+        - source_labels:
+          - __meta_kubernetes_pod_container_port_name
+          target_label: endpoint
         - source_labels:
           - __meta_kubernetes_pod_label_size_class
           target_label: size_class
