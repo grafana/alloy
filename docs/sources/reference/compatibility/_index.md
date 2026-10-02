@@ -412,6 +412,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [`otelcol.receiver.googlecloudpubsub`](../components/otelcol/otelcol.receiver.googlecloudpubsub)
 - [`otelcol.receiver.influxdb`](../components/otelcol/otelcol.receiver.influxdb)
 - [`otelcol.receiver.jaeger`](../components/otelcol/otelcol.receiver.jaeger)
+- [`otelcol.receiver.k8s_workloads`](../components/otelcol/otelcol.receiver.k8s_workloads)
 - [`otelcol.receiver.kafka`](../components/otelcol/otelcol.receiver.kafka)
 - [`otelcol.receiver.loki`](../components/otelcol/otelcol.receiver.loki)
 - [`otelcol.receiver.nginx`](../components/otelcol/otelcol.receiver.nginx)
