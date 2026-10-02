@@ -206,6 +206,10 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 
 <!-- START GENERATED SECTION: CONSUMERS OF Prometheus `MetricsReceiver` -->
 
+{{< collapse title="infinity" >}}
+- [`infinity.source`](../components/infinity/infinity.source)
+{{< /collapse >}}
+
 {{< collapse title="otelcol" >}}
 - [`otelcol.exporter.prometheus`](../components/otelcol/otelcol.exporter.prometheus)
 {{< /collapse >}}
@@ -270,6 +274,10 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 
 {{< collapse title="faro" >}}
 - [`faro.receiver`](../components/faro/faro.receiver)
+{{< /collapse >}}
+
+{{< collapse title="infinity" >}}
+- [`infinity.source`](../components/infinity/infinity.source)
 {{< /collapse >}}
 
 {{< collapse title="loki" >}}
@@ -374,6 +382,10 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 
 {{< collapse title="faro" >}}
 - [`faro.receiver`](../components/faro/faro.receiver)
+{{< /collapse >}}
+
+{{< collapse title="infinity" >}}
+- [`infinity.source`](../components/infinity/infinity.source)
 {{< /collapse >}}
 
 {{< collapse title="otelcol" >}}
