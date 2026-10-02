@@ -34,8 +34,9 @@ func init() {
 
 // Arguments configures otelcol.receiver.k8s_workloads.
 type Arguments struct {
-	ClusterName string `alloy:"cluster_name,attr,optional"`
-	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
+	ClusterName       string        `alloy:"cluster_name,attr,optional"`
+	ClusterUID        string        `alloy:"cluster_uid,attr,optional"`
+	HeartbeatInterval time.Duration `alloy:"heartbeat_interval,attr,optional"`
 
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
@@ -44,13 +45,16 @@ type Arguments struct {
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{Client: commonk8s.DefaultClientArguments}
+	*args = Arguments{Client: commonk8s.DefaultClientArguments, HeartbeatInterval: defaultHeartbeatInterval}
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
+	}
+	if args.HeartbeatInterval < heartbeatMinRest {
+		return fmt.Errorf("heartbeat_interval must be at least 1m")
 	}
 	return nil
 }
@@ -191,11 +195,12 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
 	ctrl := newController(controllerOptions{
-		logger:      c.opts.Logger,
-		client:      client,
-		clusterName: args.ClusterName,
-		clusterUID:  args.ClusterUID,
-		emit:        c.emit,
+		logger:            c.opts.Logger,
+		client:            client,
+		clusterName:       args.ClusterName,
+		clusterUID:        args.ClusterUID,
+		heartbeatInterval: args.HeartbeatInterval,
+		emit:              c.emit,
 	})
 	return ctrl.run(ctx)
 }

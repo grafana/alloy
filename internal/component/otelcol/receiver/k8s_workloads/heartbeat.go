@@ -13,7 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const heartbeatInterval = time.Minute
+const (
+	defaultHeartbeatInterval = 5 * time.Minute
+	heartbeatMinRest         = time.Minute
+	heartbeatTimeout         = 30 * time.Second
+)
 
 type clusterHeartbeat struct {
 	SnapshotID  string               `json:"snapshot_id"`
@@ -63,7 +67,7 @@ func snapshotDeployment(clusterUID string, d *appsv1.Deployment) deploymentSnaps
 // A successful fresh LIST proves API access and produces a consistent snapshot
 // across all pages. Never claim completeness from a potentially stale watch cache.
 func (c *controller) heartbeat(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, heartbeatInterval/2)
+	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	now := c.now()
 	observedAt := now.UTC().Format(time.RFC3339Nano)
@@ -121,16 +125,20 @@ func (c *controller) heartbeat(ctx context.Context) error {
 }
 
 func (c *controller) heartbeats(ctx context.Context) {
-	ticker := time.NewTicker(heartbeatInterval)
-	defer ticker.Stop()
-	for {
+	for ctx.Err() == nil {
+		started := time.Now()
 		if err := c.heartbeat(ctx); err != nil && ctx.Err() == nil {
 			c.opts.logger.Error("Unable to deliver cluster heartbeat; waiting for next snapshot", "err", err)
 		}
+		// Schedule from this attempt's start, but always allow a full minute
+		// after it finishes. A slow or failed attempt never creates catch-up work.
+		delay := max(c.opts.heartbeatInterval-time.Since(started), heartbeatMinRest)
+		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return
-		case <-ticker.C:
+		case <-timer.C:
 		}
 	}
 }

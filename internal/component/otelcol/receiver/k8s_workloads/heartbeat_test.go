@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -92,4 +94,64 @@ func TestHeartbeatDeliveryFailureDoesNotQueueRetry(t *testing.T) {
 	c.opts.emit = func(_ context.Context, _ func() eventBatch) error { return errors.New("unavailable") }
 	require.Error(t, c.heartbeat(t.Context()))
 	require.Zero(t, c.queue.Len())
+}
+
+func TestHeartbeatSchedule(t *testing.T) {
+	for _, tc := range []struct {
+		name                        string
+		interval, duration, spacing time.Duration
+		fail                        bool
+	}{
+		{"default", 5 * time.Minute, 0, 5 * time.Minute, false},
+		{"custom", 10 * time.Minute, 0, 10 * time.Minute, false},
+		{"minimum rest", time.Minute, 20 * time.Second, 80 * time.Second, false},
+		{"overrun", 5 * time.Minute, 6 * time.Minute, 7 * time.Minute, false},
+		{"failure", time.Minute, 20 * time.Second, 80 * time.Second, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				c := testController(t)
+				c.opts.client = fake.NewSimpleClientset()
+				c.opts.heartbeatInterval = tc.interval
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				var starts []time.Time
+				start := time.Now()
+				c.opts.emit = func(context.Context, func() eventBatch) error {
+					starts = append(starts, time.Now())
+					if len(starts) == 3 {
+						cancel()
+					}
+					// Model slow downstream work, including a consumer which does
+					// not immediately return when the attempt deadline expires.
+					time.Sleep(tc.duration)
+					if tc.fail {
+						return errors.New("unavailable")
+					}
+					return nil
+				}
+				c.heartbeats(ctx)
+				require.Equal(t, []time.Time{start, start.Add(tc.spacing), start.Add(2 * tc.spacing)}, starts)
+			})
+		})
+	}
+}
+
+func TestHeartbeatWaitCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := testController(t)
+		c.opts.client = fake.NewSimpleClientset()
+		c.opts.heartbeatInterval = 5 * time.Minute
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		calls := 0
+		c.opts.emit = func(context.Context, func() eventBatch) error { calls++; return nil }
+		done := make(chan struct{})
+		go func() { c.heartbeats(ctx); close(done) }()
+		synctest.Wait()
+		require.Equal(t, 1, calls)
+		cancel()
+		<-done
+		require.Equal(t, 1, calls)
+	})
 }

@@ -34,6 +34,7 @@ func TestArgumentsUnmarshal(t *testing.T) {
 	require.Equal(t, "cluster-uid", args.ClusterUID)
 	require.True(t, args.Clustering.Enabled)
 	require.NotNil(t, args.Output)
+	require.Equal(t, 5*time.Minute, args.HeartbeatInterval)
 }
 
 func TestArgumentsRequireOutput(t *testing.T) {
@@ -135,3 +136,16 @@ func (f *fakeCluster) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
 func (f *fakeCluster) Peers() []peer.Peer { return f.owners }
 func (f *fakeCluster) Ready() bool        { return f.ready }
 func (f *fakeCluster) Enabled() bool      { return true }
+
+func TestHeartbeatIntervalConfiguration(t *testing.T) {
+	for _, interval := range []string{"0s", "-1m", "30s"} {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`heartbeat_interval = "`+interval+`"
+output {}`), &args)
+		require.ErrorContains(t, err, "heartbeat_interval must be at least 1m")
+	}
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`heartbeat_interval = "10m"
+output {}`), &args))
+	require.Equal(t, 10*time.Minute, args.HeartbeatInterval)
+}

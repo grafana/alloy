@@ -25,6 +25,7 @@ type controllerOptions struct {
 	logger                  *slog.Logger
 	client                  kubernetes.Interface
 	clusterName, clusterUID string
+	heartbeatInterval       time.Duration
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
