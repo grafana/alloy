@@ -134,7 +134,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 						xactStartTime, "active", stateChangeTime, sql.NullString{},
 						sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 128, Valid: true},
-						"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
+						"SELECT \"users\".*\nFROM \"users\" WHERE id = 123 AND email = 'test@example.com'",
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
@@ -145,7 +145,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'"`,
+				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT \"users\".*\nFROM \"users\" WHERE id = 123 AND email = 'test@example.com'"`,
 			},
 			expectedTimestamps: []time.Time{queryStartTime},
 		},

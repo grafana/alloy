@@ -564,7 +564,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
 	}
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
-		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+		labels += " query=" + strconv.Quote(state.LastRow.Query.String)
 	}
 
 	if state.LastRow.Query.Valid {

@@ -444,12 +444,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
-			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			logMessage += " sql_text=" + strconv.Quote(row.SQLText.String)
 		}
 		// message_text can embed literal values (e.g. a duplicate key value), so
 		// it is only emitted when query redaction is disabled, like sql_text.
 		if c.disableQueryRedaction && row.MessageText.Valid {
-			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
+			logMessage += " message_text=" + strconv.Quote(row.MessageText.String)
 		}
 
 		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
