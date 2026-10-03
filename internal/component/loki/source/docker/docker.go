@@ -243,6 +243,7 @@ func (c *Component) Update(args component.Arguments) error {
 				c.rcs,
 				c.client,
 				5*time.Second,
+				newArgs.RefreshInterval,
 				func() bool { return c.exited.Load() },
 			)
 		},
@@ -296,10 +297,9 @@ func newClient(args Arguments) (client.APIClient, error) {
 			return nil, err
 		}
 		opts = append(opts,
-			client.WithHTTPClient(&http.Client{
-				Transport: rt,
-				Timeout:   args.RefreshInterval,
-			}),
+			// No client-wide timeout: it would also cut off the follow-mode log
+			// streams. Non-streaming requests are bounded by their own context.
+			client.WithHTTPClient(&http.Client{Transport: rt}),
 			client.WithScheme(hostURL.Scheme),
 			client.WithHTTPHeaders(map[string]string{
 				"User-Agent": userAgent,

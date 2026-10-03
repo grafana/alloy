@@ -42,6 +42,7 @@ type tailer struct {
 	relabelConfig     []*relabel.Config
 	metrics           *metrics
 	restartInterval   time.Duration
+	requestTimeout    time.Duration
 	componentStopping func() bool
 
 	client client.APIClient
@@ -60,7 +61,7 @@ type tailer struct {
 // newTailer starts a new tailer to read logs from a given container ID.
 func newTailer(
 	metrics *metrics, logger *slog.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
-	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
+	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval, requestTimeout time.Duration,
 	componentStopping func() bool,
 ) (*tailer, error) {
 
@@ -83,6 +84,7 @@ func newTailer(
 		metrics:           metrics,
 		client:            client,
 		restartInterval:   restartInterval,
+		requestTimeout:    requestTimeout,
 		componentStopping: componentStopping,
 	}, nil
 }
@@ -97,7 +99,9 @@ func (t *tailer) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
+			inspectCtx, cancel := context.WithTimeout(ctx, t.requestTimeout)
+			res, err := t.client.ContainerInspect(inspectCtx, t.containerID, client.ContainerInspectOptions{})
+			cancel()
 			if err != nil {
 				if cerrdefs.IsNotFound(err) {
 					t.logger.Info("container no longer exists, stopping tailer", "id", t.containerID)
@@ -135,7 +139,9 @@ func (t *tailer) startIfNotRunning() {
 		t.logger.Debug("starting process loop", "container", t.containerID)
 
 		ctx := context.Background()
-		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
+		inspectCtx, cancelInspect := context.WithTimeout(ctx, t.requestTimeout)
+		info, err := t.client.ContainerInspect(inspectCtx, t.containerID, client.ContainerInspectOptions{})
+		cancelInspect()
 		if err != nil {
 			t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
