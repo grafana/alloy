@@ -413,7 +413,7 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 * `up` is `1` after a successful poll and `0` after a failed poll.
 * If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
 * When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends nothing for the poll in progress, even if its fetch already succeeded.
-* A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends.
+* A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends; when a reload removes a query, `infinity.source` sends that query's stale markers to the metric outputs from before the reload.
 * When a reload changes a query from `format = "table"` to `format = "logs"`, the next poll sends stale markers for its old series to the metric outputs that exist after the reload; if that reload also removes every metric output, the old series become stale when the lookback period of the metrics backend ends.
 * When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series become stale when the lookback period of the metrics backend ends. Losing ownership also clears the query's health on this node.
 

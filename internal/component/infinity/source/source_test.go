@@ -1432,3 +1432,98 @@ func TestUpdateSendsRemovalMarkersToOldOutputs(t *testing.T) {
 	points, _ := newOTel.pointsFor("q")
 	require.Zero(t, points, "the new OTel output must get nothing for the removed query")
 }
+
+// inlineQueryConfig is a config with one inline table query named name.
+func inlineQueryConfig(interval, name string) string {
+	return fmt.Sprintf(`
+		interval = %q
+		timeout  = "50ms"
+		query %q {
+			source = "inline"
+			data   = "[{\"v\":1}]"
+		}`, interval, name)
+}
+
+// outputSet holds a Prometheus and an OTel metrics output for one test.
+type outputSet struct {
+	app  testappender.CollectingAppender
+	otel *testConsumer
+}
+
+func newOutputSet() outputSet {
+	return outputSet{app: testappender.NewCollectingAppender(), otel: &testConsumer{}}
+}
+
+// argsWith parses cfg and makes o its only metric outputs.
+func argsWith(cfg string, o outputSet) (Arguments, error) {
+	args, err := parse(cfg)
+	if err != nil {
+		return Arguments{}, err
+	}
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: o.app}}
+	args.Output.Metrics = []otelcol.Consumer{o.otel}
+	return args, nil
+}
+
+// TestUpdateOutputsOnlySendsNoMarkers checks that a reload that changes
+// only the outputs sends no stale markers. The query keeps its series and
+// sends them to the new outputs.
+func TestUpdateOutputsOnlySendsNoMarkers(t *testing.T) {
+	cfg := inlineQueryConfig("100ms", "q")
+	oldOut, newOut := newOutputSet(), newOutputSet()
+	args, err := argsWith(cfg, oldOut)
+	require.NoError(t, err)
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	require.Eventually(t, func() bool { return oldOut.app.LatestSampleFor(series("up")) != nil }, 2*time.Second, 10*time.Millisecond)
+
+	args, err = argsWith(cfg, newOut)
+	require.NoError(t, err)
+	require.NoError(t, c.Update(args))
+	require.Eventually(t, func() bool { return newOut.app.LatestSampleFor(series("up")) != nil }, 2*time.Second, 10*time.Millisecond)
+
+	for _, name := range []string{"v", "up"} {
+		s := oldOut.app.LatestSampleFor(series(name))
+		require.NotNil(t, s, "series %s", name)
+		require.False(t, value.IsStaleNaN(s.Value), "a reload of the outputs must not mark %s stale", name)
+	}
+	_, stale := oldOut.otel.pointsFor("q")
+	require.Zero(t, stale, "a reload of the outputs must send no OTel stale markers")
+	_, stale = newOut.otel.pointsFor("q")
+	require.Zero(t, stale, "a reload of the outputs must send no OTel stale markers")
+}
+
+// TestUpdateIntervalAndRemovalMarksOldOutputs checks a reload that changes
+// the interval, removes a query and replaces the outputs at once. The
+// removed query's stale markers go to the outputs from before the reload.
+func TestUpdateIntervalAndRemovalMarksOldOutputs(t *testing.T) {
+	oldOut, newOut := newOutputSet(), newOutputSet()
+	args, err := argsWith(inlineQueryConfig("100ms", "q"), oldOut)
+	require.NoError(t, err)
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	require.Eventually(t, func() bool { return oldOut.app.LatestSampleFor(series("up")) != nil }, 2*time.Second, 10*time.Millisecond)
+
+	args, err = argsWith(inlineQueryConfig("200ms", "other"), newOut)
+	require.NoError(t, err)
+	require.NoError(t, c.Update(args))
+
+	for _, name := range []string{"v", "up"} {
+		s := oldOut.app.LatestSampleFor(series(name))
+		require.NotNil(t, s, "series %s", name)
+		require.True(t, value.IsStaleNaN(s.Value), "the old output must get a stale marker for %s", name)
+		require.Nil(t, newOut.app.LatestSampleFor(series(name)), "the new output must not get series %s", name)
+	}
+	_, stale := oldOut.otel.pointsFor("q")
+	require.Equal(t, 2, stale, "the old OTel output must get a stale marker for v and up")
+	points, _ := newOut.otel.pointsFor("q")
+	require.Zero(t, points, "the new OTel output must get nothing for the removed query")
+	require.Eventually(t, func() bool {
+		points, _ := newOut.otel.pointsFor("other")
+		return points > 0
+	}, 2*time.Second, 10*time.Millisecond, "the new query must send to the new OTel output")
+}
