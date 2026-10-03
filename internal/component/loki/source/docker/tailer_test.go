@@ -64,6 +64,7 @@ func TestTailer(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -136,6 +137,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -508,6 +510,7 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 		[]*relabel.Config{},
 		client,
 		restartInterval,
+		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -564,4 +567,88 @@ func (sw *stdWriter) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return sw.Writer.Write(p)
+}
+
+// newStallingDockerServer returns a Docker API server whose log stream and
+// container inspect responses only complete once release is closed.
+func newStallingDockerServer(release <-chan struct{}) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/logs"):
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			select {
+			case <-release:
+				_, _ = w.Write([]byte("done"))
+			case <-r.Context().Done():
+			}
+		case strings.HasSuffix(r.URL.Path, "/json"):
+			select {
+			case <-release:
+			case <-r.Context().Done():
+			}
+		default:
+			_, _ = w.Write([]byte("OK"))
+		}
+	}
+	return httptest.NewServer(http.HandlerFunc(h))
+}
+
+func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+	args.RefreshInterval = 100 * time.Millisecond
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	logs, err := cli.ContainerLogs(t.Context(), "flog", client.ContainerLogsOptions{ShowStdout: true, Follow: true})
+	require.NoError(t, err)
+	defer logs.Close()
+
+	// Keep the stream open for several refresh intervals before ending it.
+	time.AfterFunc(5*args.RefreshInterval, func() { close(release) })
+
+	body, err := io.ReadAll(logs)
+	require.NoError(t, err)
+	require.Equal(t, "done", string(body))
+}
+
+func TestTailerInspectIsBoundedByRequestTimeout(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+	defer close(release)
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+	args.RefreshInterval = 100 * time.Millisecond
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	tailer, _ := setupTailer(t, clientMock{})
+	tailer.client = cli
+	tailer.requestTimeout = args.RefreshInterval
+
+	done := make(chan struct{})
+	go func() {
+		tailer.startIfNotRunning()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("startIfNotRunning did not return while container inspect was stalled")
+	}
+
+	tailer.mu.Lock()
+	defer tailer.mu.Unlock()
+	require.False(t, tailer.running)
+	require.ErrorIs(t, tailer.err, context.DeadlineExceeded)
 }
