@@ -1390,3 +1390,45 @@ func TestOwnershipLostDuringFetchDropsResult(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdateSendsRemovalMarkersToOldOutputs checks that a reload that
+// removes a query and replaces the metric outputs sends the query's stale
+// markers to the outputs from before the reload. Only those outputs have
+// the query's series.
+func TestUpdateSendsRemovalMarkersToOldOutputs(t *testing.T) {
+	cfg := `
+		interval = "100ms"
+		timeout  = "50ms"
+		query %q {
+			source = "inline"
+			data   = "[{\"v\":1}]"
+		}`
+	oldApp, newApp := testappender.NewCollectingAppender(), testappender.NewCollectingAppender()
+	oldOTel, newOTel := &testConsumer{}, &testConsumer{}
+	args, err := parse(fmt.Sprintf(cfg, "q"))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: oldApp}}
+	args.Output.Metrics = []otelcol.Consumer{oldOTel}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	require.Eventually(t, func() bool { return oldApp.LatestSampleFor(series("up")) != nil }, 2*time.Second, 10*time.Millisecond)
+
+	args, err = parse(fmt.Sprintf(cfg, "other"))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: newApp}}
+	args.Output.Metrics = []otelcol.Consumer{newOTel}
+	require.NoError(t, c.Update(args))
+
+	for _, name := range []string{"v", "up"} {
+		s := oldApp.LatestSampleFor(series(name))
+		require.NotNil(t, s, "series %s", name)
+		require.True(t, value.IsStaleNaN(s.Value), "the old output must get a stale marker for %s", name)
+		require.Nil(t, newApp.LatestSampleFor(series(name)), "the new output must not get series %s", name)
+	}
+	_, stale := oldOTel.pointsFor("q")
+	require.Equal(t, 2, stale, "the old OTel output must get a stale marker for v and up")
+	points, _ := newOTel.pointsFor("q")
+	require.Zero(t, points, "the new OTel output must get nothing for the removed query")
+}

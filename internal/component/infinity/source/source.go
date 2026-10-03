@@ -227,16 +227,63 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		specs:      specs,
 	}
 
-	c.prom.UpdateChildren(args.ForwardTo.Metrics)
 	c.loki.UpdateChildren(args.ForwardTo.Logs)
 
+	c.mut.Lock()
+	oldGen := c.gen.Load()
+	// Only the outputs from before the reload have the series of a removed
+	// query, so its stale markers go there.
+	oldOutputs := outputs{
+		prom:        c.prom,
+		loki:        c.loki,
+		otelMetrics: c.otelMetrics,
+		otelLogs:    c.otelLogs,
+	}
 	type removedQuery struct {
 		name string
 		qs   *queryState
+		loop *loop
 	}
+	var removed []removedQuery
+	for name, qs := range c.queries {
+		if _, keep := specs[name]; keep {
+			continue
+		}
+		removed = append(removed, removedQuery{name: name, qs: qs, loop: qs.loop})
+		qs.loop = nil
+		delete(c.queries, name)
+	}
+	c.mut.Unlock()
+
+	// Stop each loop before its tracker is read, so no poll changes the
+	// tracker after the read.
+	for _, r := range removed {
+		if r.loop != nil {
+			r.loop.stop()
+		}
+	}
+	for _, r := range removed {
+		r.qs.mut.Lock()
+		stale := r.qs.tracker.all()
+		r.qs.tracker.reset()
+		r.qs.mut.Unlock()
+		// The series came from the old config. When another node owns the
+		// query now, its series are that node's, so do not mark them.
+		if oldGen != nil && oldGen.clustering && !c.owns(r.name) {
+			stale = nil
+		}
+		if len(stale) > 0 {
+			if err := oldOutputs.sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
+				c.opts.Logger.Warn("failed to send stale markers for a removed query", "query", r.name, "err", err)
+			}
+		}
+		c.metrics.deleteQuery(r.name)
+	}
+
+	c.prom.UpdateChildren(args.ForwardTo.Metrics)
+
 	var (
-		toStop  []*loop
-		removed []removedQuery
+		toStop []*loop
 		// toLookUp holds the queries whose owner Update looks up before
 		// their loops start.
 		toLookUp = map[string]*queryState{}
@@ -245,22 +292,10 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.mut.Lock()
 	intervalChanged := c.args.Interval != args.Interval
 	c.args = args
-	oldGen := c.gen.Load()
 	c.gen.Store(gen)
 	c.otelMetrics = args.Output.Metrics
 	c.otelLogs = args.Output.Logs
 
-	for name, qs := range c.queries {
-		if _, keep := specs[name]; keep {
-			continue
-		}
-		if qs.loop != nil {
-			toStop = append(toStop, qs.loop)
-			qs.loop = nil
-		}
-		removed = append(removed, removedQuery{name: name, qs: qs})
-		delete(c.queries, name)
-	}
 	clusteringEnabled := gen.clustering && (oldGen == nil || !oldGen.clustering)
 	for name := range specs {
 		qs, ok := c.queries[name]
@@ -298,24 +333,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	// their random offset, so only a loop that Run already started gets a
 	// kick below.
 	gained := c.refreshOwnership(toLookUp)
-
-	for _, r := range removed {
-		r.qs.mut.Lock()
-		stale := r.qs.tracker.all()
-		r.qs.tracker.reset()
-		r.qs.mut.Unlock()
-		// The series came from the old config. When another node owns the
-		// query now, its series are that node's, so do not mark them.
-		if oldGen != nil && oldGen.clustering && !c.owns(r.name) {
-			stale = nil
-		}
-		if len(stale) > 0 {
-			if err := c.outputs().sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
-				c.opts.Logger.Warn("failed to send stale markers for a removed query", "query", r.name, "err", err)
-			}
-		}
-		c.metrics.deleteQuery(r.name)
-	}
 
 	c.mut.Lock()
 	for _, qs := range gained {
