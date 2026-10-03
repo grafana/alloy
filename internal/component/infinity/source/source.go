@@ -100,6 +100,19 @@ type queryState struct {
 	lastErr error
 }
 
+// release gives up a query that the cluster moved to another node. The
+// caller holds qs.mut.
+func (qs *queryState) release() {
+	if qs.owned {
+		// The new owner takes over. The old series go stale by lookback.
+		qs.tracker.reset()
+		qs.owned = false
+	}
+	// This node does not run the query, so its own health must not
+	// reflect a failure from before it lost ownership.
+	qs.setResult(nil)
+}
+
 func (qs *queryState) setResult(err error) {
 	qs.hmut.Lock()
 	defer qs.hmut.Unlock()
@@ -355,14 +368,7 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 	defer qs.mut.Unlock()
 
 	if g.clustering && !qs.assigned.Load() {
-		if qs.owned {
-			// The new owner takes over. The old series go stale by lookback.
-			qs.tracker.reset()
-			qs.owned = false
-		}
-		// This node does not run the query, so its own health must not
-		// reflect a failure from before it lost ownership.
-		qs.setResult(nil)
+		qs.release()
 		return
 	}
 	qs.owned = true
@@ -379,6 +385,12 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 		}
 	}
 	frame, err := fetchFrame(ctx, g, s, &qs.workers, c.parse)
+	if g.clustering && !qs.assigned.Load() {
+		// The node lost the query during the fetch. The new owner writes
+		// the same series, so this node must not send the result.
+		qs.release()
+		return
+	}
 	err = c.emit(ctx, qs, s, start, frame, err)
 	c.metrics.pollDuration.WithLabelValues(name).Observe(time.Since(start).Seconds())
 	if err != nil {

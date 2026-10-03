@@ -1310,3 +1310,83 @@ func TestUpdateKicksGainedRunningLoop(t *testing.T) {
 	// interval is 10s, so only a kick polls b this soon.
 	require.Eventually(t, func() bool { return parsesB.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
 }
+
+// TestOwnershipLostDuringFetchDropsResult checks that a poll whose node
+// loses the query during a slow fetch sends nothing. The new owner writes
+// the same series, so up=0, stale markers or data from this node would
+// conflict with it.
+func TestOwnershipLostDuringFetchDropsResult(t *testing.T) {
+	tests := map[string]struct {
+		qtype  string
+		format string
+		status int
+		body   string
+	}{
+		"table failure": {qtype: "json", format: formatTable, status: http.StatusInternalServerError},
+		"table success": {qtype: "json", format: formatTable, status: http.StatusOK, body: `[{"v":1}]`},
+		"logs success":  {qtype: "csv", format: formatLogs, status: http.StatusOK, body: "level,body\nerror,disk full\n"},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			var once sync.Once
+			block := make(chan struct{})
+			closeBlock := func() { once.Do(func() { close(block) }) }
+			defer closeBlock()
+			entered := make(chan struct{}, 1)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				select {
+				case entered <- struct{}{}:
+				default:
+				}
+				select {
+				case <-block:
+				case <-r.Context().Done():
+					return
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+
+			cl := newSwitchOwner(false)
+			cfg := fmt.Sprintf(`
+				interval = "2s"
+				timeout  = "2s"
+				clustering {
+					enabled = true
+				}
+				query "q" {
+					type   = %q
+					url    = %q
+					format = %q
+				}`, tc.qtype, srv.URL, tc.format)
+			app := testappender.NewCollectingAppender()
+			recv := loki.NewLogsReceiver()
+			c, err := startComponent(t.Context(), testOptions(t, cl), cfg, testappender.ConstantAppendable{Inner: app}, recv)
+			require.NoError(t, err)
+			select {
+			case <-entered:
+			case <-time.After(3 * time.Second):
+				t.Fatal("handler was never entered")
+			}
+
+			qs := queryStateOf(c, "q")
+			cl.move(true, c)
+			require.Eventually(t, func() bool { return !qs.assigned.Load() }, time.Second, 5*time.Millisecond)
+			closeBlock()
+
+			select {
+			case e := <-recv.Chan():
+				t.Fatalf("a node that lost the query sent a log entry: %q", e.Line)
+			case <-time.After(300 * time.Millisecond):
+			}
+			require.Empty(t, app.CollectedSamples(), "a node that lost the query must send no samples")
+			require.Eventually(t, func() bool {
+				qs.mut.Lock()
+				defer qs.mut.Unlock()
+				return !qs.owned && qs.tracker.len() == 0
+			}, time.Second, 5*time.Millisecond, "the poll must give up the query after the fetch")
+			require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+		})
+	}
+}
