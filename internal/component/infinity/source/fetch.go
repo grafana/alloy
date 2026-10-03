@@ -81,12 +81,14 @@ func redactURLErrors(err error) error {
 
 var (
 	// urlInTextRE matches a URL with a query in error text. Quotes and
-	// spaces end the match, because Go error text quotes URLs.
-	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#]*\?[^\s"'#]*`)
+	// spaces end the match, because Go error text quotes URLs. A backslash
+	// also ends it, so the match never takes the "\" of an escaped quote.
+	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#\\]*\?[^\s"'#\\]*`)
 	// quotedQueryRE matches a quoted token with a "?", for example a
 	// relative redirect Location that has no scheme. scrubURLs checks that
-	// the token looks like a URL before it redacts it.
-	quotedQueryRE = regexp.MustCompile(`"([^"\s]*)\?[^"]*"`)
+	// the token looks like a URL before it redacts it. Go error text
+	// escapes a quote as \", so an escape does not end the token.
+	quotedQueryRE = regexp.MustCompile(`"((?:[^"\\\s]|\\.)*)\?((?:[^"\\]|\\.)*)"`)
 	// userinfoRE matches user info after "//", which can hold a password.
 	userinfoRE = regexp.MustCompile(`//[^/?#\s"'@]+@`)
 )
@@ -104,14 +106,17 @@ func scrubURLs(msg string) string {
 		return redactURL(u.String())
 	})
 	return quotedQueryRE.ReplaceAllStringFunc(msg, func(m string) string {
-		if strings.Contains(m, "://") {
-			// The URL pass above already redacted it.
+		token := m[1 : len(m)-1]
+		if strings.Contains(token, "://") && urlInTextRE.FindString(token) == token {
+			// The URL pass above already redacted all of the query.
 			return m
 		}
 		base, query, _ := strings.Cut(m, "?")
-		// Scrub only a token that looks like a path or a key=value query,
-		// so ordinary text such as "what?" stays readable.
-		if !strings.HasPrefix(base, `"/`) && !strings.Contains(query, "=") {
+		// Scrub only a token that looks like a URL, a path or a key=value
+		// query, so ordinary text such as "what?" stays readable. The URL
+		// pass stops at a space or a quote, so the rest of the query can
+		// still hold a secret.
+		if !strings.Contains(base, "://") && !strings.HasPrefix(base, `"/`) && !strings.Contains(query, "=") {
 			return m
 		}
 		return base + `?REDACTED"`

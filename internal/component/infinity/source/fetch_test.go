@@ -145,6 +145,7 @@ var secretRedirects = map[string]string{
 	"query with scheme":    "https://files.example/%zz?token=supersecret",
 	"query without scheme": "/%zz?token=supersecret",
 	"userinfo":             "https://user:supersecret@files.example/%zz",
+	"query with a space":   "https://files.example/%zz?token=prefix supersecret",
 }
 
 func redirectTo(location string) http.HandlerFunc {
@@ -192,5 +193,28 @@ func TestScrubURLsQuotedTokens(t *testing.T) {
 	}
 	for in, want := range tests {
 		require.Equal(t, want, scrubURLs(in), "input %q", in)
+	}
+}
+
+// TestScrubURLsQuotedQueryWithSpace checks a quoted URL whose query has a
+// space or an escape. The URL pass stops there, so the quoted pass must
+// redact the rest.
+func TestScrubURLsQuotedQueryWithSpace(t *testing.T) {
+	tests := map[string]string{
+		"space":                   `failed to parse Location header "https://files.example/%zz?token=prefix supersecret": bad`,
+		"escaped quote":           `failed to parse Location header "https://files.example/%zz?token=prefix\"supersecret": bad`,
+		"escaped quote and space": `parse "https://files.example/%zz?token=prefix\" supersecret": bad`,
+		"percent-encoded quote":   `parse "https://files.example/%zz?token=prefix%22 supersecret": bad`,
+		"tab":                     `parse "https://files.example/%zz?token=prefix\tsupersecret": bad`,
+		"raw tab":                 "parse \"https://files.example/%zz?token=prefix\tsupersecret\": bad",
+		"no scheme":               `parse "/%zz?token=prefix\" supersecret": bad`,
+	}
+	for name, in := range tests {
+		t.Run(name, func(t *testing.T) {
+			out := scrubURLs(in)
+			require.NotContains(t, out, "supersecret")
+			require.NotContains(t, out, "prefix")
+			require.Contains(t, out, `?REDACTED": bad`)
+		})
 	}
 }
