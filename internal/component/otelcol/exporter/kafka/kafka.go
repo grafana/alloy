@@ -2,6 +2,8 @@
 package kafka
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -299,7 +301,52 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 	kafkaCfg := otelCfg.(*kafkaexporter.Config)
+	if err := validateBatchPartitionMetadataKeys(kafkaCfg); err != nil {
+		return err
+	}
 	return confmap.Validate(kafkaCfg)
+}
+
+func validateBatchPartitionMetadataKeys(cfg *kafkaexporter.Config) error {
+	if !cfg.QueueBatchConfig.HasValue() || !cfg.QueueBatchConfig.Get().Batch.HasValue() {
+		return nil
+	}
+
+	partitionMetadataKeys := cfg.QueueBatchConfig.Get().Batch.Get().Partition.MetadataKeys
+	partitionMetadataKeySet := make(map[string]struct{}, len(partitionMetadataKeys))
+	for _, key := range partitionMetadataKeys {
+		partitionMetadataKeySet[key] = struct{}{}
+	}
+
+	if len(cfg.IncludeMetadataKeys) > 0 {
+		if len(partitionMetadataKeys) == 0 {
+			return errors.New("sending_queue.batch.partition.metadata_keys must be configured when include_metadata_keys is set and batching is enabled")
+		}
+		for _, key := range cfg.IncludeMetadataKeys {
+			if _, ok := partitionMetadataKeySet[key]; !ok {
+				return fmt.Errorf("sending_queue.batch.partition.metadata_keys must include all include_metadata_keys values: missing %q from sending_queue.batch.partition.metadata_keys=%v", key, partitionMetadataKeys)
+			}
+		}
+	}
+
+	for _, signal := range []struct {
+		name   string
+		config kafkaexporter.SignalConfig
+	}{
+		{name: "logs", config: cfg.Logs},
+		{name: "metrics", config: cfg.Metrics},
+		{name: "traces", config: cfg.Traces},
+	} {
+		key := signal.config.MessageKeyFromMetadataKey
+		if key == "" {
+			continue
+		}
+		if _, ok := partitionMetadataKeySet[key]; !ok {
+			return fmt.Errorf("%s.message_key_from_metadata_key: message_key_from_metadata_key must be present in sending_queue.batch.partition.metadata_keys if batching is enabled: %q not found in partition keys=%v", signal.name, key, partitionMetadataKeys)
+		}
+	}
+
+	return nil
 }
 
 // Convert implements exporter.Arguments.
