@@ -146,6 +146,15 @@ var secretRedirects = map[string]string{
 	"query without scheme": "/%zz?token=supersecret",
 	"userinfo":             "https://user:supersecret@files.example/%zz",
 	"query with a space":   "https://files.example/%zz?token=prefix supersecret",
+	// A control character makes a malformed header line, which net/http
+	// reports with the whole line.
+	"malformed line with a backslash": "https://files.example/x?token=prefix\\supersecret\x01",
+	"malformed line with a space":     "https://files.example/x?token=prefix supersecret\x01",
+	"space before the query":          "https://files.example/%zz b?token=supersecret",
+	"relative space before the query": "/rel/%zz b?token=supersecret",
+	"relative token":                  "x/%zz?supersecret more",
+	"password with a space":           "https://user:supersecret x@files.example/%zz",
+	"user with a space":               "https://us er:supersecret@files.example/%zz",
 }
 
 func redirectTo(location string) http.HandlerFunc {
@@ -186,6 +195,7 @@ func TestScrubURLsQuotedTokens(t *testing.T) {
 		`invalid value "what?" for field x`: `invalid value "what?" for field x`,
 		`json: unknown field "a?b"`:         `json: unknown field "a?b"`,
 		`unexpected token "?"`:              `unexpected token "?"`,
+		`unexpected token "what? is this"`:  `unexpected token "what? is this"`,
 		// URL-like tokens lose their query.
 		`parse "/%zz?token=supersecret": bad`:            `parse "/%zz?REDACTED": bad`,
 		`parse "files/x?token=supersecret"`:              `parse "files/x?REDACTED"`,
@@ -217,4 +227,34 @@ func TestScrubURLsQuotedQueryWithSpace(t *testing.T) {
 			require.Contains(t, out, `?REDACTED": bad`)
 		})
 	}
+}
+
+// TestScrubURLsRemainingGaps checks text that the URL pass alone does not
+// fully redact.
+func TestScrubURLsRemainingGaps(t *testing.T) {
+	tests := map[string]string{
+		"unquoted backslash":          `malformed MIME header line: Location: https://files.example/x?token=prefix\supersecret`,
+		"unquoted space":              `malformed MIME header line: Location: https://files.example/x?token=prefix supersecret`,
+		"quoted line":                 `malformed MIME header line: "Location: https://files.example/x?token=prefix\\supersecret\x01"`,
+		"space before query":          `parse "https://files.example/%zz b?token=supersecret": bad`,
+		"relative space before query": `parse "/rel/%zz b?token=supersecret": bad`,
+		"relative token":              `parse "x/%zz?supersecret more": bad`,
+		"password with a space":       `parse "https://user:pa supersecret@files.example/x": bad`,
+		"user with a space":           `parse "https://us er:supersecret@files.example/x": bad`,
+		"unquoted password":           `bad URL https://us er:supersecret@files.example/x`,
+	}
+	for name, in := range tests {
+		t.Run(name, func(t *testing.T) {
+			require.NotContains(t, scrubURLs(in), "supersecret")
+		})
+	}
+}
+
+// TestScrubURLsUnquotedKeepsNextLine checks that the redaction of an
+// unquoted URL ends at the end of its line.
+func TestScrubURLsUnquotedKeepsNextLine(t *testing.T) {
+	in := "bad line: https://files.example/x?token=a supersecret\nnext line"
+	out := scrubURLs(in)
+	require.NotContains(t, out, "supersecret")
+	require.Contains(t, out, "\nnext line")
 }

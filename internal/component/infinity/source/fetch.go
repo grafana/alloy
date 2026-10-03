@@ -82,32 +82,28 @@ func redactURLErrors(err error) error {
 var (
 	// urlInTextRE matches a URL with a query in error text. Quotes and
 	// spaces end the match, because Go error text quotes URLs. A backslash
-	// also ends it, so the match never takes the "\" of an escaped quote.
-	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://[^\s"'?#\\]*\?[^\s"'#\\]*`)
+	// before a quote also ends it, so the match never takes the "\" of an
+	// escaped quote.
+	urlInTextRE = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.-]*://(?:[^\s"'?#\\]|\\[^"\s])*\?(?:[^\s"'#\\]|\\[^"\s])*`)
 	// quotedQueryRE matches a quoted token with a "?", for example a
 	// relative redirect Location that has no scheme. scrubURLs checks that
 	// the token looks like a URL before it redacts it. Go error text
 	// escapes a quote as \", so an escape does not end the token.
-	quotedQueryRE = regexp.MustCompile(`"((?:[^"\\\s]|\\.)*)\?((?:[^"\\]|\\.)*)"`)
+	quotedQueryRE = regexp.MustCompile(`"((?:[^"\\]|\\.)*)\?((?:[^"\\]|\\.)*)"`)
 	// userinfoRE matches user info after "//", which can hold a password.
-	userinfoRE = regexp.MustCompile(`//[^/?#\s"'@]+@`)
+	// A bad URL can have a space in its user info, so only a quote, a line
+	// end or a URL delimiter ends the match.
+	userinfoRE = regexp.MustCompile(`//[^/?#"'@\n]+@`)
 )
 
 // scrubURLs removes user info and redacts each query in msg. A URL that
 // parses keeps its param names. Any other query loses its whole text.
 func scrubURLs(msg string) string {
 	msg = userinfoRE.ReplaceAllString(msg, "//")
-	msg = urlInTextRE.ReplaceAllStringFunc(msg, func(m string) string {
-		u, err := url.Parse(m)
-		if err != nil {
-			base, _, _ := strings.Cut(m, "?")
-			return base + "?REDACTED"
-		}
-		return redactURL(u.String())
-	})
+	msg = redactURLsInText(msg)
 	return quotedQueryRE.ReplaceAllStringFunc(msg, func(m string) string {
 		token := m[1 : len(m)-1]
-		if strings.Contains(token, "://") && urlInTextRE.FindString(token) == token {
+		if loc := urlInTextRE.FindStringIndex(token); loc != nil && loc[1] == len(token) && strings.IndexByte(token, '?') > loc[0] {
 			// The URL pass above already redacted all of the query.
 			return m
 		}
@@ -116,11 +112,59 @@ func scrubURLs(msg string) string {
 		// query, so ordinary text such as "what?" stays readable. The URL
 		// pass stops at a space or a quote, so the rest of the query can
 		// still hold a secret.
-		if !strings.Contains(base, "://") && !strings.HasPrefix(base, `"/`) && !strings.Contains(query, "=") {
+		if !strings.Contains(base, "/") && !strings.Contains(query, "=") {
 			return m
 		}
 		return base + `?REDACTED"`
 	})
+}
+
+// redactURLsInText redacts the query of each URL in msg. The quoted pass
+// in scrubURLs covers the rest of a quoted URL. An unquoted URL has no end
+// mark, so text after a space can still be part of its query. Thus an
+// unquoted URL loses the rest of its line.
+func redactURLsInText(msg string) string {
+	var b strings.Builder
+	last := 0
+	for _, loc := range urlInTextRE.FindAllStringIndex(msg, -1) {
+		start, end := loc[0], loc[1]
+		if start < last {
+			continue
+		}
+		m := msg[start:end]
+		b.WriteString(msg[last:start])
+		if end < len(msg) && (msg[end] == ' ' || msg[end] == '\t') && !insideQuotes(msg, start) {
+			base, _, _ := strings.Cut(m, "?")
+			b.WriteString(base + "?REDACTED")
+			if nl := strings.IndexByte(msg[end:], '\n'); nl >= 0 {
+				end += nl
+			} else {
+				end = len(msg)
+			}
+		} else if u, err := url.Parse(m); err != nil {
+			base, _, _ := strings.Cut(m, "?")
+			b.WriteString(base + "?REDACTED")
+		} else {
+			b.WriteString(redactURL(u.String()))
+		}
+		last = end
+	}
+	b.WriteString(msg[last:])
+	return b.String()
+}
+
+// insideQuotes tells if pos is inside a Go-quoted string on its line.
+func insideQuotes(msg string, pos int) bool {
+	in := false
+	for i := strings.LastIndexByte(msg[:pos], '\n') + 1; i < pos; i++ {
+		switch {
+		case in && msg[i] == '\\':
+			i++
+		case msg[i] == '"':
+			in = !in
+		}
+	}
+	return in
 }
 
 // redactedError has a message without secrets. Unwrap keeps errors.Is
