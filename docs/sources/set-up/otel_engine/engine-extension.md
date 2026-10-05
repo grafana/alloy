@@ -11,7 +11,7 @@ weight: 200
 
 You can run the {{< param "OTEL_ENGINE" >}} and the {{< param "DEFAULT_ENGINE" >}} in the same process.
 Add the `alloyengine` extension to your OpenTelemetry Collector configuration to start a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
-The two pipelines run in parallel and can't exchange data with each other.
+The two engines run in parallel and can't exchange data with each other. If required, they can still communicate over the network via components like the OTLP exporter and receiver
 
 Set exactly one of `config.path` or `config.inline.content`.
 The extension fails to start if you set both or neither.
