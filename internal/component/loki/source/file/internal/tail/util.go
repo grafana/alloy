@@ -3,17 +3,15 @@ package tail
 import (
 	"bytes"
 	"io"
-	"os"
 )
 
-// lastNewline returns the offset of the start of the last line in the file.
-func lastNewline(file *os.File, nl []byte) (int64, error) {
-	fi, err := file.Stat()
+// lastNewline returns the offset of the start of the last line in the reader.
+func lastNewline(reader io.ReadSeeker, nl []byte) (int64, error) {
+	n, err := reader.Seek(0, io.SeekEnd)
 	if err != nil {
 		return 0, err
 	}
 
-	n := fi.Size()
 	if n == 0 {
 		return 0, nil
 	}
@@ -27,12 +25,12 @@ func lastNewline(file *os.File, nl []byte) (int64, error) {
 	}
 
 	for {
-		_, err = file.Seek(pos, io.SeekStart)
+		_, err = reader.Seek(pos, io.SeekStart)
 		if err != nil {
 			return 0, err
 		}
 
-		bytesRead, err := file.Read(buf)
+		bytesRead, err := reader.Read(buf)
 		if err != nil {
 			return 0, err
 		}

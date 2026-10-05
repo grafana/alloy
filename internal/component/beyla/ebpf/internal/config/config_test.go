@@ -213,6 +213,21 @@ func TestYAMLGeneration_InjectorEnabledSDKs(t *testing.T) {
 	require.Equal(t, "http://alloy:4318", injector["exporter_otlp_endpoint"])
 }
 
+func TestYAMLGeneration_ExemplarFilterDefault(t *testing.T) {
+	// Beyla logs a warning when exemplar_filter is empty, so Alloy must always
+	// emit an explicit value. Unset means the documented default, always_off.
+	config := buildYAML(t, Arguments{}, Runtime{Port: 12345})
+
+	prom, ok := config["prometheus_export"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "always_off", prom["exemplar_filter"])
+
+	// An explicit value is passed through unchanged.
+	config = buildYAML(t, Arguments{Metrics: Metrics{ExemplarFilter: "trace_based"}}, Runtime{Port: 12345})
+	prom = config["prometheus_export"].(map[string]any)
+	require.Equal(t, "trace_based", prom["exemplar_filter"])
+}
+
 func TestYAMLGeneration_InternalMetricsDefault(t *testing.T) {
 	// With nothing configured, Beyla's beyla_internal_* metrics must still be
 	// exposed on the scraped /metrics endpoint (parity with in-process Beyla).
