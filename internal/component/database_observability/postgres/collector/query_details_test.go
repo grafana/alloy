@@ -584,6 +584,41 @@ func TestQueryDetails_EscapesQuotedTableName(t *testing.T) {
 	require.Equal(t, `example_schema."orders"`, parseLogfmt(t, entries[1].Line)["table"])
 }
 
+func TestQueryDetails_EscapesDatabaseName(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	databaseName := "example\"db\\path\nnext"
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry:   NewTableRegistry(),
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", `SELECT * FROM example_schema."orders"`, databaseName))
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+	require.Equal(t, databaseName, parseLogfmt(t, entries[0].Line)["datname"])
+	require.Equal(t, databaseName, parseLogfmt(t, entries[1].Line)["datname"])
+}
+
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80

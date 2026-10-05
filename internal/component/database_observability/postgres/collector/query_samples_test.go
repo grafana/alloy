@@ -1770,3 +1770,39 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildQuerySampleLabelsWithEndEscapesLogfmtValues(t *testing.T) {
+	queryText := "SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"
+	state := &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName:    sql.NullString{String: `test"db`, Valid: true},
+			Username:        sql.NullString{String: "test\\user", Valid: true},
+			ApplicationName: sql.NullString{String: "line one\nline two", Valid: true},
+			BackendType:     sql.NullString{String: "client backend", Valid: true},
+			State:           sql.NullString{String: "active", Valid: true},
+			Query:           sql.NullString{String: queryText, Valid: true},
+			Now:             time.Now(),
+		},
+	}
+	collector := &QuerySamples{disableQueryRedaction: true}
+
+	require.Equal(t, `datname="test\"db" pid="0" leader_pid="" user="test\\user" app="line one\nline two" client="" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="" query_time="" queryid="0" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"`, collector.buildQuerySampleLabelsWithEnd(state, sql.NullTime{}))
+}
+
+func TestQuerySamples_EscapesWaitEventStrings(t *testing.T) {
+	value := "example\"name\\path\nnext"
+	state := &SampleState{LastRow: QuerySamplesInfo{
+		DatabaseName: sql.NullString{String: value, Valid: true},
+		Username:     sql.NullString{String: value, Valid: true},
+	}}
+	wait := WaitEventOccurrence{WaitEventType: value, WaitEvent: value}
+	collector := &QuerySamples{}
+	fields := parseLogfmt(t, collector.buildWaitEventLabels(state, wait, "1ms"))
+	require.Equal(t, value, fields["datname"])
+	require.Equal(t, value, fields["user"])
+	require.Equal(t, value, fields["wait_event"])
+	require.Equal(t, value+":"+value, fields["wait_event_name"])
+	fieldsV2 := parseLogfmt(t, collector.buildWaitEventV2Labels(state, wait, "1ms"))
+	require.Equal(t, value, fieldsV2["datname"])
+	require.Equal(t, value, fieldsV2["wait_event"])
+}

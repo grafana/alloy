@@ -545,7 +545,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
+		`datname=%q pid="%d" leader_pid=%q user=%q app=%q client=%q backend_type=%q state=%q xid="%d" xmin="%d" xact_time=%q query_time=%q queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -561,10 +561,10 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		state.LastRow.QueryID.Int64,
 	)
 	if state.LastCpuTime != "" {
-		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+		labels = fmt.Sprintf(`%s cpu_time=%q`, labels, state.LastCpuTime)
 	}
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
-		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+		labels = fmt.Sprintf(`%s query=%q`, labels, state.LastRow.Query.String)
 	}
 
 	if state.LastRow.Query.Valid {
@@ -584,7 +584,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		`datname=%q pid="%d" leader_pid=%q user=%q backend_type=%q state=%q xid="%d" xmin="%d" wait_time=%q wait_event_type=%q wait_event=%q wait_event_name=%q blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,
@@ -649,7 +649,7 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		`datname=%q pid="%d" leader_pid=%q user=%q backend_type=%q state=%q xid="%d" xmin="%d" wait_time=%q wait_event_type=%q wait_event=%q wait_event_name=%q blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
 		leaderPID,

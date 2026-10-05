@@ -346,7 +346,7 @@ func (c *ExplainPlans) emit(
 	}
 
 	logMessage := fmt.Sprintf(
-		`database="%s" query_hash="%s" explain_plan_output="%s"`,
+		`database=%q query_hash=%q explain_plan_output=%q`,
 		database,
 		queryHash,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),

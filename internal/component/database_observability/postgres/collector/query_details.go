@@ -178,9 +178,9 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		var body string
 		if fp != "" {
-			body = fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName)
+			body = fmt.Sprintf(`queryid=%q query_fingerprint=%q querytext=%q datname=%q`, queryID, fp, queryText, databaseName)
 		} else {
-			body = fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
+			body = fmt.Sprintf(`queryid=%q querytext=%q datname=%q`, queryID, queryText, databaseName)
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,

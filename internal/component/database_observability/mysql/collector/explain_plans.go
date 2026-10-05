@@ -493,7 +493,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		`schema=%q digest=%q explain_plan_output=%q`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
