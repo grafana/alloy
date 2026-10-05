@@ -204,7 +204,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				database_observability.OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
+				fmt.Sprintf(`queryid=%q datname=%q table=%q validated="%t"`, queryID, databaseName, resolvedTable, validated),
 			)
 		}
 	}

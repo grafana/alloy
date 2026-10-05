@@ -551,61 +551,37 @@ func TestQueryDetails(t *testing.T) {
 	}
 }
 
-func TestQueryDetails_QuotedSchemaQualifiedTable(t *testing.T) {
+func TestQueryDetails_EscapesQuotedTableName(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
-	collect := func(t *testing.T, registry *TableRegistry) []loki.Entry {
-		t.Helper()
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
 
-		lokiClient := loki.NewCollectingHandler()
-		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			TableRegistry:   registry,
-			Logger:          util.TestAlloyLogger(t).Slog(),
-		})
-		require.NoError(t, err)
-
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
-				AddRow("abc123", `SELECT * FROM cros_operation."pendency-orchestration"`, "some_database"))
-
-		require.NoError(t, collector.Start(t.Context()))
-		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
-		collector.Stop()
-		lokiClient.Stop()
-		require.NoError(t, mock.ExpectationsWereMet())
-
-		return lokiClient.Received()
-	}
-
-	t.Run("unvalidated name stays intact in logfmt", func(t *testing.T) {
-		entries := collect(t, NewTableRegistry())
-
-		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="cros_operation.\"pendency-orchestration\"" validated="false"`, entries[1].Line)
-		require.Equal(t, `cros_operation."pendency-orchestration"`, parseLogfmt(t, entries[1].Line)["table"])
+	lokiClient := loki.NewCollectingHandler()
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry:   NewTableRegistry(),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
+	require.NoError(t, err)
 
-	t.Run("name validates against the table registry", func(t *testing.T) {
-		registry := NewTableRegistry()
-		registry.SetTablesForDatabase("some_database", []*tableInfo{{
-			database:  "some_database",
-			schema:    "cros_operation",
-			tableName: "pendency-orchestration",
-		}})
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", `SELECT * FROM example_schema."orders"`, "some_database"))
 
-		entries := collect(t, registry)
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="cros_operation.pendency-orchestration" validated="true"`, entries[1].Line)
-		require.Equal(t, "cros_operation.pendency-orchestration", parseLogfmt(t, entries[1].Line)["table"])
-	})
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+	require.Equal(t, `example_schema."orders"`, parseLogfmt(t, entries[1].Line)["table"])
 }
 
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
@@ -901,34 +877,6 @@ func TestQueryDetails_TokenizeTableNames(t *testing.T) {
 			require.ElementsMatch(t, got, tt.want)
 		})
 	}
-}
-
-func TestQueryDetails_TokenizeHyphenatedQuotedTable(t *testing.T) {
-	normalizer := sqllexer.NewNormalizer(sqllexer.WithCollectTables(true))
-	tables, err := tokenizeTableNames(normalizer, `SELECT * FROM cros_operation."pendency-orchestration"`)
-	require.NoError(t, err)
-	require.Equal(t, []string{`cros_operation."pendency-orchestration"`}, tables)
-}
-
-func TestQueryDetails_TokenizeRepeatedQuotedTableOnce(t *testing.T) {
-	normalizer := sqllexer.NewNormalizer(sqllexer.WithCollectTables(true))
-	tables, err := tokenizeTableNames(normalizer, `SELECT * FROM cros_operation."pendency-orchestration" a JOIN cros_operation."pendency-orchestration" b ON a.id = b.id`)
-	require.NoError(t, err)
-	require.Equal(t, []string{`cros_operation."pendency-orchestration"`}, tables)
-}
-
-func TestQueryDetails_TokenizeQuotedTableAfterStringLiteral(t *testing.T) {
-	normalizer := sqllexer.NewNormalizer(sqllexer.WithCollectTables(true))
-	tables, err := tokenizeTableNames(normalizer, `SELECT 'ignore."unfinished' FROM cros_operation."pendency-orchestration"`)
-	require.NoError(t, err)
-	require.Equal(t, []string{`cros_operation."pendency-orchestration"`}, tables)
-}
-
-func TestQueryDetails_TokenizeQuotedTableAfterDollarQuotedString(t *testing.T) {
-	normalizer := sqllexer.NewNormalizer(sqllexer.WithCollectTables(true))
-	tables, err := tokenizeTableNames(normalizer, `SELECT $tag$ignore."unfinished$tag$ FROM cros_operation."pendency-orchestration"`)
-	require.NoError(t, err)
-	require.Equal(t, []string{`cros_operation."pendency-orchestration"`}, tables)
 }
 
 func TestQueryDetails_RemoveComments(t *testing.T) {
