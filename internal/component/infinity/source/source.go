@@ -73,7 +73,9 @@ type parseFunc func(querySpec, []byte) (*data.Frame, error)
 // generation holds the settings of one config load. It never changes, so
 // a poll that loads it sees a client and specs from the same load.
 type generation struct {
-	client     *http.Client
+	client *http.Client
+	// proxyURL is the configured proxy_url, or empty. Error messages name it.
+	proxyURL   string
 	timeout    time.Duration
 	maxSize    int64
 	clustering bool
@@ -219,8 +221,13 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		}
 		specs[q.Name] = spec
 	}
+	var proxyURL string
+	if p := args.Client.ProxyConfig; p != nil && p.ProxyURL.URL != nil {
+		proxyURL = p.ProxyURL.String()
+	}
 	gen := &generation{
 		client:     client,
+		proxyURL:   proxyURL,
 		timeout:    args.Timeout,
 		maxSize:    int64(args.MaxResponseSize),
 		clustering: args.Clustering.Enabled,
@@ -616,7 +623,7 @@ func fetchAndBuild(ctx context.Context, g *generation, s querySpec, parse parseF
 		if err != nil {
 			return nil, &pollError{reason: reasonRequest, msg: fmt.Sprintf("could not build the request for %s", redactURL(s.url)), err: redactErr(err)}
 		}
-		body, err = fetch(g.client, req, requestTarget{rawURL: s.url, timeout: g.timeout}, g.maxSize)
+		body, err = fetch(g.client, req, requestTarget{rawURL: s.url, proxyURL: g.proxyURL, timeout: g.timeout}, g.maxSize)
 		if err != nil {
 			return nil, err
 		}

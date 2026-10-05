@@ -102,3 +102,11 @@ func (r *logRecorder) at(level slog.Level) []string {
 	defer r.mu.Unlock()
 	return append([]string(nil), r.lines[level]...)
 }
+
+// failingConsumer rejects every batch with an error that holds secret text,
+// like an exporter that returns a remote server's answer.
+type failingConsumer struct{ testConsumer }
+
+func (*failingConsumer) ConsumeMetrics(context.Context, pmetric.Metrics) error {
+	return fmt.Errorf(`remote: Post "https://r.example/push?key=supersecret": 401 supersecret`)
+}

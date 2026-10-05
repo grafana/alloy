@@ -86,20 +86,29 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 	return req, nil
 }
 
-// redactURL removes user info and hides every query param value. Query
-// params often hold API keys.
+// redactURL removes user info and the fragment, and hides every query param
+// value. Query params often hold API keys. A param without "=" can be a bare
+// secret, so its whole text goes.
 func redactURL(raw string) string {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return "<invalid url>"
 	}
 	u.User = nil
+	u.Fragment, u.RawFragment = "", ""
 	if u.RawQuery != "" {
-		q := u.Query()
-		for k := range q {
-			q[k] = []string{"REDACTED"}
+		var parts []string
+		for _, seg := range strings.Split(u.RawQuery, "&") {
+			if seg == "" {
+				continue
+			}
+			if name, _, ok := strings.Cut(seg, "="); ok {
+				parts = append(parts, name+"=REDACTED")
+			} else {
+				parts = append(parts, "REDACTED")
+			}
 		}
-		u.RawQuery = q.Encode()
+		u.RawQuery = strings.Join(parts, "&")
 	}
 	return u.String()
 }

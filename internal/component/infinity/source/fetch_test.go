@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,8 +15,12 @@ import (
 	"time"
 
 	"github.com/prometheus/common/config"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 func serve(h http.HandlerFunc) *httptest.Server {
@@ -342,6 +347,34 @@ func TestFetchFrameErrorMessages(t *testing.T) {
 			return "http://" + addr + "/api?api_key=supersecret", http.DefaultClient,
 				"connection to http://" + addr + "/api?api_key=REDACTED was refused", err
 		},
+		"configured param without a value": func(*testing.T) (string, *http.Client, string, error) {
+			addr, err := closedAddr()
+			return "http://" + addr + "/api?supersecret", http.DefaultClient,
+				"connection to http://" + addr + "/api?REDACTED was refused", err
+		},
+		"configured fragment": func(*testing.T) (string, *http.Client, string, error) {
+			addr, err := closedAddr()
+			return "http://" + addr + "/api#access_token=supersecret", http.DefaultClient,
+				"connection to http://" + addr + "/api was refused", err
+		},
+		"malformed header that is not Location": func(t *testing.T) (string, *http.Client, string, error) {
+			srv := serve(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("X-Bad", "a\x01b")
+				w.WriteHeader(http.StatusOK)
+			})
+			t.Cleanup(srv.Close)
+			return srv.URL + "/api?api_key=supersecret", http.DefaultClient,
+				"request to " + srv.URL + "/api?api_key=REDACTED failed", nil
+		},
+		"OAuth2 error with a success status": func(t *testing.T) (string, *http.Client, string, error) {
+			tokenSrv := serve(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"supersecret"}`))
+			})
+			t.Cleanup(tokenSrv.Close)
+			client, err := oauthClient(tokenSrv.URL + "/token")
+			return "http://example.com/api?api_key=supersecret", client, "OAuth2 token request failed", err
+		},
 		"DNS lookup": func(*testing.T) (string, *http.Client, string, error) {
 			return "http://user:supersecret@nothing.invalid/api?api_key=supersecret", http.DefaultClient,
 				"DNS lookup for nothing.invalid failed", nil
@@ -410,6 +443,49 @@ func TestFetchFrameErrorMessages(t *testing.T) {
 			require.Equal(t, want, err.Error())
 			require.Equal(t, reasonRequest, reasonOf(err))
 		})
+	}
+}
+
+// TestProxyErrorMessages checks that a failed proxy connection names the
+// proxy, not the API host.
+func TestProxyErrorMessages(t *testing.T) {
+	refusing, err := closedAddr()
+	require.NoError(t, err)
+	proxies := map[string]string{
+		"unresolvable proxy": "http://user:supersecret@proxy.invalid:3128",
+		"refusing proxy":     "http://" + refusing,
+	}
+	for name, proxy := range proxies {
+		for _, scheme := range []string{"http", "https"} {
+			t.Run(name+" "+scheme, func(t *testing.T) {
+				args, err := parse(fmt.Sprintf(`
+					interval = "1s"
+					timeout  = "500ms"
+					client {
+						proxy_url = %q
+					}
+					query "q" {
+						url = %q
+					}`, proxy, scheme+"://api.example/x?api_key=supersecret"))
+				require.NoError(t, err)
+				args.Output.Metrics = []otelcol.Consumer{&testConsumer{}}
+				logs := newLogRecorder()
+				opts := testOptions(t, cluster.Mock())
+				opts.Logger = slog.New(logs)
+				c, err := New(opts, args)
+				require.NoError(t, err)
+				cancel, _ := runComponent(t.Context(), c)
+				defer cancel()
+
+				want := `query "q" failed: connection to the proxy ` + redactURL(proxy) + ` failed`
+				require.EventuallyWithT(t, func(ct *assert.CollectT) {
+					assert.Equal(ct, want, c.CurrentHealth().Message)
+				}, 3*time.Second, 20*time.Millisecond)
+				for _, line := range logs.at(slog.LevelWarn) {
+					require.NotContains(t, line, "supersecret")
+				}
+			})
+		}
 	}
 }
 

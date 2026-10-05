@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1568,4 +1569,38 @@ func TestUpdateIntervalAndRemovalMarksOldOutputs(t *testing.T) {
 		points, _ := newOut.otel.pointsFor("other")
 		return points > 0
 	}, 2*time.Second, 10*time.Millisecond, "the new query must send to the new OTel output")
+}
+
+// TestSendFailureWarnsHideReceiverText checks the warn lines of a failed send
+// for a poll and for stale markers. A receiver error can hold remote text,
+// so these lines must hold only the fixed message.
+func TestSendFailureWarnsHideReceiverText(t *testing.T) {
+	h := &switchable{}
+	h.body.Store(`[{"v":1}]`)
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+
+	args, err := parse(queryConfig(srv.URL))
+	require.NoError(t, err)
+	args.Output.Metrics = []otelcol.Consumer{&failingConsumer{}}
+	logs := newLogRecorder()
+	opts := testOptions(t, cluster.Mock())
+	opts.Logger = slog.New(logs)
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	const pollLine = `poll failed query="q" reason="emit" err="could not send the result to the outputs"`
+	require.Eventually(t, func() bool { return slices.Contains(logs.at(slog.LevelWarn), pollLine) }, 2*time.Second, 10*time.Millisecond)
+
+	// A failed fetch sends up = 0 with stale markers, which also fails.
+	h.status.Store(http.StatusServiceUnavailable)
+	const staleLine = `failed to send stale markers query="q" err="could not send the result to the outputs"`
+	require.Eventually(t, func() bool { return slices.Contains(logs.at(slog.LevelWarn), staleLine) }, 2*time.Second, 10*time.Millisecond)
+
+	for _, line := range logs.at(slog.LevelWarn) {
+		require.NotContains(t, line, "supersecret")
+		require.NotContains(t, line, "r.example")
+	}
 }

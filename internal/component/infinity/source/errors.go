@@ -107,8 +107,10 @@ func reasonOf(err error) string {
 // requestTarget names a request in error messages. It holds only values
 // from the config.
 type requestTarget struct {
-	rawURL  string
-	timeout time.Duration
+	rawURL string
+	// proxyURL is the configured proxy_url, or empty.
+	proxyURL string
+	timeout  time.Duration
 }
 
 // Error text prefixes of net/http redirect failures. net/http has no typed
@@ -116,8 +118,11 @@ type requestTarget struct {
 var redirectErrPrefixes = []string{
 	"stopped after ",
 	"failed to parse Location header",
-	"net/http: HTTP/1.x transport connection broken: malformed MIME header",
 }
+
+// malformedHeaderPrefix starts the net/http error for a bad response header.
+// It is a redirect error only when the bad header is Location.
+const malformedHeaderPrefix = "net/http: HTTP/1.x transport connection broken: malformed MIME header"
 
 // requestError classifies an error from client.Do. The message never holds
 // the text of err, because that text can hold a redirect Location or an
@@ -138,7 +143,9 @@ func requestError(err error, req requestTarget, sent string) error {
 
 	var retrieveErr *oauth2.RetrieveError
 	if errors.As(err, &retrieveErr) {
-		if retrieveErr.Response != nil {
+		// A token endpoint can also send an error with a success status, and
+		// that status tells the user nothing.
+		if retrieveErr.Response != nil && retrieveErr.Response.StatusCode >= 400 {
 			return pe(reasonRequest, "OAuth2 token request failed with status %d", retrieveErr.Response.StatusCode)
 		}
 		return pe(reasonRequest, "OAuth2 token request failed")
@@ -153,6 +160,15 @@ func requestError(err error, req requestTarget, sent string) error {
 	}
 	if isRedirectError(ue.Err) {
 		return pe(reasonRequest, "invalid redirect from %s", target)
+	}
+	// net/http names the proxy dial "proxyconnect". Without this check the
+	// network checks below name the API host for a proxy failure.
+	var opErr *net.OpError
+	if errors.As(err, &opErr) && opErr.Op == "proxyconnect" {
+		if req.proxyURL != "" {
+			return pe(reasonRequest, "connection to the proxy %s failed", redactURL(req.proxyURL))
+		}
+		return pe(reasonRequest, "connection to the proxy failed")
 	}
 	// After a redirect, a network error is about the server that the
 	// Location names, not about the configured URL.
@@ -187,7 +203,13 @@ func isRedirectError(err error) bool {
 			return true
 		}
 	}
-	return false
+	rest, ok := strings.CutPrefix(text, malformedHeaderPrefix)
+	if !ok {
+		return false
+	}
+	// net/http quotes the bad header line after the prefix.
+	_, line, _ := strings.Cut(rest, `"`)
+	return strings.HasPrefix(strings.ToLower(line), "location:")
 }
 
 func isTLSError(err error) bool {

@@ -131,6 +131,11 @@ func TestRedactURL(t *testing.T) {
 		"http://example.com/api?key=abc&page=2":     "http://example.com/api?key=REDACTED&page=REDACTED",
 		"https://user:pass@example.com/api?token=x": "https://example.com/api?token=REDACTED", // trufflehog:ignore
 		"::not a url": "<invalid url>",
+		// A param without "=" can be a bare secret, so its whole text goes.
+		"http://example.com/api?supersecret":              "http://example.com/api?REDACTED",
+		"http://example.com/api?key=abc&supersecret&b=2":  "http://example.com/api?key=REDACTED&REDACTED&b=REDACTED",
+		"http://example.com/api#access_token=supersecret": "http://example.com/api",
+		"http://example.com/api?a=1#frag":                 "http://example.com/api?a=REDACTED",
 	}
 	for in, want := range tests {
 		require.Equal(t, want, redactURL(in), in)
