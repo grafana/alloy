@@ -42,7 +42,6 @@ type tailer struct {
 	relabelConfig     []*relabel.Config
 	metrics           *metrics
 	restartInterval   time.Duration
-	requestTimeout    time.Duration
 	componentStopping func() bool
 
 	client client.APIClient
@@ -61,7 +60,7 @@ type tailer struct {
 // newTailer starts a new tailer to read logs from a given container ID.
 func newTailer(
 	metrics *metrics, logger *slog.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
-	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval, requestTimeout time.Duration,
+	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
 	componentStopping func() bool,
 ) (*tailer, error) {
 
@@ -84,7 +83,6 @@ func newTailer(
 		metrics:           metrics,
 		client:            client,
 		restartInterval:   restartInterval,
-		requestTimeout:    requestTimeout,
 		componentStopping: componentStopping,
 	}, nil
 }
@@ -94,14 +92,12 @@ func (t *tailer) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// start on initial call to Run.
-	t.startIfNotRunning()
+	t.startIfNotRunning(ctx)
 
 	for {
 		select {
 		case <-ticker.C:
-			inspectCtx, cancel := context.WithTimeout(ctx, t.requestTimeout)
-			res, err := t.client.ContainerInspect(inspectCtx, t.containerID, client.ContainerInspectOptions{})
-			cancel()
+			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 			if err != nil {
 				if cerrdefs.IsNotFound(err) {
 					t.logger.Info("container no longer exists, stopping tailer", "id", t.containerID)
@@ -121,7 +117,7 @@ func (t *tailer) Run(ctx context.Context) {
 			}
 
 			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
-				t.startIfNotRunning()
+				t.startIfNotRunning(ctx)
 			}
 		case <-ctx.Done():
 			t.stop()
@@ -131,23 +127,25 @@ func (t *tailer) Run(ctx context.Context) {
 }
 
 // startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
-func (t *tailer) startIfNotRunning() {
+// Requests to the Docker daemon, and the processing started here, end when ctx is canceled.
+func (t *tailer) startIfNotRunning(ctx context.Context) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if !t.running {
 		t.logger.Debug("starting process loop", "container", t.containerID)
 
-		ctx := context.Background()
-		inspectCtx, cancelInspect := context.WithTimeout(ctx, t.requestTimeout)
-		info, err := t.client.ContainerInspect(inspectCtx, t.containerID, client.ContainerInspectOptions{})
-		cancelInspect()
+		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
 
+		ctx, cancel := context.WithCancel(ctx)
 		reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
@@ -156,12 +154,15 @@ func (t *tailer) startIfNotRunning() {
 			Since:      strconv.FormatInt(t.since.Load(), 10),
 		})
 		if err != nil {
+			cancel()
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			t.logger.Error("could not fetch logs for container", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
 
-		ctx, cancel := context.WithCancel(ctx)
 		t.cancel = cancel
 		t.running = true
 		// processLoop will start 3 goroutines that we need to wait for if Stop is called.

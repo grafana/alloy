@@ -64,7 +64,6 @@ func TestTailer(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
-		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -137,12 +136,11 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		restartInterval,
-		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
 
-	tgt.startIfNotRunning()
+	tgt.startIfNotRunning(t.Context())
 
 	// Stress test the concurrency of StartIfNotRunning and Stop
 	wg := sync.WaitGroup{}
@@ -150,7 +148,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tgt.startIfNotRunning()
+			tgt.startIfNotRunning(t.Context())
 		}()
 
 		wg.Add(1)
@@ -510,7 +508,6 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 		[]*relabel.Config{},
 		client,
 		restartInterval,
-		time.Minute,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -601,7 +598,6 @@ func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
 
 	args := GetDefaultArguments()
 	args.Host = server.URL
-	args.RefreshInterval = 100 * time.Millisecond
 
 	cli, err := newClient(args)
 	require.NoError(t, err)
@@ -610,15 +606,15 @@ func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
 	require.NoError(t, err)
 	defer logs.Close()
 
-	// Keep the stream open for several refresh intervals before ending it.
-	time.AfterFunc(5*args.RefreshInterval, func() { close(release) })
+	// Keep the stream open for a while before ending it.
+	time.AfterFunc(500*time.Millisecond, func() { close(release) })
 
 	body, err := io.ReadAll(logs)
 	require.NoError(t, err)
 	require.Equal(t, "done", string(body))
 }
 
-func TestTailerInspectIsBoundedByRequestTimeout(t *testing.T) {
+func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
 	release := make(chan struct{})
 	server := newStallingDockerServer(release)
 	defer server.Close()
@@ -626,29 +622,31 @@ func TestTailerInspectIsBoundedByRequestTimeout(t *testing.T) {
 
 	args := GetDefaultArguments()
 	args.Host = server.URL
-	args.RefreshInterval = 100 * time.Millisecond
 
 	cli, err := newClient(args)
 	require.NoError(t, err)
 
 	tailer, _ := setupTailer(t, clientMock{})
 	tailer.client = cli
-	tailer.requestTimeout = args.RefreshInterval
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	time.AfterFunc(100*time.Millisecond, cancel)
 
 	done := make(chan struct{})
 	go func() {
-		tailer.startIfNotRunning()
+		tailer.startIfNotRunning(ctx)
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
-		t.Fatal("startIfNotRunning did not return while container inspect was stalled")
+		t.Fatal("startIfNotRunning did not return after its context was canceled")
 	}
 
 	tailer.mu.Lock()
 	defer tailer.mu.Unlock()
 	require.False(t, tailer.running)
-	require.ErrorIs(t, tailer.err, context.DeadlineExceeded)
+	require.NoError(t, tailer.err, "a canceled start is a normal stop, not an error")
 }
