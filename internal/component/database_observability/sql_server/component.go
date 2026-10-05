@@ -189,6 +189,9 @@ var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
 	if len(a.Databases) == 0 {
+		if a.DataSourceName == "" {
+			return fmt.Errorf("one of data_source_name or database_instance blocks must be set")
+		}
 		if _, err := msdsn.Parse(string(a.DataSourceName)); err != nil {
 			return err
 		}

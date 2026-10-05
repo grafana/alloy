@@ -515,6 +515,23 @@ func TestValidateDatabaseInstance(t *testing.T) {
 		require.NoError(t, args.Validate())
 	})
 
+	t.Run("neither data_source_name nor database_instance blocks is rejected", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		`
+		var args Arguments
+		require.ErrorContains(t, syntax.Unmarshal([]byte(cfg), &args), "one of data_source_name or database_instance blocks must be set")
+	})
+
+	t.Run("empty top-level data_source_name is rejected", func(t *testing.T) {
+		cfg := `
+		data_source_name = ""
+		forward_to = []
+		`
+		var args Arguments
+		require.ErrorContains(t, syntax.Unmarshal([]byte(cfg), &args), "one of data_source_name or database_instance blocks must be set")
+	})
+
 	t.Run("top-level data_source_name and database_instance blocks are mutually exclusive", func(t *testing.T) {
 		args := Arguments{
 			DataSourceName: "sqlserver://user:pass@host-one:1433?database=db1",
