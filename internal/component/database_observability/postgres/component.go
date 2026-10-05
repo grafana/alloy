@@ -43,6 +43,7 @@ SELECT
 	(pg_control_system()).system_identifier,
 	inet_server_addr(),
 	inet_server_port(),
+	pg_is_in_recovery(),
 	setting as version
 FROM pg_settings
 WHERE name = 'server_version';`
@@ -626,11 +627,13 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	var systemID, systemIP, systemPort, engineVersion sql.NullString
-	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
+	var inRecovery sql.NullBool
+	if err := rs.Scan(&systemID, &systemIP, &systemPort, &inRecovery, &engineVersion); err != nil {
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%s:%s:%t",
+		systemID.String, systemIP.String, systemPort.String, inst.instanceKey, inRecovery.Bool)))
 
 	// Get the current user and compute the effective exclude users list.
 	var currentUser sql.NullString
