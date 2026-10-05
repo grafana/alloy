@@ -1176,7 +1176,7 @@ replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-
 
 // Pin runc to v1.3.6: cadvisor and other deps import runc libcontainer packages (auto-synced from collector/builder-config.yaml)
 // (intelrdt, user) that v1.4+ removed, so runc cannot float higher. (auto-synced from collector/builder-config.yaml)
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.5.2
 
 // Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved. (auto-synced from collector/builder-config.yaml)
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
