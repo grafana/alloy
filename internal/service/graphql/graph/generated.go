@@ -49,6 +49,7 @@ type ComplexityRoot struct {
 		BuildDate func(childComplexity int) int
 		BuildUser func(childComplexity int) int
 		IsReady   func(childComplexity int) int
+		Logs      func(childComplexity int, first int32, levels []model.LogLevel) int
 		Revision  func(childComplexity int) int
 		Version   func(childComplexity int) int
 	}
@@ -168,6 +169,10 @@ type ComplexityRoot struct {
 		Value func(childComplexity int) int
 	}
 
+	Logs struct {
+		Lines func(childComplexity int) int
+	}
+
 	Module struct {
 		ChildModules func(childComplexity int) int
 		Components   func(childComplexity int) int
@@ -216,6 +221,7 @@ type ComplexityRoot struct {
 
 type AlloyResolver interface {
 	IsReady(ctx context.Context, obj *model.Alloy) (bool, error)
+	Logs(ctx context.Context, obj *model.Alloy, first int32, levels []model.LogLevel) (model.Logs, error)
 }
 type ComponentResolver interface {
 	ParentModule(ctx context.Context, obj *model.Component) (model.Module, error)
@@ -300,6 +306,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Alloy.IsReady(childComplexity), true
+	case "Alloy.logs":
+		if e.ComplexityRoot.Alloy.Logs == nil {
+			break
+		}
+
+		args, err := ec.field_Alloy_logs_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Alloy.Logs(childComplexity, args["first"].(int32), args["levels"].([]model.LogLevel)), true
 	case "Alloy.revision":
 		if e.ComplexityRoot.Alloy.Revision == nil {
 			break
@@ -768,6 +785,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.LabelPair.Value(childComplexity), true
 
+	case "Logs.lines":
+		if e.ComplexityRoot.Logs.Lines == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Logs.Lines(childComplexity), true
+
 	case "Module.childModules":
 		if e.ComplexityRoot.Module.ChildModules == nil {
 			break
@@ -1051,6 +1075,8 @@ func (ec *executionContext) childFields_Alloy(ctx context.Context, field graphql
 		return ec.fieldContext_Alloy_buildUser(ctx, field)
 	case "isReady":
 		return ec.fieldContext_Alloy_isReady(ctx, field)
+	case "logs":
+		return ec.fieldContext_Alloy_logs(ctx, field)
 	case "revision":
 		return ec.fieldContext_Alloy_revision(ctx, field)
 	case "version":
@@ -1249,6 +1275,14 @@ func (ec *executionContext) childFields_LabelPair(ctx context.Context, field gra
 	return nil, fmt.Errorf("no field named %q was found under type LabelPair", field.Name)
 }
 
+func (ec *executionContext) childFields_Logs(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "lines":
+		return ec.fieldContext_Logs_lines(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Logs", field.Name)
+}
+
 func (ec *executionContext) childFields_Module(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -1422,6 +1456,28 @@ func (ec *executionContext) childFields___Type(ctx context.Context, field graphq
 // endregion ************************** internal!.gotpl ***************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Alloy_logs_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+		func(ctx context.Context, v any) (int32, error) {
+			return ec.unmarshalNInt2int32(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "levels",
+		func(ctx context.Context, v any) ([]model.LogLevel, error) {
+			return ec.unmarshalOLogLevel2ᚕgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevelᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["levels"] = arg1
+	return args, nil
+}
 
 func (ec *executionContext) field_ComponentDefinition_instances_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -1699,6 +1755,50 @@ func (ec *executionContext) _Alloy_isReady(ctx context.Context, field graphql.Co
 }
 func (ec *executionContext) fieldContext_Alloy_isReady(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Alloy", field, true, true, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Alloy_logs(ctx context.Context, field graphql.CollectedField, obj *model.Alloy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Alloy_logs(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Alloy().Logs(ctx, obj, fc.Args["first"].(int32), fc.Args["levels"].([]model.LogLevel))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v model.Logs) graphql.Marshaler {
+			return ec.marshalNLogs2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogs(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Alloy_logs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Alloy",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Logs(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Alloy_logs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Alloy_revision(ctx context.Context, field graphql.CollectedField, obj *model.Alloy) (ret graphql.Marshaler) {
@@ -3601,6 +3701,29 @@ func (ec *executionContext) _LabelPair_value(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_LabelPair_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("LabelPair", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Logs_lines(ctx context.Context, field graphql.CollectedField, obj *model.Logs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Logs_lines(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Lines, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Logs_lines(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Logs", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Module_id(ctx context.Context, field graphql.CollectedField, obj *model.Module) (ret graphql.Marshaler) {
@@ -5625,6 +5748,42 @@ func (ec *executionContext) _Alloy(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "logs":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Alloy_logs(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "revision":
 			out.Values[i] = ec._Alloy_revision(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -6890,6 +7049,45 @@ func (ec *executionContext) _LabelPair(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var logsImplementors = []string{"Logs"}
+
+func (ec *executionContext) _Logs(ctx context.Context, sel ast.SelectionSet, obj *model.Logs) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, logsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Logs")
+		case "lines":
+			out.Values[i] = ec._Logs_lines(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var moduleImplementors = []string{"Module"}
 
 func (ec *executionContext) _Module(ctx context.Context, sel ast.SelectionSet, obj *model.Module) graphql.Marshaler {
@@ -8115,6 +8313,22 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2int32(ctx context.Context, v any) (int32, error) {
+	res, err := graphql.UnmarshalInt32(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt32(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNLabelPair2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLabelPair(ctx context.Context, sel ast.SelectionSet, v model.LabelPair) graphql.Marshaler {
 	return ec._LabelPair(ctx, sel, &v)
 }
@@ -8133,6 +8347,20 @@ func (ec *executionContext) marshalNLabelPair2ᚕgithubᚗcomᚋgrafanaᚋalloy�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNLogLevel2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevel(ctx context.Context, v any) (model.LogLevel, error) {
+	var res model.LogLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLogLevel2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevel(ctx context.Context, sel ast.SelectionSet, v model.LogLevel) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNLogs2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogs(ctx context.Context, sel ast.SelectionSet, v model.Logs) graphql.Marshaler {
+	return ec._Logs(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNModule2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐModule(ctx context.Context, sel ast.SelectionSet, v model.Module) graphql.Marshaler {
@@ -8498,6 +8726,43 @@ func (ec *executionContext) marshalOInt2ᚖint32(ctx context.Context, sel ast.Se
 	_ = ctx
 	res := graphql.MarshalInt32(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOLogLevel2ᚕgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevelᚄ(ctx context.Context, v any) ([]model.LogLevel, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]model.LogLevel, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNLogLevel2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevel(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOLogLevel2ᚕgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevelᚄ(ctx context.Context, sel ast.SelectionSet, v []model.LogLevel) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNLogLevel2githubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐLogLevel(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOModule2ᚖgithubᚗcomᚋgrafanaᚋalloyᚋinternalᚋserviceᚋgraphqlᚋgraphᚋmodelᚐModule(ctx context.Context, sel ast.SelectionSet, v *model.Module) graphql.Marshaler {

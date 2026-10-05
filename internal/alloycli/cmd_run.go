@@ -413,6 +413,12 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		return fmt.Errorf("building logger: %w", err)
 	}
 
+	var logBuffer *logging.Buffer
+	if fr.enableGraphQL {
+		logBuffer = logging.NewBuffer(10 * 1024 * 1024)
+		l.SetBuffer(logBuffer)
+	}
+
 	slogger := l.Slog()
 	slogger.Info("Alloy is starting")
 
@@ -552,6 +558,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		Logger:                  slogger.With("service", "ui"),
 		EnableGraphQL:           fr.enableGraphQL,
 		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
+		LogBuffer:               logBuffer,
 	})
 
 	otelService := otel_service.New(slogger.With("service", "otel"))

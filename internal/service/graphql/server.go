@@ -14,6 +14,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/graphql/graph"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -33,6 +34,7 @@ type RegisterRoutesParams struct {
 	URLPrefix        string
 	Host             service.Host
 	CallbackManager  livedebugging.CallbackManager
+	LogBuffer        *logging.Buffer
 	EnablePlayground bool
 }
 
@@ -41,7 +43,7 @@ func RegisterRoutes(params RegisterRoutesParams) {
 		params.Logger = slog.New(slog.DiscardHandler)
 	}
 
-	provider := newAlloyGraphQLProvider(params.URLPrefix, params.Host, params.CallbackManager, params.EnablePlayground)
+	provider := newAlloyGraphQLProvider(params.URLPrefix, params.Host, params.CallbackManager, params.LogBuffer, params.EnablePlayground)
 
 	params.Router.Handle(path.Join(params.URLPrefix, "/graphql"), provider.srv)
 
@@ -51,10 +53,11 @@ func RegisterRoutes(params RegisterRoutesParams) {
 	}
 }
 
-func newAlloyGraphQLProvider(urlPrefix string, host service.Host, callbackManager livedebugging.CallbackManager, enablePlayground bool) *AlloyGraphQLProvider {
+func newAlloyGraphQLProvider(urlPrefix string, host service.Host, callbackManager livedebugging.CallbackManager, logBuffer *logging.Buffer, enablePlayground bool) *AlloyGraphQLProvider {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
 		Host:            host,
 		CallbackManager: callbackManager,
+		LogBuffer:       logBuffer,
 	}}))
 
 	srv.AddTransport(transport.Options{})

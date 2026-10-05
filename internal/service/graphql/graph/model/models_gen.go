@@ -36,6 +36,8 @@ type Alloy struct {
 	BuildUser string `json:"buildUser"`
 	// Whether the Alloy instance is ready to serve requests.
 	IsReady bool `json:"isReady"`
+	// Recent formatted Alloy log lines.
+	Logs Logs `json:"logs"`
 	// Git commit hash from which this build was created.
 	Revision string `json:"revision"`
 	// Semantic version of this Alloy build.
@@ -260,6 +262,11 @@ type LabelPair struct {
 	Value string `json:"value"`
 }
 
+// Recent formatted Alloy log lines.
+type Logs struct {
+	Lines []string `json:"lines"`
+}
+
 // Entry point for querying Alloy runtime state.
 type Query struct {
 }
@@ -362,6 +369,65 @@ func (e *ComponentSchemaFieldKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e ComponentSchemaFieldKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelInfo  LogLevel = "INFO"
+	LogLevelWarn  LogLevel = "WARN"
+	LogLevelError LogLevel = "ERROR"
+)
+
+var AllLogLevel = []LogLevel{
+	LogLevelDebug,
+	LogLevelInfo,
+	LogLevelWarn,
+	LogLevelError,
+}
+
+func (e LogLevel) IsValid() bool {
+	switch e {
+	case LogLevelDebug, LogLevelInfo, LogLevelWarn, LogLevelError:
+		return true
+	}
+	return false
+}
+
+func (e LogLevel) String() string {
+	return string(e)
+}
+
+func (e *LogLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = LogLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid LogLevel", str)
+	}
+	return nil
+}
+
+func (e LogLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *LogLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e LogLevel) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

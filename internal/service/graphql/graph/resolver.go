@@ -8,6 +8,7 @@ package graph
 
 import (
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
@@ -28,5 +29,6 @@ var componentInfoOptions = component.InfoOptions{
 type Resolver struct {
 	Host            service.Host
 	CallbackManager livedebugging.CallbackManager
+	LogBuffer       *logging.Buffer
 	ServiceList     []service.Service
 }

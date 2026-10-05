@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	graphql_service "github.com/grafana/alloy/internal/service/graphql"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -40,6 +41,9 @@ type Options struct {
 
 	// EnableGraphQLPlayground specifies whether the GraphQL playground UI is enabled.
 	EnableGraphQLPlayground bool
+
+	// LogBuffer retains recent Alloy log lines for the GraphQL API.
+	LogBuffer *logging.Buffer
 }
 
 // Service implements the UI service.
@@ -103,6 +107,7 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 			URLPrefix:        s.opts.UIPrefix,
 			Host:             host,
 			CallbackManager:  s.opts.CallbackManager,
+			LogBuffer:        s.opts.LogBuffer,
 			EnablePlayground: s.opts.EnableGraphQLPlayground,
 		})
 	} else {

@@ -22,9 +22,31 @@ type Alloy {
   "Whether the Alloy instance is ready to serve requests."
   isReady: Boolean!
 
+  "Recent formatted Alloy log lines."
+  logs(
+    "Maximum number of lines to return."
+    first: Int! = 100
+    "Only return log lines at these levels."
+    levels: [LogLevel!]
+  ): Logs!
+
   "Git commit hash from which this build was created."
   revision: String!
 
   "Semantic version of this Alloy build."
   version: String!
+}
+
+"""
+Recent formatted Alloy log lines.
+"""
+type Logs {
+  lines: [String!]!
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
 }

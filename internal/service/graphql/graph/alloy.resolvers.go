@@ -7,6 +7,7 @@ package graph
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
@@ -25,6 +26,29 @@ func (r *alloyResolver) IsReady(ctx context.Context, obj *model.Alloy) (bool, er
 	}
 
 	return httpService.IsReady(), nil
+}
+
+// Logs is the resolver for the logs field.
+func (r *alloyResolver) Logs(ctx context.Context, obj *model.Alloy, first int32, levels []model.LogLevel) (model.Logs, error) {
+	if first < 0 {
+		return model.Logs{}, fmt.Errorf("first must not be negative")
+	}
+	if first > maxLogsPageSize {
+		return model.Logs{}, fmt.Errorf("first must not exceed %d", maxLogsPageSize)
+	}
+	if r.LogBuffer == nil {
+		return model.Logs{Lines: []string{}}, nil
+	}
+
+	lines := r.LogBuffer.Lines(0, int(^uint(0)>>1))
+	if len(levels) > 0 {
+		lines = filterLogLines(lines, levels)
+	}
+	if len(lines) > int(first) {
+		lines = lines[:first]
+	}
+
+	return model.Logs{Lines: lines}, nil
 }
 
 // Alloy is the resolver for the alloy field.

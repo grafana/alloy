@@ -165,6 +165,11 @@ func (l *Logger) RemoveTemporaryWriter() {
 	l.writer.RemoveTemporaryWriter()
 }
 
+// SetBuffer configures a bounded in-memory buffer for formatted log output.
+func (l *Logger) SetBuffer(buffer *Buffer) {
+	l.writer.SetBuffer(buffer)
+}
+
 func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
 	l.bufferMut.Lock()
 	defer l.bufferMut.Unlock()
@@ -231,6 +236,7 @@ type writerVar struct {
 
 	lokiWriter *lokiWriter
 	tmpWriter  io.Writer
+	buffer     *Buffer
 
 	// eventLogOpener lazily creates the Windows Event Log handle the first
 	// time SetDestination enters event-log mode. Set in NewDeferred,
@@ -254,6 +260,12 @@ func (w *writerVar) RemoveTemporaryWriter() {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	w.tmpWriter = nil
+}
+
+func (w *writerVar) SetBuffer(buffer *Buffer) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.buffer = buffer
 }
 
 func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
@@ -302,20 +314,8 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	if w.eventLog == nil && w.innerWriter != nil {
-		if _, err := w.innerWriter.Write(p); err != nil {
-			return err
-		}
-	}
-	if w.lokiWriter != nil {
-		if _, err := w.lokiWriter.Write(p); err != nil {
-			return err
-		}
-	}
-	if w.tmpWriter != nil {
-		if _, err := w.tmpWriter.Write(p); err != nil {
-			return err
-		}
+	if err := w.dispatchSinks(p); err != nil {
+		return err
 	}
 	if w.eventLog == nil {
 		return nil
@@ -346,6 +346,30 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 		}
 	}
 	return w.eventLog.Info(1, string(msg))
+}
+
+func (w *writerVar) dispatchSinks(p []byte) error {
+	if w.eventLog == nil && w.innerWriter != nil {
+		if _, err := w.innerWriter.Write(p); err != nil {
+			return err
+		}
+	}
+	if w.lokiWriter != nil {
+		if _, err := w.lokiWriter.Write(p); err != nil {
+			return err
+		}
+	}
+	if w.tmpWriter != nil {
+		if _, err := w.tmpWriter.Write(p); err != nil {
+			return err
+		}
+	}
+	if w.buffer != nil {
+		if _, err := w.buffer.Write(p); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Write is the io.Writer adapter used by the fast-path slog handler.

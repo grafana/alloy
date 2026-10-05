@@ -290,6 +290,18 @@ func TestHandlerAfterUpdateIsReal(t *testing.T) {
 	require.Contains(t, buf.String(), "direct-write")
 }
 
+func TestLoggerWritesToBuffer(t *testing.T) {
+	logger, err := logging.New(io.Discard, infoLevel())
+	require.NoError(t, err)
+
+	buffer := logging.NewBuffer(1024)
+	logger.SetBuffer(buffer)
+	logger.Slog().Info("buffered message")
+
+	require.Len(t, buffer.Lines(0, 10), 1)
+	require.Contains(t, buffer.Lines(0, 10)[0], "buffered message")
+}
+
 func BenchmarkLogging_Slog_Drops(b *testing.B) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
