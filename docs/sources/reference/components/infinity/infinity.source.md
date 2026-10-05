@@ -517,20 +517,26 @@ query "orders" failed: status 503 (and 2 other queries)
 ```
 
 Health messages and warning logs describe a request failure by its category and the request URL, for example `connection to https://api.example.com/orders?key=REDACTED was refused`.
-For a request failure, they never show text from the server or from an HTTP error, such as a redirect `Location` header, a response body, or an OAuth2 token endpoint response.
+A DNS failure names only the host, for example `DNS lookup for api.example.com failed`.
+An OAuth2 token failure names no URL, for example `OAuth2 token request failed with status 401`.
+A proxy failure names the `proxy_url` argument, when you set it, and never the request URL.
+For a request failure, health messages and warning logs never show text from the server or from an HTTP error, such as a redirect `Location` header, a response body, or an OAuth2 token endpoint response.
 The only values from a response that they show are numbers, such as an HTTP status code.
-In the request URL, `infinity.source` removes user info, such as `user:password@`, and replaces every query parameter value with `REDACTED`.
+In a URL, `infinity.source` removes user info, such as `user:password@`, and the fragment, and replaces every query parameter value with `REDACTED`.
+A query parameter without a value becomes `REDACTED`.
 
 Parse and post-processing failures show the error text of the parser, which can quote part of the response.
 `infinity.source` cuts this text to 200 characters, and removes user info and query parameter values from any URL in it.
 
-## Debug information
-
-`infinity.source` doesn't expose any component-specific debug information.
-
+{{< admonition type="note" >}}
 At the `debug` log level, `infinity.source` logs the full error of each failed poll in the `detail` field.
 Before it logs the error, `infinity.source` removes user info and query parameter values from URLs in the error text.
 This removal is best effort, because the text can come from the server, so enable the `debug` log level only when you need it.
+{{< /admonition >}}
+
+## Debug information
+
+`infinity.source` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
