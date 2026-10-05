@@ -5,9 +5,9 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/config"
 )
@@ -490,6 +490,10 @@ func (o *OAuth2Config) Validate() error {
 		}
 		if len(o.ClientSecret) > 0 && len(o.ClientSecretFile) > 0 {
 			return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
+		}
+		allowedSignatureAlgorithms := []string{"RS256", "RS384", "RS512"}
+		if !slices.Contains(allowedSignatureAlgorithms, o.SignatureAlgorithm) {
+			return fmt.Errorf("unsupported signature_algorithm: %q", o.SignatureAlgorithm)
 		}
 	default:
 		return fmt.Errorf("unsupported oauth2 grant_type %q", o.GrantType)
