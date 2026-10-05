@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2/testdata"
+	"github.com/grafana/alloy/internal/component/common/config/testdata"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
 )
@@ -173,7 +173,7 @@ func TestHTTPClientConfigOath2ClientCertificateKey(t *testing.T) {
 	oauth2 {
 		client_id = "client_id"
 		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-		client_certificate_key = "%s"
+		client_certificate_key = %q
 		scopes = ["scope1", "scope2"]
 		token_url = "token_url"
 		endpoint_params = {"param1" = "value1", "param2" = "value2"}
@@ -216,6 +216,70 @@ func TestHTTPClientConfigOath2ClientCertificateKeyFile(t *testing.T) {
 	var httpClientConfig HTTPClientConfig
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
 	require.NoError(t, err)
+}
+
+func TestHTTPClientConfigOath2ClientCertificateMissingOptions(t *testing.T) {
+
+	var exampleAlloyConfig = `
+	proxy_url = "http://0.0.0.0:11111"
+	follow_redirects = true
+	enable_http2 = true
+	oauth2 {
+		client_id = "client_id"
+		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+		scopes = ["scope1", "scope2"]
+		token_url = "token_url"
+		endpoint_params = {"param1" = "value1", "param2" = "value2"}
+		proxy_url = "http://0.0.0.0:11111"
+	}
+`
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.ErrorContains(t, err, "either oauth2 client_certificate_key or client_certificate_key_file must be configured")
+}
+
+func TestHTTPClientConfigOath2ClientCertificateMultipleOptions(t *testing.T) {
+	clientKeyNoPassPath := testdata.ClientKeyNoPassPath(t)
+
+	var exampleAlloyConfig = fmt.Sprintf(`
+	proxy_url = "http://0.0.0.0:11111"
+	follow_redirects = true
+	enable_http2 = true
+	oauth2 {
+		client_id = "client_id"
+		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+		client_certificate_key = %q
+		client_certificate_key_file = "%s"
+		scopes = ["scope1", "scope2"]
+		token_url = "token_url"
+		endpoint_params = {"param1" = "value1", "param2" = "value2"}
+		proxy_url = "http://0.0.0.0:11111"
+	}
+`, testdata.ClientKeyContent, clientKeyNoPassPath)
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.ErrorContains(t, err, "at most one of oauth2 client_certificate_key and client_certificate_key_file must be configured")
+}
+
+func TestHTTPClientConfigOath2ClientInvalidGrantType(t *testing.T) {
+
+	var exampleAlloyConfig = `
+	proxy_url = "http://0.0.0.0:11111"
+	follow_redirects = true
+	enable_http2 = true
+	oauth2 {
+		client_id = "client_id"
+		grant_type = "not_supported_grant"
+		client_secret_file = "/path/to/file.oath2"
+		scopes = ["scope1", "scope2"]
+		token_url = "token_url"
+		endpoint_params = {"param1" = "value1", "param2" = "value2"}
+		proxy_url = "http://0.0.0.0:11111"
+	}
+`
+	var httpClientConfig HTTPClientConfig
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &httpClientConfig)
+	require.ErrorContains(t, err, "unsupported oauth2 grant_type \"not_supported_grant\"")
 }
 
 func TestOath2TLSConvert(t *testing.T) {
