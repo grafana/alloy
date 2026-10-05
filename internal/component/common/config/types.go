@@ -402,6 +402,13 @@ func (t *TLSConfig) Validate() error {
 	return nil
 }
 
+func DefaultOAuth2Config() OAuth2Config {
+	return OAuth2Config{
+		GrantType:          grantTypeClientCredentials,
+		SignatureAlgorithm: "RS256",
+	}
+}
+
 // OAuth2Config sets up the OAuth2 client.
 type OAuth2Config struct {
 	ClientID         string            `alloy:"client_id,attr,optional"`
@@ -426,10 +433,7 @@ type OAuth2Config struct {
 
 // SetToDefault implements the syntax.Defaulter
 func (o *OAuth2Config) SetToDefault() {
-	*o = OAuth2Config{
-		GrantType:          grantTypeClientCredentials,
-		SignatureAlgorithm: "RS256",
-	}
+	*o = DefaultOAuth2Config()
 }
 
 // Convert converts our type to the native prometheus type

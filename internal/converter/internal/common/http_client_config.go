@@ -66,15 +66,29 @@ func toOAuth2(oAuth2 *prom_config.OAuth2) *config.OAuth2Config {
 		return nil
 	}
 
+	prepareDefaults := config.DefaultOAuth2Config()
+
+	if oAuth2.GrantType != "" {
+		prepareDefaults.GrantType = oAuth2.GrantType
+	}
+	if oAuth2.SignatureAlgorithm != "" {
+		prepareDefaults.SignatureAlgorithm = oAuth2.SignatureAlgorithm
+	}
+
 	return &config.OAuth2Config{
-		ClientID:         oAuth2.ClientID,
-		ClientSecret:     alloytypes.Secret(oAuth2.ClientSecret),
-		ClientSecretFile: oAuth2.ClientSecretFile,
-		Scopes:           oAuth2.Scopes,
-		TokenURL:         oAuth2.TokenURL,
-		EndpointParams:   oAuth2.EndpointParams,
-		ProxyConfig:      ToProxyConfig(oAuth2.ProxyConfig),
-		TLSConfig:        ToTLSConfig(&oAuth2.TLSConfig),
+		ClientID:                 oAuth2.ClientID,
+		GrantType:                prepareDefaults.GrantType,
+		ClientSecret:             alloytypes.Secret(oAuth2.ClientSecret),
+		ClientSecretFile:         oAuth2.ClientSecretFile,
+		ClientCertificateKeyID:   oAuth2.ClientCertificateKeyID,
+		ClientCertificateKey:     alloytypes.Secret(oAuth2.ClientCertificateKey),
+		ClientCertificateKeyFile: oAuth2.ClientCertificateKeyFile,
+		SignatureAlgorithm:       prepareDefaults.SignatureAlgorithm,
+		Scopes:                   oAuth2.Scopes,
+		TokenURL:                 oAuth2.TokenURL,
+		EndpointParams:           oAuth2.EndpointParams,
+		ProxyConfig:              ToProxyConfig(oAuth2.ProxyConfig),
+		TLSConfig:                ToTLSConfig(&oAuth2.TLSConfig),
 	}
 }
 
