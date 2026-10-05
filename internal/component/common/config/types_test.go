@@ -219,7 +219,6 @@ func TestHTTPClientConfigOath2ClientCertificateKeyFile(t *testing.T) {
 }
 
 func TestHTTPClientConfigOath2ClientCertificateMissingOptions(t *testing.T) {
-
 	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
@@ -262,7 +261,6 @@ func TestHTTPClientConfigOath2ClientCertificateMultipleOptions(t *testing.T) {
 }
 
 func TestHTTPClientConfigOath2ClientInvalidGrantType(t *testing.T) {
-
 	var exampleAlloyConfig = `
 	proxy_url = "http://0.0.0.0:11111"
 	follow_redirects = true
