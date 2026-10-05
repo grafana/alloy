@@ -424,14 +424,12 @@ type OAuth2Config struct {
 	TLSConfig          *TLSConfig        `alloy:"tls_config,block,optional"`
 }
 
-var DefaultOAuth2Config = OAuth2Config{
-	GrantType:          grantTypeClientCredentials,
-	SignatureAlgorithm: jwt.SigningMethodRS256.Name,
-}
-
 // SetToDefault implements the syntax.Defaulter
 func (o *OAuth2Config) SetToDefault() {
-	*o = DefaultOAuth2Config
+	*o = OAuth2Config{
+		GrantType:          grantTypeClientCredentials,
+		SignatureAlgorithm: "RS256",
+	}
 }
 
 // Convert converts our type to the native prometheus type
