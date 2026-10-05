@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 )
 
 // PrometheusSampleCount returns an Assertion that passes when exactly want
@@ -119,6 +120,42 @@ func PrometheusSampleIsHistogram(want bool) SampleMatcher {
 	}
 }
 
+// PrometheusSampleMetadata returns a SampleMatcher that matches samples whose
+// series metadata equals every provided field. Nil fields are not checked.
+// Samples without metadata never match.
+func PrometheusSampleMetadata(typ, unit, help *string) SampleMatcher {
+	var conditions []string
+	if typ != nil {
+		conditions = append(conditions, fmt.Sprintf("type=%q", *typ))
+	}
+	if unit != nil {
+		conditions = append(conditions, fmt.Sprintf("unit=%q", *unit))
+	}
+	if help != nil {
+		conditions = append(conditions, fmt.Sprintf("help=%q", *help))
+	}
+
+	return SampleMatcher{
+		match: func(sample PrometheusSample) bool {
+			m := sample.Metadata
+			if m == nil {
+				return false
+			}
+			if typ != nil && string(m.Type) != *typ {
+				return false
+			}
+			if unit != nil && m.Unit != *unit {
+				return false
+			}
+			if help != nil && m.Help != *help {
+				return false
+			}
+			return true
+		},
+		text: "metadata = {" + strings.Join(conditions, ", ") + "}",
+	}
+}
+
 func sampleMatches(sample PrometheusSample, matchers ...SampleMatcher) bool {
 	for _, matcher := range matchers {
 		if !matcher.match(sample) {
@@ -161,6 +198,10 @@ func renderPrometheusSample(sample PrometheusSample) string {
 	} else {
 		parts = append(parts, renderValue(sample.Value))
 	}
+
+	if sample.Metadata != nil {
+		parts = append(parts, renderMetadata(sample.Metadata))
+	}
 	return strings.Join(parts, " ")
 }
 
@@ -179,6 +220,10 @@ func renderPrometheusLabels(ls labels.Labels) string {
 
 func renderValue(value float64) string {
 	return "value = " + strconv.FormatFloat(value, 'g', -1, 64)
+}
+
+func renderMetadata(m *metadata.Metadata) string {
+	return fmt.Sprintf("metadata = {type=%q, unit=%q, help=%q}", m.Type, m.Unit, m.Help)
 }
 
 func labelsContain(got, want labels.Labels) bool {
