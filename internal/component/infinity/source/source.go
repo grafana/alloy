@@ -274,7 +274,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		}
 		if len(stale) > 0 {
 			if err := oldOutputs.sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
-				c.opts.Logger.Warn("failed to send stale markers for a removed query", "query", r.name, "err", err)
+				c.logSendFailure("failed to send stale markers for a removed query", r.name, err)
 			}
 		}
 		c.metrics.deleteQuery(r.name)
@@ -398,7 +398,7 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 		qs.tracker.reset()
 		if err := c.outputs().sendMetrics(ctx, c.opts.ID, name, start, nil, stale); err != nil {
 			c.metrics.pollFailures.WithLabelValues(name, reasonEmit).Inc()
-			c.opts.Logger.Warn("failed to send stale markers after a format change", "query", name, "err", err)
+			c.logSendFailure("failed to send stale markers after a format change", name, err)
 		}
 	}
 	frame, err := fetchFrame(ctx, g, s, &qs.workers, c.parse)
@@ -415,8 +415,11 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 			// The loop is stopping. Do not report a failure.
 			return
 		}
-		c.metrics.pollFailures.WithLabelValues(name, reasonOf(err)).Inc()
-		c.opts.Logger.Warn("poll failed", "query", name, "reason", reasonOf(err), "err", err)
+		pe := asPollError(err)
+		err = pe
+		c.metrics.pollFailures.WithLabelValues(name, pe.reason).Inc()
+		c.opts.Logger.Warn("poll failed", "query", name, "reason", pe.reason, "err", pe.Error())
+		c.opts.Logger.Debug("poll failed", "query", name, "reason", pe.reason, "detail", pe.detail())
 	}
 	qs.setResult(err)
 }
@@ -502,7 +505,7 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 			return err
 		}
 		if err := c.outputs().sendLogs(ctx, job, s.name, now, entries); err != nil {
-			return newPollError(reasonEmit, err)
+			return newEmitError(err)
 		}
 		c.metrics.entriesSent.WithLabelValues(s.name).Add(float64(len(entries)))
 		return nil
@@ -521,7 +524,7 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 		stale := qs.tracker.allExcept(up.labels)
 		if sendErr := c.outputs().sendMetrics(ctx, job, s.name, now, []sample{up}, stale); sendErr != nil {
 			c.metrics.pollFailures.WithLabelValues(s.name, reasonEmit).Inc()
-			c.opts.Logger.Warn("failed to send stale markers", "query", s.name, "err", sendErr)
+			c.logSendFailure("failed to send stale markers", s.name, sendErr)
 		}
 		qs.tracker.replace([]sample{up})
 		c.metrics.samplesSent.WithLabelValues(s.name).Inc()
@@ -553,9 +556,17 @@ func (c *Component) emit(ctx context.Context, qs *queryState, s querySpec, now t
 	qs.tracker.replace(current)
 	c.metrics.samplesSent.WithLabelValues(s.name).Add(float64(len(current)))
 	if sendErr != nil {
-		return newPollError(reasonEmit, sendErr)
+		return newEmitError(sendErr)
 	}
 	return nil
+}
+
+// logSendFailure logs a failed send. A receiver can return text from a
+// remote server, so only the debug line has the error text.
+func (c *Component) logSendFailure(msg, query string, err error) {
+	pe := newEmitError(err)
+	c.opts.Logger.Warn(msg, "query", query, "err", pe.Error())
+	c.opts.Logger.Debug(msg, "query", query, "detail", pe.detail())
 }
 
 // fetchFrame gets the body and builds the frame in a worker goroutine. The
@@ -603,9 +614,9 @@ func fetchAndBuild(ctx context.Context, g *generation, s querySpec, parse parseF
 	if s.source == sourceURL {
 		req, err := buildRequest(ctx, s)
 		if err != nil {
-			return nil, newPollError(reasonRequest, fmt.Errorf("building the request for %s: %w", redactURL(s.url), redactErr(err)))
+			return nil, &pollError{reason: reasonRequest, msg: fmt.Sprintf("could not build the request for %s", redactURL(s.url)), err: redactErr(err)}
 		}
-		body, err = fetch(g.client, req, g.maxSize)
+		body, err = fetch(g.client, req, requestTarget{rawURL: s.url, timeout: g.timeout}, g.maxSize)
 		if err != nil {
 			return nil, err
 		}

@@ -25,7 +25,7 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 	// in one column. A bad response must fail the poll, not crash Alloy.
 	defer func() {
 		if r := recover(); r != nil {
-			retErr = newPollError(reasonParse, fmt.Errorf("parser panic: %v", r))
+			retErr = newLibError(reasonParse, fmt.Errorf("parser panic: %v", r))
 		}
 	}()
 
@@ -35,14 +35,14 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 		if errors.As(err, &pe) {
 			return nil, err
 		}
-		return nil, newPollError(reasonParse, err)
+		return nil, newLibError(reasonParse, err)
 	}
 	if frame == nil {
 		frame = data.NewFrame(s.name)
 	}
 	frame, err = postProcess(s, frame)
 	if err != nil {
-		return nil, newPollError(reasonPostprocess, err)
+		return nil, newLibError(reasonPostprocess, err)
 	}
 	if frame == nil {
 		frame = data.NewFrame(s.name)

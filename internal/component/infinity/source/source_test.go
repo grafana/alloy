@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -840,23 +842,63 @@ func TestCancelledEmitSendsNothing(t *testing.T) {
 	}
 }
 
+// TestHealthRedactsRedirectURL checks that the health message and the warn
+// logs show no part of a bad redirect Location.
 func TestHealthRedactsRedirectURL(t *testing.T) {
-	for name, location := range secretRedirects {
+	for name, location := range allSecretRedirects() {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(redirectTo(location))
 			defer srv.Close()
 
+			logs := newLogRecorder()
+			opts := testOptions(t, cluster.Mock())
+			opts.Logger = slog.New(logs)
 			app := testappender.NewCollectingAppender()
-			c, err := startComponent(t.Context(), testOptions(t, cluster.Mock()), queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
+			c, err := startComponent(t.Context(), opts, queryConfig(srv.URL), testappender.ConstantAppendable{Inner: app}, nil)
 			require.NoError(t, err)
 
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {
-				h := c.CurrentHealth()
-				assert.Equal(ct, component.HealthTypeUnhealthy, h.Health)
-				assert.NotContains(ct, h.Message, "supersecret")
+				assert.Equal(ct, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+				assert.NotEmpty(ct, logs.at(slog.LevelWarn))
 			}, 2*time.Second, 20*time.Millisecond)
+
+			// Read the health first. Each poll logs before it sets the
+			// health, so the warn lines then include this message.
+			msg := c.CurrentHealth().Message
+			warns := logs.at(slog.LevelWarn)
+			require.Contains(t, warnMessages(warns), strings.TrimPrefix(msg, `query "q" failed: `))
+			for _, part := range forbiddenParts(location) {
+				require.NotContains(t, msg, part)
+				for _, line := range warns {
+					require.NotContains(t, line, part)
+				}
+			}
+			// Debug logs keep the scrubbed net/http text.
+			debugs := logs.at(slog.LevelDebug)
+			require.NotEmpty(t, debugs)
+			require.Contains(t, debugs[0], `detail=`)
+			if _, scrubbable := secretRedirects[name]; scrubbable {
+				for _, line := range debugs {
+					require.NotContains(t, line, "supersecret")
+				}
+			}
 		})
 	}
+}
+
+// warnMessages returns the err field of each "poll failed" line.
+func warnMessages(lines []string) []string {
+	var msgs []string
+	for _, line := range lines {
+		rest, ok := strings.CutPrefix(line, `poll failed `)
+		if !ok {
+			continue
+		}
+		if _, v, ok := strings.Cut(rest, ` err="`); ok {
+			msgs = append(msgs, strings.TrimSuffix(v, `"`))
+		}
+	}
+	return msgs
 }
 
 // switchOwner is a cluster where this node owns every key until other is set.

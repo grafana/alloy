@@ -73,7 +73,7 @@ func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Ti
 		} else {
 			line, err := rowJSON(f, row)
 			if err != nil {
-				return nil, newPollError(reasonParse, err)
+				return nil, newLibError(reasonParse, err)
 			}
 			e.line = line
 		}

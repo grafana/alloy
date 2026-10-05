@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/prometheus/common/config"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 )
@@ -16,6 +21,9 @@ import (
 func serve(h http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(h)
 }
+
+// testFetchTimeout is the timeout that doFetch puts in error messages.
+const testFetchTimeout = 50 * time.Millisecond
 
 func doFetch(ctx context.Context, url string, maxSize int64, header http.Header) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -25,7 +33,7 @@ func doFetch(ctx context.Context, url string, maxSize int64, header http.Header)
 	for k, v := range header {
 		req.Header[k] = v
 	}
-	return fetch(http.DefaultClient, req, maxSize)
+	return fetch(http.DefaultClient, req, requestTarget{rawURL: url, timeout: testFetchTimeout}, maxSize)
 }
 
 func gzipBytes(b []byte) ([]byte, error) {
@@ -114,8 +122,33 @@ func TestFetchTimeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
-	_, err := doFetch(ctx, srv.URL, 1024, nil)
+	_, err := doFetch(ctx, srv.URL+"/api?api_key=supersecret", 1024, nil)
 	require.Equal(t, reasonTimeout, reasonOf(err))
+	require.EqualError(t, err, "request to "+srv.URL+"/api?api_key=REDACTED timed out after 50ms")
+}
+
+func TestFetchBodyReadFails(t *testing.T) {
+	srv := serve(func(w http.ResponseWriter, _ *http.Request) {
+		// The body is shorter than Content-Length, so the read fails.
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("[1"))
+	})
+	defer srv.Close()
+
+	_, err := doFetch(t.Context(), srv.URL+"/api?api_key=supersecret", 1024, nil)
+	require.Equal(t, reasonRequest, reasonOf(err))
+	require.EqualError(t, err, "reading the response from "+srv.URL+"/api?api_key=REDACTED failed")
+}
+
+func TestFetchCanceled(t *testing.T) {
+	srv := serve(func(http.ResponseWriter, *http.Request) {})
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := doFetch(ctx, srv.URL+"/api?api_key=supersecret", 1024, nil)
+	require.Equal(t, reasonRequest, reasonOf(err))
+	require.EqualError(t, err, "request to "+srv.URL+"/api?api_key=REDACTED was canceled")
 }
 
 func TestFetchRedactsURL(t *testing.T) {
@@ -136,7 +169,7 @@ func TestFetchFrameRedactsBuildError(t *testing.T) {
 	_, err := fetchFrame(t.Context(), &generation{client: http.DefaultClient, timeout: time.Second, maxSize: 1024}, s, atomic.NewInt32(0), buildFrame)
 	require.Error(t, err)
 	require.Equal(t, reasonRequest, reasonOf(err))
-	require.NotContains(t, err.Error(), "supersecret")
+	require.EqualError(t, err, "could not build the request for <invalid url>")
 }
 
 // secretRedirects are bad redirect Location values. net/http writes each
@@ -157,6 +190,42 @@ var secretRedirects = map[string]string{
 	"user with a space":               "https://us er:supersecret@files.example/%zz",
 }
 
+// moreSecretRedirects are Location values that the text scrubbing in
+// scrubURLs cannot fully redact. Health and warn logs must still hide them,
+// because those messages hold no server text.
+var moreSecretRedirects = map[string]string{
+	"at sign in the password": "https://user:pa@supersecret@files.example/%zz",
+	"query without a name":    "https://h.example/x?supersecret",
+	"secret in the fragment":  "https://h.example/%zz#access_token=supersecret",
+	"relative without slash":  "rel%zz?supersecret",
+}
+
+// allSecretRedirects returns secretRedirects and moreSecretRedirects in one map.
+func allSecretRedirects() map[string]string {
+	all := make(map[string]string, len(secretRedirects)+len(moreSecretRedirects))
+	for k, v := range secretRedirects {
+		all[k] = v
+	}
+	for k, v := range moreSecretRedirects {
+		all[k] = v
+	}
+	return all
+}
+
+// forbiddenParts returns the text that a safe message must not contain for
+// a redirect to location: the secret markers and each word of location.
+func forbiddenParts(location string) []string {
+	parts := []string{"supersecret", "pa@", "access_token"}
+	for _, w := range strings.FieldsFunc(location, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+	}) {
+		if len(w) >= 3 {
+			parts = append(parts, w)
+		}
+	}
+	return parts
+}
+
 func redirectTo(location string) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Location", location)
@@ -167,14 +236,179 @@ func redirectTo(location string) http.HandlerFunc {
 // TestFetchRedactsRedirectURL checks bad redirect Location values. net/http
 // puts them inside the error text, below the outer *url.Error.
 func TestFetchRedactsRedirectURL(t *testing.T) {
-	for name, location := range secretRedirects {
+	for name, location := range allSecretRedirects() {
 		t.Run(name, func(t *testing.T) {
 			srv := serve(redirectTo(location))
 			defer srv.Close()
 
 			_, err := doFetch(t.Context(), srv.URL, 1024, nil)
 			require.Error(t, err)
-			require.NotContains(t, err.Error(), "supersecret")
+			for _, part := range forbiddenParts(location) {
+				require.NotContains(t, err.Error(), part)
+			}
+		})
+	}
+}
+
+// TestFetchRedirectDetailIsScrubbed checks the debug detail of each bad
+// redirect. It keeps the net/http text, with the secret scrubbed.
+func TestFetchRedirectDetailIsScrubbed(t *testing.T) {
+	for name, location := range secretRedirects {
+		t.Run(name, func(t *testing.T) {
+			srv := serve(redirectTo(location))
+			defer srv.Close()
+
+			_, err := doFetch(t.Context(), srv.URL, 1024, nil)
+			var pe *pollError
+			require.ErrorAs(t, err, &pe)
+			require.Contains(t, pe.detail(), "Location")
+			require.NotContains(t, pe.detail(), "supersecret")
+		})
+	}
+}
+
+func TestLibErrorIsScrubbedAndCapped(t *testing.T) {
+	text := `jq: error at "https://user:pw@files.example/x?token=supersecret": ` + strings.Repeat("a", 300)
+	err := newLibError(reasonParse, errors.New(text))
+	require.Equal(t, reasonParse, reasonOf(err))
+	require.NotContains(t, err.Error(), "supersecret")
+	require.NotContains(t, err.Error(), "pw@")
+	require.True(t, strings.HasPrefix(err.Error(), `jq: error at "https://files.example/x?token=REDACTED": aaa`), err.Error())
+	require.Equal(t, maxLibErrorLen+len("..."), len([]rune(err.Error())))
+	// The debug detail keeps the whole text, scrubbed.
+	var pe *pollError
+	require.ErrorAs(t, err, &pe)
+	require.NotContains(t, pe.detail(), "supersecret")
+	require.Contains(t, pe.detail(), strings.Repeat("a", 300))
+}
+
+func TestEmitErrorHidesReceiverText(t *testing.T) {
+	pe := newEmitError(errors.New(`remote: Post "https://r.example/push?key=supersecret": 401 denied`))
+	require.Equal(t, reasonEmit, reasonOf(pe))
+	require.EqualError(t, pe, "could not send the result to the outputs")
+	require.Contains(t, pe.detail(), "401 denied")
+	require.NotContains(t, pe.detail(), "supersecret")
+}
+
+// closedAddr returns a local address where nothing listens.
+func closedAddr() (string, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+	addr := l.Addr().String()
+	return addr, l.Close()
+}
+
+// oauthClient returns a client that gets its token from tokenURL.
+func oauthClient(tokenURL string) (*http.Client, error) {
+	args, err := parse(fmt.Sprintf(`
+		client {
+			oauth2 {
+				client_id     = "id"
+				client_secret = "secret"
+				token_url     = %q
+			}
+		}
+		query "q" {
+			url = "http://example.com"
+		}`, tokenURL))
+	if err != nil {
+		return nil, err
+	}
+	return config.NewClientFromConfig(*args.Client.Convert(), "test")
+}
+
+// errorCase builds a failing request. It returns the URL to request, the
+// client to use and the safe message that the error must have.
+type errorCase func(t *testing.T) (url string, client *http.Client, want string, err error)
+
+// redirectCase returns an errorCase for a server that redirects to location.
+func redirectCase(location string) errorCase {
+	return func(t *testing.T) (string, *http.Client, string, error) {
+		srv := serve(redirectTo(location))
+		t.Cleanup(srv.Close)
+		u := srv.URL + "/api?api_key=supersecret"
+		return u, http.DefaultClient, "invalid redirect from " + srv.URL + "/api?api_key=REDACTED", nil
+	}
+}
+
+// TestFetchFrameErrorMessages checks the safe message of each kind of
+// request error. Each case makes a real error of that kind.
+func TestFetchFrameErrorMessages(t *testing.T) {
+	tests := map[string]errorCase{
+		"connection refused": func(*testing.T) (string, *http.Client, string, error) {
+			addr, err := closedAddr()
+			return "http://" + addr + "/api?api_key=supersecret", http.DefaultClient,
+				"connection to http://" + addr + "/api?api_key=REDACTED was refused", err
+		},
+		"DNS lookup": func(*testing.T) (string, *http.Client, string, error) {
+			return "http://user:supersecret@nothing.invalid/api?api_key=supersecret", http.DefaultClient,
+				"DNS lookup for nothing.invalid failed", nil
+		},
+		"untrusted certificate": func(t *testing.T) (string, *http.Client, string, error) {
+			srv := httptest.NewTLSServer(http.NotFoundHandler())
+			t.Cleanup(srv.Close)
+			return srv.URL + "/api?api_key=supersecret", http.DefaultClient,
+				"TLS handshake with " + srv.URL + "/api?api_key=REDACTED failed", nil
+		},
+		"redirect loop": func(t *testing.T) (string, *http.Client, string, error) {
+			srv := serve(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, "/loop?token=supersecret", http.StatusFound)
+			})
+			t.Cleanup(srv.Close)
+			return srv.URL + "/api?api_key=supersecret", http.DefaultClient,
+				"invalid redirect from " + srv.URL + "/api?api_key=REDACTED", nil
+		},
+		"unparsable Location":   redirectCase("/%zz?token=supersecret"),
+		"malformed header line": redirectCase("https://files.example/x?token=prefix supersecret\x01"),
+		"network error after a redirect": func(t *testing.T) (string, *http.Client, string, error) {
+			srv := serve(redirectTo("http://nothing.invalid/x?token=supersecret"))
+			t.Cleanup(srv.Close)
+			return srv.URL + "/api?api_key=supersecret", http.DefaultClient,
+				"request to " + srv.URL + "/api?api_key=REDACTED failed after a redirect", nil
+		},
+		"OAuth2 status": func(t *testing.T) (string, *http.Client, string, error) {
+			tokenSrv := serve(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":"invalid_client","error_description":"supersecret"}`))
+			})
+			t.Cleanup(tokenSrv.Close)
+			client, err := oauthClient(tokenSrv.URL + "/token?k=supersecret")
+			return "http://example.com/api?api_key=supersecret", client,
+				"OAuth2 token request failed with status 401", err
+		},
+		"OAuth2 token server down": func(*testing.T) (string, *http.Client, string, error) {
+			addr, err := closedAddr()
+			if err != nil {
+				return "", nil, "", err
+			}
+			client, err := oauthClient("http://" + addr + "/token?k=supersecret")
+			return "http://example.com/api?api_key=supersecret", client, "OAuth2 token request failed", err
+		},
+		"connection closed": func(t *testing.T) (string, *http.Client, string, error) {
+			srv := serve(func(w http.ResponseWriter, _ *http.Request) {
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if err == nil {
+					_ = conn.Close()
+				}
+			})
+			t.Cleanup(srv.Close)
+			return srv.URL + "/api?api_key=supersecret", http.DefaultClient,
+				"request to " + srv.URL + "/api?api_key=REDACTED failed", nil
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			url, client, want, err := tc(t)
+			require.NoError(t, err)
+			s := querySpec{name: "q", qtype: "json", source: sourceURL, method: http.MethodGet, url: url}
+			g := &generation{client: client, timeout: 5 * time.Second, maxSize: 1024}
+			_, err = fetchFrame(t.Context(), g, s, atomic.NewInt32(0), buildFrame)
+			require.Error(t, err)
+			require.Equal(t, want, err.Error())
+			require.Equal(t, reasonRequest, reasonOf(err))
 		})
 	}
 }

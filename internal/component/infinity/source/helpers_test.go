@@ -2,6 +2,9 @@ package source
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
+	"strings"
 	"sync"
 
 	"go.opentelemetry.io/collector/consumer"
@@ -63,4 +66,39 @@ func (c *testConsumer) pointsFor(instance string) (points, stale int) {
 		}
 	}
 	return points, stale
+}
+
+// logRecorder is a slog.Handler that keeps each record as one line of text.
+// Tests use it to check what each log level shows.
+type logRecorder struct {
+	mu    sync.Mutex
+	lines map[slog.Level][]string
+}
+
+func newLogRecorder() *logRecorder { return &logRecorder{lines: map[slog.Level][]string{}} }
+
+func (r *logRecorder) Enabled(context.Context, slog.Level) bool { return true }
+
+func (r *logRecorder) Handle(_ context.Context, rec slog.Record) error {
+	var b strings.Builder
+	b.WriteString(rec.Message)
+	rec.Attrs(func(a slog.Attr) bool {
+		fmt.Fprintf(&b, " %s=%q", a.Key, a.Value.String())
+		return true
+	})
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lines[rec.Level] = append(r.lines[rec.Level], b.String())
+	return nil
+}
+
+// WithAttrs and WithGroup drop the attributes. This package does not use them.
+func (r *logRecorder) WithAttrs([]slog.Attr) slog.Handler { return r }
+func (r *logRecorder) WithGroup(string) slog.Handler      { return r }
+
+// at returns a copy of the lines logged at level.
+func (r *logRecorder) at(level slog.Level) []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.lines[level]...)
 }
