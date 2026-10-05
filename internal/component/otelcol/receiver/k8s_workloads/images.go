@@ -133,7 +133,7 @@ func (c *controller) watchImages(pods, replicaSets cache.SharedIndexInformer) er
 			}
 			if p, ok := obj.(*corev1.Pod); ok {
 				c.mu.Lock()
-				delete(c.pods, string(p.UID))
+				c.removePod(p)
 				c.mu.Unlock()
 			}
 		},
@@ -150,40 +150,97 @@ func (c *controller) watchImages(pods, replicaSets cache.SharedIndexInformer) er
 			}
 			if rs, ok := obj.(*appsv1.ReplicaSet); ok {
 				c.mu.Lock()
-				delete(c.replicaSets, string(rs.UID))
+				c.removeReplicaSet(rs)
 				c.mu.Unlock()
 			}
 		},
 	})
 	return err
 }
+
+// Index owner relationships so watch callbacks never scan unrelated workloads
+// while holding the lifecycle mutex. Pods can arrive before their ReplicaSet.
+func controllerUID(m metav1.Object, kind string) string {
+	owner := metav1.GetControllerOf(m)
+	if owner != nil && owner.Kind == kind {
+		return string(owner.UID)
+	}
+	return ""
+}
+func (c *controller) removePod(p *corev1.Pod) {
+	id := string(p.UID)
+	if old := c.pods[id]; old != nil {
+		key := controllerUID(old, "ReplicaSet")
+		delete(c.podsByReplicaSet[key], id)
+		if len(c.podsByReplicaSet[key]) == 0 {
+			delete(c.podsByReplicaSet, key)
+		}
+	}
+	delete(c.pods, id)
+}
+func (c *controller) removeReplicaSet(rs *appsv1.ReplicaSet) {
+	id := string(rs.UID)
+	if old := c.replicaSets[id]; old != nil {
+		key := controllerUID(old, "Deployment")
+		delete(c.replicaSetsByDeployment[key], id)
+		if len(c.replicaSetsByDeployment[key]) == 0 {
+			delete(c.replicaSetsByDeployment, key)
+		}
+	}
+	delete(c.replicaSets, id)
+}
 func (c *controller) observePod(p *corev1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.removePod(p)
+	rsID := controllerUID(p, "ReplicaSet")
+	if rsID == "" {
+		return
+	}
 	c.pods[string(p.UID)] = p
-	for _, collection := range c.collections {
-		collection.observe(p)
+	if c.podsByReplicaSet[rsID] == nil {
+		c.podsByReplicaSet[rsID] = map[string]*corev1.Pod{}
+	}
+	c.podsByReplicaSet[rsID][string(p.UID)] = p
+	if rs := c.replicaSets[rsID]; rs != nil {
+		if collection := c.collections[controllerUID(rs, "Deployment")]; collection != nil {
+			collection.observe(p)
+		}
 	}
 }
 func (c *controller) observeReplicaSet(rs *appsv1.ReplicaSet) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.replicaSets[string(rs.UID)] = rs
-	for _, collection := range c.collections {
+	c.removeReplicaSet(rs)
+	depID := controllerUID(rs, "Deployment")
+	if depID == "" {
+		return
+	}
+	id := string(rs.UID)
+	c.replicaSets[id] = rs
+	if c.replicaSetsByDeployment[depID] == nil {
+		c.replicaSetsByDeployment[depID] = map[string]*appsv1.ReplicaSet{}
+	}
+	c.replicaSetsByDeployment[depID][id] = rs
+	if collection := c.collections[depID]; collection != nil {
 		collection.track(rs)
-		for _, p := range c.pods {
-			collection.observe(p)
+		if collection.replicaSets[id] {
+			for _, p := range c.podsByReplicaSet[id] {
+				collection.observe(p)
+			}
 		}
 	}
 }
 func (c *controller) openImages(d *appsv1.Deployment, state rolloutState) {
 	collection := &imageCollection{deployment: d.DeepCopy(), state: state, ids: map[string]map[string]bool{}, replicaSets: map[string]bool{}}
 	c.collections[string(d.UID)] = collection
-	for _, rs := range c.replicaSets {
+	for id, rs := range c.replicaSetsByDeployment[string(d.UID)] {
 		collection.track(rs)
-	}
-	for _, p := range c.pods {
-		collection.observe(p)
+		if collection.replicaSets[id] {
+			for _, p := range c.podsByReplicaSet[id] {
+				collection.observe(p)
+			}
+		}
 	}
 }
 func (c *controller) closeImages(d *appsv1.Deployment, succeeded bool) {

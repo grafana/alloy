@@ -38,15 +38,17 @@ type rolloutState struct {
 }
 
 type controller struct {
-	mu          sync.Mutex
-	pods        map[string]*corev1.Pod
-	replicaSets map[string]*appsv1.ReplicaSet
-	collections map[string]*imageCollection
-	imageQueue  workqueue.TypedRateLimitingInterface[*imageCollection]
-	opts        controllerOptions
-	rollouts    map[string]rolloutState
-	queue       workqueue.TypedRateLimitingInterface[*eventBatch]
-	now         func() time.Time
+	mu                      sync.Mutex
+	podsByReplicaSet        map[string]map[string]*corev1.Pod
+	replicaSetsByDeployment map[string]map[string]*appsv1.ReplicaSet
+	pods                    map[string]*corev1.Pod
+	replicaSets             map[string]*appsv1.ReplicaSet
+	collections             map[string]*imageCollection
+	imageQueue              workqueue.TypedRateLimitingInterface[*imageCollection]
+	opts                    controllerOptions
+	rollouts                map[string]rolloutState
+	queue                   workqueue.TypedRateLimitingInterface[*eventBatch]
+	now                     func() time.Time
 }
 
 func newController(opts controllerOptions) *controller {
@@ -56,7 +58,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{podsByReplicaSet: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {

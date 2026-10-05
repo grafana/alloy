@@ -232,3 +232,52 @@ func TestImageListPagesBeforeRetainingObjects(t *testing.T) {
 	require.True(t, apierrors.IsResourceExpired(err))
 	require.Equal(t, 2, calls, "must not fall back to unbounded list")
 }
+
+func TestImageOwnerIndexesFollowUpdatesAndDeletion(t *testing.T) {
+	d, rs, p := imageFixtures()
+	c := testController(t)
+	c.observePod(p)
+	c.observeReplicaSet(rs)
+	c.openImages(d, rolloutState{revision: 2, template: d.Spec.Template})
+	require.True(t, c.collections[string(d.UID)].ids["false:app"]["registry/web@sha256:amd64"])
+	moved := p.DeepCopy()
+	moved.OwnerReferences[0].UID = "other-rs"
+	c.observePod(moved)
+	require.Empty(t, c.podsByReplicaSet[string(rs.UID)])
+	require.Len(t, c.podsByReplicaSet["other-rs"], 1)
+	c.removePod(moved)
+	require.Empty(t, c.podsByReplicaSet)
+	movedRS := rs.DeepCopy()
+	movedRS.OwnerReferences[0].UID = "other-deployment"
+	c.observeReplicaSet(movedRS)
+	require.Empty(t, c.replicaSetsByDeployment[string(d.UID)])
+	require.Len(t, c.replicaSetsByDeployment["other-deployment"], 1)
+	c.removeReplicaSet(movedRS)
+	require.Empty(t, c.replicaSetsByDeployment)
+}
+
+func BenchmarkReplicaSetUpdateWithUnrelatedWorkloads(b *testing.B) {
+	for _, count := range []int{1, 100, 1000} {
+		b.Run(fmt.Sprint(count), func(b *testing.B) {
+			c := newController(controllerOptions{})
+			defer c.queue.ShutDown()
+			defer c.imageQueue.ShutDown()
+			for i := 0; i < count; i++ {
+				d, rs, p := imageFixtures()
+				d.UID = types.UID(fmt.Sprint("deployment-", i))
+				rs.UID = types.UID(fmt.Sprint("rs-", i))
+				rs.OwnerReferences[0].UID = d.UID
+				p.UID = types.UID(fmt.Sprint("pod-", i))
+				p.OwnerReferences[0].UID = rs.UID
+				c.observePod(p)
+				c.observeReplicaSet(rs)
+				c.openImages(d, rolloutState{revision: 2, template: d.Spec.Template})
+			}
+			_, rs, _ := imageFixtures()
+			b.ResetTimer()
+			for b.Loop() {
+				c.observeReplicaSet(rs)
+			}
+		})
+	}
+}

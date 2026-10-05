@@ -4,13 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -20,73 +17,19 @@ const (
 )
 
 type clusterHeartbeat struct {
-	SnapshotID  string               `json:"snapshot_id"`
-	ObservedAt  string               `json:"observed_at"`
-	Complete    bool                 `json:"complete"`
-	Deployments []deploymentSnapshot `json:"deployments"`
+	SnapshotID string `json:"snapshot_id"`
+	ObservedAt string `json:"observed_at"`
+	Healthy    bool   `json:"healthy"`
 }
 
-type deploymentSnapshot struct {
-	Namespace          string             `json:"namespace"`
-	Name               string             `json:"name"`
-	UID                string             `json:"uid"`
-	ResourceVersion    string             `json:"resource_version"`
-	Generation         int64              `json:"generation"`
-	ObservedGeneration int64              `json:"observed_generation"`
-	Revision           int64              `json:"revision"`
-	RolloutID          string             `json:"rollout_id"`
-	Status             string             `json:"status"`
-	Paused             bool               `json:"paused"`
-	Deleting           bool               `json:"deleting"`
-	DesiredReplicas    int32              `json:"desired_replicas"`
-	Replicas           int32              `json:"replicas"`
-	UpdatedReplicas    int32              `json:"updated_replicas"`
-	AvailableReplicas  int32              `json:"available_replicas"`
-	Containers         []rolloutContainer `json:"containers"`
-}
-
-func snapshotDeployment(clusterUID string, d *appsv1.Deployment) deploymentSnapshot {
-	revision, _ := strconv.ParseInt(d.Annotations[revisionAnnotation], 10, 64)
-	snapshot := deploymentSnapshot{Namespace: d.Namespace, Name: d.Name, UID: string(d.UID), ResourceVersion: d.ResourceVersion, Generation: d.Generation, ObservedGeneration: d.Status.ObservedGeneration, Revision: revision, Status: rolloutStatus(d), Paused: d.Spec.Paused, Deleting: d.DeletionTimestamp != nil, Replicas: d.Status.Replicas, UpdatedReplicas: d.Status.UpdatedReplicas, AvailableReplicas: d.Status.AvailableReplicas, Containers: []rolloutContainer{}}
-	snapshot.DesiredReplicas = 1
-	if d.Spec.Replicas != nil {
-		snapshot.DesiredReplicas = *d.Spec.Replicas
-	}
-	if revision > 0 {
-		snapshot.RolloutID = stableID(clusterUID, string(d.UID), strconv.FormatInt(revision, 10))
-	}
-	for _, container := range d.Spec.Template.Spec.Containers {
-		snapshot.Containers = append(snapshot.Containers, rolloutContainer{Name: container.Name, Image: container.Image})
-	}
-	for _, container := range d.Spec.Template.Spec.InitContainers {
-		snapshot.Containers = append(snapshot.Containers, rolloutContainer{Name: container.Name, Init: true, Image: container.Image})
-	}
-	return snapshot
-}
-
-// A successful fresh LIST proves API access and produces a consistent snapshot
-// across all pages. Never claim completeness from a potentially stale watch cache.
+// Heartbeats report collector liveness and cluster identity, never workload state.
 func (c *controller) heartbeat(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
 	now := c.now()
 	observedAt := now.UTC().Format(time.RFC3339Nano)
 	id := stableID(c.opts.clusterUID, "heartbeat", observedAt)
-	payload := clusterHeartbeat{SnapshotID: id, ObservedAt: observedAt, Complete: true, Deployments: []deploymentSnapshot{}}
-	options := metav1.ListOptions{Limit: 500}
-	for {
-		page, err := c.opts.client.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, options)
-		if err != nil {
-			return fmt.Errorf("list Deployments for heartbeat: %w", err)
-		}
-		for i := range page.Items {
-			payload.Deployments = append(payload.Deployments, snapshotDeployment(c.opts.clusterUID, &page.Items[i]))
-		}
-		options.Continue = page.Continue
-		if options.Continue == "" {
-			break
-		}
-	}
+	payload := clusterHeartbeat{SnapshotID: id, ObservedAt: observedAt, Healthy: true}
 	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return err
