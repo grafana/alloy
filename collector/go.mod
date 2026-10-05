@@ -1114,7 +1114,7 @@ replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-2024051813
 
 replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20260515134459-1798cf41aca7
 
-replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
+replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.6.0
 
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
