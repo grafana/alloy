@@ -88,9 +88,9 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 }
 
 // testServerInfoRows returns a selectServerInfo result set
-func testServerInfoRows(systemID string, inRecovery bool) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "pg_is_in_recovery", "version"}).
-		AddRow(systemID, "127.0.0.1", "5432", inRecovery, "14.0")
+func testServerInfoRows(systemID string) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+		AddRow(systemID, "127.0.0.1", "5432", "14.0")
 }
 
 func Test_defaultExclusions(t *testing.T) {
@@ -444,7 +444,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(testServerInfoRows("1234567890", false))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		mock.ExpectQuery(`SELECT current_user`).
 			WillReturnRows(sqlmock.NewRows([]string{"current_user"}).AddRow("alloy_monitor"))
 
@@ -463,7 +463,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(testServerInfoRows("1234567890", false))
+			WillReturnRows(testServerInfoRows("1234567890"))
 
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = false
@@ -479,7 +479,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(testServerInfoRows("1234567890", false))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		mock.ExpectQuery(`SELECT current_user`).WillReturnError(assert.AnError)
 
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
@@ -499,7 +499,7 @@ func TestPostgres_ServerID(t *testing.T) {
 
 	// serverIDFor connects one server reached at endpoint and returns the
 	// server_id the component derived for it.
-	serverIDFor := func(t *testing.T, endpoint string, inRecovery bool) string {
+	serverIDFor := func(t *testing.T, endpoint string) string {
 		t.Helper()
 
 		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -507,7 +507,7 @@ func TestPostgres_ServerID(t *testing.T) {
 		t.Cleanup(func() { db.Close() })
 
 		mock.ExpectPing()
-		mock.ExpectQuery(selectServerInfo).WillReturnRows(testServerInfoRows(sharedSystemID, inRecovery))
+		mock.ExpectQuery(selectServerInfo).WillReturnRows(testServerInfoRows(sharedSystemID))
 
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		inst := c.loadInstances()[0]
@@ -523,25 +523,15 @@ func TestPostgres_ServerID(t *testing.T) {
 	}
 
 	const primaryEndpoint = "postgresql://db.abc.us-east-1.rds.amazonaws.com:5432/app"
-	primary := serverIDFor(t, primaryEndpoint, false)
-	replica1 := serverIDFor(t, "postgresql://db-replica-1.abc.us-east-1.rds.amazonaws.com:5432/app", true)
-	replica2 := serverIDFor(t, "postgresql://db-replica-2.abc.us-east-1.rds.amazonaws.com:5432/app", true)
+	primary := serverIDFor(t, primaryEndpoint)
+	replica1 := serverIDFor(t, "postgresql://db-replica-1.abc.us-east-1.rds.amazonaws.com:5432/app")
+	replica2 := serverIDFor(t, "postgresql://db-replica-2.abc.us-east-1.rds.amazonaws.com:5432/app")
 
 	assert.NotEqual(t, primary, replica1, "a primary and its replica share a server_id")
 	assert.NotEqual(t, replica1, replica2, "two read replicas of one primary share a server_id")
 
-	// The recovery state separates a primary from one of its replicas even
-	// when both are reached at the same endpoint, as happens when each is
-	// tunnelled to the same local address.
-	const tunnelEndpoint = "postgresql://localhost:5432/app"
-	assert.NotEqual(t,
-		serverIDFor(t, tunnelEndpoint, false),
-		serverIDFor(t, tunnelEndpoint, true),
-		"a primary and its replica tunnelled to one address share a server_id",
-	)
-
 	// The same server keeps its server_id across reconnects.
-	assert.Equal(t, primary, serverIDFor(t, primaryEndpoint, false))
+	assert.Equal(t, primary, serverIDFor(t, primaryEndpoint))
 }
 
 func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
@@ -579,7 +569,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 
 	expectPrelude := func(mock sqlmock.Sqlmock, mockSelectCurrentUser bool) {
 		mock.ExpectPing()
-		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).WillReturnRows(testServerInfoRows("1234567890", false))
+		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).WillReturnRows(testServerInfoRows("1234567890"))
 		if mockSelectCurrentUser {
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT current_user")).WillReturnRows(currentUserRows())
 		}
@@ -1203,7 +1193,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		defer db2.Close()
 		mock2.ExpectPing()
 		mock2.ExpectQuery(selectServerInfo).
-			WillReturnRows(testServerInfoRows("1234567890", false))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
 
 		// Second attempt: connection succeeds and clears error
@@ -1425,7 +1415,7 @@ func multiDatabaseTestMockDB(t *testing.T, systemID string) *sql.DB {
 	mock.ExpectPing()
 	mock.ExpectPing()
 	mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
-		WillReturnRows(testServerInfoRows(systemID, false))
+		WillReturnRows(testServerInfoRows(systemID))
 	return db
 }
 
@@ -1619,7 +1609,7 @@ func TestPostgres_ExportedReceiversStableAcrossUpdates(t *testing.T) {
 	for range 2 {
 		mock.ExpectPing()
 		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
-			WillReturnRows(testServerInfoRows("system-1", false))
+			WillReturnRows(testServerInfoRows("system-1"))
 	}
 
 	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
