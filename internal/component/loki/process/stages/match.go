@@ -248,8 +248,8 @@ func (m *matchKeepStage) Cleanup() {
 
 type matchMergeKey struct{}
 
-// withMatchMerge is used to store a pointer to a entry slice so that we can later
-// merge it back to the original silce after inner pipeline have finished.
+// withMatchMerge stores a pointer to an entry slice that the inner pipeline
+// output is appended to.
 func withMatchMerge(ctx context.Context, ptr *[]Entry) context.Context {
 	return context.WithValue(ctx, matchMergeKey{}, ptr)
 }
@@ -264,58 +264,61 @@ func fromMatchMerge(ctx context.Context) (*[]Entry, bool) {
 // process implements stage.
 func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	var (
-		dst     int
-		matched []Entry
+		merged []Entry
+		start  = -1
+		end    int
 	)
 
 	for i, e := range entries {
-		if !matchLogQL(e, m.matchers, m.filter) {
-			entries[dst] = e
-			dst++
-			continue
+		match := matchLogQL(e, m.matchers, m.filter)
+		if match {
+			// There is at least one match so entries are collected into merged.
+			if merged == nil {
+				merged = make([]Entry, 0, len(entries))
+				merged = append(merged, entries[:i]...)
+			}
+			if start < 0 {
+				start = i
+			}
+			end = i + 1
 		}
 
-		if matched == nil {
-			matched = make([]Entry, 0, len(entries)-i)
+		// Consecutive matched entries are processed together and in input order so
+		// entries sharing a timestamp keep their original order.
+		if start >= 0 && (!match || end == len(entries)) {
+			// Set len and cap to end so that inner stages cannot overwrite the entries that follow.
+			if err := m.pipeline2.process(withMatchMerge(ctx, &merged), entries[start:end:end]); err != nil {
+				return err
+			}
+			start = -1
 		}
-		matched = append(matched, e)
+
+		if !match && merged != nil {
+			merged = append(merged, e)
+		}
 	}
 
-	if len(matched) > 0 {
-		// We store a pointer to buf in context so that we can later merged it back after
-		// inner pipeline have finished.
-		var buf []Entry
-		if err := m.pipeline2.process(withMatchMerge(ctx, &buf), matched); err != nil {
-			return err
-		}
-		entries = append(entries[:dst], buf...)
-		dst += len(buf)
-
+	if merged != nil {
 		// Entries that took different branches can still share a stream so we need to
 		// make sure they are sorted to prevent OOO.
-		slices.SortStableFunc(entries[:dst], func(x, y Entry) int {
+		slices.SortStableFunc(merged, func(x, y Entry) int {
 			return x.Timestamp.Compare(y.Timestamp)
 		})
+		entries = merged
 	}
 
-	if dst == 0 {
+	if len(entries) == 0 {
 		return nil
 	}
 
-	return m.next(ctx, entries[:dst])
+	return m.next(ctx, entries)
 }
 
 // collected is passed as the next function to the inner pipeline.
 func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 	// If context contains a pointer to a entry slice that means we called it directly.
-	// In this case we should just set it to resulting entries from inner pipeline
-	// so that process can merged it back.
 	if buf, ok := fromMatchMerge(ctx); ok {
-		if *buf == nil {
-			*buf = entries
-		} else {
-			*buf = append(*buf, entries...)
-		}
+		*buf = append(*buf, entries...)
 		return nil
 	}
 

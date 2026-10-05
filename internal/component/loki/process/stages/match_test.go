@@ -492,7 +492,7 @@ func TestMatchStageOrder(t *testing.T) {
 		}, got)
 	})
 
-	t.Run("entries sharing a timestamp keep bypassed before matched", func(t *testing.T) {
+	t.Run("entries sharing a timestamp keeps input order", func(t *testing.T) {
 		cfgs := loadConfig(`
 		stage.match {
 			selector = "{app=\"loki\"} |= \"match\""
@@ -512,8 +512,8 @@ func TestMatchStageOrder(t *testing.T) {
 		})
 
 		require.Equal(t, []string{
-			"other 2",
 			"matched 1",
+			"other 2",
 			"other 3",
 			"matched 4",
 		}, got)
