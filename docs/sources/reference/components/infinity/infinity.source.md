@@ -510,20 +510,27 @@ A panel's `transformations` query type in Grafana runs over the frames of every 
 `infinity.source` reports as healthy when every query succeeded on its last poll, or hasn't polled yet.
 
 `infinity.source` reports as unhealthy when at least one query failed on its last poll.
-The health message names the first failed query in label order, its failure reason, and how many other queries also failed, for example:
+The health message names the first failed query in label order, describes the failure, and counts how many other queries also failed, for example:
 
 ```text
 query "orders" failed: status 503 (and 2 other queries)
 ```
 
-Health messages and logs never show the query parameter values of a URL; `infinity.source` replaces every query parameter value with `REDACTED`.
-This includes URLs inside HTTP errors, for example a bad redirect `Location` header, with or without a scheme.
-When such a URL doesn't parse, `infinity.source` replaces its whole query string with `REDACTED`.
-`infinity.source` also removes user info, such as `user:password@`, from every URL in these messages.
+Health messages and warning logs describe a request failure by its category and the request URL, for example `connection to https://api.example.com/orders?key=REDACTED was refused`.
+For a request failure, they never show text from the server or from an HTTP error, such as a redirect `Location` header, a response body, or an OAuth2 token endpoint response.
+The only values from a response that they show are numbers, such as an HTTP status code.
+In the request URL, `infinity.source` removes user info, such as `user:password@`, and replaces every query parameter value with `REDACTED`.
+
+Parse and post-processing failures show the error text of the parser, which can quote part of the response.
+`infinity.source` cuts this text to 200 characters, and removes user info and query parameter values from any URL in it.
 
 ## Debug information
 
 `infinity.source` doesn't expose any component-specific debug information.
+
+At the `debug` log level, `infinity.source` logs the full error of each failed poll in the `detail` field.
+Before it logs the error, `infinity.source` removes user info and query parameter values from URLs in the error text.
+This removal is best effort, because the text can come from the server, so enable the `debug` log level only when you need it.
 
 ## Debug metrics
 
