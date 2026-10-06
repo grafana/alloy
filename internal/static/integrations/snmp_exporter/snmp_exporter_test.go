@@ -119,3 +119,45 @@ func TestLoadSNMPConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadSNMPConfigRejectsEmptyDefinitions(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         Config
+		expectedErr string
+	}{
+		{
+			name: "nil module in replace strategy",
+			cfg: Config{
+				SnmpConfig:              snmp_config.Config{Modules: map[string]*snmp_config.Module{"if_mib": nil}},
+				SnmpConfigMergeStrategy: "replace",
+			},
+			expectedErr: `snmp module "if_mib" has an empty definition`,
+		},
+		{
+			name: "nil module in merge strategy",
+			cfg: Config{
+				SnmpConfig:              snmp_config.Config{Modules: map[string]*snmp_config.Module{"cisco_device": nil}},
+				SnmpConfigMergeStrategy: "merge",
+			},
+			expectedErr: `snmp module "cisco_device" has an empty definition`,
+		},
+		{
+			name: "nil auth in replace strategy",
+			cfg: Config{
+				SnmpConfig: snmp_config.Config{
+					Modules: map[string]*snmp_config.Module{"if_mib": {Walk: []string{"1.3.6.1.2.1.2"}}},
+					Auths:   map[string]*snmp_config.Auth{"inno": nil},
+				},
+				SnmpConfigMergeStrategy: "replace",
+			},
+			expectedErr: `snmp auth "inno" has an empty definition`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := LoadSNMPConfig(tt.cfg.SnmpConfigFile, &tt.cfg.SnmpConfig, tt.cfg.SnmpConfigMergeStrategy)
+			require.ErrorContains(t, err, tt.expectedErr)
+		})
+	}
+}
