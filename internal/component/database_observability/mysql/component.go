@@ -79,6 +79,8 @@ type Arguments struct {
 	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
 	LocksArguments          LocksArguments               `alloy:"locks,block,optional"`
+	TableStatsArguments     TableStatsArguments          `alloy:"table_stats,block,optional"`
+	IndexStatsArguments     IndexStatsArguments          `alloy:"index_stats,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments        `alloy:"query_samples,block,optional"`
 	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
 	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
@@ -145,6 +147,14 @@ type LocksArguments struct {
 	Threshold       time.Duration `alloy:"threshold,attr,optional"`
 }
 
+type TableStatsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type IndexStatsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 type QuerySamplesArguments struct {
 	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
@@ -208,6 +218,14 @@ func defaultArguments() Arguments {
 		LocksArguments: LocksArguments{
 			CollectInterval: 30 * time.Second,
 			Threshold:       1 * time.Second,
+		},
+
+		TableStatsArguments: TableStatsArguments{
+			CollectInterval: 5 * time.Minute,
+		},
+
+		IndexStatsArguments: IndexStatsArguments{
+			CollectInterval: 5 * time.Minute,
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
@@ -1007,10 +1025,11 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	if collectors[collector.TableStatsCollector] {
 		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
+			DB:              inst.dbConnection,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			Registry:        inst.registry,
+			CollectInterval: c.args.TableStatsArguments.CollectInterval,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.TableStatsCollector, "create", err)
@@ -1024,10 +1043,11 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	if collectors[collector.IndexStatsCollector] {
 		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
+			DB:              inst.dbConnection,
+			ExcludeSchemas:  c.args.ExcludeSchemas,
+			Registry:        inst.registry,
+			CollectInterval: c.args.IndexStatsArguments.CollectInterval,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.IndexStatsCollector, "create", err)

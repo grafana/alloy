@@ -3,8 +3,11 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
@@ -13,6 +16,11 @@ import (
 // TableStatsCollector emits the fetch count of the index="NONE" ("no index
 // used") row per table, from
 // performance_schema.table_io_waits_summary_by_index_usage.
+//
+// The queries run on a fixed collect interval, in the background, and each run
+// is bounded by a timeout equal to the interval. A scrape only serves the
+// results of the last successful run and never queries the database, so slow
+// queries on servers with many tables cannot pile up behind scrapes.
 const TableStatsCollector = "table_stats"
 
 const selectTableIOWaitsNoIndex = `
@@ -49,29 +57,42 @@ var (
 )
 
 type TableStatsArguments struct {
-	DB             *sql.DB
-	ExcludeSchemas []string
-	Registry       *prometheus.Registry
+	DB              *sql.DB
+	ExcludeSchemas  []string
+	Registry        *prometheus.Registry
+	CollectInterval time.Duration
 
 	Logger *slog.Logger
 }
 
 type TableStats struct {
-	dbConnection   *sql.DB
-	excludeSchemas []string
-	registry       *prometheus.Registry
+	dbConnection    *sql.DB
+	excludeSchemas  []string
+	registry        *prometheus.Registry
+	collectInterval time.Duration
+
+	// Results of the last successful run of each query.
+	noIdxFetch cachedMetrics
+	rowCount   cachedMetrics
 
 	logger  *slog.Logger
 	running *atomic.Bool
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewTableStats(args TableStatsArguments) (*TableStats, error) {
+	if args.CollectInterval <= 0 {
+		return nil, errors.New("collect interval must be positive")
+	}
+
 	return &TableStats{
-		dbConnection:   args.DB,
-		excludeSchemas: args.ExcludeSchemas,
-		registry:       args.Registry,
-		logger:         args.Logger.With("collector", TableStatsCollector),
-		running:        &atomic.Bool{},
+		dbConnection:    args.DB,
+		excludeSchemas:  args.ExcludeSchemas,
+		registry:        args.Registry,
+		collectInterval: args.CollectInterval,
+		logger:          args.Logger.With("collector", TableStatsCollector),
+		running:         &atomic.Bool{},
 	}, nil
 }
 
@@ -79,11 +100,32 @@ func (c *TableStats) Name() string {
 	return TableStatsCollector
 }
 
-func (c *TableStats) Start(_ context.Context) error {
+func (c *TableStats) Start(ctx context.Context) error {
 	if err := c.registry.Register(c); err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	c.cancel = cancel
 	c.running.Store(true)
+
+	c.wg.Go(func() {
+		defer c.running.Store(false)
+
+		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
+
+		for {
+			c.collect(ctx)
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	})
+
 	return nil
 }
 
@@ -92,6 +134,10 @@ func (c *TableStats) Stopped() bool {
 }
 
 func (c *TableStats) Stop() {
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 	c.registry.Unregister(c)
 	c.running.Store(false)
 }
@@ -102,62 +148,80 @@ func (c *TableStats) Describe(ch chan<- *prometheus.Desc) {
 	ch <- tableStatsRowCountDesc
 }
 
-// Collect implements prometheus.Collector. It runs synchronously at scrape time.
+// Collect implements prometheus.Collector. It serves the results of the last
+// successful run and does not query the database.
 func (c *TableStats) Collect(ch chan<- prometheus.Metric) {
-	ctx := context.Background()
-
-	c.collectNoIdxFetch(ctx, ch)
-	c.collectRowCount(ctx, ch)
+	c.noIdxFetch.emit(ch)
+	c.rowCount.emit(ch)
 }
 
-func (c *TableStats) collectNoIdxFetch(ctx context.Context, ch chan<- prometheus.Metric) {
+// collect runs both queries, bounded by a timeout of one collect interval. A
+// query that fails leaves its previous results in place.
+func (c *TableStats) collect(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, c.collectInterval)
+	defer cancel()
+
+	if metrics, err := c.queryNoIdxFetch(ctx); err != nil {
+		c.logger.Error("failed to collect table_io_waits_summary_by_index_usage", "err", err)
+	} else {
+		c.noIdxFetch.set(metrics)
+	}
+
+	if metrics, err := c.queryRowCount(ctx); err != nil {
+		c.logger.Error("failed to collect mysql.innodb_table_stats", "err", err)
+	} else {
+		c.rowCount.set(metrics)
+	}
+}
+
+func (c *TableStats) queryNoIdxFetch(ctx context.Context) ([]prometheus.Metric, error) {
 	query := fmt.Sprintf(selectTableIOWaitsNoIndex, buildExcludedSchemasClause(c.excludeSchemas))
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		c.logger.Error("failed to query table_io_waits_summary_by_index_usage", "err", err)
-		return
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
+	var metrics []prometheus.Metric
 	for rows.Next() {
 		var objectSchema, objectName string
 		var countFetch uint64
 
 		if err := rows.Scan(&objectSchema, &objectName, &countFetch); err != nil {
-			c.logger.Error("failed to scan table_io_waits_summary_by_index_usage row", "err", err)
-			return
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 
-		ch <- prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName)
+		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName))
 	}
 
 	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating table_io_waits_summary_by_index_usage rows", "err", err)
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
+	return metrics, nil
 }
 
-func (c *TableStats) collectRowCount(ctx context.Context, ch chan<- prometheus.Metric) {
+func (c *TableStats) queryRowCount(ctx context.Context) ([]prometheus.Metric, error) {
 	query := fmt.Sprintf(selectTableRowCount, buildExcludedSchemasClause(c.excludeSchemas))
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		c.logger.Error("failed to query mysql.innodb_table_stats", "err", err)
-		return
+		return nil, fmt.Errorf("query: %w", err)
 	}
 	defer rows.Close()
 
+	var metrics []prometheus.Metric
 	for rows.Next() {
 		var databaseName, tableName string
 		var rowCount int64
 
 		if err := rows.Scan(&databaseName, &tableName, &rowCount); err != nil {
-			c.logger.Error("failed to scan mysql.innodb_table_stats row", "err", err)
-			return
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 
-		ch <- prometheus.MustNewConstMetric(tableStatsRowCountDesc, prometheus.GaugeValue, float64(rowCount), databaseName, tableName)
+		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsRowCountDesc, prometheus.GaugeValue, float64(rowCount), databaseName, tableName))
 	}
 
 	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating mysql.innodb_table_stats rows", "err", err)
+		return nil, fmt.Errorf("iterate: %w", err)
 	}
+	return metrics, nil
 }
