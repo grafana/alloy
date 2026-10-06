@@ -133,7 +133,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 The `database_instance` block defines one SQL Server instance to monitor.
 Repeat the block to monitor several instances with a single component.
 The block label must be unique across `database_instance` blocks and identifies the instance in the component's metrics endpoint path.
-Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port, and database name are rejected.
+Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port or named instance, and database name are rejected.
 
 | Name               | Type     | Description                                                      | Default | Required |
 |--------------------|----------|-------------------------------------------------------------------|---------|----------|

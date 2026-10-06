@@ -122,6 +122,12 @@ func getBaseTarget(opts component.Options, instanceKey, name string) (discovery.
 // instanceKey returns a connection-string-derived identifier for the SQL Server
 // instance, in the form "host:port/database". This mirrors what mysql/postgres
 // components use to label metrics and logs.
+//
+// A named instance is identified as "host\instance/database" instead: several
+// named instances can share a host, and their ports are assigned dynamically
+// and resolved through the SQL Server Browser service, so the port is not part
+// of their identity. An explicitly configured port is still included, as
+// "host\instance:port/database".
 func instanceKey(dsn string) (string, error) {
 	cfg, err := msdsn.Parse(dsn)
 	if err != nil {
@@ -133,10 +139,19 @@ func instanceKey(dsn string) (string, error) {
 		host = "localhost"
 	}
 
-	port := cfg.Port
-	if port == 0 {
-		port = 1433
+	var server string
+	switch {
+	case cfg.Instance == "":
+		port := cfg.Port
+		if port == 0 {
+			port = 1433
+		}
+		server = fmt.Sprintf("%s:%d", host, port)
+	case cfg.Port == 0:
+		server = host + `\` + cfg.Instance
+	default:
+		server = fmt.Sprintf(`%s\%s:%d`, host, cfg.Instance, cfg.Port)
 	}
 
-	return fmt.Sprintf("%s:%d/%s", host, port, cfg.Database), nil
+	return server + "/" + cfg.Database, nil
 }

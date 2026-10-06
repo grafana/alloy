@@ -582,6 +582,22 @@ func TestValidateDatabaseInstance(t *testing.T) {
 		require.ErrorContains(t, args.Validate(), `resolve to the same server`)
 	})
 
+	t.Run("database_instance blocks for named instances on the same host are valid", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@same-host/INSTANCE_ONE?database=same-db"
+		}
+		database_instance "two" {
+			data_source_name = "sqlserver://user:pass@same-host/INSTANCE_TWO?database=same-db"
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, args.Validate())
+		require.Len(t, args.Databases, 2)
+	})
+
 	t.Run("invalid database_instance label is rejected", func(t *testing.T) {
 		args := Arguments{
 			Databases: []DatabaseArguments{
@@ -589,5 +605,70 @@ func TestValidateDatabaseInstance(t *testing.T) {
 			},
 		}
 		require.ErrorContains(t, args.Validate(), "must be a valid identifier")
+	})
+}
+
+func TestInstanceKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		dsn      string
+		expected string
+	}{
+		{
+			name:     "url form with explicit port",
+			dsn:      "sqlserver://user:pass@products-db:1433?database=products",
+			expected: "products-db:1433/products",
+		},
+		{
+			name:     "url form without port defaults to 1433",
+			dsn:      "sqlserver://user:pass@products-db?database=products",
+			expected: "products-db:1433/products",
+		},
+		{
+			name:     "ado form",
+			dsn:      "server=products-db;port=1434;user id=user;password=pass;database=products",
+			expected: "products-db:1434/products",
+		},
+		{
+			name:     "url form named instance",
+			dsn:      "sqlserver://user:pass@products-db/SQLEXPRESS?database=products",
+			expected: `products-db\SQLEXPRESS/products`,
+		},
+		{
+			name:     "ado form named instance",
+			dsn:      `server=products-db\SQLEXPRESS;user id=user;password=pass;database=products`,
+			expected: `products-db\SQLEXPRESS/products`,
+		},
+		{
+			name:     "named instance with explicit port",
+			dsn:      `server=products-db\SQLEXPRESS;port=1434;user id=user;password=pass;database=products`,
+			expected: `products-db\SQLEXPRESS:1434/products`,
+		},
+		{
+			name:     "host defaults to localhost",
+			dsn:      "sqlserver://user:pass@?database=products",
+			expected: "localhost:1433/products",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := instanceKey(tt.dsn)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+
+	t.Run("named instances on the same host have distinct keys", func(t *testing.T) {
+		one, err := instanceKey(`server=products-db\INSTANCE_ONE;user id=user;password=pass;database=products`)
+		require.NoError(t, err)
+		two, err := instanceKey(`server=products-db\INSTANCE_TWO;user id=user;password=pass;database=products`)
+		require.NoError(t, err)
+		assert.NotEqual(t, one, two)
+	})
+
+	t.Run("invalid dsn returns an error", func(t *testing.T) {
+		_, err := instanceKey("sqlserver://user:pass@products-db:not-a-port")
+		require.Error(t, err)
 	})
 }
