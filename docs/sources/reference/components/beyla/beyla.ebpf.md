@@ -606,14 +606,14 @@ The `ebpf` block configures eBPF-specific settings.
 | `kafka_consumer_group_ttl` | `duration` | Lifetime of cached Kafka consumer-group membership. | `"2m"` | no |
 | `populate_trace_context` | `bool` | Populate the pinned trace-context map for external readers, such as profilers. | `false` | no |
 
-Omit `go_http_client_buffer_timeout` to use Beyla's default of `"1s"`.
+Omit `go_http_client_buffer_timeout` to use the default of `"1s"` as defined in Beyla.
 Set it to `"0s"` to disable Go HTTP client event deferral.
 
 `kafka_consumer_group_cache_size` and `kafka_consumer_group_ttl` control the cache that supplies `messaging.consumer.group.name` on Kafka consumer spans and metrics.
 Keep the TTL above the consumer heartbeat interval and the longest expected rebalance.
 For classic consumers that share a process with another consumer group, consider a TTL above `max.poll.interval.ms`.
 A longer TTL delays attribution for newly observed processes.
-Unset or zero values use Beyla's defaults.
+Unset or zero values use the defaults defined in Beyla.
 
 Set `populate_trace_context` to `true` when an external reader needs the trace and span IDs of the request each thread serves.
 Keeping this map populated adds work on runtime context switches.
@@ -861,7 +861,7 @@ The `buckets` block configures explicit histogram bucket boundaries for Promethe
 | `stat_tcp_rtt_histogram` | `list(number)` | TCP round-trip time boundaries, in seconds. | `[]` | no |
 | `v8js_gc_duration_histogram` | `list(number)` | Node.js V8 garbage collection duration boundaries, in seconds. | `[]` | no |
 
-An empty list uses Beyla's default boundaries.
+An empty list uses the default boundaries defined in Beyla.
 For `jvm_gc_duration_histogram`, the default boundaries are `[0.01, 0.1, 1, 10]` seconds.
 JVM GC duration metrics require `application_runtime` in `metrics.features` and the Java agent enabled.
 For `v8js_gc_duration_histogram`, the default boundaries are `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` seconds.
@@ -1063,7 +1063,7 @@ Add `application_runtime` to `metrics.features` to enable collection.
 | `sampling_interval` | `duration` | Collection interval requested from .NET runtime event counters and delay before reconnecting after a collection session ends. | `"1s"` | no |
 | `timeout` | `duration` | Timeout for diagnostic IPC setup and collection session shutdown. | `"10s"` | no |
 
-Unset or zero values use Beyla's defaults.
+Unset or zero values use the defaults defined in Beyla.
 
 ### `cloud_metadata`
 
@@ -1088,8 +1088,8 @@ The `name_resolver` block configures how Beyla resolves service names.
 
 `sources` accepts `dns`, `ecs`, `k8s`, `kube`, `kubernetes`, and `rdns`.
 The values `k8s`, `kube`, and `kubernetes` select the same Kubernetes resolver.
-An empty list uses Beyla's default sources.
-Unset or zero cache values use Beyla's defaults.
+An empty list uses the default sources defined in Beyla.
+Unset or zero cache values use the defaults defined in Beyla.
 
 Include `ecs` in `sources` to enable Amazon ECS service name resolution.
 This requires `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
@@ -1116,7 +1116,7 @@ Include `ecs` in `name_resolver.sources` to enable it.
 |------|------|-------------|---------|----------|
 | `refresh_interval` | `duration` | How often Beyla refreshes the ECS task inventory. | `"30s"` | no |
 
-An unset or zero interval uses Beyla's default.
+An unset or zero interval uses the default defined in Beyla.
 
 ## Exported fields
 
