@@ -1251,6 +1251,38 @@ func TestQueryDetails_QueryAssociation_EmptyFingerprintFallsBack(t *testing.T) {
 	require.Contains(t, logs, "queryid=empty1")
 }
 
+func TestQueryDetails_TokenizeTableNames_MixedQuoteIdentifiers(t *testing.T) {
+	t.Run("unquoted schema, quoted table", func(t *testing.T) {
+		t.Parallel()
+
+		normalizer := sqllexer.NewNormalizer(
+			sqllexer.WithCollectTables(true),
+			sqllexer.WithCollectComments(true),
+			sqllexer.WithKeepIdentifierQuotation(true),
+		)
+
+		tables, err := tokenizeTableNames(normalizer, `SELECT * FROM example_schema."orders-dash"`)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{`example_schema."orders-dash"`}, tables)
+	})
+
+	t.Run("unquoted schema, quoted table", func(t *testing.T) {
+		t.Parallel()
+
+		normalizer := sqllexer.NewNormalizer(
+			sqllexer.WithCollectTables(true),
+			sqllexer.WithCollectComments(true),
+			sqllexer.WithKeepIdentifierQuotation(true),
+		)
+
+		tables, err := tokenizeTableNames(normalizer, `SELECT * FROM "example_schema".orders_underscore`)
+
+		require.NoError(t, err)
+		require.Equal(t, []string{`example_schema.orders_underscore`}, tables)
+	})
+}
+
 // lockedBuffer is a concurrency-safe writer for capturing logs emitted from the
 // collector's collect goroutine in tests.
 type lockedBuffer struct {
