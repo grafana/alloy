@@ -2,21 +2,25 @@ package write
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/component/discovery"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -674,3 +678,97 @@ func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want 
 		}
 	}
 }
+
+func TestConsumeEntryRetriesFailedWALWrite(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c, wl := newFakeWALComponent(t, 2)
+
+		ts := time.Now()
+		c.consumeEntry(t.Context(), loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: ts, Line: "after retry"}))
+
+		require.Equal(t, int64(3), wl.calls.Load())
+		require.Len(t, wl.entries, 1)
+	})
+}
+
+func TestConsumeEntryCanceledWhileWaitingForRetry(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+
+		c, wl := newFakeWALComponent(t, math.MaxInt64)
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			c.consumeEntry(ctx, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "never written"}))
+		}()
+
+		// Blocks until consumeEntry is waiting for the backoff.
+		synctest.Wait()
+		require.Equal(t, int64(1), wl.calls.Load())
+
+		cancel()
+		<-done
+
+		// Wait returns once ctx is canceled and the entry gets one last attempt.
+		require.Equal(t, int64(2), wl.calls.Load())
+		require.Len(t, wl.entries, 0)
+	})
+}
+
+// newFakeWALComponent returns a component with a started WAL consumer where the
+// first failures WAL writes fail.
+func newFakeWALComponent(t *testing.T, failures int64) (*Component, *fakeWAL) {
+	t.Helper()
+
+	wl := &fakeWAL{dir: t.TempDir(), failures: failures}
+
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		endpoint {
+			url = "http://localhost:1"
+		}
+	`), &args))
+	args.WAL.Enabled = true
+
+	c := &Component{
+		opts: component.Options{
+			Logger:     logging.NewSlogNop(),
+			Registerer: prometheus.NewRegistry(),
+		},
+		wal: wl,
+	}
+
+	consumer, err := c.newWALConsumer(args, args.convertEndpointConfigs())
+	require.NoError(t, err)
+	c.consumer = consumer
+
+	consumer.Start()
+	t.Cleanup(consumer.Stop)
+
+	return c, wl
+}
+
+// fakeWAL fails the first failures writes and keeps the entries of the rest.
+type fakeWAL struct {
+	dir      string
+	failures int64
+	calls    atomic.Int64
+	entries  []push.Entry
+}
+
+func (w *fakeWAL) Log(r *wal.Record) error {
+	if w.calls.Inc() <= w.failures {
+		return errors.New("no space left on device")
+	}
+	// The record is reused after Log returns, so the entries are copied out.
+	for _, e := range r.RefEntries {
+		w.entries = append(w.entries, e.Entries...)
+	}
+	return nil
+}
+
+func (w *fakeWAL) Sync() error               { return nil }
+func (w *fakeWAL) Dir() string               { return w.dir }
+func (w *fakeWAL) Close()                    {}
+func (w *fakeWAL) NextSegment() (int, error) { return 0, nil }

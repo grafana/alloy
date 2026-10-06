@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -14,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 )
 
@@ -199,7 +201,10 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 }
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
-	var labelsMerged bool
+	var (
+		bo           *backoff.Backoff
+		labelsMerged bool
+	)
 
 	for {
 		c.mut.RLock()
@@ -215,19 +220,33 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 		}
 
 		err := consumer.ConsumeEntry(ctx, e)
-		// Only a stopped consumer is worth retrying, an update swapped it out.
-		// Anything else is an accepted entry, a canceled context while shutting down,
-		// or a failed WAL write.
-		// This makes delivery at-least-once: a fanout consumer enqueues to its
-		// endpoints in order, so it can be stopped after some of them already
-		// accepted the entry, and the retry hands it to those endpoints again.
-		if !errors.Is(err, loki.ErrConsumerStopped) {
+		if !client.IsRetryableErr(err) {
 			return
 		}
 
 		if ctx.Err() != nil {
 			return
 		}
+
+		// A stopped consumer has already been swapped out by the time Update
+		// releases the lock, so there is no need to wait.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the entry, and the retry hands it to those endpoints again.
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			continue
+		}
+
+		// Retrying without a limit blocks the pipeline instead of dropping the entry,
+		// a full WAL disk can recover on its own once old segments are cleaned up.
+		if bo == nil {
+			bo = backoff.New(ctx, backoff.Config{
+				MinBackoff: 50 * time.Millisecond,
+				MaxBackoff: 30 * time.Second,
+			})
+		}
+
+		bo.Wait()
 	}
 }
 
