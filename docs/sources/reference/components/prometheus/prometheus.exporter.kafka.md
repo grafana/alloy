@@ -12,7 +12,9 @@ title: prometheus.exporter.kafka
 
 # `prometheus.exporter.kafka`
 
-The `prometheus.exporter.kafka` component embeds the [`kafka_exporter`](https://github.com/grafana/kafka_exporter) for collecting metrics from a Kafka server.
+The `prometheus.exporter.kafka` component embeds the [`kafka_exporter`][kafka-exporter] to collect metrics from a Kafka server.
+
+[kafka-exporter]: https://github.com/grafana/kafka_exporter
 
 ## Usage
 
@@ -86,7 +88,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.kafka`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.kafka`:
 
 ```alloy
 prometheus.exporter.kafka "example" {
