@@ -11,10 +11,10 @@ tasks:
       - task: govulncheck
 
   go:
-    desc: Run golangci-lint.
+    desc: Run golangci-lint. Pass targets after -- to lint specific files or packages.
     dir: "tools"
     cmds:
-      - mise exec -- go run ./cmd lint go 
+      - mise exec -- go run ./cmd lint go {{.CLI_ARGS}}
 
   shellcheck:
     desc: Run shellcheck linter.
