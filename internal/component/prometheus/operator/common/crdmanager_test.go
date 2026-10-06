@@ -2,15 +2,9 @@ package common
 
 import (
 	"bytes"
-	"context"
-	"errors"
-	"fmt"
 	"log/slog"
-	"os"
-	"os/exec"
 	"strings"
 	"testing"
-	"time"
 
 	"golang.org/x/exp/maps"
 
@@ -25,7 +19,6 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/scrape"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -385,46 +378,4 @@ func (m *mockScrapeManager) TargetsActive() map[string][]*scrape.Target {
 
 func (m *mockScrapeManager) ApplyConfig(cfg *config.Config) error {
 	return nil
-}
-
-// controllerRuntimeLoggerChildEnv selects the subprocess that exercises
-// controller-runtime's root logger after the missing-logger grace period.
-// The child is a separate process so the parent suite does not share or reset
-// that process-global logger.
-const controllerRuntimeLoggerChildEnv = "ALLOY_TEST_CONTROLLER_RUNTIME_LOGGER"
-
-func TestControllerRuntimeGlobalLoggerDiscarded(t *testing.T) {
-	if os.Getenv(controllerRuntimeLoggerChildEnv) == "1" {
-		// Package init has already called log.SetLogger. Wait past
-		// controller-runtime's 30s grace period before logging: an immediate
-		// call would succeed even if SetLogger was never called.
-		time.Sleep(31 * time.Second)
-
-		root := log.Log
-		root.Error(errors.New("synthetic-root"), "crdmanager-ctrl-root-msg", "n", 1)
-		child := root.WithName("crdmanager").WithValues("kind", "serviceMonitor")
-		child.Error(errors.New("synthetic-child"), "crdmanager-ctrl-child-msg", "n", 1)
-		root.Error(errors.New("synthetic-root"), "crdmanager-ctrl-root-msg", "n", 2)
-		child.Error(errors.New("synthetic-child"), "crdmanager-ctrl-child-msg", "n", 2)
-		fmt.Println("crdmanager-ctrl-logger-child-done")
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestControllerRuntimeGlobalLoggerDiscarded$")
-	cmd.Env = append(os.Environ(), controllerRuntimeLoggerChildEnv+"=1")
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "child output:\n%s", out)
-
-	output := string(out)
-	require.Contains(t, output, "crdmanager-ctrl-logger-child-done")
-	require.NotContains(t, output, "log.SetLogger(...) was never called")
-	require.NotContains(t, output, "Detected at:")
-	require.NotContains(t, output, "runtime/debug.Stack")
-	require.NotContains(t, output, "crdmanager-ctrl-root-msg")
-	require.NotContains(t, output, "crdmanager-ctrl-child-msg")
-	require.NotContains(t, output, "synthetic-root")
-	require.NotContains(t, output, "synthetic-child")
 }

@@ -41,18 +41,9 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-// init installs controller-runtime's process-global logger.
-//
-// controller-runtime has one process-global logger. If SetLogger is never
-// called, the first use after 30 seconds prints a missing-logger warning and
-// stack trace. Prometheus operator components reach that path from
-// runInformers when creating Kubernetes caches, including across reloads.
-//
-// A component-scoped logger must not be installed into that process-global
-// slot. Several prometheus.operator components can run at once, and a reload
-// replaces them, so those messages would be attributed to an arbitrary
-// component or dropped when it stops. Discard the unscoped global messages.
-// Manager and informer errors are still reported through c.logger.
+// controller-runtime prints a warning and stack trace if its global logger is
+// never set. It is shared by all prometheus.operator components, so a
+// component logger can't be used here.
 func init() {
 	log.SetLogger(logr.Discard())
 }
