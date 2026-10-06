@@ -150,13 +150,11 @@ type LocksArguments struct {
 type TableStatsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	IncludeSchemas  []string      `alloy:"include_schemas,attr,optional"`
-	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type IndexStatsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	IncludeSchemas  []string      `alloy:"include_schemas,attr,optional"`
-	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type QuerySamplesArguments struct {
@@ -1038,11 +1036,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			Registry:        inst.registry,
 			CollectInterval: c.args.TableStatsArguments.CollectInterval,
 			IOWaits:         ioWaits,
-			SchemaFilter: collector.SchemaFilter{
-				Include: c.args.TableStatsArguments.IncludeSchemas,
-				Exclude: c.args.TableStatsArguments.ExcludeSchemas,
-			},
-			Logger: c.opts.Logger,
+			SchemaFilter:    collector.SchemaFilter{Include: c.args.TableStatsArguments.IncludeSchemas},
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.TableStatsCollector, "create", err)
@@ -1061,11 +1056,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			Registry:        inst.registry,
 			CollectInterval: c.args.IndexStatsArguments.CollectInterval,
 			IOWaits:         ioWaits,
-			SchemaFilter: collector.SchemaFilter{
-				Include: c.args.IndexStatsArguments.IncludeSchemas,
-				Exclude: c.args.IndexStatsArguments.ExcludeSchemas,
-			},
-			Logger: c.opts.Logger,
+			SchemaFilter:    collector.SchemaFilter{Include: c.args.IndexStatsArguments.IncludeSchemas},
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.IndexStatsCollector, "create", err)

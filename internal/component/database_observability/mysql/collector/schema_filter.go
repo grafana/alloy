@@ -2,29 +2,27 @@ package collector
 
 import "strings"
 
-// SchemaFilter selects schemas by name. A schema is selected when it matches
-// one of the Include patterns (or Include is empty) and none of the Exclude
-// patterns.
+// SchemaFilter selects schemas by name. A schema is selected when Include is
+// empty or the schema matches one of its patterns.
 //
 // A pattern is matched against the whole schema name. '%' matches any run of
 // characters, including none; every other character, '_' included, matches
 // itself, so "hg_%" does not match "hgwarm_1".
+//
+// There is deliberately no exclude list: performance_schema's index only helps
+// a query that names the schemas it wants, and a NOT IN list can't use it.
 type SchemaFilter struct {
 	Include []string
-	Exclude []string
 }
 
 // Restricted reports whether the filter can leave out any schema.
 func (f SchemaFilter) Restricted() bool {
-	return len(f.Include) > 0 || len(f.Exclude) > 0
+	return len(f.Include) > 0
 }
 
 // Match reports whether schema is selected.
 func (f SchemaFilter) Match(schema string) bool {
-	if len(f.Include) > 0 && !matchesAny(f.Include, schema) {
-		return false
-	}
-	return !matchesAny(f.Exclude, schema)
+	return len(f.Include) == 0 || matchesAny(f.Include, schema)
 }
 
 func matchesAny(patterns []string, s string) bool {

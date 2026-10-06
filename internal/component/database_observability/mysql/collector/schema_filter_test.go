@@ -45,18 +45,6 @@ func TestSchemaFilter(t *testing.T) {
 			restricted: true,
 			selected:   []string{"anything", ""},
 		},
-		"exclude only": {
-			filter:     SchemaFilter{Exclude: []string{"hgwarm_%", "scratch"}},
-			restricted: true,
-			selected:   []string{"app", "hg_a", "scratch2"},
-			rejected:   []string{"hgwarm_1", "scratch"},
-		},
-		"exclude wins over include": {
-			filter:     SchemaFilter{Include: []string{"hg%"}, Exclude: []string{"hgwarm_%"}},
-			restricted: true,
-			selected:   []string{"hg_a", "hgx"},
-			rejected:   []string{"hgwarm_1", "app"},
-		},
 		"overlapping parts of a pattern do not match twice": {
 			filter:     SchemaFilter{Include: []string{"a%a"}},
 			restricted: true,

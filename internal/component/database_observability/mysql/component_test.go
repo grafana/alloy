@@ -1335,12 +1335,10 @@ func TestMySQL_TableAndIndexStatsBlocks(t *testing.T) {
 		assert.Equal(t, 5*time.Minute, args.TableStatsArguments.CollectInterval)
 		assert.Equal(t, 5*time.Minute, args.IndexStatsArguments.CollectInterval)
 		assert.Empty(t, args.TableStatsArguments.IncludeSchemas)
-		assert.Empty(t, args.TableStatsArguments.ExcludeSchemas)
 		assert.Empty(t, args.IndexStatsArguments.IncludeSchemas)
-		assert.Empty(t, args.IndexStatsArguments.ExcludeSchemas)
 	})
 
-	t.Run("include and exclude schemas are set per block", func(t *testing.T) {
+	t.Run("include_schemas is set per block", func(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(`
 		data_source_name = "user:pass@tcp(localhost:3306)/"
@@ -1350,13 +1348,13 @@ func TestMySQL_TableAndIndexStatsBlocks(t *testing.T) {
 			include_schemas  = ["hosted_grafana", "hg_%"]
 		}
 		index_stats {
-			exclude_schemas = ["hgwarm_%"]
+			include_schemas = ["hgwarm_%"]
 		}
 		`), &args))
 
 		assert.Equal(t, 10*time.Minute, args.TableStatsArguments.CollectInterval)
 		assert.Equal(t, []string{"hosted_grafana", "hg_%"}, args.TableStatsArguments.IncludeSchemas)
-		assert.Equal(t, []string{"hgwarm_%"}, args.IndexStatsArguments.ExcludeSchemas)
+		assert.Equal(t, []string{"hgwarm_%"}, args.IndexStatsArguments.IncludeSchemas)
 		assert.Equal(t, 5*time.Minute, args.IndexStatsArguments.CollectInterval, "an unset collect_interval keeps its default")
 	})
 }

@@ -200,17 +200,17 @@ func TestIOWaitsScan_ReadsOnlyIncludedSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestIOWaitsScan_ExcludePatternsLeaveSchemasOut(t *testing.T) {
-	scan, mock := newRestrictedScan(t, []string{"rdsadmin"}, SchemaFilter{Exclude: []string{"hgwarm_%"}})
+func TestIOWaitsScan_NeverReadsTheComponentsExcludedSchemas(t *testing.T) {
+	// exclude_schemas of the component, which applies to every collector, still
+	// holds when a collector selects schemas: they are not read.
+	scan, mock := newRestrictedScan(t, []string{"rdsadmin", "scratch"}, SchemaFilter{Include: []string{"%"}})
 
-	mock.ExpectQuery(selectSchemaNames).WillReturnRows(schemaList("app", "hg_a", "hgwarm_1", "hgwarm_2", "rdsadmin"))
-	expectSchemaReads(mock,
-		schemaRead{schema: "app", rows: rowsFor("app", 1)},
-		schemaRead{schema: "hg_a", rows: rowsFor("hg_a", 1)})
+	mock.ExpectQuery(selectSchemaNames).WillReturnRows(schemaList("app", "rdsadmin", "scratch", "mysql"))
+	expectSchemaReads(mock, schemaRead{schema: "app", rows: rowsFor("app", 1)})
 
 	rows, err := scan.get(t.Context(), 0)
 	require.NoError(t, err)
-	require.Equal(t, []string{"app", "hg_a"}, schemasOf(rows))
+	require.Equal(t, []string{"app"}, schemasOf(rows))
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
