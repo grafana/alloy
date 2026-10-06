@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/common/model"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -24,42 +25,33 @@ type LabelsConfig struct {
 	SourceType SourceType         `alloy:"source_type,attr,optional"`
 }
 
-// validateLabelsConfig validates the Label stage configuration
-func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
-	if cfg.Values == nil {
-		return nil, errors.New(errEmptyLabelStageConfig)
+var _ syntax.Validator = (*LabelsConfig)(nil)
+
+func (lc *LabelsConfig) Validate() error {
+	if lc.Values == nil {
+		return errors.New(errEmptyLabelStageConfig)
 	}
 
-	if cfg.SourceType == "" {
-		cfg.SourceType = SourceTypeExtractedMap
+	if lc.SourceType == "" {
+		lc.SourceType = SourceTypeExtractedMap
 	}
 
-	switch cfg.SourceType {
+	switch lc.SourceType {
 	case SourceTypeExtractedMap, SourceTypeStructuredMetadata:
 	default:
-		return nil, fmt.Errorf(errInvalidSourceType, cfg.SourceType)
+		return fmt.Errorf(errInvalidSourceType, lc.SourceType)
 	}
 
 	// We must not mutate the c.Values, create a copy with changes we need.
-	ret := map[string]string{}
-	if cfg.Values == nil {
-		return nil, errors.New(errEmptyLabelStageConfig)
-	}
-	for labelName, labelSrc := range cfg.Values {
+	for labelName := range lc.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(errInvalidLabelName, labelName)
-		}
-		// If no label source was specified, use the key name
-		if labelSrc == nil || *labelSrc == "" {
-			ret[labelName] = labelName
-		} else {
-			ret[labelName] = *labelSrc
+			return fmt.Errorf(errInvalidLabelName, labelName)
 		}
 	}
 
-	return ret, nil
+	return nil
 }
 
 var (
@@ -68,17 +60,22 @@ var (
 )
 
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(configs LabelsConfig, opts stageOpts) (*labelStage, error) {
-	labelsConfig, err := validateLabelsConfig(&configs)
-	if err != nil {
-		return nil, err
+func newLabelStage(configs LabelsConfig, opts stageOpts) *labelStage {
+	labelsConfig := map[string]string{}
+	for labelName, labelSrc := range configs.Values {
+		if labelSrc == nil || *labelSrc == "" {
+			labelsConfig[labelName] = labelName
+		} else {
+			labelsConfig[labelName] = *labelSrc
+		}
 	}
+
 	return &labelStage{
 		next:         opts.next,
 		cfg:          &configs,
 		labelsConfig: labelsConfig,
 		logger:       opts.slogger.With("stage", "labels"),
-	}, nil
+	}
 }
 
 // labelStage sets labels from extracted data
