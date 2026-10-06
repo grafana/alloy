@@ -145,7 +145,6 @@ func (t *tailer) startIfNotRunning(ctx context.Context) {
 			return
 		}
 
-		ctx, cancel := context.WithCancel(ctx)
 		reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
@@ -154,7 +153,6 @@ func (t *tailer) startIfNotRunning(ctx context.Context) {
 			Since:      strconv.FormatInt(t.since.Load(), 10),
 		})
 		if err != nil {
-			cancel()
 			if errors.Is(err, context.Canceled) {
 				return
 			}
@@ -163,6 +161,7 @@ func (t *tailer) startIfNotRunning(ctx context.Context) {
 			return
 		}
 
+		ctx, cancel := context.WithCancel(ctx)
 		t.cancel = cancel
 		t.running = true
 		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
