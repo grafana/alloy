@@ -72,8 +72,6 @@ You can use the following blocks with `database_observability.mysql`:
 | [`schema_details`][schema_details]               | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]                 | Configure the explain plans collector.            | no       |
 | [`locks`][locks]                                 | Configure the locks collector.                    | no       |
-| [`table_stats`][table_stats]                     | Configure the `table_stats` collector.            | no       |
-| [`index_stats`][index_stats]                     | Configure the `index_stats` collector.            | no       |
 | [`query_samples`][query_samples]                 | Configure the query samples collector.            | no       |
 | [`health_check`][health_check]                   | Configure the health check collector.             | no       |
 | [`prometheus_exporter`][prometheus_exporter]     | Configure the embedded mysqld_exporter.           | no       |
@@ -89,8 +87,6 @@ You can use the following blocks with `database_observability.mysql`:
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [locks]: #locks
-[table_stats]: #table_stats
-[index_stats]: #index_stats
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
@@ -242,30 +238,6 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | ------------------ | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"30s"`  | no       |
 | `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
-
-### `table_stats`
-
-The `table_stats` collector queries `performance_schema.table_io_waits_summary_by_index_usage` and `mysql.innodb_table_stats`.
-When `index_stats` is also enabled, both collectors share one scan of `performance_schema.table_io_waits_summary_by_index_usage` per collection cycle.
-It runs in the background at the configured interval and doesn't query the database when Prometheus scrapes the component.
-Each scrape returns the results of the last successful run.
-A run that takes longer than `collect_interval` is cancelled, and the previous results stay in place until the next successful run.
-
-| Name               | Type       | Description                                          | Default | Required |
-| ------------------ | ---------- | ---------------------------------------------------- | ------- | -------- |
-| `collect_interval` | `duration` | How frequently to collect information from database. | `"5m"`  | no       |
-
-### `index_stats`
-
-The `index_stats` collector queries `performance_schema.table_io_waits_summary_by_index_usage`, `mysql.innodb_index_stats`, and `information_schema.statistics`.
-When `table_stats` is also enabled, both collectors share one scan of `performance_schema.table_io_waits_summary_by_index_usage` per collection cycle.
-It runs in the background at the configured interval and doesn't query the database when Prometheus scrapes the component.
-Each scrape returns the results of the last successful run.
-A run that takes longer than `collect_interval` is cancelled, and the previous results stay in place until the next successful run.
-
-| Name               | Type       | Description                                          | Default | Required |
-| ------------------ | ---------- | ---------------------------------------------------- | ------- | -------- |
-| `collect_interval` | `duration` | How frequently to collect information from database. | `"5m"`  | no       |
 
 ### `query_samples`
 
