@@ -95,7 +95,7 @@ prometheus.exporter.kafka "example" {
   kafka_uris = ["localhost:9092"]
 }
 
-// Configure a prometheus.scrape component to send metrics to.
+// Configure a prometheus.scrape component to collect Kafka metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.kafka.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
