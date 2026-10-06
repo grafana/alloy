@@ -22,7 +22,7 @@ func TestBatch_Add(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 2, b.StreamLen())
 
-	streams := collectStreams(&b)
+	streams := b.Streams()
 	require.Equal(t, foo, streams[0].Labels)
 	require.Equal(t, []push.Entry{{Line: "1"}, {Line: "2"}}, streams[0].Entries)
 	require.Equal(t, bar, streams[1].Labels)
@@ -63,7 +63,7 @@ func TestBatch_FilterMap(t *testing.T) {
 	require.Equal(t, 2, b.EntryLen())
 	require.Equal(t, 2, b.StreamLen())
 
-	streams := collectStreams(&b)
+	streams := b.Streams()
 	require.Equal(t, foo, streams[0].Labels)
 	require.Equal(t, []push.Entry{{Line: "kept"}}, streams[0].Entries)
 	require.Equal(t, bar, streams[1].Labels)
@@ -103,33 +103,10 @@ func TestBatch_FilterMapStreams(t *testing.T) {
 	require.Equal(t, 2, b.EntryLen())
 	require.Equal(t, 1, b.StreamLen())
 
-	streams := collectStreams(&b)
+	streams := b.Streams()
 	require.Equal(t, stream3, streams[0].Labels)
 	require.Contains(t, streams[0].Entries, push.Entry{Line: "1"})
 	require.Contains(t, streams[0].Entries, push.Entry{Line: "3"})
-}
-
-func TestBatch_ConsumeStreams(t *testing.T) {
-	foo := model.LabelSet{"job": "foo"}
-	bar := model.LabelSet{"job": "bar"}
-
-	var b Batch
-	b.Add(NewStream(foo, push.Entry{Line: "1"}))
-
-	first := collectStreams(&b)
-	require.Equal(t, 0, b.EntryLen())
-	require.Equal(t, 0, b.StreamLen())
-	require.Equal(t, foo, first[0].Labels)
-	require.Equal(t, []push.Entry{{Line: "1"}}, first[0].Entries)
-
-	b.Add(NewStream(bar, push.Entry{Line: "2"}))
-
-	second := collectStreams(&b)
-	require.Equal(t, 0, b.EntryLen())
-	require.Equal(t, 0, b.StreamLen())
-
-	require.Equal(t, bar, second[0].Labels)
-	require.Equal(t, []push.Entry{{Line: "2"}}, second[0].Entries)
 }
 
 func TestBatch_Clone(t *testing.T) {
@@ -165,7 +142,7 @@ func TestBatch_Clone(t *testing.T) {
 	require.Equal(t, 2, original.EntryLen())
 	require.Equal(t, 2, original.StreamLen())
 
-	originalStreams := collectStreams(&original)
+	originalStreams := original.Streams()
 	require.Equal(t, foo, originalStreams[0].Labels)
 	require.Equal(t, []push.Entry{{Line: "kept"}}, originalStreams[0].Entries)
 	require.Equal(t, bar, originalStreams[1].Labels)
@@ -174,7 +151,7 @@ func TestBatch_Clone(t *testing.T) {
 	require.Equal(t, 3, cloned.EntryLen())
 	require.Equal(t, 1, cloned.StreamLen())
 
-	clonedStreams := collectStreams(&cloned)
+	clonedStreams := cloned.Streams()
 	require.Equal(t, foo, clonedStreams[0].Labels)
 	require.Equal(t, "keep", clonedStreams[0].Entries[0].Line)
 	require.Equal(t, "move", clonedStreams[0].Entries[1].Line)
@@ -381,13 +358,4 @@ func BenchmarkBatch_FilterMapStreams(b *testing.B) {
 			}
 		})
 	}
-}
-
-func collectStreams(b *Batch) []Stream {
-	var streams []Stream
-	_ = b.ConsumeStreams(func(s Stream) error {
-		streams = append(streams, s)
-		return nil
-	})
-	return streams
 }

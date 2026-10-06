@@ -36,6 +36,7 @@ func defaultServices(l *logging.Logger) []service.Service {
 			HTTPListenAddr:   httpListenAddr,
 			MemoryListenAddr: memoryListenAddr,
 			MinStability:     featuregate.StabilityExperimental,
+			Gatherer:         prometheus.DefaultGatherer,
 			ReadyFunc:        func() bool { return true },
 			ReloadFunc:       func() error { return nil },
 		}),

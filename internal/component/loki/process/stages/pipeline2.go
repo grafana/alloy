@@ -24,6 +24,14 @@ type entryProcessor interface {
 	process(ctx context.Context, entries []Entry) error
 }
 
+// starter is implemented by stages that need to start background work (e.g.
+// a goroutine) once the pipeline is fully built and guaranteed to run.
+type starter interface {
+	start()
+}
+
+// stopper is implemented by stages that need to flush buffered entries or
+// release resources when the pipeline shuts down.
 type stopper interface {
 	stop()
 }
@@ -59,7 +67,7 @@ type PipelineConsumer struct {
 // Consume implements loki.Consumer.
 func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error {
 	entries := make([]Entry, 0, batch.EntryLen())
-	return batch.ConsumeStreams(func(stream loki.Stream) error {
+	for _, stream := range batch.Streams() {
 		entries = slices.Grow(entries[:0], len(stream.Entries))
 
 		extracted := make(map[string]any, len(stream.Labels))
@@ -68,22 +76,22 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 		}
 
 		for i, e := range stream.Entries {
+			// Stages modify labels in place and the batch is only borrowed, so every
+			// entry needs its own labels.
+			// FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
+			entry := loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e)
 			if i == len(stream.Entries)-1 {
-				entries = append(entries, Entry{
-					Extracted: extracted,
-					Entry:     loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
-				})
+				entries = append(entries, Entry{Extracted: extracted, Entry: entry})
 			} else {
-				entries = append(entries, Entry{
-					Extracted: maps.Clone(extracted),
-					// FIXME(kalleep): this clone will be removed when https://github.com/grafana/alloy/issues/6835 is implemented.
-					Entry: loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e),
-				})
+				entries = append(entries, Entry{Extracted: maps.Clone(extracted), Entry: entry})
 			}
 		}
 
-		return p.inner.process(ctx, entries)
-	})
+		if err := p.inner.process(ctx, entries); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Stop flushes any state the stages still hold, such as cri partial lines that
@@ -144,6 +152,13 @@ func newPipeline(
 
 		p.stages = append(p.stages, ep)
 		next = ep.process
+	}
+
+	// We start stages after we have successfully built them all.
+	for _, s := range slices.Backward(p.stages) {
+		if ss, ok := s.(starter); ok {
+			ss.start()
+		}
 	}
 
 	p.next = next
