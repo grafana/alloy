@@ -382,6 +382,24 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 	})
 }
 
+func TestBuildQuerySampleLabelsWithEndEscapesLogfmtValues(t *testing.T) {
+	queryText := "SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"
+	state := &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName:    sql.NullString{String: `test"db`, Valid: true},
+			Username:        sql.NullString{String: "test\\user", Valid: true},
+			ApplicationName: sql.NullString{String: "line one\nline two", Valid: true},
+			BackendType:     sql.NullString{String: "client backend", Valid: true},
+			State:           sql.NullString{String: "active", Valid: true},
+			Query:           sql.NullString{String: queryText, Valid: true},
+			Now:             time.Now(),
+		},
+	}
+	collector := &QuerySamples{disableQueryRedaction: true}
+
+	require.Equal(t, `datname="test\"db" pid="0" leader_pid="" user="test\\user" app="line one\nline two" client="" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="" query_time="" queryid="0" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"`, collector.buildQuerySampleLabelsWithEnd(state, sql.NullTime{}))
+}
+
 // TestQuerySamples_FetchQuerySamples_ErrorCases tests scenarios where errors occur
 // and no Loki entries are produced.
 func TestQuerySamples_FetchQuerySamples_ErrorCases(t *testing.T) {

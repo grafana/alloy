@@ -109,9 +109,13 @@ func (m Metrics) Convert(rt Runtime) map[string]any {
 	if v := m.ExtraSpanResourceLabels; len(v) > 0 {
 		prometheus["extra_span_resource_attributes"] = v
 	}
-	if v := m.ExemplarFilter; v != "" {
-		prometheus["exemplar_filter"] = v
+	// Beyla treats an empty exemplar_filter as invalid and warns, even though
+	// always_off is its effective default, so always emit an explicit value.
+	exemplarFilter := m.ExemplarFilter
+	if exemplarFilter == "" {
+		exemplarFilter = "always_off"
 	}
+	prometheus["exemplar_filter"] = exemplarFilter
 	if v := m.TTL; v != 0 {
 		prometheus["ttl"] = v.String()
 	}
