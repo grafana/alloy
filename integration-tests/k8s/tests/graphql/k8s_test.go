@@ -15,23 +15,26 @@ import (
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
+const httpPort = 12345
+
 func TestGraphQL(t *testing.T) {
 	ns := deps.NewNamespace(deps.NamespaceOptions{
 		Name:   "test-graphql",
 		Labels: map[string]string{"alloy-integration-test": "true"},
 	})
 	alloy := deps.NewAlloy(deps.AlloyOptions{
-		Namespace:   ns.Name(),
-		Release:     "alloy-test-graphql",
-		ConfigPath:  "./config/config.alloy",
-		ValuesPath:  "./config/alloy-values.yaml",
-		PortForward: true,
+		Namespace:    ns.Name(),
+		Release:      "alloy-test-graphql",
+		ConfigPath:   "./config/config.alloy",
+		ValuesPath:   "./config/alloy-values.yaml",
+		ForwardPorts: []int{httpPort},
 	})
 	harness.Setup(t, harness.Options{
 		Dependencies: []harness.Dependency{ns, alloy},
 	})
 
-	endpoint := alloy.Endpoint("/graphql")
+	endpoint, err := alloy.Endpoint(httpPort, "/graphql")
+	require.NoError(t, err)
 
 	t.Run("AlloyInfo", func(t *testing.T) {
 		var result struct {

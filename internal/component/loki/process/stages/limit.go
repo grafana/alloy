@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"
@@ -19,9 +20,9 @@ var (
 )
 
 const (
-	// minReasonableMaxDistinctLabels provides a sensible default.
-	minReasonableMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB memory
-	ratelimitDropReason            = "ratelimit_drop_stage"
+	// defaultMaxDistinctLabels is both the default and the minimum for max_distinct_labels.
+	defaultMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB memory
+	ratelimitDropReason      = "ratelimit_drop_stage"
 )
 
 // LimitConfig sets up a Limit stage.
@@ -34,21 +35,42 @@ type LimitConfig struct {
 }
 
 var (
+	_ syntax.Defaulter = (*LimitConfig)(nil)
+	_ syntax.Validator = (*LimitConfig)(nil)
+)
+
+func (l *LimitConfig) SetToDefault() {
+	*l = LimitConfig{MaxDistinctLabels: defaultMaxDistinctLabels}
+}
+
+func (l *LimitConfig) Validate() error {
+	if l.Rate <= 0 || l.Burst <= 0 {
+		return errLimitStageInvalidRateOrBurst
+	}
+
+	if l.ByLabelName != "" {
+		if !l.Drop {
+			return errLimitStageByLabelMustDrop
+		}
+		if !model.LegacyValidation.IsValidLabelName(l.ByLabelName) {
+			return fmt.Errorf(errInvalidLabelName, l.ByLabelName)
+		}
+	}
+
+	return nil
+}
+
+var (
 	_ Stage          = (*limitStage)(nil)
 	_ Stopper        = (*limitStage)(nil)
 	_ entryProcessor = (*limitStage)(nil)
 )
 
 func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
-	err := validateLimitConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
 	logger := opts.slogger.With("stage", "limit")
-	if cfg.ByLabelName != "" && cfg.MaxDistinctLabels < minReasonableMaxDistinctLabels {
-		logger.Warn(fmt.Sprintf("max_distinct_labels was adjusted up to the minimal reasonable value of %d", minReasonableMaxDistinctLabels))
-		cfg.MaxDistinctLabels = minReasonableMaxDistinctLabels
+	if cfg.ByLabelName != "" && cfg.MaxDistinctLabels < defaultMaxDistinctLabels {
+		logger.Warn(fmt.Sprintf("max_distinct_labels was adjusted up to the minimal reasonable value of %d", defaultMaxDistinctLabels))
+		cfg.MaxDistinctLabels = defaultMaxDistinctLabels
 	}
 
 	dropCount, err := getDropCountMetric(opts.registerer)
@@ -79,17 +101,6 @@ func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
 	}
 
 	return r, nil
-}
-
-func validateLimitConfig(cfg LimitConfig) error {
-	if cfg.Rate <= 0 || cfg.Burst <= 0 {
-		return errLimitStageInvalidRateOrBurst
-	}
-
-	if cfg.ByLabelName != "" && !cfg.Drop {
-		return errLimitStageByLabelMustDrop
-	}
-	return nil
 }
 
 // limitStage applies Label matchers to determine if the include stages should be run
