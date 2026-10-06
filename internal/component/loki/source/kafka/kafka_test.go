@@ -84,3 +84,18 @@ func TestSASLOAuthAlloyConfig(t *testing.T) {
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
 }
+
+func TestRackIDAlloyConfig(t *testing.T) {
+	var exampleAlloyConfig = `
+	brokers    = ["localhost:9092", "localhost:23456"]
+	topics     = ["quickstart-events"]
+	rack_id    = "eu-west-1a"
+	forward_to = []
+`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
+	require.NoError(t, err)
+	require.Equal(t, "eu-west-1a", args.RackID)
+	require.Equal(t, "eu-west-1a", args.Convert().KafkaConfig.RackID)
+}
