@@ -30,42 +30,59 @@ prometheus.exporter.kafka "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.kafka`:
 
-| Name                          | Type            | Description                                                                                                                                                                            | Default   | Required |
-| ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `kafka_uris`                  | `list(string)`  | Address array (host:port) of Kafka server.                                                                                                                                             |           | yes      |
-| `allow_auto_topic_creation`   | `bool`          | If true, the broker may auto-create topics that you requested which don't already exist.                                                                                               |           | no       |
-| `allow_concurrency`           | `bool`          | If set to true, all scrapes trigger Kafka operations. Otherwise, they share results. WARNING: Disable this on large clusters.                                                          | `true`    | no       |
-| `ca_file`                     | `string`        | The optional certificate authority file for TLS client authentication.                                                                                                                 |           | no       |
-| `cert_file`                   | `string`        | The optional certificate file for TLS client authentication.                                                                                                                           |           | no       |
-| `groups_exclude_regex`        | `string`        | Regex that determines which consumer groups to exclude.                                                                                                                                | `"^$"`    | no       |
-| `groups_filter_regex`         | `string`        | Regex filter for consumer groups to monitor.                                                                                                                                           | `".*"`    | no       |
-| `gssapi_kerberos_auth_type`   | `string`        | Kerberos auth type. Either `keytabAuth` or `userAuth`.                                                                                                                                 |           | no       |
-| `gssapi_kerberos_config_path` | `string`        | Kerberos configuration path.                                                                                                                                                           |           | no       |
-| `gssapi_key_tab_path`         | `string`        | Kerberos keytab path.                                                                                                                                                                  |           | no       |
-| `gssapi_realm`                | `string`        | Kerberos realm.                                                                                                                                                                        |           | no       |
-| `gssapi_service_name`         | `string`        | Service name when using Kerberos Authorization                                                                                                                                         |           | no       |
-| `insecure_skip_verify`        | `bool`          | If set to true, the server's certificate isn't checked for validity. This makes your HTTPS connections insecure.                                                                       |           | no       |
-| `instance`                    | `string`        | The `instance` label for metrics, default is the hostname:port of the first `kafka_uris`. You must manually provide the instance value if there is more than one string in `kafka_uris`. |           | no       |
-| `kafka_cluster_name`          | `string`        | Kafka cluster name.                                                                                                                                                                    |           | no       |
-| `kafka_version`               | `string`        | Kafka broker version.                                                                                                                                                                  | `"2.0.0"` | no       |
-| `key_file`                    | `string`        | The optional key file for TLS client authentication.                                                                                                                                   |           | no       |
-| `max_offsets`                 | `int`           | The maximum number of offsets to store in the interpolation table for a partition.                                                                                                     | `1000`    | no       |
-| `metadata_refresh_interval`   | `duration`      | Metadata refresh interval.                                                                                                                                                             | `"1m"`    | no       |
-| `offset_show_all`             | `bool`          | If true, show the offset/lag for all consumer groups. Otherwise, only show connected consumer groups.                                                                                  | `true`    | no       |
-| `prune_interval_seconds`      | `int`           | Deprecated (no-op), use `metadata_refresh_interval` instead.                                                                                                                           | `30`      | no       |
-| `sasl_disable_pafx_fast`      | `bool`          | Configure the Kerberos client to not use PA_FX_FAST.                                                                                                                                   |           | no       |
-| `sasl_mechanism`              | `string`        | The SASL SCRAM SHA algorithm SHA256 or SHA512 as mechanism.                                                                                                                            |           | no       |
-| `sasl_password`               | `secret`        | SASL user password.                                                                                                                                                                    |           | no       |
-| `sasl_username`               | `string`        | SASL user name.                                                                                                                                                                        |           | no       |
-| `tls_server_name`             | `string`        | Verifies the hostname on returned certificates unless you set tls.insecure-skip-tls-verify. If you don't provide the Kafka server name, the component takes the hostname from the URL. |           | no       |
-| `topic_workers`               | `int`           | Minimum number of topics to monitor.                                                                                                                                                   | `100`     | no       |
-| `topics_exclude_regex`        | `string`        | Regex that determines which topics to exclude.                                                                                                                                         | `"^$"`    | no       |
-| `topics_filter_regex`         | `string`        | Regex filter for topics to monitor.                                                                                                                                                    | `".*"`    | no       |
-| `use_sasl`                    | `bool`          | Connect using SASL/PLAIN.                                                                                                                                                              |           | no       |
-| `use_sasl_handshake`          | `bool`          | Only set this to false if using a non-Kafka SASL proxy.                                                                                                                                | `true`    | no       |
-| `use_tls`                     | `bool`          | Connect using TLS.                                                                                                                                                                     |           | no       |
-| `use_zookeeper_lag`           | `bool`          | If set to true, use a group from zookeeper.                                                                                                                                            |           | no       |
-| `zookeeper_uris`              | `list(string)`  | Address array (hosts) of zookeeper server.                                                                                                                                             |           | no       |
+| Name                          | Type           | Description                                                                          | Default   | Required |
+| ----------------------------- | -------------- | ------------------------------------------------------------------------------------ | --------- | -------- |
+| `kafka_uris`                  | `list(string)` | Addresses (host:port) of the Kafka servers.                                          |           | yes      |
+| `allow_auto_topic_creation`   | `bool`         | Whether the broker may auto-create requested topics that don't exist.                |           | no       |
+| `allow_concurrency`           | `bool`         | Whether each scrape triggers its own Kafka operations.                               | `true`    | no       |
+| `ca_file`                     | `string`       | The optional certificate authority file for TLS client authentication.               |           | no       |
+| `cert_file`                   | `string`       | The optional certificate file for TLS client authentication.                         |           | no       |
+| `groups_exclude_regex`        | `string`       | Regex that determines which consumer groups to exclude.                              | `"^$"`    | no       |
+| `groups_filter_regex`         | `string`       | Regex filter for consumer groups to monitor.                                         | `".*"`    | no       |
+| `gssapi_kerberos_auth_type`   | `string`       | Kerberos auth type. Either `keytabAuth` or `userAuth`.                               |           | no       |
+| `gssapi_kerberos_config_path` | `string`       | Kerberos configuration path.                                                         |           | no       |
+| `gssapi_key_tab_path`         | `string`       | Kerberos keytab path.                                                                |           | no       |
+| `gssapi_realm`                | `string`       | Kerberos realm.                                                                      |           | no       |
+| `gssapi_service_name`         | `string`       | Service name when using Kerberos Authorization.                                      |           | no       |
+| `insecure_skip_verify`        | `bool`         | Whether to skip validation of the server's certificate.                              |           | no       |
+| `instance`                    | `string`       | The `instance` label for metrics.                                                    |           | no       |
+| `kafka_cluster_name`          | `string`       | Kafka cluster name.                                                                  |           | no       |
+| `kafka_version`               | `string`       | Kafka broker version.                                                                | `"2.0.0"` | no       |
+| `key_file`                    | `string`       | The optional key file for TLS client authentication.                                 |           | no       |
+| `max_offsets`                 | `int`          | Maximum number of offsets to store per partition in the interpolation table.         | `1000`    | no       |
+| `metadata_refresh_interval`   | `duration`     | Metadata refresh interval.                                                           | `"1m"`    | no       |
+| `offset_show_all`             | `bool`         | Whether to show the offset and lag for all consumer groups, not just connected ones. | `true`    | no       |
+| `prune_interval_seconds`      | `int`          | Deprecated (no-op), use `metadata_refresh_interval` instead.                         | `30`      | no       |
+| `sasl_disable_pafx_fast`      | `bool`         | Configure the Kerberos client to not use PA_FX_FAST.                                 |           | no       |
+| `sasl_mechanism`              | `string`       | SASL mechanism. One of `plain`, `scram-sha256`, `scram-sha512`, or `gssapi`.         |           | no       |
+| `sasl_password`               | `secret`       | SASL user password.                                                                  |           | no       |
+| `sasl_username`               | `string`       | SASL user name.                                                                      |           | no       |
+| `tls_server_name`             | `string`       | Server name used to verify the hostname on returned certificates.                    |           | no       |
+| `topic_workers`               | `int`          | Number of concurrent workers that collect topic metrics.                             | `100`     | no       |
+| `topics_exclude_regex`        | `string`       | Regex that determines which topics to exclude.                                       | `"^$"`    | no       |
+| `topics_filter_regex`         | `string`       | Regex filter for topics to monitor.                                                  | `".*"`    | no       |
+| `use_sasl`                    | `bool`         | Connect using SASL/PLAIN.                                                            |           | no       |
+| `use_sasl_handshake`          | `bool`         | Only set this to false if using a non-Kafka SASL proxy.                              | `true`    | no       |
+| `use_tls`                     | `bool`         | Connect using TLS.                                                                   |           | no       |
+| `use_zookeeper_lag`           | `bool`         | If set to true, use a group from Apache ZooKeeper.                                   |           | no       |
+| `zookeeper_uris`              | `list(string)` | Addresses (hosts) of the Apache ZooKeeper servers.                                   |           | no       |
+
+When `allow_concurrency` is `true`, every scrape triggers its own Kafka operations.
+When it's `false`, concurrent scrapes share a single set of results.
+
+{{< admonition type="caution" >}}
+Set `allow_concurrency` to `false` on large clusters.
+Leaving it enabled makes each concurrent scrape issue its own Kafka operations, which can place significant load on your brokers.
+{{< /admonition >}}
+
+When `insecure_skip_verify` is `true`, the component doesn't check the server's certificate for validity.
+This makes your HTTPS connections insecure.
+
+The `instance` label defaults to the host and port of the first entry in `kafka_uris`.
+If `kafka_uris` contains more than one address, you must set `instance` explicitly.
+
+The component verifies the hostname on returned certificates unless you enable `insecure_skip_verify`.
+If you don't set `tls_server_name`, the component takes the hostname from the URL.
 
 ## Blocks
 
