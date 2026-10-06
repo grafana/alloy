@@ -84,6 +84,8 @@ type Arguments struct {
 	QueryDetailsArguments  QueryDetailsArguments        `alloy:"query_details,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	TableStatsArguments    TableStatsArguments          `alloy:"table_stats,block,optional"`
+	IndexStatsArguments    IndexStatsArguments          `alloy:"index_stats,block,optional"`
 	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
 	Logs                   LogsArguments                `alloy:"logs,block,optional"`
 	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
@@ -148,6 +150,12 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
+		TableStatsArguments: TableStatsArguments{
+			CollectInterval: 1 * time.Minute,
+		},
+		IndexStatsArguments: IndexStatsArguments{
+			CollectInterval: 1 * time.Minute,
+		},
 		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
 		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
 		ExcludeCurrentUser: true,
@@ -175,6 +183,14 @@ func defaultArguments() Arguments {
 type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+}
+
+type TableStatsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
+type IndexStatsArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -1086,6 +1102,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DSN:              string(inst.cfg.dsn),
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			Registry:         inst.registry,
+			CollectInterval:  c.args.TableStatsArguments.CollectInterval,
 			Logger:           c.opts.Logger,
 		})
 		if err != nil {
@@ -1104,6 +1121,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DSN:              string(inst.cfg.dsn),
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			Registry:         inst.registry,
+			CollectInterval:  c.args.IndexStatsArguments.CollectInterval,
 			Logger:           c.opts.Logger,
 		})
 		if err != nil {

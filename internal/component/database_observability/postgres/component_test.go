@@ -652,6 +652,8 @@ func TestCollectionIntervals(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 		assert.Equal(t, defaultArguments().QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
+		assert.Equal(t, time.Minute, args.TableStatsArguments.CollectInterval, "collect_interval for table_stats should default to 1 minute")
+		assert.Equal(t, time.Minute, args.IndexStatsArguments.CollectInterval, "collect_interval for index_stats should default to 1 minute")
 	})
 
 	t.Run("custom intervals", func(t *testing.T) {
@@ -662,12 +664,20 @@ func TestCollectionIntervals(t *testing.T) {
 		query_samples {
 			collect_interval = "5s"
 		}
+		table_stats {
+			collect_interval = "10m"
+		}
+		index_stats {
+			collect_interval = "30m"
+		}
 		`
 
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 		assert.Equal(t, 5*time.Second, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should be set to 5 seconds")
+		assert.Equal(t, 10*time.Minute, args.TableStatsArguments.CollectInterval)
+		assert.Equal(t, 30*time.Minute, args.IndexStatsArguments.CollectInterval)
 	})
 }
 
