@@ -14,6 +14,8 @@ title: prometheus.exporter.kafka
 
 The `prometheus.exporter.kafka` component embeds the [`kafka_exporter`][kafka-exporter] to collect metrics from a Kafka server.
 
+You can specify multiple `prometheus.exporter.kafka` components by giving them different labels.
+
 [kafka-exporter]: https://github.com/grafana/kafka_exporter
 
 ## Usage
@@ -39,7 +41,7 @@ You can use the following arguments with `prometheus.exporter.kafka`:
 | `groups_filter_regex`         | `string`        | Regex filter for consumer groups to be monitored.                                                                                                                                      | `".*"`    | no       |
 | `gssapi_kerberos_auth_type`   | `string`        | Kerberos auth type. Either `keytabAuth` or `userAuth`.                                                                                                                                 |           | no       |
 | `gssapi_kerberos_config_path` | `string`        | Kerberos configuration path.                                                                                                                                                           |           | no       |
-| `gssapi_key_tab_path`         | `string`        | Kerberos keytab file path.                                                                                                                                                             |           | no       |
+| `gssapi_key_tab_path`         | `string`        | Kerberos keytab path.                                                                                                                                                                  |           | no       |
 | `gssapi_realm`                | `string`        | Kerberos realm.                                                                                                                                                                        |           | no       |
 | `gssapi_service_name`         | `string`        | Service name when using Kerberos Authorization                                                                                                                                         |           | no       |
 | `insecure_skip_verify`        | `bool`          | If set to true, the server's certificate isn't checked for validity. This makes your HTTPS connections insecure.                                                                       |           | no       |
