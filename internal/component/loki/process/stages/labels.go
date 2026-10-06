@@ -43,7 +43,7 @@ func (lc *LabelsConfig) Validate() error {
 	}
 
 	// We must not mutate the c.Values, create a copy with changes we need.
-	for labelName, _ := range lc.Values {
+	for labelName := range lc.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
