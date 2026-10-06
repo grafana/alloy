@@ -149,10 +149,14 @@ type LocksArguments struct {
 
 type TableStatsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	IncludeSchemas  []string      `alloy:"include_schemas,attr,optional"`
+	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type IndexStatsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	IncludeSchemas  []string      `alloy:"include_schemas,attr,optional"`
+	ExcludeSchemas  []string      `alloy:"exclude_schemas,attr,optional"`
 }
 
 type QuerySamplesArguments struct {
@@ -1025,7 +1029,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	// table_stats and index_stats read the same performance_schema table, so
 	// they share one scan of it.
-	ioWaits := collector.NewIOWaitsScan(inst.dbConnection, c.args.ExcludeSchemas)
+	ioWaits := collector.NewIOWaitsScan(inst.dbConnection, c.args.ExcludeSchemas, c.opts.Logger)
 
 	if collectors[collector.TableStatsCollector] {
 		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
@@ -1034,7 +1038,11 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			Registry:        inst.registry,
 			CollectInterval: c.args.TableStatsArguments.CollectInterval,
 			IOWaits:         ioWaits,
-			Logger:          c.opts.Logger,
+			SchemaFilter: collector.SchemaFilter{
+				Include: c.args.TableStatsArguments.IncludeSchemas,
+				Exclude: c.args.TableStatsArguments.ExcludeSchemas,
+			},
+			Logger: c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.TableStatsCollector, "create", err)
@@ -1053,7 +1061,11 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			Registry:        inst.registry,
 			CollectInterval: c.args.IndexStatsArguments.CollectInterval,
 			IOWaits:         ioWaits,
-			Logger:          c.opts.Logger,
+			SchemaFilter: collector.SchemaFilter{
+				Include: c.args.IndexStatsArguments.IncludeSchemas,
+				Exclude: c.args.IndexStatsArguments.ExcludeSchemas,
+			},
+			Logger: c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.IndexStatsCollector, "create", err)

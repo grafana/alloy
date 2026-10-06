@@ -69,6 +69,10 @@ type IndexStatsArguments struct {
 	// scan of its own is used when it is nil.
 	IOWaits *IOWaitsScan
 
+	// SchemaFilter selects the schemas whose indexes are reported. The shared
+	// scan reads every schema that any of its collectors selects.
+	SchemaFilter SchemaFilter
+
 	Logger *slog.Logger
 }
 
@@ -78,6 +82,7 @@ type IndexStats struct {
 	registry        *prometheus.Registry
 	collectInterval time.Duration
 	ioWaits         *IOWaitsScan
+	schemaFilter    SchemaFilter
 
 	// Results of the last successful run of each query.
 	idxFetch  cachedMetrics
@@ -96,11 +101,13 @@ func NewIndexStats(args IndexStatsArguments) (*IndexStats, error) {
 
 	ioWaits := args.IOWaits
 	if ioWaits == nil {
-		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas)
+		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas, args.Logger)
 	}
+	ioWaits.use(args.SchemaFilter)
 
 	return &IndexStats{
 		ioWaits:         ioWaits,
+		schemaFilter:    args.SchemaFilter,
 		dbConnection:    args.DB,
 		excludeSchemas:  args.ExcludeSchemas,
 		registry:        args.Registry,
@@ -196,7 +203,7 @@ func (c *IndexStats) queryIdxFetch(ctx context.Context) ([]prometheus.Metric, er
 
 	var metrics []prometheus.Metric
 	for _, r := range rows {
-		if !r.index.Valid {
+		if !r.index.Valid || !c.schemaFilter.Match(r.schema) {
 			continue
 		}
 		metrics = append(metrics, prometheus.MustNewConstMetric(indexStatsIdxFetchDesc, prometheus.CounterValue, float64(r.countFetch), r.schema, r.object, r.index.String))
@@ -220,6 +227,9 @@ func (c *IndexStats) querySizeBytes(ctx context.Context) ([]prometheus.Metric, e
 
 		if err := rows.Scan(&databaseName, &tableName, &indexName, &sizeBytes, &nonUnique); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		if !c.schemaFilter.Match(databaseName) {
+			continue
 		}
 
 		isPrimary := indexName == "PRIMARY"

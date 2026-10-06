@@ -61,6 +61,10 @@ type TableStatsArguments struct {
 	// scan of its own is used when it is nil.
 	IOWaits *IOWaitsScan
 
+	// SchemaFilter selects the schemas whose tables are reported. The shared
+	// scan reads every schema that any of its collectors selects.
+	SchemaFilter SchemaFilter
+
 	Logger *slog.Logger
 }
 
@@ -70,6 +74,7 @@ type TableStats struct {
 	registry        *prometheus.Registry
 	collectInterval time.Duration
 	ioWaits         *IOWaitsScan
+	schemaFilter    SchemaFilter
 
 	// Results of the last successful run of each query.
 	noIdxFetch cachedMetrics
@@ -88,11 +93,13 @@ func NewTableStats(args TableStatsArguments) (*TableStats, error) {
 
 	ioWaits := args.IOWaits
 	if ioWaits == nil {
-		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas)
+		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas, args.Logger)
 	}
+	ioWaits.use(args.SchemaFilter)
 
 	return &TableStats{
 		ioWaits:         ioWaits,
+		schemaFilter:    args.SchemaFilter,
 		dbConnection:    args.DB,
 		excludeSchemas:  args.ExcludeSchemas,
 		registry:        args.Registry,
@@ -188,7 +195,7 @@ func (c *TableStats) queryNoIdxFetch(ctx context.Context) ([]prometheus.Metric, 
 
 	var metrics []prometheus.Metric
 	for _, r := range rows {
-		if r.index.Valid {
+		if r.index.Valid || !c.schemaFilter.Match(r.schema) {
 			continue
 		}
 		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(r.countFetch), r.schema, r.object))
@@ -211,6 +218,9 @@ func (c *TableStats) queryRowCount(ctx context.Context) ([]prometheus.Metric, er
 
 		if err := rows.Scan(&databaseName, &tableName, &rowCount); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
+		}
+		if !c.schemaFilter.Match(databaseName) {
+			continue
 		}
 
 		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsRowCountDesc, prometheus.GaugeValue, float64(rowCount), databaseName, tableName))
