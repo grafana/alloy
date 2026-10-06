@@ -1,5 +1,9 @@
 name: Test Helm chart
-on: pull_request
+on:
+  pull_request:
+    paths:
+      - 'operations/helm/**'
+      - '.github/workflows/helm-test.yml'
 
 permissions:
   contents: read
