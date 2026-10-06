@@ -1,5 +1,5 @@
-// Package k8s_workloads provides the otelcol.receiver.k8s_workloads component.
-package k8s_workloads
+// Package sdlc provides the otelcol.receiver.sdlc component.
+package sdlc
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 
 func init() {
 	component.Register(component.Registration{
-		Name:      "otelcol.receiver.k8s_workloads",
+		Name:      "otelcol.receiver.sdlc",
 		Stability: featuregate.StabilityExperimental,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
@@ -32,7 +32,7 @@ func init() {
 	})
 }
 
-// Arguments configures otelcol.receiver.k8s_workloads.
+// Arguments configures otelcol.receiver.sdlc.
 type Arguments struct {
 	ClusterName       string        `alloy:"cluster_name,attr,optional"`
 	ClusterUID        string        `alloy:"cluster_uid,attr,optional"`
@@ -78,7 +78,7 @@ var (
 	_ cluster.Component   = (*Component)(nil)
 )
 
-// New creates a new otelcol.receiver.k8s_workloads component.
+// New creates a new otelcol.receiver.sdlc component.
 func New(opts component.Options, args Arguments) (*Component, error) {
 	clusterData, err := opts.GetServiceData(cluster.ServiceName)
 	if err != nil {

@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
-const testNamespace = "test-k8s-workloads"
-const alloyRelease = "alloy-test-k8s-workloads"
-const workloadNamespace = "test-k8s-workloads-rollouts"
+const testNamespace = "test-sdlc"
+const alloyRelease = "alloy-test-sdlc"
+const workloadNamespace = "test-sdlc-rollouts"
 
 type rolloutEvent struct {
 	name, namespace, pod string
@@ -120,7 +120,7 @@ func readEvents() ([]rolloutEvent, error) {
 	}
 	events := []rolloutEvent{}
 	for _, pod := range strings.Fields(output) {
-		data, err := harness.RunCommandOutput("kubectl", "-n", testNamespace, "exec", pod, "-c", "alloy", "--", "sh", "-c", "if [ -f /tmp/k8s-workloads.json ]; then cat /tmp/k8s-workloads.json; fi")
+		data, err := harness.RunCommandOutput("kubectl", "-n", testNamespace, "exec", pod, "-c", "alloy", "--", "sh", "-c", "if [ -f /tmp/sdlc.json ]; then cat /tmp/sdlc.json; fi")
 		if err != nil {
 			return nil, err
 		}

@@ -1,4 +1,4 @@
-package k8s_workloads
+package sdlc
 
 import (
 	"context"
@@ -83,7 +83,7 @@ func TestShouldWatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Component{
-				opts:    component.Options{ID: "otelcol.receiver.k8s_workloads.test"},
+				opts:    component.Options{ID: "otelcol.receiver.sdlc.test"},
 				cluster: tt.cluster,
 			}
 			got, err := c.shouldWatch(Arguments{Clustering: cluster.ComponentBlock{Enabled: tt.clustering}})
@@ -100,7 +100,7 @@ func TestShouldWatch(t *testing.T) {
 func TestClusterChangeKeepsGenerationWhenOwnershipIsUnchanged(t *testing.T) {
 	fake := &fakeCluster{ready: true, owners: []peer.Peer{{Self: false}}}
 	c := &Component{
-		opts:           component.Options{ID: "otelcol.receiver.k8s_workloads.test"},
+		opts:           component.Options{ID: "otelcol.receiver.sdlc.test"},
 		cluster:        fake,
 		args:           Arguments{Clustering: cluster.ComponentBlock{Enabled: true}},
 		restConfig:     &rest.Config{},

@@ -1,28 +1,28 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.k8s_workloads/
-description: Learn about otelcol.receiver.k8s_workloads
+canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.receiver.sdlc/
+description: Learn about otelcol.receiver.sdlc
 labels:
   stage: experimental
   products:
     - oss
-title: otelcol.receiver.k8s_workloads
+title: otelcol.receiver.sdlc
 ---
 
-# `otelcol.receiver.k8s_workloads`
+# `otelcol.receiver.sdlc`
 
-`otelcol.receiver.k8s_workloads` emits Kubernetes Deployment rollout and deletion events as OpenTelemetry logs.
+`otelcol.receiver.sdlc` emits Kubernetes Deployment rollout and deletion events as OpenTelemetry logs.
 It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
 
-You can specify multiple `otelcol.receiver.k8s_workloads` components by giving them different labels.
+You can specify multiple `otelcol.receiver.sdlc` components by giving them different labels.
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Usage
 
 ```alloy
-otelcol.receiver.k8s_workloads "<LABEL>" {
+otelcol.receiver.sdlc "<LABEL>" {
   output {
     logs = <OTEL_LOG_CONSUMER_LIST>
   }
@@ -31,7 +31,7 @@ otelcol.receiver.k8s_workloads "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `otelcol.receiver.k8s_workloads`:
+You can use the following arguments with `otelcol.receiver.sdlc`:
 
 | Name           | Type     | Description                                      | Default | Required |
 | -------------- | -------- | ------------------------------------------------ | ------- | -------- |
@@ -42,7 +42,7 @@ When `cluster_uid` is empty, the component uses the UID of the `kube-system` Nam
 
 ## Blocks
 
-You can use the following blocks with `otelcol.receiver.k8s_workloads`:
+You can use the following blocks with `otelcol.receiver.sdlc`:
 
 {{< docs/alloy-config >}}
 
@@ -147,7 +147,7 @@ Grant its service account the following permissions:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: alloy-k8s-workloads
+  name: alloy-sdlc
 rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "replicasets"]
@@ -279,21 +279,21 @@ The component doesn't emit reporting-error events.
 
 ## Exported fields
 
-`otelcol.receiver.k8s_workloads` doesn't export any fields.
+`otelcol.receiver.sdlc` doesn't export any fields.
 
 ## Component health
 
-`otelcol.receiver.k8s_workloads` is reported as unhealthy if its configuration is invalid.
+`otelcol.receiver.sdlc` is reported as unhealthy if its configuration is invalid.
 Delivery failures are logged and retried.
 Watcher startup failures are logged and retried.
 
 ## Debug information
 
-`otelcol.receiver.k8s_workloads` doesn't expose component-specific debug information.
+`otelcol.receiver.sdlc` doesn't expose component-specific debug information.
 
 ## Debug metrics
 
-`otelcol.receiver.k8s_workloads` doesn't expose component-specific debug metrics.
+`otelcol.receiver.sdlc` doesn't expose component-specific debug metrics.
 
 ## Examples
 
@@ -305,7 +305,7 @@ OTLP/HTTP endpoint, or a Grafana Cloud OTLP/HTTP endpoint.
 This example logs workload events with the OpenTelemetry debug exporter:
 
 ```alloy
-otelcol.receiver.k8s_workloads "default" {
+otelcol.receiver.sdlc "default" {
   cluster_name = "production-eu"
 
   clustering {
@@ -327,7 +327,7 @@ otelcol.exporter.debug "rollouts" {
 This example sends workload events to a configurable OTLP/HTTP endpoint:
 
 ```alloy
-otelcol.receiver.k8s_workloads "default" {
+otelcol.receiver.sdlc "default" {
   cluster_name = sys.env("K8S_CLUSTER_NAME")
 
   output {
@@ -377,14 +377,14 @@ The service account must have the cluster-scoped permissions described in
 [Kubernetes permissions](#kubernetes-permissions).
 
 For a complete custom endpoint configuration, use
-`example/k8s-workloads/local-api.alloy`.
+`example/sdlc/local-api.alloy`.
 
 ### Send events to Grafana Cloud
 
 This example sends workload events to the SDLC prototype ingester at `/workloads/v1/logs` using a Grafana Cloud access policy token:
 
 ```alloy
-otelcol.receiver.k8s_workloads "default" {
+otelcol.receiver.sdlc "default" {
   cluster_name = sys.env("K8S_CLUSTER_NAME")
 
   clustering {
@@ -445,14 +445,14 @@ Use a token from the same environment as the ingester's Auth API.
 This example configures retries and a persistent sending queue in the exporter.
 For exporter options, refer to [`otelcol.exporter.otlphttp`](../otelcol.exporter.otlphttp/).
 
-For a reusable opt-in custom component, use the module in `example/k8s-workloads/module.alloy`.
+For a reusable opt-in custom component, use the module in `example/sdlc/module.alloy`.
 Importing the file only defines the custom component; instantiate `deployment_rollouts` to start the watcher.
-For a complete Grafana Cloud configuration, use `example/k8s-workloads/grafana-cloud.alloy`.
+For a complete Grafana Cloud configuration, use `example/sdlc/grafana-cloud.alloy`.
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
 
-`otelcol.receiver.k8s_workloads` can accept arguments from the following components:
+`otelcol.receiver.sdlc` can accept arguments from the following components:
 
 - Components that export [OpenTelemetry `otelcol.Consumer`](../../../compatibility/#opentelemetry-otelcolconsumer-exporters)
 

@@ -1,4 +1,4 @@
-package k8s_workloads
+package sdlc
 
 import (
 	"context"

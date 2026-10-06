@@ -1,4 +1,4 @@
-package k8s_workloads
+package sdlc
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func (c *controller) heartbeat(ctx context.Context) error {
 		rl.Resource().Attributes().PutStr("k8s.cluster.name", c.opts.clusterName)
 	}
 	sl := rl.ScopeLogs().AppendEmpty()
-	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
+	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.sdlc")
 	record := sl.LogRecords().AppendEmpty()
 	record.SetEventName("grafana.sdlc.k8s.cluster.heartbeat")
 	record.SetTimestamp(pcommon.NewTimestampFromTime(now))

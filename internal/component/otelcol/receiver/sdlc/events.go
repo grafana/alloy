@@ -1,4 +1,4 @@
-package k8s_workloads
+package sdlc
 
 import (
 	"crypto/sha256"
@@ -87,7 +87,7 @@ func (c *controller) enqueuePayload(d *appsv1.Deployment, kind, rolloutID string
 	attrs.PutStr("k8s.deployment.uid", string(d.UID))
 	attrs.PutStr("k8s.deployment.name", d.Name)
 	sl := rl.ScopeLogs().AppendEmpty()
-	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.k8s_workloads")
+	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.sdlc")
 	record := sl.LogRecords().AppendEmpty()
 	record.SetEventName(eventPrefix + kind)
 	if kind == "deleted" {
