@@ -28,7 +28,7 @@ You can use the following arguments with `prometheus.exporter.kafka`:
 
 | Name                          | Type            | Description                                                                                                                                                                            | Default   | Required |
 | ----------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `kafka_uris`                  | `array(string)` | Address array (host:port) of Kafka server.                                                                                                                                             |           | yes      |
+| `kafka_uris`                  | `list(string)`  | Address array (host:port) of Kafka server.                                                                                                                                             |           | yes      |
 | `allow_auto_topic_creation`   | `bool`          | If true, the broker may auto-create topics that you requested which don't already exist.                                                                                               |           | no       |
 | `allow_concurrency`           | `bool`          | If set to true, all scrapes trigger Kafka operations. Otherwise, they share results. WARNING: Disable this on large clusters.                                                          | `true`    | no       |
 | `ca_file`                     | `string`        | The optional certificate authority file for TLS client authentication.                                                                                                                 |           | no       |
@@ -61,7 +61,7 @@ You can use the following arguments with `prometheus.exporter.kafka`:
 | `use_sasl`                    | `bool`          | Connect using SASL/PLAIN.                                                                                                                                                              |           | no       |
 | `use_tls`                     | `bool`          | Connect using TLS.                                                                                                                                                                     |           | no       |
 | `use_zookeeper_lag`           | `bool`          | If set to true, use a group from zookeeper.                                                                                                                                            |           | no       |
-| `zookeeper_uris`              | `array(string)` | Address array (hosts) of zookeeper server.                                                                                                                                             |           | no       |
+| `zookeeper_uris`              | `list(string)`  | Address array (hosts) of zookeeper server.                                                                                                                                             |           | no       |
 
 ## Blocks
 
