@@ -14,8 +14,9 @@ import (
 type metrics struct {
 	reg prometheus.Registerer
 
-	Entries prometheus.Counter
-	LastEnd prometheus.Gauge
+	Entries      prometheus.Counter
+	DroppedLines prometheus.Counter
+	LastEnd      prometheus.Gauge
 }
 
 // newMetrics creates a new set of cloudflare metrics. If reg is non-nil, the
@@ -28,6 +29,10 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		Name: "loki_source_cloudflare_target_entries_total",
 		Help: "Total number of successful entries sent via the cloudflare target.",
 	})
+	m.DroppedLines = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "loki_source_cloudflare_target_dropped_lines_total",
+		Help: "Total number of log lines dropped because they were larger than the maximum line size.",
+	})
 	m.LastEnd = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "loki_source_cloudflare_target_last_requested_end_timestamp",
 		Help: "The last cloudflare request end timestamp fetched. This allows to calculate how far the target is behind.",
@@ -35,6 +40,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 
 	if reg != nil {
 		m.Entries = util.MustRegisterOrGet(reg, m.Entries).(prometheus.Counter)
+		m.DroppedLines = util.MustRegisterOrGet(reg, m.DroppedLines).(prometheus.Counter)
 		m.LastEnd = util.MustRegisterOrGet(reg, m.LastEnd).(prometheus.Gauge)
 	}
 

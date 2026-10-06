@@ -137,6 +137,9 @@ Adding more workers, decreasing the pull range, or decreasing the quantity of fi
 
 The last timestamp fetched by the component is recorded in the `loki_source_cloudflare_target_last_requested_end_timestamp` debug metric.
 
+Log lines larger than 1 MiB are dropped.
+The number of dropped lines is recorded in the `loki_source_cloudflare_target_dropped_lines_total` debug metric.
+
 All incoming Cloudflare log entries are in JSON format.
 You can use the `loki.process` component and a JSON processing stage to extract more labels or change the log line format.
 A sample log looks like this:
@@ -237,6 +240,7 @@ The `loki.source.cloudflare` component doesn't support any blocks. You can confi
 ## Debug metrics
 
 * `loki_source_cloudflare_target_entries_total` (counter): Total number of successful entries sent via the cloudflare target.
+* `loki_source_cloudflare_target_dropped_lines_total` (counter): Total number of log lines dropped because they were larger than the maximum line size.
 * `loki_source_cloudflare_target_last_requested_end_timestamp` (gauge): The last cloudflare request end timestamp fetched, for calculating how far behind the target is.
 
 ## Example

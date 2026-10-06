@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
@@ -72,7 +71,7 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(config.APIToken, config.ZoneID, fields)
+	client, err := getClient(config.APIToken, config.ZoneID, fields, logger, metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +152,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
 		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      cloudflare.LogpullReceivedIterator
+		it      LogpullReceivedIterator
 		err     error
 	)
 
