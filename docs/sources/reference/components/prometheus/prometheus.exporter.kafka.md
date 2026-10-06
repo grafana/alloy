@@ -18,7 +18,7 @@ The `prometheus.exporter.kafka` component embeds the [`kafka_exporter`](https://
 
 ```alloy
 prometheus.exporter.kafka "<LABEL>" {
-    kafka_uris = ["<KAFKA_URI>"]
+  kafka_uris = ["<KAFKA_URI>"]
 }
 ```
 
