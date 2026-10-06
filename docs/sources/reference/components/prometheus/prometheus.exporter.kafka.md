@@ -90,7 +90,7 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 prometheus.exporter.kafka "example" {
-  kafka_uris = ["localhost:9200"]
+  kafka_uris = ["localhost:9092"]
 }
 
 // Configure a prometheus.scrape component to send metrics to.
