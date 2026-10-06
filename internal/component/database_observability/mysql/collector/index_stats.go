@@ -24,11 +24,6 @@ import (
 // queries on servers with many tables cannot pile up behind scrapes.
 const IndexStatsCollector = "index_stats"
 
-const selectIndexIOWaits = `
-	SELECT OBJECT_SCHEMA, OBJECT_NAME, INDEX_NAME, COUNT_FETCH
-	FROM performance_schema.table_io_waits_summary_by_index_usage
-	WHERE INDEX_NAME IS NOT NULL AND OBJECT_SCHEMA NOT IN %s`
-
 // mysql.innodb_index_stats holds InnoDB's persistent optimizer statistics,
 // refreshed by MySQL itself. NON_UNIQUE comes from information_schema.statistics,
 // joined on seq_in_index = 1 since uniqueness is a property of the index, not of
@@ -70,6 +65,10 @@ type IndexStatsArguments struct {
 	Registry        *prometheus.Registry
 	CollectInterval time.Duration
 
+	// IOWaits is the shared scan of table_io_waits_summary_by_index_usage. A
+	// scan of its own is used when it is nil.
+	IOWaits *IOWaitsScan
+
 	Logger *slog.Logger
 }
 
@@ -78,6 +77,7 @@ type IndexStats struct {
 	excludeSchemas  []string
 	registry        *prometheus.Registry
 	collectInterval time.Duration
+	ioWaits         *IOWaitsScan
 
 	// Results of the last successful run of each query.
 	idxFetch  cachedMetrics
@@ -94,7 +94,13 @@ func NewIndexStats(args IndexStatsArguments) (*IndexStats, error) {
 		return nil, errors.New("collect interval must be positive")
 	}
 
+	ioWaits := args.IOWaits
+	if ioWaits == nil {
+		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas)
+	}
+
 	return &IndexStats{
+		ioWaits:         ioWaits,
 		dbConnection:    args.DB,
 		excludeSchemas:  args.ExcludeSchemas,
 		registry:        args.Registry,
@@ -183,27 +189,17 @@ func (c *IndexStats) collect(ctx context.Context) {
 }
 
 func (c *IndexStats) queryIdxFetch(ctx context.Context) ([]prometheus.Metric, error) {
-	query := fmt.Sprintf(selectIndexIOWaits, buildExcludedSchemasClause(c.excludeSchemas))
-	rows, err := c.dbConnection.QueryContext(ctx, query)
+	rows, err := c.ioWaits.get(ctx, c.collectInterval/2)
 	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
 
 	var metrics []prometheus.Metric
-	for rows.Next() {
-		var objectSchema, objectName, indexName string
-		var countFetch uint64
-
-		if err := rows.Scan(&objectSchema, &objectName, &indexName, &countFetch); err != nil {
-			return nil, fmt.Errorf("scan: %w", err)
+	for _, r := range rows {
+		if !r.index.Valid {
+			continue
 		}
-
-		metrics = append(metrics, prometheus.MustNewConstMetric(indexStatsIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName, indexName))
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate: %w", err)
+		metrics = append(metrics, prometheus.MustNewConstMetric(indexStatsIdxFetchDesc, prometheus.CounterValue, float64(r.countFetch), r.schema, r.object, r.index.String))
 	}
 	return metrics, nil
 }

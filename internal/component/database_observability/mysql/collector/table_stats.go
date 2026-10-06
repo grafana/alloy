@@ -23,11 +23,6 @@ import (
 // queries on servers with many tables cannot pile up behind scrapes.
 const TableStatsCollector = "table_stats"
 
-const selectTableIOWaitsNoIndex = `
-	SELECT OBJECT_SCHEMA, OBJECT_NAME, COUNT_FETCH
-	FROM performance_schema.table_io_waits_summary_by_index_usage
-	WHERE INDEX_NAME IS NULL AND OBJECT_SCHEMA NOT IN %s`
-
 // mysql.innodb_table_stats holds InnoDB's persistent optimizer statistics,
 // refreshed by MySQL itself -- the sibling table to mysql.innodb_index_stats,
 // already used by index_stats.go for index size.
@@ -62,6 +57,10 @@ type TableStatsArguments struct {
 	Registry        *prometheus.Registry
 	CollectInterval time.Duration
 
+	// IOWaits is the shared scan of table_io_waits_summary_by_index_usage. A
+	// scan of its own is used when it is nil.
+	IOWaits *IOWaitsScan
+
 	Logger *slog.Logger
 }
 
@@ -70,6 +69,7 @@ type TableStats struct {
 	excludeSchemas  []string
 	registry        *prometheus.Registry
 	collectInterval time.Duration
+	ioWaits         *IOWaitsScan
 
 	// Results of the last successful run of each query.
 	noIdxFetch cachedMetrics
@@ -86,7 +86,13 @@ func NewTableStats(args TableStatsArguments) (*TableStats, error) {
 		return nil, errors.New("collect interval must be positive")
 	}
 
+	ioWaits := args.IOWaits
+	if ioWaits == nil {
+		ioWaits = NewIOWaitsScan(args.DB, args.ExcludeSchemas)
+	}
+
 	return &TableStats{
+		ioWaits:         ioWaits,
 		dbConnection:    args.DB,
 		excludeSchemas:  args.ExcludeSchemas,
 		registry:        args.Registry,
@@ -175,27 +181,17 @@ func (c *TableStats) collect(ctx context.Context) {
 }
 
 func (c *TableStats) queryNoIdxFetch(ctx context.Context) ([]prometheus.Metric, error) {
-	query := fmt.Sprintf(selectTableIOWaitsNoIndex, buildExcludedSchemasClause(c.excludeSchemas))
-	rows, err := c.dbConnection.QueryContext(ctx, query)
+	rows, err := c.ioWaits.get(ctx, c.collectInterval/2)
 	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
 
 	var metrics []prometheus.Metric
-	for rows.Next() {
-		var objectSchema, objectName string
-		var countFetch uint64
-
-		if err := rows.Scan(&objectSchema, &objectName, &countFetch); err != nil {
-			return nil, fmt.Errorf("scan: %w", err)
+	for _, r := range rows {
+		if r.index.Valid {
+			continue
 		}
-
-		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(countFetch), objectSchema, objectName))
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate: %w", err)
+		metrics = append(metrics, prometheus.MustNewConstMetric(tableStatsNoIdxFetchDesc, prometheus.CounterValue, float64(r.countFetch), r.schema, r.object))
 	}
 	return metrics, nil
 }

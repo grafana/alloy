@@ -27,10 +27,11 @@ func tableStatsExpected(noIdxFetch int) string {
 }
 
 func expectTableStatsRun(mock sqlmock.Sqlmock, noIdxFetch int) {
-	mock.ExpectQuery(fmt.Sprintf(selectTableIOWaitsNoIndex, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
-			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "COUNT_FETCH"}).
-				AddRow("books_store", "books", noIdxFetch),
+			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "INDEX_NAME", "COUNT_FETCH"}).
+				AddRow("books_store", "books", nil, noIdxFetch).
+				AddRow("books_store", "books", "idx_books_title", 7),
 		)
 	mock.ExpectQuery(fmt.Sprintf(selectTableRowCount, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
@@ -105,7 +106,7 @@ func TestTableStats_ScrapeDoesNotQueryDatabase(t *testing.T) {
 func TestTableStats_KeepsLastResultWhenQueriesFail(t *testing.T) {
 	c, mock, registry := newTestTableStats(t, 50*time.Millisecond)
 	expectTableStatsRun(mock, 39)
-	mock.ExpectQuery(fmt.Sprintf(selectTableIOWaitsNoIndex, exclusionClause)).WillReturnError(errors.New("boom"))
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WillReturnError(errors.New("boom"))
 	mock.ExpectQuery(fmt.Sprintf(selectTableRowCount, exclusionClause)).WillReturnError(errors.New("boom"))
 
 	require.NoError(t, c.Start(t.Context()))
@@ -122,7 +123,7 @@ func TestTableStats_QueryIsBoundedByCollectInterval(t *testing.T) {
 	c, mock, registry := newTestTableStats(t, 100*time.Millisecond)
 	expectTableStatsRun(mock, 39)
 	// A query slower than the collect interval must be cancelled, not waited for.
-	mock.ExpectQuery(fmt.Sprintf(selectTableIOWaitsNoIndex, exclusionClause)).WillDelayFor(time.Hour)
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WillDelayFor(time.Hour).WillReturnRows(sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "INDEX_NAME", "COUNT_FETCH"}))
 	// The run after it succeeds with new data, proving the collector moved on
 	// by itself rather than being unblocked by Stop.
 	expectTableStatsRun(mock, 40)

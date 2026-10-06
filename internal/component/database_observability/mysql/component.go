@@ -1023,12 +1023,17 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		}
 	}
 
+	// table_stats and index_stats read the same performance_schema table, so
+	// they share one scan of it.
+	ioWaits := collector.NewIOWaitsScan(inst.dbConnection, c.args.ExcludeSchemas)
+
 	if collectors[collector.TableStatsCollector] {
 		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
 			DB:              inst.dbConnection,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			Registry:        inst.registry,
 			CollectInterval: c.args.TableStatsArguments.CollectInterval,
+			IOWaits:         ioWaits,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
@@ -1047,6 +1052,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			Registry:        inst.registry,
 			CollectInterval: c.args.IndexStatsArguments.CollectInterval,
+			IOWaits:         ioWaits,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {

@@ -246,6 +246,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 ### `table_stats`
 
 The `table_stats` collector queries `performance_schema.table_io_waits_summary_by_index_usage` and `mysql.innodb_table_stats`.
+When `index_stats` is also enabled, both collectors share one scan of `performance_schema.table_io_waits_summary_by_index_usage` per collection cycle.
 It runs in the background at the configured interval and doesn't query the database when Prometheus scrapes the component.
 Each scrape returns the results of the last successful run.
 A run that takes longer than `collect_interval` is cancelled, and the previous results stay in place until the next successful run.
@@ -257,6 +258,7 @@ A run that takes longer than `collect_interval` is cancelled, and the previous r
 ### `index_stats`
 
 The `index_stats` collector queries `performance_schema.table_io_waits_summary_by_index_usage`, `mysql.innodb_index_stats`, and `information_schema.statistics`.
+When `table_stats` is also enabled, both collectors share one scan of `performance_schema.table_io_waits_summary_by_index_usage` per collection cycle.
 It runs in the background at the configured interval and doesn't query the database when Prometheus scrapes the component.
 Each scrape returns the results of the last successful run.
 A run that takes longer than `collect_interval` is cancelled, and the previous results stay in place until the next successful run.

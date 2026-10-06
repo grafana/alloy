@@ -28,9 +28,10 @@ func indexStatsExpected(idxFetch int) string {
 }
 
 func expectIndexStatsRun(mock sqlmock.Sqlmock, idxFetch int) {
-	mock.ExpectQuery(fmt.Sprintf(selectIndexIOWaits, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(
 			sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "INDEX_NAME", "COUNT_FETCH"}).
+				AddRow("books_store", "books", nil, 39).
 				AddRow("books_store", "books", "idx_books_title", idxFetch),
 		)
 	mock.ExpectQuery(fmt.Sprintf(selectIndexSizeBytes, exclusionClause)).WithoutArgs().RowsWillBeClosed().
@@ -107,7 +108,7 @@ func TestIndexStats_ScrapeDoesNotQueryDatabase(t *testing.T) {
 func TestIndexStats_KeepsLastResultWhenQueriesFail(t *testing.T) {
 	c, mock, registry := newTestIndexStats(t, 50*time.Millisecond)
 	expectIndexStatsRun(mock, 39)
-	mock.ExpectQuery(fmt.Sprintf(selectIndexIOWaits, exclusionClause)).WillReturnError(errors.New("boom"))
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WillReturnError(errors.New("boom"))
 	mock.ExpectQuery(fmt.Sprintf(selectIndexSizeBytes, exclusionClause)).WillReturnError(errors.New("boom"))
 
 	require.NoError(t, c.Start(t.Context()))
@@ -124,7 +125,7 @@ func TestIndexStats_QueryIsBoundedByCollectInterval(t *testing.T) {
 	c, mock, registry := newTestIndexStats(t, 100*time.Millisecond)
 	expectIndexStatsRun(mock, 39)
 	// A query slower than the collect interval must be cancelled, not waited for.
-	mock.ExpectQuery(fmt.Sprintf(selectIndexIOWaits, exclusionClause)).WillDelayFor(time.Hour)
+	mock.ExpectQuery(fmt.Sprintf(selectIOWaits, exclusionClause)).WillDelayFor(time.Hour).WillReturnRows(sqlmock.NewRows([]string{"OBJECT_SCHEMA", "OBJECT_NAME", "INDEX_NAME", "COUNT_FETCH"}))
 	// The run after it succeeds with new data, proving the collector moved on
 	// by itself rather than being unblocked by Stop.
 	expectIndexStatsRun(mock, 40)
