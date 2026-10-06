@@ -596,21 +596,21 @@ The `ebpf` block configures eBPF-specific settings.
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
 | `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
-| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for **Traceparent** fields.                | `false`      | no       |
 | `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
-| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `context_propagation`   | `string`   | Enables injecting of the **Traceparent** header value for outgoing HTTP requests. | `"disabled"` | no       |
 | `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
 | `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
 | `go_http_client_buffer_timeout` | `duration` | Inactivity period before enriching and emitting a pending Go HTTP client event with its captured buffers. | `"1s"` | no |
 | `kafka_consumer_group_cache_size` | `int` | Maximum number of processes whose Kafka consumer-group membership Beyla caches. | `4096` | no |
 | `kafka_consumer_group_ttl` | `duration` | Lifetime of cached Kafka consumer-group membership. | `"2m"` | no |
-| `populate_trace_context` | `bool` | Populate the pinned trace-context map for external readers, such as profilers. | `false` | no |
+| `populate_trace_context` | `bool` | Populate the pinned trace-context map for external readers, such as the **OpenTelemetry profiler**. | `false` | no |
 
 Omit `go_http_client_buffer_timeout` to use the default of `"1s"` as defined in Beyla.
 Set it to `"0s"` to disable Go HTTP client event deferral.
 
 `kafka_consumer_group_cache_size` and `kafka_consumer_group_ttl` control the cache that supplies `messaging.consumer.group.name` on Kafka consumer spans and metrics.
-Keep the TTL above the consumer heartbeat interval and the longest expected rebalance.
+Keep the TTL above the consumer heartbeat interval and the longest expected re-balance.
 For classic consumers that share a process with another consumer group, consider a TTL above `max.poll.interval.ms`.
 A longer TTL delays attribution for newly observed processes.
 Unset or zero values use the defaults defined in Beyla.
@@ -624,7 +624,7 @@ Beyla populates the map automatically when log enrichment is active, even if `po
 `context_propagation` allows Beyla to propagate any incoming context to downstream services. 
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the **Traceparent** header value is encoded at TCP packet level, 
 and requires that Beyla is present on both sides of the communication.
 
 The TCP packet level encoding uses Linux Traffic Control (TC). 
