@@ -72,6 +72,7 @@ type Arguments struct {
 	EnableCollectors   []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors  []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases   []string            `alloy:"exclude_databases,attr,optional"`
+	MaxOpenConnections int                 `alloy:"max_open_connections,attr,optional"`
 	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
 	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
@@ -148,6 +149,7 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
+		MaxOpenConnections: database_observability.DefaultMaxOpenConnections,
 		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
 		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
 		ExcludeCurrentUser: true,
@@ -225,6 +227,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if a.MaxOpenConnections < 0 {
+		return fmt.Errorf("max_open_connections must not be negative")
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := pq.ParseURL(string(a.DataSourceName)) //nolint:staticcheck // pq.ParseURL is deprecated but needed for URL validation
 		if err != nil {
@@ -611,6 +617,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	if dbConnection == nil {
 		return fmt.Errorf("nil DB connection")
 	}
+
+	database_observability.ConfigureConnectionPool(dbConnection, c.args.MaxOpenConnections)
 
 	connectCtx, cancel := context.WithTimeout(ctx, dbConnectTimeout)
 	defer cancel()

@@ -35,6 +35,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `max_open_connections` | `int`                | Maximum number of connections the component keeps open to each database. Set to `0` for no limit. | `15`    | no       |
 | `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 

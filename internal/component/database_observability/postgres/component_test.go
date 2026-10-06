@@ -2038,3 +2038,47 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
 	})
 }
+
+func TestPostgres_MaxOpenConnections(t *testing.T) {
+	var defaults Arguments
+	defaults.SetToDefault()
+	require.Equal(t, database_observability.DefaultMaxOpenConnections, defaults.MaxOpenConnections)
+
+	for name, tc := range map[string]struct {
+		configured int
+		want       int
+	}{
+		"default":   {configured: defaults.MaxOpenConnections, want: 15},
+		"custom":    {configured: 4, want: 4},
+		"unlimited": {configured: 0, want: 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			require.NoError(t, err)
+			defer db.Close()
+			mock.ExpectPing().WillReturnError(assert.AnError)
+
+			args := defaults
+			args.DataSourceName = "postgres://127.0.0.1:5432/db?sslmode=disable"
+			args.MaxOpenConnections = tc.configured
+			opts := cmp.Options{
+				ID:             "test.postgres",
+				Logger:         logging.NewSlogNop(),
+				OnStateChange:  func(cmp.Exports) {},
+				GetServiceData: testGetServiceData,
+			}
+
+			_, err = new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.want, db.Stats().MaxOpenConnections)
+		})
+	}
+
+	t.Run("negative is rejected", func(t *testing.T) {
+		args := defaults
+		args.DataSourceName = "postgres://127.0.0.1:5432/db?sslmode=disable"
+		args.MaxOpenConnections = -1
+		require.ErrorContains(t, args.Validate(), "max_open_connections")
+	})
+}

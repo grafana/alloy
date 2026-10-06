@@ -1323,3 +1323,48 @@ func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 	second, _ := exported.Targets[1].Get("instance")
 	assert.Equal(t, []string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"}, []string{first, second})
 }
+
+func TestMySQL_MaxOpenConnections(t *testing.T) {
+	var defaults Arguments
+	defaults.SetToDefault()
+	require.Equal(t, database_observability.DefaultMaxOpenConnections, defaults.MaxOpenConnections)
+
+	for name, tc := range map[string]struct {
+		configured int
+		want       int
+	}{
+		"default":   {configured: defaults.MaxOpenConnections, want: 15},
+		"custom":    {configured: 4, want: 4},
+		"unlimited": {configured: 0, want: 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+			require.NoError(t, err)
+			defer db.Close()
+			mock.ExpectPing().WillReturnError(assert.AnError)
+
+			args := defaults
+			args.DataSourceName = alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db")
+			args.ForwardTo = []loki.LogsReceiver{}
+			args.MaxOpenConnections = tc.configured
+			opts := cmp.Options{
+				ID:             "test.mysql",
+				Logger:         logging.NewSlogNop(),
+				OnStateChange:  func(cmp.Exports) {},
+				GetServiceData: testGetServiceData,
+			}
+
+			_, err = new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.want, db.Stats().MaxOpenConnections)
+		})
+	}
+
+	t.Run("negative is rejected", func(t *testing.T) {
+		args := defaults
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db")
+		args.MaxOpenConnections = -1
+		require.ErrorContains(t, args.Validate(), "max_open_connections")
+	})
+}

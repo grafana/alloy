@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	MaxOpenConnections            int                 `alloy:"max_open_connections,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -178,6 +179,7 @@ func (a *PrometheusExporterArguments) Validate() error {
 
 func defaultArguments() Arguments {
 	return Arguments{
+		MaxOpenConnections:            database_observability.DefaultMaxOpenConnections,
 		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
@@ -235,6 +237,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if a.MaxOpenConnections < 0 {
+		return fmt.Errorf("max_open_connections must not be negative")
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -712,6 +718,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	if dbConnection == nil {
 		return fmt.Errorf("nil DB connection")
 	}
+
+	database_observability.ConfigureConnectionPool(dbConnection, c.args.MaxOpenConnections)
 
 	connectCtx, cancel := context.WithTimeout(ctx, dbConnectTimeout)
 	defer cancel()

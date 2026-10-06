@@ -35,6 +35,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `max_open_connections`                     | `int`                | Maximum number of connections the component keeps open to each database. Set to `0` for no limit. | `15`    | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
