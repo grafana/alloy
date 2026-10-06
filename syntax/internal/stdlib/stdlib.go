@@ -449,20 +449,20 @@ func yamlDecode(in string) (any, error) {
 	return res, nil
 }
 
-func base64Decode(in string) ([]byte, error) {
+func base64Decode(in string) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(in)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return decoded, nil
+	return string(decoded), nil
 }
 
-func base64URLDecode(in string) ([]byte, error) {
+func base64URLDecode(in string) (string, error) {
 	decoded, err := base64.URLEncoding.DecodeString(in)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return decoded, nil
+	return string(decoded), nil
 }
 
 func base64URLEncode(in string) (string, error) {
