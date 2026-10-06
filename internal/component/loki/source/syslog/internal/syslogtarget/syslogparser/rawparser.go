@@ -16,11 +16,12 @@ import (
 // IterStreamRaw returns an iterator to read syslog lines from a stream without contents parsing.
 //
 // Delimiter argument is used to determine line end for non-transparent framing.
-func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
+// Octet counted frames longer than maxMessageLength are rejected with an error.
+func IterStreamRaw(r io.Reader, delimiter byte, maxMessageLength int) iter.Seq2[*syslog.Base, error] {
 	return func(yield func(*syslog.Base, error) bool) {
 		buf := bufio.NewReaderSize(r, 1<<10)
 		for {
-			r, err := parseLineRaw(buf, delimiter)
+			r, err := parseLineRaw(buf, delimiter, maxMessageLength)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					yield(nil, err)
@@ -41,7 +42,7 @@ func IterStreamRaw(r io.Reader, delimiter byte) iter.Seq2[*syslog.Base, error] {
 	}
 }
 
-func parseLineRaw(src *bufio.Reader, delimiter byte) (*syslog.Base, error) {
+func parseLineRaw(src *bufio.Reader, delimiter byte, maxMessageLength int) (*syslog.Base, error) {
 	b, err := src.ReadByte()
 	if err != nil {
 		return nil, err
@@ -54,6 +55,11 @@ func parseLineRaw(src *bufio.Reader, delimiter byte) (*syslog.Base, error) {
 		contentLength, err := readFrameLength(src)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read octet length header: %w", err)
+		}
+
+		// The length comes from the sender, check it before allocating a buffer for it.
+		if contentLength > maxMessageLength {
+			return nil, fmt.Errorf("message length (%d) exceeds maximum length (%d)", contentLength, maxMessageLength)
 		}
 
 		// The .Read() method in bufio.Reader will return only buffered data.
