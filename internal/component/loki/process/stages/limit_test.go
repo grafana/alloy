@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestLimitStage(t *testing.T) {
@@ -185,4 +186,92 @@ func TestLimitStageShutdown(t *testing.T) {
 		t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
 	default:
 	}
+}
+
+func TestValidateLimitConfig(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name    string
+		cfg     string
+		wantErr bool
+	}
+
+	tests := []testCase{
+		{
+			name: "should pass on rate and burst set",
+			cfg: `
+			rate  = 1
+			burst = 1
+			`,
+		},
+		{
+			name: "should fail on zero rate",
+			cfg: `
+			rate  = 0
+			burst = 1
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should fail on zero burst",
+			cfg: `
+			rate  = 1
+			burst = 0
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should fail on by_label_name without drop",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			by_label_name = "app"
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should pass on by_label_name with drop",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			drop          = true
+			by_label_name = "app"
+			`,
+		},
+		{
+			name: "should fail on invalid by_label_name",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			drop          = true
+			by_label_name = "bad-name"
+			`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg LimitConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestLimitConfigDefaults(t *testing.T) {
+	var cfg LimitConfig
+	err := syntax.Unmarshal([]byte(`
+	rate  = 1
+	burst = 1
+	`), &cfg)
+	require.NoError(t, err)
+	require.Equal(t, defaultMaxDistinctLabels, cfg.MaxDistinctLabels)
 }
