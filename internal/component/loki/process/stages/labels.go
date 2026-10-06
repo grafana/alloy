@@ -60,7 +60,7 @@ var (
 )
 
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(configs LabelsConfig, opts stageOpts) (*labelStage, error) {
+func newLabelStage(configs LabelsConfig, opts stageOpts) *labelStage {
 	labelsConfig := map[string]string{}
 	for labelName, labelSrc := range configs.Values {
 		if labelSrc == nil || *labelSrc == "" {
@@ -75,7 +75,7 @@ func newLabelStage(configs LabelsConfig, opts stageOpts) (*labelStage, error) {
 		cfg:          &configs,
 		labelsConfig: labelsConfig,
 		logger:       opts.slogger.With("stage", "labels"),
-	}, nil
+	}
 }
 
 // labelStage sets labels from extracted data
