@@ -5,7 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-10-01
+review_date: 2026-09-11
 title: pyroscope.enrich
 ---
 
@@ -15,8 +15,6 @@ title: pyroscope.enrich
 
 `pyroscope.enrich` enriches profiles with additional labels from service discovery targets.
 It matches a label from incoming profiles against a label from discovered targets, and copies specified labels from the matched target to the profile.
-
-You can specify multiple `pyroscope.enrich` components by giving them different labels.
 
 ## Usage
 
@@ -58,15 +56,14 @@ The following fields are exported and can be referenced by other components:
 ## Component health
 
 `pyroscope.enrich` is only reported as unhealthy if given an invalid configuration.
-In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`pyroscope.enrich` doesn't expose any component-specific debug information.
+`pyroscope.enrich` doesn't expose debug information.
 
 ## Debug metrics
 
-`pyroscope.enrich` doesn't expose any component-specific debug metrics.
+`pyroscope.enrich` doesn't expose additional metrics.
 
 ## Example
 
