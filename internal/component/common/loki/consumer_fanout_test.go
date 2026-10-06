@@ -25,10 +25,10 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	fanout := NewFanoutConsumer([]Consumer{
 		consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
-				batch.FilterMap(func(entry *Entry) bool {
+				batch.FilterMap(func(entry Entry) (Entry, bool) {
 					entry.Line = "mutated by first"
 					entry.Labels = bar
-					return true
+					return entry, true
 				})
 				firstBatch = batch
 				return firstErr
@@ -49,11 +49,11 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	require.ErrorIs(t, err, firstErr)
 	require.ErrorIs(t, err, lastErr)
 
-	firstStreams := collectStreams(&firstBatch)
+	firstStreams := firstBatch.Streams()
 	require.Equal(t, bar, firstStreams[0].Labels)
 	require.Equal(t, "mutated by first", firstStreams[0].Entries[0].Line)
 
-	lastStreams := collectStreams(&lastBatch)
+	lastStreams := lastBatch.Streams()
 	require.Equal(t, foo, lastStreams[0].Labels)
 	require.Equal(t, "original", lastStreams[0].Entries[0].Line)
 }

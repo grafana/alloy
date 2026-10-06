@@ -1,0 +1,85 @@
+config: |
+  loki.enrich "enricher" {
+    targets = [{
+      "hostname"    = "router1.example.com",
+      "environment" = "production",
+      "datacenter"  = "us-east",
+      "role"        = "core-router",
+      "rack"        = "rack1",
+    }, {
+      "hostname"    = "router2.example.com",
+      "environment" = "production",
+      "datacenter"  = "us-west",
+      "role"        = "edge-router",
+      "rack"        = "rack2",
+    }]
+
+    labels_to_copy = ["environment", "datacenter", "role", "rack"]
+
+    target_match_label = "hostname"
+    logs_match_label   = "host"
+
+    forward_to = [loki.write.enriched.receiver]
+  }
+
+  loki.write "enriched" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+  }
+
+inputs:
+  loki:
+    - components:
+        - loki.enrich.enricher.receiver
+      entries:
+        - labels: { job: network_device_logs, host: router1.example.com }
+          line: "%LINK-3-UPDOWN: Interface GigabitEthernet1/0/1, changed state to up"
+        - labels: { job: network_device_logs, host: router1.example.com }
+          line: "%SEC-6-IPACCESSLOGP: list 102 denied tcp 10.1.1.1(1234) -> 10.1.1.2(80), 1 packet"
+        - labels: { job: network_device_logs, host: router2.example.com }
+          line: "%SYS-5-CONFIG_I: Configured from console by admin on vty0 (10.1.1.1)"
+        - labels: { job: network_device_logs, host: unknown.example.com }
+          line: "%LINK-3-UPDOWN: Interface GigabitEthernet1/0/2, changed state to down"
+
+assert:
+  loki:
+    # Four entries in, four out. Catches enrich forwarding an entry twice, which
+    # the per-label assertions below cannot see.
+    - type: count
+      count: 4
+
+    # A matched target copies exactly the labels_to_copy set, and nothing else.
+    - type: count
+      count: 2
+      match:
+        labels:
+          values:
+            job: network_device_logs
+            host: router1.example.com
+            environment: production
+            datacenter: us-east
+            role: core-router
+            rack: rack1
+
+    # A second target enriches from its own row, not the first one's.
+    - type: count
+      count: 1
+      match:
+        labels:
+          values:
+            job: network_device_logs
+            host: router2.example.com
+            environment: production
+            datacenter: us-west
+            role: edge-router
+            rack: rack2
+
+    # An unmatched host passes through. An exact match proves no label was added.
+    - type: count
+      count: 1
+      match:
+        labels:
+          values:
+            job: network_device_logs
+            host: unknown.example.com
