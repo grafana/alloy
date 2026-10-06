@@ -82,8 +82,8 @@ The following example configuration accepts telemetry over OTLP and sends it to 
 extensions:
   basicauth/my_auth:
     client_auth:
-      username: <USERNAME>
-      password: <PASSWORD>
+      username: "<USERNAME>"
+      password: "<PASSWORD>"
 
 receivers:
   otlp:
@@ -97,7 +97,7 @@ processors:
     send_batch_size: 512
 
 exporters:
-  otlphttp/my_backend:
+  otlp_http/my_backend:
     endpoint: <URL>
     auth:
       authenticator: basicauth/my_auth
@@ -108,7 +108,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/my_backend]
+      exporters: [otlp_http/my_backend]
 ```
 
 Replace the following:

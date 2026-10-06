@@ -48,20 +48,21 @@ Make sure you have the following:
      metrics:
        enabled: true
 
-   alternateConfig:
+   config:
      extensions:
-       health_check:
-         endpoint: 0.0.0.0:13133 # This is necessary for the Kubernetes liveness check
        basicauth/my_auth:
          client_auth:
-           username: <USERNAME>
-           password: <PASSWORD>
+           username: "<USERNAME>"
+           password: "<PASSWORD>"
 
      receivers:
        otlp:
          protocols:
            grpc: {}
            http: {}
+       jaeger: null
+       zipkin: null
+       prometheus: null
 
      processors:
        batch:
@@ -69,7 +70,8 @@ Make sure you have the following:
          send_batch_size: 512
 
      exporters:
-       otlphttp/my_backend:
+       debug: null
+       otlp_http/my_backend:
          endpoint: <URL>
          auth:
            authenticator: basicauth/my_auth
@@ -85,10 +87,12 @@ Make sure you have the following:
                      port: 8888
        extensions: [basicauth/my_auth, health_check]
        pipelines:
+         logs: null
+         metrics: null
          traces:
            receivers: [otlp]
            processors: [batch]
-           exporters: [otlphttp/my_backend]
+           exporters: [otlp_http/my_backend]
    ```
 
    Replace the following:
@@ -104,9 +108,10 @@ Make sure you have the following:
    This path is a compatibility entrypoint in the {{< param "PRODUCT_NAME" >}} image that runs `alloy otel`.
    Without this setting, the chart runs the image's default entrypoint, which starts the {{< param "DEFAULT_ENGINE" >}}.
 
-   The chart's default configuration doesn't apply when you set `alternateConfig`, so this example declares every component it needs, including the `health_check` extension.
+   The example sets the chart defaults it doesn't need to `null` and uses the chart's own `health_check` extension without redefining it.
+   Refer to the [Helm chart documentation][ChartConfig] for how `config` combines with the chart's defaults.
    The example also sets the metrics endpoint host to `0.0.0.0` so it listens on all interfaces inside the Pod.
-   This lets other Pods in the cluster reach it without `kubectl port-forward`.
+   The chart's default binds the Pod IP, which other Pods in the cluster can already reach, so set `0.0.0.0` when you also want to reach the endpoint on `127.0.0.1` inside the Pod, for example from a sidecar container.
    Set `ports.metrics.enabled` to `true` to expose port `8888` on the Pod and the Service.
 
 1. Install the chart:
@@ -127,18 +132,11 @@ Make sure you have the following:
 
 ## Configuration options
 
-The Helm chart includes a default OpenTelemetry Collector configuration in the `config` field.
-The [Helm chart documentation][ChartConfig] describes this field.
-You have three ways to configure the {{< param "OTEL_ENGINE" >}}:
+Configure the {{< param "OTEL_ENGINE" >}} through the chart's `config` field, as the preceding example does.
+The [Helm chart documentation][ChartConfig] describes this field and how your values combine with the chart's defaults.
 
-- Replace the defaults: Set `alternateConfig`, as the preceding example does.
-  The chart ignores `config` entirely and uses only what you provide.
-  You must supply the `health_check` extension yourself, because the chart's `readinessProbe` and `livenessProbe` checks depend on it.
-- Merge with the defaults: Set `config`.
-  The chart merges your values into its default configuration.
-  Maps merge key by key, and lists replace the default list.
-- Remove a default: Set a default key to `null` within `config`.
-  This works when you install the chart directly, but not when you use it as a subchart.
+The chart also provides `alternateConfig`, which replaces the chart's default configuration instead of combining with it.
+Upstream provides that field for use as a subchart and doesn't recommend it when you install the chart directly.
 
 Refer to the [upstream documentation][ChartDocs] for more information about configuring the Helm chart for your use case.
 
