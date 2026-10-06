@@ -335,13 +335,19 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		`), &args)
 		require.NoError(t, err)
 
-		_, err = New(component.Options{
+		c, err := New(component.Options{
 			Logger:        logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityExperimental,
 			DataPath:      t.TempDir(),
 			OnStateChange: func(e component.Exports) {},
 		}, args)
 		require.NoError(t, err)
+
+		// Run with a canceled context to close the WAL. Windows cannot remove
+		// the TempDir while a WAL segment is open.
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		require.NoError(t, c.Run(ctx))
 	})
 }
 
