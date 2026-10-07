@@ -14,6 +14,8 @@ title: prometheus.exporter.memcached
 
 The `prometheus.exporter.memcached` component embeds the [`memcached_exporter`][memcached-exporter] to collect metrics from a Memcached server.
 
+You can specify multiple `prometheus.exporter.memcached` components by giving them different labels.
+
 [memcached-exporter]: https://github.com/prometheus/memcached_exporter
 
 ## Usage
