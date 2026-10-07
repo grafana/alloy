@@ -127,7 +127,6 @@ func (t *tailer) Run(ctx context.Context) {
 }
 
 // startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
-// Requests to the Docker daemon, and the processing started here, end when ctx is canceled.
 func (t *tailer) startIfNotRunning(ctx context.Context) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
