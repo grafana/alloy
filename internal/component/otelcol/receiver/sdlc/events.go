@@ -30,11 +30,6 @@ type rolloutContainer struct {
 	Init  bool   `json:"init"`
 	Image string `json:"image"`
 }
-type deploymentDeletion struct {
-	Name       string `json:"name"`
-	UID        string `json:"uid"`
-	ObservedAt string `json:"observed_at"`
-}
 
 type rolloutEvent struct {
 	Name         string             `json:"name"`
@@ -90,9 +85,6 @@ func (c *controller) enqueuePayload(d *appsv1.Deployment, kind, rolloutID string
 	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.sdlc")
 	record := sl.LogRecords().AppendEmpty()
 	record.SetEventName(eventPrefix + kind)
-	if kind == "deleted" {
-		record.SetEventName("grafana.sdlc.k8s.deployment.deleted")
-	}
 	record.SetTimestamp(pcommon.NewTimestampFromTime(now))
 	record.SetObservedTimestamp(record.Timestamp())
 	record.SetSeverityNumber(plog.SeverityNumberInfo)

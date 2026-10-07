@@ -211,7 +211,7 @@ func (c *controller) deliver(ctx context.Context, event *eventBatch) bool {
 	return true
 }
 
-// remove emits an identity-only observation even when no rollout was seen.
+// remove clears local tracking without emitting an SDLC event.
 // UID distinguishes deletion/recreation under the same namespace and name.
 func (c *controller) remove(obj any) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
@@ -225,7 +225,4 @@ func (c *controller) remove(obj any) {
 	defer c.mu.Unlock()
 	delete(c.rollouts, string(d.UID))
 	delete(c.collections, string(d.UID))
-	now := c.now()
-	payload := deploymentDeletion{Name: d.Name, UID: string(d.UID), ObservedAt: now.UTC().Format(time.RFC3339Nano)}
-	c.enqueuePayload(d, "deleted", stableID(c.opts.clusterUID, string(d.UID)), now, payload)
 }

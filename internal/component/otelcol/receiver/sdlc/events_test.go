@@ -237,33 +237,15 @@ func TestWatcherUsesDeploymentReplicaSetAndPodWatches(t *testing.T) {
 	require.NoError(t, <-done)
 }
 
-func TestDeploymentDeletion(t *testing.T) {
+func TestDeploymentDeletionClearsTrackingWithoutEvent(t *testing.T) {
 	c := testController(t)
 	d := deploymentFixture()
-	// Initial discovery is silent, but deletion must still be reported.
 	c.observe(d, true)
 	c.remove(cache.DeletedFinalStateUnknown{Obj: d})
 	require.Empty(t, c.rollouts)
 	require.Empty(t, c.collections)
-	batch, _ := c.queue.Get()
-	c.queue.Done(batch)
-	record := batch.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	require.Equal(t, "grafana.sdlc.k8s.deployment.deleted", record.EventName())
-	var payload map[string]any
-	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &payload))
-	require.Equal(t, map[string]any{"name": "web", "uid": "d-1", "observed_at": "1970-01-01T00:01:40Z"}, payload)
-	require.Equal(t, stableID(stableID("cluster-1", "d-1"), "deleted"), batch.id)
-	// Retry/tombstone delivery uses the same identity, even with no rollout state.
+	require.Zero(t, c.queue.Len())
 	c.remove(d)
-	repeated, _ := c.queue.Get()
-	c.queue.Done(repeated)
-	require.Equal(t, batch.id, repeated.id)
-	// A recreated Deployment with the same name is a different identity.
-	d.UID = "d-2"
-	c.remove(d)
-	recreated, _ := c.queue.Get()
-	c.queue.Done(recreated)
-	require.NotEqual(t, batch.id, recreated.id)
 	c.remove(cache.DeletedFinalStateUnknown{Obj: "unavailable"})
 	require.Zero(t, c.queue.Len())
 }

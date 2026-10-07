@@ -251,19 +251,6 @@ to identify the same manifest or index as a build's provenance digest.
 The event ID is deterministic for the rollout; delivery retries preserve its body.
 Later scaling doesn't reopen collection or emit another image event.
 
-### Deployment deletion events
-
-`grafana.sdlc.k8s.deployment.deleted` reports an observed Deployment deletion.
-Its body contains `name`, `uid`, and `observed_at`, without rollout or container fields.
-The resource attributes identify the cluster, namespace, and Deployment.
-Deletion is reported even when no rollout was observed for that Deployment.
-
-The event ID is `stableID(stableID(cluster_uid, deployment_uid), "deleted")`, using the same hash function as rollout IDs.
-Repeated observations of the same deletion have the same event ID.
-A recreated Deployment has a different UID, even when its namespace and name are unchanged.
-Consumers can retain historical rollouts while marking the deleted Deployment as inactive.
-Deletions that occur while the watcher is stopped aren't reconstructed on startup.
-
 ### Delivery behavior
 
 The initial watch listing establishes an in-memory baseline without emitting events.
