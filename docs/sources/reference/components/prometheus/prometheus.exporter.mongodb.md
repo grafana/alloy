@@ -12,7 +12,7 @@ title: prometheus.exporter.mongodb
 
 # `prometheus.exporter.mongodb`
 
-The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`](https://github.com/percona/mongodb_exporter).
+The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`][mongodb-exporter].
 
 {{< admonition type="note" >}}
 This exporter doesn't collect metrics from multiple nodes.
@@ -21,6 +21,8 @@ For this integration to work properly, you must connect each node of your MongoD
 
 We strongly recommend configuring a separate user for {{< param "PRODUCT_NAME" >}}, giving it only the strictly mandatory security privileges necessary for monitoring your node.
 Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter#permissions) for more information.
+
+[mongodb-exporter]: https://github.com/percona/mongodb_exporter
 
 ## Usage
 
