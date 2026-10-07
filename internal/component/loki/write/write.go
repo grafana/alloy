@@ -220,11 +220,17 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 		}
 
 		err := consumer.ConsumeEntry(ctx, e)
-		if !client.IsRetryableErr(err) {
+		if err == nil {
 			return
 		}
 
 		if ctx.Err() != nil {
+			c.opts.Logger.Error("dropping entry, write did not succeed before shutdown", "err", err)
+			return
+		}
+
+		if !client.IsRetryableErr(err) {
+			c.opts.Logger.Error("dropping entry, write failed with a non retryable error", "err", err)
 			return
 		}
 
@@ -246,6 +252,7 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			})
 		}
 
+		c.opts.Logger.Debug("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
 		bo.Wait()
 	}
 }
