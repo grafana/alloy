@@ -30,10 +30,10 @@ prometheus.exporter.memcached "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.memcached`:
 
-| Name      | Type       | Description                                         | Default             | Required |
-| --------- | ---------- | --------------------------------------------------- | ------------------- | -------- |
-| `address` | `string`   | The Memcached server address.                       | `"localhost:11211"` | no       |
-| `timeout` | `duration` | The timeout for connecting to the Memcached server. | `"1s"`              | no       |
+| Name      | Type       | Description                                      | Default             | Required |
+| --------- | ---------- | ------------------------------------------------ | ------------------- | -------- |
+| `address` | `string`   | The Memcached server address.                    | `"localhost:11211"` | no       |
+| `timeout` | `duration` | Timeout for connections to the Memcached server. | `"1s"`              | no       |
 
 The component sets the `instance` label on its exported targets to the value of `address`.
 
