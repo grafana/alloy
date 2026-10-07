@@ -71,7 +71,7 @@ You can use the following arguments with `prometheus.exporter.gcp`:
 
 | Name                      | Type           | Description                                                                                               | Default | Required |
 | ------------------------- | -------------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `metrics_prefixes`        | `list(string)` | One or more supported [GCP metrics][gcp-metrics]. These can be as targeted or loose as needed.            |         | yes      |
+| `metrics_prefixes`        | `list(string)` | One or more supported [GCP metrics][gcp-metrics]. These can be as targeted or broad as needed.            |         | yes      |
 | `project_ids`             | `list(string)` | Configure the GCP Projects to scrape for metrics.                                                         |         | yes      |
 | `drop_delegated_projects` | `bool`         | When enabled, drops metrics from projects attached to the configured `project_ids`.                       | `false` | no       |
 | `extra_filters`           | `list(string)` | Refine the resources to collect metrics from. The structure is `<targeted_metric_prefix>:<filter_query>`. | `[]`    | no       |
