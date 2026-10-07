@@ -44,8 +44,8 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 | `discovering_mode`             | `bool`     | Whether or not to enable autodiscover collections.                                                                                     | `false` | no       |
 | `enable_coll_stats`            | `bool`     | Enables collecting collection statistics.                                                                                              | `false` | no       |
 | `enable_currentop_metrics`     | `bool`     | Enables collecting current operation metrics.                                                                                          | `false` | no       |
-| `enable_db_stats_free_storage` | `bool`     | Enables collecting free storage statistics from `dbStats`.                                                                             | `false` | no       |
 | `enable_db_stats`              | `bool`     | Enables collecting database statistics.                                                                                                | `false` | no       |
+| `enable_db_stats_free_storage` | `bool`     | Enables collecting free storage statistics from `dbStats`.                                                                             | `false` | no       |
 | `enable_diagnostic_data`       | `bool`     | Enables collecting diagnostic data.                                                                                                    | `false` | no       |
 | `enable_fcv`                   | `bool`     | Enables collecting Feature Compatibility Version (FCV) metrics.                                                                        | `false` | no       |
 | `enable_index_stats`           | `bool`     | Enables collecting index statistics.                                                                                                   | `false` | no       |
