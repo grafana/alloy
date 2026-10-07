@@ -30,15 +30,15 @@ prometheus.exporter.mssql "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mssql`:
 
-| Name                      | Type                 | Description                                                                       | Default | Required |
-| ------------------------- | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `connection_string`       | `secret`             | The connection string used to connect to a Microsoft SQL Server.                  |         | yes      |
-| `connection_name`         | `string`             | The name of the connection, used as a label in uptime metrics.                    | `""`    | no       |
-| `max_connection_lifetime` | `duration`           | Maximum amount of time a connection may be reused. `0` keeps connections forever. | `"0s"`  | no       |
-| `max_idle_connections`    | `int`                | Maximum number of idle connections to any one target.                             | `3`     | no       |
-| `max_open_connections`    | `int`                | Maximum number of open connections to any one target.                             | `3`     | no       |
-| `query_config`            | `string` or `secret` | MSSQL query to Prometheus metric configuration as an inline string.               |         | no       |
-| `timeout`                 | `duration`           | The query timeout duration for each scrape.                                       | `"10s"` | no       |
+| Name                      | Type                 | Description                                                         | Default | Required |
+| ------------------------- | -------------------- | ------------------------------------------------------------------- | ------- | -------- |
+| `connection_string`       | `secret`             | The connection string used to connect to a Microsoft SQL Server.    |         | yes      |
+| `connection_name`         | `string`             | The name of the connection, used as a label in uptime metrics.      | `""`    | no       |
+| `max_connection_lifetime` | `duration`           | Maximum lifetime of a connection. `0` keeps connections forever.    | `"0s"`  | no       |
+| `max_idle_connections`    | `int`                | Maximum number of idle connections to any one target.               | `3`     | no       |
+| `max_open_connections`    | `int`                | Maximum number of open connections to any one target.               | `3`     | no       |
+| `query_config`            | `string` or `secret` | MSSQL query to Prometheus metric configuration as an inline string. |         | no       |
+| `timeout`                 | `duration`           | The query timeout duration for each scrape.                         | `"10s"` | no       |
 
 `max_idle_connections` and `max_open_connections` must each be at least `1`, and `timeout` must be positive.
 `max_connection_lifetime` can't be negative.
@@ -154,8 +154,8 @@ Replace the following:
 
 You can use the optional `query_config` parameter to retrieve custom Prometheus metrics for a MSSQL instance.
 
-If this is defined, the new configuration is used to query your MSSQL instance and create whatever Prometheus metrics are defined.
-If you want additional metrics on top of the default metrics, the default configuration must be used as a base.
+When you set `query_config`, {{< param "PRODUCT_NAME" >}} replaces the default configuration and creates only the metrics that `query_config` defines.
+If you want additional metrics on top of the default metrics, use the default configuration as a base.
 
 The default configuration used by this integration is as follows:
 
