@@ -153,7 +153,7 @@ Replace the following:
 
 ## Custom metrics
 
-You can use the optional `query_config` argument to retrieve custom Prometheus metrics for a MSSQL instance.
+You can use the optional `query_config` argument to retrieve custom Prometheus metrics for an MSSQL instance.
 
 When you set `query_config`, {{< param "PRODUCT_NAME" >}} replaces the default configuration and creates only the metrics that `query_config` defines.
 If you want additional metrics on top of the default metrics, use the default configuration as a base.
