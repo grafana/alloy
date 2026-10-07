@@ -62,6 +62,8 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 
 MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
 
+The component sets the `instance` label on its exported targets to the host portion of `mongodb_uri`.
+
 ## Blocks
 
 The `prometheus.exporter.mongodb` component doesn't support any blocks. You can configure this component with arguments.
