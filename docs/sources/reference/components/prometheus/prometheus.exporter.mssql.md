@@ -32,11 +32,11 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | ------------------------- | -------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
 | `connection_string`       | `secret`             | The connection string used to connect to a Microsoft SQL Server.                  |         | yes      |
 | `connection_name`         | `string`             | The name of the connection, used as a label in uptime metrics.                    | `""`    | no       |
+| `max_connection_lifetime` | `duration`           | Maximum amount of time a connection may be reused. `0` keeps connections forever. | `"0s"`  | no       |
 | `max_idle_connections`    | `int`                | Maximum number of idle connections to any one target.                             | `3`     | no       |
 | `max_open_connections`    | `int`                | Maximum number of open connections to any one target.                             | `3`     | no       |
-| `max_connection_lifetime` | `duration`           | Maximum amount of time a connection may be reused. `0` keeps connections forever. | `"0s"`  | no       |
-| `timeout`                 | `duration`           | The query timeout duration for each scrape.                                       | `"10s"` | no       |
 | `query_config`            | `string` or `secret` | MSSQL query to Prometheus metric configuration as an inline string.               |         | no       |
+| `timeout`                 | `duration`           | The query timeout duration for each scrape.                                       | `"10s"` | no       |
 
 The [`sql_exporter` examples][sql-exporter-examples] show the format of the `connection_string` argument:
 
