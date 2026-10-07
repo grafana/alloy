@@ -158,7 +158,7 @@ You can use the optional `query_config` argument to retrieve custom Prometheus m
 When you set `query_config`, {{< param "PRODUCT_NAME" >}} replaces the default configuration and creates only the metrics that `query_config` defines.
 If you want additional metrics on top of the default metrics, use the default configuration as a base.
 
-The default configuration used by this integration is as follows:
+The default configuration used by this component is as follows:
 
 ```yaml
 collector_name: mssql_standard
