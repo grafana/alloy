@@ -12,7 +12,7 @@ title: prometheus.exporter.mongodb
 
 # `prometheus.exporter.mongodb`
 
-The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`][mongodb-exporter].
+The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`][mongodb-exporter] to collect metrics from a MongoDB node.
 
 {{< admonition type="note" >}}
 This exporter doesn't collect metrics from multiple nodes.
