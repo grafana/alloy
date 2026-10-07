@@ -21,11 +21,12 @@ For this component to work properly, you must connect each node of your MongoDB 
 {{< /admonition >}}
 
 Grafana recommends that you configure a separate user for {{< param "PRODUCT_NAME" >}} with only the security privileges needed to monitor your node.
-Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter#permissions) for more information.
+Refer to the [Percona documentation][percona-permissions] for more information.
 
 You can specify multiple `prometheus.exporter.mongodb` components by giving them different labels.
 
 [mongodb-exporter]: https://github.com/percona/mongodb_exporter
+[percona-permissions]: https://github.com/percona/mongodb_exporter#permissions
 
 ## Usage
 
