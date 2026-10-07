@@ -9,6 +9,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
+	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -2725,6 +2727,88 @@ func TestPostgresPreparedStatementParamCount(t *testing.T) {
 			assert.Equal(t, tt.want, postgresPreparedStatementParamCount(tt.query))
 		})
 	}
+}
+
+func TestIsUnrecoverablePostgresSQLError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "missing custom configuration parameter",
+			err: fmt.Errorf(
+				"failed to run explain plan: %w",
+				&pq.Error{
+					Code:    pqerror.UndefinedObject,
+					Message: `unrecognized configuration parameter "request.account_scope"`,
+				},
+			),
+			want: true,
+		},
+		{
+			name: "different undefined object",
+			err: &pq.Error{
+				Code:    pqerror.UndefinedObject,
+				Message: `type "missing_type" does not exist`,
+			},
+			want: false,
+		},
+		{
+			name: "same message with different SQLSTATE",
+			err: &pq.Error{
+				Code:    pqerror.InternalError,
+				Message: `unrecognized configuration parameter "request.account_scope"`,
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isUnrecoverablePostgresSQLError(tt.err))
+		})
+	}
+}
+
+func TestExplainPlanDenylistsMissingCustomConfigurationParameter(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	queryID := "123456"
+	key := explainPlanQueryKey("testdb", queryID)
+	query := "SELECT * FROM account_records WHERE account_id = $1"
+	factory := &mockDbConnectionFactory{
+		db:   db,
+		Mock: &mock,
+	}
+	explainPlan := &ExplainPlans{
+		dbDSN:               "postgres://user:pass@host:1234/database",
+		dbConnectionFactory: factory.NewDBConnection,
+		queryCache: map[string]*queryInfo{
+			key: newQueryInfo("testdb", queryID, query, 1, time.Now()),
+		},
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
+		currentBatchSize:   1,
+		logger:             logging.NewSlogNop(),
+	}
+
+	mock.ExpectExec(`SET SESSION search_path TO "public"`).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("PREPARE explain_plan_123456 AS " + query).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnError(&pq.Error{
+		Code:    pqerror.UndefinedObject,
+		Message: `unrecognized configuration parameter "request.account_scope"`,
+	})
+	mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+	assert.Contains(t, explainPlan.queryDenylist, key)
+	assert.NotContains(t, explainPlan.finishedQueryCache, key)
+	assert.Equal(t, 1, factory.InstantiationCount)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
