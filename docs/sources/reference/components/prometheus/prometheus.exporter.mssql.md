@@ -22,7 +22,7 @@ You can specify multiple `prometheus.exporter.mssql` components by giving them d
 
 ```alloy
 prometheus.exporter.mssql "<LABEL>" {
-    connection_string = "<CONNECTION_STRING>"
+  connection_string = "<CONNECTION_STRING>"
 }
 ```
 
