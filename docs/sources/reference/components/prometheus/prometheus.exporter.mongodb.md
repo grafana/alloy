@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-06
 title: prometheus.exporter.mongodb
 ---
 
@@ -42,7 +43,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 | ------------------------------ | ---------- | --------------------------------------------------------------------- | ------- | -------- |
 | `mongodb_uri`                  | `secret`   | MongoDB node connection URI.                                          |         | yes      |
 | `collect_all`                  | `bool`     | Enables all collectors.                                               | `true`  | no       |
-| `compatible_mode`              | `bool`     | Enables metric names compatible with `mongodb_exporter` <v0.20.0.     | `true`  | no       |
+| `compatible_mode`              | `bool`     | Exposes metrics under both their current and v0.1x names.             | `true`  | no       |
 | `currentop_slow_time`          | `duration` | Minimum running time of an operation before the exporter reports it.  | `"1m"`  | no       |
 | `direct_connect`               | `bool`     | Whether to connect directly to one host instead of the whole cluster. | `false` | no       |
 | `discovering_mode`             | `bool`     | Whether to automatically discover collections.                        | `false` | no       |
@@ -60,7 +61,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 | `enable_shards`                | `bool`     | Enables collecting sharding information.                              | `false` | no       |
 | `enable_top_metrics`           | `bool`     | Enables collecting top metrics.                                       | `false` | no       |
 
-MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
+Set `mongodb_uri` to a [MongoDB connection string][connection-string] that uses either the `mongodb` or `mongodb+srv` scheme.
 
 The `currentop_slow_time` argument applies only when you set `enable_currentop_metrics` to `true`.
 The exporter doesn't collect current operation metrics from a `mongos` instance.
@@ -69,6 +70,8 @@ You can't use `direct_connect` with multiple hosts or an SRV URI.
 The MongoDB driver returns an error if your `mongodb_uri` contains either.
 
 The component sets the `instance` label on its exported targets to the host portion of `mongodb_uri`.
+
+[connection-string]: https://docs.mongodb.com/manual/reference/connection-string/
 
 ## Blocks
 
