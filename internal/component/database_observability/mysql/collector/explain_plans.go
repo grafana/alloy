@@ -271,29 +271,29 @@ func normalizePrefixCost(prefixCost float64, previousPrefixCost *float64, node d
 func mysqlAccessTypeOperation(accessType database_observability.ExplainPlanAccessType) database_observability.ExplainPlanOutputOperation {
 	switch accessType {
 	case "system":
-		return "Single Row (system constant)"
+		return database_observability.ExplainPlanOutputOperationSingleRowSystemConstant
 	case "const":
-		return "Single Row (constant)"
+		return database_observability.ExplainPlanOutputOperationSingleRowConstant
 	case database_observability.ExplainPlanAccessTypeEqRef:
-		return "Unique Key Lookup"
+		return database_observability.ExplainPlanOutputOperationUniqueKeyLookup
 	case database_observability.ExplainPlanAccessTypeRef:
-		return "Non-Unique Key Lookup"
+		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookup
 	case "fulltext":
-		return "Fulltext Index Search"
+		return database_observability.ExplainPlanOutputOperationFulltextIndexSearch
 	case "ref_or_null":
-		return "Key Lookup + Fetch NULL Values"
+		return database_observability.ExplainPlanOutputOperationKeyLookupWithNullValues
 	case "index_merge":
-		return "Index Merge"
+		return database_observability.ExplainPlanOutputOperationIndexMerge
 	case "unique_subquery":
-		return "Unique Key Lookup into table of subquery"
+		return database_observability.ExplainPlanOutputOperationUniqueKeyLookupSubquery
 	case "index_subquery":
-		return "Non-Unique Key Lookup into table of subquery"
+		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookupSubquery
 	case database_observability.ExplainPlanAccessTypeRange:
-		return "Index Range Scan"
+		return database_observability.ExplainPlanOutputOperationIndexRangeScan
 	case database_observability.ExplainPlanAccessTypeIndex:
-		return "Full Index Scan"
+		return database_observability.ExplainPlanOutputOperationFullIndexScan
 	case database_observability.ExplainPlanAccessTypeAll:
-		return "Full Table Scan"
+		return database_observability.ExplainPlanOutputOperationFullTableScan
 	default:
 		return database_observability.ExplainPlanOutputOperationUnknown
 	}

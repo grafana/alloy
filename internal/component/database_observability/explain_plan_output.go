@@ -16,6 +16,20 @@ const (
 	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
 	ExplainPlanOutputOperationUnknown              ExplainPlanOutputOperation = "Unknown"
 
+	// MySQL access type operations.
+	ExplainPlanOutputOperationSingleRowSystemConstant    ExplainPlanOutputOperation = "Single Row (system constant)"
+	ExplainPlanOutputOperationSingleRowConstant          ExplainPlanOutputOperation = "Single Row (constant)"
+	ExplainPlanOutputOperationUniqueKeyLookup            ExplainPlanOutputOperation = "Unique Key Lookup"
+	ExplainPlanOutputOperationNonUniqueKeyLookup         ExplainPlanOutputOperation = "Non-Unique Key Lookup"
+	ExplainPlanOutputOperationFulltextIndexSearch        ExplainPlanOutputOperation = "Fulltext Index Search"
+	ExplainPlanOutputOperationKeyLookupWithNullValues    ExplainPlanOutputOperation = "Key Lookup + Fetch NULL Values"
+	ExplainPlanOutputOperationIndexMerge                 ExplainPlanOutputOperation = "Index Merge"
+	ExplainPlanOutputOperationUniqueKeyLookupSubquery    ExplainPlanOutputOperation = "Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationNonUniqueKeyLookupSubquery ExplainPlanOutputOperation = "Non-Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationIndexRangeScan             ExplainPlanOutputOperation = "Index Range Scan"
+	ExplainPlanOutputOperationFullIndexScan              ExplainPlanOutputOperation = "Full Index Scan"
+	ExplainPlanOutputOperationFullTableScan              ExplainPlanOutputOperation = "Full Table Scan"
+
 	// SQL Server showplan-specific operations with no equivalent among the operations above.
 	ExplainPlanOutputOperationComputeScalar ExplainPlanOutputOperation = "Compute Scalar"
 	ExplainPlanOutputOperationFilter        ExplainPlanOutputOperation = "Filter"
