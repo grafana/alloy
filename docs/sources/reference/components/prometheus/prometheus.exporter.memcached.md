@@ -43,9 +43,9 @@ You can use the following block with `prometheus.exporter.memcached`:
 
 {{< docs/alloy-config >}}
 
-| Block                      | Description                                             | Required |
-| -------------------------- | ------------------------------------------------------- | -------- |
-| [`tls_config`][tls_config] | TLS configuration for requests to the Memcached server. | no       |
+| Block                      | Description                                          | Required |
+| -------------------------- | ---------------------------------------------------- | -------- |
+| [`tls_config`][tls_config] | Configures TLS for requests to the Memcached server. | no       |
 
 [tls_config]: #tls_config
 
