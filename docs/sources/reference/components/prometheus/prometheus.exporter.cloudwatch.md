@@ -296,13 +296,13 @@ When metrics in the same `custom_namespace`, `discovery`, or `static` job use di
 When you don't set `length`, {{< param "PRODUCT_NAME" >}} sets it to the metric's `period`.
 If you don't set `period` either, both default to `5m`.
 
-When you don't set `length` and every metric in a job uses the same `period`, {{< param "PRODUCT_NAME" >}} requests metrics from the scrape time back to `period` seconds earlier.
-It then exports those values to Prometheus.
+When you don't set `length` and every metric in a job uses the same `period`, the request window and the aggregation bucket are the same size.
+CloudWatch returns a single data point for each metric, and {{< param "PRODUCT_NAME" >}} exports it to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
 
 When metrics in one job use different `period` values, the behavior differs.
-{{< param "PRODUCT_NAME" >}} first aggregates all periods into two values: `length` takes the maximum of all periods, and `period` takes the minimum.
+If you don't set `length`, each metric's `length` equals its `period`, so {{< param "PRODUCT_NAME" >}} takes the maximum of all periods as `length` and the minimum as `period`.
 It then requests metrics from `now - length` to `now`, aggregating each into samples of `period` seconds, and exports the most recent sample for each metric to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
