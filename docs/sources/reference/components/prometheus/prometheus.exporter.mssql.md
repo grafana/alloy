@@ -53,8 +53,8 @@ sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?enc
 ```
 
 {{< admonition type="note" >}}
-If your username or password contain special characters, you must URL encode the characters in the `connection_string` argument.
-For more information, refer to the [Data Source Names][dsn] section in the `sql_exporter` documentation
+If your username or password contains special characters, you must URL encode the characters in the `connection_string` argument.
+For more information, refer to the [Data Source Names][dsn] section in the `sql_exporter` documentation.
 
 [dsn]: https://github.com/burningalchemist/sql_exporter#data-source-names-dsn
 {{< /admonition >}}
@@ -62,8 +62,8 @@ For more information, refer to the [Data Source Names][dsn] section in the `sql_
 The `connection_name` argument allows uptime metrics.
 Refer to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
 
-If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
-`query_config` is typically loaded by using the exports of another component.
+If you set `query_config`, it must be a YAML string that defines which MSSQL queries map to custom Prometheus metrics.
+You typically load `query_config` from the exports of another component.
 For example,
 
 * `local.file.<LABEL>.content`
@@ -80,16 +80,16 @@ The component sets the `instance` label on its exported targets to the host port
 
 ### Authentication
 
-By default, the _`<USERNAME>`_ and _`<PASSWORD>`_ used within the `connection_string` argument corresponds to a SQL Server username and password.
+By default, the _`<USERNAME>`_ and _`<PASSWORD>`_ used within the `connection_string` argument correspond to a SQL Server username and password.
 
-If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
+If {{< param "PRODUCT_NAME" >}} runs in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
 
 ```text
 sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 ```
 
 If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
-The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
+The _`<USERNAME>`_ and _`<PASSWORD>`_ then correspond to a Windows username and password.
 You must use a URL encoded backslash, `%5C`, when you prefix the Windows domain to the username.
 
 ```text
