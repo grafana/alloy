@@ -302,7 +302,7 @@ If you only see module names without corresponding function names, for example, 
 
 This can occur for several reasons:
 
-* Someone stripped the binary, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+* The build process stripped the binary, leaving no `.symtab`, `.dynsym`, or `.gopclntab` sections in the ELF file.
 * The debug file is missing, or the component can't locate it.
 
 To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
@@ -323,7 +323,7 @@ apt install libc6-dbg
 
 ### Understand flat stack traces
 
-If your profiles show many shallow stack traces, typically 1-2 frames deep, someone might have compiled your binary without frame pointers.
+If your profiles show many shallow stack traces, typically 1-2 frames deep, your compiler might have omitted frame pointers.
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
 
