@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/DataDog/go-sqllexer"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/buger/jsonparser"
@@ -402,6 +403,10 @@ type ExplainPlansArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
+	// Registry, when set, exposes the tables that the explain plans read in
+	// full as a metric. Without it only the explain plan logs are produced.
+	Registry *prometheus.Registry
+
 	Logger *slog.Logger
 }
 
@@ -414,6 +419,8 @@ type ExplainPlans struct {
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
+	registry         *prometheus.Registry
+	fullScans        *fullScanStore
 	lastSeen         time.Time
 	lastEmittedAt    map[string]time.Time
 	now              func() time.Time
@@ -425,7 +432,7 @@ type ExplainPlans struct {
 }
 
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
-	return &ExplainPlans{
+	c := &ExplainPlans{
 		dbConnection:   args.DB,
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
@@ -436,9 +443,23 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		lastEmittedAt:  make(map[string]time.Time),
 		now:            time.Now,
 		entryHandler:   args.EntryHandler,
+		registry:       args.Registry,
 		logger:         args.Logger.With("collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
-	}, nil
+	}
+	c.fullScans = newFullScanStore(c.currentTime)
+	return c, nil
+}
+
+// Describe implements prometheus.Collector.
+func (c *ExplainPlans) Describe(ch chan<- *prometheus.Desc) {
+	ch <- fullScanRowsDesc
+}
+
+// Collect implements prometheus.Collector. It serves what the latest explain
+// plans found and does not query the database.
+func (c *ExplainPlans) Collect(ch chan<- prometheus.Metric) {
+	c.fullScans.collect(ch)
 }
 
 func (c *ExplainPlans) currentTime() time.Time {
@@ -511,6 +532,12 @@ func (c *ExplainPlans) Name() string {
 func (c *ExplainPlans) Start(ctx context.Context) error {
 	c.logger.Debug("collector started")
 
+	if c.registry != nil {
+		if err := c.registry.Register(c); err != nil {
+			return err
+		}
+	}
+
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	c.ctx = ctx
@@ -548,6 +575,9 @@ func (c *ExplainPlans) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+	if c.registry != nil {
+		c.registry.Unregister(c)
+	}
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
@@ -732,6 +762,8 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		}
 	}
 
+	c.recordFullScans(logger, qi, byteExplainPlanJSON)
+
 	logger.Debug("db native explain plan",
 		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
@@ -763,6 +795,17 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	}
 
 	return false
+}
+
+// recordFullScans updates the full scans reported for a query from its latest
+// plan. A plan that can't be read leaves the previous ones in place.
+func (c *ExplainPlans) recordFullScans(logger *slog.Logger, qi *queryInfo, planJSON []byte) {
+	scans, err := fullScansFromExplainJSON(planJSON)
+	if err != nil {
+		logger.Debug("failed to find full scans in explain plan", "err", err)
+		return
+	}
+	c.fullScans.set(qi.schemaName, qi.digest, scans)
 }
 
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {

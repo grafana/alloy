@@ -993,6 +993,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,
+			Registry:        inst.registry,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)
