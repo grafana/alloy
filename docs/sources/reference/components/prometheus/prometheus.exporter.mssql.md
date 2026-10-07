@@ -58,7 +58,7 @@ For more information, refer to the [Data Source Names][dsn] section in the `sql_
 [dsn]: https://github.com/burningalchemist/sql_exporter#data-source-names-dsn
 {{< /admonition >}}
 
-The `connection_name` parameter allows uptime metrics.
+The `connection_name` argument allows uptime metrics.
 Refer to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
 
 If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
@@ -153,7 +153,7 @@ Replace the following:
 
 ## Custom metrics
 
-You can use the optional `query_config` parameter to retrieve custom Prometheus metrics for a MSSQL instance.
+You can use the optional `query_config` argument to retrieve custom Prometheus metrics for a MSSQL instance.
 
 When you set `query_config`, {{< param "PRODUCT_NAME" >}} replaces the default configuration and creates only the metrics that `query_config` defines.
 If you want additional metrics on top of the default metrics, use the default configuration as a base.
