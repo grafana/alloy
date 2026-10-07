@@ -42,7 +42,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 
 | Name                           | Type       | Description                                                           | Default | Required |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                  | `secret`   | MongoDB node connection URI.                                          |         | yes      |
+| `mongodb_uri`                  | `secret`   | MongoDB connection URI.                                               |         | yes      |
 | `collect_all`                  | `bool`     | Enables all collectors.                                               | `true`  | no       |
 | `compatible_mode`              | `bool`     | Exposes metrics under both their current and v0.1x names.             | `true`  | no       |
 | `currentop_slow_time`          | `duration` | Minimum running time of an operation before the exporter reports it.  | `"1m"`  | no       |
