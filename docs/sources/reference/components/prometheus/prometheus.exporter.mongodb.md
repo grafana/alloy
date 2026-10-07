@@ -26,7 +26,7 @@ Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter
 
 ```alloy
 prometheus.exporter.mongodb "<LABEL>" {
-    mongodb_uri = "<MONGODB_URI>"
+  mongodb_uri = "<MONGODB_URI>"
 }
 ```
 
