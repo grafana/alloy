@@ -22,6 +22,8 @@ For this integration to work properly, you must connect each node of your MongoD
 We strongly recommend configuring a separate user for {{< param "PRODUCT_NAME" >}}, giving it only the strictly mandatory security privileges necessary for monitoring your node.
 Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter#permissions) for more information.
 
+You can specify multiple `prometheus.exporter.mongodb` components by giving them different labels.
+
 [mongodb-exporter]: https://github.com/percona/mongodb_exporter
 
 ## Usage
