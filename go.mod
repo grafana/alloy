@@ -947,6 +947,7 @@ require (
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.161.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.161.0
@@ -960,14 +961,14 @@ require (
 
 require (
 	cloud.google.com/go/secretmanager v1.20.0 // indirect
-	github.com/ClickHouse/ch-go v0.71.0 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.43.0 // indirect
+	github.com/ClickHouse/ch-go v0.73.0 // indirect
+	github.com/ClickHouse/clickhouse-go/v2 v2.47.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/jackc/pgx/v5 v5.9.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/nginx/nginx-prometheus-exporter v1.5.3 // indirect
-	github.com/paulmach/orb v0.12.0 // indirect
+	github.com/paulmach/orb v0.13.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sethvargo/go-envconfig v1.3.0 // indirect
 )

@@ -79,6 +79,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/jsonlog"                 // Import otelcol.encoding.jsonlog
 	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/text"                    // Import otelcol.encoding.text
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3exporter
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/clickhouse"               // Import otelcol.exporter.clickhouse
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/faro"                    // Import otelcol.exporter.faro
