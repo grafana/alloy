@@ -125,7 +125,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// Create component arguments
 			var args operator.Arguments
 			args.SetToDefault()
-			args.ForwardTo = []storage.Appendable{mockAppendable}
+			args.ForwardTo = []storage.AppendableV2{mockAppendable}
 			args.Namespaces = []string{"monitoring"}
 			args.Scrape = tc.scrapeOptions
 			args.Scrape.HonorMetadata = tc.honorMetadata

@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -22,14 +23,17 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
-var _ storage.Appendable = (*Fanout)(nil)
+var (
+	_ storage.Appendable   = (*Fanout)(nil)
+	_ storage.AppendableV2 = (*Fanout)(nil)
+)
 
 // Fanout supports the default Alloy style of appendables since it can go to multiple outputs. It also allows the intercepting of appends.
 // It also maintains the responsibility of assigning global ref IDs to a series via the label store.
 type Fanout struct {
 	mut sync.RWMutex
 	// children is where to fan out.
-	children []storage.Appendable
+	children []storage.AppendableV2
 	// ComponentID is what component this belongs to.
 	componentID    string
 	writeLatency   prometheus.Histogram
@@ -48,17 +52,17 @@ type Fanout struct {
 	deadRefThreshold storage.SeriesRef
 }
 
-func normalizeChildren(children []storage.Appendable) []storage.Appendable {
+func normalizeChildren(children []storage.AppendableV2) []storage.AppendableV2 {
 	if len(children) == 0 {
 		return nil
 	}
 
 	cloned := slices.Clone(children)
-	return slices.DeleteFunc(cloned, func(i storage.Appendable) bool { return i == nil })
+	return slices.DeleteFunc(cloned, func(i storage.AppendableV2) bool { return i == nil })
 }
 
 // NewFanout creates a fanout appendable.
-func NewFanout(children []storage.Appendable, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
+func NewFanout(children []storage.AppendableV2, componentID string, register prometheus.Registerer, ls labelstore.LabelStore) *Fanout {
 	wl := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:                            "prometheus_fanout_latency",
 		Help:                            "Write latency for sending to direct and indirect components",
@@ -105,7 +109,7 @@ func NewFanout(children []storage.Appendable, componentID string, register prome
 // seriesRefMapping → passthrough: a cached store-issued unique ref is meaningless to
 // the child and must not be forwarded. Clear returns the new generation boundary;
 // the passthrough zeros any ref below it before forwarding.
-func (f *Fanout) UpdateChildren(children []storage.Appendable) {
+func (f *Fanout) UpdateChildren(children []storage.AppendableV2) {
 	c := normalizeChildren(children)
 
 	f.mut.Lock()
@@ -143,7 +147,16 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 
 	children := make([]storage.Appender, 0, len(f.children))
 	for _, c := range f.children {
-		children = append(children, c.Appender(ctx))
+		// NOTE(appenderv2 migration): all production implementations of
+		// storage.AppendableV2 in this codebase also implement the (soon to be
+		// removed) storage.Appendable, so this type assertion is expected to
+		// always succeed. This keeps the fanout on the V1 append path until
+		// the V2 implementation lands. See https://github.com/grafana/alloy/issues/6896
+		v1, ok := c.(storage.Appendable)
+		if !ok {
+			panic(fmt.Sprintf("fanout child %T does not implement storage.Appendable", c))
+		}
+		children = append(children, v1.Appender(ctx))
 	}
 
 	if f.useLabelStore {
@@ -162,6 +175,15 @@ func (f *Fanout) Clear() {
 	defer f.mut.Unlock()
 
 	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration step 2): implement AppenderV2 for real. It currently
+// panics because nothing calls it in production yet; all active append
+// paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
+func (f *Fanout) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not yet implemented for Fanout")
 }
 
 type appender struct {
