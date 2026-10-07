@@ -34,6 +34,8 @@ You can use the following arguments with `prometheus.exporter.memcached`:
 | `address` | `string`   | The Memcached server address.                       | `"localhost:11211"` | no       |
 | `timeout` | `duration` | The timeout for connecting to the Memcached server. | `"1s"`              | no       |
 
+The component sets the `instance` label on its exported targets to the value of `address`.
+
 ## Blocks
 
 You can use the following block with `prometheus.exporter.memcached`:
