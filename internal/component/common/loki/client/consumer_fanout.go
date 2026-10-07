@@ -58,10 +58,32 @@ func (c *FanoutConsumer) Start() {
 	}
 }
 
+func (c *FanoutConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+	streams := batch.Streams()
+	for _, e := range c.endpoints {
+		for _, s := range streams {
+			// TODO(kalleep): Pass streams all the way down to the batch instead of
+			// enqueueing one entry at a time.
+			for _, entry := range s.Entries {
+				err := e.enqueue(ctx, loki.NewEntryWithCreatedUnixMicro(s.Labels, s.Created(), entry), 0)
+				if err != nil {
+					// If we get errQueueIsFull we skipped the entry for this endpoint
+					// and should move on to the next entry.
+					if errors.Is(err, errQueueIsFull) {
+						continue
+					}
+					// For any other error we assume it's not useful to send to the next endpoint
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
 	for _, e := range c.endpoints {
 		err := e.enqueue(ctx, entry, 0)
-
 		if err != nil {
 			// If we get errQueueIsFull we skipped the entry for this endpoints
 			// and should try next.
