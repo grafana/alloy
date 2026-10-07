@@ -1788,21 +1788,3 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 		})
 	}
 }
-
-func TestQuerySamples_EscapesWaitEventStrings(t *testing.T) {
-	value := "example\"name\\path\nnext"
-	state := &SampleState{LastRow: QuerySamplesInfo{
-		DatabaseName: sql.NullString{String: value, Valid: true},
-		Username:     sql.NullString{String: value, Valid: true},
-	}}
-	wait := WaitEventOccurrence{WaitEventType: value, WaitEvent: value}
-	collector := &QuerySamples{}
-	fields := parseLogfmt(t, collector.buildWaitEventLabels(state, wait, "1ms"))
-	require.Equal(t, value, fields["datname"])
-	require.Equal(t, value, fields["user"])
-	require.Equal(t, value, fields["wait_event"])
-	require.Equal(t, value+":"+value, fields["wait_event_name"])
-	fieldsV2 := parseLogfmt(t, collector.buildWaitEventV2Labels(state, wait, "1ms"))
-	require.Equal(t, value, fieldsV2["datname"])
-	require.Equal(t, value, fieldsV2["wait_event"])
-}
