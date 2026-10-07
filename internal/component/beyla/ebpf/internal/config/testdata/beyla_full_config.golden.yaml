@@ -33,6 +33,9 @@ attributes:
                 - x
             include:
                 - x
+cloud_metadata:
+    cluster_name: x
+    region: x
 discovery:
     bpf_pid_filter_off: true
     default_exclude_instrument:
@@ -216,6 +219,9 @@ discovery:
           sampler:
             arg: x
             name: x
+dotnet_runtime_metrics:
+    sampling_interval: 1s
+    timeout: 1s
 ebpf:
     batch_length: 1
     batch_timeout: 1s
@@ -233,10 +239,13 @@ ebpf:
     disable_black_box_cp: true
     dns_request_timeout: 1s
     force_bpf_map_reader: x
+    go_http_client_buffer_timeout: 1s
     heuristic_sql_detect: true
     high_request_volume: true
     http_request_timeout: 1s
     instrument_cuda: 1
+    kafka_consumer_group_cache_size: 1
+    kafka_consumer_group_ttl: 1s
     kafka_topic_uuid_cache_size: 1
     log_enricher:
         async_writer_channel_len: 1
@@ -329,6 +338,7 @@ ebpf:
                 enabled: true
                 endpoint_patterns:
                     - x
+    populate_trace_context: true
     postgres_prepared_statements_cache_size: 1
     protocol_debug_print: true
     redis_db_cache:
@@ -445,6 +455,13 @@ javaagent:
 jvm_runtime_metrics:
     sampling_interval: 1s
 log_level: x
+name_resolver:
+    cache_expiry: 1s
+    cache_len: 1
+    ecs:
+        refresh_interval: 1s
+    sources:
+        - x
 network:
     agent_ip: x
     agent_ip_iface: x
@@ -505,11 +522,15 @@ prometheus_export:
             - 1
         gen_ai_client_token_usage_histogram:
             - 1
+        jvm_gc_duration_histogram:
+            - 1
         request_size_histogram:
             - 1
         response_size_histogram:
             - 1
         stat_tcp_rtt_histogram:
+            - 1
+        v8js_gc_duration_histogram:
             - 1
     exemplar_filter: x
     extra_resource_attributes:

@@ -11,6 +11,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // buildYAML runs Build and round-trips through YAML so assertions see the same
@@ -245,4 +247,113 @@ func TestYAMLGeneration_InternalMetricsDefault(t *testing.T) {
 	im = config["internal_metrics"].(map[string]any)
 	require.Equal(t, "disabled", im["exporter"])
 	require.NotContains(t, im, "prometheus")
+}
+
+func TestYAMLGeneration_Beyla338Options(t *testing.T) {
+	// Decode Alloy syntax and inspect the YAML Beyla receives so this covers
+	// both the public config names and their translation.
+	const input = `
+		discovery {
+			instrument { open_ports = "8080" }
+			disabled_route_harvesters = ["dotnet", "php", "python", "ruby"]
+		}
+		ebpf {
+			populate_trace_context = true
+			kafka_consumer_group_cache_size = 8192
+			kafka_consumer_group_ttl = "6m"
+		}
+		dotnet_runtime_metrics {
+			sampling_interval = "2s"
+			timeout = "15s"
+		}
+		cloud_metadata {
+			cluster_name = "ecs-production"
+			region = "ca-central-1"
+		}
+		name_resolver {
+			sources = ["k8s", "rdns", "ecs"]
+			cache_len = 2048
+			cache_expiry = "10m"
+			ecs { refresh_interval = "45s" }
+		}
+		metrics {
+			features = ["application_red", "application_sizes", "application_runtime", "stats_tcp_successful_connections"]
+			buckets {
+				jvm_gc_duration_histogram = [0.02, 0.2, 2.5]
+				v8js_gc_duration_histogram = [0.005, 0.05, 0.5]
+			}
+		}
+		injector { enabled_sdks = ["ruby"] }
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	require.Equal(t, map[string]any{
+		"populate_trace_context":          true,
+		"kafka_consumer_group_cache_size": 8192,
+		"kafka_consumer_group_ttl":        "6m0s",
+	}, cfg["ebpf"])
+	require.Equal(t, map[string]any{"sampling_interval": "2s", "timeout": "15s"}, cfg["dotnet_runtime_metrics"])
+	require.Equal(t, map[string]any{"cluster_name": "ecs-production", "region": "ca-central-1"}, cfg["cloud_metadata"])
+	require.Equal(t, map[string]any{
+		"sources":      []any{"k8s", "rdns", "ecs"},
+		"cache_len":    2048,
+		"cache_expiry": "10m0s",
+		"ecs":          map[string]any{"refresh_interval": "45s"},
+	}, cfg["name_resolver"])
+	prom := cfg["prometheus_export"].(map[string]any)
+	require.Equal(t, []any{"application_red", "application_sizes", "application_runtime", "stats_tcp_successful_connections"}, prom["features"])
+	require.Equal(t, []any{0.02, 0.2, 2.5}, prom["buckets"].(map[string]any)["jvm_gc_duration_histogram"])
+	require.Equal(t, []any{0.005, 0.05, 0.5}, prom["buckets"].(map[string]any)["v8js_gc_duration_histogram"])
+	require.Equal(t, []any{"dotnet", "php", "python", "ruby"}, cfg["discovery"].(map[string]any)["disabled_route_harvesters"])
+	require.Equal(t, []any{"ruby"}, cfg["injector"].(map[string]any)["enabled_sdks"])
+}
+
+func TestYAMLGeneration_Beyla338Defaults(t *testing.T) {
+	// An empty block must not overwrite Beyla's own defaults with zero values.
+	const input = `
+		ebpf { populate_trace_context = false }
+		dotnet_runtime_metrics {}
+		cloud_metadata {}
+		name_resolver { ecs {} }
+		metrics { buckets {} }
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	for _, section := range []string{"ebpf", "dotnet_runtime_metrics", "cloud_metadata", "name_resolver"} {
+		require.NotContains(t, cfg, section)
+	}
+	require.NotContains(t, cfg["prometheus_export"], "buckets")
+}
+
+func TestGoHTTPClientBufferTimeout(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr string
+	}{
+		{"unset uses Beyla default", `ebpf {}`, "", ""},
+		{"zero disables deferral", `ebpf { go_http_client_buffer_timeout = "0s" }`, "0s", ""},
+		{"custom timeout", `ebpf { go_http_client_buffer_timeout = "250ms" }`, "250ms", ""},
+		{"negative timeout", `ebpf { go_http_client_buffer_timeout = "-1s" }`, "", "ebpf.go_http_client_buffer_timeout must be greater than or equal to 0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tt.input), &args)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			cfg := buildYAML(t, args, Runtime{Port: 12345})
+			if tt.want == "" {
+				require.NotContains(t, cfg, "ebpf")
+			} else {
+				require.Equal(t, tt.want, cfg["ebpf"].(map[string]any)["go_http_client_buffer_timeout"])
+			}
+		})
+	}
 }
