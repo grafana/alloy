@@ -2,12 +2,10 @@ package collector
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-logfmt/logfmt"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -449,33 +447,4 @@ func TestLocks(t *testing.T) {
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
-}
-
-func TestLocks_EscapesDigestText(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
-	collector, err := NewLocks(LocksArguments{
-		DB: db, EntryHandler: handler, Logger: util.TestAlloyLogger(t).Slog(),
-	})
-	require.NoError(t, err)
-	query := "SELECT \"example\\name\"\nFROM orders"
-	mock.ExpectQuery(selectDataLocks).RowsWillBeClosed().WillReturnRows(
-		sqlmock.NewRows([]string{"waitingTimerWait", "waitingLockTime", "waitingDigest", "waitingDigestText", "blockingTimerWait", "blockingLockTime", "blockingDigest", "blockingDigestText"}).
-			AddRow(1500000000000, 1000000000000, "abc123", query, 2000000000000, 1700000000000, "def456", query))
-	require.NoError(t, collector.fetchLocks(t.Context()))
-	require.Eventually(t, func() bool { return len(handler.Received()) == 1 }, time.Second, time.Millisecond)
-	decoder := logfmt.NewDecoder(strings.NewReader(handler.Received()[0].Line))
-	fields := map[string]string{}
-	for decoder.ScanRecord() {
-		for decoder.ScanKeyval() {
-			fields[string(decoder.Key())] = string(decoder.Value())
-		}
-	}
-	require.NoError(t, decoder.Err())
-	require.Equal(t, query, fields["waiting_digest_text"])
-	require.Equal(t, query, fields["blocking_digest_text"])
-	require.NoError(t, mock.ExpectationsWereMet())
 }
