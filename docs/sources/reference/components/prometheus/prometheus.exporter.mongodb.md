@@ -16,7 +16,7 @@ The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporte
 
 {{< admonition type="note" >}}
 This exporter doesn't collect metrics from multiple nodes.
-For this integration to work properly, you must connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
+For this component to work properly, you must connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
 {{< /admonition >}}
 
 Grafana recommends that you configure a separate user for {{< param "PRODUCT_NAME" >}} with only the security privileges needed to monitor your node.
