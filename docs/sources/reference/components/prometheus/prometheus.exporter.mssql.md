@@ -40,6 +40,10 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | `query_config`            | `string` or `secret` | MSSQL query to Prometheus metric configuration as an inline string.               |         | no       |
 | `timeout`                 | `duration`           | The query timeout duration for each scrape.                                       | `"10s"` | no       |
 
+`max_idle_connections` and `max_open_connections` must each be at least `1`, and `timeout` must be positive.
+`max_connection_lifetime` can't be negative.
+{{< param "PRODUCT_NAME" >}} parses `query_config` strictly and rejects unknown fields.
+
 The [`sql_exporter` examples][sql-exporter-examples] show the format of the `connection_string` argument:
 
 ```text
@@ -65,6 +69,8 @@ For example,
 * `remote.s3.<LABEL>.content`
 
 Refer to [`sql_exporter`][sql-exporter-collectors] for details on how to create a configuration.
+
+The component sets the `instance` label on its exported targets to the host portion of `connection_string`.
 
 [sql-exporter-examples]: https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21
 [sql-exporter-config]: https://github.com/burningalchemist/sql_exporter#configuration
