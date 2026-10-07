@@ -92,7 +92,7 @@ func (t *tailer) Run(ctx context.Context) {
 	defer ticker.Stop()
 
 	// start on initial call to Run.
-	t.startIfNotRunning()
+	t.startIfNotRunning(ctx)
 
 	for {
 		select {
@@ -117,7 +117,7 @@ func (t *tailer) Run(ctx context.Context) {
 			}
 
 			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
-				t.startIfNotRunning()
+				t.startIfNotRunning(ctx)
 			}
 		case <-ctx.Done():
 			t.stop()
@@ -127,16 +127,18 @@ func (t *tailer) Run(ctx context.Context) {
 }
 
 // startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
-func (t *tailer) startIfNotRunning() {
+func (t *tailer) startIfNotRunning(ctx context.Context) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if !t.running {
 		t.logger.Debug("starting process loop", "container", t.containerID)
 
-		ctx := context.Background()
 		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
 			return
@@ -150,6 +152,9 @@ func (t *tailer) startIfNotRunning() {
 			Since:      strconv.FormatInt(t.since.Load(), 10),
 		})
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			t.logger.Error("could not fetch logs for container", "container", t.containerID, "err", err)
 			t.err = err
 			return

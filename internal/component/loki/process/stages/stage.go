@@ -108,7 +108,7 @@ func newStageWithOpts(
 	case cfg.OutputConfig != nil:
 		s = newOutputStage(*cfg.OutputConfig, opts)
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(opts.slogger, *cfg.MatchConfig, opts.registerer, opts.minStability)
+		s, err = newMatchStage(*cfg.MatchConfig, opts)
 		if err != nil {
 			return nil, err
 		}
