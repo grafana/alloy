@@ -258,7 +258,7 @@ func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash
 	}
 
 	c.logger.Debug("db native explain plan", "query_hash", queryHash,
-		"db_native_explain_plan", base64.StdEncoding.EncodeToString(planXML))
+		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactNativeShowPlanXML(planXML)))
 
 	c.emit(database, queryHash, now, database_observability.ExplainProcessingResultSuccess, "", planNode)
 	c.recordEmission(key, hash, now)

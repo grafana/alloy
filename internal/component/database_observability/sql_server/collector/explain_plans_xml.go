@@ -3,6 +3,7 @@ package collector
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -357,6 +358,35 @@ func redactedCondition(predicate *xmlPredicate) *string {
 	}
 	redacted := database_observability.RedactSql(predicate.ScalarOperator.ScalarString)
 	return &redacted
+}
+
+// nativeShowPlanLiteralAttrs matches the raw Showplan XML attributes known to
+// carry literal customer data: predicate constants (ScalarString) and
+// compiled/runtime parameter values (ParameterCompiledValue,
+// ParameterRuntimeValue).
+var nativeShowPlanLiteralAttrs = regexp.MustCompile(`(ScalarString|ParameterCompiledValue|ParameterRuntimeValue)="([^"]*)"`)
+
+// xmlAttrEscaper and xmlAttrUnescaper cover the five entities XML predefines
+// for attribute values - the only escaping SQL Server's own XML serializer
+// produces here, so a full encoding/xml round-trip isn't needed just to edit
+// one attribute value in place.
+var xmlAttrEscaper = strings.NewReplacer(`&`, "&amp;", `<`, "&lt;", `>`, "&gt;", `"`, "&quot;", `'`, "&apos;")
+var xmlAttrUnescaper = strings.NewReplacer(`&lt;`, "<", `&gt;`, ">", `&quot;`, `"`, `&apos;`, "'", `&amp;`, "&")
+
+// redactNativeShowPlanXML redacts literal values out of the raw Showplan XML
+// bytes fetched from sys.query_store_plan, for the debug-only native-plan log
+// line. It edits known literal-bearing attribute values in place by regex
+// rather than unmarshaling and remarshaling through the xml* structs above:
+// those structs only model the operators this package understands, so a
+// remarshal would silently drop every other attribute (warnings, memory
+// grants, etc.) that this log line exists to preserve for troubleshooting.
+func redactNativeShowPlanXML(planXML []byte) []byte {
+	return nativeShowPlanLiteralAttrs.ReplaceAllFunc(planXML, func(match []byte) []byte {
+		groups := nativeShowPlanLiteralAttrs.FindSubmatch(match)
+		attr, value := string(groups[1]), string(groups[2])
+		redacted := database_observability.RedactSql(xmlAttrUnescaper.Replace(value))
+		return fmt.Appendf(nil, `%s="%s"`, attr, xmlAttrEscaper.Replace(redacted))
+	})
 }
 
 func childrenOf(relOps []xmlRelOp) []database_observability.ExplainPlanNode {
