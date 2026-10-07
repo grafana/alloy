@@ -14,6 +14,8 @@ title: prometheus.exporter.mssql
 
 The `prometheus.exporter.mssql` component embeds the [`sql_exporter`][sql-exporter] to collect stats from a Microsoft SQL Server and expose them as Prometheus metrics.
 
+You can specify multiple `prometheus.exporter.mssql` components by giving them different labels.
+
 [sql-exporter]: https://github.com/burningalchemist/sql_exporter
 
 ## Usage
