@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.kubernetes.configmap
 ---
 
@@ -16,6 +16,8 @@ title: remote.kubernetes.configmap
 `remote.kubernetes.configmap` reads a ConfigMap from the Kubernetes API server and exposes its data for other components to consume.
 
 This can be useful anytime {{< param "PRODUCT_NAME" >}} needs data from a ConfigMap that is not directly mounted to the {{< param "PRODUCT_NAME" >}} Pod.
+
+You can specify multiple `remote.kubernetes.configmap` components by giving them different labels.
 
 ## Usage
 
