@@ -2,7 +2,6 @@ package stages
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sync"
 
@@ -49,115 +48,77 @@ type StageConfig struct {
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
 }
 
-// Pipeline pass down a log entry to each stage for mutation and/or label extraction.
+// Pipeline passes log entries down to each stage for mutation and/or label extraction.
+// A Pipeline runs once: Start and Stop must each be called at most once, and a
+// stopped Pipeline cannot be restarted.
 type Pipeline struct {
-	stages    []Stage
-	dropCount *prometheus.CounterVec
+	out   chan<- loki.Entry
+	inner *pipeline
+
+	wg     sync.WaitGroup
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
 func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
-	st := []Stage{}
-	for _, stage := range stages {
-		s, err := newStage(slogger, stage, registerer, minStability)
-		if err != nil {
-			return nil, fmt.Errorf("invalid stage config %w", err)
-		}
-		st = append(st, s)
+	ctx, cancel := context.WithCancel(context.Background())
+	p := &Pipeline{
+		ctx:    ctx,
+		cancel: cancel,
 	}
-	dropCount, err := getDropCountMetric(registerer)
+
+	inner, err := newPipeline(slogger, registerer, minStability, stages, p.collect)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Pipeline{
-		stages:    st,
-		dropCount: dropCount,
-	}, nil
+	p.inner = inner
+	return p, nil
 }
 
-// Start will start the pipeline and forward entries to next.
-// The returned EntryHandler should be used to pass entries through the pipeline.
-func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {
-	ctx, cancel := context.WithCancel(context.Background())
+// collect ignores ctx on purpose. An entry that reaches collect has already
+// been through every stage, so abandoning it when Stop cancels would lose data
+// the pipeline accepted.
+func (p *Pipeline) collect(_ context.Context, entries []Entry) error {
+	for _, e := range entries {
+		p.out <- e.Entry
+	}
+	return nil
+}
 
-	pipelineIn := make(chan Entry)
-	pipelineOut := p.Run(pipelineIn)
+// Start reads entries from in, passes them through the pipeline and forwards
+// the results to out. Callers must keep consuming out until Stop returns.
+func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) {
+	p.out = out
+	entries := make([]Entry, 0, 1)
 
-	var (
-		wg   sync.WaitGroup
-		once sync.Once
-	)
-
-	wg.Go(func() {
-		for e := range pipelineOut {
-			out <- e.Entry
-		}
-	})
-
-	wg.Go((func() {
-		defer close(pipelineIn)
+	p.wg.Go(func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-p.ctx.Done():
 				return
 			case e := <-in:
-				pipelineIn <- Entry{
-					// NOTE: When entires pass through the pipeline
+				entries = entries[:0]
+				entries = append(entries, Entry{
+					// NOTE: When entries pass through the pipeline
 					// we always add all labels as extracted data.
 					Extracted: make(map[string]any, len(e.Labels)),
 					Entry:     e,
-				}
+				})
+				_ = p.inner.process(p.ctx, entries)
 			}
 		}
-	}))
-
-	return loki.NewEntryHandler(in, func() {
-		once.Do(func() {
-			cancel()
-			p.Stop()
-		})
-		wg.Wait()
-		p.Cleanup()
 	})
 }
 
-// Run implements Stage
-func (p *Pipeline) Run(in chan Entry) chan Entry {
-	in = RunWith(in, func(e Entry) Entry {
-		// Initialize the extracted map with the initial labels (ie. "filename"),
-		// so that stages can operate on initial labels too
-		for labelName, labelValue := range e.Labels {
-			e.Extracted[string(labelName)] = string(labelValue)
-		}
-		return e
-	})
-	// chain all stages together.
-	for _, m := range p.stages {
-		in = m.Run(in)
-	}
-	return in
-}
-
-// Cleanup implements Stage.
-func (p *Pipeline) Cleanup() {
-	for _, s := range p.stages {
-		s.Cleanup()
-	}
-}
-
-// Stop implements Stopper.
+// Stop stops reading from in and flushes any state the stages still hold, such
+// as cri partial lines that never received their full line. Entries already
+// accepted are forwarded to out before Stop returns.
 func (p *Pipeline) Stop() {
-	for _, s := range p.stages {
-		stopper, ok := s.(Stopper)
-		if !ok {
-			continue
-		}
-		func() {
-			defer func() { _ = recover() }()
-			stopper.Stop()
-		}()
-	}
+	p.cancel()
+	p.wg.Wait()
+	p.inner.stop()
 }
 
 // RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.

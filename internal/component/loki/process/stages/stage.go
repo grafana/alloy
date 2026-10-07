@@ -35,15 +35,6 @@ type Stopper interface {
 	Stop()
 }
 
-// newStage creates a new stage for the given type and configuration.
-func newStage(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
-	return newStageWithOpts(cfg, stageOpts{
-		slogger:      slogger,
-		registerer:   registerer,
-		minStability: minStability,
-	})
-}
-
 type stageOpts struct {
 	slogger      *slog.Logger
 	registerer   prometheus.Registerer
@@ -55,11 +46,11 @@ type stageOpts struct {
 func newStageWithOpts(
 	cfg StageConfig,
 	opts stageOpts,
-) (Stage, error) {
+) (entryProcessor, error) {
 
 	var (
-		s   Stage
 		err error
+		s   entryProcessor
 	)
 	switch {
 	case cfg.DockerConfig != nil:

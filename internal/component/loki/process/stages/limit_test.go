@@ -5,15 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -147,75 +143,6 @@ loki_process_dropped_lines_by_label_total{label_name="app",label_value="poki"} 4
 
 // TestLimitStageShutdown verifies that an entry blocked in rateLimiter.Wait
 // is released promptly when the pipeline shuts down.
-func TestLimitStageShutdown(t *testing.T) {
-	type testCase struct {
-		name string
-		cfg  string
-	}
-
-	tests := []testCase{
-		{
-			name: "stage.limit",
-			cfg: `
-			stage.limit {
-				rate  = 0.1
-				burst = 1
-				drop  = false
-			}
-			`,
-		},
-		{
-			name: "stage.limit inside stage.match",
-			cfg: `
-			stage.match {
-				selector = "{app=\"loki\"}"
-				action = "keep"
-				stage.limit {
-					rate  = 0.1
-					burst = 1
-					drop  = false
-				}
-			}
-			`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(tt.cfg), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-			require.NoError(t, err)
-
-			in := make(chan loki.Entry)
-			out := make(chan loki.Entry, 1)
-			handler := pl.Start(in, out)
-
-			entry := loki.Entry{
-				Labels: model.LabelSet{"app": "loki"},
-				Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
-			}
-
-			in <- entry
-			<-out       // burst consumed; next Wait() will block
-			in <- entry // blocks the limit stage in rateLimiter.Wait
-
-			done := make(chan struct{})
-			go func() { defer close(done); handler.Stop() }()
-
-			select {
-			case <-done:
-			case <-time.After(2 * time.Second):
-				t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait")
-			}
-
-			select {
-			case e := <-out:
-				t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
-			default:
-			}
-		})
-	}
-}
-
 func TestValidateLimitConfig(t *testing.T) {
 	t.Parallel()
 

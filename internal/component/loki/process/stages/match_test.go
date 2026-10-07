@@ -358,25 +358,16 @@ func TestMatchStageNestedPipelineError(t *testing.T) {
 	}
 	`)
 
-	t.Run("Stage", func(t *testing.T) {
-		logger := util.TestAlloyLogger(t)
-		_, err := newStage(logger.Slog(), cfgs[0], prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.ErrorContains(t, err, "match stage failed to create pipeline")
-		require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
+	logger := util.TestAlloyLogger(t)
+	next := func(_ context.Context, _ []Entry) error { return nil }
+	_, err := newStageWithOpts(cfgs[0], stageOpts{
+		slogger:      logger.Slog(),
+		registerer:   prometheus.NewRegistry(),
+		minStability: featuregate.StabilityGenerallyAvailable,
+		next:         next,
 	})
-
-	t.Run("New Stage", func(t *testing.T) {
-		logger := util.TestAlloyLogger(t)
-		next := func(_ context.Context, _ []Entry) error { return nil }
-		_, err := newStageWithOpts(cfgs[0], stageOpts{
-			slogger:      logger.Slog(),
-			registerer:   prometheus.NewRegistry(),
-			minStability: featuregate.StabilityGenerallyAvailable,
-			next:         next,
-		})
-		require.ErrorContains(t, err, "match stage failed to create pipeline")
-		require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
-	})
+	require.ErrorContains(t, err, "match stage failed to create pipeline")
+	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
 }
 
 // TestMatchStageOrder asserts that entries are forwarded in timestamp order

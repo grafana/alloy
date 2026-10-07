@@ -2,7 +2,6 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -133,15 +132,8 @@ func newPipeline(
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 
-		ep, ok := s.(entryProcessor)
-		if !ok {
-			p.stop()
-			s.Cleanup()
-			return nil, errors.New("stage has not been migrated to new interface")
-		}
-
-		p.stages = append(p.stages, ep)
-		next = ep.process
+		p.stages = append(p.stages, s)
+		next = s.process
 	}
 
 	// We start stages after we have successfully built them all.
