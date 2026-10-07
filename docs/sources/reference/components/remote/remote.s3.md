@@ -7,20 +7,23 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.s3
 ---
 
 # `remote.s3`
 
-`remote.s3` exposes the string contents of a file located in [AWS S3](https://aws.amazon.com/s3/) to other components.
+`remote.s3` exposes the string contents of a file located in [AWS S3][aws-s3] to other components.
 `remote.s3` polls the file for changes, so the most recent content is always available.
 
 The most common use of `remote.s3` is to load secrets from files.
 
 You can specify multiple `remote.s3` components by giving them different labels.
-By default, `remote.s3` uses [AWS environment variables](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html) to authenticate against S3.
+By default, `remote.s3` uses [AWS environment variables][aws-env-vars] to authenticate against S3.
 Use the `key` and `secret` arguments inside `client` blocks to provide custom authentication.
+
+[aws-s3]: https://aws.amazon.com/s3/
+[aws-env-vars]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 {{< admonition type="note" >}}
 `remote.s3` can read other S3-compatible systems, but they may require specific authentication environment variables.
@@ -100,7 +103,7 @@ Instances of `remote.s3` report as healthy if the most recent read of the watche
 
 ## Debug metrics
 
-`remote.s3` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
 | Name                                             | Type      | Description                                 |
 | ------------------------------------------------ | --------- | ------------------------------------------- |
