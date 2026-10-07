@@ -34,6 +34,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/relabel"                        // Import discovery.relabel
 	_ "github.com/grafana/alloy/internal/component/discovery/scaleway"                       // Import discovery.scaleway
 	_ "github.com/grafana/alloy/internal/component/discovery/serverset"                      // Import discovery.serverset
+	_ "github.com/grafana/alloy/internal/component/discovery/snmp"                           // Import discovery.snmp
 	_ "github.com/grafana/alloy/internal/component/discovery/triton"                         // Import discovery.triton
 	_ "github.com/grafana/alloy/internal/component/discovery/uyuni"                          // Import discovery.uyuni
 	_ "github.com/grafana/alloy/internal/component/faro/receiver"                            // Import faro.receiver
