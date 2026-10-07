@@ -313,8 +313,8 @@ func TestMultilineStageStreamsCleanup(t *testing.T) {
 
 	require.Equal(t, 3, len(res))
 	var count int
-	for i := range ms.streamsStriped.stripes {
-		count += len(ms.streamsStriped.stripes[i].data)
+	for i := range ms.streams.stripes {
+		count += len(ms.streams.stripes[i].data)
 	}
 
 	require.Equal(t, 0, count, "streams should be empty after stop")

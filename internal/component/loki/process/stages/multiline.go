@@ -68,8 +68,6 @@ func validateMultilineConfig(cfg MultilineConfig) (*regexp.Regexp, error) {
 }
 
 var (
-	_ Stage = (*multilineStage)(nil)
-
 	_ entryProcessor = (*multilineStage)(nil)
 	_ starter        = (*multilineStage)(nil)
 	_ stopper        = (*multilineStage)(nil)
@@ -83,13 +81,12 @@ func newMultilineStage(config MultilineConfig, opts stageOpts) (*multilineStage,
 	}
 
 	return &multilineStage{
-		next:           opts.next,
-		logger:         opts.slogger.With("stage", "multiline"),
-		cfg:            config,
-		regex:          regex,
-		streams:        make(map[model.Fingerprint]*multilineState),
-		streamsStriped: newMultilineStreamsStriped(),
-		done:           make(chan struct{}),
+		next:    opts.next,
+		logger:  opts.slogger.With("stage", "multiline"),
+		cfg:     config,
+		regex:   regex,
+		streams: newMultilineStreamsStriped(),
+		done:    make(chan struct{}),
 	}, nil
 }
 
@@ -100,184 +97,11 @@ type multilineStage struct {
 	cfg    MultilineConfig
 	regex  *regexp.Regexp
 
-	streams        map[model.Fingerprint]*multilineState
-	streamsStriped *multilineStreamsStriped
+	streams *multilineStreamsStriped
 
 	done chan struct{}
 	once sync.Once
 	wg   sync.WaitGroup
-}
-
-func (m *multilineStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-
-		// timer fires at the earliest per-stream deadline (lastSeen + MaxWaitTime).
-		// Start it stopped; it is armed on the first entry that starts a block.
-		timer := time.NewTimer(0)
-		if !timer.Stop() {
-			<-timer.C
-		}
-
-		// nearestDeadline tracks the earliest active stream deadline so that
-		// we can easily update the timer if the incoming entry has a newer deadline.
-		var nearestDeadline time.Time
-
-		armTimer := func(deadline time.Time) {
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			timer.Reset(max(0, time.Until(deadline)))
-			nearestDeadline = deadline
-		}
-
-		// isEarlierDeadline reports whether candidate should replace current as
-		// the nearest deadline (i.e. it is earlier, or there is no current deadline).
-		isEarlierDeadline := func(candidate, current time.Time) bool {
-			return current.IsZero() || candidate.Before(current)
-		}
-
-		// rescanDeadline rescans all streams to find the new nearest deadline
-		// after a flush removes a stream from contention. We include streams with
-		// currentLines==0 (flushed at max_lines) so they are cleaned up by the
-		// timer even when idle.
-		rescanDeadline := func() {
-			nearestDeadline = time.Time{}
-			for _, state := range m.streams {
-				if dl := state.lastSeen.Add(m.cfg.MaxWaitTime); isEarlierDeadline(dl, nearestDeadline) {
-					nearestDeadline = dl
-				}
-			}
-			if nearestDeadline.IsZero() {
-				return // no streams; leave timer stopped
-			}
-			armTimer(nearestDeadline)
-		}
-
-		for {
-			select {
-			case e, ok := <-in:
-				if !ok {
-					// Flush all per-stream buffers when the input closes.
-					for _, state := range m.streams {
-						if state.currentLines > 0 {
-							out <- state.flush()
-						}
-					}
-					m.streams = nil
-					timer.Stop()
-					return
-				}
-				// Capture the stream key before emitting entries downstream.
-				// A downstream stage goroutine may mutate e.Labels concurrently
-				// once the entry is sent on out, which would race with a
-				// post-emit FastFingerprint() call.
-				key := e.Labels.FastFingerprint()
-				for _, r := range m.processEntry(key, e) {
-					out <- r
-				}
-				// Arm the timer for any stream that now has the earliest deadline,
-				// including streams where currentLines==0 (just hit max_lines) so
-				// the timer fires to remove them if they subsequently go idle.
-				if m.streams[key] != nil {
-					if dl := m.streams[key].lastSeen.Add(m.cfg.MaxWaitTime); isEarlierDeadline(dl, nearestDeadline) {
-						armTimer(dl)
-					}
-				}
-			case <-timer.C:
-				nearestDeadline = time.Time{}
-				// Remove every stream whose deadline has been reached. Flush its
-				// buffer if it has accumulated lines; streams with currentLines==0
-				// (flushed at max_lines and then gone idle) are deleted.
-				now := time.Now()
-				for key, state := range m.streams {
-					if !state.lastSeen.Add(m.cfg.MaxWaitTime).After(now) {
-						if state.currentLines > 0 {
-							if debugEnabled(m.logger) {
-								m.logger.Debug("flush multiline block due to timeout", "timeout", m.cfg.MaxWaitTime, "block", state.buffer.String())
-							}
-							out <- state.flush()
-						}
-						delete(m.streams, key)
-					}
-				}
-				rescanDeadline()
-			}
-		}
-	}()
-	return out
-}
-
-// processEntry processes a single entry synchronously, returning any entries
-// ready to emit. Before the first start line is seen for a stream, non-start
-// lines are passed through unchanged. Once a stream is started, all lines are
-// accumulated
-func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
-	if m.streams == nil {
-		m.streams = make(map[model.Fingerprint]*multilineState)
-	}
-	state, hasState := m.streams[key]
-
-	var out []Entry
-
-	// flush stale block before processing new entry.
-	if hasState && state.currentLines > 0 && time.Since(state.lastSeen) >= m.cfg.MaxWaitTime {
-		if debugEnabled(m.logger) {
-			m.logger.Debug("flush multiline block due to timeout", "timeout", m.cfg.MaxWaitTime, "block", state.buffer.String())
-		}
-		out = append(out, state.flush())
-	}
-
-	isFirstLine := m.regex.MatchString(e.Line)
-	if !hasState {
-		// Pass through entries until the first start line for this stream.
-		if !isFirstLine {
-			if debugEnabled(m.logger) {
-				m.logger.Debug("pass through entry", "stream", key)
-			}
-			return append(out, e)
-		}
-		state = &multilineState{buffer: new(bytes.Buffer)}
-		m.streams[key] = state
-	}
-
-	// Stream is active: flush current block if a new start line arrived.
-	if isFirstLine && state.currentLines > 0 {
-		if debugEnabled(m.logger) {
-			m.logger.Debug("flush multiline block because new start line", "block", state.buffer.String(), "stream", key)
-		}
-		out = append(out, state.flush())
-	}
-	// startLineEntry is only updated on start lines; it is intentionally
-	// preserved across max_lines flushes to match the original behaviour.
-	if isFirstLine {
-		state.startLineEntry = e
-	}
-
-	if debugEnabled(m.logger) {
-		m.logger.Debug("processing line", "line", e.Line, "stream", key)
-	}
-	// Append line to buffer.
-	if state.buffer.Len() > 0 {
-		state.buffer.WriteRune('\n')
-	}
-	line := e.Line
-	if m.cfg.TrimNewlines {
-		line = strings.TrimRight(line, "\r\n")
-	}
-	state.buffer.WriteString(line)
-	state.currentLines++
-	state.lastSeen = time.Now()
-
-	if state.currentLines == m.cfg.MaxLines {
-		out = append(out, state.flush())
-	}
-
-	return out
 }
 
 func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
@@ -285,7 +109,7 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 
 	for _, e := range entries {
 		fp := e.Labels.FastFingerprint()
-		m.streamsStriped.Mutate(fp, func(state *multilineState, hasState bool) *multilineState {
+		m.streams.Mutate(fp, func(state *multilineState, hasState bool) *multilineState {
 			isFirstLine := m.regex.MatchString(e.Line)
 
 			if !hasState {
@@ -393,7 +217,7 @@ func (m *multilineStage) start() {
 				// for entries, which is an acceptable trade-off for now since
 				// it only affects blocks that already timed out. Something we
 				// can revisit in the future.
-				expired := m.streamsStriped.FlushOlderThan(time.Now().Add(-m.cfg.MaxWaitTime))
+				expired := m.streams.FlushOlderThan(time.Now().Add(-m.cfg.MaxWaitTime))
 				if len(expired) > 0 {
 					ctx, cancel := context.WithTimeout(context.Background(), multilineFlushTimeout)
 					if err := m.next(ctx, expired); err != nil {
@@ -411,7 +235,7 @@ func (m *multilineStage) stop() {
 	m.once.Do(func() { close(m.done) })
 	m.wg.Wait()
 
-	entries := m.streamsStriped.FlushAll()
+	entries := m.streams.FlushAll()
 	if len(entries) > 0 {
 		ctx, cancel := context.WithTimeout(context.Background(), multilineFlushTimeout)
 		defer cancel()
@@ -420,9 +244,6 @@ func (m *multilineStage) stop() {
 		}
 	}
 }
-
-// Cleanup implements Stage.
-func (*multilineStage) Cleanup() {}
 
 type multilineStripe struct {
 	mu   sync.Mutex

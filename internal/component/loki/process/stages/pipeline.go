@@ -120,35 +120,3 @@ func (p *Pipeline) Stop() {
 	p.wg.Wait()
 	p.inner.stop()
 }
-
-// RunWith will read from the input channel entries, mutate them with the process function and returns them via the output channel.
-func RunWith(input chan Entry, process func(e Entry) Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			out <- process(e)
-		}
-	}()
-	return out
-}
-
-// RunWithSkipOrSendMany same as RunWith, except it handles sending multiple entries at the same time and it wil skip
-// sending the batch to output channel, if `process` functions returns `skip` true.
-func RunWithSkipOrSendMany(input chan Entry, process func(e Entry) ([]Entry, bool)) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range input {
-			results, skip := process(e)
-			if skip {
-				continue
-			}
-			for _, result := range results {
-				out <- result
-			}
-		}
-	}()
-
-	return out
-}

@@ -38,7 +38,6 @@ type cfgCollector struct {
 }
 
 var (
-	_ Stage          = (*metricStage)(nil)
 	_ entryProcessor = (*metricStage)(nil)
 	_ stopper        = (*metricStage)(nil)
 )
@@ -112,14 +111,6 @@ type metricStage struct {
 	metrics map[string]cfgCollector
 }
 
-// Run implements Stage
-func (m *metricStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		m.processEntry(e)
-		return e
-	})
-}
-
 func (m *metricStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		m.processEntry(e)
@@ -175,11 +166,6 @@ func (m *metricStage) stop() {
 			vec.DeleteAll()
 		}
 	}
-}
-
-// Cleanup implements Stage.
-func (m *metricStage) Cleanup() {
-	m.stop()
 }
 
 // recordCounter will update a counter metric

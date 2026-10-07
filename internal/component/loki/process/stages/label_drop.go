@@ -15,10 +15,7 @@ type LabelDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-var (
-	_ Stage          = (*labelDropStage)(nil)
-	_ entryProcessor = (*labelDropStage)(nil)
-)
+var _ entryProcessor = (*labelDropStage)(nil)
 
 func newLabelDropStage(config LabelDropConfig, opts stageOpts) (*labelDropStage, error) {
 	if len(config.Values) < 1 {
@@ -36,16 +33,6 @@ type labelDropStage struct {
 	config LabelDropConfig
 }
 
-// Run implements Stage.
-func (l *labelDropStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		for _, label := range l.config.Values {
-			delete(e.Labels, model.LabelName(label))
-		}
-		return e
-	})
-}
-
 func (l *labelDropStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		for _, label := range l.config.Values {
@@ -54,6 +41,3 @@ func (l *labelDropStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return l.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (l *labelDropStage) Cleanup() {}

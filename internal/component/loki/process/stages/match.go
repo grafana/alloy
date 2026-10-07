@@ -96,7 +96,6 @@ func newMatchStage(config MatchConfig, opts stageOpts) (entryProcessor, error) {
 }
 
 var (
-	_ Stage          = (*matchDropStage)(nil)
 	_ entryProcessor = (*matchDropStage)(nil)
 )
 
@@ -117,22 +116,6 @@ type matchDropStage struct {
 	dropCount prometheus.Counter
 }
 
-// Run implements Stage.
-func (m *matchDropStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			if matchLogQL(e, m.matchers, m.filter) {
-				m.dropCount.Inc()
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
-}
-
 // process implements stage.
 func (m *matchDropStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
@@ -151,9 +134,6 @@ func (m *matchDropStage) process(ctx context.Context, entries []Entry) error {
 
 	return m.next(ctx, entries[:dst])
 }
-
-// Cleanup implements Stage.
-func (m *matchDropStage) Cleanup() {}
 
 var (
 	_ entryProcessor = (*matchKeepStage)(nil)

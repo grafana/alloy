@@ -3,36 +3,15 @@ package stages
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 )
-
-// Processor takes an existing set of labels, timestamp and log entry and returns either a possibly mutated
-// timestamp and log entry
-type Processor interface {
-	Process(labels model.LabelSet, extracted map[string]any, time *time.Time, entry *string)
-}
 
 type Entry struct {
 	Extracted map[string]any
 	loki.Entry
-}
-
-// Stage can receive entries via an inbound channel and forward mutated entries to an outbound channel.
-type Stage interface {
-	Run(chan Entry) chan Entry
-	Cleanup()
-}
-
-// Stopper is an optional interface for stages that need an out-of-band signal
-// to unblock goroutines during shutdown. Implementations must not block,
-// panic, or assume Run has stopped.
-type Stopper interface {
-	Stop()
 }
 
 type stageOpts struct {

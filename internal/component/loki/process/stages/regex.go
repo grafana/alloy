@@ -43,10 +43,7 @@ func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
 	return expr, nil
 }
 
-var (
-	_ Stage          = (*regexStage)(nil)
-	_ entryProcessor = (*regexStage)(nil)
-)
+var _ entryProcessor = (*regexStage)(nil)
 
 // newRegexStage creates a regexStage
 func newRegexStage(config RegexConfig, opts stageOpts) (*regexStage, error) {
@@ -70,22 +67,12 @@ type regexStage struct {
 	logger     *slog.Logger
 }
 
-// Run implements Stage.
-func (r *regexStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return r.processEntry(e)
-	})
-}
-
 func (r *regexStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])
 	}
 	return r.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (r *regexStage) Cleanup() {}
 
 func (r *regexStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the regex stage should process it
