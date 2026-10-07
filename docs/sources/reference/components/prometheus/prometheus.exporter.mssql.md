@@ -40,6 +40,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | `query_config`            | `string` or `secret` | MSSQL query to Prometheus metric configuration as an inline string. |         | no       |
 | `timeout`                 | `duration`           | The query timeout duration for each scrape.                         | `"10s"` | no       |
 
+`connection_string` must be a URL that uses the `sqlserver` scheme.
 `max_idle_connections` and `max_open_connections` must each be at least `1`, and `timeout` must be positive.
 `max_connection_lifetime` can't be negative.
 {{< param "PRODUCT_NAME" >}} parses `query_config` strictly and rejects unknown fields.
