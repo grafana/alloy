@@ -29,10 +29,7 @@ func TestEmittedConfigMatchesSchema(t *testing.T) {
 	fillValue(reflect.ValueOf(&args).Elem(), 0)
 	cfg := buildYAML(t, args, Runtime{Port: 12345})
 
-	schemaBytes, err := os.ReadFile("gen/beyla/schema.json")
-	require.NoError(t, err)
-	var schema map[string]any
-	require.NoError(t, json.Unmarshal(schemaBytes, &schema))
+	schema := loadBeylaSchema(t)
 	denyUnknownKeys(schema)
 	stripPatterns(schema)
 
@@ -51,6 +48,73 @@ func TestEmittedConfigMatchesSchema(t *testing.T) {
 			t.Errorf("emitted key absent from Beyla schema (typo or drift): %s", path)
 		}
 	}
+}
+
+func loadBeylaSchema(t *testing.T) map[string]any {
+	t.Helper()
+	schemaBytes, err := os.ReadFile("gen/beyla/schema.json")
+	require.NoError(t, err)
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal(schemaBytes, &schema))
+	return schema
+}
+
+func TestSupportedSectionsCoverSchema(t *testing.T) {
+	var args Arguments
+	fillValue(reflect.ValueOf(&args).Elem(), 0)
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	defs := loadBeylaSchema(t)["$defs"].(map[string]any)
+
+	tests := []struct {
+		definition string
+		path       []string
+	}{
+		{"EBPFTracer", []string{"ebpf"}},
+		{"Buckets", []string{"prometheus_export", "buckets"}},
+		{"CloudMetadataConfig", []string{"cloud_metadata"}},
+		{"DotnetRuntimeMetricsConfig", []string{"dotnet_runtime_metrics"}},
+		{"NameResolverConfig", []string{"name_resolver"}},
+		{"ECSNameResolverConfig", []string{"name_resolver", "ecs"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.definition, func(t *testing.T) {
+			emitted := cfg
+			for _, key := range tt.path {
+				require.Contains(t, emitted, key)
+				emitted = emitted[key].(map[string]any)
+			}
+			properties := defs[tt.definition].(map[string]any)["properties"].(map[string]any)
+			for key := range properties {
+				require.Contains(t, emitted, key, "Beyla option missing from Alloy: %s.%s", tt.definition, key)
+			}
+		})
+	}
+}
+
+func TestMetricFeaturesCoverSchema(t *testing.T) {
+	defs := loadBeylaSchema(t)["$defs"].(map[string]any)
+	items := defs["Features"].(map[string]any)["items"].(map[string]any)
+	var schemaValues []string
+	for _, alternative := range items["oneOf"].([]any) {
+		for _, value := range alternative.(map[string]any)["enum"].([]any) {
+			feature := value.(string)
+			schemaValues = append(schemaValues, feature)
+			require.True(t, validMetricFeature(feature), "Beyla metric feature missing from Alloy: %s", feature)
+		}
+	}
+	// application_jvm remains accepted by Alloy for backwards compatibility.
+	require.ElementsMatch(t, append(schemaValues, "application_jvm"), metricFeatureValues)
+}
+
+func TestNameResolverSourcesMatchSchema(t *testing.T) {
+	defs := loadBeylaSchema(t)["$defs"].(map[string]any)
+	properties := defs["NameResolverConfig"].(map[string]any)["properties"].(map[string]any)
+	items := properties["sources"].(map[string]any)["items"].(map[string]any)
+	var values []string
+	for _, value := range items["enum"].([]any) {
+		values = append(values, value.(string))
+	}
+	require.ElementsMatch(t, values, nameResolverSourceValues)
 }
 
 // denyUnknownKeys sets additionalProperties:false on every object node that declares

@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.exporter.azure
 ---
 
@@ -46,6 +46,8 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 
 - When using an Azure Resource Graph query, [read access to the resources that Resource Graph queries][].
 - Permissions to call the [`Microsoft.Insights` Metrics API][Microsoft.Insights Metrics API] which should be the `Microsoft.Insights/Metrics/Read` permission.
+
+You can specify multiple `prometheus.exporter.azure` components by giving them different labels.
 
 [authentication]: https://learn.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication?tabs=bash#2-authenticate-with-azure
 [read access to the resources that Resource Graph queries]: https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph
@@ -117,6 +119,9 @@ When you enable `validate_dimensions`, you need one exporter instance per metric
 You use `timespan` and `interval` to control how the exporter queries metrics from Azure Monitor. 
 The exporter queries metrics over the `timespan` and returns the most recent data point at the specified `interval`. 
 If you are having issues with missing metrics, try increasing the `timespan` to a larger value, such as `PT10M` for 10 minutes, or `PT15M` for 15 minutes.
+
+The component sets the `instance` label on its exported targets to a hash of its own configuration, because no single argument identifies an Azure scrape.
+The label changes if you change any argument.
 
 [Kusto query]: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
 [Azure Monitor essentials]: https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/metrics-supported

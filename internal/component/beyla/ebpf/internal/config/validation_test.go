@@ -332,6 +332,35 @@ func TestMetrics_Validate(t *testing.T) {
 			args: Metrics{Features: []string{"application"}},
 		},
 		{
+			name: "RED metrics without sizes",
+			args: Metrics{Features: []string{"application_red"}},
+		},
+		{
+			name: "RED and size metrics",
+			args: Metrics{Features: []string{"application_red", "application_sizes"}},
+		},
+		{
+			name: "application includes RED and sizes",
+			args: Metrics{Features: []string{"application", "application_sizes"}},
+		},
+		{
+			name: "wildcard includes RED",
+			args: Metrics{Features: []string{"*", "application_sizes"}},
+		},
+		{
+			name: "all includes RED",
+			args: Metrics{Features: []string{"all", "application_sizes"}},
+		},
+		{
+			name: "successful connections",
+			args: Metrics{Features: []string{"stats_tcp_successful_connections"}},
+		},
+		{
+			name:    "sizes require RED",
+			args:    Metrics{Features: []string{"application_sizes", "application_span_otel"}},
+			wantErr: "application_sizes requires application or application_red",
+		},
+		{
 			name:    "invalid feature",
 			args:    Metrics{Features: []string{"invalid"}},
 			wantErr: `metrics.features: invalid value "invalid"`,
@@ -361,6 +390,10 @@ func TestMetrics_FeatureWildcards(t *testing.T) {
 	require.False(t, Metrics{Features: []string{"application"}}.hasNetworkFeature())
 	require.True(t, Metrics{Features: []string{"network"}}.hasNetworkFeature())
 	require.False(t, Metrics{Features: []string{"network"}}.hasAppFeature())
+	for _, feature := range []string{"application_red", "application_sizes"} {
+		require.True(t, Metrics{Features: []string{feature}}.hasAppFeature())
+		require.False(t, Metrics{Features: []string{feature}}.hasNetworkFeature())
+	}
 }
 
 func TestArguments_Validate(t *testing.T) {
@@ -392,6 +425,11 @@ func TestArguments_Validate(t *testing.T) {
 					Survey:     Services{},
 				},
 			},
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+		},
+		{
+			name:    "RED feature requires discovery",
+			args:    Arguments{Metrics: Metrics{Features: []string{"application_red"}}},
 			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
 		},
 		{
@@ -717,6 +755,35 @@ func TestArguments_Validate_TracesOutputRequired(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestArguments_Validate_Beyla338Options(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{"defaults", Arguments{}, ""},
+		{"resolver aliases", Arguments{NameResolver: NameResolver{Sources: []string{"dns", "ecs", "k8s", "kube", "kubernetes", "rdns"}}}, ""},
+		{"unknown resolver", Arguments{NameResolver: NameResolver{Sources: []string{"invalid"}}}, "name_resolver.sources"},
+		{"negative cache length", Arguments{NameResolver: NameResolver{CacheLen: -1}}, "name_resolver.cache_len"},
+		{"negative cache expiry", Arguments{NameResolver: NameResolver{CacheExpiry: -time.Second}}, "name_resolver.cache_expiry"},
+		{"negative ECS interval", Arguments{NameResolver: NameResolver{ECS: ECSNameResolver{RefreshInterval: -time.Second}}}, "name_resolver.ecs.refresh_interval"},
+		{"negative .NET interval", Arguments{DotnetRuntimeMetrics: DotnetRuntimeMetrics{SamplingInterval: -time.Second}}, "dotnet_runtime_metrics.sampling_interval"},
+		{"negative .NET timeout", Arguments{DotnetRuntimeMetrics: DotnetRuntimeMetrics{Timeout: -time.Second}}, "dotnet_runtime_metrics.timeout"},
+		{"negative Kafka cache", Arguments{EBPF: EBPF{KafkaConsumerGroupCacheSize: -1}}, "ebpf.kafka_consumer_group_cache_size"},
+		{"negative Kafka TTL", Arguments{EBPF: EBPF{KafkaConsumerGroupTTL: -time.Second}}, "ebpf.kafka_consumer_group_ttl"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

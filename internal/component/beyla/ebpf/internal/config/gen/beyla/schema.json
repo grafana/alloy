@@ -156,9 +156,13 @@
           "items": {
             "type": "string",
             "enum": [
+              "dotnet",
               "go",
               "java",
-              "nodejs"
+              "nodejs",
+              "php",
+              "python",
+              "ruby"
             ]
           },
           "type": "array"
@@ -277,6 +281,12 @@
           },
           "type": "array"
         },
+        "jvm_gc_duration_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
         "request_size_histogram": {
           "items": {
             "type": "number"
@@ -300,6 +310,19 @@
             "type": "number"
           },
           "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CloudMetadataConfig": {
+      "properties": {
+        "cluster_name": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_CLUSTER_NAME"
+        },
+        "region": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_CLOUD_REGION"
         }
       },
       "type": "object"
@@ -402,6 +425,31 @@
       },
       "type": "array",
       "description": "A list of CIDRs to be set as the \"src.cidr\" and \"dst.cidr\" attribute as a function of the source and destination IP addresses. Each entry can be a plain CIDR string or an object with \"cidr\" and \"name\" fields."
+    },
+    "DotnetRuntimeMetricsConfig": {
+      "properties": {
+        "sampling_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_SAMPLING_INTERVAL"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_TIMEOUT"
+        }
+      },
+      "type": "object"
     },
     "EBPFBufferSizes": {
       "properties": {
@@ -526,6 +574,20 @@
           "type": "integer",
           "x-env-var": "OTEL_EBPF_INSTRUMENT_CUDA"
         },
+        "kafka_consumer_group_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_KAFKA_CONSUMER_GROUP_CACHE_SIZE"
+        },
+        "kafka_consumer_group_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_KAFKA_CONSUMER_GROUP_TTL"
+        },
         "kafka_topic_uuid_cache_size": {
           "type": "integer",
           "x-env-var": "OTEL_KAFKA_TOPIC_UUID_CACHE_SIZE"
@@ -565,6 +627,10 @@
         "payload_extraction": {
           "$ref": "#/$defs/PayloadExtraction"
         },
+        "populate_trace_context": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_POPULATE_TRACE_CONTEXT"
+        },
         "postgres_prepared_statements_cache_size": {
           "type": "integer",
           "x-env-var": "OTEL_EBPF_BPF_POSTGRES_PREPARED_STATEMENTS_CACHE_SIZE"
@@ -596,6 +662,21 @@
         "wakeup_len": {
           "type": "integer",
           "x-env-var": "OTEL_EBPF_BPF_WAKEUP_LEN"
+        }
+      },
+      "type": "object"
+    },
+    "ECSNameResolverConfig": {
+      "properties": {
+        "refresh_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_ECS_REFRESH_INTERVAL"
         }
       },
       "type": "object"
@@ -672,8 +753,10 @@
               "application",
               "application_host",
               "application_process",
+              "application_red",
               "application_runtime",
               "application_service_graph",
+              "application_sizes",
               "application_span_otel",
               "ebpf",
               "network",
@@ -683,7 +766,8 @@
               "stats_tcp_failed_connections",
               "stats_tcp_io",
               "stats_tcp_retransmits",
-              "stats_tcp_rtt"
+              "stats_tcp_rtt",
+              "stats_tcp_successful_connections"
             ]
           },
           {
@@ -1627,11 +1711,15 @@
           "type": "integer",
           "x-env-var": "OTEL_EBPF_NAME_RESOLVER_CACHE_LEN"
         },
+        "ecs": {
+          "$ref": "#/$defs/ECSNameResolverConfig"
+        },
         "sources": {
           "items": {
             "type": "string",
             "enum": [
               "dns",
+              "ecs",
               "k8s",
               "kube",
               "kubernetes",
@@ -2556,6 +2644,14 @@
           ],
           "x-env-var": "OTEL_EBPF_OTLP_TRACES_BATCH_TIMEOUT"
         },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "gzip",
+            "none"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION"
+        },
         "endpoint": {
           "type": "string",
           "format": "uri",
@@ -2663,9 +2759,15 @@
       "type": "boolean",
       "x-env-var": "BEYLA_CHANNEL_SEND_TIMEOUT_PANIC"
     },
+    "cloud_metadata": {
+      "$ref": "#/$defs/CloudMetadataConfig"
+    },
     "discovery": {
       "$ref": "#/$defs/BeylaDiscoveryConfig",
       "description": "Discovery configuration"
+    },
+    "dotnet_runtime_metrics": {
+      "$ref": "#/$defs/DotnetRuntimeMetricsConfig"
     },
     "ebpf": {
       "$ref": "#/$defs/EBPFTracer"
