@@ -12,7 +12,9 @@ title: prometheus.exporter.mssql
 
 # `prometheus.exporter.mssql`
 
-The `prometheus.exporter.mssql` component embeds the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter) for collecting stats from a Microsoft SQL Server and exposing them as Prometheus metrics.
+The `prometheus.exporter.mssql` component embeds the [`sql_exporter`][sql-exporter] for collecting stats from a Microsoft SQL Server and exposing them as Prometheus metrics.
+
+[sql-exporter]: https://github.com/burningalchemist/sql_exporter
 
 ## Usage
 
@@ -36,7 +38,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | `timeout`                    | `duration` | The query timeout duration for each scrape.                                               | `"10s"` | no       |
 | `query_config`               | `string`   | MSSQL query to Prometheus metric configuration as an inline string.                      |         | no       |
 
-The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
+The [`sql_exporter` examples][sql-exporter-examples] show the format of the `connection_string` argument:
 
 ```text
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
@@ -44,11 +46,13 @@ sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?enc
 
 {{< admonition type="note" >}}
 If your username or password contain special characters, you must URL encode the characters in the `connection_string` argument.
-For more information, refer to the [Data Source Names](https://github.com/burningalchemist/sql_exporter#data-source-names-dsn) section in the `sql_exporter` documentation
+For more information, refer to the [Data Source Names][dsn] section in the `sql_exporter` documentation
+
+[dsn]: https://github.com/burningalchemist/sql_exporter#data-source-names-dsn
 {{< /admonition >}}
 
 The `connection_name` parameter allows uptime metrics.
-Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
+Refer to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
 
 If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
 `query_config` is typically loaded by using the exports of another component.
@@ -58,7 +62,11 @@ For example,
 * `remote.http.<LABEL>.content`
 * `remote.s3.<LABEL>.content`
 
-Refer to [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
+Refer to [`sql_exporter`][sql-exporter-collectors] for details on how to create a configuration.
+
+[sql-exporter-examples]: https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21
+[sql-exporter-config]: https://github.com/burningalchemist/sql_exporter#configuration
+[sql-exporter-collectors]: https://github.com/burningalchemist/sql_exporter#collectors
 
 ### Authentication
 
