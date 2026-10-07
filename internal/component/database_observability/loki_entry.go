@@ -16,7 +16,7 @@ func BuildLokiEntryWithTimestamp(level logging.Level, op, line string, timestamp
 		model.LabelSet{"op": model.LabelValue(op)},
 		push.Entry{
 			Timestamp: time.Unix(0, timestamp),
-			Line:      fmt.Sprintf(`level="%s" %s`, level, line),
+			Line:      fmt.Sprintf(`level=%q %s`, level, line),
 		},
 	)
 }
