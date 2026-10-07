@@ -338,6 +338,49 @@ func TestExplainPlansConfigParsing(t *testing.T) {
 	assert.Equal(t, 5*time.Minute, args.ExplainPlansArguments.CollectInterval)
 }
 
+func TestHealthCheckDefaults(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+
+	assert.Equal(t, 1*time.Hour, args.HealthCheckArguments.CollectInterval)
+}
+
+func TestHealthCheckConfigParsing(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "sqlserver://user:pass@localhost:1433"
+		forward_to       = []
+		targets          = []
+		health_check {
+			collect_interval = "5m"
+		}
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+	assert.Equal(t, 5*time.Minute, args.HealthCheckArguments.CollectInterval)
+}
+
+func TestValidateHealthCheck(t *testing.T) {
+	base := func() Arguments {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433?database=app"
+		return args
+	}
+
+	t.Run("defaults are valid", func(t *testing.T) {
+		args := base()
+		require.NoError(t, args.Validate())
+	})
+
+	t.Run("non-positive collect_interval is rejected", func(t *testing.T) {
+		args := base()
+		args.HealthCheckArguments.CollectInterval = 0
+		require.ErrorContains(t, args.Validate(), "health_check.collect_interval")
+	})
+}
+
 func TestQuerySamplesDefaults(t *testing.T) {
 	var args Arguments
 	args.SetToDefault()
@@ -742,9 +785,10 @@ func clusteringTestArgs() Arguments {
 			{Name: "db1", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db1"},
 			{Name: "db2", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db2"},
 		},
-		QueryTimeout:      10 * time.Second,
-		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
-		Clustering:        cluster.ComponentBlock{Enabled: true},
+		QueryTimeout:         10 * time.Second,
+		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		Clustering:           cluster.ComponentBlock{Enabled: true},
+		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
 }
 
