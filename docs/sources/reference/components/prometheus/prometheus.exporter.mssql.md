@@ -34,7 +34,7 @@ You can use the following arguments with `prometheus.exporter.mssql`:
 | Name                      | Type                 | Description                                                            | Default | Required |
 | ------------------------- | -------------------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `connection_string`       | `secret`             | Connection string for the Microsoft SQL Server.                        |         | yes      |
-| `connection_name`         | `string`             | The name of the connection, used as a label in uptime metrics.         | `""`    | no       |
+| `connection_name`         | `string`             | Name for the connection. Appears in log messages.                      | `""`    | no       |
 | `max_connection_lifetime` | `duration`           | Maximum lifetime of a connection. `0` keeps connections forever.       | `"0s"`  | no       |
 | `max_idle_connections`    | `int`                | Maximum number of idle connections in the connection pool.             | `3`     | no       |
 | `max_open_connections`    | `int`                | Maximum number of open connections in the connection pool.             | `3`     | no       |
@@ -59,8 +59,8 @@ For more information, refer to the [Data Source Names][dsn] section in the `sql_
 [dsn]: https://github.com/burningalchemist/sql_exporter#data-source-names-dsn
 {{< /admonition >}}
 
-The `connection_name` argument allows uptime metrics.
-Refer to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
+{{< param "PRODUCT_NAME" >}} includes `connection_name` in this component's log messages.
+It maps to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
 
 If you set `query_config`, it must be a YAML string that defines which MSSQL queries map to custom Prometheus metrics.
 You typically load `query_config` from the exports of another component.
