@@ -64,7 +64,11 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 
 Set `mongodb_uri` to a [MongoDB connection string][connection-string] that uses either the `mongodb` or `mongodb+srv` scheme.
 
-The `currentop_slow_time` argument applies only when you set `enable_currentop_metrics` to `true`.
+`collect_all` defaults to `true` and turns on every collector.
+While it's `true`, it overrides `discovering_mode` and each `enable_*` argument, so setting any of them to `false` has no effect.
+Set `collect_all` to `false` to choose collectors individually.
+
+The `currentop_slow_time` argument applies only when `enable_currentop_metrics` is `true`.
 The exporter doesn't collect current operation metrics from a `mongos` instance.
 
 You can't use `direct_connect` with multiple hosts or an SRV URI.
