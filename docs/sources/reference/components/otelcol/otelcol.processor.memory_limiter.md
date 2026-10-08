@@ -84,8 +84,6 @@ Set a `max_gc_interval_when_*_limited` to `"0s"` to turn off that doubling and h
 `min_gc_interval_when_soft_limited` must be greater than or equal to `min_gc_interval_when_hard_limited`, and the same ordering applies to the two ceilings.
 A ceiling, when set, must also be greater than or equal to the floor on the same path.
 
-[GOMEMLIMIT]: ../../../cli/environment-variables/#gomemlimit
-
 ## Blocks
 
 You can use the following blocks with `otelcol.processor.memory_limiter`:
