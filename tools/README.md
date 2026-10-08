@@ -51,36 +51,14 @@ other AI-review bots on the same PR. See
 
 ### `benchdiff`
 
-Compares Go benchmarks between two checkouts of the repository, usually a pull
-request's merge base and its head. The `Benchmark PR` workflow
-(`.github/workflows/benchmark-pr.yml`) uses it. It has three subcommands:
-
-- `packages` selects the packages with benchmarks affected by the changes
-  between the merge base and head: packages changed directly, packages whose
-  test binaries depend on a changed package, and every package in a module
-  whose `go.mod` or `go.sum` changed. Pass `--all` to select every package.
-- `run` builds a test binary for each selected package in both checkouts, then
-  runs base and head alternately `--count` times on the same machine.
-- `report` renders a Markdown report of significant `sec/op` and `allocs/op`
-  changes, plus benchmarks that only exist on one side.
-
-To run it locally, compare your branch with its merge base:
+Compares the Go benchmarks affected by the current branch with its merge base
+and writes a Markdown report. Used by `.github/workflows/benchmark-pr.yml`.
 
 ```bash
-MERGE_BASE=$(git merge-base origin/main HEAD)
-git worktree add --detach /tmp/alloy-base "$MERGE_BASE"
-mkdir -p /tmp/bench
-
-go run -C tools ./cmd benchdiff packages --base /tmp/alloy-base --head "$PWD" \
-  --merge-base "$MERGE_BASE" --out /tmp/bench/packages.json
-go run -C tools ./cmd benchdiff run --base /tmp/alloy-base --head "$PWD" \
-  --packages /tmp/bench/packages.json --count 10 --out /tmp/bench
-go tool -C tools benchstat base=/tmp/bench/base.txt head=/tmp/bench/head.txt > /tmp/bench/benchstat.txt
-go run -C tools ./cmd benchdiff report --base-results /tmp/bench/base.txt \
-  --head-results /tmp/bench/head.txt --meta /tmp/bench/meta.json \
-  --packages /tmp/bench/packages.json --benchstat /tmp/bench/benchstat.txt \
-  --merge-base "$MERGE_BASE" --head-sha "$(git rev-parse HEAD)"
+go run -C tools ./cmd benchdiff run --base-ref origin/main --out /tmp/bench
 ```
+
+`benchdiff comment` posts the report on the pull request of a GitHub Actions run.
 
 ### `release`
 

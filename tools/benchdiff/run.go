@@ -12,37 +12,26 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/tools/internal/git"
 )
 
 const (
-	TreeBase = "base"
-	TreeHead = "head"
+	buildTags  = "nodocker"
+	runTimeout = "30m"
 )
-
-// Meta describes a benchmark run, as written by the run subcommand.
-type Meta struct {
-	Count    int       `json:"count"`
-	Failures []Failure `json:"failures,omitempty"`
-}
 
 // Failure records a package that could not be built or benchmarked.
 type Failure struct {
-	ImportPath string `json:"import_path"`
-	Tree       string `json:"tree"`
-	Stage      string `json:"stage"`
-	Message    string `json:"message"`
+	ImportPath, Checkout, Stage, Message string
 }
 
 type runFlags struct {
-	base      string
-	head      string
-	packages  string
-	out       string
-	tags      string
-	bench     string
-	benchtime string
-	timeout   string
-	count     int
+	baseRef string
+	out     string
+	count   int
+	bench   string
+	all     bool
 }
 
 func runCommand() *cobra.Command {
@@ -50,189 +39,216 @@ func runCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run the selected benchmarks on both checkouts, interleaving base and head runs",
+		Short: "Benchmark HEAD against its merge base with --base-ref and write report.md to --out",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runBenchmarks(cmd.Context(), f)
+			return run(cmd.Context(), f)
 		},
 	}
 
-	cmd.Flags().StringVar(&f.base, "base", "", "Path to the checkout of the merge base")
-	cmd.Flags().StringVar(&f.head, "head", "", "Path to the checkout of the head")
-	cmd.Flags().StringVar(&f.packages, "packages", "", "Packages JSON file written by the packages subcommand")
-	cmd.Flags().StringVar(&f.out, "out", "", "Output directory for base.txt, head.txt and meta.json")
-	cmd.Flags().StringVar(&f.tags, "tags", "nodocker", "Go build tags")
+	cmd.Flags().StringVar(&f.baseRef, "base-ref", "origin/main", "Branch the changes are merged into")
+	cmd.Flags().StringVar(&f.out, "out", "", "Output directory")
+	cmd.Flags().IntVar(&f.count, "count", 10, "Number of runs per package and checkout")
 	cmd.Flags().StringVar(&f.bench, "bench", ".", "Benchmark name regexp")
-	cmd.Flags().StringVar(&f.benchtime, "benchtime", "", "Value for -test.benchtime (default: Go's default)")
-	cmd.Flags().StringVar(&f.timeout, "timeout", "30m", "Timeout for a single run of a package's benchmarks")
-	cmd.Flags().IntVar(&f.count, "count", 10, "Number of times to run each package's benchmarks per checkout")
-	for _, name := range []string{"base", "head", "packages", "out"} {
-		_ = cmd.MarkFlagRequired(name)
-	}
+	cmd.Flags().BoolVar(&f.all, "all", false, "Benchmark every package, not just the affected ones")
+	_ = cmd.MarkFlagRequired("out")
 
 	return cmd
 }
 
-type target struct {
-	pkg  Package
-	tree string
-	root string
-	bin  string
-	// failed is set once the target failed to build or run; it is skipped
-	// from then on.
-	failed bool
-}
-
-func runBenchmarks(ctx context.Context, f runFlags) error {
-	var sel Selection
-	if err := readJSON(f.packages, &sel); err != nil {
-		return fmt.Errorf("reading packages: %w", err)
-	}
-
+func run(ctx context.Context, f runFlags) error {
 	out, err := filepath.Abs(f.out)
 	if err != nil {
 		return err
 	}
-	roots := map[string]string{}
-	for tree, dir := range map[string]string{TreeBase: f.base, TreeHead: f.head} {
-		if roots[tree], err = filepath.Abs(dir); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(out, "bin", tree), 0o755); err != nil {
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return err
+	}
+	head, err := git.Root()
+	if err != nil {
+		return err
+	}
+
+	mergeBase, err := gitOutput(ctx, head, "merge-base", f.baseRef, "HEAD")
+	if err != nil {
+		return err
+	}
+	headSHA, err := gitOutput(ctx, head, "rev-parse", "HEAD")
+	if err != nil {
+		return err
+	}
+	diff, err := gitOutput(ctx, head, "diff", "--name-only", "--no-renames", mergeBase, "HEAD")
+	if err != nil {
+		return err
+	}
+
+	base, err := os.MkdirTemp("", "benchdiff-base-")
+	if err != nil {
+		return err
+	}
+	if _, err := gitOutput(ctx, head, "worktree", "add", "--detach", base, mergeBase); err != nil {
+		return err
+	}
+	defer func() { _, _ = gitOutput(context.Background(), head, "worktree", "remove", "--force", base) }()
+
+	baseTree, err := loadTree(ctx, base)
+	if err != nil {
+		return fmt.Errorf("listing base packages: %w", err)
+	}
+	headTree, err := loadTree(ctx, head)
+	if err != nil {
+		return fmt.Errorf("listing head packages: %w", err)
+	}
+	pkgs := selectPackages(strings.Fields(diff), baseTree, headTree, f.all)
+	for _, p := range pkgs {
+		fmt.Fprintf(os.Stderr, "selected %s\n", p.ImportPath)
+	}
+
+	failures, err := benchmark(ctx, pkgs, map[string]string{checkoutBase: base, checkoutHead: head}, out, f)
+	if err != nil {
+		return err
+	}
+
+	baseFile, headFile := filepath.Join(out, "base.txt"), filepath.Join(out, "head.txt")
+	benchstat, err := exec.CommandContext(ctx, "go", "tool", "benchstat", "base="+baseFile, "head="+headFile).Output()
+	if err != nil {
+		return fmt.Errorf("running benchstat (run benchdiff with go run -C tools): %w", err)
+	}
+
+	in := reportInput{
+		packages:  pkgs,
+		failures:  failures,
+		count:     f.count,
+		mergeBase: mergeBase,
+		headSHA:   headSHA,
+		benchstat: string(benchstat),
+	}
+	if in.base, err = readResults(baseFile); err != nil {
+		return err
+	}
+	if in.head, err = readResults(headFile); err != nil {
+		return err
+	}
+
+	for name, data := range map[string]string{"benchstat.txt": in.benchstat, "report.md": renderReport(in)} {
+		if err := os.WriteFile(filepath.Join(out, name), []byte(data), 0o644); err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
-	results := map[string]*os.File{}
-	for _, tree := range []string{TreeBase, TreeHead} {
-		file, err := os.Create(filepath.Join(out, tree+".txt"))
+const (
+	checkoutBase = "base"
+	checkoutHead = "head"
+)
+
+type target struct {
+	pkg      Package
+	checkout string
+	dir      string // package directory
+	bin      string
+	failed   bool
+}
+
+// benchmark builds a test binary per package and checkout, then runs them
+// count times, alternating base and head so both see the same machine state.
+// Results are appended to base.txt and head.txt in out.
+func benchmark(ctx context.Context, pkgs []Package, roots map[string]string, out string, f runFlags) ([]Failure, error) {
+	results := map[string]io.Writer{}
+	for checkout := range roots {
+		file, err := os.Create(filepath.Join(out, checkout+".txt"))
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer file.Close()
-		results[tree] = file
+		results[checkout] = file
 	}
+	binDir, err := os.MkdirTemp("", "benchdiff-bin-")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = os.RemoveAll(binDir) }()
 
-	meta := Meta{Count: f.count}
-	fail := func(t *target, stage, msg string) {
+	var failures []Failure
+	fail := func(t *target, stage string, output []byte) {
 		t.failed = true
-		fmt.Fprintf(os.Stderr, "FAILED to %s %s (%s): %s\n", stage, t.pkg.ImportPath, t.tree, msg)
-		meta.Failures = append(meta.Failures, Failure{
-			ImportPath: t.pkg.ImportPath,
-			Tree:       t.tree,
-			Stage:      stage,
-			Message:    lastLines(msg, 20),
-		})
+		msg := lastLines(string(output), 20)
+		fmt.Fprintf(os.Stderr, "failed to %s %s (%s):\n%s\n", stage, t.pkg.ImportPath, t.checkout, msg)
+		failures = append(failures, Failure{ImportPath: t.pkg.ImportPath, Checkout: t.checkout, Stage: stage, Message: msg})
 	}
 
-	// Build every test binary up front so that the measurements aren't
-	// interleaved with compilation.
-	var targets [][]*target
-	for _, pkg := range sel.Packages {
+	var pairs [][]*target
+	for i, pkg := range pkgs {
 		var pair []*target
-		for _, tree := range []string{TreeBase, TreeHead} {
-			if (tree == TreeBase && !pkg.InBase) || (tree == TreeHead && !pkg.InHead) {
+		for _, checkout := range []string{checkoutBase, checkoutHead} {
+			if (checkout == checkoutBase && !pkg.InBase) || (checkout == checkoutHead && !pkg.InHead) {
 				continue
 			}
 			t := &target{
-				pkg:  pkg,
-				tree: tree,
-				root: roots[tree],
-				bin:  filepath.Join(out, "bin", tree, binaryName(pkg.ImportPath)),
+				pkg:      pkg,
+				checkout: checkout,
+				dir:      filepath.Join(roots[checkout], pkg.Dir),
+				bin:      filepath.Join(binDir, fmt.Sprintf("%s-%d.test", checkout, i)),
 			}
-			fmt.Fprintf(os.Stderr, "building %s (%s)\n", pkg.ImportPath, tree)
-			if msg, err := buildTestBinary(ctx, t, f.tags); err != nil {
-				fail(t, "build", msg)
+			fmt.Fprintf(os.Stderr, "building %s (%s)\n", pkg.ImportPath, checkout)
+			build := exec.CommandContext(ctx, "go", "test", "-c", "-tags", buildTags, "-o", t.bin, pkg.ImportPath)
+			build.Dir = filepath.Join(roots[checkout], pkg.ModuleDir)
+			build.Env = append(os.Environ(), "GOWORK=off")
+			if output, err := build.CombinedOutput(); err != nil {
+				fail(t, "build", output)
 			}
 			pair = append(pair, t)
 		}
-		targets = append(targets, pair)
+		pairs = append(pairs, pair)
 	}
 
-	args := []string{"-test.run=^$", "-test.bench=" + f.bench, "-test.benchmem", "-test.count=1", "-test.timeout=" + f.timeout}
-	if f.benchtime != "" {
-		args = append(args, "-test.benchtime="+f.benchtime)
-	}
-
+	args := []string{"-test.run=^$", "-test.bench=" + f.bench, "-test.benchmem", "-test.count=1", "-test.timeout=" + runTimeout}
 	for i := range f.count {
-		for _, pair := range targets {
-			// Alternate which checkout goes first so that neither side is
-			// systematically favoured by warm caches or thermal state.
-			order := pair
+		for _, pair := range pairs {
 			if i%2 == 1 && len(pair) == 2 {
-				order = []*target{pair[1], pair[0]}
+				pair = []*target{pair[1], pair[0]}
 			}
-			for _, t := range order {
+			for _, t := range pair {
 				if t.failed {
 					continue
 				}
 				start := time.Now()
-				msg, err := runTestBinary(ctx, t, args, results[t.tree])
+				var stdout, stderr bytes.Buffer
+				cmd := exec.CommandContext(ctx, t.bin, args...)
+				cmd.Dir = t.dir // like go test, so benchmarks find their testdata
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				err := cmd.Run()
+				// Results from before a failure are still valid.
+				if _, werr := results[t.checkout].Write(stdout.Bytes()); werr != nil {
+					return nil, werr
+				}
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
 				if err != nil {
-					if ctx.Err() != nil {
-						return ctx.Err()
-					}
-					fail(t, "run", msg)
+					fail(t, "run", append(stdout.Bytes(), stderr.Bytes()...))
 					continue
 				}
-				fmt.Fprintf(os.Stderr, "[%d/%d] %s (%s) in %s\n", i+1, f.count, t.pkg.ImportPath, t.tree, time.Since(start).Round(time.Millisecond))
+				fmt.Fprintf(os.Stderr, "[%d/%d] %s (%s) in %s\n", i+1, f.count, t.pkg.ImportPath, t.checkout, time.Since(start).Round(time.Millisecond))
 			}
 		}
 	}
-
-	return writeJSON(filepath.Join(out, "meta.json"), meta)
+	return failures, nil
 }
 
-func buildTestBinary(ctx context.Context, t *target, tags string) (string, error) {
-	args := []string{"test", "-c", "-o", t.bin}
-	if tags != "" {
-		args = append(args, "-tags", tags)
-	}
-	mod := module{Dir: t.pkg.ModuleDir}
-	args = append(args, "./"+relToModule(mod, t.pkg.Dir))
-
-	var output bytes.Buffer
-	cmd := exec.CommandContext(ctx, "go", args...)
-	cmd.Dir = filepath.Join(t.root, filepath.FromSlash(t.pkg.ModuleDir))
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-	if err := cmd.Run(); err != nil {
-		return output.String(), err
-	}
-	if _, err := os.Stat(t.bin); err != nil {
-		return "no test binary produced: " + output.String(), err
-	}
-	return "", nil
-}
-
-func runTestBinary(ctx context.Context, t *target, args []string, results io.Writer) (string, error) {
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctx, t.bin, args...)
-	// Run from the package directory, like go test does, so benchmarks can
-	// find their testdata.
-	cmd.Dir = filepath.Join(t.root, filepath.FromSlash(t.pkg.Dir))
-	cmd.Stdout = &stdout
+func gitOutput(ctx context.Context, dir string, args ...string) (string, error) {
+	var stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = dir
 	cmd.Stderr = &stderr
-	err := cmd.Run()
-	// Keep the output of a failed run too: benchmarks that completed before
-	// the failure are still valid results.
-	if _, werr := results.Write(stdout.Bytes()); werr != nil {
-		return "", werr
-	}
+	out, err := cmd.Output()
 	if err != nil {
-		return stdout.String() + stderr.String(), err
+		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, stderr.String())
 	}
-	return "", nil
-}
-
-func binaryName(importPath string) string {
-	return strings.NewReplacer("/", "_", ".", "_").Replace(importPath) + ".test"
+	return strings.TrimSpace(string(out)), nil
 }
 
 func lastLines(s string, n int) string {
 	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
+	return strings.Join(lines[max(0, len(lines)-n):], "\n")
 }

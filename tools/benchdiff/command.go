@@ -1,6 +1,5 @@
-// Package benchdiff compares Go benchmarks between two checkouts of the
-// repository (typically a pull request's merge base and its head) and renders
-// a Markdown report of the significant differences.
+// Package benchdiff compares the Go benchmarks affected by a change between
+// the change and its merge base.
 package benchdiff
 
 import (
@@ -10,17 +9,11 @@ import (
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "benchdiff",
-		Short: "Compare Go benchmarks between two checkouts of the repository",
+		Short: "Compare Go benchmarks between HEAD and its merge base",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Usage()
 		},
 	}
-
-	cmd.AddCommand(
-		packagesCommand(),
-		runCommand(),
-		reportCommand(),
-	)
-
+	cmd.AddCommand(runCommand(), commentCommand())
 	return cmd
 }

@@ -5,9 +5,8 @@ import (
 	"testing"
 )
 
-// syntheticResults returns n benchmarks with 10 samples each. scale
-// multiplies every sec/op value, so two calls with different scales differ
-// significantly in sec/op.
+// syntheticResults returns n benchmarks with 10 samples each and sec/op
+// multiplied by scale.
 func syntheticResults(n int, scale float64) results {
 	res := results{cpu: "Test CPU", samples: map[benchKey]map[string][]float64{}}
 	for i := range n {
@@ -28,7 +27,7 @@ func BenchmarkCompareUnit(b *testing.B) {
 		b.Run(fmt.Sprintf("benchmarks=%d", n), func(b *testing.B) {
 			base, head := syntheticResults(n, 1), syntheticResults(n, 1.1)
 			for b.Loop() {
-				compareUnit(base, head, "sec/op", 0.05, 5)
+				compareUnit(base, head, "sec/op")
 			}
 		})
 	}
@@ -36,15 +35,10 @@ func BenchmarkCompareUnit(b *testing.B) {
 
 func BenchmarkRenderReport(b *testing.B) {
 	in := reportInput{
-		base: syntheticResults(100, 1),
-		head: syntheticResults(100, 1.1),
-		selection: Selection{Packages: []Package{
-			{ImportPath: "github.com/grafana/alloy/internal/demo", Reason: ReasonDirect, InBase: true, InHead: true},
-		}},
-		meta:      Meta{Count: 10},
-		threshold: 5,
-		alpha:     0.05,
-		maxRows:   30,
+		base:     syntheticResults(100, 1),
+		head:     syntheticResults(100, 1.1),
+		packages: []Package{{ImportPath: "github.com/grafana/alloy/internal/demo", InBase: true, InHead: true}},
+		count:    10,
 	}
 	for b.Loop() {
 		renderReport(in)

@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// benchOutput renders 10 runs of go test -bench output for pkg, with one
-// line per benchmark. Each benchmark is given as ns/op and allocs/op; ns/op
-// jitters slightly between runs.
+// benchOutput renders 10 runs of go test -bench output for benchmarks given as
+// {ns/op, allocs/op}, with a little jitter in ns/op.
 func benchOutput(pkg string, benches map[string][2]float64) string {
 	var sb strings.Builder
 	for i := range 10 {
@@ -60,26 +59,20 @@ func TestRenderReport(t *testing.T) {
 	require.NoError(t, err)
 
 	report := renderReport(reportInput{
-		base: baseRes,
-		head: headRes,
-		selection: Selection{Packages: []Package{
-			{ImportPath: pkg, Reason: ReasonDirect, InBase: true, InHead: true},
-		}},
-		meta: Meta{Count: 10, Failures: []Failure{
-			{ImportPath: "github.com/grafana/alloy/internal/broken", Tree: TreeHead, Stage: "build", Message: "undefined: foo"},
-		}},
+		base:     baseRes,
+		head:     headRes,
+		packages: []Package{{ImportPath: pkg, InBase: true, InHead: true}},
+		failures: []Failure{
+			{ImportPath: "github.com/grafana/alloy/internal/broken", Checkout: checkoutHead, Stage: "build", Message: "undefined: foo"},
+		},
+		count:     10,
 		benchstat: "benchstat output",
 		mergeBase: "0123456789abcdef",
 		headSHA:   "fedcba9876543210",
-		runner:    "ubuntu-x64-xlarge",
-		threshold: 5,
-		alpha:     0.05,
-		maxRows:   30,
 	})
 
 	require.True(t, strings.HasPrefix(report, Marker))
-	require.Contains(t, report, "merge base `0123456789` with PR head `fedcba9876`, 10 interleaved runs each on `ubuntu-x64-xlarge` (Test CPU @ 3.00GHz)")
-	require.Contains(t, report, "Benchmarked 1 package (1 changed directly)")
+	require.Contains(t, report, "merge base `0123456789` with PR head `fedcba9876`, 10 interleaved runs each on Test CPU @ 3.00GHz. Benchmarked 1 package")
 
 	cpu, allocs := section(report, "### CPU time"), section(report, "### Allocations")
 	require.Contains(t, cpu, "2 benchmarks changed significantly out of 4 compared")
@@ -107,10 +100,9 @@ func TestRenderReport_NoChanges(t *testing.T) {
 
 	report := renderReport(reportInput{
 		base: res, head: res,
-		selection: Selection{Packages: []Package{{ImportPath: pkg, Reason: ReasonReverseDep}}},
-		threshold: 5, alpha: 0.05, maxRows: 30,
+		packages: []Package{{ImportPath: pkg}},
+		count:    10,
 	})
-	require.Contains(t, report, "Benchmarked 1 package (1 importing changed packages)")
 	require.Contains(t, section(report, "### CPU time"), "No significant changes across 1 benchmark.")
 	require.Contains(t, section(report, "### Allocations"), "No significant changes across 1 benchmark.")
 	require.NotContains(t, report, "Only in")
@@ -126,8 +118,7 @@ func TestCode(t *testing.T) {
 	require.Equal(t, "a`b", code("a`b"))
 }
 
-// section returns the part of report starting at heading, up to the next
-// heading.
+// section returns report from heading up to the next heading.
 func section(report, heading string) string {
 	i := strings.Index(report, heading)
 	if i < 0 {

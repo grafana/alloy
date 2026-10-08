@@ -1,35 +1,15 @@
 package benchdiff
 
 import (
+	"context"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-var testModules = []module{
-	{Dir: ".", Path: "github.com/grafana/alloy"},
-	{Dir: "syntax", Path: "github.com/grafana/alloy/syntax"},
-}
-
-func TestOwningPackage(t *testing.T) {
-	tests := []struct {
-		file string
-		want string
-	}{
-		{"internal/component/loki/process/stages/match.go", "github.com/grafana/alloy/internal/component/loki/process/stages"},
-		{"main.go", "github.com/grafana/alloy"},
-		{"syntax/vm/vm.go", "github.com/grafana/alloy/syntax/vm"},
-		{"syntax/parser.go", "github.com/grafana/alloy/syntax"},
-		{"syntaxfoo/x.go", "github.com/grafana/alloy/syntaxfoo"},
-	}
-	for _, tt := range tests {
-		got, ok := owningPackage(tt.file, testModules)
-		require.True(t, ok, tt.file)
-		require.Equal(t, tt.want, got, tt.file)
-	}
-}
 
 func TestSelectPackages(t *testing.T) {
 	const (
@@ -38,129 +18,82 @@ func TestSelectPackages(t *testing.T) {
 		vm      = "github.com/grafana/alloy/syntax/vm"
 		removed = "github.com/grafana/alloy/internal/removed"
 		added   = "github.com/grafana/alloy/internal/added"
-		lokiPkg = "github.com/grafana/alloy/internal/component/common/loki"
+		loki    = "github.com/grafana/alloy/internal/component/common/loki"
+		scanner = "github.com/grafana/alloy/syntax/scanner"
 	)
 
-	base := tree{
-		modules: testModules,
-		bench: map[string]benchPackage{
-			stages:  {ModuleDir: ".", Dir: "internal/component/loki/process/stages"},
-			wal:     {ModuleDir: ".", Dir: "internal/static/metrics/wal"},
-			vm:      {ModuleDir: "syntax", Dir: "syntax/vm"},
-			removed: {ModuleDir: ".", Dir: "internal/removed"},
-		},
-		deps: map[string][]string{
-			stages:  {lokiPkg, "github.com/grafana/alloy/syntax/scanner"},
-			wal:     {"github.com/prometheus/prometheus/tsdb"},
-			vm:      {"github.com/grafana/alloy/syntax/scanner"},
-			removed: {"fmt"},
-		},
+	importPaths := map[string]string{
+		"internal/component/loki/process/stages": stages,
+		"internal/static/metrics/wal":            wal,
+		"internal/component/common/loki":         loki,
+		"syntax/vm":                              vm,
+		"syntax/scanner":                         scanner,
+		"internal/removed":                       removed,
+		"internal/added":                         added,
 	}
-	head := tree{
-		modules: testModules,
-		bench: map[string]benchPackage{
-			stages: base.bench[stages],
-			wal:    base.bench[wal],
-			vm:     base.bench[vm],
-			added:  {ModuleDir: ".", Dir: "internal/added"},
-		},
-		deps: map[string][]string{
-			stages: base.deps[stages],
-			wal:    base.deps[wal],
-			vm:     base.deps[vm],
-			added:  {"fmt"},
-		},
+	stagesPkg := benchPackage{moduleDir: ".", dir: "internal/component/loki/process/stages", deps: []string{loki, scanner}}
+	walPkg := benchPackage{moduleDir: ".", dir: "internal/static/metrics/wal", deps: []string{"github.com/prometheus/prometheus/tsdb"}}
+	vmPkg := benchPackage{moduleDir: "syntax", dir: "syntax/vm", deps: []string{scanner}}
+
+	base := tree{importPaths: importPaths, bench: map[string]benchPackage{
+		stages: stagesPkg, wal: walPkg, vm: vmPkg,
+		removed: {moduleDir: ".", dir: "internal/removed"},
+	}}
+	head := tree{importPaths: importPaths, bench: map[string]benchPackage{
+		stages: stagesPkg, wal: walPkg, vm: vmPkg,
+		added: {moduleDir: ".", dir: "internal/added"},
+	}}
+
+	tests := []struct {
+		name    string
+		changed []string
+		all     bool
+		want    []string
+	}{
+		{"reverse dependency", []string{"internal/component/common/loki/types.go"}, false, []string{stages}},
+		{"reverse dependency across modules", []string{"syntax/scanner/scanner.go"}, false, []string{stages, vm}},
+		{"test files and other files elsewhere", []string{"internal/component/common/loki/types_test.go", "docs/README.md"}, false, nil},
+		{"test file in the package", []string{"internal/static/metrics/wal/wal_test.go"}, false, []string{wal}},
+		{"testdata", []string{"internal/static/metrics/wal/testdata/segment"}, false, []string{wal}},
+		{"go.mod", []string{"syntax/go.mod"}, false, []string{vm}},
+		{"added and removed packages", []string{"internal/removed/bench_test.go", "internal/added/bench_test.go"}, false, []string{added, removed}},
+		{"all", nil, true, []string{added, stages, removed, wal, vm}},
 	}
-
-	t.Run("reverse dependency", func(t *testing.T) {
-		got := selectPackages([]string{"internal/component/common/loki/types.go"}, base, head, false)
-		require.Equal(t, []Package{
-			{ImportPath: stages, ModuleDir: ".", Dir: "internal/component/loki/process/stages", InBase: true, InHead: true, Reason: ReasonReverseDep},
-		}, got)
-	})
-
-	t.Run("cross-module reverse dependency", func(t *testing.T) {
-		got := selectPackages([]string{"syntax/scanner/scanner.go"}, base, head, false)
-		require.Equal(t, []string{stages, vm}, importPaths(got))
-		for _, p := range got {
-			require.Equal(t, ReasonReverseDep, p.Reason)
-		}
-	})
-
-	t.Run("test-only change elsewhere is ignored", func(t *testing.T) {
-		got := selectPackages([]string{"internal/component/common/loki/types_test.go", "docs/README.md"}, base, head, false)
-		require.Empty(t, got)
-	})
-
-	t.Run("direct change wins over reverse dependency", func(t *testing.T) {
-		got := selectPackages([]string{
-			"internal/component/loki/process/stages/match_test.go",
-			"internal/component/common/loki/types.go",
-		}, base, head, false)
-		require.Len(t, got, 1)
-		require.Equal(t, ReasonDirect, got[0].Reason)
-	})
-
-	t.Run("testdata change", func(t *testing.T) {
-		got := selectPackages([]string{"internal/static/metrics/wal/testdata/segment"}, base, head, false)
-		require.Equal(t, []string{wal}, importPaths(got))
-		require.Equal(t, ReasonDirect, got[0].Reason)
-	})
-
-	t.Run("added and removed packages", func(t *testing.T) {
-		got := selectPackages([]string{"internal/removed/bench_test.go", "internal/added/bench_test.go"}, base, head, false)
-		require.Equal(t, []Package{
-			{ImportPath: added, ModuleDir: ".", Dir: "internal/added", InBase: false, InHead: true, Reason: ReasonDirect},
-			{ImportPath: removed, ModuleDir: ".", Dir: "internal/removed", InBase: true, InHead: false, Reason: ReasonDirect},
-		}, got)
-	})
-
-	t.Run("go.mod change selects the whole module", func(t *testing.T) {
-		got := selectPackages([]string{"syntax/go.mod"}, base, head, false)
-		require.Equal(t, []string{vm}, importPaths(got))
-		require.Equal(t, ReasonGoMod, got[0].Reason)
-	})
-
-	t.Run("all", func(t *testing.T) {
-		got := selectPackages(nil, base, head, true)
-		require.Equal(t, []string{added, stages, removed, wal, vm}, importPaths(got))
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []string
+			for _, p := range selectPackages(tt.changed, base, head, tt.all) {
+				got = append(got, p.ImportPath)
+				require.Equal(t, p.ImportPath != added, p.InBase, p.ImportPath)
+				require.Equal(t, p.ImportPath != removed, p.InHead, p.ImportPath)
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
 
-func TestFindBenchDirs(t *testing.T) {
+func TestLoadTree(t *testing.T) {
 	root := t.TempDir()
 	write := func(rel, content string) {
 		p := filepath.Join(root, filepath.FromSlash(rel))
 		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
 		require.NoError(t, os.WriteFile(p, []byte(content), 0o644))
 	}
-	write("go.mod", "module example.com/root\n")
-	write("a/a_test.go", "package a\n\nfunc BenchmarkA(b *testing.B) {}\n")
-	write("b/b_test.go", "package b\n\nfunc TestB(t *testing.T) {}\n")
-	write("c/c.go", "package c\n\nfunc BenchmarkNotATest() {}\n")
-	write("a/testdata/x/x_test.go", "package x\n\nfunc BenchmarkX(b *testing.B) {}\n")
-	write("sub/go.mod", "module example.com/sub\n")
-	write("sub/s/s_test.go", "package s\n\nfunc BenchmarkS(b *testing.B) {}\n")
+	write("go.mod", "module example.com/root\n\ngo 1.26\n")
+	write("a/a.go", "package a\n")
+	write("a/a_test.go", "package a\n\nimport \"testing\"\n\nfunc BenchmarkA(b *testing.B) {}\n")
+	write("b/b.go", "package b\n\nimport _ \"example.com/root/a\"\n")
+	write("b/b_test.go", "package b\n\nimport \"testing\"\n\nfunc TestB(t *testing.T) {}\n")
+	write("c/c_test.go", "package c_test\n\nimport (\n\t\"testing\"\n\n\t_ \"example.com/root/b\"\n)\n\nfunc BenchmarkC(b *testing.B) {}\n")
+	write("sub/go.mod", "module example.com/sub\n\ngo 1.26\n")
+	write("sub/s/s_test.go", "package s\n\nimport \"testing\"\n\nfunc BenchmarkS(b *testing.B) {}\n")
 
-	mods, err := findModules(root)
+	tr, err := loadTree(context.Background(), root)
 	require.NoError(t, err)
-	require.Equal(t, []module{{Dir: ".", Path: "example.com/root"}, {Dir: "sub", Path: "example.com/sub"}}, mods)
 
-	dirs, err := findBenchDirs(root, mods[0], mods)
-	require.NoError(t, err)
-	require.Equal(t, []string{"a"}, dirs)
-
-	dirs, err = findBenchDirs(root, mods[1], mods)
-	require.NoError(t, err)
-	require.Equal(t, []string{"sub/s"}, dirs)
-	require.Equal(t, "example.com/sub/s", importPath(mods[1], "sub/s"))
-	require.Equal(t, "example.com/sub", importPath(mods[1], "sub"))
-}
-
-func importPaths(pkgs []Package) []string {
-	var paths []string
-	for _, p := range pkgs {
-		paths = append(paths, p.ImportPath)
-	}
-	return paths
+	require.Equal(t, "example.com/root/b", tr.importPaths["b"])
+	require.Equal(t, "example.com/sub/s", tr.importPaths["sub/s"])
+	require.ElementsMatch(t, []string{"example.com/root/a", "example.com/root/c", "example.com/sub/s"}, slices.Collect(maps.Keys(tr.bench)))
+	require.Equal(t, "sub", tr.bench["example.com/sub/s"].moduleDir)
+	require.Contains(t, tr.bench["example.com/root/c"].deps, "example.com/root/a", "transitive dependency of an external test")
 }
