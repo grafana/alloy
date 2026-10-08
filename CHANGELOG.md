@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.2](https://github.com/grafana/alloy/compare/v1.20.1...v1.20.2) (2026-10-08)
+
+
+### Bug Fixes 🐛
+
+* **local.file_match, loki.source.file:** Fix matching through Widows junctions [backport] ([#7271](https://github.com/grafana/alloy/issues/7271)) ([9a35859](https://github.com/grafana/alloy/commit/9a358595641866a8233e69a2fb98d273c83c880e))
+* **loki.source.file:** Reduce CPU usage for long lines [backport] ([#7294](https://github.com/grafana/alloy/issues/7294)) ([c6a1d29](https://github.com/grafana/alloy/commit/c6a1d298803f17c4b499f998b9d0936a4f1f0b18))
+
 ## [1.20.1](https://github.com/grafana/alloy/compare/v1.20.0...v1.20.1) (2026-09-28)
 
 
