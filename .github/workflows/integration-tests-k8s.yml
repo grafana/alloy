@@ -28,11 +28,11 @@ jobs:
         sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
         install_args: go
     - name: Build Alloy image
-      run: make alloy-image
+      run: make alloy-image-distroless
     - name: Build prom-gen image
       run: make prom-gen-image
     - name: Save images
-      run: docker save grafana/alloy:latest prom-gen:latest -o test-images.tar
+      run: docker save grafana/alloy:latest-distroless prom-gen:latest -o test-images.tar
     - name: Upload images artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
@@ -66,4 +66,4 @@ jobs:
     - name: Load images
       run: docker load -i test-images.tar
     - name: Run tests
-      run: make integration-test-k8s RUN_ARGS="--skip-image-builds --shard ${{ matrix.shard }}"
+      run: make integration-test-k8s RUN_ARGS="--distroless --skip-image-builds --shard ${{ matrix.shard }}"
