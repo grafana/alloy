@@ -309,6 +309,19 @@ func (c *Component) apply(args Arguments, gen *generation) {
 		c.metrics.deleteQuery(r.name)
 	}
 
+	// A kept query has the assigned flag from when clustering was off. Its
+	// owner must be known before a poll can see clustering on, or the poll
+	// could send as a non-owner. So the lookup comes before the store of
+	// the generation. The old generation has clustering off, so polls
+	// ignore the new flags until then.
+	clusteringEnabled := gen.clustering && (oldGen == nil || !oldGen.clustering)
+	if clusteringEnabled {
+		c.mut.RLock()
+		kept := maps.Clone(c.queries)
+		c.mut.RUnlock()
+		c.refreshOwnership(kept)
+	}
+
 	c.prom.UpdateChildren(args.ForwardTo.Metrics)
 
 	var (
@@ -325,7 +338,6 @@ func (c *Component) apply(args Arguments, gen *generation) {
 	c.otelMetrics = args.Output.Metrics
 	c.otelLogs = args.Output.Logs
 
-	clusteringEnabled := gen.clustering && (oldGen == nil || !oldGen.clustering)
 	for name := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
@@ -341,7 +353,7 @@ func (c *Component) apply(args Arguments, gen *generation) {
 		case !gen.clustering:
 			// Enabling clustering later must not see a false gain.
 			qs.assigned.Store(true)
-		case !ok || clusteringEnabled:
+		case !ok:
 			toLookUp[name] = qs
 		}
 		// A restart drops a pending jitter, so the query waits for its new
@@ -360,6 +372,12 @@ func (c *Component) apply(args Arguments, gen *generation) {
 		}
 	}
 	c.mut.Unlock()
+	if clusteringEnabled {
+		// NotifyClusterChange drops a ring change while clustering is off,
+		// so a change after the lookup above could be lost. One refresh
+		// covers it.
+		c.NotifyClusterChange()
+	}
 
 	for _, l := range toStop {
 		l.stop()

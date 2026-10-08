@@ -1597,6 +1597,109 @@ func TestClusteringEnabledDuringFetchDropsResult(t *testing.T) {
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
+// checkingAppender calls check before each sample that it passes on. Use a
+// pointer, because the fanout compares its children and a func is not
+// comparable.
+type checkingAppender struct {
+	storage.Appender
+	check func()
+}
+
+func (a *checkingAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
+	a.check()
+	return a.Appender.Append(ref, l, t, v)
+}
+
+// TestClusteringEnabledNoGapBeforeOwnership checks that a reload that turns
+// clustering on sets the ownership of the kept queries before the new
+// setting takes effect. Another node owns every query, so this node must
+// send no sample while clustering is on. The fetch ends while the reload
+// waits in an ownership lookup.
+func TestClusteringEnabledNoGapBeforeOwnership(t *testing.T) {
+	var (
+		once      sync.Once
+		block     = make(chan struct{})
+		entered   = make(chan struct{}, 1)
+		closeOnce = func() { once.Do(func() { close(block) }) }
+	)
+	defer closeOnce()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		select {
+		case <-block:
+		case <-r.Context().Done():
+			return
+		}
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "1s"
+		timeout  = "1s"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	cl := newSwitchOwner(true)
+	app := testappender.NewCollectingAppender()
+	var (
+		comp      atomic.Pointer[Component]
+		nonOwnerN atomic.Int32
+	)
+	appendable := testappender.ConstantAppendable{Inner: &checkingAppender{Appender: app, check: func() {
+		if c := comp.Load(); c != nil && c.gen.Load().clustering {
+			nonOwnerN.Inc()
+		}
+	}}}
+	args, err := parse(cfg)
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	c, err := New(testOptions(t, cl), args)
+	require.NoError(t, err)
+	comp.Store(c)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the poll never reached the server")
+	}
+
+	lookupEntered, releaseLookup := cl.gate.arm()
+	defer releaseLookup()
+	args, err = parse(cfg + "\nclustering { enabled = true }")
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	updateDone := make(chan error, 1)
+	go func() { updateDone <- c.Update(args) }()
+	select {
+	case <-lookupEntered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the reload never looked up an owner")
+	}
+
+	// The fetch ends while the reload waits for the lookup.
+	closeOnce()
+	require.Eventually(t, func() bool {
+		qs := queryStateOf(c, "q")
+		qs.mut.Lock()
+		defer qs.mut.Unlock()
+		return app.LatestSampleFor(series("v")) != nil || !qs.owned
+	}, 2*time.Second, 5*time.Millisecond, "the poll must end")
+	releaseLookup()
+	select {
+	case err := <-updateDone:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Update did not return")
+	}
+	require.False(t, queryStateOf(c, "q").assigned.Load())
+	require.Zero(t, nonOwnerN.Load(), "a node that does not own the query sent samples while clustering was on")
+}
+
 // TestUpdateSendsRemovalMarkersToOldOutputs checks that a reload that
 // removes a query and replaces the metric outputs sends the query's stale
 // markers to the outputs from before the reload. Only those outputs have
