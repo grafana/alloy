@@ -427,7 +427,9 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 		}
 	}
 	frame, err := fetchFrame(ctx, g, s, qs.workers, c.parse)
-	if g.clustering && !qs.assigned.Load() {
+	// Load the current generation, because a reload that turns clustering
+	// on and keeps the interval does not stop this loop.
+	if c.gen.Load().clustering && !qs.assigned.Load() {
 		// The node lost the query during the fetch. The new owner writes
 		// the same series, so this node must not send the result.
 		qs.release()

@@ -1474,6 +1474,78 @@ func TestOwnershipLostDuringFetchDropsResult(t *testing.T) {
 	}
 }
 
+// TestClusteringEnabledDuringFetchDropsResult checks that a reload that
+// turns clustering on during a fetch, and keeps the interval, makes the
+// poll drop its result when another node owns the query. The loop keeps
+// running, so the poll must read the clustering setting after the fetch.
+func TestClusteringEnabledDuringFetchDropsResult(t *testing.T) {
+	var (
+		hits      atomic.Int32
+		once      sync.Once
+		block     = make(chan struct{})
+		entered   = make(chan struct{}, 1)
+		closeOnce = func() { once.Do(func() { close(block) }) }
+	)
+	defer closeOnce()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The first poll fails, so the health has an error to clear.
+		if hits.Inc() == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+		select {
+		case <-block:
+		case <-r.Context().Done():
+			return
+		}
+		_, _ = w.Write([]byte(`[{"v":1}]`))
+	}))
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		interval = "1s"
+		timeout  = "1s"
+		query "q" {
+			url = %q
+		}`, srv.URL)
+	cl := newSwitchOwner(true)
+	app := testappender.NewCollectingAppender()
+	appendable := testappender.ConstantAppendable{Inner: app}
+	c, err := startComponent(t.Context(), testOptions(t, cl), cfg, appendable, nil)
+	require.NoError(t, err)
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the second poll never reached the server")
+	}
+	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health)
+
+	args, err := parse(cfg + "\nclustering { enabled = true }")
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	require.NoError(t, c.Update(args))
+	qs := queryStateOf(c, "q")
+	require.False(t, qs.assigned.Load(), "another node owns the query")
+	upBefore := app.LatestSampleFor(series("up"))
+	require.NotNil(t, upBefore)
+	closeOnce()
+
+	require.Eventually(t, func() bool {
+		qs.mut.Lock()
+		defer qs.mut.Unlock()
+		return !qs.owned && qs.tracker.len() == 0
+	}, 2*time.Second, 5*time.Millisecond, "the poll must give up the query after the fetch")
+	// No data, no new up sample and no stale markers.
+	require.Nil(t, app.LatestSampleFor(series("v")), "a node that does not own the query must send no data")
+	upAfter := app.LatestSampleFor(series("up"))
+	require.Equal(t, upBefore.Timestamp, upAfter.Timestamp, "a node that does not own the query must send no up sample or stale marker")
+	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
+}
+
 // TestUpdateSendsRemovalMarkersToOldOutputs checks that a reload that
 // removes a query and replaces the metric outputs sends the query's stale
 // markers to the outputs from before the reload. Only those outputs have
