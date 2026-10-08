@@ -12,7 +12,6 @@ import (
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -566,8 +565,6 @@ spec:
 					},
 				},
 			)
-			store := assets.NewStoreBuilder(c.CoreV1(), c.CoreV1())
-
 			processor := &eventProcessor{
 				queue:                 workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 				stopChan:              make(chan struct{}),
@@ -582,7 +579,7 @@ spec:
 				cfgSelector:           cfgSelector,
 				metrics:               newMetrics(),
 				logger:                testLogger,
-				storeBuilder:          store,
+				kclient:               c,
 			}
 
 			ctx := t.Context()
@@ -654,4 +651,77 @@ func testNamespaceIndexer() cache.Indexer {
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	return nsIndexer
+}
+
+func TestReconcileReadsUpdatedSecret(t *testing.T) {
+	amConfigStr := `apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config1
+  namespace: mynamespace
+spec:
+  route:
+    receiver: myamc
+  receivers:
+  - name: myamc
+    slackConfigs:
+    - apiURL:
+        key: api-url
+        name: s-receiver-api-url`
+
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "mynamespace"}}
+	nsIndexer := testNamespaceIndexer()
+	require.NoError(t, nsIndexer.Add(ns))
+
+	var amConfig monitoringv1alpha1.AlertmanagerConfig
+	require.NoError(t, yaml.Unmarshal([]byte(amConfigStr), &amConfig))
+	amConfigsIndexer := testAmConfigsIndexer()
+	require.NoError(t, amConfigsIndexer.Add(&amConfig))
+
+	// The Secret starts without the key the AlertmanagerConfig references.
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "s-receiver-api-url", Namespace: "mynamespace"},
+		Data:       map[string][]byte{},
+	}
+	c := fake.NewClientset(secret)
+
+	mimirClient := newFakeMimirClient()
+	processor := &eventProcessor{
+		mimirClient:       mimirClient,
+		baseCfg:           convertToAlertmanagerType(t, "route:\n  receiver: \"null\"\nreceivers:\n- name: \"null\"\n"),
+		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
+		cfgLister:         promListers_v1alpha1.NewAlertmanagerConfigLister(amConfigsIndexer),
+		namespaceSelector: labels.Everything(),
+		cfgSelector:       labels.Everything(),
+		matcherStrategy:   monitoringv1.OnNamespaceConfigMatcherStrategyType,
+		metrics:           newMetrics(),
+		logger:            util.TestAlloyLogger(t).Slog(),
+		kclient:           c,
+	}
+
+	updateSecret := func(url string) {
+		secret.Data = map[string][]byte{"api-url": []byte(url)}
+		_, err := c.CoreV1().Secrets("mynamespace").Update(t.Context(), secret, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	}
+
+	mimirConfig := func() string {
+		cfg, err := mimirClient.getAlertmanagerConfig().String()
+		require.NoError(t, err)
+		return cfg
+	}
+
+	err := processor.reconcileState(t.Context())
+	require.ErrorContains(t, err, `key "api-url" in secret "s-receiver-api-url" not found`)
+
+	// Adding the missing key must be picked up by the next reconcile.
+	updateSecret("https://val1.com")
+	require.NoError(t, processor.reconcileState(t.Context()))
+	require.Contains(t, mimirConfig(), "api_url: https://val1.com")
+
+	// So must changing its value.
+	updateSecret("https://val2.com")
+	require.NoError(t, processor.reconcileState(t.Context()))
+	require.Contains(t, mimirConfig(), "api_url: https://val2.com")
+	require.NotContains(t, mimirConfig(), "val1")
 }
