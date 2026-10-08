@@ -335,6 +335,30 @@ func TestMatchStage(t *testing.T) {
 				newEntry(map[string]any{"foo": "bar", "bar": "test"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
 			},
 		},
+		{
+			name: `keep seeds extracted with labels added before the match for the nested pipeline`,
+			config: `
+			stage.static_labels {
+				values = { "env" = "prod" }
+			}
+
+			stage.match {
+				selector = "{app=\"loki\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "env_copy" = "env" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"app": "loki", "env": "prod"}, model.LabelSet{"app": "loki", "env": "prod", "env_copy": "prod"}, "foo", now),
+				newEntry(map[string]any{"app": "other"}, model.LabelSet{"app": "other", "env": "prod"}, "foo", now),
+			},
+		},
 	}
 
 	for _, tt := range tests {
