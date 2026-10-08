@@ -20,6 +20,8 @@ When memory usage goes above the soft limit, the processor component drops data 
 When usage exceeds the hard limit, the processor forces a garbage collection to try and free memory.
 When usage is below the soft limit, no data is dropped and no forced garbage collection is performed.
 
+Place the `otelcol.processor.memory_limiter` component first in your pipeline configuration, before any other processor.
+
 {{< admonition type="note" >}}
 `otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector [`memorylimiter`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
@@ -67,6 +69,9 @@ The configuration options `limit` and `limit_percentage` define the hard limits.
 The soft limits are then calculated as the hard limit minus the `spike_limit` or `spike_limit_percentage` values respectively.
 The recommended value for spike limits is about 20% of the corresponding hard limit.
 
+Set the [`GOMEMLIMIT`][GOMEMLIMIT] environment variable to 80% of the hard limit you set in `limit` or `limit_percentage`.
+With the recommended spike limit, this value matches the soft limit.
+
 The recommended `check_interval` value is 1 second.
 If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
 
@@ -80,6 +85,8 @@ Set a `max_gc_interval_when_*_limited` to `"0s"` to turn off that doubling and h
 
 `min_gc_interval_when_soft_limited` must be greater than or equal to `min_gc_interval_when_hard_limited`, and the same ordering applies to the two ceilings.
 A ceiling, when set, must also be greater than or equal to the floor on the same path.
+
+[GOMEMLIMIT]: ../../../cli/environment-variables/#gomemlimit
 
 ## Blocks
 
