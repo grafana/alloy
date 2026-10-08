@@ -191,7 +191,7 @@ This information contains no secret values.
 
 ## Debug metrics
 
-`remote.aws.secrets_manager` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
 | Name                                                              | Type      | Description                                                                    |
 | ----------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------ |
