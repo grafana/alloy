@@ -11,14 +11,15 @@ const (
 	labelHost   = "host"
 	labelReason = "reason"
 
-	reasonGeneric       = "ingester_error"
-	reasonRateLimited   = "rate_limited"
-	reasonStreamLimited = "stream_limited"
-	reasonQueueIsFull   = "queue_is_full"
-	reasonBatchTooLarge = "batch_too_large"
+	reasonGeneric        = "ingester_error"
+	reasonRateLimited    = "rate_limited"
+	reasonStreamLimited  = "stream_limited"
+	reasonQueueIsFull    = "queue_is_full"
+	reasonBatchTooLarge  = "batch_too_large"
+	reasonEncodingFailed = "encoding_failed"
 )
 
-var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonQueueIsFull, reasonBatchTooLarge}
+var reasons = []string{reasonGeneric, reasonRateLimited, reasonStreamLimited, reasonQueueIsFull, reasonBatchTooLarge, reasonEncodingFailed}
 
 type metrics struct {
 	sentBytes              *prometheus.CounterVec
@@ -122,7 +123,8 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 }
 
 type walEndpointMetrics struct {
-	lastReadTimestamp *prometheus.GaugeVec
+	lastReadTimestamp     *prometheus.GaugeVec
+	streamNotFoundEntries *prometheus.CounterVec
 }
 
 func newWALEndpointMetrics(reg prometheus.Registerer) *walEndpointMetrics {
@@ -135,19 +137,31 @@ func newWALEndpointMetrics(reg prometheus.Registerer) *walEndpointMetrics {
 			},
 			[]string{"id"},
 		),
+		streamNotFoundEntries: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "loki_write",
+				Name:      "wal_entries_stream_not_found_total",
+				Help:      "Number of log entries read from the WAL and dropped because their stream was not found.",
+			},
+			[]string{"id"},
+		),
 	}
 
 	if reg != nil {
 		m.lastReadTimestamp = util.MustRegisterOrGet(reg, m.lastReadTimestamp).(*prometheus.GaugeVec)
+		m.streamNotFoundEntries = util.MustRegisterOrGet(reg, m.streamNotFoundEntries).(*prometheus.CounterVec)
 	}
 
 	return m
 }
 
 func (m *walEndpointMetrics) CurryWithId(id string) *walEndpointMetrics {
-	return &walEndpointMetrics{
-		lastReadTimestamp: m.lastReadTimestamp.MustCurryWith(map[string]string{
-			"id": id,
-		}),
+	labels := map[string]string{"id": id}
+	curried := &walEndpointMetrics{
+		lastReadTimestamp:     m.lastReadTimestamp.MustCurryWith(labels),
+		streamNotFoundEntries: m.streamNotFoundEntries.MustCurryWith(labels),
 	}
+	// Export the counter before the first drop so that alerts can use it.
+	curried.streamNotFoundEntries.WithLabelValues().Add(0)
+	return curried
 }
