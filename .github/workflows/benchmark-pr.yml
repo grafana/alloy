@@ -50,6 +50,9 @@ jobs:
       run: go run -C tools ./cmd benchdiff comment
 
     - name: Run benchmarks
+      # Unlike a job timeout, a step timeout doesn't cancel the job, so the
+      # report is still posted and the label removed.
+      timeout-minutes: 150
       env:
         BASE_REF: origin/${{ github.event.pull_request.base.ref }}
       run: |
