@@ -499,6 +499,25 @@ func TestScrubURLs(t *testing.T) {
 	require.Equal(t, want, scrubURLs(in))
 }
 
+// TestScrubURLsAtSignInPassword checks user info whose password holds an
+// "@". The scrubber must remove all of it, not only the text up to the
+// first "@".
+func TestScrubURLsAtSignInPassword(t *testing.T) {
+	tests := map[string]string{
+		`parse "https://user:part@secret@files.example/%zz": bad`: `parse "https://files.example/%zz": bad`,
+		`bad URL https://user:part@secret@files.example/x`:        `bad URL https://files.example/x`,
+	}
+	for in, want := range tests {
+		require.Equal(t, want, scrubURLs(in), "input %q", in)
+	}
+
+	err := newLibError(reasonParse, errors.New(`jq: error at "https://user:part@secret@files.example/x": bad`))
+	require.Equal(t, `jq: error at "https://files.example/x": bad`, err.Error())
+	var pe *pollError
+	require.ErrorAs(t, err, &pe)
+	require.NotContains(t, pe.detail(), "part@secret@")
+}
+
 func TestScrubURLsQuotedTokens(t *testing.T) {
 	tests := map[string]string{
 		// Ordinary error text stays as it is.

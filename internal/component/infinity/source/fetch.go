@@ -91,8 +91,9 @@ var (
 	quotedQueryRE = regexp.MustCompile(`"((?:[^"\\]|\\.)*)\?((?:[^"\\]|\\.)*)"`)
 	// userinfoRE matches user info after "//", which can hold a password.
 	// A bad URL can have a space in its user info, so only a quote, a line
-	// end or a URL delimiter ends the match.
-	userinfoRE = regexp.MustCompile(`//[^/?#"'@\n]+@`)
+	// end or a URL delimiter ends the match. A password can hold an "@", so
+	// the match goes to the last "@" before that end.
+	userinfoRE = regexp.MustCompile(`//[^/?#"'\n]+@`)
 )
 
 // scrubURLs removes user info and redacts each query in msg. A URL that
