@@ -255,6 +255,12 @@ query "q" {
 	type = "graphql"
 	url = "http://x"
 }`, `type "graphql" requires body_graphql_query`},
+		{"user agent header", `query "q" {
+	url = "http://x"
+	url_options {
+		headers = { "user-agent" = "my-agent" }
+	}
+}`, `url_options.headers key "user-agent" cannot be set, because the client sets the User-Agent`},
 		{"headers equal after canonicalization", `query "q" {
 	url = "http://x"
 	url_options {

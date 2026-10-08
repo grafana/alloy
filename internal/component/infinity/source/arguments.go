@@ -446,6 +446,11 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 			errs = append(errs, fmt.Errorf("url_options.headers keys %q and %q are the same header", prev, k))
 		}
 		canonical[ck] = k
+		// The client of prometheus/common replaces the User-Agent of each
+		// request, so an override would have no effect.
+		if ck == "User-Agent" {
+			errs = append(errs, fmt.Errorf("url_options.headers key %q cannot be set, because the client sets the User-Agent", k))
+		}
 		if _, ok := clientHeaders[ck]; ok {
 			errs = append(errs, fmt.Errorf("url_options.headers key %q is also in client.http_headers", k))
 		}

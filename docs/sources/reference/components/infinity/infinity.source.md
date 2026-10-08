@@ -292,7 +292,7 @@ The `url_options` block configures the HTTP request for a query with `source = "
 | `body_graphql_query`       | `string or secret` | GraphQL query, used when `body_type` is `"graphql"`.            |         | no       |
 | `body_graphql_variables`   | `string`      | GraphQL variables as a JSON object, used when `body_type` is `"graphql"`. | | no  |
 | `body_type`                | `string`      | Encoding of the request body.                                        | `"raw"` | no       |
-| `headers`                  | `map(secret)` | Extra HTTP headers, added after the headers from `client`.           |         | no       |
+| `headers`                  | `map(secret)` | Extra HTTP headers, added after the headers from `client`. Can't set `User-Agent`. |         | no       |
 | `method`                   | `string`      | HTTP method for the request.                                         | `"GET"` | no       |
 | `params`                   | `map(secret)` | Extra URL query parameters.                                          |         | no       |
 
@@ -319,6 +319,11 @@ Each body argument must match `body_type`, or it's a configuration error:
 `infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the existing query string of the request URL.
 A header name in both `headers` and `client`'s `http_headers` argument is a configuration error, and so is a parameter name in both `params` and the `url` argument's own query string.
 Header names are case-insensitive, so two `headers` keys that differ only in case, such as `"x-key"` and `"X-Key"`, are a configuration error.
+A `Host` key in `headers` sets the host that the request sends.
+For HTTPS, the TLS check uses the `url` host.
+If the server's certificate names the `Host` value instead, also set `server_name` in the `client` > [`tls_config`][tls_config] block.
+A redirect to an absolute URL drops the `Host` override.
+`infinity.source` always sets the `User-Agent` header, so a `User-Agent` key in `headers` is a configuration error.
 
 When neither `headers` nor `client`'s `http_headers` sets an `Accept` header, `infinity.source` sends a default `Accept` header for the query's `type`:
 
