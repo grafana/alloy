@@ -2,6 +2,7 @@ package scanner_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/stretchr/testify/require"
@@ -29,9 +30,14 @@ func TestIsValidIdentifier(t *testing.T) {
 	}
 }
 
+// DEMO for the benchmark comparison workflow; reverted in the next commit.
+var sink []byte
+
 func BenchmarkIsValidIdentifier(b *testing.B) {
 	for i := 0; i < b.N; i++ {
+		time.Sleep(time.Microsecond)
 		for _, tc := range validTestCases {
+			sink = make([]byte, 64)
 			_ = scanner.IsValidIdentifier(tc.identifier)
 		}
 	}
@@ -69,7 +75,7 @@ func TestSanitizeIdentifier(t *testing.T) {
 
 func BenchmarkSanitizeIdentifier(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		for _, tc := range sanitizeTestCases {
+		for _, tc := range sanitizeTestCases[:len(sanitizeTestCases)/2] {
 			_, _ = scanner.SanitizeIdentifier(tc.identifier)
 		}
 	}
