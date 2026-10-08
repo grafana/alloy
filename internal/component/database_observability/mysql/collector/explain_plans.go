@@ -270,23 +270,23 @@ func normalizePrefixCost(prefixCost float64, previousPrefixCost *float64, node d
 
 func mysqlAccessTypeOperation(accessType database_observability.ExplainPlanAccessType) database_observability.ExplainPlanOutputOperation {
 	switch accessType {
-	case "system":
+	case database_observability.ExplainPlanAccessTypeSystem:
 		return database_observability.ExplainPlanOutputOperationSingleRowSystemConstant
-	case "const":
+	case database_observability.ExplainPlanAccessTypeConst:
 		return database_observability.ExplainPlanOutputOperationSingleRowConstant
 	case database_observability.ExplainPlanAccessTypeEqRef:
 		return database_observability.ExplainPlanOutputOperationUniqueKeyLookup
 	case database_observability.ExplainPlanAccessTypeRef:
 		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookup
-	case "fulltext":
+	case database_observability.ExplainPlanAccessTypeFulltext:
 		return database_observability.ExplainPlanOutputOperationFulltextIndexSearch
-	case "ref_or_null":
+	case database_observability.ExplainPlanAccessTypeRefOrNull:
 		return database_observability.ExplainPlanOutputOperationKeyLookupWithNullValues
-	case "index_merge":
+	case database_observability.ExplainPlanAccessTypeIndexMerge:
 		return database_observability.ExplainPlanOutputOperationIndexMerge
-	case "unique_subquery":
+	case database_observability.ExplainPlanAccessTypeUniqueSubquery:
 		return database_observability.ExplainPlanOutputOperationUniqueKeyLookupSubquery
-	case "index_subquery":
+	case database_observability.ExplainPlanAccessTypeIndexSubquery:
 		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookupSubquery
 	case database_observability.ExplainPlanAccessTypeRange:
 		return database_observability.ExplainPlanOutputOperationIndexRangeScan

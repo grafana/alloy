@@ -54,11 +54,18 @@ const (
 type ExplainPlanAccessType string
 
 const (
-	ExplainPlanAccessTypeAll   ExplainPlanAccessType = "all"
-	ExplainPlanAccessTypeIndex ExplainPlanAccessType = "index"
-	ExplainPlanAccessTypeRange ExplainPlanAccessType = "range"
-	ExplainPlanAccessTypeRef   ExplainPlanAccessType = "ref"
-	ExplainPlanAccessTypeEqRef ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeSystem         ExplainPlanAccessType = "system"
+	ExplainPlanAccessTypeConst          ExplainPlanAccessType = "const"
+	ExplainPlanAccessTypeEqRef          ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeRef            ExplainPlanAccessType = "ref"
+	ExplainPlanAccessTypeFulltext       ExplainPlanAccessType = "fulltext"
+	ExplainPlanAccessTypeRefOrNull      ExplainPlanAccessType = "ref_or_null"
+	ExplainPlanAccessTypeIndexMerge     ExplainPlanAccessType = "index_merge"
+	ExplainPlanAccessTypeUniqueSubquery ExplainPlanAccessType = "unique_subquery"
+	ExplainPlanAccessTypeIndexSubquery  ExplainPlanAccessType = "index_subquery"
+	ExplainPlanAccessTypeRange          ExplainPlanAccessType = "range"
+	ExplainPlanAccessTypeIndex          ExplainPlanAccessType = "index"
+	ExplainPlanAccessTypeAll            ExplainPlanAccessType = "all"
 )
 
 type ExplainPlanJoinAlgorithm string

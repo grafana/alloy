@@ -514,7 +514,6 @@ func TestExplainPlans(t *testing.T) {
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
-			DBVersion:       "8.0.32",
 			InitialLookback: lastSeen,
 		})
 		require.NoError(t, err)
@@ -588,7 +587,6 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -646,7 +644,6 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -739,7 +736,6 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -793,7 +789,6 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -854,7 +849,6 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
-		DBVersion:       "8.0.32",
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
@@ -903,7 +897,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			Logger:       util.TestAlloyLogger(t).Slog(),
 			EntryHandler: lokiClient,
-			DBVersion:    "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -943,7 +936,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 			Logger:         util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio: 1,
 			EntryHandler:   lokiClient,
-			DBVersion:      "8.0.32",
 		})
 		require.NoError(t, err)
 
@@ -1036,7 +1028,6 @@ func TestExplainPlansThrottling(t *testing.T) {
 			PerScrapeRatio:  1,
 			InitialLookback: base.Add(-time.Hour),
 			EntryHandler:    lokiClient,
-			DBVersion:       "8.0.32",
 		})
 		require.NoError(t, err)
 		c.now = func() time.Time { return base }
@@ -1179,7 +1170,6 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
 		EntryHandler:   lokiClient,
-		DBVersion:      "8.0.32",
 	})
 	require.NoError(t, err)
 
