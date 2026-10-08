@@ -274,8 +274,9 @@ func TestNewPipelineStopsOnFailure(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	cfgs := loadConfig(`
-	stage.regex {
-		expression = "[unclosed"
+	stage.timestamp {
+		source = "timestamp"
+		format = ""
 	}
 	stage.match {
 		selector = "{app=\"x\"}"
@@ -294,5 +295,5 @@ func TestNewPipelineStopsOnFailure(t *testing.T) {
 
 	next := func(_ context.Context, _ []Entry) error { return nil }
 	_, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-	require.Error(t, err)
+	require.ErrorIs(t, err, errTimestampFormatRequired)
 }

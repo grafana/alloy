@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
 )
 
@@ -25,22 +26,23 @@ type RegexConfig struct {
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validateRegexConfig validates the config and return a regex
-func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
-	if c.Expression == "" {
-		return nil, errExpressionRequired
+var _ syntax.Validator = (*RegexConfig)(nil)
+
+func (rc *RegexConfig) Validate() error {
+	if rc.Expression == "" {
+		return errExpressionRequired
 	}
 
-	if c.Source != nil && *c.Source == "" {
-		return nil, errEmptyRegexStageSource
+	if rc.Source != nil && *rc.Source == "" {
+		return errEmptyRegexStageSource
 	}
 
-	expr, err := regexp.Compile(c.Expression)
+	_, err := regexp.Compile(rc.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
+		return fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
 	}
 
-	return expr, nil
+	return nil
 }
 
 var (
@@ -49,17 +51,16 @@ var (
 )
 
 // newRegexStage creates a regexStage
-func newRegexStage(config RegexConfig, opts stageOpts) (*regexStage, error) {
-	expression, err := validateRegexConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newRegexStage(config RegexConfig, opts stageOpts) *regexStage {
+	// error checked in validate method
+	//nolint:staticcheck
+	expression, _ := regexp.Compile(config.Expression)
 	return &regexStage{
 		next:       opts.next,
 		config:     &config,
 		expression: expression,
 		logger:     opts.slogger.With("stage", "regex"),
-	}, nil
+	}
 }
 
 // regexStage sets extracted data using regular expressions
