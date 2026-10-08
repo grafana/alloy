@@ -7,14 +7,14 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: pyroscope.ebpf
 ---
 
 # `pyroscope.ebpf`
 
 `pyroscope.ebpf` configures an eBPF profiling job for the current host.
-The collected performance profiles are forwarded to the list of receivers passed in `forward_to`.
+The component forwards the collected performance profiles to the receivers you list in `forward_to`.
 
 The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`][] which is a fork of [`open-telemetry/opentelemetry-ebpf-profiler`][].
 
@@ -24,7 +24,9 @@ The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`
 {{< admonition type="note" >}}
 To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
 On Kubernetes, the simplest option is to set `securityContext.privileged: true`.
-Users who prefer least-privilege can instead grant the [specific capabilities required](#required-privileges).
+Users who prefer least-privilege can instead grant the [specific capabilities required][required-privileges].
+
+[required-privileges]: #required-privileges
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -47,7 +49,7 @@ When running on Kubernetes without `privileged: true`, grant the following Linux
 | `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                |
 | `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                              |
 
-Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
+Mount `/sys/kernel/tracing` (on older kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
 
 ## Supported languages
 
@@ -65,7 +67,7 @@ pyroscope.ebpf "<LABEL>" {
 
 ## Arguments
 
-The component configures and starts a new eBPF profiling job to collect performance profiles from the current host.
+The component configures and starts an eBPF profiling job to collect performance profiles from the current host.
 
 You can use the following arguments with `pyroscope.ebpf`:
 
@@ -78,7 +80,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `collect_interval`            | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`          | no       |
 | `collect_kernel_profile`      | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`           | no       |
 | `collect_user_profile`        | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`           | no       |
-| `comm`                        | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"`         | no       |
+| `comm`                        | `string`                 | How the component includes the process command name in profiles. One of `none`, `label`, `stackframe`, or `both`.        | `"none"`         | no       |
 | `container_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> container ID table LRU cache.                       | `1024`           | no       |
 | `demangle`                    | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"`         | no       |
 | `dotnet_enabled`              | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`           | no       |
@@ -86,8 +88,8 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `go_table_fallback`           | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`          | no       |
 | `hotspot_enabled`             | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`           | no       |
 | `kernel_frames`               | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`           | no       |
-| `lazy_mode`                   | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`          | no       |
-| `load_probe`                  | `bool`                   | Load a generic eBPF program that can be attached to a kernel or user-space hook externally.                          | `false`          | no       |
+| `lazy_mode`                   | `bool`                   | Enable lazy mode to defer eBPF profiler startup until the component discovers targets.                               | `false`          | no       |
+| `load_probe`                  | `bool`                   | Load a generic eBPF program that you can attach to a kernel or user-space hook externally.                           | `false`          | no       |
 | `no_kernel_version_check`     | `bool`                   | Skip the kernel version check for eBPF support.                                                                      | `false`          | no       |
 | `obi_process_context_enabled` | `bool`                   | Enable profile correlation with traces generated by components compatible with OpenTelemetry eBPF Instrumentation.   | `true`           | no       |
 | `off_cpu_threshold`           | `float`                  | Probability from `0` to `1` for recording an off-CPU event. A value of `0` disables off-CPU profiling.               | `0`              | no       |
@@ -113,10 +115,10 @@ When you skip this check, the profiler can't verify that your kernel has the eBP
 Proceed at your own risk.
 {{< /admonition >}}
 
-Only the `forward_to` field is required.
+You must set the `forward_to` argument.
 Omitted fields take their default values.
 
-Several arguments are marked as "Deprecated (no-op)". These arguments were previously used for configuring various cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
+Several arguments carry the label "Deprecated (no-op)". These arguments once configured cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
 
 ## Blocks
 
@@ -124,36 +126,36 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 
 ## Exported fields
 
-`pyroscope.ebpf` doesn't export any fields that can be referenced by other components.
+`pyroscope.ebpf` doesn't export any fields.
 
 ## Component health
 
-`pyroscope.ebpf` is reported as unhealthy if given an invalid configuration, or if the eBPF profiling session fails to start, for example due to missing privileges or an unsupported kernel.
+`pyroscope.ebpf` reports itself as unhealthy if you give it an invalid configuration, or if the eBPF profiling session fails to start, for example because of missing privileges or an unsupported kernel.
 
 ## Debug information
 
 * `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
 * `pid_cache` per process elf symbol tables and their sizes in symbols count.
-* `targets` currently tracked active targets.
+* `targets` the active targets the component tracks.
 
 ## Debug metrics
 
 The following Prometheus metrics are exposed:
 
-| Name                                              | Type        | Description                                                                         |
-| ------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
-| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                      |
-| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`.       |
-| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total number of bytes in pprof profiles collected by the eBPF component, per `service_name`. |
+| Name                                              | Type        | Description                                                                                    |
+| ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
+| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                                 |
+| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`.                  |
+| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total number of bytes in pprof profiles collected by the eBPF component, per `service_name`.   |
 | `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total number of samples in pprof profiles collected by the eBPF component, per `service_name`. |
-| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                               |
-| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                        |
-| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                       |
+| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                                           |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                                    |
+| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                                   |
 
 ### eBPF profiler internal metrics
 
 The component also exposes internal metrics from the embedded eBPF profiler.
-These metrics are only emitted after they have been recorded at least once, so not all metrics appear on every host.
+The component emits these metrics only after recording each one at least once, so not all metrics appear on every host.
 The metrics carry an `otel_scope_name="pyroscope.ebpf"` label.
 
 Notable metrics include:
@@ -166,7 +168,7 @@ Notable metrics include:
 | `UnwindNativeFrames_total`           | `counter` | Unwound frames since the previous check.                      |
 | `UnwindNativeStackDeltaStop_total`   | `counter` | Number of stop stack deltas in the native unwinder (success). |
 | `UnwindNativeSmallPC_total`          | `counter` | Number of times PC held a value smaller than `0x1000`.        |
-| `UnwindErrStackLengthExceeded_total` | `counter` | Number of times `MAX_FRAME_UNWINDS` has been exceeded.        |
+| `UnwindErrStackLengthExceeded_total` | `counter` | Number of times the unwinder exceeded `MAX_FRAME_UNWINDS`.    |
 
 #### Interpreter unwinding
 
@@ -215,7 +217,9 @@ Notable metrics include:
 | `HashmapNumStackDeltaPages`   | `gauge` | Current size of the stack delta pages hash map.          |
 | `UnwindInfoArraySize`         | `gauge` | Current size of the unwind info array.                   |
 
-The full list of metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
+The [`opentelemetry-ebpf-profiler` metrics.json][ebpf-profiler-metrics] file defines the full list of metrics.
+
+[ebpf-profiler-metrics]: https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json
 
 ## Profile collecting behavior
 
@@ -238,7 +242,7 @@ These labels can help you pin down a profiling target.
 
 ### Targets
 
-One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
+Each target in `targets` _must_ include one of the following special labels, and the label must correspond to the container or process you profile:
 
 * `__container_id__`: The container ID.
 * `__meta_docker_container_id`: The ID of the Docker container.
@@ -247,14 +251,15 @@ One of the following special labels _must_ be included in each target of `target
 
 Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
 
-If a process's container ID matches a target's container ID label, the stack traces are aggregated per target based on the container ID.
-If a process's PID matches a target's process PID label, the stack traces are aggregated per target based on the process PID.
+If a process's container ID matches a target's container ID label, the component aggregates the stack traces per target by container ID.
+If a process's PID matches a target's process PID label, the component aggregates the stack traces per target by process PID.
 Otherwise the process isn't profiled.
 
 ### Service name
 
-The special label `service_name` is required and must always be present.
-If it's not specified, it's attempted to be inferred, in order, from the following sources:
+Every profile carries a `service_name` label.
+You can set it on the target yourself.
+If you don't, the component adds the label and infers a value, in order, from the following sources:
 
 * `__meta_kubernetes_pod_annotation_pyroscope_io_service_name`, which is a `pyroscope.io/service_name` Pod annotation.
 * `__meta_kubernetes_namespace` and `__meta_kubernetes_pod_container_name`, combined into `ebpf/<namespace>/<container_name>`.
@@ -262,11 +267,11 @@ If it's not specified, it's attempted to be inferred, in order, from the followi
 * `__meta_dockerswarm_container_label_service_name`.
 * `__meta_dockerswarm_service_name`.
 
-If `service_name` isn't specified and couldn't be inferred, it's set to `unspecified`.
+When you don't set `service_name` and the component can't infer a value, it uses `unspecified`.
 
 ## Troubleshoot unknown symbols
 
-Symbols are extracted from various sources, including:
+The component extracts symbols from several sources, including:
 
 * The `.gopclntab` section in Go language ELF files.
 * The `.symtab` and `.dynsym` sections in the debug ELF file.
@@ -274,7 +279,7 @@ Symbols are extracted from various sources, including:
 
 The search for debug files follows the [GNU Debugger algorithm][gdb algorithm].
 For example, if the profiler wants to find the debug file for `/lib/x86_64-linux-gnu/libc.so.6` with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcdef`.
-The following paths are examined:
+The component examines the following paths:
 
 * `/usr/lib/debug/.build-id/01/0123456789abcdef.debug`
 * `/lib/x86_64-linux-gnu/libc.so.6.debug`
@@ -293,12 +298,12 @@ This can occur for several reasons:
 
 ### Address unresolved symbols
 
-If you only see module names without corresponding function names, for example, `/lib/x86_64-linux-gnu/libc.so.6`, it indicates that the symbols couldn't be mapped to their respective function names.
+If you only see module names without corresponding function names, for example, `/lib/x86_64-linux-gnu/libc.so.6`, the component couldn't map the symbols to their respective function names.
 
 This can occur for several reasons:
 
-* The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
-* The debug file is missing or couldn't be located.
+* The build process stripped the binary, leaving no `.symtab`, `.dynsym`, or `.gopclntab` sections in the ELF file.
+* The debug file is missing, or the component can't locate it.
 
 To fix this for your binaries, ensure that they're either not stripped or that you have separate debug files available.
 You can achieve this by running:
@@ -309,7 +314,7 @@ strip elf -o elf.stripped
 objcopy --add-gnu-debuglink=elf.debug elf.stripped elf.debuglink
 ```
 
-For system libraries, ensure that debug symbols are installed.
+For system libraries, install the debug symbols.
 On Ubuntu, for example, you can install debug symbols for `libc` by executing:
 
 ```bash
@@ -318,7 +323,7 @@ apt install libc6-dbg
 
 ### Understand flat stack traces
 
-If your profiles show many shallow stack traces, typically 1-2 frames deep, your binary might have been compiled without frame pointers.
+If your profiles show many shallow stack traces, typically 1-2 frames deep, your compiler might have omitted frame pointers.
 
 To compile your code with frame pointers, include the `-fno-omit-frame-pointer` flag in your compiler options.
 
@@ -328,9 +333,9 @@ The following examples show how to discover profiling targets and send the resul
 
 ### Kubernetes discovery
 
-In the following example, performance profiles are collected from Pods on the same node, discovered using `discovery.kubernetes`.
+In the following example, the component collects performance profiles from Pods on the same node, discovered using `discovery.kubernetes`.
 Pod selection relies on the `HOSTNAME` environment variable, which is a Pod name if {{< param "PRODUCT_NAME" >}} is used as an {{< param "PRODUCT_NAME" >}} Helm chart.
-The `service_name` label is set to `ebpf/{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
+The example sets the `service_name` label to `ebpf/{__meta_kubernetes_namespace}/{__meta_kubernetes_pod_container_name}` from Kubernetes meta labels.
 
 ```alloy
 discovery.kubernetes "all_pods" {
@@ -396,7 +401,7 @@ pyroscope.write "endpoint" {
 ### Docker discovery
 
 The following example collects performance profiles from containers discovered by `discovery.docker` and ignores all other profiles collected from outside any docker container.
-The `service_name` label is set to the `__meta_docker_container_name` label.
+The example sets the `service_name` label from the `__meta_docker_container_name` label.
 
 ```alloy
 discovery.docker "linux" {
@@ -426,7 +431,7 @@ pyroscope.ebpf "default" {
 
 ### Collect profiles from probes
 
-Use `probe_links` to collect stack traces when specified kernel or user-space probes are called.
+Use `probe_links` to collect stack traces whenever something calls the kernel or user-space probes you specify.
 Kernel probes use the format `<PROBE_TYPE>:<SYMBOL>`, and user-space probes use the format `<PROBE_TYPE>:<EXECUTABLE_PATH>:<SYMBOL>`.
 Supported probe types are `kprobe`, `kretprobe`, `uprobe`, and `uretprobe`.
 

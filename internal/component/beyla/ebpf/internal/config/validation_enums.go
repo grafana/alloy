@@ -38,8 +38,10 @@ var metricFeatureValues = []string{
 	"application_host",
 	"application_jvm",
 	"application_process",
+	"application_red",
 	"application_runtime",
 	"application_service_graph",
+	"application_sizes",
 	"application_span",
 	"application_span_otel",
 	"application_span_sizes",
@@ -52,7 +54,11 @@ var metricFeatureValues = []string{
 	"stats_tcp_io",
 	"stats_tcp_retransmits",
 	"stats_tcp_rtt",
+	"stats_tcp_successful_connections",
 }
+
+// nameResolverSourceValues are the values Beyla's schema accepts at "NameResolverConfig.sources".
+var nameResolverSourceValues = []string{"dns", "ecs", "k8s", "kube", "kubernetes", "rdns"}
 
 // validMetricFeature reports whether v is an accepted "Features" value.
 func validMetricFeature(v string) bool {

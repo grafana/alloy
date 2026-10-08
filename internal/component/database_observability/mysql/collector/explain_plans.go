@@ -401,14 +401,12 @@ type ExplainPlansArguments struct {
 	InitialLookback time.Time
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
-	DBVersion       string
 
 	Logger *slog.Logger
 }
 
 type ExplainPlans struct {
 	dbConnection     *sql.DB
-	dbVersion        string
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
 	queryDenylist    map[string]struct{}
@@ -429,7 +427,6 @@ type ExplainPlans struct {
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	return &ExplainPlans{
 		dbConnection:   args.DB,
-		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
 		excludeSchemas: args.ExcludeSchemas,
@@ -475,8 +472,6 @@ func (c *ExplainPlans) pruneExpiredThrottle() {
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:         "MySQL",
-			DatabaseVersion:        c.dbVersion,
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
@@ -493,7 +488,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		`schema=%q digest=%q explain_plan_output=%q`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
