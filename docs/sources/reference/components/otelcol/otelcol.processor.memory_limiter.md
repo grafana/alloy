@@ -20,7 +20,8 @@ When memory usage goes above the soft limit, the processor component drops data 
 When usage exceeds the hard limit, the processor forces a garbage collection to try and free memory.
 When usage is below the soft limit, no data is dropped and no forced garbage collection is performed.
 
-Place the `otelcol.processor.memory_limiter` component first in your pipeline configuration, before any other processor.
+Grafana recommends that you connect `otelcol.processor.memory_limiter` directly to your receivers, before any other processor.
+Each receiver can then retry the refused data and apply backpressure to its data sources, which minimizes the data dropped when memory usage exceeds the soft limit.
 
 {{< admonition type="note" >}}
 `otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector [`memorylimiter`][] processor.
@@ -68,9 +69,6 @@ The arguments must define either `limit` or the `limit_percentage, spike_limit_p
 The configuration options `limit` and `limit_percentage` define the hard limits.
 The soft limits are then calculated as the hard limit minus the `spike_limit` or `spike_limit_percentage` values respectively.
 The recommended value for spike limits is about 20% of the corresponding hard limit.
-
-Set the [`GOMEMLIMIT`][GOMEMLIMIT] environment variable to 80% of the hard limit you set in `limit` or `limit_percentage`.
-With the recommended spike limit, this value matches the soft limit.
 
 The recommended `check_interval` value is 1 second.
 If the traffic through the component is spiky in nature, it's recommended to either decrease the interval or increase the spike limit to avoid going over the hard limit.
