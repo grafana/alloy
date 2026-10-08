@@ -71,18 +71,6 @@ Ideally we want to scale our efforts and add automated tests that will prevent r
 ## Benchmarking a pull request
 
 To check how a pull request affects performance, add the `run-benchmarks` label to it.
-The `Benchmark PR` workflow then:
+CI runs the benchmarks affected by the pull request against both the pull request and the branch it targets, and posts a comment summarizing which benchmarks got faster or slower.
 
-1. Selects the packages with benchmarks that the pull request affects: packages it changes directly, packages that import a changed package, and every package in a module whose `go.mod` or `go.sum` changed.
-1. Runs those benchmarks 10 times on both the merge base and the pull request head. Both run on the same `ubuntu-x64-xlarge` runner, alternating between base and head.
-1. Compares the results with [benchstat][] and posts a comment on the pull request.
-
-The comment lists the benchmarks whose CPU time (`sec/op`) or allocations (`allocs/op`) changed significantly: p < 0.05 and at least a 5% change.
-It also lists benchmarks that exist only in the base or only in the pull request, for example because they were added, removed, or renamed.
-The full benchstat output is included in the comment and in the workflow run artifacts.
-
-The label is removed once the comment is posted. To benchmark new commits, add the label again.
-
-You can run the same steps locally with `go run -C tools ./cmd benchdiff`. Refer to [`tools/README.md`](../../tools/README.md#benchdiff) for details.
-
-[benchstat]: https://pkg.go.dev/golang.org/x/perf/cmd/benchstat
+The label is removed after each run. Add it again to benchmark new commits.
