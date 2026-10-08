@@ -266,9 +266,7 @@ func matchLogQL(e Entry, matchers []*labels.Matcher, filter logql.Filter) bool {
 		}
 	}
 
-	// FIXME(kalleep): With a line filter this converts every line to bytes, one
-	// allocation per entry. We should change logql.Filter to take a string instead.
-	if filter == nil || filter([]byte(e.Line)) {
+	if filter == nil || filter(e.Line) {
 		return true
 	}
 	return false
