@@ -65,7 +65,11 @@ type Component struct {
 	otelMetrics []otelcol.Consumer
 	otelLogs    []otelcol.Consumer
 	queries     map[string]*queryState
-	runCtx      context.Context
+	// workers holds the worker count of each query name. A worker can
+	// outlive its queryState, so a query that a reload removes and a later
+	// reload adds back must see the workers that still run.
+	workers map[string]*atomic.Int32
+	runCtx  context.Context
 }
 
 type parseFunc func(querySpec, []byte) (*data.Frame, error)
@@ -85,8 +89,8 @@ type generation struct {
 type queryState struct {
 	// workers counts the fetch goroutines of this query that still run.
 	// A goroutine that passes the timeout keeps running, so it can be 1
-	// when a poll starts.
-	workers atomic.Int32
+	// when a poll starts. All queryStates with the same name share it.
+	workers *atomic.Int32
 	// assigned tells if the cluster gives this query to this node.
 	assigned atomic.Bool
 	kick     chan struct{}
@@ -154,6 +158,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		prom:    alloyprom.NewFanout(nil, opts.ID, opts.Registerer, lsData.(labelstore.LabelStore)),
 		loki:    loki.NewFanout(nil),
 		queries: map[string]*queryState{},
+		workers: map[string]*atomic.Int32{},
 		parse:   buildFrame,
 		// The cluster service calls NotifyClusterChange synchronously, so
 		// it sends without blocking into this buffer.
@@ -307,7 +312,12 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for name := range specs {
 		qs, ok := c.queries[name]
 		if !ok {
-			qs = &queryState{tracker: newTracker(), kick: make(chan struct{}, 1)}
+			w := c.workers[name]
+			if w == nil {
+				w = atomic.NewInt32(0)
+				c.workers[name] = w
+			}
+			qs = &queryState{workers: w, tracker: newTracker(), kick: make(chan struct{}, 1)}
 			c.queries[name] = qs
 		}
 		switch {
@@ -322,6 +332,14 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		if intervalChanged && qs.loop != nil {
 			toStop = append(toStop, qs.loop)
 			qs.loop = nil
+		}
+	}
+	// The loops of removed queries stopped above, so no new worker can
+	// start for a name that is not in c.queries. A count above 0 must stay
+	// for when the query comes back.
+	for name, w := range c.workers {
+		if _, ok := c.queries[name]; !ok && w.Load() == 0 {
+			delete(c.workers, name)
 		}
 	}
 	c.mut.Unlock()
@@ -408,7 +426,7 @@ func (c *Component) poll(ctx context.Context, name string, qs *queryState) {
 			c.logSendFailure("failed to send stale markers after a format change", name, err)
 		}
 	}
-	frame, err := fetchFrame(ctx, g, s, &qs.workers, c.parse)
+	frame, err := fetchFrame(ctx, g, s, qs.workers, c.parse)
 	if g.clustering && !qs.assigned.Load() {
 		// The node lost the query during the fetch. The new owner writes
 		// the same series, so this node must not send the result.

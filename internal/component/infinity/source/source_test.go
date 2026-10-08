@@ -741,6 +741,46 @@ func TestOneAbandonedWorkerPerQuery(t *testing.T) {
 	require.Equal(t, int32(1), parses.Load())
 }
 
+// TestAbandonedWorkerSurvivesRemoveAndReadd checks that a query keeps its
+// worker count when a reload removes it and a later reload adds it back.
+// Otherwise each such pair of reloads could leave one more worker behind.
+func TestAbandonedWorkerSurvivesRemoveAndReadd(t *testing.T) {
+	out := newOutputSet()
+	withQ, err := argsWith(inlineQueryConfig("100ms", "q"), out)
+	require.NoError(t, err)
+	withoutQ, err := argsWith(inlineQueryConfig("100ms", "other"), out)
+	require.NoError(t, err)
+	c, err := New(testOptions(t, cluster.Mock()), withQ)
+	require.NoError(t, err)
+
+	release := make(chan struct{})
+	defer close(release)
+	var parses atomic.Int32
+	c.parse = func(s querySpec, b []byte) (*data.Frame, error) {
+		if s.name != "q" {
+			return buildFrame(s, b)
+		}
+		parses.Inc()
+		<-release
+		return nil, errors.New("released")
+	}
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Contains(ct, c.CurrentHealth().Message, "the request or parsing took longer than timeout")
+	}, 3*time.Second, 10*time.Millisecond)
+
+	require.NoError(t, c.Update(withoutQ))
+	require.Nil(t, queryStateOf(c, "q"))
+	require.NoError(t, c.Update(withQ))
+
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Contains(ct, c.CurrentHealth().Message, "the previous poll is still running")
+	}, 3*time.Second, 10*time.Millisecond)
+	require.Equal(t, int32(1), parses.Load(), "a re-added query must not start a second worker")
+}
+
 // TestOutputsReadAtEmitTime checks that a poll sends to the outputs that are
 // current when it emits, not the ones from when it started.
 func TestOutputsReadAtEmitTime(t *testing.T) {
