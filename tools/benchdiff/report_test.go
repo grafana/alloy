@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// benchOutput renders count runs of go test -bench output for pkg, with one
+// benchOutput renders 10 runs of go test -bench output for pkg, with one
 // line per benchmark. Each benchmark is given as ns/op and allocs/op; ns/op
 // jitters slightly between runs.
-func benchOutput(pkg string, count int, benches map[string][2]float64) string {
+func benchOutput(pkg string, benches map[string][2]float64) string {
 	var sb strings.Builder
-	for i := range count {
+	for i := range 10 {
 		fmt.Fprintf(&sb, "goos: linux\ngoarch: amd64\npkg: %s\ncpu: Test CPU @ 3.00GHz\n", pkg)
 		for _, name := range slices.Sorted(maps.Keys(benches)) {
 			v := benches[name]
@@ -29,7 +29,7 @@ func benchOutput(pkg string, count int, benches map[string][2]float64) string {
 	return sb.String()
 }
 
-func writeTemp(t *testing.T, name, content string) string {
+func writeTemp(t testing.TB, name, content string) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), name)
 	require.NoError(t, os.WriteFile(p, []byte(content), 0o644))
@@ -39,14 +39,14 @@ func writeTemp(t *testing.T, name, content string) string {
 func TestRenderReport(t *testing.T) {
 	const pkg = "github.com/grafana/alloy/internal/component/loki/process/stages"
 
-	base := benchOutput(pkg, 10, map[string][2]float64{
+	base := benchOutput(pkg, map[string][2]float64{
 		"Match/all":     {1000, 300},
 		"Regex":         {2000, 19},
 		"Template":      {3000, 40},
 		"SplitJSON":     {5000, 400},
 		"Removed/thing": {100, 1},
 	})
-	head := benchOutput(pkg, 10, map[string][2]float64{
+	head := benchOutput(pkg, map[string][2]float64{
 		"Match/all":   {1000, 450}, // more allocations only
 		"Regex":       {1500, 19},  // faster
 		"Template":    {3030, 40},  // +1%: below threshold
@@ -100,7 +100,7 @@ func TestRenderReport(t *testing.T) {
 
 func TestRenderReport_NoChanges(t *testing.T) {
 	const pkg = "github.com/grafana/alloy/syntax/vm"
-	out := benchOutput(pkg, 10, map[string][2]float64{"Eval": {1000, 10}})
+	out := benchOutput(pkg, map[string][2]float64{"Eval": {1000, 10}})
 
 	res, err := readResults(writeTemp(t, "out.txt", out))
 	require.NoError(t, err)

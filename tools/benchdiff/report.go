@@ -288,7 +288,11 @@ func renderReport(in reportInput) string {
 	for _, u := range reportUnits {
 		changes, compared := compareUnit(in.base, in.head, u.unit, in.alpha, in.threshold)
 		w("### %s\n\n", u.title)
-		if len(changes) == 0 {
+		switch {
+		case compared == 0:
+			w("No benchmarks exist in both the base and the PR.\n\n")
+			continue
+		case len(changes) == 0:
 			w("No significant changes across %s.\n\n", plural(compared, "benchmark"))
 			continue
 		}
