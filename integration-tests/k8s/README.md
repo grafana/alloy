@@ -82,7 +82,6 @@ make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prom
 # iterating on a single test.
 make integration-test-k8s RUN_ARGS='--skip-image-builds'
 
-# Test the distroless Alloy image (what CI uses). Adds the `-distroless`
-# suffix to the --alloy-image tag (default: grafana/alloy:latest-distroless).
+# Test the distroless variant of the Alloy image, like CI does.
 make integration-test-k8s RUN_ARGS='--distroless'
 ```
