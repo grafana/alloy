@@ -20,6 +20,7 @@ const (
 type TestSchema struct {
 	Config ConfigSchema    `yaml:"config"`
 	Inputs InputSchema     `yaml:"inputs"`
+	Mocks  MockSchema      `yaml:"mocks"`
 	Assert AssertionSchema `yaml:"assert"`
 }
 
