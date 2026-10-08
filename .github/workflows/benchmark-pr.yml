@@ -1,18 +1,18 @@
 name: Benchmark PR
 
 # Compares the Go benchmarks affected by a pull request between its merge base
-# and its head. Add the `run-benchmarks` label to a PR to run it; the label is
-# removed once the report is posted by benchmark-pr-comment.yml, so add it
-# again to re-run.
+# and its head. Add the `run-benchmarks` label to a PR to run it. A comment on
+# the PR links to the run while it's in progress and is replaced by the report
+# when it finishes. The label is then removed; add it again to re-run.
 #
-# This workflow runs untrusted PR code, so it only has read access. Posting the
-# report happens in benchmark-pr-comment.yml.
+# Only PRs from branches in this repository are benchmarked; fork PRs are
+# skipped. The job that runs PR code only has read access. The jobs that comment
+# and remove the label don't check out or run any PR code.
 on:
   pull_request:
     types: [labeled]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   # Include whether this is the benchmark label, so that adding other labels
@@ -20,25 +20,60 @@ concurrency:
   group: benchmark-pr-${{ github.event.pull_request.number }}-${{ github.event.label.name == 'run-benchmarks' }}
   cancel-in-progress: true
 
+env:
+  MARKER: "<!-- alloy-benchmark-report -->"
+  LABEL: run-benchmarks
+
 jobs:
+  announce:
+    name: Announce
+    if: >
+      github.event.label.name == 'run-benchmarks' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+    - name: Comment that benchmarks are running
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      with:
+        script: |
+          const { MARKER: marker, LABEL: label } = process.env;
+          const { owner, repo } = context.repo;
+          const issue_number = context.payload.pull_request.number;
+          const sha = context.payload.pull_request.head.sha.slice(0, 10);
+          const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+          const body = [
+            marker,
+            '## Benchmark report',
+            '',
+            `⏳ Benchmarking \`${sha}\` against its merge base. Follow the progress in the [workflow run](${runUrl}).`,
+            '',
+            'This comment will be replaced with the results when the run finishes.',
+          ].join('\n');
+
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+          const existing = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
+
   benchmark:
-    name: Benchmark PR
-    if: github.event.label.name == 'run-benchmarks'
+    name: Run benchmarks
+    if: >
+      github.event.label.name == 'run-benchmarks' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     # A dedicated, fixed-size runner keeps measurements consistent. Base and
     # head run on the same VM, interleaved, so they're measured on the same
     # hardware.
     runs-on: ubuntu-x64-xlarge
     timeout-minutes: 180
+    permissions:
+      contents: read
     steps:
-    - name: Record PR metadata
-      env:
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      run: |
-        mkdir -p "$RUNNER_TEMP/benchmark"
-        echo "$PR_NUMBER" > "$RUNNER_TEMP/benchmark/pr_number"
-        echo "$HEAD_SHA" > "$RUNNER_TEMP/benchmark/head_sha"
-
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
@@ -60,6 +95,7 @@ jobs:
       env:
         BASE_REF: ${{ github.event.pull_request.base.ref }}
       run: |
+        mkdir -p "$RUNNER_TEMP/benchmark"
         MERGE_BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
         git worktree add --detach "$RUNNER_TEMP/base" "$MERGE_BASE"
         echo "sha=${MERGE_BASE}" >> "$GITHUB_OUTPUT"
@@ -116,3 +152,67 @@ jobs:
           ${{ runner.temp }}/benchmark/
           !${{ runner.temp }}/benchmark/bin/
         retention-days: 14
+
+  report:
+    name: Post report
+    needs: [announce, benchmark]
+    # Runs when the benchmarks succeeded or failed, but not when the run was
+    # cancelled (re-adding the label cancels the previous run), or when
+    # announce was skipped (other labels, fork PRs).
+    if: ${{ !cancelled() && needs.announce.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+    - name: Download results
+      if: needs.benchmark.result == 'success'
+      # Without the results, the next step posts a failure comment instead.
+      continue-on-error: true
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        name: benchmark-results
+        path: benchmark-results
+
+    - name: Post report and remove label
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      env:
+        BENCHMARK_RESULT: ${{ needs.benchmark.result }}
+      with:
+        script: |
+          const fs = require('fs');
+          const { MARKER: marker, LABEL: label, BENCHMARK_RESULT: result } = process.env;
+          const { owner, repo } = context.repo;
+          const issue_number = context.payload.pull_request.number;
+          const sha = context.payload.pull_request.head.sha.slice(0, 10);
+          const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+          const reportFile = 'benchmark-results/report.md';
+
+          let body;
+          if (result === 'success' && fs.existsSync(reportFile)) {
+            body = fs.readFileSync(reportFile, 'utf8').trim();
+            if (!body.startsWith(marker)) {
+              body = `${marker}\n${body}`;
+            }
+            if (body.length > 63000) {
+              body = `${body.slice(0, 63000)}\n\n_Report truncated; see the workflow run for the full results._`;
+            }
+          } else {
+            body = `${marker}\n## Benchmark report\n\n❌ The benchmark run for \`${sha}\` failed. See the [workflow run](${runUrl}) for details.`;
+          }
+          body += `\n\n<sub>[Workflow run](${runUrl}) for \`${sha}\` · Add the \`${label}\` label to run the benchmarks again.</sub>\n`;
+
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+          const existing = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
+
+          try {
+            await github.rest.issues.removeLabel({ owner, repo, issue_number, name: label });
+          } catch (err) {
+            if (err.status !== 404) {
+              throw err;
+            }
+          }
