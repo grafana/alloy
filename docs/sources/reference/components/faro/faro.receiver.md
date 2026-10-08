@@ -81,10 +81,11 @@ You can use the following blocks with `faro.receiver`:
 
 The `output` block specifies where to forward collected logs and traces.
 
-| Name     | Type                     | Description                                          | Default | Required |
-|----------|--------------------------|------------------------------------------------------|---------|----------|
-| `logs`   | `list(LogsReceiver)`     | A list of `loki` components to forward logs to.      | `[]`    | no       |
-| `traces` | `list(otelcol.Consumer)` | A list of `otelcol` components to forward traces to. | `[]`    | no       |
+| Name                | Type                     | Description                                          | Default | Required |
+|---------------------|--------------------------|------------------------------------------------------|---------|----------|
+| `logs`              | `list(LogsReceiver)`     | A list of `loki` components to forward logs to.      | `[]`    | no       |
+| `logs_send_timeout` | `duration`               | Timeout for forwarding each log entry.               | `2s`    | no       |
+| `traces`            | `list(otelcol.Consumer)` | A list of `otelcol` components to forward traces to. | `[]`    | no       |
 
 ### `server`
 
