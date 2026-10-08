@@ -55,6 +55,7 @@ make integration-test-k8s-local-dev
 Opens a small TUI to pick the common run options before tests start.
 
 - Reusing kind cluster or skipping image builds (alloy, prom-gen) to speed up local development.
+- Using the distroless Alloy image.
 - Filtering tests by shard or by package.
 
 ### Inspecting the running cluster
@@ -80,4 +81,8 @@ make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prom
 # exist in the local docker daemon — useful after a previous run or when
 # iterating on a single test.
 make integration-test-k8s RUN_ARGS='--skip-image-builds'
+
+# Test the distroless Alloy image (what CI uses). Adds the `-distroless`
+# suffix to the --alloy-image tag (default: grafana/alloy:latest-distroless).
+make integration-test-k8s RUN_ARGS='--distroless'
 ```

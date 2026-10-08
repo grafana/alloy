@@ -17,6 +17,10 @@ import (
 const (
 	clusterName  = "alloy-k8s-integration"
 	promGenImage = "prom-gen:latest"
+
+	// distrolessTagSuffix is appended to the Alloy image tag for the distroless
+	// flavor, matching the tags published by scripts/docker-containers.
+	distrolessTagSuffix = "-distroless"
 )
 
 // defaultTestPackages is the fallback `go test` target when neither the
@@ -28,6 +32,7 @@ type config struct {
 	repoRoot        string
 	kubeconfig      string
 	alloyImage      string
+	distroless      bool
 	reuseCluster    bool
 	skipImageBuilds bool
 	shard           string
@@ -57,6 +62,10 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+	}
+	// Applied after the interactive menu, which can also toggle distroless.
+	if cfg.distroless {
+		cfg.alloyImage = distrolessImageRef(cfg.alloyImage)
 	}
 	if err := os.MkdirAll(filepath.Dir(cfg.kubeconfig), 0o700); err != nil {
 		fmt.Printf("create kubeconfig dir: %v\n", err)
@@ -113,6 +122,7 @@ func parseFlags() (config, error) {
 	fs.StringVar(&cfg.shard, "shard", "", "Split test packages across shards (e.g., 0/2)")
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
+	fs.BoolVar(&cfg.distroless, "distroless", false, "Use the distroless Alloy image; adds the "+distrolessTagSuffix+" suffix to the --alloy-image tag")
 	fs.BoolVar(&cfg.interactive, "interactive", false, "Pick run options (reuse-cluster, skip-image-builds, shard/packages) via an interactive menu before running")
 	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed")
 	fs.Usage = func() {
@@ -127,6 +137,20 @@ func parseFlags() (config, error) {
 		cfg.packages = []string{pkgFlag}
 	}
 	return cfg, nil
+}
+
+// distrolessImageRef returns the distroless flavor of an Alloy image ref by
+// adding distrolessTagSuffix to its tag. Refs that already carry the suffix
+// are returned unchanged, and refs without a tag default to "latest".
+func distrolessImageRef(ref string) string {
+	repo, tag := ref, "latest"
+	if i := strings.LastIndex(ref, ":"); i > strings.LastIndex(ref, "/") {
+		repo, tag = ref[:i], ref[i+1:]
+	}
+	if !strings.HasSuffix(tag, distrolessTagSuffix) {
+		tag += distrolessTagSuffix
+	}
+	return repo + ":" + tag
 }
 
 func requireCommands(commands ...string) error {
@@ -151,9 +175,13 @@ func maybeBuildImages(cfg config) error {
 		}
 		return nil
 	}
-	if err := util.Step("make alloy-image", func() error {
-		// Pass ALLOY_IMAGE so a custom --alloy-image flag picks the right tag.
-		return harness.RunCommand("make", "alloy-image", "ALLOY_IMAGE="+cfg.alloyImage)
+	// Pass the image var so the build is tagged with cfg.alloyImage.
+	target, imageVar := "alloy-image", "ALLOY_IMAGE"
+	if cfg.distroless {
+		target, imageVar = "alloy-image-distroless", "ALLOY_IMAGE_DISTROLESS"
+	}
+	if err := util.Step("make "+target, func() error {
+		return harness.RunCommand("make", target, imageVar+"="+cfg.alloyImage)
 	}); err != nil {
 		return err
 	}
