@@ -14,7 +14,7 @@ The table below shows the levels of tests we use in Alloy, from the cheapest and
 | **Scale tests** | (Planned) Benchmarks for performance and resource use at scale. Purpose is to produce useful performance metrics and catch any regressions. | Nightly (TBD) |
 | **Manual testing** | Ad-hoc exploration in maintainer's own or shared environments. | Ad-hoc |
 
-There are also microbenchmarks and fuzz tests, but these are not covered here right now. For writing these, use general Go programming best practices.
+There are also microbenchmarks and fuzz tests, but writing them isn't covered here right now. For writing these, use general Go programming best practices. To compare a pull request's microbenchmarks against its base, see [Benchmarking a pull request](#benchmarking-a-pull-request).
 
 ## Choosing the level of tests to write
 
@@ -67,3 +67,22 @@ This is a more controlled way to talk about performance. Over time, major featur
 ### Consider: manual testing
 
 Ideally we want to scale our efforts and add automated tests that will prevent regressions, so manual tests are not recommended. However, these can be used as an additional safety check when we see given change as risky.
+
+## Benchmarking a pull request
+
+To check how a pull request affects performance, add the `run-benchmarks` label to it.
+The `Benchmark PR` workflow then:
+
+1. Selects the packages with benchmarks that the pull request affects: packages it changes directly, packages that import a changed package, and every package in a module whose `go.mod` or `go.sum` changed.
+1. Runs those benchmarks 10 times on both the merge base and the pull request head. Both run on the same `ubuntu-x64-xlarge` runner, alternating between base and head.
+1. Compares the results with [benchstat][] and posts a comment on the pull request.
+
+The comment lists the benchmarks whose CPU time (`sec/op`) or allocations (`allocs/op`) changed significantly: p < 0.05 and at least a 5% change.
+It also lists benchmarks that exist only in the base or only in the pull request, for example because they were added, removed, or renamed.
+The full benchstat output is included in the comment and in the workflow run artifacts.
+
+The label is removed once the comment is posted. To benchmark new commits, add the label again.
+
+You can run the same steps locally with `go run -C tools ./cmd benchdiff`. Refer to [`tools/README.md`](../../tools/README.md#benchdiff) for details.
+
+[benchstat]: https://pkg.go.dev/golang.org/x/perf/cmd/benchstat

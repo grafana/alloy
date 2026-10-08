@@ -1,0 +1,106 @@
+name: Benchmark PR - Comment
+
+on:
+  # SECURITY: This workflow uses workflow_run to comment on and label pull
+  # requests, including ones from forks.
+  #
+  # - No code from the PR is checked out or executed.
+  # - The artifact is produced by untrusted code. Its PR number is checked
+  #   against the head repository and branch of the triggering run before it
+  #   is used, and the report is only ever posted as comment text.
+  #
+  # zizmor: ignore[dangerous-triggers] see above
+  workflow_run:
+    workflows: ["Benchmark PR"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  comment:
+    if: >
+      github.repository == 'grafana/alloy' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Download benchmark results
+        # The Benchmark PR workflow runs for every label, but only uploads
+        # results when `run-benchmarks` was added.
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: benchmark-results
+          path: benchmark-results
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Post report and remove label
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const fs = require('fs');
+
+            const label = 'run-benchmarks';
+            const marker = '<!-- alloy-benchmark-report -->';
+            const dir = 'benchmark-results';
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+
+            if (!fs.existsSync(`${dir}/pr_number`)) {
+              core.info('No benchmark results for this run; nothing to do.');
+              return;
+            }
+
+            const prNumber = parseInt(fs.readFileSync(`${dir}/pr_number`, 'utf8').trim(), 10);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              core.setFailed('Invalid PR number in artifact');
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            if (pr.head.repo?.full_name !== run.head_repository?.full_name || pr.head.ref !== run.head_branch) {
+              core.setFailed(`PR #${prNumber} doesn't match the head of the triggering run`);
+              return;
+            }
+
+            const sha = run.head_sha.slice(0, 10);
+            let body;
+            if (run.conclusion === 'success' && fs.existsSync(`${dir}/report.md`)) {
+              body = fs.readFileSync(`${dir}/report.md`, 'utf8').trim();
+              if (!body.startsWith(marker)) {
+                body = `${marker}\n${body}`;
+              }
+              if (body.length > 63000) {
+                body = `${body.slice(0, 63000)}\n\n_Report truncated; see the workflow run artifacts._`;
+              }
+            } else {
+              body = `${marker}\n## Benchmark report\n\nThe benchmark run for \`${sha}\` failed.`;
+            }
+            if (pr.head.sha !== run.head_sha) {
+              body += `\n\n_This report is for \`${sha}\`. The PR has new commits since; add the \`${label}\` label again to benchmark them._`;
+            }
+            body += `\n\n<sub>[Workflow run](${run.html_url}) · Add the \`${label}\` label to run the benchmarks again.</sub>\n`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find(c => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              core.info(`Updated comment ${existing.id}`);
+            } else {
+              const { data: created } = await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+              core.info(`Created comment ${created.id}`);
+            }
+
+            try {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: prNumber, name: label });
+            } catch (err) {
+              if (err.status !== 404) {
+                throw err;
+              }
+            }

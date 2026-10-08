@@ -1,0 +1,118 @@
+name: Benchmark PR
+
+# Compares the Go benchmarks affected by a pull request between its merge base
+# and its head. Add the `run-benchmarks` label to a PR to run it; the label is
+# removed once the report is posted by benchmark-pr-comment.yml, so add it
+# again to re-run.
+#
+# This workflow runs untrusted PR code, so it only has read access. Posting the
+# report happens in benchmark-pr-comment.yml.
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Include whether this is the benchmark label, so that adding other labels
+  # doesn't cancel a benchmark run in progress.
+  group: benchmark-pr-${{ github.event.pull_request.number }}-${{ github.event.label.name == 'run-benchmarks' }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark PR
+    if: github.event.label.name == 'run-benchmarks'
+    # A dedicated, fixed-size runner keeps measurements consistent. Base and
+    # head run on the same VM, interleaved, so they're measured on the same
+    # hardware.
+    runs-on: ubuntu-x64-xlarge
+    timeout-minutes: 180
+    steps:
+    - name: Record PR metadata
+      env:
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        mkdir -p "$RUNNER_TEMP/benchmark"
+        echo "$PR_NUMBER" > "$RUNNER_TEMP/benchmark/pr_number"
+        echo "$HEAD_SHA" > "$RUNNER_TEMP/benchmark/head_sha"
+
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        # Full history is needed to find the merge base.
+        fetch-depth: 0
+        filter: blob:none
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go
+
+    - name: Check out merge base
+      id: merge-base
+      env:
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+      run: |
+        MERGE_BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
+        git worktree add --detach "$RUNNER_TEMP/base" "$MERGE_BASE"
+        echo "sha=${MERGE_BASE}" >> "$GITHUB_OUTPUT"
+
+    - name: Select benchmark packages
+      env:
+        MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+      run: |
+        go run -C tools ./cmd benchdiff packages \
+          --base "$RUNNER_TEMP/base" \
+          --head "$GITHUB_WORKSPACE" \
+          --merge-base "$MERGE_BASE" \
+          --out "$RUNNER_TEMP/benchmark/packages.json"
+
+    - name: Run benchmarks
+      run: |
+        go run -C tools ./cmd benchdiff run \
+          --base "$RUNNER_TEMP/base" \
+          --head "$GITHUB_WORKSPACE" \
+          --packages "$RUNNER_TEMP/benchmark/packages.json" \
+          --count 10 \
+          --out "$RUNNER_TEMP/benchmark"
+
+    - name: Compare results
+      run: |
+        go tool -C tools benchstat \
+          base="$RUNNER_TEMP/benchmark/base.txt" \
+          head="$RUNNER_TEMP/benchmark/head.txt" \
+          > "$RUNNER_TEMP/benchmark/benchstat.txt"
+
+    - name: Render report
+      env:
+        MERGE_BASE: ${{ steps.merge-base.outputs.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        go run -C tools ./cmd benchdiff report \
+          --base-results "$RUNNER_TEMP/benchmark/base.txt" \
+          --head-results "$RUNNER_TEMP/benchmark/head.txt" \
+          --meta "$RUNNER_TEMP/benchmark/meta.json" \
+          --packages "$RUNNER_TEMP/benchmark/packages.json" \
+          --benchstat "$RUNNER_TEMP/benchmark/benchstat.txt" \
+          --merge-base "$MERGE_BASE" \
+          --head-sha "$HEAD_SHA" \
+          --runner ubuntu-x64-xlarge \
+          --out "$RUNNER_TEMP/benchmark/report.md"
+        cat "$RUNNER_TEMP/benchmark/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: benchmark-results
+        path: |
+          ${{ runner.temp }}/benchmark/
+          !${{ runner.temp }}/benchmark/bin/
+        retention-days: 14
