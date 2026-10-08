@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
+
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
@@ -147,58 +149,91 @@ func TestValidateTenantConfig(t *testing.T) {
 
 	type testCase struct {
 		name string
-		cfg  TenantConfig
+		cfg  string
 		err  error
 	}
 
 	tests := []testCase{
 		{
 			name: "should pass on source config option set",
-			cfg:  TenantConfig{Source: "tenant"},
+			cfg:  `source = "tenant"`,
 		},
 		{
 			name: "should pass on value config option set",
-			cfg:  TenantConfig{Value: "team-a"},
+			cfg:  `value = "team-a"`,
 		},
 		{
 			name: "should fail on missing source and value",
-			cfg:  TenantConfig{},
+			cfg:  ``,
 			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
 		{
 			name: "should fail on empty source",
-			cfg:  TenantConfig{Source: ""},
+			cfg:  `source = ""`,
 			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
 		{
 			name: "should fail on empty value",
-			cfg:  TenantConfig{Value: ""},
+			cfg:  `value = ""`,
 			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
 		{
 			name: "should fail on empty label",
-			cfg:  TenantConfig{Label: ""},
+			cfg:  `label = ""`,
 			err:  errTenantStageEmptyLabelSourceOrValue,
 		},
 		{
 			name: "should fail on both source and value set",
-			cfg:  TenantConfig{Source: "tenant", Value: "team-a"},
-			err:  errTenantStageConflictingLabelSourceAndValue,
+			cfg: `
+			source = "tenant"
+			value = "team-a"
+			`,
+			err: errTenantStageConflictingLabelSourceAndValue,
 		},
 		{
 			name: "should fail on both source and label set",
-			cfg:  TenantConfig{Source: "tenant", Label: "team-a"},
-			err:  errTenantStageConflictingLabelSourceAndValue,
+			cfg: `
+			source = "tenant"
+			label = "team-a"
+			`,
+			err: errTenantStageConflictingLabelSourceAndValue,
 		},
 		{
 			name: "should fail on both label and value set",
-			cfg:  TenantConfig{Label: "tenant", Value: "team-a"},
-			err:  errTenantStageConflictingLabelSourceAndValue,
+			cfg: `
+			label = "tenant"
+			value = "team-a"
+			`,
+			err: errTenantStageConflictingLabelSourceAndValue,
 		},
 		{
 			name: "should fail on all set",
-			cfg:  TenantConfig{Label: "tenant", Source: "tenant", Value: "team-a"},
-			err:  errTenantStageConflictingLabelSourceAndValue,
+			cfg: `
+			label = "tenant"
+			source = "tenant"
+			value = "team-a"
+			`,
+			err: errTenantStageConflictingLabelSourceAndValue,
+		},
+		{
+			name: "should pass when one option is set and another is explicitly empty",
+			cfg: `
+			source = "tenant"
+			value = ""
+			`,
+		},
+		{
+			name: "should fail when all options are explicitly empty",
+			cfg: `
+			source = ""
+			value = ""
+			label = ""
+			`,
+			err: errTenantStageEmptyLabelSourceOrValue,
+		},
+		{
+			name: "should pass on label config option set",
+			cfg:  `label = "tenant_id"`,
 		},
 	}
 
@@ -206,7 +241,8 @@ func TestValidateTenantConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateTenantConfig(tt.cfg)
+			var cfg TenantConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
 			require.ErrorIs(t, err, tt.err)
 		})
 	}

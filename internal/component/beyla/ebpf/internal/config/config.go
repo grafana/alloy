@@ -32,6 +32,9 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 	set(cfg, "injector", a.Injector.Convert())
 	set(cfg, "javaagent", a.Javaagent.Convert())
 	set(cfg, "jvm_runtime_metrics", a.JVMRuntimeMetrics.Convert())
+	set(cfg, "dotnet_runtime_metrics", a.DotnetRuntimeMetrics.Convert())
+	set(cfg, "cloud_metadata", a.CloudMetadata.Convert())
+	set(cfg, "name_resolver", a.NameResolver.Convert())
 	set(cfg, "nodejs", a.Nodejs.Convert())
 	set(cfg, "routes", a.Routes.Convert())
 	set(cfg, "stats", a.Stats.Convert())
@@ -109,9 +112,13 @@ func (m Metrics) Convert(rt Runtime) map[string]any {
 	if v := m.ExtraSpanResourceLabels; len(v) > 0 {
 		prometheus["extra_span_resource_attributes"] = v
 	}
-	if v := m.ExemplarFilter; v != "" {
-		prometheus["exemplar_filter"] = v
+	// Beyla treats an empty exemplar_filter as invalid and warns, even though
+	// always_off is its effective default, so always emit an explicit value.
+	exemplarFilter := m.ExemplarFilter
+	if exemplarFilter == "" {
+		exemplarFilter = "always_off"
 	}
+	prometheus["exemplar_filter"] = exemplarFilter
 	if v := m.TTL; v != 0 {
 		prometheus["ttl"] = v.String()
 	}
@@ -136,6 +143,12 @@ func (m Metrics) Convert(rt Runtime) map[string]any {
 		}
 		if len(bk.GenAIClientTokenUsageHistogram) > 0 {
 			buckets["gen_ai_client_token_usage_histogram"] = bk.GenAIClientTokenUsageHistogram
+		}
+		if len(bk.JVMGCDurationHistogram) > 0 {
+			buckets["jvm_gc_duration_histogram"] = bk.JVMGCDurationHistogram
+		}
+		if len(bk.V8JSGCDurationHistogram) > 0 {
+			buckets["v8js_gc_duration_histogram"] = bk.V8JSGCDurationHistogram
 		}
 		set(prometheus, "buckets", buckets)
 	}

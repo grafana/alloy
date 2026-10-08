@@ -168,6 +168,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
 | `attributes` > [`select`][select]                                      | Configures which attributes to include or exclude for specific sections.                           | no       |
+| [`cloud_metadata`][cloud_metadata]                                     | Configures overrides for detected cloud metadata.                                                 | no       |
 | [`discovery`][discovery]                                               | Configures the discovery for processes to instrument matching given criteria.                      | no       |
 | `discovery` > [`instrument`][services]                                 | Configures the services to discover and instrument for the component.                              | no       |
 | `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
@@ -194,7 +195,10 @@ You can use the following blocks with `beyla.ebpf`:
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
 | [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no       |
+| `metrics` > [`buckets`][buckets]                                      | Configures histogram bucket boundaries.                                                           | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
+| [`name_resolver`][name_resolver]                                     | Configures service name resolution.                                                               | no       |
+| `name_resolver` > [`ecs`][ecs name resolution]                        | Configures Amazon ECS task inventory refreshes for service name resolution.                         | no       |
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
@@ -207,6 +211,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `injector` > [`webhook`][injector webhook]                             | Configures delegation of SDK injection to an external webhook controller.                          | no       |
 | [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
 | [`jvm_runtime_metrics`][jvm_runtime_metrics]                           | Configures collection of JVM runtime metrics from instrumented Java processes.                     | no       |
+| [`dotnet_runtime_metrics`][dotnet_runtime_metrics]                     | Configures collection of .NET runtime metrics from instrumented processes.                         | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -242,6 +247,11 @@ You can use the following blocks with `beyla.ebpf`:
 [injector resources]: #resources
 [stats]: #stats
 [jvm_runtime_metrics]: #jvm_runtime_metrics
+[dotnet_runtime_metrics]: #dotnet_runtime_metrics
+[cloud_metadata]: #cloud_metadata
+[name_resolver]: #name_resolver
+[ecs name resolution]: #ecs
+[buckets]: #buckets
 
 {{< /docs/alloy-config >}}
 
@@ -370,8 +380,12 @@ The `discovery` block configures the discovery for processes to instrument match
 
 | Name                                 | Type   | Description                                                        | Default | Required |
 |--------------------------------------|--------|--------------------------------------------------------------------|---------|----------|
+| `disabled_route_harvesters`          | `list(string)` | Languages to exclude from automatic HTTP route harvesting. | `[]` | no |
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
+
+`disabled_route_harvesters` accepts `dotnet`, `go`, `java`, `nodejs`, `php`, `python`, and `ruby`.
+Use it to disable automatic HTTP route harvesting for specific languages while retaining their instrumentation.
 
 It contains the following blocks:
 
@@ -582,19 +596,35 @@ The `ebpf` block configures eBPF-specific settings.
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
 | `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
-| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for **Traceparent** fields.                | `false`      | no       |
 | `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
-| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `context_propagation`   | `string`   | Enables injecting of the **Traceparent** header value for outgoing HTTP requests. | `"disabled"` | no       |
 | `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
 | `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
+| `go_http_client_buffer_timeout` | `duration` | Inactivity period before enriching and emitting a pending Go HTTP client event with its captured buffers. | `"1s"` | no |
+| `kafka_consumer_group_cache_size` | `int` | Maximum number of processes whose Kafka consumer-group membership Beyla caches. | `4096` | no |
+| `kafka_consumer_group_ttl` | `duration` | Lifetime of cached Kafka consumer-group membership. | `"2m"` | no |
+| `populate_trace_context` | `bool` | Populate the pinned trace-context map for external readers, such as the **OpenTelemetry profiler**. | `false` | no |
 
+Omit `go_http_client_buffer_timeout` to use the default of `"1s"` as defined in Beyla.
+Set it to `"0s"` to disable Go HTTP client event deferral.
+
+`kafka_consumer_group_cache_size` and `kafka_consumer_group_ttl` control the cache that supplies `messaging.consumer.group.name` on Kafka consumer spans and metrics.
+Keep the TTL above the consumer heartbeat interval and the longest expected re-balance.
+For classic consumers that share a process with another consumer group, consider a TTL above `max.poll.interval.ms`.
+A longer TTL delays attribution for newly observed processes.
+Unset or zero values use the defaults defined in Beyla.
+
+Set `populate_trace_context` to `true` when an external reader needs the trace and span IDs of the request each thread serves.
+Keeping this map populated adds work on runtime context switches.
+Beyla populates the map automatically when log enrichment is active, even if `populate_trace_context` is `false`.
 
 #### `context_propagation`
 
 `context_propagation` allows Beyla to propagate any incoming context to downstream services. 
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the **Traceparent** header value is encoded at TCP packet level, 
 and requires that Beyla is present on both sides of the communication.
 
 The TCP packet level encoding uses Linux Traffic Control (TC). 
@@ -774,17 +804,20 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 `features` is a list of features to enable for the metrics. The following features are available:
 
 * `*` or `all` enables all features.
-* `application` exports application-level metrics.
+* `application` exports application-level RED metrics and HTTP request and response body-size histograms.
+* `application_red` exports application-level RED metrics without HTTP body-size histograms.
+* `application_sizes` exports HTTP request and response body-size histograms. Include `application` or `application_red` in the same feature list.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
 * `application_span` exports application-level metrics in traces span metrics format.
 * `application_span_otel` exports OpenTelemetry-compatible span metrics.
 * `application_span_sizes` exports span size metrics for trace analysis.
 * `application_host` exports application-level host metrics for host-based pricing.
-* `application_runtime` exports language-runtime metrics (for example JVM, Go, and Node.js runtime metrics) from instrumented processes.
+* `application_runtime` exports language-runtime metrics (for example JVM, .NET, Go, and Node.js runtime metrics) from instrumented processes.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
 * `stats` exports kernel-level connection statistics per service.
+* `stats_tcp_successful_connections` exports successful TCP connection counts. The `stats` feature also enables these counts.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -812,6 +845,27 @@ on the service, that you want to include on the span metrics. The default list i
 
 The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
 Grafana Cloud.
+
+#### `buckets`
+
+The `buckets` block configures explicit histogram bucket boundaries for Prometheus metrics.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `duration_histogram` | `list(number)` | Application request duration boundaries, in seconds. | `[]` | no |
+| `gen_ai_client_operation_duration_histogram` | `list(number)` | GenAI client operation duration boundaries, in seconds. | `[]` | no |
+| `gen_ai_client_token_usage_histogram` | `list(number)` | GenAI token usage boundaries, in tokens. | `[]` | no |
+| `jvm_gc_duration_histogram` | `list(number)` | JVM garbage collection duration boundaries, in seconds. | `[]` | no |
+| `request_size_histogram` | `list(number)` | HTTP request body-size boundaries, in bytes. | `[]` | no |
+| `response_size_histogram` | `list(number)` | HTTP response body-size boundaries, in bytes. | `[]` | no |
+| `stat_tcp_rtt_histogram` | `list(number)` | TCP round-trip time boundaries, in seconds. | `[]` | no |
+| `v8js_gc_duration_histogram` | `list(number)` | Node.js V8 garbage collection duration boundaries, in seconds. | `[]` | no |
+
+An empty list uses the default boundaries defined in Beyla.
+For `jvm_gc_duration_histogram`, the default boundaries are `[0.01, 0.1, 1, 10]` seconds.
+JVM GC duration metrics require `application_runtime` in `metrics.features` and the Java agent enabled.
+For `v8js_gc_duration_histogram`, the default boundaries are `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` seconds.
+Node.js V8 GC duration metrics require `application_runtime` in `metrics.features` and Node.js instrumentation enabled.
 
 #### `network` metrics
 
@@ -929,7 +983,8 @@ The `injector` block configures the Beyla SDK injection feature, which automatic
 | `image_version`          | `string`       | OCI image version to inject.                                                                     | `""`    | no       |
 | `trace_propagators`      | `list(string)` | Context propagation formats for injected SDKs, for example `["tracecontext", "baggage"]`.       | `[]`    | no       |
 
-`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`.
+`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`.
+When the list is empty, Beyla enables all five SDK instrumentations by default.
 
 `exporter_otlp_endpoint` overrides the OTLP endpoint that injected SDKs use to export telemetry, for cases where Beyla isn't configured to export traces. When set, it overrides the global OTLP endpoint for SDK-injected services.
 
@@ -997,6 +1052,71 @@ When `sampling_interval` is unset, Beyla uses its own default interval.
 {{< admonition type="note" >}}
 The `enabled` attribute is deprecated and has no effect. Add `application_runtime` to `metrics.features` instead.
 {{< /admonition >}}
+
+### `dotnet_runtime_metrics`
+
+The `dotnet_runtime_metrics` block configures collection of .NET runtime metrics from instrumented processes.
+Add `application_runtime` to `metrics.features` to enable collection.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `sampling_interval` | `duration` | Collection interval requested from .NET runtime event counters and delay before reconnecting after a collection session ends. | `"1s"` | no |
+| `timeout` | `duration` | Timeout for diagnostic IPC setup and collection session shutdown. | `"10s"` | no |
+
+Unset or zero values use the defaults defined in Beyla.
+
+### `cloud_metadata`
+
+The `cloud_metadata` block overrides automatically detected cloud metadata.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `cluster_name` | `string` | Overrides the detected cloud cluster name. | `""` | no |
+| `region` | `string` | Overrides the detected cloud region. | `""` | no |
+
+Empty values use automatically detected metadata.
+
+### `name_resolver`
+
+The `name_resolver` block configures how Beyla resolves service names.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `cache_expiry` | `duration` | Lifetime of cached IP-to-hostname entries. | `"5m"` | no |
+| `cache_len` | `int` | Maximum number of cached IP-to-hostname entries. | `1024` | no |
+| `sources` | `list(string)` | Backends for resolving service names. | `["k8s", "rdns"]` | no |
+
+`sources` accepts `dns`, `ecs`, `k8s`, `kube`, `kubernetes`, and `rdns`.
+The values `k8s`, `kube`, and `kubernetes` select the same Kubernetes resolver.
+An empty list uses the default sources defined in Beyla.
+Unset or zero cache values use the defaults defined in Beyla.
+
+Include `ecs` in `sources` to enable Amazon ECS service name resolution.
+This requires `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
+The `cloud_metadata` block lets you override automatic cluster and region detection.
+
+For example, this block adds ECS resolution while retaining the default sources:
+
+```alloy
+name_resolver {
+  sources = ["k8s", "rdns", "ecs"]
+
+  ecs {
+    refresh_interval = "30s"
+  }
+}
+```
+
+#### `ecs`
+
+The `ecs` block configures ECS service name resolution.
+Include `ecs` in `name_resolver.sources` to enable it.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `refresh_interval` | `duration` | How often Beyla refreshes the ECS task inventory. | `"30s"` | no |
+
+An unset or zero interval uses the default defined in Beyla.
 
 ## Exported fields
 

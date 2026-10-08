@@ -305,10 +305,17 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 }
 
 func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
-	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(c.excludeDatabases))
+	return listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases)
+}
+
+// listDatabases lists the non-excluded, accessible, online databases on the
+// instance. It's shared by SchemaDetails and HealthCheck so both iterate
+// databases the same way.
+func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, excludeDatabases []string) ([]databaseName, error) {
+	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(excludeDatabases))
 	var databases []databaseName
-	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
-		rs, err := c.dbConnection.QueryContext(queryCtx, query)
+	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
+		rs, err := db.QueryContext(queryCtx, query)
 		if err != nil {
 			return err
 		}
@@ -371,7 +378,7 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				database_observability.OP_TABLE_DETECTION,
-				fmt.Sprintf(`database="%s" schema="%s" table="%s"`, database, schema, tableName),
+				fmt.Sprintf(`database=%q schema=%q table=%q`, database, schema, tableName),
 			)
 		}
 
@@ -448,7 +455,7 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 				logging.LevelInfo,
 				database_observability.OP_CREATE_STATEMENT,
 				fmt.Sprintf(
-					`database="%s" schema="%s" table="%s" table_spec="%s"`,
+					`database=%q schema=%q table=%q table_spec=%q`,
 					table.database, table.schema, table.tableName, table.b64TableSpec,
 				),
 			)

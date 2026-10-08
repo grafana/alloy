@@ -696,6 +696,7 @@ func Test_addLokiLabels(t *testing.T) {
 			"job":       database_observability.JobName,
 			"instance":  model.LabelValue("some-instance-key"),
 			"server_id": model.LabelValue("some-system-id"),
+			"engine":    model.LabelValue(collector.EngineName),
 		}, handler.Received()[0].Labels)
 		assert.Equal(t, "some-message", handler.Received()[0].Line)
 	})
@@ -1948,4 +1949,93 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 			t.Fatal("send to a non-owned database's logs receiver blocked")
 		}
 	}
+}
+
+func Test_resolveExporterArgs(t *testing.T) {
+	t.Run("no block at all defaults to stat_statements only", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+	})
+
+	t.Run("block present with sub-block settings but enabled_collectors untouched", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				stat_statements {
+					limit = 50
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(50), exporterArgs.StatStatementFlags.Limit)
+	})
+
+	t.Run("explicit enabled_collectors wins outright", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				enabled_collectors = ["wal"]
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{"wal"}, exporterArgs.EnabledCollectors)
+	})
+
+	t.Run("explicit empty enabled_collectors treated as unset", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				enabled_collectors = []
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+	})
+
+	t.Run("disable_default_metrics without enabled_collectors does not error and does not inject", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				disable_default_metrics    = true
+				custom_queries_config_path = "/etc/custom-queries.yml"
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Empty(t, exporterArgs.EnabledCollectors)
+	})
+
+	t.Run("disable_default_metrics with explicit enabled_collectors still errors", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				disable_default_metrics    = true
+				custom_queries_config_path = "/etc/custom-queries.yml"
+				enabled_collectors         = ["wal"]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
+	})
 }

@@ -87,20 +87,14 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(*cfg.LabelsConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLabelStage(*cfg.LabelsConfig, opts)
 	case cfg.StructuredMetadata != nil:
 		s, err = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s, err = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 	case cfg.RegexConfig != nil:
 		s, err = newRegexStage(*cfg.RegexConfig, opts)
 		if err != nil {
@@ -112,12 +106,9 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(*cfg.OutputConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newOutputStage(*cfg.OutputConfig, opts)
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(opts.slogger, *cfg.MatchConfig, opts.registerer, opts.minStability)
+		s, err = newMatchStage(*cfg.MatchConfig, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -127,10 +118,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(*cfg.TenantConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newTenantStage(*cfg.TenantConfig, opts)
 	case cfg.ReplaceConfig != nil:
 		s, err = newReplaceStage(*cfg.ReplaceConfig, opts)
 		if err != nil {
@@ -147,7 +135,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(opts.slogger, *cfg.MultilineConfig)
+		s, err = newMultilineStage(*cfg.MultilineConfig, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -157,10 +145,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LabelKeepConfig != nil:
-		s, err = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLabelKeepStage(*cfg.LabelKeepConfig, opts)
 	case cfg.LabelDropConfig != nil:
 		s, err = newLabelDropStage(*cfg.LabelDropConfig, opts)
 		if err != nil {

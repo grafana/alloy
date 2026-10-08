@@ -992,7 +992,6 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
-			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
 		})
 		if err != nil {
@@ -1162,6 +1161,7 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
+		"engine":    model.LabelValue(collector.EngineName),
 	}).Wrap(entryHandler)
 
 	return entryHandler

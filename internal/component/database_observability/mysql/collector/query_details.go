@@ -152,7 +152,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
 
 		for _, table := range tables {
@@ -165,7 +165,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				database_observability.OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema="%s" digest="%s" table="%s" validated="%t"`, schema, digest, resolvedTable, validated),
+				fmt.Sprintf(`schema=%q digest=%q table=%q validated="%t"`, schema, digest, resolvedTable, validated),
 			)
 		}
 	}

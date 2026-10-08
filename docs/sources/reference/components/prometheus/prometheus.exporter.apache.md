@@ -7,12 +7,17 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.apache
 ---
 
 # `prometheus.exporter.apache`
 
-The `prometheus.exporter.apache` component embeds [`apache_exporter`](https://github.com/Lusitaniae/apache_exporter) for collecting `mod_status` statistics from an Apache server.
+The `prometheus.exporter.apache` component embeds [`apache_exporter`][apache-exporter] to collect `mod_status` statistics from an Apache server.
+
+You can specify multiple `prometheus.exporter.apache` components by giving them different labels.
+
+[apache-exporter]: https://github.com/Lusitaniae/apache_exporter
 
 ## Usage
 
@@ -23,13 +28,15 @@ prometheus.exporter.apache "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `prometheus.exporter.apache`.
+You can use the following arguments with `prometheus.exporter.apache`:
 
 | Name            | Type     | Description                               | Default                                 | Required |
 | --------------- | -------- | ----------------------------------------- | --------------------------------------- | -------- |
 | `host_override` | `string` | Override for HTTP Host header.            |                                         | no       |
 | `insecure`      | `bool`   | Ignore server certificate if using HTTPS. | `false`                                 | no       |
 | `scrape_uri`    | `string` | URI to Apache stub status page.           | `"http://localhost/server-status?auto"` | no       |
+
+The component sets the `instance` label on its exported targets to the host and port from `scrape_uri`.
 
 ## Blocks
 
@@ -54,7 +61,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.apache`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.apache`:
 
 ```alloy
 prometheus.exporter.apache "example" {
@@ -81,9 +88,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
