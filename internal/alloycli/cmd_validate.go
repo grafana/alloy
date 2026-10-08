@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/features"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -69,6 +70,7 @@ func (v *alloyValidate) Run(configFile string) error {
 			Sources: sources,
 			ServiceDefinitions: getServiceDefinitions(
 				&cluster.Service{},
+				&features.Service{},
 				&http.Service{},
 				&labelstore.Service{},
 				&livedebugging.Service{},

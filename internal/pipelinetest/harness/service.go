@@ -2,6 +2,8 @@ package harness
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/service/features"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -27,8 +30,14 @@ const (
 	memoryListenAddr = "alloy.internal:12345"
 )
 
-func defaultServices(l *logging.Logger) []service.Service {
+func defaultServices(l *logging.Logger, flags []string) ([]service.Service, error) {
+	enabled, err := featuresFromFlags(flags)
+	if err != nil {
+		return nil, err
+	}
+
 	return []service.Service{
+		features.New(enabled...),
 		livedebugging.New(),
 		labelstore.New(l.Slog(), prometheus.NewRegistry()),
 		httpservice.New(httpservice.Options{
@@ -47,7 +56,21 @@ func defaultServices(l *logging.Logger) []service.Service {
 			name: cluster.ServiceName,
 			data: cluster.Mock(),
 		},
+	}, nil
+}
+
+// featuresFromFlags returns the features named by flags, which use the CLI flag
+// name without the leading dashes.
+func featuresFromFlags(flags []string) ([]features.Feature, error) {
+	enabled := make([]features.Feature, 0, len(flags))
+	for _, flag := range flags {
+		i := slices.IndexFunc(features.All, func(f features.Feature) bool { return f.Flag() == flag })
+		if i < 0 {
+			return nil, fmt.Errorf("unknown feature %q", flag)
+		}
+		enabled = append(enabled, features.All[i])
 	}
+	return enabled, nil
 }
 
 var _ service.Service = (*mockService)(nil)

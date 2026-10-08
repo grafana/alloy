@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/features"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -248,6 +249,8 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	fset.DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
+	r.featureFlags = features.RegisterFlags(fset)
+
 	addDeprecatedFlags(fset)
 }
 
@@ -286,6 +289,7 @@ type alloyRun struct {
 	enableDirectFanout      bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
+	featureFlags            *features.Flags
 }
 
 func (fr *alloyRun) checkExperimentalFlags() error {
@@ -401,6 +405,11 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	defer cancel()
 
 	if err := fr.checkExperimentalFlags(); err != nil {
+		return err
+	}
+
+	enabledFeatures, err := fr.featureFlags.Enabled(fr.minStability)
+	if err != nil {
 		return err
 	}
 
@@ -560,6 +569,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 
 	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
+	featuresService := features.New(enabledFeatures...)
 	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
@@ -571,6 +581,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		EnableCommunityComps: fr.enableCommunityComps,
 		Services: []service.Service{
 			clusterService,
+			featuresService,
 			httpService,
 			labelService,
 			liveDebuggingService,

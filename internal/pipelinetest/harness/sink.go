@@ -81,7 +81,6 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	s := &Sink{
 		opts:         opts,
 		args:         args,
-		lokirecv:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 		promMetadata: make(map[string]metadata.Metadata),
 	}
 
@@ -110,6 +109,11 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 			s.storePrometheusMetadata(l, m)
 			return 0, nil
 		}),
+	)
+
+	s.lokirecv = loki.NewLogsReceiver(
+		loki.WithConsumer(s),
+		loki.WithComponentID(opts.ID),
 	)
 
 	router := mux.NewRouter()
@@ -170,7 +174,10 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	return s, nil
 }
 
-var _ component.Component = (*Sink)(nil)
+var (
+	_ loki.Consumer       = (*Sink)(nil)
+	_ component.Component = (*Sink)(nil)
+)
 
 func (s *Sink) Run(ctx context.Context) error {
 	defer s.server.Close()
@@ -189,6 +196,21 @@ func (s *Sink) Run(ctx context.Context) error {
 
 func (s *Sink) Update(args component.Arguments) error {
 	s.args = args.(SinkArguments)
+	return nil
+}
+
+func (s *Sink) Consume(_ context.Context, batch loki.Batch) error {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	for _, stream := range batch.Streams() {
+		for _, e := range stream.Entries {
+			s.lokiEntries = append(
+				s.lokiEntries,
+				loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
+			)
+		}
+	}
 	return nil
 }
 
