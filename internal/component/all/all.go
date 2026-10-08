@@ -181,6 +181,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/pyroscope/relabel"                        // Import pyroscope.relabel
 	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
 	_ "github.com/grafana/alloy/internal/component/pyroscope/write/glue"                     // Import pyroscope.write
+	_ "github.com/grafana/alloy/internal/component/remote/aws/secrets_manager"               // Import remote.aws.secrets_manager
 	_ "github.com/grafana/alloy/internal/component/remote/http"                              // Import remote.http
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/configmap"              // Import remote.kubernetes.configmap
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"                 // Import remote.kubernetes.secret
