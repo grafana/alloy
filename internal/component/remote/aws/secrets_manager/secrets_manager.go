@@ -117,6 +117,7 @@ func (c *Component) Run(ctx context.Context) error {
 	var ticker *time.Ticker
 	var tick <-chan time.Time
 	var interval time.Duration
+	var schedGen uint64
 	stopTicker := func() {
 		if ticker != nil {
 			ticker.Stop()
@@ -128,6 +129,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 	resetTicker := func() {
 		stopTicker()
+		// Remember the generation of this schedule. An Update changes it.
+		c.mut.Lock()
+		schedGen = c.gen
+		c.mut.Unlock()
 		if interval = c.nextInterval(); interval > 0 {
 			ticker = time.NewTicker(interval)
 			tick = ticker.C
@@ -145,7 +150,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case t := <-tick:
 			// The ticker keeps its own schedule. The next tick is one interval after this tick.
 			c.setNextPoll(t.Add(interval))
-			if c.poll(ctx) {
+			if c.poll(ctx, schedGen) {
 				resetTicker()
 			}
 		}
@@ -252,13 +257,15 @@ func (c *Component) nextInterval() time.Duration {
 
 // poll fetches the secret with the current arguments. It returns true if the
 // poll schedule changed, because a fetch started or stopped to fail.
-func (c *Component) poll(runCtx context.Context) bool {
+// schedGen is the value of gen when the current schedule started.
+func (c *Component) poll(runCtx context.Context, schedGen uint64) bool {
 	c.fetchMut.Lock()
 	defer c.fetchMut.Unlock()
 
 	c.mut.Lock()
-	if c.pending > 0 {
-		// If pending is nonzero there is an update in progress that will fetch and set the schedule.
+	if c.pending > 0 || c.gen != schedGen {
+		// An Update is running, or an Update ran after this schedule started.
+		// This tick is out of date. The Update fetches and restarts the schedule.
 		c.mut.Unlock()
 		return false
 	}

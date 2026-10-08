@@ -530,7 +530,7 @@ func TestUpdate_FailureKeepsUnhealthyPollHealth(t *testing.T) {
 
 	// Call poll directly, so that no background poll changes the health.
 	fake.returnError(errors.New("AccessDeniedException: denied"))
-	c.poll(context.Background())
+	c.poll(context.Background(), c.gen)
 	before := c.CurrentHealth()
 	require.Equal(t, component.HealthTypeUnhealthy, before.Health)
 	require.Contains(t, before.Message, "AccessDeniedException: denied")
@@ -585,6 +585,75 @@ func TestUpdate_CancelsInFlightPoll(t *testing.T) {
 	require.Equal(t, "new", lastDataValue(rec))
 	require.Equal(t, component.HealthTypeHealthy, c.CurrentHealth().Health)
 	require.Zero(t, testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("error")))
+}
+
+// A tick from a schedule that an Update superseded must not fetch. The Update
+// already fetched, and it restarts the schedule.
+func TestPoll_SkipsSupersededTick(t *testing.T) {
+	fake := newFakeGetter(`{"v":"1"}`)
+	c, _, err := newTestComponent(t, testArgs("a", time.Hour), fake)
+	require.NoError(t, err)
+
+	oldGen := c.gen
+	require.NoError(t, c.Update(testArgs("b", time.Hour)))
+	require.NotEqual(t, oldGen, c.gen)
+
+	calls := fake.callCount()
+	require.False(t, c.poll(context.Background(), oldGen))
+	require.Equal(t, calls, fake.callCount())
+	require.Equal(t, float64(2), testutil.ToFloat64(c.metrics.fetchesTotal.WithLabelValues("success")))
+
+	c.poll(context.Background(), c.gen)
+	require.Equal(t, calls+1, fake.callCount())
+}
+
+// A tick that arrives while an Update holds fetchMut must not fetch again
+// after the Update returns. The Update already fetched.
+func TestRun_TickDuringUpdateDoesNotFetchAgain(t *testing.T) {
+	const pollFreq = 100 * time.Millisecond
+	fake := newFakeGetter(`{"v":"old"}`)
+	c, _, err := newTestComponent(t, testArgs("old", pollFreq), fake)
+	require.NoError(t, err)
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	runComponent(t, c)
+	// Wait for one poll, so that Run started its schedule before the Update.
+	require.Eventually(t, func() bool { return fake.callCount() >= 2 }, waitFor, tick)
+
+	fake.setFn(func(_ context.Context, in *secretsmanager.GetSecretValueInput) (*secretsmanager.GetSecretValueOutput, error) {
+		if aws.ToString(in.SecretId) == "new" {
+			once.Do(func() { close(entered) })
+			<-release
+		}
+		return &secretsmanager.GetSecretValueOutput{SecretString: aws.String(`{"v":"x"}`)}, nil
+	})
+
+	updated := make(chan error, 1)
+	go func() { updated <- c.Update(testArgs("new", pollFreq)) }()
+	select {
+	case <-entered:
+	case <-time.After(waitFor):
+		require.FailNow(t, "Update did not fetch")
+	}
+	// Hold fetchMut for about 3 poll periods, so that at least one tick blocks in poll.
+	time.Sleep(3 * pollFreq)
+	close(release)
+	require.NoError(t, <-updated)
+
+	newCalls := func() int {
+		n := 0
+		for _, id := range fake.secretIDsSince(0) {
+			if id == "new" {
+				n++
+			}
+		}
+		return n
+	}
+	require.Equal(t, 1, newCalls())
+	// The restarted schedule fires one period after the Update. A tick of the old schedule would fetch at once.
+	require.Never(t, func() bool { return newCalls() > 1 }, pollFreq*3/4, tick)
 }
 
 func TestUpdate_StalePollNotExported(t *testing.T) {
