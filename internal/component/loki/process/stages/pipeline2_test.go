@@ -13,9 +13,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // TestPipelineConsumerConcurrent runs every migrated stage in one pipeline from several
@@ -29,21 +31,47 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 
 	// One line shape per parser.
 	const (
-		ansiLine   = "\x1b[31mred\x1b[0m plain text"
-		arrayLine  = `[{"a":1},{"b":2}]`
-		criPartial = "2026-09-18T10:00:00.000000001Z stderr P a partial fragment "
-		criFull    = "2026-09-18T10:00:00.000000001Z stderr F user=bob token=4539148803436467 dur=1.5"
-		dockerLine = `{"log":"user=bob dur=1.5\n","stream":"stderr","time":"2026-09-18T10:00:00Z"}`
-		logfmtLine = "level=info user=bob token=4539148803436467 dur=1.5"
-		jsonLine   = `{"level":"info","ip":"1.2.3.4","ts":"2026-09-18T10:00:00Z","evt":"yay","msg":"user=bob token=4539148803436467 dur=1.5"}`
+		ansiLine       = "\x1b[31mred\x1b[0m plain text"
+		arrayLine      = `[{"a":1},{"b":2}]`
+		criPartial     = "2026-09-18T10:00:00.000000001Z stderr P a partial fragment "
+		criFull        = "2026-09-18T10:00:00.000000001Z stderr F user=bob token=4539148803436467 dur=1.5"
+		dockerLine     = `{"log":"user=bob dur=1.5\n","stream":"stderr","time":"2026-09-18T10:00:00Z"}`
+		logfmtLine     = "level=info user=bob token=4539148803436467 dur=1.5"
+		jsonLine       = `{"level":"info","ip":"1.2.3.4","ts":"2026-09-18T10:00:00Z","evt":"yay","msg":"user=bob token=4539148803436467 dur=1.5"}`
+		multilineStart = "START user=bob token=4539148803436467 dur=1.5"
+		multilineCont  = "\tat com.example.Foo.bar(Foo.java:42)"
 	)
 
-	lines := []string{criPartial, criFull, dockerLine, jsonLine, arrayLine, logfmtLine, ansiLine}
+	lines := []string{criPartial, criFull, dockerLine, jsonLine, arrayLine, logfmtLine, ansiLine, multilineStart, multilineCont}
 
 	cfg := loadConfig(`
 		stage.cri {}
 
 		stage.docker {}
+
+		stage.multiline {
+			firstline     = "^START"
+			max_lines     = 3
+			max_wait_time = "10ms"
+		}
+
+		stage.match {
+			selector = "{app=\"app-0\"}"
+
+			stage.multiline {
+				firstline     = "^START"
+				max_lines     = 2
+				max_wait_time = "10ms"
+			}
+
+			stage.decolorize {}
+		}
+
+		stage.match {
+			selector            = "{instance=\"stream-0\"}"
+			action              = "drop"
+			drop_counter_reason = "race_test_match_drop"
+		}
 
 		stage.json {
 			expressions = {
@@ -240,4 +268,31 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 	wg.Wait()
 	pc.Stop()
 	require.NoError(t, errors.Join(errs...))
+}
+
+func TestNewPipelineStopsOnFailure(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	cfgs := loadConfig(`
+	stage.regex {
+		expression = "[unclosed"
+	}
+	stage.match {
+		selector = "{app=\"x\"}"
+		action   = "keep"
+
+		stage.multiline {
+			firstline     = "^START"
+			max_wait_time = "10ms"
+		}
+	}
+	stage.multiline {
+		firstline     = "^START"
+		max_wait_time = "10ms"
+	}
+	`)
+
+	next := func(_ context.Context, _ []Entry) error { return nil }
+	_, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.Error(t, err)
 }

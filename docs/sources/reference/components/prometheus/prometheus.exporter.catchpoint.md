@@ -7,7 +7,7 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-09-15
+review_date: 2026-10-01
 title: prometheus.exporter.catchpoint
 ---
 
@@ -15,7 +15,11 @@ title: prometheus.exporter.catchpoint
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) to collect statistics from a Catchpoint account.
+The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`][catchpoint-exporter] to collect statistics from a Catchpoint account.
+
+You can specify multiple `prometheus.exporter.catchpoint` components by giving them different labels.
+
+[catchpoint-exporter]: https://github.com/grafana/catchpoint-prometheus-exporter
 
 ## Usage
 
@@ -36,6 +40,8 @@ You can use the following arguments with `prometheus.exporter.catchpoint`:
 | `port`            | `string` | Sets the port on which the exporter runs.                                       | `"9090"`                | no       |
 | `verbose_logging` | `bool`   | Enables verbose logging to provide more detailed output for debugging purposes. | `false`                 | no       |
 | `webhook_path`    | `string` | Defines the path where the exporter receives webhook data from Catchpoint.      | `"/catchpoint-webhook"` | no       |
+
+The component sets the `instance` label on its exported targets to the value of `port`.
 
 ## Blocks
 
@@ -60,7 +66,7 @@ In those cases, exported fields retain their last healthy values.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.catchpoint`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.catchpoint`:
 
 ```alloy
 prometheus.exporter.catchpoint "example" {

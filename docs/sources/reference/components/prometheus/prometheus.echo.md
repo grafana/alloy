@@ -5,7 +5,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.echo
 ---
 
@@ -14,6 +14,8 @@ title: prometheus.echo
 The `prometheus.echo` component receives Prometheus metrics and writes them to `stdout` in Prometheus exposition format.
 This component is useful for debugging and testing the flow of metrics through a pipeline.
 You can place `prometheus.echo` at any stage in your pipeline to inspect the metrics passing through it.
+
+You can specify multiple `prometheus.echo` components by giving them different labels.
 
 ## Usage
 
@@ -30,7 +32,7 @@ You can use the following arguments with `prometheus.echo`:
 | -------- | -------- | --------------------------------------------------------------- | ------- | -------- |
 | `format` | `string` | The output format for metrics. Must be `text` or `openmetrics`. | `text`  | no       |
 
-The `format` argument controls how metrics are encoded when written to `stdout`:
+The `format` argument controls how the component encodes metrics when written to `stdout`:
 
 - `text` - Uses the Prometheus text exposition format. This is the default.
 - `openmetrics` - Uses the OpenMetrics text format.
@@ -85,7 +87,7 @@ In this example:
 1. The `prometheus.scrape` component scrapes those metrics.
 1. The `prometheus.echo` component receives the scraped metrics and writes them to `stdout` in Prometheus text format.
 
-When you run this configuration, you'll see the metrics being written to `stdout`, which is useful to:
+When you run this configuration, the component writes metrics to `stdout`, which is useful to:
 
 - Debug metric collection issues
 - Verify metric labels and values

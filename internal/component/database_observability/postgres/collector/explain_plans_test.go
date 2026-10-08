@@ -124,8 +124,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -242,8 +240,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_join_with_aggregate_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -388,8 +384,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_query_with_multiple_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -576,8 +570,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "complex_subquery_in_select_clause",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -639,8 +631,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "conditional_aggregation_with_case",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -700,8 +690,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "correlated_subquery",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -827,8 +815,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "date_manipulation_with_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -859,8 +845,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "derived_table_with_aggregates",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1083,8 +1067,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "distinct_with_multiple_joins",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1201,8 +1183,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "group_by_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1292,8 +1272,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "join_and_order",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1390,8 +1368,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_aggregate_functions_with_having",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1482,8 +1458,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "multiple_joins_with_date_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1571,8 +1545,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "nested_subqueries_with_exists",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1659,8 +1631,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "self_join_with_date_comparison",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1776,8 +1746,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "string_functions_with_grouping",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1837,8 +1805,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "subquery_with_aggregate",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -1932,8 +1898,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "union_with_different_conditions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -2058,8 +2022,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions_with_partitioning",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,
@@ -2194,8 +2156,6 @@ func TestExplainPlanOutput(t *testing.T) {
 			fname:         "window_functions",
 			result: &database_observability.ExplainPlanOutput{
 				Metadata: database_observability.ExplainPlanMetadataInfo{
-					DatabaseEngine:   "PostgreSQL",
-					DatabaseVersion:  "14.1",
 					QueryIdentifier:  "1234567890",
 					GeneratedAt:      currentTime,
 					ProcessingResult: database_observability.ExplainProcessingResultSuccess,

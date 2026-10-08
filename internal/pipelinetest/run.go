@@ -11,6 +11,10 @@ type TestConfig struct {
 }
 
 func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
+	if err := validateMocks(schema.Mocks); err != nil {
+		return err
+	}
+
 	alloy, err := harness.NewAlloy(harness.Config{
 		SinkID:   "pipelinetest.sink.out",
 		DataPath: cfg.DataPath,

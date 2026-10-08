@@ -584,7 +584,7 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 		line += fmt.Sprintf(` client_port="%d"`, row.ClientPort.Int64)
 	}
 	line += fmt.Sprintf(
-		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time="%s" elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
+		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time=%q elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
 		row.SessionID,
 		row.RequestID,
 		strconv.Quote(row.QueryHash),

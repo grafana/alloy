@@ -238,7 +238,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
 		database_observability.OP_QUERY_ASSOCIATION,
-		fmt.Sprintf(`database="%s" query_hash="%s" querytext=%q`, database, queryHash, normalized),
+		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, normalized),
 	)
 
 	if metadata == nil {
@@ -249,7 +249,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_PARSED_TABLE_NAME,
-			fmt.Sprintf(`database="%s" query_hash="%s" table="%s"`, database, queryHash, table),
+			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
 		)
 	}
 }
