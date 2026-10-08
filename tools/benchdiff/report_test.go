@@ -43,6 +43,7 @@ func TestRenderReport(t *testing.T) {
 		"Regex":         {2000, 19},
 		"Template":      {3000, 40},
 		"SplitJSON":     {5000, 400},
+		"Both":          {1000, 10},
 		"Removed/thing": {100, 1},
 	})
 	head := benchOutput(pkg, map[string][2]float64{
@@ -50,6 +51,7 @@ func TestRenderReport(t *testing.T) {
 		"Regex":       {1500, 19},  // faster
 		"Template":    {3030, 40},  // +1%: below threshold
 		"SplitJSON":   {6000, 400}, // slower
+		"Both":        {2000, 20},  // slower and more allocations
 		"Added/thing": {100, 1},
 	})
 
@@ -74,16 +76,22 @@ func TestRenderReport(t *testing.T) {
 	require.True(t, strings.HasPrefix(report, Marker))
 	require.Contains(t, report, "merge base `0123456789` with PR head `fedcba9876`, 10 interleaved runs each on Test CPU @ 3.00GHz. Benchmarked 1 package")
 
-	cpu, allocs := section(report, "### CPU time"), section(report, "### Allocations")
-	require.Contains(t, cpu, "2 benchmarks changed significantly out of 4 compared")
-	require.Contains(t, cpu, "| 🔴 | `internal/component/loki/process/stages` | `SplitJSON-16` | 5.000µ | 6.000µ | +20.00% |")
-	require.Contains(t, cpu, "| 🟢 | `internal/component/loki/process/stages` | `Regex-16` | 2.000µ | 1.500µ | -25.00% |")
-	require.Less(t, strings.Index(cpu, "SplitJSON"), strings.Index(cpu, "Regex"), "regressions come first")
-	require.NotContains(t, cpu, "Template")
-	require.NotContains(t, cpu, "Match")
-
-	require.Contains(t, allocs, "1 benchmark changed significantly out of 4 compared")
-	require.Contains(t, allocs, "| 🔴 | `internal/component/loki/process/stages` | `Match/all-16` | 300.0 | 450.0 | +50.00% |")
+	changes := section(report, "### Significant changes")
+	require.Contains(t, changes, "4 benchmarks changed significantly out of 5 compared")
+	rows := []string{
+		"| 🔴 | `internal/component/loki/process/stages` | `Both-16` | CPU (sec/op) | 1.000µ | 2.000µ | +100.00% |",
+		"| 🔴 | `internal/component/loki/process/stages` | `Both-16` | Allocations (allocs/op) | 10.00 | 20.00 | +100.00% |",
+		"| 🔴 | `internal/component/loki/process/stages` | `Match/all-16` | Allocations (allocs/op) | 300.0 | 450.0 | +50.00% |",
+		"| 🔴 | `internal/component/loki/process/stages` | `SplitJSON-16` | CPU (sec/op) | 5.000µ | 6.000µ | +20.00% |",
+		"| 🟢 | `internal/component/loki/process/stages` | `Regex-16` | CPU (sec/op) | 2.000µ | 1.500µ | -25.00% |",
+	}
+	last := -1
+	for _, row := range rows {
+		i := strings.Index(changes, row)
+		require.Greater(t, i, last, "missing or out of order: %s", row)
+		last = i
+	}
+	require.NotContains(t, changes, "Template")
 
 	require.Contains(t, section(report, "### Only in base"), "`Removed/thing-16`")
 	require.Contains(t, section(report, "### Only in PR"), "`Added/thing-16`")
@@ -103,8 +111,7 @@ func TestRenderReport_NoChanges(t *testing.T) {
 		packages: []Package{{ImportPath: pkg}},
 		count:    10,
 	})
-	require.Contains(t, section(report, "### CPU time"), "No significant changes across 1 benchmark.")
-	require.Contains(t, section(report, "### Allocations"), "No significant changes across 1 benchmark.")
+	require.Contains(t, section(report, "### Significant changes"), "No significant changes in CPU or allocations across 1 benchmark.")
 	require.NotContains(t, report, "Only in")
 }
 

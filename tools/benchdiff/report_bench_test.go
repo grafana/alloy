@@ -22,12 +22,12 @@ func syntheticResults(n int, scale float64) results {
 	return res
 }
 
-func BenchmarkCompareUnit(b *testing.B) {
+func BenchmarkSignificantChanges(b *testing.B) {
 	for _, n := range []int{10, 100, 1000} {
 		b.Run(fmt.Sprintf("benchmarks=%d", n), func(b *testing.B) {
 			base, head := syntheticResults(n, 1), syntheticResults(n, 1.1)
 			for b.Loop() {
-				compareUnit(base, head, "sec/op")
+				significantChanges(base, head)
 			}
 		})
 	}

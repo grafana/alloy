@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -25,8 +26,8 @@ const (
 	maxReportLen    = 60_000
 )
 
-var reportUnits = []struct{ unit, title string }{
-	{"sec/op", "CPU time (sec/op)"},
+var reportUnits = []struct{ unit, metric string }{
+	{"sec/op", "CPU (sec/op)"},
 	{"allocs/op", "Allocations (allocs/op)"},
 }
 
@@ -70,58 +71,91 @@ func readResults(file string) (results, error) {
 }
 
 type change struct {
-	key        benchKey
-	base, head float64
-	delta      float64 // percent
+	metric, unit string
+	base, head   float64
+	delta        float64 // percent
 }
 
-// compareUnit returns the significant changes in unit, regressions first, each
-// group ordered by size, and the number of benchmarks compared.
-func compareUnit(base, head results, unit string) ([]change, int) {
-	var changes []change
+// benchChanges is a benchmark with its significant changes, one per unit.
+type benchChanges struct {
+	key     benchKey
+	changes []change
+}
+
+func (b benchChanges) regressed() bool {
+	return slices.ContainsFunc(b.changes, func(c change) bool { return c.delta > 0 })
+}
+
+func (b benchChanges) maxDelta() float64 {
+	var m float64
+	for _, c := range b.changes {
+		m = max(m, math.Abs(c.delta))
+	}
+	return m
+}
+
+// significantChanges returns the benchmarks with significant changes, those
+// with regressions first and each group ordered by the largest change, and the
+// number of benchmarks compared.
+func significantChanges(base, head results) ([]benchChanges, int) {
+	var benches []benchChanges
 	compared := 0
 	for key, baseUnits := range base.samples {
-		baseValues, headValues := baseUnits[unit], head.samples[key][unit]
-		if len(baseValues) == 0 || len(headValues) == 0 {
+		headUnits, ok := head.samples[key]
+		if !ok {
 			continue
 		}
 		compared++
 
-		bs := benchmath.NewSample(baseValues, &benchmath.DefaultThresholds)
-		hs := benchmath.NewSample(headValues, &benchmath.DefaultThresholds)
-		if benchmath.AssumeNothing.Compare(bs, hs).P >= alpha {
-			continue
+		b := benchChanges{key: key}
+		for _, u := range reportUnits {
+			if c, ok := compareSamples(baseUnits[u.unit], headUnits[u.unit]); ok {
+				c.metric, c.unit = u.metric, u.unit
+				b.changes = append(b.changes, c)
+			}
 		}
-
-		c := change{
-			key:  key,
-			base: benchmath.AssumeNothing.Summary(bs, 0.95).Center,
-			head: benchmath.AssumeNothing.Summary(hs, 0.95).Center,
-		}
-		switch c.base {
-		case c.head:
-			continue
-		case 0:
-			c.delta = math.Inf(1)
-		default:
-			c.delta = (c.head - c.base) / c.base * 100
-		}
-		if math.Abs(c.delta) >= threshold {
-			changes = append(changes, c)
+		if len(b.changes) > 0 {
+			benches = append(benches, b)
 		}
 	}
 
-	sort.Slice(changes, func(i, j int) bool {
-		a, b := changes[i], changes[j]
-		if (a.delta > 0) != (b.delta > 0) {
-			return a.delta > 0
+	sort.Slice(benches, func(i, j int) bool {
+		a, b := benches[i], benches[j]
+		if a.regressed() != b.regressed() {
+			return a.regressed()
 		}
-		if math.Abs(a.delta) != math.Abs(b.delta) {
-			return math.Abs(a.delta) > math.Abs(b.delta)
+		if a.maxDelta() != b.maxDelta() {
+			return a.maxDelta() > b.maxDelta()
 		}
 		return lessKey(a.key, b.key)
 	})
-	return changes, compared
+	return benches, compared
+}
+
+// compareSamples reports whether head differs significantly from base.
+func compareSamples(baseValues, headValues []float64) (change, bool) {
+	if len(baseValues) == 0 || len(headValues) == 0 {
+		return change{}, false
+	}
+	bs := benchmath.NewSample(baseValues, &benchmath.DefaultThresholds)
+	hs := benchmath.NewSample(headValues, &benchmath.DefaultThresholds)
+	if benchmath.AssumeNothing.Compare(bs, hs).P >= alpha {
+		return change{}, false
+	}
+
+	c := change{
+		base: benchmath.AssumeNothing.Summary(bs, 0.95).Center,
+		head: benchmath.AssumeNothing.Summary(hs, 0.95).Center,
+	}
+	switch c.base {
+	case c.head:
+		return change{}, false
+	case 0:
+		c.delta = math.Inf(1)
+	default:
+		c.delta = (c.head - c.base) / c.base * 100
+	}
+	return c, math.Abs(c.delta) >= threshold
 }
 
 // onlyIn returns the benchmarks in a that aren't in b.
@@ -169,29 +203,28 @@ func renderReport(in reportInput) string {
 	w(". Benchmarked %s affected by this pull request.\n\n", plural(len(in.packages), "package"))
 	w("Showing changes with p < %g and |Δ| ≥ %g%%. 🔴 slower or more allocations, 🟢 faster or fewer allocations.\n\n", alpha, threshold)
 
-	for _, u := range reportUnits {
-		changes, compared := compareUnit(in.base, in.head, u.unit)
-		w("### %s\n\n", u.title)
-		switch {
-		case compared == 0:
-			w("No benchmarks exist in both the base and the PR.\n\n")
-			continue
-		case len(changes) == 0:
-			w("No significant changes across %s.\n\n", plural(compared, "benchmark"))
-			continue
-		}
-		w("%s changed significantly out of %d compared.\n\n", plural(len(changes), "benchmark"), compared)
-		w("| | Package | Benchmark | Base | PR | Δ |\n|---|---|---|--:|--:|--:|\n")
-		for _, c := range changes[:min(len(changes), maxRows)] {
-			icon := "🟢"
-			if c.delta > 0 {
-				icon = "🔴"
+	benches, compared := significantChanges(in.base, in.head)
+	w("### Significant changes\n\n")
+	switch {
+	case compared == 0:
+		w("No benchmarks exist in both the base and the PR.\n\n")
+	case len(benches) == 0:
+		w("No significant changes in CPU or allocations across %s.\n\n", plural(compared, "benchmark"))
+	default:
+		w("%s changed significantly out of %d compared.\n\n", plural(len(benches), "benchmark"), compared)
+		w("| | Package | Benchmark | Metric | Base | PR | Δ |\n|---|---|---|---|--:|--:|--:|\n")
+		for _, b := range benches[:min(len(benches), maxRows)] {
+			for _, c := range b.changes {
+				icon := "🟢"
+				if c.delta > 0 {
+					icon = "🔴"
+				}
+				w("| %s | %s | %s | %s | %s | %s | %s |\n", icon, code(displayPkg(b.key.pkg)), code(b.key.name), c.metric,
+					formatValue(c.base, c.unit), formatValue(c.head, c.unit), formatDelta(c.delta))
 			}
-			w("| %s | %s | %s | %s | %s | %s |\n", icon, code(displayPkg(c.key.pkg)), code(c.key.name),
-				formatValue(c.base, u.unit), formatValue(c.head, u.unit), formatDelta(c.delta))
 		}
-		if len(changes) > maxRows {
-			w("\n_%d more not shown; see the full benchstat output below._\n", len(changes)-maxRows)
+		if len(benches) > maxRows {
+			w("\n_%d more not shown; see the full benchstat output below._\n", len(benches)-maxRows)
 		}
 		w("\n")
 	}
