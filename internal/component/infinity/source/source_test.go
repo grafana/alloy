@@ -345,7 +345,30 @@ func TestNewRetriesAfterFailedBuild(t *testing.T) {
 		assert.NoError(ct, err)
 		assert.Equal(ct, 1, n)
 		assert.GreaterOrEqual(ct, promtestutil.ToFloat64(c.metrics.samplesSent.WithLabelValues("q")), 2.0)
+		// The fanout registers its own metrics. They must count the
+		// samples of the second component too.
+		forwarded, err := counterSum(reg, "prometheus_forwarded_samples_total")
+		assert.NoError(ct, err)
+		assert.GreaterOrEqual(ct, forwarded, 2.0)
 	}, 2*time.Second, 10*time.Millisecond)
+}
+
+// counterSum returns the sum of all series of the counter name in reg.
+func counterSum(reg prometheus.Gatherer, name string) (float64, error) {
+	mfs, err := reg.Gather()
+	if err != nil {
+		return 0, err
+	}
+	var sum float64
+	for _, mf := range mfs {
+		if mf.GetName() != name {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			sum += m.GetCounter().GetValue()
+		}
+	}
+	return sum, nil
 }
 
 // TestCancelledPollSendsNoMarkers guards against a poll that is cancelled

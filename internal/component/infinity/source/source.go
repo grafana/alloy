@@ -147,6 +147,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Alloy keeps the registry across a failed build. The fanout registers
+	// its metrics and ignores a duplicate, so a retry would export the
+	// metrics of this failed instance. Thus all checks run before any
+	// metric is registered.
+	gen, err := newGeneration(opts.ID, args)
+	if err != nil {
+		return nil, err
+	}
 	c := &Component{
 		opts:    opts,
 		cluster: clusterData.(cluster.Cluster),
@@ -160,9 +168,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		// it sends without blocking into this buffer.
 		clusterChanged: make(chan struct{}, 1),
 	}
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
+	c.apply(args, gen)
 	return c, nil
 }
 
@@ -204,12 +210,23 @@ func (c *Component) Run(ctx context.Context) error {
 // Update implements component.Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	args := newConfig.(Arguments)
-	if err := validateOutputs(args); err != nil {
-		return err
-	}
-	client, err := config.NewClientFromConfig(*args.Client.Convert(), c.opts.ID, config.WithUserAgent(userAgent))
+	gen, err := newGeneration(c.opts.ID, args)
 	if err != nil {
 		return err
+	}
+	c.apply(args, gen)
+	return nil
+}
+
+// newGeneration checks args and builds its generation. It does every step
+// of a load that can fail, so apply cannot fail.
+func newGeneration(id string, args Arguments) (*generation, error) {
+	if err := validateOutputs(args); err != nil {
+		return nil, err
+	}
+	client, err := config.NewClientFromConfig(*args.Client.Convert(), id, config.WithUserAgent(userAgent))
+	if err != nil {
+		return nil, err
 	}
 	// The client adds its headers to each request, so a default Accept
 	// would be sent next to the client's own.
@@ -226,15 +243,19 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if p := args.Client.ProxyConfig; p != nil && p.ProxyURL.URL != nil {
 		proxyURL = p.ProxyURL.String()
 	}
-	gen := &generation{
+	return &generation{
 		client:     client,
 		proxyURL:   proxyURL,
 		timeout:    args.Timeout,
 		maxSize:    int64(args.MaxResponseSize),
 		clustering: args.Clustering.Enabled,
 		specs:      specs,
-	}
+	}, nil
+}
 
+// apply makes args and gen the current config.
+func (c *Component) apply(args Arguments, gen *generation) {
+	specs := gen.specs
 	c.loki.UpdateChildren(args.ForwardTo.Logs)
 
 	c.mut.Lock()
@@ -369,7 +390,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		}
 	}
 	c.mut.Unlock()
-	return nil
 }
 
 // startLoopLocked starts the poll loop of one query. The caller holds c.mut.
