@@ -78,8 +78,7 @@ func TestRandomOffset(t *testing.T) {
 
 func TestSelfMetricsDeleteQuery(t *testing.T) {
 	reg := prometheus.NewRegistry()
-	m, err := newSelfMetrics(reg)
-	require.NoError(t, err)
+	m := newSelfMetrics(reg)
 
 	m.pollFailures.WithLabelValues("a", reasonStatus).Inc()
 	m.pollFailures.WithLabelValues("b", reasonStatus).Inc()

@@ -1,9 +1,9 @@
 package source
 
 import (
-	"errors"
-
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 // selfMetrics use the label "query". Alloy's own scrape sets "instance", so
@@ -17,7 +17,7 @@ type selfMetrics struct {
 	duplicateSeries *prometheus.CounterVec
 }
 
-func newSelfMetrics(reg prometheus.Registerer) (*selfMetrics, error) {
+func newSelfMetrics(reg prometheus.Registerer) *selfMetrics {
 	m := &selfMetrics{
 		pollDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "infinity_source_poll_duration_seconds",
@@ -45,13 +45,15 @@ func newSelfMetrics(reg prometheus.Registerer) (*selfMetrics, error) {
 			Help: "Total number of samples dropped because an earlier row had the same labels.",
 		}, []string{"query"}),
 	}
-	var errs []error
-	for _, c := range []prometheus.Collector{m.pollDuration, m.pollFailures, m.pollsOverrun, m.samplesSent, m.entriesSent, m.duplicateSeries} {
-		if err := reg.Register(c); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	return m, errors.Join(errs...)
+	// Alloy keeps the registry of a component across a failed build, so a
+	// rebuild must use the collectors that are already there.
+	m.pollDuration = util.MustRegisterOrGet(reg, m.pollDuration).(*prometheus.HistogramVec)
+	m.pollFailures = util.MustRegisterOrGet(reg, m.pollFailures).(*prometheus.CounterVec)
+	m.pollsOverrun = util.MustRegisterOrGet(reg, m.pollsOverrun).(*prometheus.CounterVec)
+	m.samplesSent = util.MustRegisterOrGet(reg, m.samplesSent).(*prometheus.CounterVec)
+	m.entriesSent = util.MustRegisterOrGet(reg, m.entriesSent).(*prometheus.CounterVec)
+	m.duplicateSeries = util.MustRegisterOrGet(reg, m.duplicateSeries).(*prometheus.CounterVec)
+	return m
 }
 
 func (m *selfMetrics) deleteQuery(query string) {

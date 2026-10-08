@@ -147,14 +147,10 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	m, err := newSelfMetrics(opts.Registerer)
-	if err != nil {
-		return nil, err
-	}
 	c := &Component{
 		opts:    opts,
 		cluster: clusterData.(cluster.Cluster),
-		metrics: m,
+		metrics: newSelfMetrics(opts.Registerer),
 		prom:    alloyprom.NewFanout(nil, opts.ID, opts.Registerer, lsData.(labelstore.LabelStore)),
 		loki:    loki.NewFanout(nil),
 		queries: map[string]*queryState{},

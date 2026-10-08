@@ -320,6 +320,34 @@ func TestNewRejectsMissingOutputs(t *testing.T) {
 	require.ErrorContains(t, err, "needs forward_to.metrics or output.metrics")
 }
 
+// TestNewRetriesAfterFailedBuild checks that New works on a registry where
+// a failed New already registered the self-metrics. Alloy keeps the
+// registry of a component across a failed build.
+func TestNewRetriesAfterFailedBuild(t *testing.T) {
+	opts := testOptions(t, cluster.Mock())
+	reg := prometheus.NewRegistry()
+	opts.Registerer = reg
+
+	args, err := parse(inlineQueryConfig("100ms", "q"))
+	require.NoError(t, err)
+	_, err = New(opts, args)
+	require.ErrorContains(t, err, "needs forward_to.metrics or output.metrics")
+
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+
+	// The registry must show the counts of the second component.
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		n, err := promtestutil.GatherAndCount(reg, "infinity_source_samples_sent_total")
+		assert.NoError(ct, err)
+		assert.Equal(ct, 1, n)
+		assert.GreaterOrEqual(ct, promtestutil.ToFloat64(c.metrics.samplesSent.WithLabelValues("q")), 2.0)
+	}, 2*time.Second, 10*time.Millisecond)
+}
+
 // TestCancelledPollSendsNoMarkers guards against a poll that is cancelled
 // mid-fetch (shutdown, or a reload that stops its loop) faking an outage by
 // sending up=0 and stale markers.
