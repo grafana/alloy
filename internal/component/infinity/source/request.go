@@ -81,6 +81,11 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 		req.Header.Set("Accept", s.accept)
 	}
 	for k, v := range s.headers {
+		// net/http sends req.Host and ignores a Host header.
+		if strings.EqualFold(k, "Host") {
+			req.Host = v
+			continue
+		}
 		req.Header.Set(k, v)
 	}
 	return req, nil

@@ -1,11 +1,14 @@
 package source
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
@@ -185,4 +188,47 @@ func TestBuildRequestUserAccept(t *testing.T) {
 	req, err := buildRequest(t.Context(), s)
 	require.NoError(t, err)
 	require.Equal(t, []string{"application/vnd.api+json"}, req.Header.Values("Accept"))
+}
+
+// sentHost sends a request built from a query with the given header key and
+// value, and returns the Host that the server got.
+func sentHost(ctx context.Context, key, value string) (string, *http.Request, error) {
+	hosts := make(chan string, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		hosts <- r.Host
+	}))
+	defer srv.Close()
+
+	s, err := specFromConfig(fmt.Sprintf(`query "q" {
+		url = %q
+		url_options {
+			headers = { %q = %q }
+		}
+	}`, srv.URL, key, value))
+	if err != nil {
+		return "", nil, err
+	}
+	req, err := buildRequest(ctx, s)
+	if err != nil {
+		return "", nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	_ = resp.Body.Close()
+	return <-hosts, req, nil
+}
+
+// TestBuildRequestHostHeader checks that a Host header sets the host that
+// the server gets. net/http sends req.Host and ignores a Host header.
+func TestBuildRequestHostHeader(t *testing.T) {
+	for _, key := range []string{"Host", "host", "HOST"} {
+		t.Run(key, func(t *testing.T) {
+			got, req, err := sentHost(t.Context(), key, "api.example")
+			require.NoError(t, err)
+			require.Equal(t, "api.example", got)
+			require.Empty(t, req.Header.Values("Host"))
+		})
+	}
 }
