@@ -41,6 +41,11 @@ type tree struct {
 func loadTree(ctx context.Context, root string) (tree, error) {
 	t := tree{importPaths: map[string]string{}, bench: map[string]benchPackage{}}
 
+	// go list reports resolved directories, e.g. /private/var on macOS.
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return t, err
+	}
 	mods, err := discover.GoModFiles(root)
 	if err != nil {
 		return t, err
