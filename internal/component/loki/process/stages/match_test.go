@@ -239,7 +239,7 @@ func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
 			Selector: `{app="loki"}`,
 			Action:   MatchActionKeep,
 			Stages: []StageConfig{
-				{RegexConfig: &RegexConfig{Expression: "[unclosed"}},
+				{TimestampConfig: &TimestampConfig{Source: "timestamp"}},
 			},
 		},
 	}
@@ -248,6 +248,7 @@ func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
 	_, err := newStage(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
 	require.ErrorContains(t, err, "match stage failed to create pipeline")
 	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
+	require.ErrorIs(t, err, errTimestampFormatRequired)
 }
 
 var testMatchNestedLimitAlloy = `

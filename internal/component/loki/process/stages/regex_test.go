@@ -1,10 +1,10 @@
 package stages
 
 import (
-	"errors"
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -404,60 +404,73 @@ func TestValidateRegexConfig(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name string
-		cfg  RegexConfig
-		err  error
+		name      string
+		config    string
+		expectErr bool
 	}
 
 	tests := []testCase{
 		{
-			name: "empty config",
-			cfg:  RegexConfig{},
-			err:  errExpressionRequired,
+			name:      "empty config",
+			config:    ``,
+			expectErr: true,
 		},
 		{
-			name: "missing regex_expression",
-			cfg:  RegexConfig{},
-			err:  errExpressionRequired,
+			name:      "missing regex_expression",
+			config:    `source = "log"`,
+			expectErr: true,
 		},
 		{
-			name: "invalid regex_expression",
-			cfg:  RegexConfig{Expression: "(?P<ts[0-9]+).*"},
-			err:  errors.New(errCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
+			name:      "invalid regex_expression",
+			config:    `expression = "(?P<ts[0-9]+).*"`,
+			expectErr: true,
 		},
 		{
 			name: "empty source",
-			cfg: RegexConfig{
-				Expression: "(?P<ts>[0-9]+).*",
-				Source:     ptr(""),
-			},
-			err: errEmptyRegexStageSource,
+			config: `
+				expression = "(?P<ts>[0-9]+).*"
+				source = ""
+			`,
+			expectErr: true,
 		},
 		{
-			name: "valid without source",
-			cfg: RegexConfig{
-				Expression: "(?P<ts>[0-9]+).*",
-			},
+			name:   "valid without source",
+			config: `expression = "(?P<ts>[0-9]+).*"`,
 		},
 		{
 			name: "valid with source",
-			cfg: RegexConfig{
-				Expression: "(?P<ts>[0-9]+).*",
-				Source:     ptr("log"),
-			},
+			config: `
+				expression = "(?P<ts>[0-9]+).*"
+				source = "log"
+			`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateRegexConfig(tt.cfg)
-			if tt.err == nil {
+			var cfg RegexConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
 				require.NoError(t, err)
-				return
 			}
-			require.Error(t, err)
-			require.Equal(t, tt.err.Error(), err.Error())
 		})
 	}
+}
+
+func TestRegexStage_UnmarshalNestedConfig(t *testing.T) {
+	t.Parallel()
+
+	var cfg Configs
+	err := syntax.Unmarshal([]byte(`
+		stage.match {
+			selector = "{app=\"loki\"}"
+			stage.regex {
+				expression = "[unclosed"
+			}
+		}
+	`), &cfg)
+	require.ErrorContains(t, err, "could not compile regular expression")
 }
 
 func BenchmarkRegexStage(b *testing.B) {
