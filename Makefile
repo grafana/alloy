@@ -364,7 +364,7 @@ alloy-image-distroless:
 # to call `docker build` themselves.
 .PHONY: prom-gen-image
 prom-gen-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/k8s/fixtures/prom-gen/Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images-windows: alloy-image-windows
