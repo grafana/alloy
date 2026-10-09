@@ -1,10 +1,5 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
 	"io"
 	"net/http"
@@ -27,6 +22,10 @@ import (
 )
 
 func TestTailer(t *testing.T) {
+	rangeKey := func(start, end time.Time) string {
+		return strconv.FormatInt(start.UnixNano(), 10) + "-" + strconv.FormatInt(end.UnixNano(), 10)
+	}
+
 	var (
 		logger = logging.NewSlogNop()
 		end    = time.Unix(0, time.Hour.Nanoseconds())
@@ -36,8 +35,7 @@ func TestTailer(t *testing.T) {
 		responses = map[string]string{
 			rangeKey(start, start.Add(third)):              `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
 			rangeKey(start.Add(third), start.Add(2*third)): `{"EdgeStartTimestamp":2, "EdgeRequestHost":"bar.com"}`,
-			rangeKey(start.Add(2*third), end): `{"EdgeStartTimestamp":3, "EdgeRequestHost":"buzz.com"}` + "\n" +
-				`{"EdgeRequestHost":"fuzz.com"}`,
+			rangeKey(start.Add(2*third), end):              `{"EdgeStartTimestamp":3, "EdgeRequestHost":"buzz.com"}` + "\n" + `{"EdgeRequestHost":"fuzz.com"}`,
 		}
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -321,8 +319,4 @@ func TestTailer_SplitRequests(t *testing.T) {
 			}
 		})
 	}
-}
-
-func rangeKey(start, end time.Time) string {
-	return strconv.FormatInt(start.UnixNano(), 10) + "-" + strconv.FormatInt(end.UnixNano(), 10)
 }
