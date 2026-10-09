@@ -14,7 +14,7 @@ The table below shows the levels of tests we use in Alloy, from the cheapest and
 | **Scale tests** | (Planned) Benchmarks for performance and resource use at scale. Purpose is to produce useful performance metrics and catch any regressions. | Nightly (TBD) |
 | **Manual testing** | Ad-hoc exploration in maintainer's own or shared environments. | Ad-hoc |
 
-There are also microbenchmarks and fuzz tests, but these are not covered here right now. For writing these, use general Go programming best practices.
+There are also microbenchmarks and fuzz tests, but writing them isn't covered here right now. For writing these, use general Go programming best practices. To compare a pull request's microbenchmarks against its base, see [Benchmarking a pull request](#benchmarking-a-pull-request).
 
 ## Choosing the level of tests to write
 
@@ -67,3 +67,10 @@ This is a more controlled way to talk about performance. Over time, major featur
 ### Consider: manual testing
 
 Ideally we want to scale our efforts and add automated tests that will prevent regressions, so manual tests are not recommended. However, these can be used as an additional safety check when we see given change as risky.
+
+## Benchmarking a pull request
+
+To check how a pull request affects performance, add the `run-benchmarks` label to it.
+CI runs the benchmarks affected by the pull request against both the pull request and the branch it targets, and posts a comment summarizing which benchmarks got faster or slower.
+
+The label is removed after each run. Add it again to benchmark new commits.

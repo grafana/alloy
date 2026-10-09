@@ -49,6 +49,17 @@ Each workflow that uses `aireview` should pass a unique `--marker` (e.g.
 other AI-review bots on the same PR. See
 `.github/workflows/ai-dependency-review.yml` for a working example.
 
+### `benchdiff`
+
+Compares the Go benchmarks affected by the current branch with its merge base
+and writes a Markdown report. Used by `.github/workflows/benchmark-pr.yml`.
+
+```bash
+go run -C tools ./cmd benchdiff run --base-ref origin/main --out /tmp/bench
+```
+
+`benchdiff comment` posts the report on the pull request of a GitHub Actions run.
+
 ### `release`
 
 Four subcommands that automate the release flow. Each is driven by a GitHub
