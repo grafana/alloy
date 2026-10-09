@@ -1,0 +1,92 @@
+logging {
+  level = "debug"
+}
+
+infinity.source "jsonplaceholder" {
+  interval = "5s"
+  timeout  = "5s"
+
+  query "users" {
+    url    = "http://fixtures/users.json"
+    format = "logs"
+
+    column {
+      selector = "username"
+      text     = "username"
+      type     = "string"
+    }
+
+    column {
+      selector = "email"
+      text     = "email"
+      type     = "string"
+    }
+
+    column {
+      selector = "address.city"
+      text     = "city"
+      type     = "string"
+    }
+
+    logs {
+      label_columns               = ["city"]
+      structured_metadata_columns = ["email"]
+    }
+  }
+
+  query "todos_done" {
+    url = "http://fixtures/todos.json"
+
+    column {
+      selector = "userId"
+      text     = "user"
+      type     = "string"
+    }
+
+    column {
+      selector = "id"
+      text     = "id"
+      type     = "number"
+    }
+
+    column {
+      selector = "completed"
+      text     = "completed"
+      type     = "boolean"
+    }
+
+    filter_expression    = "completed == true"
+    summarize_expression = "count(id)"
+    summarize_by         = "user"
+    summarize_alias      = "completed_todos"
+
+    metrics {
+      prefix = "jsonplaceholder_"
+    }
+  }
+
+  forward_to {
+    metrics = [prometheus.remote_write.mimir.receiver]
+    logs    = [loki.write.loki.receiver]
+  }
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "infinity-source",
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "infinity-source",
+  }
+}
