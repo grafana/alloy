@@ -180,6 +180,7 @@ func convertArgumentsToConvertOptions(args Arguments) convert.Options {
 	return convert.Options{
 		IncludeTargetInfo:                 args.IncludeTargetInfo,
 		IncludeScopeInfo:                  args.IncludeScopeInfo,
+		IncludeScopeLabels:                args.IncludeScopeLabels,
 		AddMetricSuffixes:                 args.AddMetricSuffixes,
 		ResourceToTelemetryConversion:     args.ResourceToTelemetryConversion,
 		HonorMetadata:                     args.HonorMetadata,
