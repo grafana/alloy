@@ -112,10 +112,7 @@ func (p *PackConfig) SetToDefault() {
 	*p = PackConfig{IngestTimestamp: true}
 }
 
-var (
-	_ Stage          = (*packStage)(nil)
-	_ entryProcessor = (*packStage)(nil)
-)
+var _ entryProcessor = (*packStage)(nil)
 
 // newPackStage creates a PackStage from config
 func newPackStage(config PackConfig, opts stageOpts) (*packStage, error) {
@@ -138,13 +135,6 @@ type packStage struct {
 	logger    *slog.Logger
 	cfg       *PackConfig
 	dropCount *prometheus.CounterVec
-}
-
-// Run implements Stage.
-func (m *packStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return m.pack(e)
-	})
 }
 
 func (m *packStage) process(ctx context.Context, entries []Entry) error {
@@ -204,6 +194,3 @@ func (m *packStage) pack(e Entry) Entry {
 
 	return e
 }
-
-// Cleanup implements Stage.
-func (*packStage) Cleanup() {}

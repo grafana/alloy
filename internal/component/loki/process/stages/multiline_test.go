@@ -236,85 +236,39 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 		}
 	)
 
-	t.Run("Pipeline", func(t *testing.T) {
-		// Pipeline.Run seeds Extracted from Labels itself, so a plain clone is enough.
-		cloned := cloneEntries(entries)
+	var (
+		mu        sync.Mutex
+		collected []Entry
+	)
+	next := func(_ context.Context, entries []Entry) error {
+		mu.Lock()
+		collected = append(collected, entries...)
+		mu.Unlock()
+		return nil
+	}
 
-		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.NoError(t, err)
+	defer p.stop()
 
-		in := make(chan Entry, len(cloned))
-		out := pl.Run(in)
+	require.NoError(t, p.process(context.Background(), []Entry{entries[0]}))
+	require.NoError(t, p.process(context.Background(), []Entry{entries[1]}))
+	time.Sleep(300 * time.Millisecond)
+	require.NoError(t, p.process(context.Background(), []Entry{entries[2]}))
+	require.NoError(t, p.process(context.Background(), []Entry{entries[3]}))
+	time.Sleep(300 * time.Millisecond)
+	require.NoError(t, p.process(context.Background(), []Entry{entries[4]}))
+	require.NoError(t, p.process(context.Background(), []Entry{entries[5]}))
+	require.NoError(t, p.process(context.Background(), []Entry{entries[6]}))
+	require.NoError(t, p.process(context.Background(), []Entry{entries[7]}))
+	time.Sleep(50 * time.Millisecond)
+	require.NoError(t, p.process(context.Background(), []Entry{entries[8]}))
 
-		var (
-			mu        sync.Mutex
-			collected []Entry
-			done      = make(chan struct{})
-		)
-		go func() {
-			defer close(done)
-			for e := range out {
-				mu.Lock()
-				collected = append(collected, e)
-				mu.Unlock()
-			}
-		}()
-
-		in <- cloned[0]
-		in <- cloned[1]
-		time.Sleep(300 * time.Millisecond)
-		in <- cloned[2]
-		in <- cloned[3]
-		time.Sleep(300 * time.Millisecond)
-		in <- cloned[4]
-		in <- cloned[5]
-		in <- cloned[6]
-		in <- cloned[7]
-		time.Sleep(50 * time.Millisecond)
-		in <- cloned[8]
-
-		close(in)
-		<-done
-
-		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
-	})
-
-	t.Run("New Pipeline", func(t *testing.T) {
-		cloned := cloneEntries(entries)
-		var (
-			mu        sync.Mutex
-			collected []Entry
-		)
-		next := func(_ context.Context, entries []Entry) error {
-			mu.Lock()
-			collected = append(collected, entries...)
-			mu.Unlock()
-			return nil
-		}
-
-		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-		defer p.stop()
-
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[0]}))
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[1]}))
-		time.Sleep(300 * time.Millisecond)
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[2]}))
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[3]}))
-		time.Sleep(300 * time.Millisecond)
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[4]}))
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[5]}))
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[6]}))
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[7]}))
-		time.Sleep(50 * time.Millisecond)
-		require.NoError(t, p.process(context.Background(), []Entry{cloned[8]}))
-
-		require.EventuallyWithT(t, func(c *assert.CollectT) {
-			mu.Lock()
-			defer mu.Unlock()
-			assertEntriesUnordered(c, expected, collected, entryCheckFNs{})
-		}, 2*time.Second, 100*time.Millisecond)
-	})
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		mu.Lock()
+		defer mu.Unlock()
+		assertEntriesUnordered(c, expected, collected, entryCheckFNs{})
+	}, 2*time.Second, 100*time.Millisecond)
 }
 
 // TestMultilineStageStreamsCleanup verifies that the streams is empty after the stopping.
@@ -327,80 +281,43 @@ func TestMultilineStageStreamsCleanup(t *testing.T) {
 	}
 	`)
 
-	t.Run("Pipeline", func(t *testing.T) {
-		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
-		ms, ok := p.stages[0].(*multilineStage)
-		require.True(t, ok)
-
-		in := make(chan Entry, 2)
-		out := p.Run(in)
-
-		var (
-			mu   sync.Mutex
-			res  []Entry
-			done = make(chan struct{})
-		)
-		go func() {
-			defer close(done)
-			for e := range out {
-				mu.Lock()
-				res = append(res, e)
-				mu.Unlock()
-			}
-		}()
-
-		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-a"}, "START a", time.Now())
-		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-b"}, "START b", time.Now())
-		in <- newEntry(map[string]any{}, model.LabelSet{"value": "stream-c"}, "START c", time.Now())
-		close(in)
-		<-done
-
+	var (
+		mu  sync.Mutex
+		res []Entry
+	)
+	next := func(_ context.Context, entries []Entry) error {
 		mu.Lock()
-		defer mu.Unlock()
-		require.Equal(t, 3, len(res))
-		require.Equal(t, 0, len(ms.streams))
-	})
+		res = append(res, entries...)
+		mu.Unlock()
+		return nil
+	}
 
-	t.Run("New Pipeline", func(t *testing.T) {
-		var (
-			mu  sync.Mutex
-			res []Entry
-		)
-		next := func(_ context.Context, entries []Entry) error {
-			mu.Lock()
-			res = append(res, entries...)
-			mu.Unlock()
-			return nil
-		}
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.NoError(t, err)
+	ms, ok := p.stages[0].(*multilineStage)
+	require.True(t, ok)
 
-		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-		ms, ok := p.stages[0].(*multilineStage)
-		require.True(t, ok)
+	require.NoError(t, p.process(context.Background(), []Entry{
+		newEntry(map[string]any{}, model.LabelSet{"value": "stream-a"}, "START a", time.Now()),
+	}))
 
-		require.NoError(t, p.process(context.Background(), []Entry{
-			newEntry(map[string]any{}, model.LabelSet{"value": "stream-a"}, "START a", time.Now()),
-		}))
+	require.NoError(t, p.process(context.Background(), []Entry{
+		newEntry(map[string]any{}, model.LabelSet{"value": "stream-b"}, "START b", time.Now()),
+	}))
 
-		require.NoError(t, p.process(context.Background(), []Entry{
-			newEntry(map[string]any{}, model.LabelSet{"value": "stream-b"}, "START b", time.Now()),
-		}))
+	require.NoError(t, p.process(context.Background(), []Entry{
+		newEntry(map[string]any{}, model.LabelSet{"value": "stream-c"}, "START c", time.Now()),
+	}))
 
-		require.NoError(t, p.process(context.Background(), []Entry{
-			newEntry(map[string]any{}, model.LabelSet{"value": "stream-c"}, "START c", time.Now()),
-		}))
+	p.stop()
 
-		p.stop()
+	require.Equal(t, 3, len(res))
+	var count int
+	for i := range ms.streams.stripes {
+		count += len(ms.streams.stripes[i].data)
+	}
 
-		require.Equal(t, 3, len(res))
-		var count int
-		for i := range ms.streamsStriped.stripes {
-			count += len(ms.streamsStriped.stripes[i].data)
-		}
-
-		require.Equal(t, 0, count, "streams should be empty after stop")
-	})
+	require.Equal(t, 0, count, "streams should be empty after stop")
 }
 
 // TestMultilineStagePassThroughNoLabelRace is a race-detector regression test.
@@ -417,62 +334,32 @@ func TestMultilineStagePassThroughNoLabelRace(t *testing.T) {
 	}
 	`)
 
-	t.Run("Stage", func(t *testing.T) {
-		pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
-
-		in := make(chan Entry)
-		out := pl.Run(in)
-
-		done := make(chan struct{})
+	var wg sync.WaitGroup
+	next := func(_ context.Context, entries []Entry) error {
+		wg.Add(1)
 		go func() {
-			defer close(done)
-			for e := range out {
-				// Simulate a downstream stage (e.g. static_labels) mutating the
-				// Labels map of a received entry. This races with any post-emit
-				// read of e.Labels in the multiline goroutine.
+			defer wg.Done()
+			for _, e := range entries {
+				// Simulate a downstream stage (e.g. static_labels)
+				// mutating the Labels map of a received entry,
+				// concurrently with this stage processing later batches.
 				e.Labels["injected"] = "value"
 			}
 		}()
+		return nil
+	}
 
-		go func() {
-			for i := 0; i < 50; i++ {
-				in <- newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", time.Now())
-			}
-			close(in)
-		}()
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.NoError(t, err)
 
-		<-done
-	})
+	for i := 0; i < 50; i++ {
+		require.NoError(t, p.process(context.Background(), []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", time.Now()),
+		}))
+	}
 
-	t.Run("New Stage", func(t *testing.T) {
-		var wg sync.WaitGroup
-		next := func(_ context.Context, entries []Entry) error {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for _, e := range entries {
-					// Simulate a downstream stage (e.g. static_labels)
-					// mutating the Labels map of a received entry,
-					// concurrently with this stage processing later batches.
-					e.Labels["injected"] = "value"
-				}
-			}()
-			return nil
-		}
-
-		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-
-		for i := 0; i < 50; i++ {
-			require.NoError(t, p.process(context.Background(), []Entry{
-				newEntry(map[string]any{}, model.LabelSet{"value": "label"}, "not a start line", time.Now()),
-			}))
-		}
-
-		wg.Wait()
-		p.stop()
-	})
+	wg.Wait()
+	p.stop()
 }
 
 func TestValidateMultilineConfig(t *testing.T) {

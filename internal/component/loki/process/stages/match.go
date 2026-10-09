@@ -71,7 +71,7 @@ func validateMatchConfig(cfg MatchConfig) ([]*labels.Matcher, logql.Filter, erro
 }
 
 // newMatchStage creates a new matcherStage from config
-func newMatchStage(config MatchConfig, opts stageOpts) (Stage, error) {
+func newMatchStage(config MatchConfig, opts stageOpts) (entryProcessor, error) {
 	matchers, filter, err := validateMatchConfig(config)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,6 @@ func newMatchStage(config MatchConfig, opts stageOpts) (Stage, error) {
 }
 
 var (
-	_ Stage          = (*matchDropStage)(nil)
 	_ entryProcessor = (*matchDropStage)(nil)
 )
 
@@ -115,22 +114,6 @@ type matchDropStage struct {
 	matchers []*labels.Matcher
 
 	dropCount prometheus.Counter
-}
-
-// Run implements Stage.
-func (m *matchDropStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			if matchLogQL(e, m.matchers, m.filter) {
-				m.dropCount.Inc()
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
 }
 
 // process implements stage.
@@ -152,13 +135,7 @@ func (m *matchDropStage) process(ctx context.Context, entries []Entry) error {
 	return m.next(ctx, entries[:dst])
 }
 
-// Cleanup implements Stage.
-func (m *matchDropStage) Cleanup() {}
-
 var (
-	_ Stage   = (*matchKeepStage)(nil)
-	_ Stopper = (*matchKeepStage)(nil)
-
 	_ entryProcessor = (*matchKeepStage)(nil)
 	_ stopper        = (*matchKeepStage)(nil)
 )
@@ -179,25 +156,12 @@ func newMatchKeepStage(
 		matchers: matchers,
 	}
 
-	var (
-		err error
-		p1  *Pipeline
-		p2  *pipeline
-	)
-	// NOTE: next will only be set when stages are created from the new pipeline.
-	// So if it's nil we create old pipeline and if it's set we create new pipeline.
-	if next == nil {
-		p1, err = NewPipeline(logger, stages, reg, minStability)
-	} else {
-		p2, err = newPipeline(logger, reg, minStability, stages, s.collect)
-	}
-
+	p, err := newPipeline(logger, reg, minStability, stages, s.collect)
 	if err != nil {
 		return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", stages, err)
 	}
 
-	s.pipeline = p1
-	s.pipeline2 = p2
+	s.pipeline = p
 
 	return s, nil
 }
@@ -205,45 +169,10 @@ func newMatchKeepStage(
 type matchKeepStage struct {
 	next nextFn
 
-	pipeline  *Pipeline
-	pipeline2 *pipeline
+	pipeline *pipeline
 
 	filter   logql.Filter
 	matchers []*labels.Matcher
-}
-
-// Run implements Stage.
-func (m *matchKeepStage) Run(in chan Entry) chan Entry {
-	next := make(chan Entry)
-	out := make(chan Entry)
-	outNext := m.pipeline.Run(next)
-	go func() {
-		defer close(out)
-		for e := range outNext {
-			out <- e
-		}
-	}()
-	go func() {
-		defer close(next)
-		for e := range in {
-			if !matchLogQL(e, m.matchers, m.filter) {
-				out <- e
-				continue
-			}
-			next <- e
-		}
-	}()
-	return out
-}
-
-// Stop implements Stopper.
-func (m *matchKeepStage) Stop() {
-	m.pipeline.Stop()
-}
-
-// Cleanup implements Stage.
-func (m *matchKeepStage) Cleanup() {
-	m.pipeline.Cleanup()
 }
 
 type matchMergeKey struct{}
@@ -287,7 +216,7 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 		// entries sharing a timestamp keep their original order.
 		if start >= 0 && (!match || end == len(entries)) {
 			// Set len and cap to end so that inner stages cannot overwrite the entries that follow.
-			if err := m.pipeline2.process(withMatchMerge(ctx, &merged), entries[start:end:end]); err != nil {
+			if err := m.pipeline.process(withMatchMerge(ctx, &merged), entries[start:end:end]); err != nil {
 				return err
 			}
 			start = -1
@@ -327,7 +256,7 @@ func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 
 // stop implements stopper.
 func (m *matchKeepStage) stop() {
-	m.pipeline2.stop()
+	m.pipeline.stop()
 }
 
 func matchLogQL(e Entry, matchers []*labels.Matcher, filter logql.Filter) bool {

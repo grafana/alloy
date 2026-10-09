@@ -41,10 +41,7 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	return ret, nil
 }
 
-var (
-	_ Stage          = (*structuredMetadataStage)(nil)
-	_ entryProcessor = (*structuredMetadataStage)(nil)
-)
+var _ entryProcessor = (*structuredMetadataStage)(nil)
 
 func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (*structuredMetadataStage, error) {
 	var (
@@ -76,13 +73,6 @@ type structuredMetadataStage struct {
 	labelsConfig map[string]string
 	regex        regexp.Regexp
 	logger       *slog.Logger
-}
-
-// Run implements Stage.
-func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return s.processEntry(e)
-	})
 }
 
 func (s *structuredMetadataStage) process(ctx context.Context, entries []Entry) error {
@@ -121,9 +111,6 @@ func (s *structuredMetadataStage) processEntry(e Entry) Entry {
 
 	return e
 }
-
-// Cleanup implements Stage.
-func (*structuredMetadataStage) Cleanup() {}
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 
