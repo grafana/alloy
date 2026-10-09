@@ -17,23 +17,18 @@ import (
 
 var testBackoff = backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: time.Millisecond, MaxRetries: 4}
 
-func newTestClient(t *testing.T, handler http.HandlerFunc, fields []string) *wrappedClient {
-	t.Helper()
+func newTestClient(handler http.HandlerFunc, fields []string) (*wrappedClient, *httptest.Server) {
 	srv := httptest.NewServer(handler)
-	t.Cleanup(srv.Close)
-
-	c, err := newClient(clientConfig{
+	return newClient(clientConfig{
 		apiURL:   srv.URL,
 		apiToken: "token",
 		zoneID:   "zone-id",
 		fields:   fields,
 		backoff:  testBackoff,
-	})
-	require.NoError(t, err)
-	return c.(*wrappedClient)
+	}), srv
 }
 
-func readAll(t *testing.T, it LogpullReceivedIterator) []string {
+func readAll(t *testing.T, it *logpullIterator) []string {
 	t.Helper()
 	defer it.Close()
 	var lines []string
@@ -51,7 +46,7 @@ func TestClient_LogpullReceived(t *testing.T) {
 		end = time.Unix(0, 2000)
 	)
 
-	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/zones/zone-id/logs/received", r.URL.Path)
 		require.Equal(t, "1000", r.URL.Query().Get("start"))
@@ -60,6 +55,7 @@ func TestClient_LogpullReceived(t *testing.T) {
 		require.Equal(t, "Bearer token", r.Header.Get("Authorization"))
 		_, _ = io.WriteString(w, "{\"a\":1}\n{\"b\":2}\r\n{\"c\":3}")
 	}, []string{"ClientIP", "EdgeStartTimestamp"})
+	defer srv.Close()
 
 	it, err := c.LogpullReceived(t.Context(), start, end)
 	require.NoError(t, err)
@@ -67,13 +63,14 @@ func TestClient_LogpullReceived(t *testing.T) {
 }
 
 func TestClient_LogpullReceivedGzip(t *testing.T) {
-	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 		require.Contains(t, r.Header.Get("Accept-Encoding"), "gzip")
 		w.Header().Set("Content-Encoding", "gzip")
 		gz := gzip.NewWriter(w)
 		_, _ = io.WriteString(gz, "{\"a\":1}\n{\"b\":2}\n")
 		require.NoError(t, gz.Close())
 	}, nil)
+	defer srv.Close()
 
 	it, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 	require.NoError(t, err)
@@ -83,9 +80,10 @@ func TestClient_LogpullReceivedGzip(t *testing.T) {
 func TestClient_LogpullReceivedLongLine(t *testing.T) {
 	long := `{"ClientRequestPath":"` + strings.Repeat("a", 100*1024) + `"}`
 
-	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"a":1}`+"\n"+long+"\n"+`{"b":2}`+"\n")
 	}, nil)
+	defer srv.Close()
 
 	it, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 	require.NoError(t, err)
@@ -157,11 +155,12 @@ func TestClient_LogpullReceivedErrors(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calls atomic.Int32
-			c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+			c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
 				w.WriteHeader(tc.status)
 				_, _ = io.WriteString(w, tc.body)
 			}, nil)
+			defer srv.Close()
 
 			it, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 			require.Nil(t, it)
@@ -171,10 +170,11 @@ func TestClient_LogpullReceivedErrors(t *testing.T) {
 	}
 
 	t.Run("too early error is detected", func(t *testing.T) {
-		c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = io.WriteString(w, "bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available")
 		}, nil)
+		defer srv.Close()
 
 		_, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 		require.Regexp(t, cloudflareTooEarlyError, err.Error())
@@ -184,7 +184,7 @@ func TestClient_LogpullReceivedErrors(t *testing.T) {
 func TestClient_LogpullReceivedRetries(t *testing.T) {
 	t.Run("succeeds after 429 and 5xx responses", func(t *testing.T) {
 		var calls atomic.Int32
-		c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 			switch calls.Add(1) {
 			case 1:
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -194,6 +194,7 @@ func TestClient_LogpullReceivedRetries(t *testing.T) {
 				_, _ = io.WriteString(w, "{\"a\":1}\n")
 			}
 		}, nil)
+		defer srv.Close()
 
 		it, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 		require.NoError(t, err)
@@ -203,11 +204,12 @@ func TestClient_LogpullReceivedRetries(t *testing.T) {
 
 	t.Run("returns the last error once retries are exhausted", func(t *testing.T) {
 		var calls atomic.Int32
-		c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
 			calls.Add(1)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = io.WriteString(w, "unavailable")
 		}, nil)
+		defer srv.Close()
 
 		_, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
 		require.EqualError(t, err, "HTTP status 503: unavailable")

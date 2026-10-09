@@ -36,23 +36,6 @@ var requestBackoff = backoff.Config{
 	MaxRetries: 4,
 }
 
-// Client is a wrapper around the Cloudflare API that allow for testing and being zone/fields aware.
-type Client interface {
-	LogpullReceived(ctx context.Context, start, end time.Time) (LogpullReceivedIterator, error)
-}
-
-// LogpullReceivedIterator iterates over the log lines returned by the Logpull API.
-type LogpullReceivedIterator interface {
-	// Next advances the iterator to the next log line and reports whether there is one.
-	Next() bool
-	// Err returns the error that stopped the iteration, if any.
-	Err() error
-	// Line returns the current log line. It is only valid until the next call to Next.
-	Line() []byte
-	// Close closes the underlying response body.
-	Close() error
-}
-
 type wrappedClient struct {
 	cfg        clientConfig
 	httpClient *http.Client
@@ -66,18 +49,16 @@ type clientConfig struct {
 	backoff  backoff.Config
 }
 
-var getClient = newClient
-
-func newClient(cfg clientConfig) (Client, error) {
+func newClient(cfg clientConfig) *wrappedClient {
 	return &wrappedClient{
 		cfg:        cfg,
 		httpClient: &http.Client{},
-	}, nil
+	}
 }
 
 // LogpullReceived requests the logs received for the zone between start and end.
 // API reference: https://developers.cloudflare.com/logs/logpull/requesting-logs
-func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Time) (LogpullReceivedIterator, error) {
+func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Time) (*logpullIterator, error) {
 	v := url.Values{}
 	v.Set("start", strconv.FormatInt(start.UnixNano(), 10))
 	v.Set("end", strconv.FormatInt(end.UnixNano(), 10))
@@ -202,6 +183,7 @@ func (it *logpullIterator) Err() error {
 	return it.err
 }
 
+// Line returns the current log line. It is only valid until the next call to Next.
 func (it *logpullIterator) Line() []byte {
 	b := bytes.TrimSuffix(it.buf, []byte{'\n'})
 	return bytes.TrimSuffix(b, []byte{'\r'})
