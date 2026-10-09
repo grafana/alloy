@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/diag"
 )
@@ -125,7 +124,11 @@ func convert(r io.Reader, fc *alloyConvert) error {
 		return err
 	}
 
-	alloyBytes, diags := converter.Convert(inputBytes, converter.Input(fc.sourceFormat), ea)
+	if convertFn == nil {
+		return errConverterNotIncluded
+	}
+
+	alloyBytes, diags := convertFn(inputBytes, fc.sourceFormat, ea)
 	err = generateConvertReport(diags, fc)
 	if err != nil {
 		return err
@@ -181,8 +184,8 @@ func hasErrorLevel(ds convert_diag.Diagnostics, sev convert_diag.Severity) bool 
 }
 
 func supportedFormatsList() string {
-	var ret = make([]string, len(converter.SupportedFormats))
-	for i, f := range converter.SupportedFormats {
+	var ret = make([]string, len(convertFormats))
+	for i, f := range convertFormats {
 		ret[i] = fmt.Sprintf("%q", f)
 	}
 	return strings.Join(ret, ", ")
