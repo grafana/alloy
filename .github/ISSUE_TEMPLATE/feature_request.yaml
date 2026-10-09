@@ -149,6 +149,7 @@ body:
       - otelcol.receiver.opencensus
       - otelcol.receiver.otlp
       - otelcol.receiver.prometheus
+      - otelcol.receiver.sdlc
       - otelcol.receiver.solace
       - otelcol.receiver.splunkhec
       - otelcol.receiver.syslog
