@@ -1,0 +1,17 @@
+alloy:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  resizePolicy:
+    - resourceName: cpu
+      restartPolicy: NotRequired
+    - resourceName: memory
+      restartPolicy: RestartContainer
+
+configReloader:
+  resizePolicy:
+    - resourceName: cpu
+      restartPolicy: NotRequired
+    - resourceName: memory
+      restartPolicy: NotRequired
