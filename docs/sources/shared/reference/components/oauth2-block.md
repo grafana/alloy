@@ -30,6 +30,7 @@ The value of `grant_type` determines which arguments you can use in the `oauth2`
 If `grant_type` is `client_credentials`, you must set either `client_secret` or `client_secret_file`.
 `client_secret` and `client_secret_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
+If `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`, you must set either `client_certificate_key` or `client_certificate_key_file`.
 `client_certificate_key` and `client_certificate_key_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
 {{< admonition type="warning" >}}
