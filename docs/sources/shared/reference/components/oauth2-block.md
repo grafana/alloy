@@ -6,13 +6,13 @@ headless: true
 
 | Name                          | Type                | Description                                                                                                 | Default                | Required |
 | ----------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
+| `client_id`                   | `string`            | OAuth2 client ID.                                                                                           |                        | yes        |
 | `token_url`                   | `string`            | URL to fetch the token from.                                                                                |                        | yes      |
 | `audience`                    | `string`            | JWT audience claim for JWT bearer grant. Defaults to `token_url` when empty.                                | `""`                   | no       |
 | `claims`                      | `map(any)`          | Additional JWT claims for JWT bearer grant.                                                                 | `{}`                   | no       |
 | `client_certificate_key`      | `secret`            | JWT bearer private key.                                                                                     | `""`                   | no       |
 | `client_certificate_key_file` | `string`            | Path to a file containing the JWT bearer private key.                                                       | `""`                   | no       |
 | `client_certificate_key_id`   | `string`            | Key ID included in JWT bearer grant requests.                                                               | `""`                   | no       |
-| `client_id`                   | `string`            | OAuth2 client ID.                                                                                           |                        | no       |
 | `client_secret`               | `secret`            | OAuth2 client secret. Used when `grant_type` is `client_credentials`.                                       |                        | no       |
 | `client_secret_file`          | `string`            | File containing the OAuth2 client secret. Used when `grant_type` is `client_credentials`.                   |                        | no       |
 | `endpoint_params`             | `map(string)`       | Optional parameters to append to the token URL.                                                             |                        | no       |
