@@ -122,7 +122,7 @@ func parseFlags() (config, error) {
 	fs.StringVar(&cfg.shard, "shard", "", "Split test packages across shards (e.g., 0/2)")
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
-	fs.BoolVar(&cfg.distroless, "distroless", false, "Use the distroless Alloy image; adds the "+distrolessTagSuffix+" suffix to the --alloy-image tag")
+	fs.BoolVar(&cfg.distroless, "distroless", true, "Use the distroless Alloy image; adds the "+distrolessTagSuffix+" suffix to the --alloy-image tag")
 	fs.BoolVar(&cfg.interactive, "interactive", false, "Pick run options (reuse-cluster, skip-image-builds, shard/packages) via an interactive menu before running")
 	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed")
 	fs.Usage = func() {

@@ -66,4 +66,4 @@ jobs:
     - name: Load images
       run: docker load -i test-images.tar
     - name: Run tests
-      run: make integration-test-k8s RUN_ARGS="--distroless --skip-image-builds --shard ${{ matrix.shard }}"
+      run: make integration-test-k8s RUN_ARGS="--skip-image-builds --shard ${{ matrix.shard }}"
