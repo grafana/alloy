@@ -81,6 +81,7 @@ type Arguments struct {
 	LocksArguments          LocksArguments               `alloy:"locks,block,optional"`
 	QuerySamplesArguments   QuerySamplesArguments        `alloy:"query_samples,block,optional"`
 	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
+	Logs                    LogsArguments                `alloy:"logs,block,optional"`
 	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
@@ -143,6 +144,10 @@ type ExplainPlansArguments struct {
 type LocksArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	Threshold       time.Duration `alloy:"threshold,attr,optional"`
+}
+
+type LogsArguments struct {
+	ExcludeUsers []string `alloy:"exclude_users,attr,optional"`
 }
 
 type QuerySamplesArguments struct {
@@ -306,7 +311,12 @@ func validateCloudProvider(cp *CloudProvider) error {
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets      []discovery.Target `alloy:"targets,attr"`
+	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr,optional"`
+	// LogsReceivers holds one logs receiver per database_instance block,
+	// keyed by block label. It's empty in the single-DSN form, which exports
+	// its receiver as logs_receiver instead.
+	LogsReceivers map[string]loki.LogsReceiver `alloy:"logs_receivers,attr,optional"`
 }
 
 var (
@@ -336,6 +346,13 @@ type Component struct {
 	// has capacity 1 so notifications coalesce.
 	clusterChanged chan struct{}
 
+	// logsReceivers holds the receiver pump of each configured database,
+	// keyed by database name ("" in the single-DSN form). ensurePumps
+	// creates a pump on demand and reuses it across Updates; removeStalePumps
+	// stops and removes the pump for a database_instance block that was
+	// removed or renamed. Guarded by mut.
+	logsReceivers map[string]*receiverPump
+
 	// instances holds one dbInstance per configured database. The slice is
 	// replaced wholesale on Update and stored atomically so that Handler can
 	// read it without blocking on mut while an Update is connecting. Mutation
@@ -362,6 +379,54 @@ func (c *Component) storeInstances(instances []*dbInstance) {
 	c.handlerMux.Store(mux)
 }
 
+// ensurePumps creates and starts the receiver pumps missing for the given
+// configs. Existing pumps are reused so the exported receivers stay stable.
+// Must be called with c.mut locked.
+func (c *Component) ensurePumps(cfgs []databaseConfig) {
+	for _, cfg := range cfgs {
+		if _, ok := c.logsReceivers[cfg.name]; ok {
+			continue
+		}
+		pump := newReceiverPump()
+		c.logsReceivers[cfg.name] = pump
+		pump.wg.Go(func() { pump.run(pump.stop) })
+	}
+}
+
+// removeStalePumps stops and removes the receiver pump of every database no
+// longer present in cfgs, so a database_instance block that's removed or
+// renamed doesn't leak its pump goroutine for the rest of the component's
+// lifetime. Must be called with c.mut locked.
+func (c *Component) removeStalePumps(cfgs []databaseConfig) {
+	keep := make(map[string]struct{}, len(cfgs))
+	for _, cfg := range cfgs {
+		keep[cfg.name] = struct{}{}
+	}
+	for name, pump := range c.logsReceivers {
+		if _, ok := keep[name]; ok {
+			continue
+		}
+		close(pump.stop)
+		delete(c.logsReceivers, name)
+	}
+}
+
+// stopPumps stops every remaining receiver pump and waits for each one's
+// goroutine to exit.
+func (c *Component) stopPumps() {
+	c.mut.Lock()
+	pumps := make([]*receiverPump, 0, len(c.logsReceivers))
+	for _, pump := range c.logsReceivers {
+		close(pump.stop)
+		pumps = append(pumps, pump)
+	}
+	c.mut.Unlock()
+
+	for _, pump := range pumps {
+		pump.wg.Wait()
+	}
+}
+
 func New(opts component.Options, args Arguments) (*Component, error) {
 	return new(opts, args, sql.Open)
 }
@@ -373,6 +438,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		fanout:         loki.NewFanout(args.ForwardTo),
 		handler:        loki.NewLogsReceiver(),
 		openSQL:        openFn,
+		logsReceivers:  make(map[string]*receiverPump),
 		clusterChanged: make(chan struct{}, 1),
 	}
 
@@ -382,7 +448,16 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	}
 	c.cluster = data.(cluster.Cluster)
 
+	// Export the logs receivers immediately, before any database is
+	// connected, so that loki.source.* components can wire to them even when
+	// a database is initially unreachable.
+	c.mut.Lock()
+	c.ensurePumps(args.databaseConfigs())
+	c.exportState()
+	c.mut.Unlock()
+
 	if err := c.Update(args); err != nil {
+		c.stopPumps()
 		return nil, err
 	}
 
@@ -399,6 +474,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 			c.stopInstances(c.loadInstances())
 		})
+
+		// Stop the receiver pumps only after the instances are stopped, so
+		// the exported receivers stay drained for the whole drain window.
+		c.stopPumps()
 	}()
 
 	var (
@@ -477,6 +556,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = newArgs
 	c.fanout.UpdateChildren(c.args.ForwardTo)
+	// Every configured database gets a pump, owned or not: non-owned
+	// databases still export a receiver that discards entries, so upstream
+	// components never block on a node that doesn't collect from them.
+	c.ensurePumps(newArgs.databaseConfigs())
+	c.removeStalePumps(newArgs.databaseConfigs())
 
 	c.replaceInstances(instances)
 	return nil
@@ -509,7 +593,7 @@ func (c *Component) replaceInstances(instances []*dbInstance) {
 		inst.healthErr.Store("")
 	}
 
-	c.exportTargets()
+	c.exportState()
 }
 
 // ownedDatabases returns the subset of configs this node is responsible for
@@ -637,7 +721,7 @@ func (c *Component) reconcileCluster() {
 		inst.healthErr.Store("")
 	}
 
-	c.exportTargets()
+	c.exportState()
 }
 
 func (c *Component) tryReconnect(ctx context.Context) error {
@@ -657,7 +741,7 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 		inst.healthErr.Store("")
 	}
 
-	c.exportTargets()
+	c.exportState()
 	return errors.Join(errs...)
 }
 
@@ -665,6 +749,9 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 // database connections. Must be called with c.mut locked.
 func (c *Component) stopInstances(instances []*dbInstance) {
 	for _, inst := range instances {
+		if pump := c.logsReceivers[inst.cfg.name]; pump != nil {
+			pump.clearTarget()
+		}
 		for _, collector := range inst.collectors {
 			collector.Stop()
 		}
@@ -676,17 +763,29 @@ func (c *Component) stopInstances(instances []*dbInstance) {
 	}
 }
 
-// exportTargets publishes the targets of all connected database instances.
-// Must be called with c.mut locked.
-func (c *Component) exportTargets() {
+// exportState publishes the targets of all connected database instances and
+// the exported logs receivers. Must be called with c.mut locked.
+func (c *Component) exportState() {
 	targets := make([]discovery.Target, 0)
 	for _, inst := range c.loadInstances() {
 		targets = append(targets, inst.exportedTargets...)
 	}
 
-	c.opts.OnStateChange(Exports{
-		Targets: targets,
-	})
+	exports := Exports{Targets: targets}
+	if len(c.args.Databases) == 0 {
+		if pump := c.logsReceivers[""]; pump != nil {
+			exports.LogsReceiver = pump.exported
+		}
+	} else {
+		receivers := make(map[string]loki.LogsReceiver, len(c.args.Databases))
+		for _, db := range c.args.Databases {
+			if pump := c.logsReceivers[db.Name]; pump != nil {
+				receivers[db.Name] = pump.exported
+			}
+		}
+		exports.LogsReceivers = receivers
+	}
+	c.opts.OnStateChange(exports)
 }
 
 // dbConnectTimeout bounds the connectivity check and the server-info query
@@ -790,6 +889,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.exportedTargets = targets
 
+	if pump := c.logsReceivers[inst.cfg.name]; pump != nil {
+		pump.clearTarget()
+	}
 	for _, collector := range inst.collectors {
 		collector.Stop()
 	}
@@ -1070,6 +1172,29 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
 		inst.collectors = append(inst.collectors, hcCollector)
+	}
+
+	// Logs collector is always enabled
+	logsCollector, err := collector.NewLogs(collector.LogsArguments{
+		Receiver:       inst.logsReceiver,
+		EntryHandler:   entryHandler,
+		Logger:         c.opts.Logger,
+		Registry:       inst.registry,
+		DB:             inst.dbConnection,
+		ExcludeSchemas: c.args.ExcludeSchemas,
+		ExcludeUsers:   c.args.Logs.ExcludeUsers,
+	})
+	if err != nil {
+		logStartError(collector.LogsCollector, "create", err)
+	} else {
+		if err := logsCollector.Start(context.Background()); err != nil {
+			logStartError(collector.LogsCollector, "start", err)
+		} else if pump := c.logsReceivers[inst.cfg.name]; pump != nil {
+			// The logs collector is now draining the instance receiver: start
+			// forwarding the exported receiver's entries into it.
+			pump.setTarget(inst.logsReceiver)
+		}
+		inst.collectors = append(inst.collectors, logsCollector)
 	}
 
 	if len(startErrors) > 0 {

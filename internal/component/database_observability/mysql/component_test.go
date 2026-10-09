@@ -581,8 +581,9 @@ func TestMySQL_Reconnection(t *testing.T) {
 				"instance": "test-instance",
 				"job":      "database_observability",
 			}),
-			registry:  prometheus.NewRegistry(),
-			healthErr: atomic.NewString(""),
+			registry:     prometheus.NewRegistry(),
+			healthErr:    atomic.NewString(""),
+			logsReceiver: loki.NewLogsReceiver(),
 		}})
 
 		// First attempt: connection fails
