@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/phayes/freeport"
@@ -25,7 +28,7 @@ import (
 func TestHTTP(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 	require.NoError(t, env.ApplyConfig(`/* empty */`))
 
@@ -70,10 +73,42 @@ func TestHTTP(t *testing.T) {
 	})
 }
 
+func TestUnixSocket(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	env, err := newTestEnvironment(t, "unix")
+	require.NoError(t, err)
+	require.NoError(t, env.ApplyConfig(`/* empty */`))
+
+	go func() {
+		require.NoError(t, env.Run(ctx))
+	}()
+
+	httpc := http.Client{
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", strings.TrimPrefix(env.ListenAddr(), "unix://"))
+			},
+		},
+	}
+
+	util.Eventually(t, func(t require.TestingT) {
+		resp, err := httpc.Get("http://unix/-/ready")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		buf, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, "Alloy is ready.\n", string(buf))
+
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+}
+
 func TestTLS(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 	require.NoError(t, env.ApplyConfig(`
 		tls {
@@ -108,7 +143,7 @@ func TestTLS(t *testing.T) {
 func Test_Toggle_TLS(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 
 	go func() {
@@ -183,7 +218,7 @@ func Test_Toggle_TLS(t *testing.T) {
 func TestAuth(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 	require.NoError(t, env.ApplyConfig(`
 		auth {
@@ -219,7 +254,7 @@ func TestAuth(t *testing.T) {
 func Test_Toggle_Auth(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 
 	go func() {
@@ -290,7 +325,7 @@ func Test_Toggle_Auth(t *testing.T) {
 func TestUnhealthy(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
-	env, err := newTestEnvironment(t)
+	env, err := newTestEnvironment(t, "tcp")
 	require.NoError(t, err)
 
 	env.components = []*component.Info{
@@ -337,10 +372,21 @@ type testEnvironment struct {
 	components []*component.Info
 }
 
-func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
-	port, err := freeport.GetFreePort()
-	if err != nil {
-		return nil, err
+func newTestEnvironment(t *testing.T, network string) (*testEnvironment, error) {
+	var listenAddr string
+
+	if network == "unix" {
+		f, err := os.MkdirTemp("", "*")
+		if err != nil {
+			return nil, err
+		}
+		listenAddr = fmt.Sprintf("unix://%s/alloy-test.sock", f)
+	} else {
+		port, err := freeport.GetFreePort()
+		if err != nil {
+			return nil, err
+		}
+		listenAddr = fmt.Sprintf("127.0.0.1:%d", port)
 	}
 
 	svc := New(Options{
@@ -351,14 +397,14 @@ func newTestEnvironment(t *testing.T) (*testEnvironment, error) {
 		ReadyFunc:  func() bool { return true },
 		ReloadFunc: func() error { return nil },
 
-		HTTPListenAddr:   fmt.Sprintf("127.0.0.1:%d", port),
+		HTTPListenAddr:   listenAddr,
 		MemoryListenAddr: "alloy.internal:12345",
 		EnablePProf:      true,
 	})
 
 	return &testEnvironment{
 		svc:  svc,
-		addr: fmt.Sprintf("127.0.0.1:%d", port),
+		addr: listenAddr,
 	}, nil
 }
 
