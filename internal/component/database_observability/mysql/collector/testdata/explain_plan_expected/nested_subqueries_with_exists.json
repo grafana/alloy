@@ -1,0 +1,37 @@
+{
+  "operation": "Unique Key Lookup",
+  "details": {
+    "estimatedRows": 1,
+    "estimatedCost": 8.38,
+    "alias": "e",
+    "accessType": "eq_ref",
+    "keyUsed": "PRIMARY",
+    "joinAlgorithm": "nested_loop"
+  },
+  "children": [
+    {
+      "operation": "Non-Unique Key Lookup",
+      "details": {
+        "estimatedRows": 7,
+        "estimatedCost": 46.68,
+        "alias": "s",
+        "accessType": "ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop",
+        "condition": "( ( `employees` . `s` . `to_date` = date ? ) and ( `employees` . `s` . `salary` \u003e ? ) )"
+      },
+      "children": [
+        {
+          "operation": "Full Index Scan",
+          "details": {
+            "estimatedRows": 24,
+            "estimatedCost": 3.51,
+            "alias": "dm",
+            "accessType": "index",
+            "keyUsed": "PRIMARY"
+          }
+        }
+      ]
+    }
+  ]
+}

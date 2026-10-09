@@ -1,0 +1,104 @@
+{
+  "operation": "Non-Unique Key Lookup",
+  "details": {
+    "estimatedRows": 138443,
+    "estimatedCost": 12712.96,
+    "alias": "dept_salary_stats",
+    "accessType": "ref",
+    "keyUsed": "\u003cauto_key1\u003e",
+    "joinAlgorithm": "nested_loop",
+    "condition": "( `employees` . `s` . `salary` \u003e `dept_salary_stats` . `avg_salary` )"
+  },
+  "children": [
+    {
+      "operation": "Unique Key Lookup",
+      "details": {
+        "estimatedRows": 31146,
+        "estimatedCost": 34235.18,
+        "alias": "e",
+        "accessType": "eq_ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop"
+      },
+      "children": [
+        {
+          "operation": "Non-Unique Key Lookup",
+          "details": {
+            "estimatedRows": 31146,
+            "estimatedCost": 64554.21,
+            "alias": "s",
+            "accessType": "ref",
+            "keyUsed": "PRIMARY",
+            "joinAlgorithm": "nested_loop",
+            "condition": "( `employees` . `s` . `to_date` = date ? )"
+          },
+          "children": [
+            {
+              "operation": "Full Table Scan",
+              "details": {
+                "estimatedRows": 33114,
+                "estimatedCost": 33851.3,
+                "alias": "de",
+                "accessType": "all",
+                "condition": "( `employees` . `de` . `to_date` = date ? )"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "operation": "Materialized Subquery",
+      "details": {
+        "estimatedRows": 0
+      },
+      "children": [
+        {
+          "operation": "Grouping Operation",
+          "details": {
+            "estimatedRows": 0
+          },
+          "children": [
+            {
+              "operation": "Unique Key Lookup",
+              "details": {
+                "estimatedRows": 31146,
+                "estimatedCost": 34261.54,
+                "alias": "d",
+                "accessType": "eq_ref",
+                "keyUsed": "PRIMARY",
+                "joinAlgorithm": "nested_loop"
+              },
+              "children": [
+                {
+                  "operation": "Non-Unique Key Lookup",
+                  "details": {
+                    "estimatedRows": 31146,
+                    "estimatedCost": 64554.21,
+                    "alias": "s",
+                    "accessType": "ref",
+                    "keyUsed": "PRIMARY",
+                    "joinAlgorithm": "nested_loop",
+                    "condition": "( `employees` . `s` . `to_date` = date ? )"
+                  },
+                  "children": [
+                    {
+                      "operation": "Full Table Scan",
+                      "details": {
+                        "estimatedRows": 33114,
+                        "estimatedCost": 33851.3,
+                        "alias": "de",
+                        "accessType": "all",
+                        "condition": "( `employees` . `de` . `to_date` = date ? )"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "operation": "Union",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Unique Key Lookup",
+      "details": {
+        "estimatedRows": 2,
+        "estimatedCost": 2.64,
+        "alias": "e",
+        "accessType": "eq_ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop"
+      },
+      "children": [
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 2,
+            "estimatedCost": 3.4,
+            "alias": "dm",
+            "accessType": "all",
+            "condition": "( `employees` . `dm` . `to_date` = date ? )"
+          }
+        }
+      ]
+    },
+    {
+      "operation": "Unique Key Lookup",
+      "details": {
+        "estimatedRows": 4426,
+        "estimatedCost": 4868.66,
+        "alias": "e",
+        "accessType": "eq_ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop"
+      },
+      "children": [
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 4426,
+            "estimatedCost": 45512.5,
+            "alias": "t",
+            "accessType": "all",
+            "condition": "( ( `employees` . `t` . `to_date` = date ? ) and ( `employees` . `t` . `title` = ? ) )"
+          }
+        }
+      ]
+    }
+  ]
+}
