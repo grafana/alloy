@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/azure"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/cadvisor"
-	"github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/consul"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"
@@ -108,16 +107,6 @@ func TestInstanceKey(t *testing.T) {
 			},
 			temporaryHostname:     "test-agent",
 			expectedInstanceLabel: "test-agent",
-		},
-		{
-			testName:      "catchpoint",
-			componentName: "prometheus.exporter.catchpoint",
-			args: catchpoint.Arguments{
-				Port: "9090",
-			},
-			// Port is better than hostname, but not ideal. Catchpoint is a webhook called externally, so there is no
-			// clearly better option here.
-			expectedInstanceLabel: "9090",
 		},
 		{
 			testName:      "cloudwatch",

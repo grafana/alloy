@@ -1,4 +1,6 @@
 ---
+aliases:
+  - ./prometheus/prometheus.exporter.catchpoint/ # /docs/alloy/latest/reference/components/prometheus/prometheus.exporter.catchpoint/
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/
 description: Learn about the prometheus components in Grafana Alloy
 review_date: 2026-09-14

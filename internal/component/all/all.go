@@ -141,7 +141,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox"             // Import prometheus.exporter.blackbox
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cadvisor"             // Import prometheus.exporter.cadvisor
-	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"           // Import prometheus.exporter.databricks
