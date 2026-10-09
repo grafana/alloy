@@ -1253,8 +1253,6 @@ github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20260428133123-50478b16
 github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20260428133123-50478b16a666/go.mod h1:TSGRtOsjhf+fkViO6BMQM8UMl5zEZBid3UR9SEiCWgg=
 github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e h1:XN6vpnyS0vur4R23ePYBgmU1GY9lPmf1jqWMFIdExS0=
 github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
-github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
-github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/clusterurl v0.2.1 h1:ygU7u8z1Ie1dfdoOViLZPmhuu26wMBKMXPXJXBk7t8M=
 github.com/grafana/clusterurl v0.2.1/go.mod h1:IdIOq5skvcUaZWe+pj732lxtn1wQ0t+br7dn7Z5W6Xw=
 github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff h1:/v+WgSjDWKBQg9iIDULBDy0F26ds6asrNtEQt3x+95A=
