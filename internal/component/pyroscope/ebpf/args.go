@@ -10,6 +10,7 @@ import (
 )
 
 type Arguments struct {
+	BatchEnabled             bool                   `alloy:"batch_enabled,attr,optional"`
 	ForwardTo                []pyroscope.Appendable `alloy:"forward_to,attr"`
 	Targets                  []discovery.Target     `alloy:"targets,attr,optional"`
 	CollectInterval          time.Duration          `alloy:"collect_interval,attr,optional"`
