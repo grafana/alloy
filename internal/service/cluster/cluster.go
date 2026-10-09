@@ -156,14 +156,14 @@ func New(opts Options) (*Service, error) {
 		EnableTLS:     opts.EnableTLS,
 	}
 
-	httpTransport := &http2.Transport{
+	httpTransport := &http2.Transport{ //nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 		AllowHTTP: true,
 		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 			return net.DialTimeout(network, addr, calcTimeout(ctx))
 		},
 	}
 	if opts.EnableTLS {
-		httpTransport.AllowHTTP = false
+		httpTransport.AllowHTTP = false //nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 		tlsConfig, err := loadTLSConfigFromFile(opts.TLSCAPath, opts.TLSCertPath, opts.TLSKeyPath, opts.TLSServerName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
@@ -175,7 +175,9 @@ func New(opts Options) (*Service, error) {
 			"TLSKeyPath", opts.TLSKeyPath,
 			"TLSServerName", opts.TLSServerName,
 		)
+		//nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 		httpTransport.TLSClientConfig = tlsConfig
+		//nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 		httpTransport.DialTLSContext = func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
 			return tls.DialWithDialer(&net.Dialer{Timeout: calcTimeout(ctx)}, network, addr, cfg)
 		}

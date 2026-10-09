@@ -187,7 +187,7 @@ func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 		// It is applied on request. So we leave out any timings here.
 		var rt http.RoundTripper
 		if cfg.H2C {
-			rt = &http2.Transport{
+			rt = &http2.Transport{ //nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 				AllowHTTP: true,
 				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
 					return dialContext(ctx, network, addr)
@@ -209,11 +209,11 @@ func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 				DialContext:           dialContext,
 			}
 			if opts.http2Enabled && cfg.EnableHTTP2 {
-				http2t, err := http2.ConfigureTransports(rt.(*http.Transport))
+				http2t, err := http2.ConfigureTransports(rt.(*http.Transport)) //nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 				if err != nil {
 					return nil, err
 				}
-				http2t.ReadIdleTimeout = time.Minute
+				http2t.ReadIdleTimeout = time.Minute //nolint:staticcheck // TODO: migrate off deprecated x/net/http2 APIs
 			}
 		}
 
