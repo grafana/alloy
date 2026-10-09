@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/backoff"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 )
@@ -47,12 +48,12 @@ func TestClient_LogpullReceived(t *testing.T) {
 	)
 
 	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/zones/zone-id/logs/received", r.URL.Path)
-		require.Equal(t, "1000", r.URL.Query().Get("start"))
-		require.Equal(t, "2000", r.URL.Query().Get("end"))
-		require.Equal(t, "ClientIP,EdgeStartTimestamp", r.URL.Query().Get("fields"))
-		require.Equal(t, "Bearer token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/zones/zone-id/logs/received", r.URL.Path)
+		assert.Equal(t, "1000", r.URL.Query().Get("start"))
+		assert.Equal(t, "2000", r.URL.Query().Get("end"))
+		assert.Equal(t, "ClientIP,EdgeStartTimestamp", r.URL.Query().Get("fields"))
+		assert.Equal(t, "Bearer token", r.Header.Get("Authorization"))
 		_, _ = io.WriteString(w, "{\"a\":1}\n{\"b\":2}\r\n{\"c\":3}")
 	}, []string{"ClientIP", "EdgeStartTimestamp"})
 	defer srv.Close()
@@ -64,11 +65,11 @@ func TestClient_LogpullReceived(t *testing.T) {
 
 func TestClient_LogpullReceivedGzip(t *testing.T) {
 	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
-		require.Contains(t, r.Header.Get("Accept-Encoding"), "gzip")
+		assert.Contains(t, r.Header.Get("Accept-Encoding"), "gzip")
 		w.Header().Set("Content-Encoding", "gzip")
 		gz := gzip.NewWriter(w)
 		_, _ = io.WriteString(gz, "{\"a\":1}\n{\"b\":2}\n")
-		require.NoError(t, gz.Close())
+		assert.NoError(t, gz.Close())
 	}, nil)
 	defer srv.Close()
 
