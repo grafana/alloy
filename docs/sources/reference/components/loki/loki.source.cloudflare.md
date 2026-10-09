@@ -34,16 +34,19 @@ loki.source.cloudflare "<LABEL>" {
 
 You can use the following arguments with `loki.source.cloudflare`:
 
-| Name                | Type                 | Description                                                                   | Default     | Required |
-| ------------------- | -------------------- | ----------------------------------------------------------------------------- | ----------- | -------- |
-| `api_token`         | `secret`             | The API token to authenticate with.                                           |             | yes      |
-| `forward_to`        | `list(LogsReceiver)` | List of receivers to send log entries to.                                     |             | yes      |
-| `zone_id`           | `string`             | The Cloudflare zone ID to use.                                                |             | yes      |
-| `additional_fields` | `list(string)`       | The additional list of fields to supplement those provided via `fields_type`. |             | no       |
-| `fields_type`       | `string`             | The set of fields to fetch for log entries.                                   | `"default"` | no       |
-| `labels`            | `map(string)`        | The labels to associate with incoming log entries.                            | `{}`        | no       |
-| `pull_range`        | `duration`           | The timeframe to fetch for each pull request.                                 | `"1m"`      | no       |
-| `workers`           | `int`                | The number of workers to use for parsing logs.                                | `3`         | no       |
+| Name                | Type                 | Description                                                                   | Default                                  | Required |
+| ------------------- | -------------------- | ----------------------------------------------------------------------------- | ---------------------------------------- | -------- |
+| `api_token`         | `secret`             | The API token to authenticate with.                                           |                                          | yes      |
+| `forward_to`        | `list(LogsReceiver)` | List of receivers to send log entries to.                                     |                                          | yes      |
+| `zone_id`           | `string`             | The Cloudflare zone ID to use.                                                |                                          | yes      |
+| `additional_fields` | `list(string)`       | The additional list of fields to supplement those provided via `fields_type`. |                                          | no       |
+| `api_url`           | `string`             | The base URL of the Cloudflare API.                                           | `"https://api.cloudflare.com/client/v4"` | no       |
+| `fields_type`       | `string`             | The set of fields to fetch for log entries.                                   | `"default"`                              | no       |
+| `labels`            | `map(string)`        | The labels to associate with incoming log entries.                            | `{}`                                     | no       |
+| `pull_range`        | `duration`           | The time range to fetch for each pull request.                                | `"1m"`                                   | no       |
+| `workers`           | `int`                | The number of workers to use for parsing logs.                                | `3`                                      | no       |
+
+Set `api_url` to send API requests to a different endpoint, for example a proxy in front of the Cloudflare API.
 
 By default `loki.source.cloudflare` fetches logs with the `default` set of fields.
 The following list shows the different sets of `fields_type` available for selection, and the fields they include:

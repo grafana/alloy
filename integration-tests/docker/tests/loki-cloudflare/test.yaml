@@ -1,7 +1,3 @@
-alloy_container:
-  environment:
-    ALLOY_CLOUDFLARE_API_URL: "http://logpullmock:8080/client/v4"
-
 additional_containers:
   - name: logpullmock
     image: logpullmock:latest

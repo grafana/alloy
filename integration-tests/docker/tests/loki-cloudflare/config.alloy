@@ -1,6 +1,7 @@
 loki.source.cloudflare "test" {
 	api_token = "test-token"
 	zone_id   = "test-zone-id"
+	api_url   = "http://logpullmock:8080/client/v4"
 	workers   = 1
 	pull_range = "1m"
 
