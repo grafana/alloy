@@ -1,9 +1,0 @@
-additional_containers:
-  - name: logpullmock
-    image: logpullmock:latest
-    build:
-      context: logpullmock
-      dockerfile: Dockerfile
-    startup_healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
-      interval: 1s
