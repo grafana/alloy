@@ -43,8 +43,7 @@ func readAll(t *testing.T, it *logpullIterator) []string {
 func TestClient_LogpullReceived(t *testing.T) {
 	var (
 		start = time.Unix(0, 1000)
-
-		end = time.Unix(0, 2000)
+		end   = time.Unix(0, 2000)
 	)
 
 	c, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {

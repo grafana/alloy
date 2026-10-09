@@ -139,7 +139,7 @@ func responseError(resp *http.Response) error {
 	return fmt.Errorf("HTTP status %d: %s", resp.StatusCode, body)
 }
 
-// logpullIterator iterates on NDJSON from LogPull response
+// logpullIterator iterates on NDJSON from LogPull response.
 type logpullIterator struct {
 	body   io.ReadCloser
 	reader *bufio.Reader
