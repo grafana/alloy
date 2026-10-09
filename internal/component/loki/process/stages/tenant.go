@@ -45,10 +45,7 @@ func (t *TenantConfig) Validate() error {
 	}
 }
 
-var (
-	_ Stage          = (*tenantStage)(nil)
-	_ entryProcessor = (*tenantStage)(nil)
-)
+var _ entryProcessor = (*tenantStage)(nil)
 
 // newTenantStage creates a new tenant stage to override the tenant ID from extracted data
 func newTenantStage(cfg TenantConfig, opts stageOpts) *tenantStage {
@@ -71,16 +68,6 @@ func (s *tenantStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return s.next(ctx, entries)
 }
-
-// Run implements Stage.
-func (s *tenantStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return s.processEntry(e)
-	})
-}
-
-// Cleanup implements Stage.
-func (s *tenantStage) Cleanup() {}
 
 func (s *tenantStage) processEntry(e Entry) Entry {
 	var tenantID string
