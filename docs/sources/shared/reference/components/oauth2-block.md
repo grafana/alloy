@@ -25,8 +25,7 @@ headless: true
 | `no_proxy`                    | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.            |                        | no       |
 | `proxy_from_environment`      | `bool`              | Use the proxy URL indicated by environment variables.                                                       | `false`                | no       |
 
-
-Value of `grant_type` decides which variables will be used inside the `oauth2` block.
+The value of `grant_type` determines which arguments you can use in the `oauth2` block.
 
 `client_secret` and `client_secret_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
