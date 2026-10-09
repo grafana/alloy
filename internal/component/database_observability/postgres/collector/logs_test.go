@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-logfmt/logfmt"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/hoophq/alcatraz"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
@@ -897,8 +898,8 @@ func parseLogfmt(t *testing.T, s string) map[string]string {
 }
 
 // requireOnlyFields asserts the parsed logfmt entry contains exactly the given
-// keys and no others — pinning the minimal v1 op="error_message" field set so any
-// re-added error-detail field fails the test until its own PR lands.
+// keys and no others, so a field silently added or dropped from the
+// op="error_message" body fails the test that exercises it.
 func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string) {
 	t.Helper()
 	allow := make(map[string]struct{}, len(allowed))
@@ -974,9 +975,464 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.Equal(t, "42P01", fields["sqlstate"])
 	require.Equal(t, "42", fields["sqlstate_class"])
 
-	// v1 emits only the bare-minimum field set; error-detail fields (client/session,
-	// error_message, the SQL text, …) are deferred.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
+	// client_addr and the SQL text itself are deferred; this fixture's prefix
+	// omits the %s:%v:%x:%c run, so those fields are absent too.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
+}
+
+// TestLogsCollector_EmitsErrorEntry_IncludesMessageField pins that the ERROR
+// line's own message text (the text after the severity label, before any
+// TestLogsCollector_EmitsErrorEntry_IncludesSessionMetaFields pins that the
+// session-metadata fields already present in the required log_line_prefix
+// (%l line number, %s session start time, %v vxid, %x transaction id, %c
+// session id) are captured and emitted, none of them requiring redaction
+// (all server-generated, non-PII).
+func TestLogsCollector_EmitsErrorEntry_IncludesSessionMetaFields(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70012"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:7:42P01:2026-09-25 20:15:41 UTC:435/321499:168673161:6ab6d66d.6901:psql:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:8:42P01:2026-09-25 20:15:41 UTC:435/321499:168673161:6ab6d66d.6901:psql:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:9:00000:2026-09-25 20:15:41 UTC:435/321499:168673161:6ab6d66d.6901:psql:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "7", fields["line_number"])
+	require.Equal(t, "2026-09-25 20:15:41 UTC", fields["session_start_time"])
+	require.Equal(t, "435/321499", fields["vxid"])
+	require.Equal(t, "168673161", fields["xid"])
+	require.Equal(t, "6ab6d66d.6901", fields["session_id"])
+}
+
+// TestLogsCollector_EmitsErrorEntry_RedactsPIIInApplicationName pins that
+// application_name (%a) is captured, and — since it's client-controlled, a
+// client could set it to anything — redacted the same way message/detail are.
+func TestLogsCollector_EmitsErrorEntry_RedactsPIIInApplicationName(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70013"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:435/321499:0:6ab6d66d.6901:myapp for john@example.com:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:2026-09-25 20:15:41 UTC:435/321499:0:6ab6d66d.6901:myapp for john@example.com:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:2026-09-25 20:15:41 UTC:435/321499:0:6ab6d66d.6901:myapp for john@example.com:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["application_name"], "john@example.com")
+	require.Contains(t, fields["application_name"], "myapp")
+}
+
+// TestLogsCollector_SessionIDMismatch_RejectsStatementDespitePidMatch pins
+// that %c (session id) is preferred over pid for pairing when both lines have
+// one: a backend pid can be reused by a new session over a long-lived
+// instance's uptime, but session id cannot. A STATEMENT that shares the
+// pending's pid but carries a different session id must be rejected exactly
+// as if it belonged to a different backend.
+func TestLogsCollector_SessionIDMismatch_RejectsStatementDespitePidMatch(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+	pid := "70014"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:435/321499:0:6ab6d66d.6901:psql:ERROR:  relation \"missing\" does not exist"}}
+	// Same pid, but a different session id: a reused pid from a new backend,
+	// not a continuation of the pending error above.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:999/111111:0:ffffffff.ffff:psql:STATEMENT:  SELECT * FROM missing"}}
+
+	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
+	require.Len(t, got, 0, "session id mismatch must reject the STATEMENT despite the matching pid")
+}
+
+// TestLogsCollector_FallsBackToPid_WhenSessionIDUnavailable pins that pairing
+// still works by pid when the %s:%v:%x:%c run can't be parsed from a line —
+// e.g. a future log_line_prefix variant that omits %c. Here the STATEMENT
+// line goes straight from SQLSTATE to the label (no session-metadata run at
+// all), unlike the ERROR line, which has the full run.
+func TestLogsCollector_FallsBackToPid_WhenSessionIDUnavailable(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70015"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:2026-09-25 20:15:41 UTC:435/321499:0:6ab6d66d.6901:psql:ERROR:  relation \"missing\" does not exist"}}
+	// No %s:%v:%x:%c run here — as if a different log_line_prefix were in use.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT * FROM missing")
+	require.NoError(t, fpErr)
+	require.Equal(t, expectedFP, fields["query_fingerprint"], "pid fallback must still pair the STATEMENT")
+}
+
+// STATEMENT/DETAIL continuation) is captured and emitted as the "message"
+// field.
+func TestLogsCollector_EmitsErrorEntry_IncludesMessageField(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70001"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, `relation "missing" does not exist`, fields["message"])
+}
+
+// TestLogsCollector_EmitsErrorEntry_RedactsPIIInMessage pins that a literal
+// value embedded directly in the ERROR message (e.g. a truncated value on a
+// varchar length violation) is redacted before emission, not passed through
+// verbatim.
+// TestLogs_Redact exercises the redact() helper directly, bypassing the log
+// parsing pipeline, so PII coverage doesn't depend on constructing a full
+// ERROR+STATEMENT sequence for every case.
+func TestLogs_Redact(t *testing.T) {
+	l := &Logs{piiEngine: alcatraz.NewEngine()}
+
+	tests := []struct {
+		name          string
+		input         string
+		wantUnchanged bool
+		wantAbsent    []string
+		wantPresent   []string
+	}{
+		{
+			name:          "safe diagnostic text is left unchanged",
+			input:         `duplicate key value violates unique constraint "users_email_key"`,
+			wantUnchanged: true,
+		},
+		{
+			name:          "a column named email is not itself PII",
+			input:         `column "email" does not exist`,
+			wantUnchanged: true,
+		},
+		{
+			name:        "an email address is redacted",
+			input:       "Key (email)=(john@example.com) already exists.",
+			wantAbsent:  []string{"john@example.com"},
+			wantPresent: []string{"already exists"},
+		},
+		{
+			name:       "a Luhn-valid credit card number is redacted",
+			input:      "Key (card_number)=(4111 1111 1111 1111) already exists.",
+			wantAbsent: []string{"4111 1111 1111 1111"},
+		},
+		{
+			name:       "multiple PII values in the same string are all redacted",
+			input:      "contact john@example.com or card 4111 1111 1111 1111",
+			wantAbsent: []string{"john@example.com", "4111 1111 1111 1111"},
+		},
+		{
+			name:          "empty string is left unchanged",
+			input:         "",
+			wantUnchanged: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := l.redact(tt.input)
+			if tt.wantUnchanged {
+				require.Equal(t, tt.input, got)
+			}
+			for _, s := range tt.wantAbsent {
+				require.NotContains(t, got, s)
+			}
+			for _, s := range tt.wantPresent {
+				require.Contains(t, got, s)
+			}
+		})
+	}
+}
+
+func TestLogsCollector_EmitsErrorEntry_RedactsPIIInMessage(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70002"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:22001:ERROR:  value too long for type character varying(50): \"john.doe@example.com is way too long a value\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:22001:STATEMENT:  INSERT INTO t (a) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["message"], "john.doe@example.com")
+}
+
+// TestLogsCollector_EmitsErrorEntry_IncludesDetailField_Redacted pins the
+// motivating case for this whole feature: a unique-constraint violation's
+// DETAIL line embeds the literal offending value, which must be redacted
+// before it leaves the process.
+func TestLogsCollector_EmitsErrorEntry_IncludesDetailField_Redacted(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70003"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:ERROR:  duplicate key value violates unique constraint \"users_email_key\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:DETAIL:  Key (email)=(john@example.com) already exists."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:23505:STATEMENT:  INSERT INTO users (email) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["detail"], "john@example.com")
+	require.Contains(t, fields["detail"], "already exists")
+}
+
+// TestLogsCollector_EmitsErrorEntry_IncludesHintAndContextFields pins that
+// HINT and CONTEXT continuation lines are captured the same way DETAIL is.
+func TestLogsCollector_EmitsErrorEntry_IncludesHintAndContextFields(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70004"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42703:ERROR:  column \"emial\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42703:HINT:  Perhaps you meant to reference the column \"users.email\"."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:42703:CONTEXT:  PL/pgSQL function get_user() line 3 at RETURN"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:42703:STATEMENT:  SELECT emial FROM users"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:5:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Contains(t, fields["hint"], `Perhaps you meant to reference the column "users.email"`)
+	require.Contains(t, fields["context"], "PL/pgSQL function get_user() line 3 at RETURN")
+}
+
+// TestLogsCollector_EmitsErrorEntry_RedactsPIIInHintAndContext closes a
+// coverage gap: the HINT/CONTEXT capture test above only ever exercised safe
+// text, so redaction was never actually proven to run on those two fields.
+func TestLogsCollector_EmitsErrorEntry_RedactsPIIInHintAndContext(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70011"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23514:ERROR:  new row violates row-level security policy"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23514:HINT:  Contact john@example.com if you believe this is an error."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:23514:CONTEXT:  SQL statement \"SELECT notify('jane@example.com')\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:23514:STATEMENT:  INSERT INTO accounts (owner) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:5:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["hint"], "john@example.com")
+	require.Contains(t, fields["hint"], "Contact")
+	require.NotContains(t, fields["context"], "jane@example.com")
+	require.Contains(t, fields["context"], "SQL statement")
+}
+
+// TestLogsCollector_MultiLineDetailThenStatement_RoutesContinuationsCorrectly
+// pins that a bare TAB-continuation line always extends whichever field was
+// opened most recently: a DETAIL spanning two lines, followed by a STATEMENT
+// spanning two lines, must not bleed into each other.
+func TestLogsCollector_MultiLineDetailThenStatement_RoutesContinuationsCorrectly(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70005"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23514:ERROR:  new row violates check constraint"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23514:DETAIL:  Failing row contains (1, active,"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tsuspended)."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:23514:STATEMENT:  UPDATE accounts SET status ="}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t'suspended' WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.Equal(t, "Failing row contains (1, active,\nsuspended).", fields["detail"])
+
+	expectedSQL := "UPDATE accounts SET status =\n'suspended' WHERE id = $1"
+	expectedFP, fpErr := fingerprint.Fingerprint(expectedSQL)
+	require.NoError(t, fpErr)
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+}
+
+// TestLogsCollector_LostStatement_NoEntryEmittedDespiteCapturedDetail pins
+// that when the STATEMENT line never arrives (e.g. dropped by the log
+// forwarder), no op="error_message" entry is emitted at all — captured
+// message/DETAIL text never leaks on its own, half-paired to nothing.
+func TestLogsCollector_LostStatement_NoEntryEmittedDespiteCapturedDetail(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+	pid := "70006"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:ERROR:  duplicate key value violates unique constraint \"users_email_key\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:DETAIL:  Key (email)=(john@example.com) already exists."}}
+	// STATEMENT line lost in transit — never arrives.
+
+	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
+	require.Len(t, got, 0, "no STATEMENT → no entry, even though message/detail were captured")
+}
+
+// TestLogsCollector_LostDetail_EntryStillEmittedWithoutDetailField pins that
+// when the DETAIL line never arrives (lost in transit) but STATEMENT does,
+// the entry still emits normally — it just has no "detail" field, rather
+// than blocking or corrupting emission.
+func TestLogsCollector_LostDetail_EntryStillEmittedWithoutDetailField(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70007"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:ERROR:  duplicate key value violates unique constraint \"users_email_key\""}}
+	// DETAIL line lost in transit — never arrives.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:STATEMENT:  INSERT INTO users (email) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	_, hasDetail := fields["detail"]
+	require.False(t, hasDetail, "no DETAIL line arrived; the field must be absent, not empty or corrupted")
+	require.NotEmpty(t, fields["query_fingerprint"], "the STATEMENT that did arrive is still paired normally")
+}
+
+// TestLogsCollector_OrphanedContinuation_DroppedWhenNoFieldOpen pins that a
+// bare TAB-continuation line arriving before any labeled field has been
+// opened (e.g. its own label line was lost in transit) is safely dropped —
+// it must not panic, and must not be misattached to any field once a real
+// one (STATEMENT) does open.
+func TestLogsCollector_OrphanedContinuation_DroppedWhenNoFieldOpen(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70008"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	// Orphaned continuation: its label line (e.g. a DETAIL header) was lost.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\torphaned continuation text"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT * FROM missing")
+	require.NoError(t, fpErr)
+	require.Equal(t, expectedFP, fields["query_fingerprint"], "orphaned text must not have leaked into the STATEMENT")
+	_, hasDetail := fields["detail"]
+	require.False(t, hasDetail, "orphaned text must not have opened a DETAIL field either")
+}
+
+// TestLogsCollector_LostLabelLine_RedactionStillCoversMisattributedText
+// documents a known limitation of line-by-line continuation tracking: if a
+// field's own label line is lost (here, HINT's header) but its bare
+// TAB-continuation still arrives, that text is misattributed onto whichever
+// field was still open (DETAIL) rather than dropped or kept separate — this
+// parser has no way to distinguish "DETAIL's legitimate second line" from
+// "an orphaned continuation for a field whose header never arrived". What
+// must still hold despite that: redaction is applied to the field's full
+// accumulated text at emission time, so PII is not bypassed by this failure
+// mode even though the fields themselves get mixed up.
+func TestLogsCollector_LostLabelLine_RedactionStillCoversMisattributedText(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70009"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:ERROR:  duplicate key value violates unique constraint \"users_email_key\""}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:DETAIL:  Key (email)=(john@example.com) already exists."}}
+	// HINT header line lost in transit — only its bare continuation arrives,
+	// so it lands on the still-open DETAIL field instead.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tConsider adding a unique index on (email, tenant_id)."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:23505:STATEMENT:  INSERT INTO users (email) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	require.NotContains(t, fields["detail"], "john@example.com", "PII must stay redacted even when a lost label line merges unrelated text into the field")
+	require.Contains(t, fields["detail"], "already exists")
+	require.Contains(t, fields["detail"], "Consider adding a unique index", "documents the misattribution: the orphaned HINT text landed on DETAIL")
+	_, hasHint := fields["hint"]
+	require.False(t, hasHint, "HINT's own header never arrived, so no hint field opens")
+}
+
+// TestLogsCollector_LostErrorLine_OrphanedContinuationsSafelyIgnored pins
+// that when the ERROR line itself is lost (so no pendingError was ever
+// created) but its STATEMENT/DETAIL continuations arrive anyway, they are
+// dropped without panicking or fabricating an entry.
+func TestLogsCollector_LostErrorLine_OrphanedContinuationsSafelyIgnored(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "70010"
+
+	// ERROR line lost in transit — never arrives; no pendingError exists.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:23505:DETAIL:  Key (email)=(john@example.com) already exists."}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:23505:STATEMENT:  INSERT INTO users (email) VALUES ($1)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
+	require.Len(t, got, 0, "no ERROR line ever opened a pendingError, so its orphaned continuations must not fabricate one")
 }
 
 func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
@@ -1024,7 +1480,7 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
 	require.Equal(t, pid, fields["pid"])
 	require.Equal(t, "42P02", fields["sqlstate"], "the second error's SQLSTATE is the one matched")
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
 }
 
 // TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
@@ -1059,7 +1515,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	require.Equal(t, "app-user", fields["user"])
 	require.Equal(t, pid, fields["pid"])
 	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
-	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint", "user", "pid", "sqlstate", "sqlstate_class", "message", "line_number")
 }
 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
