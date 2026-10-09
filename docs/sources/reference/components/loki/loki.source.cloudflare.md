@@ -43,10 +43,10 @@ You can use the following arguments with `loki.source.cloudflare`:
 | `api_url`           | `string`             | The base URL of the Cloudflare API.                                           | `"https://api.cloudflare.com/client/v4"` | no       |
 | `fields_type`       | `string`             | The set of fields to fetch for log entries.                                   | `"default"`                              | no       |
 | `labels`            | `map(string)`        | The labels to associate with incoming log entries.                            | `{}`                                     | no       |
-| `pull_range`        | `duration`           | The timeframe to fetch for each pull request.                                 | `"1m"`                                   | no       |
+| `pull_range`        | `duration`           | The time range to fetch for each pull request.                                | `"1m"`                                   | no       |
 | `workers`           | `int`                | The number of workers to use for parsing logs.                                | `3`                                      | no       |
 
-Set `api_url` to send Logpull API requests to a different endpoint, for example a proxy in front of the Cloudflare API.
+Set `api_url` to send API requests to a different endpoint, for example a proxy in front of the Cloudflare API.
 
 By default `loki.source.cloudflare` fetches logs with the `default` set of fields.
 The following list shows the different sets of `fields_type` available for selection, and the fields they include:
