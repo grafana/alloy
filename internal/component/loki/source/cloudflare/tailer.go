@@ -52,7 +52,7 @@ type tailer struct {
 	config    *tailerConfig
 	metrics   *metrics
 
-	client  Client
+	client  *wrappedClient
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
@@ -67,16 +67,13 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(clientConfig{
+	client := newClient(clientConfig{
 		apiURL:   config.APIURL,
 		apiToken: config.APIToken,
 		zoneID:   config.ZoneID,
 		fields:   fields,
 		backoff:  requestBackoff,
 	})
-	if err != nil {
-		return nil, err
-	}
 	pos, err := position.Get(positions.CursorKey(config.ZoneID), config.Labels.String())
 	if err != nil {
 		return nil, err
@@ -154,7 +151,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
 		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      LogpullReceivedIterator
+		it      *logpullIterator
 		err     error
 	)
 
@@ -164,9 +161,6 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 			t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
 			return nil
 		} else if err != nil {
-			if it != nil {
-				it.Close()
-			}
 			errs.Add(err)
 			backoff.Wait()
 			continue
