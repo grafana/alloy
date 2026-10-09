@@ -1324,3 +1324,38 @@ func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 	second, _ := exported.Targets[1].Get("instance")
 	assert.Equal(t, []string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"}, []string{first, second})
 }
+
+func TestMySQL_TableAndIndexStatsBlocks(t *testing.T) {
+	t.Run("defaults select every schema every 5 minutes", func(t *testing.T) {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(`
+		data_source_name = "user:pass@tcp(localhost:3306)/"
+		forward_to = []
+		`), &args))
+
+		assert.Equal(t, 5*time.Minute, args.TableStatsArguments.CollectInterval)
+		assert.Equal(t, 5*time.Minute, args.IndexStatsArguments.CollectInterval)
+		assert.Empty(t, args.TableStatsArguments.IncludeSchemas)
+		assert.Empty(t, args.IndexStatsArguments.IncludeSchemas)
+	})
+
+	t.Run("include_schemas is set per block", func(t *testing.T) {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(`
+		data_source_name = "user:pass@tcp(localhost:3306)/"
+		forward_to = []
+		table_stats {
+			collect_interval = "10m"
+			include_schemas  = ["hosted_grafana", "hg_%"]
+		}
+		index_stats {
+			include_schemas = ["hgwarm_%"]
+		}
+		`), &args))
+
+		assert.Equal(t, 10*time.Minute, args.TableStatsArguments.CollectInterval)
+		assert.Equal(t, []string{"hosted_grafana", "hg_%"}, args.TableStatsArguments.IncludeSchemas)
+		assert.Equal(t, []string{"hgwarm_%"}, args.IndexStatsArguments.IncludeSchemas)
+		assert.Equal(t, 5*time.Minute, args.IndexStatsArguments.CollectInterval, "an unset collect_interval keeps its default")
+	})
+}
