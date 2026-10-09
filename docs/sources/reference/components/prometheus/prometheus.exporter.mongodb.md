@@ -7,26 +7,32 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-06
 title: prometheus.exporter.mongodb
 ---
 
 # `prometheus.exporter.mongodb`
 
-The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`](https://github.com/percona/mongodb_exporter).
+The `prometheus.exporter.mongodb` component embeds the Percona [`mongodb_exporter`][mongodb-exporter] to collect metrics from a MongoDB node.
 
 {{< admonition type="note" >}}
 This exporter doesn't collect metrics from multiple nodes.
-For this integration to work properly, you must connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
+For this component to work properly, you must connect each node of your MongoDB cluster to an {{< param "PRODUCT_NAME" >}} instance.
 {{< /admonition >}}
 
-We strongly recommend configuring a separate user for {{< param "PRODUCT_NAME" >}}, giving it only the strictly mandatory security privileges necessary for monitoring your node.
-Refer to the [Percona documentation](https://github.com/percona/mongodb_exporter#permissions) for more information.
+Grafana recommends that you configure a separate user for {{< param "PRODUCT_NAME" >}} with only the security privileges needed to monitor your node.
+Refer to the [Percona documentation][percona-permissions] for more information.
+
+You can specify multiple `prometheus.exporter.mongodb` components by giving them different labels.
+
+[mongodb-exporter]: https://github.com/percona/mongodb_exporter
+[percona-permissions]: https://github.com/percona/mongodb_exporter#permissions
 
 ## Usage
 
 ```alloy
 prometheus.exporter.mongodb "<LABEL>" {
-    mongodb_uri = "<MONGODB_URI>"
+  mongodb_uri = "<MONGODB_URI>"
 }
 ```
 
@@ -34,29 +40,43 @@ prometheus.exporter.mongodb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mongodb`:
 
-| Name                           | Type       | Description                                                                                                                            | Default | Required |
-| ------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                  | `secret`   | MongoDB node connection URI.                                                                                                           |         | yes      |
-| `collect_all`                  | `bool`     | Enables all collectors.                                                                                                                | `true`  | no       |
-| `compatible_mode`              | `bool`     | Enables metric names compatible with `mongodb_exporter` <v0.20.0.                                                                      | `true`  | no       |
-| `currentop_slow_time`          | `duration` | Minimum running time of an operation before it's reported by the currentop collector.                                                  | `"1m"`  | no       |
-| `direct_connect`               | `bool`     | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | `false` | no       |
-| `discovering_mode`             | `bool`     | Whether or not to enable autodiscover collections.                                                                                     | `false` | no       |
-| `enable_coll_stats`            | `bool`     | Enables collecting collection statistics.                                                                                              | `false` | no       |
-| `enable_currentop_metrics`     | `bool`     | Enables collecting current operation metrics.                                                                                          | `false` | no       |
-| `enable_db_stats_free_storage` | `bool`     | Enables collecting free storage statistics from `dbStats`.                                                                             | `false` | no       |
-| `enable_db_stats`              | `bool`     | Enables collecting database statistics.                                                                                                | `false` | no       |
-| `enable_diagnostic_data`       | `bool`     | Enables collecting diagnostic data.                                                                                                    | `false` | no       |
-| `enable_fcv`                   | `bool`     | Enables collecting Feature Compatibility Version (FCV) metrics.                                                                        | `false` | no       |
-| `enable_index_stats`           | `bool`     | Enables collecting index statistics.                                                                                                   | `false` | no       |
-| `enable_pbm_metrics`           | `bool`     | Enables collecting Percona Backup for MongoDB (PBM) metrics.                                                                           | `false` | no       |
-| `enable_profile`               | `bool`     | Enables collecting profile metrics.                                                                                                    | `false` | no       |
-| `enable_replicaset_config`     | `bool`     | Enables collecting replica set configuration.                                                                                          | `false` | no       |
-| `enable_replicaset_status`     | `bool`     | Enables collecting replica set status.                                                                                                 | `false` | no       |
-| `enable_shards`                | `bool`     | Enables collecting sharding information.                                                                                               | `false` | no       |
-| `enable_top_metrics`           | `bool`     | Enables collecting top metrics.                                                                                                        | `false` | no       |
+| Name                           | Type       | Description                                                           | Default | Required |
+| ------------------------------ | ---------- | --------------------------------------------------------------------- | ------- | -------- |
+| `mongodb_uri`                  | `secret`   | MongoDB connection URI.                                               |         | yes      |
+| `collect_all`                  | `bool`     | Enables all collectors.                                               | `true`  | no       |
+| `compatible_mode`              | `bool`     | Exposes metrics under both their current and v0.1x names.             | `true`  | no       |
+| `currentop_slow_time`          | `duration` | Minimum running time of an operation before the exporter reports it.  | `"1m"`  | no       |
+| `direct_connect`               | `bool`     | Whether to connect directly to one host instead of the whole cluster. | `false` | no       |
+| `discovering_mode`             | `bool`     | Whether to automatically discover collections.                        | `false` | no       |
+| `enable_coll_stats`            | `bool`     | Enables collecting collection statistics.                             | `false` | no       |
+| `enable_currentop_metrics`     | `bool`     | Enables collecting current operation metrics.                         | `false` | no       |
+| `enable_db_stats`              | `bool`     | Enables collecting database statistics.                               | `false` | no       |
+| `enable_db_stats_free_storage` | `bool`     | Enables collecting free storage statistics from `dbStats`.            | `false` | no       |
+| `enable_diagnostic_data`       | `bool`     | Enables collecting diagnostic data.                                   | `false` | no       |
+| `enable_fcv`                   | `bool`     | Enables collecting Feature Compatibility Version (FCV) metrics.       | `false` | no       |
+| `enable_index_stats`           | `bool`     | Enables collecting index statistics.                                  | `false` | no       |
+| `enable_pbm_metrics`           | `bool`     | Enables collecting Percona Backup for MongoDB (PBM) metrics.          | `false` | no       |
+| `enable_profile`               | `bool`     | Enables collecting profile metrics.                                   | `false` | no       |
+| `enable_replicaset_config`     | `bool`     | Enables collecting replica set configuration.                         | `false` | no       |
+| `enable_replicaset_status`     | `bool`     | Enables collecting replica set status.                                | `false` | no       |
+| `enable_shards`                | `bool`     | Enables collecting sharding information.                              | `false` | no       |
+| `enable_top_metrics`           | `bool`     | Enables collecting top metrics.                                       | `false` | no       |
 
-MongoDB node connection URI must be in the [`Standard Connection String Format`](https://docs.mongodb.com/manual/reference/connection-string/#std-label-connections-standard-connection-string-format)
+Set `mongodb_uri` to a [MongoDB connection string][connection-string] that uses either the `mongodb` or `mongodb+srv` scheme.
+
+`collect_all` defaults to `true` and turns on every collector.
+While it's `true`, it overrides `discovering_mode` and each `enable_*` argument, so setting any of them to `false` has no effect.
+Set `collect_all` to `false` to choose collectors individually.
+
+The `currentop_slow_time` argument applies only when `enable_currentop_metrics` is `true`.
+The exporter doesn't collect current operation metrics from a `mongos` instance.
+
+You can't use `direct_connect` with multiple hosts or an SRV URI.
+The MongoDB driver returns an error if your `mongodb_uri` contains either.
+
+The component sets the `instance` label on its exported targets to the host portion of `mongodb_uri`.
+
+[connection-string]: https://docs.mongodb.com/manual/reference/connection-string/
 
 ## Blocks
 

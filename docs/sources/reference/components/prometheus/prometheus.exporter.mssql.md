@@ -7,18 +7,23 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-07
 title: prometheus.exporter.mssql
 ---
 
 # `prometheus.exporter.mssql`
 
-The `prometheus.exporter.mssql` component embeds the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter) for collecting stats from a Microsoft SQL Server and exposing them as Prometheus metrics.
+The `prometheus.exporter.mssql` component embeds the [`sql_exporter`][sql-exporter] to collect stats from a Microsoft SQL Server and expose them as Prometheus metrics.
+
+You can specify multiple `prometheus.exporter.mssql` components by giving them different labels.
+
+[sql-exporter]: https://github.com/burningalchemist/sql_exporter
 
 ## Usage
 
 ```alloy
 prometheus.exporter.mssql "<LABEL>" {
-    connection_string = "<CONNECTION_STRING>"
+  connection_string = "<CONNECTION_STRING>"
 }
 ```
 
@@ -26,53 +31,66 @@ prometheus.exporter.mssql "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mssql`:
 
-| Name                         | Type       | Description                                                                              | Default | Required |
-| ---------------------------- | ---------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
-| `connection_string`          | `secret`   | The connection string used to connect to a Microsoft SQL Server.                        |         | yes      |
-| `connection_name`            | `string`   | The name of the connection, used as a label in uptime metrics.                           | `""`    | no       |
-| `max_idle_connections`       | `int`      | Maximum number of idle connections to any one target.                                    | `3`     | no       |
-| `max_open_connections`       | `int`      | Maximum number of open connections to any one target.                                    | `3`     | no       |
-| `max_connection_lifetime`    | `duration` | Maximum amount of time a connection may be reused. `0` keeps connections forever.        | `"0s"`  | no       |
-| `timeout`                    | `duration` | The query timeout duration for each scrape.                                               | `"10s"` | no       |
-| `query_config`               | `string`   | MSSQL query to Prometheus metric configuration as an inline string.                      |         | no       |
+| Name                      | Type                 | Description                                                            | Default | Required |
+| ------------------------- | -------------------- | ---------------------------------------------------------------------- | ------- | -------- |
+| `connection_string`       | `secret`             | Connection string for the Microsoft SQL Server.                        |         | yes      |
+| `connection_name`         | `string`             | Name for the connection. Appears in log messages.                      | `""`    | no       |
+| `max_connection_lifetime` | `duration`           | Maximum lifetime of a connection. `0` keeps connections forever.       | `"0s"`  | no       |
+| `max_idle_connections`    | `int`                | Maximum number of idle connections in the connection pool.             | `3`     | no       |
+| `max_open_connections`    | `int`                | Maximum number of open connections in the connection pool.             | `3`     | no       |
+| `query_config`            | `string` or `secret` | Collector configuration that maps MSSQL queries to Prometheus metrics. |         | no       |
+| `timeout`                 | `duration`           | Query timeout for each scrape.                                         | `"10s"` | no       |
 
-The [`sql_exporter` examples](https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21) show the format of the `connection_string` argument:
+`connection_string` must be a URL that uses the `sqlserver` scheme.
+`max_idle_connections` and `max_open_connections` must each be at least `1`, and `timeout` must be positive.
+`max_connection_lifetime` can't be negative.
+{{< param "PRODUCT_NAME" >}} parses `query_config` strictly and rejects unknown fields.
+
+The [`sql_exporter` examples][sql-exporter-examples] show the format of the `connection_string` argument:
 
 ```text
 sqlserver://<USERNAME>:<PASSWORD>@<SQLMI_ENDPOINT>.database.windows.net:1433?encrypt=true&hostNameInCertificate=%2A.<SQL_MI_DOMAIN>.database.windows.net&trustservercertificate=true
 ```
 
 {{< admonition type="note" >}}
-If your username or password contain special characters, you must URL encode the characters in the `connection_string` argument.
-For more information, refer to the [Data Source Names](https://github.com/burningalchemist/sql_exporter#data-source-names-dsn) section in the `sql_exporter` documentation
+If your username or password contains special characters, you must URL encode the characters in the `connection_string` argument.
+For more information, refer to the [Data Source Names][dsn] section in the `sql_exporter` documentation.
+
+[dsn]: https://github.com/burningalchemist/sql_exporter#data-source-names-dsn
 {{< /admonition >}}
 
-The `connection_name` parameter allows uptime metrics.
-Refer to the [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#configuration) `target.name` setting.
+{{< param "PRODUCT_NAME" >}} includes `connection_name` in this component's log messages.
+It maps to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
 
-If specified, the `query_config` argument must be a YAML document as string defining which MSSQL queries map to custom Prometheus metrics.
-`query_config` is typically loaded by using the exports of another component.
+If you set `query_config`, it must be a YAML string that defines which MSSQL queries map to custom Prometheus metrics.
+You typically load `query_config` from the exports of another component.
 For example,
 
-* `local.file.<LABEL>.content`
-* `remote.http.<LABEL>.content`
-* `remote.s3.<LABEL>.content`
+- `local.file.<LABEL>.content`
+- `remote.http.<LABEL>.content`
+- `remote.s3.<LABEL>.content`
 
-Refer to [`sql_exporter`](https://github.com/burningalchemist/sql_exporter#collectors) for details on how to create a configuration.
+Refer to [`sql_exporter`][sql-exporter-collectors] for details on how to create a configuration.
+
+The component sets the `instance` label on its exported targets to the host portion of `connection_string`.
+
+[sql-exporter-examples]: https://github.com/burningalchemist/sql_exporter/blob/master/examples/azure-sql-mi/sql_exporter.yml#L21
+[sql-exporter-config]: https://github.com/burningalchemist/sql_exporter#configuration
+[sql-exporter-collectors]: https://github.com/burningalchemist/sql_exporter#collectors
 
 ### Authentication
 
-By default, the _`<USERNAME>`_ and _`<PASSWORD>`_ used within the `connection_string` argument corresponds to a SQL Server username and password.
+By default, the _`<USERNAME>`_ and _`<PASSWORD>`_ used within the `connection_string` argument correspond to a SQL Server username and password.
 
-If {{< param "PRODUCT_NAME" >}} is running in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
+If {{< param "PRODUCT_NAME" >}} runs in the same Windows domain as the SQL Server, then you can use the parameter `authenticator=winsspi` within the `connection_string` to authenticate without any additional credentials.
 
 ```text
 sqlserver://@<HOST>:<PORT>?authenticator=winsspi
 ```
 
 If you want to use Windows credentials to authenticate, instead of SQL Server credentials, you can use the parameter `authenticator=ntlm` within the `connection_string`.
-The _`<USERNAME>`_ and _`<PASSWORD>`_ then corresponds to a Windows username and password.
-You must use a URL encoded backslash, `%5C`, when you prefix the Windows domain to the username.
+The _`<USERNAME>`_ and _`<PASSWORD>`_ then correspond to a Windows username and password.
+You must use a URL-encoded backslash, `%5C`, when you prefix the Windows domain to the username.
 
 ```text
 sqlserver://<DOMAIN>%5C<USERNAME>:<PASSWORD>@<HOST>:<PORT>?authenticator=ntlm
@@ -128,20 +146,20 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
 ## Custom metrics
 
-You can use the optional `query_config` parameter to retrieve custom Prometheus metrics for a MSSQL instance.
+You can use the optional `query_config` argument to retrieve custom Prometheus metrics for an MSSQL instance.
 
-If this is defined, the new configuration is used to query your MSSQL instance and create whatever Prometheus metrics are defined.
-If you want additional metrics on top of the default metrics, the default configuration must be used as a base.
+When you set `query_config`, {{< param "PRODUCT_NAME" >}} replaces the default configuration and creates only the metrics that `query_config` defines.
+If you want additional metrics on top of the default metrics, use the default configuration as a base.
 
-The default configuration used by this integration is as follows:
+The default configuration used by this component is as follows:
 
 ```yaml
 collector_name: mssql_standard
