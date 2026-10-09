@@ -5,25 +5,25 @@ headless: true
 ---
 
 | Name                          | Type                | Description                                                                                                 | Default                | Required |
-|-------------------------------|---------------------|-------------------------------------------------------------------------------------------------------------|------------------------|----------|
+| ----------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
 | `token_url`                   | `string`            | URL to fetch the token from.                                                                                |                        | yes      |
-| `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
-| `client_id`                   | `string`            | OAuth2 client ID.                                                                                           |                        | no       |
-| `client_secret`               | `secret`            | OAuth2 client secret. Used when grant_type `"client_credentials"`.                                          |                        | no       |
-| `client_secret_file`          | `string`            | File containing the OAuth2 client secret. Used when grant_type `"client_credentials"`.                      |                        | no       |
+| `audience`                    | `string`            | JWT audience claim for JWT bearer grant. Defaults to `token_url` when empty.                                | `""`                   | no       |
+| `claims`                      | `map(any)`          | Additional JWT claims for JWT bearer grant.                                                                 | `{}`                   | no       |
 | `client_certificate_key`      | `secret`            | JWT bearer private key.                                                                                     | `""`                   | no       |
 | `client_certificate_key_file` | `string`            | Path to a file containing the JWT bearer private key.                                                       | `""`                   | no       |
 | `client_certificate_key_id`   | `string`            | Key ID included in JWT bearer grant requests.                                                               | `""`                   | no       |
-| `iss`                         | `string`            | JWT issuer claim for JWT bearer grant. Defaults to `client_id` when empty.                                  | `""`                   | no       |
-| `audience`                    | `string`            | JWT audience claim for JWT bearer grant. Defaults to `token_url` when empty.                                | `""`                   | no       |
-| `claims`                      | `map(any)`          | Additional JWT claims for JWT bearer grant.                                                                 | `{}`                   | no       |
-| `scopes`                      | `list(string)`      | List of scopes to authenticate with.                                                                        |                        | no       |
+| `client_id`                   | `string`            | OAuth2 client ID.                                                                                           |                        | no       |
+| `client_secret`               | `secret`            | OAuth2 client secret. Used when `grant_type` is `client_credentials`.                                       |                        | no       |
+| `client_secret_file`          | `string`            | File containing the OAuth2 client secret. Used when `grant_type` is `client_credentials`.                   |                        | no       |
 | `endpoint_params`             | `map(string)`       | Optional parameters to append to the token URL.                                                             |                        | no       |
-| `signature_algorithm`         | `string`            | JWT signing algorithm for JWT bearer grant. Valid values: `RS256`, `RS384`, `RS512`.                        | `"RS256"`              | no       |
-| `proxy_url`                   | `string`            | HTTP proxy to send requests through.                                                                        |                        | no       |
-| `proxy_connect_header`        | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                               |                        | no       |
+| `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
+| `iss`                         | `string`            | JWT issuer claim for JWT bearer grant. Defaults to `client_id` when empty.                                  | `""`                   | no       |
 | `no_proxy`                    | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.            |                        | no       |
+| `proxy_connect_header`        | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                               |                        | no       |
 | `proxy_from_environment`      | `bool`              | Use the proxy URL indicated by environment variables.                                                       | `false`                | no       |
+| `proxy_url`                   | `string`            | HTTP proxy to send requests through.                                                                        |                        | no       |
+| `scopes`                      | `list(string)`      | List of scopes to authenticate with.                                                                        |                        | no       |
+| `signature_algorithm`         | `string`            | JWT signing algorithm for JWT bearer grant. Valid values: `RS256`, `RS384`, `RS512`.                        | `"RS256"`              | no       |
 
 The value of `grant_type` determines which arguments you can use in the `oauth2` block.
 
