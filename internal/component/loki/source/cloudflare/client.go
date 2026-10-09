@@ -36,7 +36,7 @@ var requestBackoff = backoff.Config{
 	MaxRetries: 4,
 }
 
-type wrappedClient struct {
+type client struct {
 	cfg        clientConfig
 	httpClient *http.Client
 }
@@ -49,8 +49,8 @@ type clientConfig struct {
 	backoff  backoff.Config
 }
 
-func newClient(cfg clientConfig) *wrappedClient {
-	return &wrappedClient{
+func newClient(cfg clientConfig) *client {
+	return &client{
 		cfg:        cfg,
 		httpClient: &http.Client{},
 	}
@@ -58,21 +58,21 @@ func newClient(cfg clientConfig) *wrappedClient {
 
 // LogpullReceived requests the logs received for the zone between start and end.
 // API reference: https://developers.cloudflare.com/logs/logpull/requesting-logs
-func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Time) (*logpullIterator, error) {
+func (c *client) LogpullReceived(ctx context.Context, start, end time.Time) (*logpullIterator, error) {
 	v := url.Values{}
 	v.Set("start", strconv.FormatInt(start.UnixNano(), 10))
 	v.Set("end", strconv.FormatInt(end.UnixNano(), 10))
-	if w.cfg.fields != nil {
-		v.Set("fields", strings.Join(w.cfg.fields, ","))
+	if c.cfg.fields != nil {
+		v.Set("fields", strings.Join(c.cfg.fields, ","))
 	}
-	uri := w.cfg.apiURL + "/zones/" + url.PathEscape(w.cfg.zoneID) + "/logs/received?" + v.Encode()
+	uri := c.cfg.apiURL + "/zones/" + url.PathEscape(c.cfg.zoneID) + "/logs/received?" + v.Encode()
 
 	var (
-		boff    = backoff.New(ctx, w.cfg.backoff)
+		boff    = backoff.New(ctx, c.cfg.backoff)
 		lastErr error
 	)
 	for boff.Ongoing() {
-		resp, err := w.do(ctx, uri)
+		resp, err := c.do(ctx, uri)
 		if err != nil {
 			lastErr = err
 			boff.Wait()
@@ -101,14 +101,14 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 	return nil, lastErr
 }
 
-func (w *wrappedClient) do(ctx context.Context, uri string) (*http.Response, error) {
+func (c *client) do(ctx context.Context, uri string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+w.cfg.apiToken)
+	req.Header.Set("Authorization", "Bearer "+c.cfg.apiToken)
 	req.Header.Set("User-Agent", useragent.Get())
-	return w.httpClient.Do(req)
+	return c.httpClient.Do(req)
 }
 
 // responseError reads and closes the body of a failed response and returns an error
