@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -26,6 +27,7 @@ import (
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/grafana/alloy/internal/component"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -38,6 +40,13 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
+
+// controller-runtime prints a warning and stack trace if its global logger is
+// never set. It is shared by all prometheus.operator components, so a
+// component logger can't be used here.
+func init() {
+	log.SetLogger(logr.Discard())
+}
 
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
