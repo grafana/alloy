@@ -1,10 +1,5 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
 	"context"
 	"log/slog"
@@ -13,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
@@ -73,7 +67,14 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(config.APIURL, config.APIToken, config.ZoneID, fields)
+	client, err := getClient(clientConfig{
+		apiURL:    config.APIURL,
+		apiToken:  config.APIToken,
+		zoneID:    config.ZoneID,
+		fields:    fields,
+		backoff:   requestBackoff,
+		rateLimit: requestRateLimit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +155,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
 		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      cloudflare.LogpullReceivedIterator
+		it      LogpullReceivedIterator
 		err     error
 	)
 
