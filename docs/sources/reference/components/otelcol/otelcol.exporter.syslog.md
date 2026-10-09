@@ -86,6 +86,7 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 | [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]     | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition] | Configures partitioning of batches by client metadata.                         | no       |
 | [`tls`][tls]                           | Configures TLS for a TCP connection.                                           | no       |
 | `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                | no       |
 
@@ -93,6 +94,7 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 [tpm]: #tpm
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
@@ -119,6 +121,10 @@ The `sending_queue` block configures queueing and batching for the exporter.
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 

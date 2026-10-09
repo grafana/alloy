@@ -232,6 +232,64 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}(),
 		},
 		{
+			testName: "Batch partition metadata keys",
+			cfg: `
+				protocol_version = "2.0.0"
+				include_metadata_keys = ["tenant", "cluster"]
+				logs {
+					message_key_from_metadata_key = "tenant"
+				}
+				metrics {
+					message_key_from_metadata_key = "cluster"
+				}
+				traces {
+					message_key_from_metadata_key = "region"
+				}
+				sending_queue {
+					batch {
+						partition {
+							metadata_keys = ["tenant", "cluster", "region"]
+						}
+					}
+				}
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.IncludeMetadataKeys = []string{"tenant", "cluster"}
+				cfg.Logs.MessageKeyFromMetadataKey = "tenant"
+				cfg.Metrics.MessageKeyFromMetadataKey = "cluster"
+				cfg.Traces.MessageKeyFromMetadataKey = "region"
+
+				queue := exporterhelper.NewDefaultQueueConfig()
+				batch := *queue.Batch.Get()
+				batch.Partition.MetadataKeys = []string{"tenant", "cluster", "region"}
+				queue.Batch = configoptional.Some(batch)
+				cfg.QueueBatchConfig = configoptional.Some(queue)
+				return cfg
+			}(),
+		},
+		{
+			testName: "Metadata keys with disabled queue",
+			cfg: `
+				protocol_version = "2.0.0"
+				include_metadata_keys = ["tenant"]
+				logs {
+					message_key_from_metadata_key = "tenant"
+				}
+				sending_queue {
+					enabled = false
+					batch {}
+				}
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.IncludeMetadataKeys = []string{"tenant"}
+				cfg.Logs.MessageKeyFromMetadataKey = "tenant"
+				cfg.QueueBatchConfig = configoptional.None[exporterhelper.QueueBatchConfig]()
+				return cfg
+			}(),
+		},
+		{
 			testName: "Explicit",
 			cfg: `
 				protocol_version = "2.0.0"

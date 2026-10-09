@@ -2,6 +2,7 @@ package otelcol
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
@@ -146,13 +147,19 @@ func convertSizer(sizer string) (*otelexporterhelper.RequestSizerType, error) {
 }
 
 type BatchConfig struct {
-	FlushTimeout time.Duration `alloy:"flush_timeout,attr,optional"`
-	MinSize      int64         `alloy:"min_size,attr,optional"`
-	MaxSize      int64         `alloy:"max_size,attr,optional"`
-	Sizer        string        `alloy:"sizer,attr,optional"`
+	FlushTimeout time.Duration         `alloy:"flush_timeout,attr,optional"`
+	MinSize      int64                 `alloy:"min_size,attr,optional"`
+	MaxSize      int64                 `alloy:"max_size,attr,optional"`
+	Sizer        string                `alloy:"sizer,attr,optional"`
+	Partition    *BatchPartitionConfig `alloy:"partition,block,optional"`
+}
+
+type BatchPartitionConfig struct {
+	MetadataKeys []string `alloy:"metadata_keys,attr,optional"`
 }
 
 var _ syntax.Defaulter = (*BatchConfig)(nil)
+var _ syntax.Validator = (*BatchPartitionConfig)(nil)
 
 var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
 
@@ -193,6 +200,24 @@ func (args *BatchConfig) Validate() error {
 		return fmt.Errorf("`max_size` must be greater or equal to `min_size`")
 	}
 
+	return args.Partition.Validate()
+}
+
+// Validate returns an error if partition metadata keys contain duplicates.
+func (args *BatchPartitionConfig) Validate() error {
+	if args == nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(args.MetadataKeys))
+	for _, key := range args.MetadataKeys {
+		key = strings.ToLower(key)
+		if _, ok := seen[key]; ok {
+			return fmt.Errorf("duplicate entry in metadata_keys: %q (case-insensitive)", key)
+		}
+		seen[key] = struct{}{}
+	}
+
 	return nil
 }
 
@@ -206,10 +231,15 @@ func (args *BatchConfig) Convert() (configoptional.Optional[otelexporterhelper.B
 		return configoptional.None[otelexporterhelper.BatchConfig](), err
 	}
 
-	return configoptional.Some(otelexporterhelper.BatchConfig{
+	batch := otelexporterhelper.BatchConfig{
 		FlushTimeout: args.FlushTimeout,
 		MinSize:      args.MinSize,
 		MaxSize:      args.MaxSize,
 		Sizer:        *sizer,
-	}), nil
+	}
+	if args.Partition != nil {
+		batch.Partition.MetadataKeys = args.Partition.MetadataKeys
+	}
+
+	return configoptional.Some(batch), nil
 }
