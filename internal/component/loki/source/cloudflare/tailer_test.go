@@ -8,12 +8,12 @@ package cloudflare
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sort"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -73,7 +73,7 @@ func TestTailer(t *testing.T) {
 		logs: []string{},
 	}, nil)
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiKey, zoneID string, fields []string, _ *slog.Logger, _ *metrics) (Client, error) {
 		return cfClient, nil
 	}
 
@@ -121,7 +121,7 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 		err: ErrorLogpullReceived,
 	}, nil).Times(2) // just retry once
 	// replace the client
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiKey, zoneID string, fields []string, _ *slog.Logger, _ *metrics) (Client, error) {
 		return cfClient, nil
 	}
 	ta := &tailer{
@@ -168,7 +168,7 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 		err: ErrorLogpullReceived,
 	}, nil).Once()
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiKey, zoneID string, fields []string, _ *slog.Logger, _ *metrics) (Client, error) {
 		return cfClient, nil
 	}
 	metrics := newMetrics(prometheus.NewRegistry())
@@ -221,7 +221,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("no logs"))
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiKey, zoneID string, fields []string, _ *slog.Logger, _ *metrics) (Client, error) {
 		return cfClient, nil
 	}
 
@@ -272,7 +272,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("HTTP status 400: bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available"))
 	// replace the client.
-	getClient = func(_, _ string, _ []string) (Client, error) {
+	getClient = func(_, _ string, _ []string, _ *slog.Logger, _ *metrics) (Client, error) {
 		return cfClient, nil
 	}
 
@@ -377,9 +377,8 @@ func (f *fakeLogIterator) Next() bool {
 	f.logs = f.logs[1:]
 	return true
 }
-func (f *fakeLogIterator) Err() error                         { return f.err }
-func (f *fakeLogIterator) Line() []byte                       { return []byte(f.current) }
-func (f *fakeLogIterator) Fields() (map[string]string, error) { return nil, nil }
+func (f *fakeLogIterator) Err() error   { return f.err }
+func (f *fakeLogIterator) Line() []byte { return []byte(f.current) }
 func (f *fakeLogIterator) Close() error {
 	if f.err == ErrorLogpullReceived {
 		f.err = nil
@@ -391,13 +390,13 @@ func newFakeCloudflareClient() *fakeCloudflareClient {
 	return &fakeCloudflareClient{}
 }
 
-func (f *fakeCloudflareClient) LogpullReceived(ctx context.Context, start, end time.Time) (cloudflare.LogpullReceivedIterator, error) {
+func (f *fakeCloudflareClient) LogpullReceived(ctx context.Context, start, end time.Time) (LogpullReceivedIterator, error) {
 	f.mut.Lock()
 	defer f.mut.Unlock()
 
 	r := f.Called(ctx, start, end)
 	if r.Get(0) != nil {
-		it := r.Get(0).(cloudflare.LogpullReceivedIterator)
+		it := r.Get(0).(LogpullReceivedIterator)
 		if it.Err() == ErrorLogpullReceived {
 			return it, it.Err()
 		}
