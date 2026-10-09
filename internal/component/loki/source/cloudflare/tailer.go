@@ -68,12 +68,11 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 		return nil, err
 	}
 	client, err := getClient(clientConfig{
-		apiURL:    config.APIURL,
-		apiToken:  config.APIToken,
-		zoneID:    config.ZoneID,
-		fields:    fields,
-		backoff:   requestBackoff,
-		rateLimit: requestRateLimit,
+		apiURL:   config.APIURL,
+		apiToken: config.APIToken,
+		zoneID:   config.ZoneID,
+		fields:   fields,
+		backoff:  requestBackoff,
 	})
 	if err != nil {
 		return nil, err

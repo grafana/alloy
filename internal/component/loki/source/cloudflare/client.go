@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/backoff"
-	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/useragent"
 )
@@ -28,9 +27,6 @@ const (
 
 	// maxErrorBodySize bounds how much of an error response body is read.
 	maxErrorBodySize = 64 * 1024
-
-	// requestRateLimit matches Cloudflare's default API rate limit of 1200 requests per 5 minutes.
-	requestRateLimit = rate.Limit(4)
 )
 
 // requestBackoff retries Logpull requests that fail with a transport error, 429 or 5xx response.
@@ -58,27 +54,24 @@ type LogpullReceivedIterator interface {
 }
 
 type wrappedClient struct {
-	cfg         clientConfig
-	httpClient  *http.Client
-	rateLimiter *rate.Limiter
+	cfg        clientConfig
+	httpClient *http.Client
 }
 
 type clientConfig struct {
-	apiURL    string
-	apiToken  string
-	zoneID    string
-	fields    []string
-	backoff   backoff.Config
-	rateLimit rate.Limit
+	apiURL   string
+	apiToken string
+	zoneID   string
+	fields   []string
+	backoff  backoff.Config
 }
 
 var getClient = newClient
 
 func newClient(cfg clientConfig) (Client, error) {
 	return &wrappedClient{
-		cfg:         cfg,
-		httpClient:  &http.Client{},
-		rateLimiter: rate.NewLimiter(cfg.rateLimit, 1),
+		cfg:        cfg,
+		httpClient: &http.Client{},
 	}, nil
 }
 
@@ -98,9 +91,6 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 		lastErr error
 	)
 	for boff.Ongoing() {
-		if err := w.rateLimiter.Wait(ctx); err != nil {
-			return nil, err
-		}
 		resp, err := w.do(ctx, uri)
 		if err != nil {
 			lastErr = err
@@ -122,9 +112,11 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 			reader: bufio.NewReader(resp.Body),
 		}, nil
 	}
+
 	if lastErr == nil {
 		lastErr = boff.Err()
 	}
+
 	return nil, lastErr
 }
 
