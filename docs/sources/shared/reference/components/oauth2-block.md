@@ -34,8 +34,8 @@ If `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`, you must set e
 `client_certificate_key` and `client_certificate_key_file` are mutually exclusive, and only one can be provided inside an `oauth2` block.
 
 {{< admonition type="warning" >}}
-Using `client_secret_file`/`client_certificate_key_file` causes the file to be read on every outgoing request.
-Use the `local.file` component to read the file value once with the `client_secret`/`client_certificate_key` attribute instead to avoid unnecessary reads.
+Using `client_secret_file` or `client_certificate_key_file` causes the file to be read on every outgoing request.
+Use the `local.file` component to read the file value once, then pass the content to the `client_secret` or `client_certificate_key` attribute instead, to avoid unnecessary reads.
 {{< /admonition >}}
 
 The `oauth2` block may also contain a separate `tls_config` sub-block.
