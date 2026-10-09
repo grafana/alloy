@@ -630,7 +630,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%s:%s",
+		systemID.String, systemIP.String, systemPort.String, inst.instanceKey)))
 
 	// Get the current user and compute the effective exclude users list.
 	var currentUser sql.NullString
