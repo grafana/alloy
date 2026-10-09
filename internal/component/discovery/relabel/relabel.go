@@ -46,6 +46,14 @@ type Component struct {
 
 	mut sync.RWMutex
 
+	// cache memoises the relabeling result per target, keyed on the target's
+	// packed labels. Guarded by mut.
+	cache *targetCache
+	// rules is a snapshot of the rules the cached results were produced with.
+	rules []ruleSnapshot
+
+	metrics *metrics
+
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
@@ -60,6 +68,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	c := &Component{
 		opts:               o,
+		cache:              newTargetCache(),
+		metrics:            newMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -83,27 +93,86 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	componentID := livedebugging.ComponentID(c.opts.ID)
+
+	// With no rules every target passes through unchanged, so there is nothing
+	// worth caching. Drop anything cached previously so that a config that removes
+	// its rules does not keep the memory.
+	if len(newArgs.RelabelConfigs) == 0 {
+		if c.cache.len() > 0 {
+			c.cache.clear()
+		}
+		c.rules = nil
+		c.metrics.cacheSize.Set(0)
+
+		targets := make([]discovery.Target, len(newArgs.Targets))
+		copy(targets, newArgs.Targets)
+		for _, t := range targets {
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.Target,
+				1,
+				func() string { return fmt.Sprintf("%s => %s", t, t) },
+			))
+		}
+		c.opts.OnStateChange(Exports{Output: targets, Rules: newArgs.RelabelConfigs})
+		return nil
+	}
+
+	// Cached results are only valid for the rules that produced them.
+	rules := snapshotRules(newArgs.RelabelConfigs)
+	if rulesChanged(c.rules, rules) {
+		c.cache.clear()
+		c.rules = rules
+	}
 
 	targets := make([]discovery.Target, 0, len(newArgs.Targets))
 
+	c.cache.begin()
+	var hits, misses int
 	for _, t := range newArgs.Targets {
-		var (
-			relabelled discovery.Target
-			builder    = discovery.NewTargetBuilderFrom(t)
-			keep       = alloy_relabel.ProcessBuilder(builder, newArgs.RelabelConfigs...)
-		)
-		if keep {
-			relabelled = builder.Target()
-			targets = append(targets, relabelled)
+		key := t.CacheKey()
+		entry, cached := c.cache.lookup(key)
+		if cached {
+			hits++
+		} else {
+			misses++
+			var (
+				relabelled discovery.Target
+				builder    = discovery.NewTargetBuilderFrom(t)
+				keep       = alloy_relabel.ProcessBuilder(builder, newArgs.RelabelConfigs...)
+			)
+			if keep {
+				relabelled = builder.Target()
+			}
+			entry = c.cache.insert(key, relabelled, keep)
 		}
-		componentID := livedebugging.ComponentID(c.opts.ID)
+
+		if entry.keep {
+			targets = append(targets, entry.output)
+		}
+
+		// Capture the entry rather than the loop variable so that the message is
+		// built from this target's result if live debugging is active.
+		e := entry
 		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 			componentID,
 			livedebugging.Target,
 			1,
-			func() string { return fmt.Sprintf("%s => %s", t, relabelled) },
+			func() string {
+				var relabelled discovery.Target
+				if e.keep {
+					relabelled = e.output
+				}
+				return fmt.Sprintf("%s => %s", t, relabelled)
+			},
 		))
 	}
+	c.cache.end()
+
+	c.metrics.cacheHits.Add(float64(hits))
+	c.metrics.cacheMisses.Add(float64(misses))
+	c.metrics.cacheSize.Set(float64(c.cache.len()))
 
 	c.opts.OnStateChange(Exports{
 		Output: targets,
