@@ -52,7 +52,7 @@ type tailer struct {
 	config    *tailerConfig
 	metrics   *metrics
 
-	client  *wrappedClient
+	client  *client
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
@@ -165,6 +165,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 			backoff.Wait()
 			continue
 		}
+
 		if err := func() error {
 			defer it.Close()
 			var lineRead int64

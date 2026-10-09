@@ -17,7 +17,7 @@ import (
 
 var testBackoff = backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: time.Millisecond, MaxRetries: 4}
 
-func newTestClient(handler http.HandlerFunc, fields []string) (*wrappedClient, *httptest.Server) {
+func newTestClient(handler http.HandlerFunc, fields []string) (*client, *httptest.Server) {
 	srv := httptest.NewServer(handler)
 	return newClient(clientConfig{
 		apiURL:   srv.URL,
