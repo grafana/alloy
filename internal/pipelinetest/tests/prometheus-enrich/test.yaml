@@ -1,0 +1,130 @@
+config: |
+  // Two exporters with the same metric. Scraped series carry the exporter's
+  // component ID as instance, so only "matched" has a target to enrich from.
+  prometheus.exporter.static "matched" {
+    text = `
+  # HELP http_requests_total The total number of HTTP requests.
+  # TYPE http_requests_total counter
+  http_requests_total{method="post",code="200"} 1027
+  `
+  }
+
+  prometheus.exporter.static "unmatched" {
+    text = `
+  # HELP http_requests_total The total number of HTTP requests.
+  # TYPE http_requests_total counter
+  http_requests_total{method="post",code="200"} 3
+  `
+  }
+
+  prometheus.scrape "default" {
+    targets    = array.concat(prometheus.exporter.static.matched.targets, prometheus.exporter.static.unmatched.targets)
+    forward_to = [prometheus.enrich.default.receiver]
+
+    scrape_interval = "1s"
+    scrape_timeout  = "500ms"
+
+    // Send metadata, so the test can check enrich applies to it as well.
+    honor_metadata = true
+  }
+
+  prometheus.enrich "default" {
+    targets = [
+      {
+        hostname    = "prometheus.exporter.static.matched",
+        environment = "production",
+        datacenter  = "us-east",
+        role        = "core-router",
+      },
+      {
+        hostname    = "router2.example.com",
+        environment = "production",
+        datacenter  = "us-west",
+        role        = "edge-router",
+      },
+    ]
+
+    target_match_label  = "hostname"
+    metrics_match_label = "instance"
+    labels_to_copy      = ["datacenter", "environment"]
+
+    forward_to = [pipelinetest.prometheus.receiver]
+  }
+
+assert:
+  prometheus:
+    # A matched series gains exactly the labels_to_copy set from its own
+    # target, and nothing else: no role, no hostname, and nothing from the
+    # other target.
+    - type: contains
+      match:
+        labels:
+          values:
+            __name__: http_requests_total
+            instance: prometheus.exporter.static.matched
+            job: integrations/static
+            method: post
+            code: "200"
+            datacenter: us-east
+            environment: production
+        value: 1027
+
+    # No copy of a matched series gets through without the enrichment.
+    - type: count
+      count: 0
+      match:
+        labels:
+          values:
+            __name__: http_requests_total
+            instance: prometheus.exporter.static.matched
+            job: integrations/static
+            method: post
+            code: "200"
+
+    # Metadata goes through the same enrichment, so it is attached to the
+    # enriched series. The sink keys metadata by the full label set, so this
+    # fails if the metadata path skips enrichment.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: http_requests_total
+            instance: prometheus.exporter.static.matched
+            datacenter: us-east
+        metadata:
+          type: counter
+          help: The total number of HTTP requests.
+
+    # Scrape-generated series are enriched too.
+    - type: contains
+      match:
+        labels:
+          values:
+            __name__: up
+            instance: prometheus.exporter.static.matched
+            job: integrations/static
+            datacenter: us-east
+            environment: production
+        value: 1
+
+    # An unmatched series passes through. An exact match proves no label was
+    # added.
+    - type: contains
+      match:
+        labels:
+          values:
+            __name__: http_requests_total
+            instance: prometheus.exporter.static.unmatched
+            job: integrations/static
+            method: post
+            code: "200"
+        value: 3
+    - type: contains
+      match:
+        labels:
+          values:
+            __name__: up
+            instance: prometheus.exporter.static.unmatched
+            job: integrations/static
+        value: 1
