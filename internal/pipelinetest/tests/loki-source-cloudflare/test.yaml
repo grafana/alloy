@@ -1,0 +1,74 @@
+mocks:
+  http:
+    # A stub Cloudflare API, laid out like the real one under /client/v4.
+    - name: cloudflare
+      routes:
+        - path: /client/v4/zones/test-zone-id/logs/received
+          method: GET
+          headers:
+            Content-Type: application/x-ndjson
+          body: |
+            {"EdgeStartTimestamp":1767225600000000000,"ClientIP":"192.168.0.1","ClientRequestHost":"example.com","ClientRequestMethod":"GET","ClientRequestURI":"/api/v1/health","EdgeResponseStatus":200,"RayID":"test-ray-001"}
+            {"EdgeStartTimestamp":1767225601000000000,"ClientIP":"10.0.0.2","ClientRequestHost":"example.com","ClientRequestMethod":"POST","ClientRequestURI":"/api/v1/data","EdgeResponseStatus":201,"RayID":"test-ray-002"}
+            {"EdgeStartTimestamp":1767225602000000000,"ClientIP":"172.16.0.3","ClientRequestHost":"example.com","ClientRequestMethod":"GET","ClientRequestURI":"/api/v1/status","EdgeResponseStatus":200,"RayID":"test-ray-003"}
+
+config: |
+  loki.source.cloudflare "default" {
+    api_token = "test-token"
+    zone_id   = "test-zone-id"
+    api_url   = pipelinetest.mocks.http.cloudflare.url + "/client/v4"
+
+    // One worker makes one request per pull window. The next window is a
+    // minute later, after the assertions have finished, so each line is read
+    // once.
+    workers    = 1
+    pull_range = "1m"
+
+    labels = {
+      job = "cloudflare",
+    }
+
+    forward_to = [loki.relabel.default.receiver]
+  }
+
+  loki.relabel "default" {
+    forward_to = [pipelinetest.loki.receiver]
+
+    rule {
+      source_labels = ["job"]
+      target_label  = "service_name"
+    }
+  }
+
+assert:
+  loki:
+    # Three lines served, three entries out.
+    - type: count
+      count: 3
+
+    # Each line arrives as is, timestamped from EdgeStartTimestamp, with the
+    # configured labels plus the relabeled service_name and nothing else.
+    - type: contains
+      match:
+        line: '{"EdgeStartTimestamp":1767225600000000000,"ClientIP":"192.168.0.1","ClientRequestHost":"example.com","ClientRequestMethod":"GET","ClientRequestURI":"/api/v1/health","EdgeResponseStatus":200,"RayID":"test-ray-001"}'
+        timestamp: "2026-01-01T00:00:00Z"
+        labels:
+          values:
+            job: cloudflare
+            service_name: cloudflare
+    - type: contains
+      match:
+        line: '{"EdgeStartTimestamp":1767225601000000000,"ClientIP":"10.0.0.2","ClientRequestHost":"example.com","ClientRequestMethod":"POST","ClientRequestURI":"/api/v1/data","EdgeResponseStatus":201,"RayID":"test-ray-002"}'
+        timestamp: "2026-01-01T00:00:01Z"
+        labels:
+          values:
+            job: cloudflare
+            service_name: cloudflare
+    - type: contains
+      match:
+        line: '{"EdgeStartTimestamp":1767225602000000000,"ClientIP":"172.16.0.3","ClientRequestHost":"example.com","ClientRequestMethod":"GET","ClientRequestURI":"/api/v1/status","EdgeResponseStatus":200,"RayID":"test-ray-003"}'
+        timestamp: "2026-01-01T00:00:02Z"
+        labels:
+          values:
+            job: cloudflare
+            service_name: cloudflare
