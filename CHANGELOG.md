@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.21.0](https://github.com/grafana/alloy/compare/v1.20.0...v1.21.0) (2026-10-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **loki.write:** `loki.write` configurations that set `wal { enabled = true }` now fail to load unless Alloy runs with `--stability.level=experimental`. To keep using the WAL, add `--stability.level=experimental` to the `alloy run` command. To keep the default stability level, remove the `wal` block or set `enabled = false`.
+* **loki.write:** Remove tenant label from metrics ([#7232](https://github.com/grafana/alloy/issues/7232))
+
+### Features 🌟
+
+* Add CAP_DAC_OVERRIDE in the allowed Linux capabilities list ([#7303](https://github.com/grafana/alloy/issues/7303)) ([dddc5d8](https://github.com/grafana/alloy/commit/dddc5d895ec62e7a2b24517ad2a515860e0527f6))
+* **database_observability.postgres:** Enable stat_statements by default ([#7224](https://github.com/grafana/alloy/issues/7224)) ([044d3a4](https://github.com/grafana/alloy/commit/044d3a48a50c7ec8b806f346d52169fdddd594f2))
+* **database_observability.sql_server:** Add `health_check` collector ([#7205](https://github.com/grafana/alloy/issues/7205)) ([c1d90e0](https://github.com/grafana/alloy/commit/c1d90e0048454580486d7f0697a54e2ce6437175))
+* **database_observability.sql_server:** Add support for clustering mode ([#7208](https://github.com/grafana/alloy/issues/7208)) ([90100b3](https://github.com/grafana/alloy/commit/90100b3f9cbcb5f65655b94e0efa4758a02041e6))
+* **database_observability.sql_server:** Support monitoring multiple database blocks ([#7207](https://github.com/grafana/alloy/issues/7207)) ([bbf24e2](https://github.com/grafana/alloy/commit/bbf24e241b9534ee9b50804a5b8003cd6e033418))
+* **database_observability:** Add engine label for explain_plan log digests (mysql/postgres) ([#6944](https://github.com/grafana/alloy/issues/6944)) ([551c3ad](https://github.com/grafana/alloy/commit/551c3adfbe6bb3c14377e6a0087fb8704aa57a11))
+* **helm:** Add resizePolicy to alloy and config-reloader containers ([#7274](https://github.com/grafana/alloy/issues/7274)) ([9983d74](https://github.com/grafana/alloy/commit/9983d744ec1bbb6f1557662a233b4608418f9e0f))
+* **loki.source.cloudflare:** Add api_url argument ([#7353](https://github.com/grafana/alloy/issues/7353)) ([befe940](https://github.com/grafana/alloy/commit/befe94025136d572a10ffa26f7114808450589c4))
+* Update Beyla to version 3.38.0 ([#7322](https://github.com/grafana/alloy/issues/7322)) ([bd8d703](https://github.com/grafana/alloy/commit/bd8d70381d0c49b318ea759bfcbfc2f68c025de1))
+
+
+### Bug Fixes 🐛
+
+* **database_observability.postgres:** Stop retrying explain plans with missing session settings ([#7325](https://github.com/grafana/alloy/issues/7325)) ([0bdc41d](https://github.com/grafana/alloy/commit/0bdc41d34a5fc08a4d6a2a56f148aa122e774622))
+* **database_observability.sql_server:** Redact native explain-plan XML ([#7230](https://github.com/grafana/alloy/issues/7230)) ([5b01d2a](https://github.com/grafana/alloy/commit/5b01d2a4639bf5efcba37f698e635fc24eff127b))
+* **database_observability:** Correct explain plan cost semantics ([#7307](https://github.com/grafana/alloy/issues/7307)) ([2cdeba9](https://github.com/grafana/alloy/commit/2cdeba9a3cdace81abe907a5ec1af137cb577815))
+* **database_observability:** Escape strings to avoid logfmt parsing issues ([#7302](https://github.com/grafana/alloy/issues/7302)) ([8b722eb](https://github.com/grafana/alloy/commit/8b722ebb78669f7776502474ae4383759ceb9da5))
+* **database_observability:** Use `strconv.Quote` on database-derived strings ([#7288](https://github.com/grafana/alloy/issues/7288)) ([7aad05f](https://github.com/grafana/alloy/commit/7aad05fa5a920657200e4cfff09fc9c549c74432))
+* **deps:** Update gosnowflake to v2.2.0 to fix GO-2026-6665 ([#7340](https://github.com/grafana/alloy/issues/7340)) ([4b1e336](https://github.com/grafana/alloy/commit/4b1e336f0d9f253138730b080a2ba1aaebc7924b))
+* **local.file_match, loki.source.file:** Fix matching through Widows junctions ([#7261](https://github.com/grafana/alloy/issues/7261)) ([653850b](https://github.com/grafana/alloy/commit/653850b14ac076066fc9b460b67a14c892016b39))
+* **loki.process:** Move stage.label validation to syntax.Validator ([#7308](https://github.com/grafana/alloy/issues/7308)) ([b24cd5d](https://github.com/grafana/alloy/commit/b24cd5ded474e0558818ed78f0ea5fa3b4b54507))
+* **loki.process:** Move stage.label_keep validation to syntax.Validator ([#7244](https://github.com/grafana/alloy/issues/7244)) ([1f29bd7](https://github.com/grafana/alloy/commit/1f29bd73ee6d38a94da7151e2e70186b96505bfd))
+* **loki.process:** Move stage.limit validation to syntax.Validator ([#7278](https://github.com/grafana/alloy/issues/7278)) ([9423ed4](https://github.com/grafana/alloy/commit/9423ed40c2849c91dfac0a91d3b37100f0de988a))
+* **loki.process:** Move stage.output validation to syntax.Validator ([#7243](https://github.com/grafana/alloy/issues/7243)) ([97a5026](https://github.com/grafana/alloy/commit/97a50267e44d6c2cd7a9f61793dcbb4a9cd5b776))
+* **loki.process:** Move stage.static_labels validation to syntax.Validator ([#7175](https://github.com/grafana/alloy/issues/7175)) ([2b92bfb](https://github.com/grafana/alloy/commit/2b92bfb075aeb9d0662ce4f5d130483e4ecc11f1))
+* **loki.process:** Move stage.structured_metadata_drop validation to syntax.Validator ([#7245](https://github.com/grafana/alloy/issues/7245)) ([8b55f30](https://github.com/grafana/alloy/commit/8b55f30ebc34b6d7a283f6db2322044f351ca635))
+* **loki.process:** Move stage.tenant validation to syntax.Validator ([#7263](https://github.com/grafana/alloy/issues/7263)) ([5f45ab2](https://github.com/grafana/alloy/commit/5f45ab2e5a0a10eea12737452dbd9cff7727c11b))
+* **loki.source.docker:** Do not time out log streams ([#7297](https://github.com/grafana/alloy/issues/7297)) ([4b2e798](https://github.com/grafana/alloy/commit/4b2e79853f5bc9c1cbf9d474e2cbd4b57017b0ab))
+* **loki.source.file:** Reduce CPU usage for long lines ([#7291](https://github.com/grafana/alloy/issues/7291)) ([f98aef2](https://github.com/grafana/alloy/commit/f98aef2c8b25188e9b9b58305e52797837f8e170))
+* **loki.source.kubernetes:** Forward log lines with out-of-order timestamps ([#7080](https://github.com/grafana/alloy/issues/7080)) ([41d9001](https://github.com/grafana/alloy/commit/41d9001c1ad36c566d4d4f9c669d91d2f23703e7))
+* **loki.write:** Catch more runtime errors when parsing config ([#7216](https://github.com/grafana/alloy/issues/7216)) ([32c2180](https://github.com/grafana/alloy/commit/32c2180837b850181cba14b23d794652b0e8a073))
+* **loki.write:** Prevent panic on failed update ([#7128](https://github.com/grafana/alloy/issues/7128)) ([3aa1c65](https://github.com/grafana/alloy/commit/3aa1c6577ebb015e2a1124888c91db9396200394))
+* **loki.write:** Remove tenant label from metrics ([#7232](https://github.com/grafana/alloy/issues/7232)) ([ad6125b](https://github.com/grafana/alloy/commit/ad6125b4e9c9ad72592c4a83bb08bd82e700d630))
+* **loki.write:** Require experimental stability level to enable the WAL ([#7257](https://github.com/grafana/alloy/issues/7257)) ([cc12943](https://github.com/grafana/alloy/commit/cc12943dd38160c216f9861cd557d6ca7462a613))
+* **loki.write:** Zero-initialize counters when the metrics registry is reused ([#7258](https://github.com/grafana/alloy/issues/7258)) ([04838bf](https://github.com/grafana/alloy/commit/04838bff02a3c5106a94b92c757f99104267aa43))
+* **loki:** Add the timestamp to batch size calculation ([#7226](https://github.com/grafana/alloy/issues/7226)) ([222798c](https://github.com/grafana/alloy/commit/222798c8fb8b848a79d1f58f3176e1401ab1ba07))
+* **loki:** Include estimate for stream labels in batch size ([#7176](https://github.com/grafana/alloy/issues/7176)) ([6c131a1](https://github.com/grafana/alloy/commit/6c131a16ec808ebf858fa0f6198165b6e679c8ac))
+* **loki:** Make loki_write_sent_bytes_total and loki_write_dropped_bytes_total count uncompressed bytes ([#7228](https://github.com/grafana/alloy/issues/7228)) ([4de4474](https://github.com/grafana/alloy/commit/4de447412fd3f84687c1cf5c1b1d9b11f5cbe63b))
+* **otelcol.connector.host_info:** Mirror upstream logic and fix potential sources of over-count ([#7236](https://github.com/grafana/alloy/issues/7236)) ([4371d71](https://github.com/grafana/alloy/commit/4371d710ca120dfcdf6808e61c4f65dad682a10d))
+* **otelcol.exporter.loki:** Release fanout lock when the context ends mid-forward ([#7259](https://github.com/grafana/alloy/issues/7259)) ([0308c4d](https://github.com/grafana/alloy/commit/0308c4d28c237320af6f7f62b0b8477bbfb191ec))
+* **otelcol.receiver.cloudflare:** Default max_request_body_size to 20MiB ([#7194](https://github.com/grafana/alloy/issues/7194)) ([2eadc7b](https://github.com/grafana/alloy/commit/2eadc7bdcbdbf8eedd3e53bdb83d2de6b447acda))
+* **otelcol.receiver.filelog:** Use alphabetical instead of lexicographic sort type ([#7212](https://github.com/grafana/alloy/issues/7212)) ([d652b74](https://github.com/grafana/alloy/commit/d652b74b9ff9589ea5f224c046b6238b99f2dc21))
+* **prometheus.remote_write:** Tolerate unknown WAL record types on replay ([#7189](https://github.com/grafana/alloy/issues/7189)) ([26d1a25](https://github.com/grafana/alloy/commit/26d1a2533d2c45f1e5a720aedd3ef119887e54c9))
+
 ## [1.20.0](https://github.com/grafana/alloy/compare/v1.19.0...v1.20.0) (2026-09-25)
 
 
