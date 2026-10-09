@@ -3,7 +3,6 @@ package cloudflare
 import (
 	"bufio"
 	"compress/gzip"
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +13,6 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-	"golang.org/x/time/rate"
 )
 
 var testBackoff = backoff.Config{MinBackoff: time.Millisecond, MaxBackoff: time.Millisecond, MaxRetries: 4}
@@ -25,12 +23,11 @@ func newTestClient(t *testing.T, handler http.HandlerFunc, fields []string) *wra
 	t.Cleanup(srv.Close)
 
 	c, err := newClient(clientConfig{
-		apiURL:    srv.URL,
-		apiToken:  "token",
-		zoneID:    "zone-id",
-		fields:    fields,
-		backoff:   testBackoff,
-		rateLimit: rate.Inf,
+		apiURL:   srv.URL,
+		apiToken: "token",
+		zoneID:   "zone-id",
+		fields:   fields,
+		backoff:  testBackoff,
 	})
 	require.NoError(t, err)
 	return c.(*wrappedClient)
@@ -216,28 +213,4 @@ func TestClient_LogpullReceivedRetries(t *testing.T) {
 		require.EqualError(t, err, "HTTP status 503: unavailable")
 		require.Equal(t, int32(4), calls.Load())
 	})
-}
-
-func TestClient_LogpullReceivedRateLimit(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	defer srv.Close()
-	c, err := newClient(clientConfig{
-		apiURL:    srv.URL,
-		apiToken:  "token",
-		zoneID:    "zone-id",
-		backoff:   testBackoff,
-		rateLimit: rate.Every(time.Hour),
-	})
-	require.NoError(t, err)
-
-	it, err := c.LogpullReceived(t.Context(), time.Unix(0, 0), time.Unix(0, 1))
-	require.NoError(t, err)
-	require.NoError(t, it.Close())
-
-	// The second request has to wait for the rate limiter, which gives up because
-	// the wait would exceed the context deadline.
-	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
-	defer cancel()
-	_, err = c.LogpullReceived(ctx, time.Unix(0, 0), time.Unix(0, 1))
-	require.Error(t, err)
 }
