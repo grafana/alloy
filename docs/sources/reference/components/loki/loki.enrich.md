@@ -26,6 +26,8 @@ All labels in the map must match for enrichment to occur.
 The `target_match_label` and `logs_match_label` arguments are deprecated in favor of `target_to_log_match`.
 If `target_to_log_match` is set, it takes precedence.
 Replace `target_match_label = "hostname"` with `target_to_log_match = {"hostname" = "hostname"}`.
+If you also set `logs_match_label`, use it as the map value.
+For example, replace `target_match_label = "hostname"` and `logs_match_label = "host"` with `target_to_log_match = {"hostname" = "host"}`.
 These deprecated arguments will be removed in a future release.
 {{< /admonition >}}
 
@@ -50,14 +52,18 @@ loki.enrich "<LABEL>" {
 
 You can use the following arguments with `loki.enrich`:
 
-| Name                  | Type                 | Description                                                                                                   | Default | Required |
-| --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`          | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                     |         | yes      |
-| `targets`             | `list(map(string))`  | List of targets from a discovery component.                                                                   |         | yes      |
-| `labels_to_copy`      | `list(string)`       | List of labels to copy from discovered targets to logs. If empty, all labels are copied.                      |         | no       |
-| `logs_match_label`    | `string`             | (Deprecated) The label from incoming logs to match against discovered targets, for example, `"service_name"`. |         | no       |
-| `target_match_label`  | `string`             | (Deprecated) The label from discovered targets to match against, for example, `"hostname"`.                   |         | no       |
-| `target_to_log_match` | `map(string)`        | Map of target label names to log label names. All entries must match for enrichment.                          |         | no       |
+| Name                  | Type                 | Description                                                                              | Default | Required |
+| --------------------- | -------------------- | ---------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`          | `list(LogsReceiver)` | List of receivers to send log entries to.                                                |         | yes      |
+| `targets`             | `list(map(string))`  | List of targets from a discovery component.                                              |         | yes      |
+| `labels_to_copy`      | `list(string)`       | List of labels to copy from discovered targets to logs. If empty, all labels are copied. |         | no       |
+| `logs_match_label`    | `string`             | Deprecated. Use `target_to_log_match` instead.                                           |         | no       |
+| `target_match_label`  | `string`             | Deprecated. Use `target_to_log_match` instead.                                           |         | no       |
+| `target_to_log_match` | `map(string)`        | Map of target label names to log label names. All entries must match for enrichment.     |         | no       |
+
+You must set either `target_to_log_match` or the deprecated `target_match_label`.
+If you set neither, the component fails to start.
+The keys and values in `target_to_log_match` can't be empty strings.
 
 ## Blocks
 
@@ -112,6 +118,8 @@ discovery.relabel "default" {
 }
 
 loki.relabel "syslog" {
+    forward_to = []
+
     rule {
         source_labels = ["__syslog_connection_ip_address"]
         target_label  = "source_ip"
@@ -123,14 +131,14 @@ loki.source.syslog "incoming" {
     listener {
         address  = ":514"
         protocol = "tcp"
-        labels = {
-            job    = "syslog"
-            tenant = "production"
+        labels   = {
+            job    = "syslog",
+            tenant = "production",
         }
     }
 
     relabel_rules = loki.relabel.syslog.rules
-    forward_to = [loki.enrich.default.receiver]
+    forward_to    = [loki.enrich.default.receiver]
 }
 
 // Enrich logs using HTTP discovery
@@ -139,8 +147,8 @@ loki.enrich "default" {
     targets = discovery.relabel.default.output
 
     target_to_log_match = {
-        "primary_ip" = "source_ip"
-        "tenant"     = "tenant"
+        "primary_ip" = "source_ip",
+        "tenant"     = "tenant",
     }
 
     forward_to = [loki.write.default.receiver]
@@ -161,6 +169,10 @@ The component matches logs to discovered targets and enriches them with addition
 1. It matches those values against the corresponding target labels. All label pairs must match the same target.
 1. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry. If `labels_to_copy` is empty, all labels are copied.
 1. The log entry, enriched or unchanged, is forwarded to the configured receivers.
+
+If a log entry is missing any of the labels in `target_to_log_match`, or any of those labels has an empty value, the log entry isn't enriched.
+The component ignores targets that are missing any of the matching labels, or that have an empty value for any of them.
+If multiple targets have the same values for all matching labels, the component uses the last of those targets in the `targets` list.
 
 {{< admonition type="caution" >}}
 By default, `loki.enrich` is ready as soon as it starts, even if no targets have been discovered.

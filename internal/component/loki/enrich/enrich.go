@@ -36,10 +36,12 @@ type Arguments struct {
 	// Takes precedence over target_match_label / logs_match_label.
 	TargetToLogMatch map[string]string `alloy:"target_to_log_match,attr,optional"`
 
-	// Legacy: which label from targets to use for matching (e.g. "hostname", "ip").
+	// Deprecated: use TargetToLogMatch instead.
+	// Which label from targets to use for matching (e.g. "hostname", "ip").
 	TargetMatchLabel string `alloy:"target_match_label,attr,optional"`
 
-	// Legacy: which label from logs to match against (e.g. "hostname", "ip").
+	// Deprecated: use TargetToLogMatch instead.
+	// Which label from logs to match against (e.g. "hostname", "ip").
 	// If not specified, TargetMatchLabel will be used.
 	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
 
@@ -52,15 +54,20 @@ type Arguments struct {
 
 // Validate implements syntax.Validator.
 func (a Arguments) Validate() error {
-	hasLegacy := a.TargetMatchLabel != "" || a.LogsMatchLabel != ""
+	hasDeprecated := a.TargetMatchLabel != "" || a.LogsMatchLabel != ""
 	hasNew := len(a.TargetToLogMatch) > 0
 
-	if !hasLegacy && !hasNew {
+	if !hasDeprecated && !hasNew {
 		return fmt.Errorf("at least one match mechanism must be specified: set target_match_label or target_to_log_match")
 	}
-	// target_to_log_match takes precedence when set; legacy fields are ignored.
-	if hasLegacy && !hasNew && a.TargetMatchLabel == "" {
-		return fmt.Errorf("target_match_label must be set when using legacy match fields")
+	for targetLabel, logLabel := range a.TargetToLogMatch {
+		if targetLabel == "" || logLabel == "" {
+			return fmt.Errorf("target_to_log_match must not contain empty label names, got %q = %q", targetLabel, logLabel)
+		}
+	}
+	// target_to_log_match takes precedence when set; deprecated fields are ignored.
+	if hasDeprecated && !hasNew && a.TargetMatchLabel == "" {
+		return fmt.Errorf("target_match_label must be set when using deprecated match fields")
 	}
 	return nil
 }

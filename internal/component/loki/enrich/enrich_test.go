@@ -224,7 +224,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "target_to_log_match takes precedence over legacy labels",
+			name: "target_to_log_match takes precedence over deprecated labels",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -306,13 +306,13 @@ func TestValidate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "valid legacy",
+			name: "valid deprecated",
 			args: Arguments{
 				TargetMatchLabel: "service",
 			},
 		},
 		{
-			name: "valid legacy with logs_match_label",
+			name: "valid deprecated with logs_match_label",
 			args: Arguments{
 				TargetMatchLabel: "service",
 				LogsMatchLabel:   "service_name",
@@ -330,7 +330,7 @@ func TestValidate(t *testing.T) {
 			wantErr: "at least one match mechanism must be specified",
 		},
 		{
-			name: "new match takes precedence over legacy",
+			name: "new match takes precedence over deprecated",
 			args: Arguments{
 				TargetMatchLabel: "service",
 				TargetToLogMatch: map[string]string{"namespace": "namespace"},
@@ -342,6 +342,20 @@ func TestValidate(t *testing.T) {
 				LogsMatchLabel: "service_name",
 			},
 			wantErr: "target_match_label must be set",
+		},
+		{
+			name: "empty target label in target_to_log_match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"": "namespace"},
+			},
+			wantErr: "target_to_log_match must not contain empty label names",
+		},
+		{
+			name: "empty log label in target_to_log_match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"namespace": ""},
+			},
+			wantErr: "target_to_log_match must not contain empty label names",
 		},
 	}
 
@@ -379,4 +393,43 @@ func TestUpdate(t *testing.T) {
 		LabelsToCopy:     []string{"env"},
 	})
 	require.NoError(t, err)
+}
+
+func TestUpdateFromDeprecatedToTargetToLogMatch(t *testing.T) {
+	targets := []discovery.Target{
+		discovery.NewTargetFromMap(map[string]string{
+			"service":   "svc-a",
+			"namespace": "ns-a",
+			"env":       "prod",
+		}),
+	}
+
+	comp, err := New(component.Options{
+		Logger:        logging.NewSlogNop(),
+		OnStateChange: func(e component.Exports) {},
+	}, Arguments{
+		Targets:          targets,
+		TargetMatchLabel: "service",
+		LogsMatchLabel:   "service_name",
+		LabelsToCopy:     []string{"env"},
+	})
+	require.NoError(t, err)
+
+	// The log only matches the deprecated single-label configuration.
+	deprecatedOnly := model.LabelSet{"service_name": "svc-a"}
+	// The log only matches the new multi-label configuration.
+	multiLabel := model.LabelSet{"svc": "svc-a", "ns": "ns-a"}
+
+	require.Equal(t, model.LabelSet{"service_name": "svc-a", "env": "prod"}, comp.process(deprecatedOnly, true))
+	require.Equal(t, multiLabel, comp.process(multiLabel, true))
+
+	err = comp.Update(Arguments{
+		Targets:          targets,
+		TargetToLogMatch: map[string]string{"service": "svc", "namespace": "ns"},
+		LabelsToCopy:     []string{"env"},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, deprecatedOnly, comp.process(deprecatedOnly, true))
+	require.Equal(t, model.LabelSet{"svc": "svc-a", "ns": "ns-a", "env": "prod"}, comp.process(multiLabel, true))
 }
