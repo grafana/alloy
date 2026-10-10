@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -145,7 +146,15 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	// client.
 
 	if cli == nil {
-		cli = &http.Client{Timeout: args.DownloadTimeout}
+		cli = &http.Client{
+			Timeout: args.DownloadTimeout,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if isUnsafeDownloadURL(req.URL.String()) {
+					return fmt.Errorf("refusing redirect to blocked address")
+				}
+				return nil
+			},
+		}
 	}
 	if fs == nil {
 		fs = osFileService{}
@@ -460,6 +469,10 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 		store.log.Debug("resolved absolute source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL)
 	}
 
+	if !urlMatchesOrigins(resolvedSourceMapURL, store.args.DownloadFromOrigins) {
+		store.log.Debug("resolved source map url origin not allowed", "url", resolvedSourceMapURL)
+		return nil, "", fmt.Errorf("source map url origin not allowed")
+	}
 	store.log.Debug("attempting to download source map file", "url", resolvedSourceMapURL)
 	result, err = store.downloadFileContents(resolvedSourceMapURL)
 	if err != nil {
@@ -471,6 +484,10 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 }
 
 func (store *sourceMapsStoreImpl) downloadFileContents(url string) ([]byte, error) {
+	if isUnsafeDownloadURL(url) {
+		store.metrics.downloads.WithLabelValues(getOrigin(url), "blocked").Inc()
+		return nil, fmt.Errorf("refusing download to blocked address")
+	}
 	resp, err := store.cli.Get(url)
 	if err != nil {
 		store.metrics.downloads.WithLabelValues(getOrigin(url), "?").Inc()
@@ -491,6 +508,49 @@ func (store *sourceMapsStoreImpl) downloadFileContents(url string) ([]byte, erro
 }
 
 var reSourceMap = regexp.MustCompile("//[#@]\\s(source(?:Mapping)?URL)=\\s*(?P<url>\\S+)\r?\n?$")
+
+
+func isBlockedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	// CGNAT / shared address space (RFC 6598)
+	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] <= 127 {
+		return true
+	}
+	return false
+}
+
+// isUnsafeDownloadURL rejects loopback/private/link-local/CGNAT targets for
+// faro.receiver sourcemap downloads (client-controlled Filename / sourceMappingURL).
+func isUnsafeDownloadURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Hostname() == "" {
+		return true
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return true
+	}
+	host := u.Hostname()
+	if ip := net.ParseIP(host); ip != nil {
+		return isBlockedIP(ip)
+	}
+	ips, err := net.LookupIP(host)
+	if err != nil || len(ips) == 0 {
+		// Unknown host: let the HTTP client fail. Still block when DNS
+		// succeeds and points at a non-global address.
+		return false
+	}
+	for _, ip := range ips {
+		if isBlockedIP(ip) {
+			return true
+		}
+	}
+	return false
+}
 
 func getOrigin(URL string) string {
 	// TODO(rfratto): why are we parsing this every time? Let's parse it once.
