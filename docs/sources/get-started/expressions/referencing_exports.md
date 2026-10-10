@@ -49,14 +49,13 @@ In the preceding example, you created a pipeline by writing a few {{< param "PRO
 
 1. The `local.file` component reads a file and exports its `content`.
 1. The `prometheus.scrape` component references that content in its `targets` field.
-1. The `prometheus.scrape` component exports a `receiver` for scraped metrics.
+1. The `prometheus.remote_write` component exports a `receiver` for scraped metrics.
 1. The `prometheus.remote_write` component receives and forwards those metrics to a remote endpoint.
 
 When the component controller evaluates these components, it:
 
-1. Evaluates the `local.file` component first because it has no dependencies.
-1. Evaluates the `prometheus.scrape` component next, using the file content for its targets.
-1. Evaluates the `prometheus.remote_write` component last, connecting it to receive metrics.
+1. Evaluates the `local.file` and `prometheus.remote_write` components before `prometheus.scrape` because they have no dependencies.
+1. Evaluates the `prometheus.scrape` component using the file content for its targets and the remote write receiver for its `forward_to` field.
 
 Each time the file content changes, the component controller automatically reevaluates the `prometheus.scrape` component with the new target value.
 
