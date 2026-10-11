@@ -164,3 +164,23 @@ func TestUnmarshalPayloadJSON(t *testing.T) {
 		expectedPair = expectedPair.Next()
 	}
 }
+
+func TestUnmarshalPayloadWithBundleID(t *testing.T) {
+	rawPayload := []byte(`{
+		"meta": {
+			"app": {
+				"name": "example-mobile",
+				"release": "1.0.0",
+				"version": "100",
+				"environment": "production",
+				"bundleId": "com.example.app@100@1.0.0"
+			}
+		}
+	}`)
+
+	var p Payload
+	err := json.Unmarshal(rawPayload, &p)
+	require.NoError(t, err)
+
+	require.Equal(t, "com.example.app@100@1.0.0", p.Meta.App.BundleID)
+}

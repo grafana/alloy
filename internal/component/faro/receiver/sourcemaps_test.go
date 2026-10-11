@@ -37,7 +37,7 @@ func Test_traceContextKeptWhenStacktraceDefined(t *testing.T) {
 	}
 
 	expect := input
-	actual := transformException(nil, nil, input, "123")
+	actual := transformException(nil, nil, input, sourceMapContext{Release: "123"})
 	require.Equal(t, expect, actual)
 }
 
@@ -50,7 +50,7 @@ func Test_traceContextKeptWhenStacktraceNotDefined(t *testing.T) {
 	}
 
 	expect := input
-	actual := transformException(nil, nil, input, "123")
+	actual := transformException(nil, nil, input, sourceMapContext{Release: "123"})
 	require.Equal(t, expect, actual)
 }
 
@@ -99,7 +99,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 		},
 	}
 
-	actual := transformException(logger, store, mockException(), "123")
+	actual := transformException(logger, store, mockException(), sourceMapContext{Release: "123"})
 	require.Equal(t, []string{"http://localhost:1234/foo.js", "http://localhost:1234/foo.js.map"}, httpClient.requests)
 	require.Equal(t, expect, actual)
 }
@@ -133,7 +133,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 	)
 
 	expect := mockException()
-	actual := transformException(logger, store, expect, "123")
+	actual := transformException(logger, store, expect, sourceMapContext{Release: "123"})
 	require.Equal(t, []string{"http://localhost:1234/foo.js"}, httpClient.requests)
 	require.Equal(t, expect, actual)
 }
@@ -200,7 +200,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{"http://bar.com/foo.js", "http://bar.com/foo.js.map"}, httpClient.requests)
 	require.Equal(t, expect, actual)
@@ -301,7 +301,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 			},
 		},
 		Context: payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, expect, actual)
 	require.EqualValues(t, payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"}, actual.Context)
@@ -380,7 +380,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.stats)
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.reads)
@@ -461,7 +461,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.stats)
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.reads)
@@ -538,7 +538,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{}, fileService.stats)
 	require.Equal(t, []string{}, fileService.reads)
@@ -615,7 +615,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.stats)
 	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.reads)
@@ -692,7 +692,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsS
 				},
 			},
 		},
-	}, "123")
+	}, sourceMapContext{Release: "123"})
 
 	require.Equal(t, []string{}, fileService.stats)
 	require.Equal(t, []string{}, fileService.reads)
@@ -737,7 +737,7 @@ func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 		},
 	}
 
-	actual := transformException(logger, store, input, "123")
+	actual := transformException(logger, store, input, sourceMapContext{Release: "123"})
 	require.Equal(t, input, actual)
 }
 
@@ -867,7 +867,7 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 		},
 	}
 
-	actual := transformException(logger, store, input, "123")
+	actual := transformException(logger, store, input, sourceMapContext{Release: "123"})
 	require.Equal(t, input, actual)
 	require.Equal(t, []string{filepath.FromSlash("/foo/bar/baz/qux/folder/file.js.map")}, fileService.stats)
 	require.Empty(t, fileService.reads, "should not read file when stat fails")
@@ -876,36 +876,36 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 	tt := []struct {
 		name              string
-		cache             map[string]*cachedSourceMap
+		cache             map[cacheKey]*cachedSourceMap
 		expectedCacheSize int
 	}{
 		{
 			name: "should remove cached error",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": nil,
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: nil,
 			},
 			expectedCacheSize: 0,
 		},
 		{
 			name: "should not remove from map if no errors",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldNotRemoveFromCache.com__v2": {},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldNotRemoveFromCache.com", release: "v2"}: {},
 			},
 			expectedCacheSize: 1,
 		},
 		{
 			name: "should not remove from map if no errors",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldNotRemoveFromCache.com__v1": {},
-				"http://shouldNotRemoveFromCache.com__v2": {},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldNotRemoveFromCache.com", release: "v1"}: {},
+				{sourceURL: "http://shouldNotRemoveFromCache.com", release: "v2"}: {},
 			},
 			expectedCacheSize: 2,
 		},
 		{
 			name: "should remove only cached errors",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldNotRemoveFromCache.com__v1": nil,
-				"http://shouldNotRemoveFromCache.com__v2": {},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldNotRemoveFromCache.com", release: "v1"}: nil,
+				{sourceURL: "http://shouldNotRemoveFromCache.com", release: "v2"}: {},
 			},
 			expectedCacheSize: 1,
 		},
@@ -939,15 +939,15 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 
 	tt := []struct {
 		name              string
-		cache             map[string]*cachedSourceMap
+		cache             map[cacheKey]*cachedSourceMap
 		timeSource        *mockTimeSource
 		cacheTimeout      time.Duration
 		expectedCacheSize int
 	}{
 		{
 			name: "should clear entry from cache if too old",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: {lastUsed: now},
 			},
 			timeSource:        &mockTimeSource{now: now.Add(6 * time.Minute)},
 			cacheTimeout:      5 * time.Minute,
@@ -955,8 +955,8 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 		{
 			name: "should not clear entry from cache if not too old",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: {lastUsed: now},
 			},
 			timeSource:        &mockTimeSource{now: now.Add(3 * time.Minute)},
 			cacheTimeout:      5 * time.Minute,
@@ -964,9 +964,9 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 		{
 			name: "should clear only old entries from cache",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-6 * time.Minute)},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: {lastUsed: now},
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v2"}: {lastUsed: now.Add(-6 * time.Minute)},
 			},
 			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
@@ -974,9 +974,9 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 		{
 			name: "should not clear multiple entries",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(3 * time.Minute)},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(4 * time.Minute)},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: {lastUsed: now.Add(3 * time.Minute)},
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v2"}: {lastUsed: now.Add(4 * time.Minute)},
 			},
 			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
@@ -984,9 +984,9 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 		{
 			name: "should clear multiple old entries from cache",
-			cache: map[string]*cachedSourceMap{
-				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(-10 * time.Minute)},
-				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-7 * time.Minute)},
+			cache: map[cacheKey]*cachedSourceMap{
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v1"}: {lastUsed: now.Add(-10 * time.Minute)},
+				{sourceURL: "http://shouldRemoveCachedErrors.com", release: "v2"}: {lastUsed: now.Add(-7 * time.Minute)},
 			},
 			timeSource:        &mockTimeSource{now: now},
 			cacheTimeout:      5 * time.Minute,
@@ -1108,4 +1108,159 @@ func newTestFileService() *testFileService {
 		stats:         make([]string, 0),
 		reads:         make([]string, 0),
 	}
+}
+
+// Minimal source maps for a React Native bundle. Both map index.android.bundle
+// line 5, column 6 to a different original source file.
+const (
+	bundleSourceMapA = `{"version":3,"file":"index.android.bundle","sources":["src/a.ts"],"names":[],"mappings":";;;;MACU"}`
+	bundleSourceMapB = `{"version":3,"file":"index.android.bundle","sources":["src/b.ts"],"names":[],"mappings":";;;;MAEoB"}`
+)
+
+func Test_sourceMapsStoreImpl_ReadFromFileSystemWithBundleIDTemplate(t *testing.T) {
+	var (
+		logger      = alloyutil.TestAlloyLogger(t).Slog()
+		httpClient  = &mockHTTPClient{}
+		fileService = newTestFileService()
+	)
+
+	pathA := filepath.FromSlash("/var/sourcemaps/com.example.app-100/index.android.bundle.map")
+	pathB := filepath.FromSlash("/var/sourcemaps/com.example.app-101/index.android.bundle.map")
+	fileService.files = map[string][]byte{
+		pathA: []byte(bundleSourceMapA),
+		pathB: []byte(bundleSourceMapB),
+	}
+
+	store := newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "",
+					Path:               filepath.FromSlash("/var/sourcemaps/{{ .BundleID }}"),
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	// Both builds share the same release and bundle filename, and must only be
+	// told apart by their bundle ID.
+	ctxA := sourceMapContext{Release: "1.0.0", BundleID: "com.example.app-100"}
+	ctxB := sourceMapContext{Release: "1.0.0", BundleID: "com.example.app-101"}
+
+	resolve := func(smCtx sourceMapContext) string {
+		consumer, err := store.GetSourceMap("index.android.bundle", smCtx)
+		require.NoError(t, err)
+		require.NotNil(t, consumer)
+		file, _, _, _, ok := consumer.Source(5, 6)
+		require.True(t, ok)
+		return file
+	}
+
+	require.Equal(t, "src/a.ts", resolve(ctxA))
+	require.Equal(t, "src/b.ts", resolve(ctxB))
+	// Served from cache, must not have been overwritten by build B.
+	require.Equal(t, "src/a.ts", resolve(ctxA))
+
+	require.Equal(t, []string{pathA, pathB}, fileService.reads)
+	require.Empty(t, httpClient.requests)
+}
+
+func Test_sourceMapsStoreImpl_ReadFromRemoteLocationWithBundleIDTemplate(t *testing.T) {
+	var (
+		logger     = alloyutil.TestAlloyLogger(t).Slog()
+		httpClient = &mockHTTPClient{
+			responses: []struct {
+				*http.Response
+				error
+			}{
+				{newResponseFromTestData(t, "foo.js.map"), nil},
+			},
+		}
+		fileService = newTestFileService()
+	)
+
+	store := newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "",
+					Path:               "http://storage.example.com/sourcemaps/{{ .BundleID }}",
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	_, err := store.GetSourceMap("index.android.bundle", sourceMapContext{Release: "1.0.0", BundleID: "com.example.app-100"})
+	require.NoError(t, err)
+	require.Equal(t, []string{"http://storage.example.com/sourcemaps/com.example.app-100/index.android.bundle.map"}, httpClient.requests)
+}
+
+func Test_sourceMapsStoreImpl_BundleIDSanitized(t *testing.T) {
+	var (
+		logger      = alloyutil.TestAlloyLogger(t).Slog()
+		httpClient  = &mockHTTPClient{}
+		fileService = newTestFileService()
+	)
+
+	store := newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "",
+					Path:               filepath.FromSlash("/var/sourcemaps/{{ .BundleID }}"),
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	_, err := store.GetSourceMap("index.android.bundle", sourceMapContext{BundleID: "../../etc"})
+	require.NoError(t, err)
+	require.Equal(t, []string{filepath.FromSlash("/var/sourcemaps/etc/index.android.bundle.map")}, fileService.stats)
+}
+
+func Test_sourceMapsStoreImpl_ReleaseTemplateWithBundleIDSet(t *testing.T) {
+	var (
+		logger      = alloyutil.TestAlloyLogger(t).Slog()
+		httpClient  = &mockHTTPClient{}
+		fileService = newTestFileService()
+	)
+
+	path := filepath.FromSlash("/var/build/1.0.0/main.js.map")
+	fileService.files = map[string][]byte{
+		path: loadTestData(t, "foo.js.map"),
+	}
+
+	store := newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://example.com/",
+					Path:               filepath.FromSlash("/var/build/{{ .Release }}"),
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	// Bundle IDs are free-form, a value that doesn't fit in a path must not
+	// break locations that don't use it.
+	consumer, err := store.GetSourceMap("http://example.com/main.js", sourceMapContext{Release: "1.0.0", BundleID: "my build: 42/rc"})
+	require.NoError(t, err)
+	require.NotNil(t, consumer)
+	require.Equal(t, []string{path}, fileService.reads)
 }
