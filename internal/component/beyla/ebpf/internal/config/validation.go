@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -59,7 +60,7 @@ func (args Metrics) hasNetworkFeature() bool {
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
-		case "application", "application_host", "application_span", "application_service_graph",
+		case "application", "application_red", "application_sizes", "application_host", "application_span", "application_service_graph",
 			"application_process", "application_span_otel", "application_span_sizes", "*", "all":
 			return true
 		}
@@ -79,6 +80,44 @@ func (args Metrics) Validate() error {
 		if !validMetricFeature(feature) {
 			return fmt.Errorf("metrics.features: invalid value %q", feature)
 		}
+	}
+	if slices.Contains(args.Features, "application_sizes") &&
+		!slices.Contains(args.Features, "application_red") &&
+		!slices.Contains(args.Features, "application") &&
+		!slices.Contains(args.Features, "*") && !slices.Contains(args.Features, "all") {
+
+		return fmt.Errorf("metrics.features: application_sizes requires application or application_red in the same features list")
+	}
+	return nil
+}
+
+// Validate validates the name resolution settings. Zero values are omitted so
+// Beyla uses its defaults.
+func (args NameResolver) Validate() error {
+	for _, source := range args.Sources {
+		if !slices.Contains(nameResolverSourceValues, source) {
+			return fmt.Errorf("name_resolver.sources: invalid value %q", source)
+		}
+	}
+	if args.CacheLen < 0 {
+		return fmt.Errorf("name_resolver.cache_len must be greater than 0 when set")
+	}
+	if args.CacheExpiry < 0 {
+		return fmt.Errorf("name_resolver.cache_expiry must be greater than 0 when set")
+	}
+	if args.ECS.RefreshInterval < 0 {
+		return fmt.Errorf("name_resolver.ecs.refresh_interval must be greater than 0 when set")
+	}
+	return nil
+}
+
+// Validate validates the .NET runtime collection settings.
+func (args DotnetRuntimeMetrics) Validate() error {
+	if args.SamplingInterval < 0 {
+		return fmt.Errorf("dotnet_runtime_metrics.sampling_interval must be greater than 0 when set")
+	}
+	if args.Timeout < 0 {
+		return fmt.Errorf("dotnet_runtime_metrics.timeout must be greater than 0 when set")
 	}
 	return nil
 }
@@ -119,6 +158,21 @@ func (args *Arguments) Validate() error {
 
 	if err := args.Traces.Validate(); err != nil {
 		return err
+	}
+	if err := args.NameResolver.Validate(); err != nil {
+		return err
+	}
+	if err := args.DotnetRuntimeMetrics.Validate(); err != nil {
+		return err
+	}
+	if args.EBPF.KafkaConsumerGroupCacheSize < 0 {
+		return fmt.Errorf("ebpf.kafka_consumer_group_cache_size must be greater than 0 when set")
+	}
+	if args.EBPF.KafkaConsumerGroupTTL < 0 {
+		return fmt.Errorf("ebpf.kafka_consumer_group_ttl must be greater than 0 when set")
+	}
+	if v := args.EBPF.GoHTTPClientBufferTimeout; v != nil && *v < 0 {
+		return fmt.Errorf("ebpf.go_http_client_buffer_timeout must be greater than or equal to 0")
 	}
 
 	// If traces block is defined with instrumentations, output section must be defined

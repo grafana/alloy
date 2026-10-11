@@ -95,73 +95,11 @@ services:
     networks:
       - integration-tests
 
-  redis:
-    image: redis:6.2.22-alpine@sha256:c9ab371a96b057d3642be9bd71cb1b3fe97920d345dc949860578bffb3d54460
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
-    networks:
-      - integration-tests
-
-  redis-init:
-    image: redis:6.2.22-alpine@sha256:c9ab371a96b057d3642be9bd71cb1b3fe97920d345dc949860578bffb3d54460
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./tests/redis/init_redis.sh:/init_redis.sh
-    command: sh /init_redis.sh
-    restart: "no"
-    networks:
-      - integration-tests
-
   snmp-simulator:
     image: tandrup/snmpsim:v0.4@sha256:a080b493042d91c4cec9282a83403e334660ed1c2c71e7e3afa920c3f1c42d7e
     container_name: snmpsim
     ports:
       - "161:161/udp"
-    networks:
-      - integration-tests
-
-  mysql:
-    image: mysql:8.4@sha256:563602a18ffd5be220968e8508d84c9dcd80fbffe69e28af51572db29e3285b2
-    container_name: mysql
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: testdb
-    volumes:
-      - ./tests/database-observability-mysql/init_mysql.sh:/docker-entrypoint-initdb.d/init_mysql.sh
-    networks:
-      - integration-tests
-
-  postgres:
-    image: postgres:16@sha256:081f1bc7bd5e143dbb6e487b710bbc27712cdcfaced4c071b8e47349aa1b4171
-    container_name: postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: rootpassword
-      POSTGRES_DB: testdb
-    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
-    networks:
-      - integration-tests
-
-  postgres-init:
-    image: postgres:16@sha256:081f1bc7bd5e143dbb6e487b710bbc27712cdcfaced4c071b8e47349aa1b4171
-    depends_on:
-      - postgres
-    volumes:
-      - ./tests/database-observability-postgres/init_postgres.sh:/init_postgres.sh
-    command: sh /init_postgres.sh
-    restart: "no"
     networks:
       - integration-tests
 

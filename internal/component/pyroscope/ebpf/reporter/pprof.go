@@ -29,8 +29,9 @@ import (
 var vdsoPathName = libpf.Intern(process.VdsoPathName)
 
 type PPROF struct {
-	Raw    []byte
-	Labels labels.Labels
+	Raw     []byte
+	Samples int
+	Labels  labels.Labels
 }
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
@@ -329,8 +330,9 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		builder.Set(model.MetricNameLabel, metric)
 		pyroscope.AddScopeLabels(builder, pyroscope.ScopeNameEBPF)
 		res = append(res, PPROF{
-			Raw:    buf.Bytes(),
-			Labels: builder.Labels(),
+			Raw:     buf.Bytes(),
+			Samples: len(b.Profile.Sample),
+			Labels:  builder.Labels(),
 		})
 	}
 	return res

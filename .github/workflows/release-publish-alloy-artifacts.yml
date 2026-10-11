@@ -65,6 +65,24 @@ jobs:
     with:
       img-name: alloy-boringcrypto
 
+  publish_linux_distroless_container:
+    needs: validate
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-distroless
+
+  publish_linux_boringcrypto_distroless_container:
+    needs: validate
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-boringcrypto-distroless
+
   publish_windows_container:
     needs: validate
     uses: ./.github/workflows/publish-alloy-windows.yml

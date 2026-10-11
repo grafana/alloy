@@ -34,6 +34,7 @@
 ##   images               Builds all (Linux) Docker images.
 ##   images-windows       Builds all (Windows) Docker images.
 ##   alloy-image          Builds alloy Docker image.
+##   alloy-image-distroless Builds distroless alloy Docker image.
 ##   alloy-image-windows  Builds alloy Docker image for Windows.
 ##
 ## Targets for packaging:
@@ -70,6 +71,7 @@
 ##
 ##   USE_CONTAINER        Set to 1 to enable proxying commands to build container
 ##   ALLOY_IMAGE          Image name:tag built by `make alloy-image`
+##   ALLOY_IMAGE_DISTROLESS Image name:tag built by `make alloy-image-distroless`
 ##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
 ##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
 ##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
@@ -91,6 +93,7 @@
 include build-tools/make/*.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_DISTROLESS		?= grafana/alloy:latest-distroless
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
 SERVICE_BINARY       		?= build/alloy-service
@@ -99,7 +102,7 @@ BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
 # OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
 # Collector core version in collector/builder-config.yaml.
-BUILDER_VERSION      		?= v0.158.0
+BUILDER_VERSION      		?= v0.161.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -259,7 +262,7 @@ integration-test-k8s-local-dev:
 .PHONY: integration-test-windows-service
 integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
-		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
+		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 10m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
@@ -341,17 +344,20 @@ endif
 # Targets for building Docker images
 #
 
-DOCKER_FLAGS := --build-arg RELEASE_BUILD=$(RELEASE_BUILD) --build-arg VERSION=$(VERSION)
+DOCKER_FLAGS := --build-arg RELEASE_BUILD=$(RELEASE_BUILD) --build-arg VERSION=$(VERSION) --build-arg GOEXPERIMENT=$(GOEXPERIMENT)
 
 ifneq ($(DOCKER_PLATFORM),)
 DOCKER_FLAGS += --platform=$(DOCKER_PLATFORM)
 endif
 
-.PHONY: images alloy-image
-images: alloy-image
+.PHONY: images alloy-image alloy-image-distroless
+images: alloy-image alloy-image-distroless
 
 alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+
+alloy-image-distroless:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
 
 # Test fixture image used by the k8s integration tests as a Prometheus scrape
 # target. The runner builds this alongside alloy-image so the tests don't have
@@ -361,7 +367,7 @@ prom-gen-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
-images: alloy-image-windows
+images-windows: alloy-image-windows
 
 alloy-image-windows:
 	docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_WINDOWS) -f Dockerfile.windows .

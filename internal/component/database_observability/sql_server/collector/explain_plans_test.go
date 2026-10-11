@@ -164,7 +164,7 @@ func TestExplainPlans_EmitsOnFirstSighting(t *testing.T) {
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 20*time.Millisecond)
 	entries := lokiClient.Received()
-	require.Equal(t, model.LabelSet{"op": OP_EXPLAIN_PLAN_OUTPUT}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_EXPLAIN_PLAN_OUTPUT}, entries[0].Labels)
 	require.Contains(t, entries[0].Line, `database="books_store"`)
 	require.Contains(t, entries[0].Line, `query_hash="0011223344556677"`)
 
@@ -260,6 +260,28 @@ func TestExplainPlans_EmissionGate(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 	lokiClient.Stop()
 	require.Len(t, lokiClient.Received(), 3)
+}
+
+// TestRedactNativeShowPlanXML guards against regressing the unredacted debug
+// log this collector used to emit: the raw Showplan XML from
+// sys.query_store_plan can embed literal predicate values directly in
+// ScalarString attributes (e.g. "[dbo].[Orders].[Total]&gt;(100)"), so the
+// native-plan debug log line must redact those in place before it's ever
+// logged, while preserving everything else in the raw XML.
+func TestRedactNativeShowPlanXML(t *testing.T) {
+	planXML := loadShowPlanFixture(t, "compute_scalar_with_filter")
+	require.Contains(t, string(planXML), `ScalarString="[dbo].[Orders].[Total]&gt;(100)"`,
+		"fixture must still carry the literal this test guards against leaking")
+
+	redacted := redactNativeShowPlanXML(planXML)
+	require.NotContains(t, string(redacted), "100")
+	require.Contains(t, string(redacted), `ScalarString="[dbo].[Orders].[Total]&gt;(?)"`)
+
+	// Structure and non-literal attributes outside the redacted attribute
+	// values must survive untouched - this is a surgical edit, not a
+	// remarshal.
+	require.Contains(t, string(redacted), `PhysicalOp="Table Scan"`)
+	require.Contains(t, string(redacted), `Table="[Orders]"`)
 }
 
 func TestExplainPlans_PrunesStaleKeys(t *testing.T) {

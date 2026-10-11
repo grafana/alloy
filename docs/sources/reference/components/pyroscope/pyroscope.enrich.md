@@ -5,6 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-10-01
 title: pyroscope.enrich
 ---
 
@@ -14,6 +15,8 @@ title: pyroscope.enrich
 
 `pyroscope.enrich` enriches profiles with additional labels from service discovery targets.
 It matches a label from incoming profiles against a label from discovered targets, and copies specified labels from the matched target to the profile.
+
+You can specify multiple `pyroscope.enrich` components by giving them different labels.
 
 ## Usage
 
@@ -29,20 +32,20 @@ pyroscope.enrich "<LABEL>" {
 
 You can use the following arguments with `pyroscope.enrich`:
 
-| Name                   | Type                     | Description                                                                                  | Default | Required |
-| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`           | `list(ProfilesReceiver)` | List of receivers to send enriched profiles to.                                              |         | yes      |
-| `target_match_label`   | `string`                 | The label from discovered targets to match against.                                          |         | yes      |
-| `targets`              | `list(Target)`           | List of targets from a discovery component.                                                  |         | yes      |
-| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, all labels are copied. |         | no       |
-| `profiles_match_label` | `string`                 | The label from incoming profiles to match against discovered targets.                        |         | no       |
+| Name                   | Type                     | Description                                                                                                 | Default | Required |
+| ---------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`           | `list(ProfilesReceiver)` | List of receivers to send enriched profiles to.                                                             |         | yes      |
+| `target_match_label`   | `string`                 | The label from discovered targets to match against.                                                         |         | yes      |
+| `targets`              | `list(map(string))`      | List of targets from a discovery component.                                                                 |         | yes      |
+| `labels_to_copy`       | `list(string)`           | List of labels to copy from discovered targets to profiles. If empty, `pyroscope.enrich` copies all labels. |         | no       |
+| `profiles_match_label` | `string`                 | The label from incoming profiles to match against discovered targets.                                       |         | no       |
 
 If `profiles_match_label` isn't provided, the component uses `target_match_label` for matching profile labels.
 
 ## Blocks
 
 `pyroscope.enrich` doesn't support any blocks.
-Configure this component with arguments.
+You can configure this component with arguments.
 
 ## Exported fields
 
@@ -55,14 +58,15 @@ The following fields are exported and can be referenced by other components:
 ## Component health
 
 `pyroscope.enrich` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`pyroscope.enrich` doesn't expose debug information.
+`pyroscope.enrich` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`pyroscope.enrich` doesn't expose additional metrics.
+`pyroscope.enrich` doesn't expose any component-specific debug metrics.
 
 ## Example
 

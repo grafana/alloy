@@ -1,6 +1,7 @@
 package otelcol
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -11,7 +12,7 @@ import (
 type KafkaAuthenticationArguments struct {
 	Plaintext *KafkaPlaintextArguments `alloy:"plaintext,block,optional"`
 	SASL      *KafkaSASLArguments      `alloy:"sasl,block,optional"`
-	TLS       *TLSClientArguments      `alloy:"tls,block,optional"`
+	TLS       *TLSClientArguments      `alloy:"tls,block,optional"` // Deprecated: no-op, upstream nests TLS under the client config, not under auth. Use the component's top-level tls block instead.
 	Kerberos  *KafkaKerberosArguments  `alloy:"kerberos,block,optional"`
 }
 
@@ -21,14 +22,11 @@ func (args KafkaAuthenticationArguments) Convert() map[string]any {
 
 	if args.Plaintext != nil {
 		conv := args.Plaintext.Convert()
-		auth["plain_text"] = &conv
+		auth["sasl"] = &conv
 	}
 	if args.SASL != nil {
 		conv := args.SASL.Convert()
 		auth["sasl"] = &conv
-	}
-	if args.TLS != nil {
-		auth["tls"] = args.TLS.Convert()
 	}
 	if args.Kerberos != nil {
 		conv := args.Kerberos.Convert()
@@ -38,6 +36,27 @@ func (args KafkaAuthenticationArguments) Convert() map[string]any {
 	return auth
 }
 
+var _ DeprecationLogger = KafkaAuthenticationArguments{}
+
+// LogDeprecations logs a warning for each deprecated authentication setting in use.
+// Call it from the embedding component's own LogDeprecations rather than relying on
+// Go method promotion through embedding, since the "authentication." prefix
+// assumes the caller's schema places this under an `authentication` block.
+func (args KafkaAuthenticationArguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if args.Plaintext != nil {
+		logger.Warn(`authentication.plaintext is deprecated, use authentication.sasl with mechanism set to "PLAIN" instead`)
+	}
+	if args.SASL != nil && args.SASL.Version != 0 {
+		logger.Warn("authentication.sasl.version is deprecated and is a no-op upstream", "version", args.SASL.Version)
+	}
+	if args.TLS != nil {
+		logger.Warn("authentication.tls is deprecated and has no effect; configure the component's top-level tls block instead")
+	}
+}
+
 // KafkaPlaintextArguments configures plaintext authentication against the Kafka
 // broker.
 type KafkaPlaintextArguments struct {
@@ -45,11 +64,13 @@ type KafkaPlaintextArguments struct {
 	Password alloytypes.Secret `alloy:"password,attr"`
 }
 
-// Convert converts args into the upstream type.
+// Convert converts args into the upstream type. Upstream removed direct plaintext
+// authentication after the franz-go migration; SASL with the "PLAIN" mechanism replaces it.
 func (args KafkaPlaintextArguments) Convert() map[string]any {
 	return map[string]any{
-		"username": args.Username,
-		"password": string(args.Password),
+		"username":  args.Username,
+		"password":  string(args.Password),
+		"mechanism": "PLAIN",
 	}
 }
 
@@ -58,7 +79,7 @@ type KafkaSASLArguments struct {
 	Username  string               `alloy:"username,attr"`
 	Password  alloytypes.Secret    `alloy:"password,attr"`
 	Mechanism string               `alloy:"mechanism,attr"`
-	Version   int                  `alloy:"version,attr,optional"`
+	Version   int                  `alloy:"version,attr,optional"` // Deprecated: no-op, upstream removed the SASL handshake version override after the franz-go migration.
 	AWSMSK    KafkaAWSMSKArguments `alloy:"aws_msk,block,optional"`
 }
 
@@ -68,7 +89,6 @@ func (args KafkaSASLArguments) Convert() map[string]any {
 		"username":  args.Username,
 		"password":  string(args.Password),
 		"mechanism": args.Mechanism,
-		"version":   args.Version,
 		"aws_msk":   args.AWSMSK.Convert(),
 	}
 }

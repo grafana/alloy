@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	extauth "go.opentelemetry.io/collector/extension/extensionauth"
@@ -372,4 +373,23 @@ func waitHealthy(ctx context.Context, basicAuthComponent *auth.Auth, timeout tim
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out waiting for the component to be healthy")
 	}
+}
+
+func TestDefaultArguments(t *testing.T) {
+	var args basic.Arguments
+	args.SetToDefault()
+
+	client, err := args.ConvertClient()
+	require.NoError(t, err)
+	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
+	// bump added one: document it, then update these values.
+	require.Equal(t, &basicauthextension.Config{
+		ClientAuth: &basicauthextension.ClientAuthSettings{},
+	}, client)
+
+	server, err := args.ConvertServer()
+	require.NoError(t, err)
+	require.Equal(t, &basicauthextension.Config{
+		Htpasswd: &basicauthextension.HtpasswdSettings{},
+	}, server)
 }

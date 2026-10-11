@@ -79,12 +79,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 // convertImpl returns the concrete upstream config type so it can be reused by
 // both Convert and Validate.
 func (args Arguments) convertImpl() *config.Config {
-	return &config.Config{
-		Spans:      convertMetricInfos(args.Spans),
-		Datapoints: convertMetricInfos(args.Datapoints),
-		Logs:       convertMetricInfos(args.Logs),
-		ErrorMode:  args.ErrorMode,
-	}
+	cfg := signaltometricsconnector.NewFactory().CreateDefaultConfig().(*config.Config)
+	cfg.Spans = convertMetricInfos(args.Spans)
+	cfg.Datapoints = convertMetricInfos(args.Datapoints)
+	cfg.Logs = convertMetricInfos(args.Logs)
+	cfg.ErrorMode = args.ErrorMode
+	return cfg
 }
 
 // Extensions implements connector.Arguments.

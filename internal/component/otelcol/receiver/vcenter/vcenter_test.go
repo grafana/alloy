@@ -107,8 +107,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.host.disk.throughput {
 				enabled = true
 			}
+			vcenter.host.memory.active {
+				enabled = true
+			}
+			vcenter.host.memory.ballooned {
+				enabled = true
+			}
 			vcenter.host.memory.capacity {
 				enabled = false
+			}
+			vcenter.host.memory.granted {
+				enabled = true
 			}
 			vcenter.host.memory.usage {
 				enabled = true
@@ -292,7 +301,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.Enabled)
 	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.AggregationStrategy)
 	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryActive.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryBallooned.Enabled)
 	require.False(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryCapacity.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryGranted.Enabled)
 	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryUsage.Enabled)
 	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryUtilization.Enabled)
 	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketRate.Enabled)

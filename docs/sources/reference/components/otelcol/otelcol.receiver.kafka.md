@@ -135,7 +135,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                             | no       |
 | `authentication` > [`tls`][tls]                  | (Deprecated) Configures TLS for connecting to the Kafka brokers.                           | no       |
-| `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS `key_file`.                                            | no       |
+| `authentication` > `tls` > [`tpm`][tpm]          | (Deprecated) Configures TPM settings for the TLS `key_file`.                               | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |
 | [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state.                | no       |
 | [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                                              | no       |
@@ -145,6 +145,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | [`metadata`][metadata]                           | Configures how to retrieve metadata from Kafka brokers.                                    | no       |
 | `metadata` > [`retry`][retry]                    | Configures how to retry metadata retrieval.                                                | no       |
 | [`metrics`][metrics]                             | Configures how to send metrics to Kafka brokers.                                           | no       |
+| [`partition_processing`][partition_processing]   | Configures optional independent processing of assigned Kafka partitions.                   | no       |
 | [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                                            | no       |
 | [`tls`][tls][]                                   | Configures TLS for connecting to the Kafka brokers.                                        | no       |
 | `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS `key_file`.                                            | no       |
@@ -164,6 +165,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 [autocommit]: #autocommit
 [message_marking]: #message_marking
 [header_extraction]: #header_extraction
+[partition_processing]: #partition_processing
 [debug_metrics]: #debug_metrics
 [output]: #output
 [error_backoff]: #error_backoff
@@ -338,6 +340,21 @@ Setting `after_execution` to `true` and `include_unsuccessful` to `false` can bl
 ### `retry`
 
 {{< docs/shared lookup="reference/components/otelcol-kafka-metadata-retry.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition_processing`
+
+The `partition_processing` block configures optional ordered, independent processing of assigned Kafka partitions.
+
+The following arguments are supported:
+
+| Name                   | Type   | Description                                                                     | Default | Required |
+| ---------------------- | ------ | -------------------------------------------------------------------------------- | ------- | -------- |
+| `independent`          | `bool` | Enables ordered processing by independent partition workers.                    | `false` | no       |
+| `max_buffered_batches` | `int`  | Bounds the number of fetched batches waiting for each partition worker.         | `1`     | no       |
+
+Enabling `independent` lets each assigned partition be processed by its own worker, instead of a single event loop handling all partitions in sequence, which can improve throughput when one partition falls behind or the next consumer is slow.
+
+`independent` requires `autocommit.enable` to be `true`.
 
 ## Exported fields
 

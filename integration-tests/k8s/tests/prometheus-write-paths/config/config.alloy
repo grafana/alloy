@@ -1,0 +1,105 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+// Each write path scrapes prom-gen under its own metric prefix. Mimir's metadata
+// API is keyed by metric name with no label matcher, so prefixes are what let the
+// assertions attribute metadata to a single path.
+
+prometheus.scrape "prw_v1" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+
+  params                    = { "metric-prefix" = ["prw_v1_"] }
+  forward_to                = [prometheus.remote_write.prw_v1.receiver]
+  scrape_classic_histograms = true
+  scrape_native_histograms  = true
+  scrape_interval           = "1s"
+  scrape_timeout            = "500ms"
+  honor_metadata            = true
+}
+
+prometheus.remote_write "prw_v1" {
+  endpoint {
+    url                    = "http://mimir:9009/api/v1/push"
+    send_native_histograms = true
+  }
+
+  external_labels = {
+    alloy_test_name = "prw-v1",
+  }
+}
+
+prometheus.scrape "prw_v2" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+
+  params                    = { "metric-prefix" = ["prw_v2_"] }
+  forward_to                = [prometheus.remote_write.prw_v2.receiver]
+  scrape_classic_histograms = true
+  scrape_native_histograms  = true
+  scrape_interval           = "1s"
+  scrape_timeout            = "500ms"
+  honor_metadata            = true
+}
+
+prometheus.remote_write "prw_v2" {
+  endpoint {
+    url                    = "http://mimir:9009/api/v1/push"
+    protobuf_message       = "io.prometheus.write.v2.Request"
+    send_native_histograms = true
+  }
+
+  external_labels = {
+    alloy_test_name = "prw-v2",
+  }
+}
+
+prometheus.scrape "otlp" {
+  targets = [
+    {"__address__" = "prom-gen:9001"},
+  ]
+
+  params                    = { "metric-prefix" = ["otlp_"] }
+  forward_to                = [otelcol.receiver.prometheus.otlp.receiver]
+  scrape_classic_histograms = true
+  scrape_native_histograms  = true
+  scrape_interval           = "1s"
+  scrape_timeout            = "500ms"
+  honor_metadata            = true
+}
+
+otelcol.receiver.prometheus "otlp" {
+  output {
+    metrics = [otelcol.processor.attributes.otlp.input]
+  }
+}
+
+otelcol.processor.attributes "otlp" {
+  action {
+    key    = "alloy_test_name"
+    value  = "otlp"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.otlp.input]
+  }
+}
+
+otelcol.exporter.otlphttp "otlp" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloyruntime "github.com/grafana/alloy/internal/runtime"
@@ -17,7 +19,7 @@ import (
 )
 
 const (
-	defaultTimeout  = 10 * time.Second
+	defaultTimeout  = 30 * time.Second
 	defaultInterval = 50 * time.Millisecond
 )
 
@@ -36,8 +38,12 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 	}
 
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
-		Logger:       logger,
-		DataPath:     cfg.DataPath,
+		Logger:   logger,
+		DataPath: cfg.DataPath,
+		// Using DefaultRegisterer prevents us from running pipeline tests in
+		// parallel. It is required because prometheus.exporter.self only serves
+		// the default registry.
+		Reg:          prometheus.DefaultRegisterer,
 		MinStability: featuregate.StabilityExperimental,
 		Services:     defaultServices(logger),
 	})

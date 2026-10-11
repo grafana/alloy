@@ -71,6 +71,7 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 | Block                                                      | Description                                                                | Required |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                         | Configures where to send received telemetry data.                          | yes      |
+| [`keepalive`][keepalive]                                   | Configures keepalive settings for the HTTP server.                        | no       |
 | [`cors`][cors]                                             | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics]                           | Configures the metrics that this component generates to monitor its state. | no       |
 | [`hec_metadata_to_otel_attrs`][hec_metadata_to_otel_attrs] | Configures OpenTelemetry attributes from HEC metadata.                     | no       |
@@ -79,6 +80,7 @@ You can use the following blocks with `otelcol.receiver.splunkhec`:
 
 [tls]: #tls
 [tpm]: #tpm
+[keepalive]: #keepalive
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -102,6 +104,12 @@ The following arguments are supported:
 You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.
 Configure the `metrics` and `logs` arguments accordingly to send telemetry data to other components.
+
+### `keepalive`
+
+The `keepalive` block configures HTTP keep-alive settings for the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `cors`
 

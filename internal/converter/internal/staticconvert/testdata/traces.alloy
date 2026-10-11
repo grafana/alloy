@@ -177,6 +177,7 @@ otelcol.processor.tail_sampling "_1_default" {
 		type = "always_sample"
 	}
 	decision_wait = "5s"
+	num_shards    = 1
 
 	output {
 		traces = [otelcol.processor.batch._1_default.input]
