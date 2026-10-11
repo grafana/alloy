@@ -166,10 +166,44 @@ Sourcemaps are then used to transform file and line information from minified co
 When exceptions are sent to the `faro.receiver` component, it can download sourcemaps from the web application.
 You can disable this behavior by setting the `download` argument to `false`.
 
+{{< admonition type="warning" >}}
+By default, `faro.receiver` downloads sourcemaps from any URL that a client includes in the telemetry it sends.
+The request comes from the host that runs {{< param "PRODUCT_NAME" >}}.
+A client that can reach the receiver can use this to make {{< param "PRODUCT_NAME" >}} send requests to any address that the host can reach, including internal services.
+
+If the receiver accepts telemetry from the internet or from other networks that you don't trust, take one or more of the following steps:
+
+* Set `download` to `false`, and provide sourcemaps with [`location` blocks](#location).
+* Set `download_from_origins` to the specific origins that host your sourcemaps, and end each origin with a `/`.
+* Restrict outbound network access from the host that runs {{< param "PRODUCT_NAME" >}}, for example with a network policy or firewall rules, so that it can only reach the destinations it needs.
+{{< /admonition >}}
+
 The `download_from_origins` argument determines which origins a sourcemap may be downloaded from.
-The origin is attached to the URL that a browser is sending telemetry data from.
+The receiver compares the URL of the script file in each stack frame of the telemetry it receives with these origins.
+The client that sends the telemetry sets that URL.
 The default value, `["*"]`, enables downloading sourcemaps from all origins.
 The `*` character indicates a wildcard.
+
+The receiver matches each origin as a prefix of the full URL, and `*` matches any characters, including `/`.
+End each origin with a `/` so that it can't match a longer host name.
+For example, `https://app.example.com/` doesn't match `https://app.example.com.example.net/`, but `https://app.example.com` does.
+Avoid using `*` in the host part of an origin.
+For example, `https://*.example.com/` also matches `https://example.net/x.example.com/app.js`.
+
+The following example only downloads sourcemaps for scripts from `https://app.example.com`:
+
+```alloy
+faro.receiver "default" {
+    sourcemaps {
+        download_from_origins = ["https://app.example.com/"]
+    }
+
+    output {
+        logs   = [loki.write.default.receiver]
+        traces = [otelcol.exporter.otlphttp.traces.input]
+    }
+}
+```
 
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.
