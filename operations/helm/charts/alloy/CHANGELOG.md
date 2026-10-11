@@ -10,6 +10,17 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `alloy.resizePolicy` and `configReloader.resizePolicy` to configure in-place resource resize behavior for each container. (@younsl)
+
+1.13.1 (2026-09-28)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.20.1 (@kgeckhart)
+
 1.13.0 (2026-09-25)
 ----------
 
