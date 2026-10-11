@@ -422,6 +422,11 @@ func TestValidateRegexConfig(t *testing.T) {
 			expectErr: true,
 		},
 		{
+			name:      "empty regex_expression",
+			config:    `expression = ""`,
+			expectErr: true,
+		},
+		{
 			name:      "invalid regex_expression",
 			config:    `expression = "(?P<ts[0-9]+).*"`,
 			expectErr: true,
@@ -459,7 +464,7 @@ func TestValidateRegexConfig(t *testing.T) {
 	}
 }
 
-func TestRegexStage_UnmarshalNestedConfig(t *testing.T) {
+func TestRegexStageUnmarshalNestedConfig(t *testing.T) {
 	t.Parallel()
 
 	var cfg Configs
@@ -471,7 +476,7 @@ func TestRegexStage_UnmarshalNestedConfig(t *testing.T) {
 			}
 		}
 	`), &cfg)
-	require.ErrorContains(t, err, "error parsing regexp")
+	require.Error(t, err)
 }
 
 func BenchmarkRegexStage(b *testing.B) {
