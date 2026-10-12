@@ -28,6 +28,11 @@ linters:
               desc: Use github.com/go-kit/log instead of github.com/go-kit/kit/log
             - pkg: golang.org/x/sync/errgroup
               desc: Use github.com/oklog/run instead of golang.org/x/sync/errgroup
+    govet:
+      disable:
+        # Reports generic call sites it can't rewrite yet ("type parameter
+        # inference is not yet supported"), which we can't fix on our side.
+        - inline
     revive:
       rules:
         - name: package-comments
