@@ -88,7 +88,7 @@ services:
 
   prom-gen:
     build:
-      dockerfile: ./integration-tests/docker/configs/prom-gen/Dockerfile
+      dockerfile: ./integration-tests/k8s/fixtures/prom-gen/Dockerfile
       context: ../../
     ports:
       - "9001:9001"
