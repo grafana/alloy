@@ -13,7 +13,7 @@ It takes the same arguments as the [`rule` block][prometheus.relabel] used elsew
 Two further constraints are specific to a `database_instance` block:
 
 - **`target_label` must be a literal label name**: {{< param "PRODUCT_NAME" >}} checks it against the reserved labels when it loads the configuration, so it can't contain a capture group reference.
-- **`hashmod` requires `source_labels`**: hashing the empty value gives every database the same result.
+- **`hashmod` requires `source_labels`, and can't target `instance`**: hashing the empty value gives every database the same result, and hashing into `instance` buckets several databases onto one value even when the source is present.
 
 {{< admonition type="caution" >}}
 A relabeling rule that computes an empty value *removes* its target label instead of setting it, and the default `replacement` of `"$1"` computes an empty value when a rule has no `source_labels`.
@@ -22,6 +22,7 @@ Always set `replacement` alongside a `target_label`.
 
 {{< param "PRODUCT_NAME" >}} can only reject such a rule where the outcome is certain.
 A rule that reads `source_labels` depends on the labels present at runtime, so a missing or misspelled source label still removes the target label, except for the reserved labels and `instance`, which keep their previous value.
+Only removal is prevented: a rule that computes a *non-empty* value still overwrites those labels, which is why `hashmod` can't target `instance` at all.
 {{< /admonition >}}
 
 You can use the `hashmod`, `labeldrop`, `lowercase`, `replace`, and `uppercase` actions.

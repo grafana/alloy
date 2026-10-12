@@ -130,6 +130,17 @@ func ValidateRelabelRules(rules []*relabel.Config) error {
 			if slices.Contains(ReservedLabels, r.TargetLabel) {
 				return fmt.Errorf("rule %d: target_label %q is reserved by database_observability and can't be overwritten", i+1, r.TargetLabel)
 			}
+
+			// hashmod maps its input onto `modulus` buckets, so writing it to
+			// the label that identifies the database destroys that identity:
+			// several databases land in the same bucket by design, and a source
+			// label that's absent at runtime puts every database in one bucket,
+			// because they all hash the empty string. ApplyRules can't catch
+			// that, since the value hashmod writes is never empty.
+			if r.Action == relabel.HashMod && r.TargetLabel == InstanceLabel {
+				return fmt.Errorf("rule %d: hashmod can't write to target_label %q, because it maps several databases onto the same value: metrics and logs are correlated on instance", i+1, r.TargetLabel)
+			}
+
 			if err := checkComputedValue(i, r); err != nil {
 				return err
 			}

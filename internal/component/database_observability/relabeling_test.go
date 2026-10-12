@@ -145,12 +145,13 @@ func protect(lb relabel.LabelBuilder) relabel.LabelBuilder {
 	return protectedLabelBuilder{inner: lb, protected: labelsProtectedFromRemoval()}
 }
 
-// staticRule builds a rule with no source_labels, the form a static label uses.
-func staticRule(t *testing.T, action relabel.Action, targetLabel, replacement string) *relabel.Config {
+// staticRule builds a replace rule with no source_labels, the form a static
+// label uses.
+func staticRule(t *testing.T, targetLabel, replacement string) *relabel.Config {
 	t.Helper()
 
 	r := relabel.DefaultRelabelConfig
-	r.Action = action
+	r.Action = relabel.Replace
 	r.TargetLabel = targetLabel
 	r.Replacement = replacement
 
@@ -169,21 +170,21 @@ func Test_ValidateRelabelRules_WritesAValue(t *testing.T) {
 		{
 			// The documented idiom for a static label.
 			name: "literal replacement",
-			rule: staticRule(t, relabel.Replace, "environment", "production"),
+			rule: staticRule(t, "environment", "production"),
 		},
 		{
 			// A capture group reference doesn't imply an empty expansion: the
 			// literal text around it survives.
 			name: "literal text around a capture group",
-			rule: staticRule(t, relabel.Replace, "environment", "db-$1"),
+			rule: staticRule(t, "environment", "db-$1"),
 		},
 		{
 			name: "escaped dollar sign expands to a literal dollar",
-			rule: staticRule(t, relabel.Replace, "cost_centre", "$$"),
+			rule: staticRule(t, "cost_centre", "$$"),
 		},
 		{
 			name: "escaped dollar sign with trailing text",
-			rule: staticRule(t, relabel.Replace, "cost_centre", "$$USD"),
+			rule: staticRule(t, "cost_centre", "$$USD"),
 		},
 		{
 			// The default replacement, which is the footgun this check closes.
@@ -193,12 +194,12 @@ func Test_ValidateRelabelRules_WritesAValue(t *testing.T) {
 		},
 		{
 			name:      "empty replacement removes the label",
-			rule:      staticRule(t, relabel.Replace, "environment", ""),
+			rule:      staticRule(t, "environment", ""),
 			expectErr: `rule 1: replacement "" expands to an empty value, which removes target_label "environment"`,
 		},
 		{
 			name:      "unmatched capture group removes the label",
-			rule:      staticRule(t, relabel.Replace, "environment", "$2"),
+			rule:      staticRule(t, "environment", "$2"),
 			expectErr: `rule 1: replacement "$2" expands to an empty value, which removes target_label "environment"`,
 		},
 		{
@@ -219,9 +220,11 @@ func Test_ValidateRelabelRules_WritesAValue(t *testing.T) {
 			expectErr: `rule 1: hashmod without source_labels always computes the same value, so every database would get the same target_label "shard"`,
 		},
 		{
+			// Rejected by the hashmod/instance check rather than the
+			// empty-value one, since hashmod can never write to instance.
 			name:      "hashmod into instance would collapse every database",
 			rule:      hashModRule(t, "instance", 10),
-			expectErr: `every database would get the same target_label "instance"`,
+			expectErr: `rule 1: hashmod can't write to target_label "instance"`,
 		},
 		{
 			// Protects `instance` from the same mistakes.
@@ -254,6 +257,33 @@ func Test_ValidateRelabelRules_WritesAValue(t *testing.T) {
 		r := relabel.DefaultRelabelConfig
 		r.SourceLabels = []string{"typpo"}
 		r.TargetLabel = "instance"
+
+		require.NoError(t, ValidateRelabelRules([]*relabel.Config{&r}))
+	})
+
+	// hashmod is the exception: it writes a non-empty value, so no runtime
+	// guard can stop it, and a source label that's absent at runtime makes
+	// every database hash the empty string into the same bucket. It's rejected
+	// whether or not source_labels is set.
+	t.Run("hashmod into instance is rejected even with source_labels", func(t *testing.T) {
+		r := relabel.DefaultRelabelConfig
+		r.Action = relabel.HashMod
+		r.SourceLabels = []string{"typpo"}
+		r.TargetLabel = "instance"
+		r.Modulus = 10
+
+		require.ErrorContains(t,
+			ValidateRelabelRules([]*relabel.Config{&r}),
+			`rule 1: hashmod can't write to target_label "instance"`,
+		)
+	})
+
+	t.Run("hashmod into another label with source_labels is allowed", func(t *testing.T) {
+		r := relabel.DefaultRelabelConfig
+		r.Action = relabel.HashMod
+		r.SourceLabels = []string{"server_id"}
+		r.TargetLabel = "shard"
+		r.Modulus = 10
 
 		require.NoError(t, ValidateRelabelRules([]*relabel.Config{&r}))
 	})
@@ -910,17 +940,17 @@ func Test_StaticInstanceLabel(t *testing.T) {
 		},
 		{
 			name:  "a rule targeting another label is ignored",
-			rules: []*relabel.Config{staticRule(t, relabel.Replace, "environment", "production")},
+			rules: []*relabel.Config{staticRule(t, "environment", "production")},
 		},
 		{
 			name:      "a static replace into instance is known",
-			rules:     []*relabel.Config{staticRule(t, relabel.Replace, "instance", "orders_db")},
+			rules:     []*relabel.Config{staticRule(t, "instance", "orders_db")},
 			wantValue: "orders_db",
 			wantKnown: true,
 		},
 		{
 			name:  "a replacement referencing a capture group isn't known",
-			rules: []*relabel.Config{staticRule(t, relabel.Replace, "instance", "db-$1")},
+			rules: []*relabel.Config{staticRule(t, "instance", "db-$1")},
 		},
 		{
 			name:  "a rule reading a source label isn't known",
@@ -929,15 +959,15 @@ func Test_StaticInstanceLabel(t *testing.T) {
 		{
 			name: "a later dynamic rule makes the value unknown again",
 			rules: []*relabel.Config{
-				staticRule(t, relabel.Replace, "instance", "orders_db"),
+				staticRule(t, "instance", "orders_db"),
 				testRule(t, relabel.Replace, "instance", ""),
 			},
 		},
 		{
 			name: "the last static rule wins",
 			rules: []*relabel.Config{
-				staticRule(t, relabel.Replace, "instance", "first"),
-				staticRule(t, relabel.Replace, "instance", "second"),
+				staticRule(t, "instance", "first"),
+				staticRule(t, "instance", "second"),
 			},
 			wantValue: "second",
 			wantKnown: true,
