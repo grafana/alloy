@@ -45,11 +45,11 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100,
-			MaxIdleConnsPerHost:  0,
+			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
+			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000,
-			DisableKeepAlives:    false,
+			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
+			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              configoptional.None[confighttp.CookiesConfig](),
@@ -133,11 +133,11 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100,
-			MaxIdleConnsPerHost:  0,
+			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
+			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000,
-			DisableKeepAlives:    false,
+			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
+			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			ForceAttemptHTTP2:    true,

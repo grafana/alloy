@@ -180,11 +180,9 @@ func (args *Arguments) Validate() error {
 // DebugMetricsConfig implements receiver.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	// Underlying receiver doesn't support debug metrics.
-	// Return defaults (see: DebugMetricsArguments.SetToDefault)
-	return otelcolCfg.DebugMetricsArguments{
-		DisableHighCardinalityMetrics: true,
-		Level:                         otelcolCfg.LevelDetailed,
-	}
+	cfg := otelcolCfg.DebugMetricsArguments{}
+	cfg.SetToDefault()
+	return cfg
 }
 
 // Exporters implements receiver.Arguments.
