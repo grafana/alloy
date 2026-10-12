@@ -15,9 +15,9 @@ The {{< param "OTEL_ENGINE" >}} is an OpenTelemetry Collector distribution embed
 It runs standard OpenTelemetry Collector YAML configuration without translating it to {{< param "PRODUCT_NAME" >}} syntax.
 
 You can run it with the CLI, the OpenTelemetry Collector Helm chart, or a service installation.
+To run a {{< param "DEFAULT_ENGINE" >}} pipeline inside the {{< param "OTEL_ENGINE" >}}, add the {{< param "PRODUCT_NAME" >}} Engine extension to any of these.
 You can also build your own binary with the OpenTelemetry Collector Builder.
 
-To run a {{< param "DEFAULT_ENGINE" >}} pipeline inside the {{< param "OTEL_ENGINE" >}}, add the {{< param "PRODUCT_NAME" >}} Engine extension to any of these.
 
 To learn when to use each engine, refer to [OpenTelemetry in {{< param "PRODUCT_NAME" >}}][OTelAlloy].
 
