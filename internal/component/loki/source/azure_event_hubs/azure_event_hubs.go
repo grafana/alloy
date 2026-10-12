@@ -130,11 +130,22 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	cfg, err := newArgs.Convert()
 	if err != nil {
 		return err
+	}
+
+	if c.target != nil {
+		if err := c.target.Stop(); err != nil {
+			c.opts.Logger.Error("error while stopping azure_event_hubs target", "err", err)
+		}
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
