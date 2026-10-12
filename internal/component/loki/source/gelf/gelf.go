@@ -97,11 +97,15 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	if c.target != nil {
 		c.target.Stop()
 	}
-
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	var rcs []*relabel.Config
 	if len(newArgs.RelabelRules) > 0 {
