@@ -64,6 +64,5 @@ type DebugMetricsArguments struct {
 func (args *DebugMetricsArguments) SetToDefault() {
 	*args = DebugMetricsArguments{
 		DisableHighCardinalityMetrics: true,
-		Level:                         LevelDetailed,
 	}
 }
