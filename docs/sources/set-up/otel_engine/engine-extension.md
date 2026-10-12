@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/engine-extension/
 description: Learn how to run a Default Engine pipeline inside the Alloy OpenTelemetry Engine with the Grafana Alloy Engine extension
 menuTitle: Alloy Engine extension
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Run the Grafana Alloy Engine extension
 weight: 200
 ---
