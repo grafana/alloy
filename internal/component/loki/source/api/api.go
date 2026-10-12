@@ -117,10 +117,14 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
-
 	c.serverMut.Lock()
 	defer c.serverMut.Unlock()
+
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.server.NeedsRestart(newArgs.Server) {
 		if c.server != nil {
