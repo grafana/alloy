@@ -237,6 +237,7 @@ The following components, grouped by namespace, _export_ Loki `LogsReceiver`.
 <!-- START GENERATED SECTION: EXPORTERS OF Loki `LogsReceiver` -->
 
 {{< collapse title="database_observability" >}}
+- [`database_observability.mysql`](../components/database_observability/database_observability.mysql)
 - [`database_observability.postgres`](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
 

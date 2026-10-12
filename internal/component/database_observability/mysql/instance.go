@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -66,6 +67,11 @@ type dbInstance struct {
 	healthErr         *atomic.String
 	exporterCollector prometheus.Collector
 
+	// logsReceiver is the instance's internal logs receiver. The component's
+	// receiver pump forwards entries from the database's exported receiver
+	// into it, and the instance's logs collector drains it while running.
+	logsReceiver loki.LogsReceiver
+
 	// exportedTargets holds the relabeled targets of this instance. It is set
 	// once a connection is established and server info is known (before
 	// collectors start), since the relabeling rules need the server_id. An
@@ -85,11 +91,12 @@ func newDBInstance(opts component.Options, cfg databaseConfig) (*dbInstance, err
 	}
 
 	return &dbInstance{
-		cfg:         cfg,
-		instanceKey: key,
-		baseTarget:  baseTarget,
-		registry:    prometheus.NewRegistry(),
-		healthErr:   atomic.NewString(""),
+		cfg:          cfg,
+		instanceKey:  key,
+		baseTarget:   baseTarget,
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		logsReceiver: loki.NewLogsReceiver(),
 	}, nil
 }
 

@@ -12,6 +12,7 @@ labels:
 
 `database_observability.mysql` connects to a MySQL database and collects observability data from the `performance_schema` and `information_schema`.
 The component collects query details, schema information, explain plans, query samples, and lock information.
+It can also parse a MySQL server's error, slow query, and general query logs into structured log entries.
 It forwards this data as log entries to Loki receivers and exports targets for Prometheus scraping.
 
 ## Usage
@@ -51,6 +52,16 @@ The following collectors are configurable:
 | `table_stats`     | Collect table-level index usage statistics.                  | no                 |
 | `index_stats`     | Collect per-index usage statistics.                          | no                 |
 
+## Exports
+
+The following fields are exported and can be referenced by other components:
+
+| Name             | Type                 | Description                                                            |
+| ---------------- | -------------------- | ------------------------------------------------------------------------ |
+| `logs_receiver`  | `LogsReceiver`       | Receiver for MySQL server logs (error, slow query, and general query logs). Exported in the single-DSN form only. |
+| `logs_receivers` | `map(LogsReceiver)`  | One logs receiver per [`database_instance`][database_instance] block, keyed by block label. Empty in the single-DSN form. |
+| `targets`        | `list(map(string))`  | Targets that can be used to collect metrics from the component.        |
+
 ## Blocks
 
 You can use the following blocks with `database_observability.mysql`:
@@ -74,6 +85,7 @@ You can use the following blocks with `database_observability.mysql`:
 | [`locks`][locks]                                 | Configure the locks collector.                    | no       |
 | [`query_samples`][query_samples]                 | Configure the query samples collector.            | no       |
 | [`health_check`][health_check]                   | Configure the health check collector.             | no       |
+| [`logs`][logs]                                   | Configure the server-log collector.               | no       |
 | [`prometheus_exporter`][prometheus_exporter]     | Configure the embedded mysqld_exporter.           | no       |
 
 [cloud_provider]: #cloud_provider
@@ -90,6 +102,7 @@ You can use the following blocks with `database_observability.mysql`:
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
+[logs]: #logs
 [prometheus_exporter]: #prometheus_exporter
 
 {{< /docs/alloy-config >}}
@@ -265,6 +278,24 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`         | `duration` | How frequently to run health checks.                                   | `"1h"`  | no       |
 
+### `logs`
+
+The `logs` block configures the server-log collector, which parses lines forwarded to the `logs_receiver`/`logs_receivers` export and turns recognized ones into structured Loki entries.
+
+| Name            | Type           | Description                                            | Default | Required |
+| ---------------- | -------------- | ------------------------------------------------------- | ------- | -------- |
+| `exclude_users`  | `list(string)` | A list of users to exclude from server-log processing.  |         | no       |
+
+The collector is always enabled and recognizes three MySQL log files, auto-detected by line shape: the error log, the slow query log, and the general query log. Wire each log file to the same `logs_receiver`/`logs_receivers` export, for example with one `loki.source.file` block per file.
+
+It supports:
+
+* **Error log** (MySQL 8.0+ structured text format only; the JSON sink and pre-8.0 legacy format aren't supported): connection failures (`aborted_connection`, `access_denied`), replication errors (`replication_io_error`, `replication_sql_error`), and server lifecycle (`server_startup`, `server_shutdown`). Requires `log_error_verbosity` of at least `2`, which is the MySQL default.
+* **Slow query log**: one entry per slow query, with a statement digest computed server-side using `STATEMENT_DIGEST()`. The raw SQL text is never captured or emitted, only the digest, which matches `performance_schema.events_statements_summary_by_digest.DIGEST` for the same statement. Requires `log_output` to include `FILE` so the slow log is written to a file `loki.source.file` can tail.
+* **General query log**: only the connection-lifecycle commands `Connect`, `Quit`, `Change user`, and `Init DB`. `Query`, `Prepare`, and `Execute` commands are intentionally not processed: they're extremely high-volume and query-level visibility is already covered by the `query_samples` collector. Requires `log_output` to include `FILE`.
+
+The client host or IP address is never captured in any emitted field.
+
 ### `prometheus_exporter`
 
 The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
@@ -368,6 +399,7 @@ Replace the following:
 `database_observability.mysql` has exports that can be consumed by the following components:
 
 - Components that consume [Targets](../../../compatibility/#targets-consumers)
+- Components that consume [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-consumers)
 
 {{< admonition type="note" >}}
 Connecting some components may not be sensible or components may require further configuration to make the connection work correctly.
