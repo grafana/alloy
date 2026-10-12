@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/custom-builds/
 description: Learn how to build a customized Grafana Alloy binary with the OpenTelemetry Collector Builder
 menuTitle: Custom builds
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Build a custom Grafana Alloy binary with the OpenTelemetry Collector Builder (OCB)
 weight: 500
 ---
