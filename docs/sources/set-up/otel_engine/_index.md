@@ -4,7 +4,7 @@ aliases:
   - ../opentelemetry/get-started/ # /docs/alloy/latest/opentelemetry/get-started/
 description: Learn how to run the Alloy OpenTelemetry Engine with the CLI, the OpenTelemetry Collector Helm chart, a service installation, or a custom build
 menuTitle: OpenTelemetry Engine
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: The Alloy OpenTelemetry Engine
 weight: 390
 ---
