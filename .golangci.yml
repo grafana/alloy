@@ -63,6 +63,7 @@ linters:
           - goconst
         path: (.+)_test\.go
       # FIXME: migrate x/net/http2 transports to http.Transport.Protocols/HTTP2.
+      # https://github.com/grafana/alloy/issues/7364
       - linters:
           - staticcheck
         text: 'SA1019: .*golang\.org/x/net/http2'
