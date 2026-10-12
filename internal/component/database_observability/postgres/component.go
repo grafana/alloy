@@ -739,6 +739,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	// Build the new instances before touching any state, so that a failed
 	// rebuild returns an error while the previous instances keep running.
 	owned := c.ownedDatabases(newArgs.databaseConfigs(), newArgs.Clustering.Enabled)
@@ -748,7 +754,6 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.args = newArgs
-	c.fanout.UpdateChildren(c.args.ForwardTo)
 	// Every configured database gets a pump, owned or not: non-owned
 	// databases still export a receiver that discards entries, so upstream
 	// components never block on a node that doesn't collect from them.
