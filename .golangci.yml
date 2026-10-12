@@ -67,10 +67,6 @@ linters:
       - linters:
           - staticcheck
         text: 'SA1019: .*golang\.org/x/net/http2'
-      # FIXME: migrate to confighttp Keepalive before OTel removes the deprecated fields.
-      - linters:
-          - staticcheck
-        text: 'SA1019: .*go\.opentelemetry\.io/collector/config/confighttp'
     paths:
       - component/pyroscope/scrape/internal/fastdelta
       - component/pyroscope/scrape/internal/pproflite
