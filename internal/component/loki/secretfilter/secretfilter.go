@@ -473,17 +473,21 @@ func withLabel(entry loki.Entry, name, value string) loki.Entry {
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	detector, err := newDetectorFromArgs(newArgs)
 	if err != nil {
 		return fmt.Errorf("failed to create gitleaks detector: %w", err)
 	}
 
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
 	c.args = newArgs
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
 	c.detector = detector
 	if newArgs.RedactPercent >= 1 && newArgs.RedactPercent <= 100 {
 		c.redactPercent = newArgs.RedactPercent
