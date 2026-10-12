@@ -1,0 +1,9 @@
+# ClusterRole rules list rendered when rbac.rules is empty but rbac.clusterRules is not
+# (regression test for https://github.com/grafana/alloy/issues/7327)
+rbac:
+  create: true
+  rules: []
+  clusterRules:
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["get", "list", "watch"]
