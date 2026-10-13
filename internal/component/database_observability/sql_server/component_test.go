@@ -18,6 +18,7 @@ import (
 
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/sql_server/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -31,7 +32,7 @@ func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
 		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
-		entryHandler := addLokiLabels(handler, "some-instance-key", "some-server-id-hash")
+		entryHandler := addLokiLabels(handler, "some-instance-key", "some-server-id-hash", nil)
 
 		go func() {
 			ts := time.Now().UnixNano()
@@ -55,6 +56,50 @@ func Test_addLokiLabels(t *testing.T) {
 			"engine":    model.LabelValue(collector.EngineName),
 		}, handler.Received()[0].Labels)
 		assert.Equal(t, "some-message", handler.Received()[0].Line)
+	})
+
+	t.Run("per-instance rules run after the required labels", func(t *testing.T) {
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+
+		staticRule := relabel.DefaultRelabelConfig
+		staticRule.TargetLabel = "environment"
+		staticRule.Replacement = "production"
+
+		// Derives a label from server_id, which addLokiLabels sets, to prove
+		// the rules see the component's own labels.
+		var shortIDRegex relabel.Regexp
+		require.NoError(t, shortIDRegex.UnmarshalText([]byte("(.{4}).*")))
+
+		derivedRule := relabel.DefaultRelabelConfig
+		derivedRule.SourceLabels = []string{"server_id"}
+		derivedRule.Regex = shortIDRegex
+		derivedRule.TargetLabel = "short_id"
+		derivedRule.Replacement = "$1"
+
+		entryHandler := addLokiLabels(handler, "some-instance-key", "abcdefgh", []*relabel.Config{&staticRule, &derivedRule})
+
+		go func() {
+			entryHandler.Chan() <- loki.Entry{
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "some-message",
+				},
+			}
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		assert.Equal(t, model.LabelSet{
+			"job":         database_observability.JobName,
+			"instance":    model.LabelValue("some-instance-key"),
+			"server_id":   model.LabelValue("abcdefgh"),
+			"engine":      model.LabelValue(collector.EngineName),
+			"environment": model.LabelValue("production"),
+			"short_id":    model.LabelValue("abcd"),
+		}, handler.Received()[0].Labels)
 	})
 }
 
@@ -656,6 +701,102 @@ func TestValidateDatabaseInstance(t *testing.T) {
 		}
 		require.ErrorContains(t, args.Validate(), "must be a valid identifier")
 	})
+
+	t.Run("parse relabel rules", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@host-one:1433?database=db1"
+
+			rule {
+				target_label = "environment"
+				replacement  = "production"
+			}
+			rule {
+				source_labels = ["server_id"]
+				regex         = "(.{8}).*"
+				target_label  = "short_id"
+				replacement   = "$1"
+			}
+		}
+		database_instance "two" {
+			data_source_name = "sqlserver://user:pass@host-two:1433?database=db2"
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NoError(t, args.Validate())
+
+		require.Len(t, args.Databases[0].Rules, 2)
+		assert.Equal(t, "environment", args.Databases[0].Rules[0].TargetLabel)
+		assert.Equal(t, "production", args.Databases[0].Rules[0].Replacement)
+		// The defaults of a relabel rule are applied per block.
+		assert.Equal(t, relabel.Replace, args.Databases[0].Rules[0].Action)
+		assert.Equal(t, "(.*)", args.Databases[0].Rules[0].Regex.String())
+
+		assert.Equal(t, []string{"server_id"}, args.Databases[0].Rules[1].SourceLabels)
+		assert.Equal(t, "(.{8}).*", args.Databases[0].Rules[1].Regex.String())
+
+		assert.Empty(t, args.Databases[1].Rules)
+
+		// The rules reach the per-instance config that drives both paths.
+		cfgs := args.databaseConfigs()
+		require.Len(t, cfgs, 2)
+		assert.Len(t, cfgs[0].rules, 2)
+		assert.Empty(t, cfgs[1].rules)
+	})
+
+	t.Run("a rule must not overwrite a reserved label", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@host-one:1433?database=db1"
+
+			rule {
+				target_label = "server_id"
+				replacement  = "mine"
+			}
+		}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "one": rule 1: target_label "server_id" is reserved`)
+	})
+
+	t.Run("a rule must not use a filtering action", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@host-one:1433?database=db1"
+
+			rule {
+				action        = "drop"
+				source_labels = ["op"]
+				regex         = "query_sample"
+			}
+		}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "one": rule 1: action "drop" isn't supported`)
+	})
+
+	t.Run("a labeldrop rule must not remove a reserved label", func(t *testing.T) {
+		cfg := `
+		forward_to = []
+		database_instance "one" {
+			data_source_name = "sqlserver://user:pass@host-one:1433?database=db1"
+
+			rule {
+				action = "labeldrop"
+				regex  = "server_.*"
+			}
+		}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "one": rule 1: labeldrop regex "server_.*" matches reserved label "server_id"`)
+	})
 }
 
 func TestInstanceKey(t *testing.T) {
@@ -807,6 +948,67 @@ func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
 		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
 			AddRow(serverName, "machine", "16.0"))
 	return db
+}
+
+// TestSqlServer_PerInstanceRules_Targets checks that the rules of a
+// database_instance block are applied to that instance's exported target only,
+// and that they run after the component's own relabeling rules.
+func TestSqlServer_PerInstanceRules_Targets(t *testing.T) {
+	envRule := relabel.DefaultRelabelConfig
+	envRule.TargetLabel = "environment"
+	envRule.Replacement = "production"
+
+	var shortIDRegex relabel.Regexp
+	require.NoError(t, shortIDRegex.UnmarshalText([]byte("(.{8}).*")))
+
+	// Derived from server_id, which GetRelabelingRules sets.
+	shortIDRule := relabel.DefaultRelabelConfig
+	shortIDRule.SourceLabels = []string{"server_id"}
+	shortIDRule.Regex = shortIDRegex
+	shortIDRule.TargetLabel = "short_id"
+	shortIDRule.Replacement = "$1"
+
+	stagingRule := relabel.DefaultRelabelConfig
+	stagingRule.TargetLabel = "environment"
+	stagingRule.Replacement = "staging"
+
+	args := clusteringTestArgs()
+	args.Clustering.Enabled = false
+	args.Databases[0].Rules = []*relabel.Config{&envRule, &shortIDRule}
+	args.Databases[1].Rules = []*relabel.Config{&stagingRule}
+	require.NoError(t, args.Validate())
+
+	var gotExports cmp.Exports
+	dbA := clusteringTestMockDB(t, "system-a")
+	dbB := clusteringTestMockDB(t, "system-b")
+
+	_, err := newComponent(clusteringTestOptions(t, &fakeCluster{ready: true}, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "database=db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	envA, _ := exported.Targets[0].Get("environment")
+	assert.Equal(t, "production", envA)
+
+	// short_id is derived from server_id, so it can only be set if the
+	// per-instance rules ran after the component's own.
+	serverIDA, _ := exported.Targets[0].Get("server_id")
+	require.Len(t, serverIDA, 64, "server_id should be a sha256 hex digest")
+	shortIDA, _ := exported.Targets[0].Get("short_id")
+	assert.Equal(t, serverIDA[:8], shortIDA)
+
+	// The second instance has its own rules, and not those of the first.
+	envB, _ := exported.Targets[1].Get("environment")
+	assert.Equal(t, "staging", envB)
+	_, hasShortIDB := exported.Targets[1].Get("short_id")
+	assert.False(t, hasShortIDB, "short_id should only be set on the instance whose rule sets it")
 }
 
 func TestSqlServer_Clustering_DistributesDatabases(t *testing.T) {
