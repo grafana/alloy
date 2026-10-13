@@ -83,6 +83,91 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              pipeline:
+                description: Pipeline runs on every collected log line before it
+                  is forwarded.
+                properties:
+                  stages:
+                    description: Stages to run on each log line, in order.
+                    items:
+                      description: PipelineStage is a single processing stage. Exactly
+                        one field must be set.
+                      properties:
+                        drop:
+                          description: Drop discards log lines matching the configured
+                            source, value or expression.
+                          properties:
+                            dropCounterReason:
+                              description: DropCounterReason is the reason label on
+                                the dropped lines counter. Defaults to "drop_stage".
+                              type: string
+                            expression:
+                              description: Expression drops the line when the RE2
+                                regular expression matches.
+                              type: string
+                            separator:
+                              description: Separator joins multiple source values.
+                                Defaults to ";".
+                              type: string
+                            source:
+                              description: Source is a comma-separated list of extracted
+                                keys to match on. When empty, the log line is matched.
+                              type: string
+                            value:
+                              description: Value drops the line when the joined source
+                                values equal it exactly.
+                              type: string
+                          type: object
+                        labels:
+                          description: Labels promotes keys from the extracted map
+                            to labels.
+                          properties:
+                            values:
+                              additionalProperties:
+                                type: string
+                              description: Values maps label names to extracted keys.
+                                An empty value uses the label name as the key.
+                              type: object
+                          required:
+                          - values
+                          type: object
+                        regex:
+                          description: Regex extracts data from the log line into
+                            the extracted map using named capture groups.
+                          properties:
+                            expression:
+                              description: Expression is an RE2 regular expression
+                                with named capture groups.
+                              type: string
+                            labelsFromGroups:
+                              description: LabelsFromGroups adds every named capture
+                                group as a label.
+                              type: boolean
+                            source:
+                              description: Source is the extracted key to run the
+                                expression on. When unset, the log line is used.
+                              type: string
+                          required:
+                          - expression
+                          type: object
+                        staticLabels:
+                          description: StaticLabels adds fixed labels to every log
+                            line.
+                          properties:
+                            values:
+                              additionalProperties:
+                                type: string
+                              description: Values maps label names to label values.
+                              type: object
+                          required:
+                          - values
+                          type: object
+                      type: object
+                    minItems: 1
+                    type: array
+                required:
+                - stages
+                type: object
               relabelings:
                 description: RelabelConfigs to apply to logs before delivering.
                 items:

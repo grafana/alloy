@@ -83,6 +83,7 @@ The `PodLogs` resource describes a set of Pods to collect logs from.
 | ------------------- | ----------------- | ------------------------------------------------------------ |
 | `selector`          | [LabelSelector][] | Label selector of Pods to collect logs from.                 |
 | `namespaceSelector` | [LabelSelector][] | Label selector of Namespaces that Pods can be discovered in. |
+| `pipeline`          | [PipelineSpec][]  | Stages to run on each collected log line.                    |
 | `relabelings`       | [RelabelConfig][] | Relabel rules to apply to discovered Pods.                   |
 
 If `selector` is left as the default value, all Pods are discovered.
@@ -117,7 +118,98 @@ In addition to the meta labels, the following labels are exposed to tell `loki.s
 * `__pod_uid__`: The UID of the Pod.
 
 [LabelSelector]: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#labelselector-v1-meta
+[PipelineSpec]: #pipelinespec
 [RelabelConfig]: https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.RelabelConfig
+
+### `PipelineSpec`
+
+`PipelineSpec` lists the stages that every log line collected for the `PodLogs` passes through, in order, before it's forwarded to the `forward_to` receivers.
+Each stage behaves like the `loki.process` stage of the same name.
+
+| Field    | Type              | Description                                  |
+| -------- | ----------------- | -------------------------------------------- |
+| `stages` | [PipelineStage][] | Stages to run on each log line. At least one. |
+
+[PipelineStage]: #pipelinestage
+
+#### `PipelineStage`
+
+A `PipelineStage` sets exactly one of the following fields.
+
+| Field          | Type                  | Description                                                      |
+| -------------- | --------------------- | ---------------------------------------------------------------- |
+| `drop`         | [DropStage][]         | Drop log lines that match. Mirrors [`stage.drop`][stage.drop].    |
+| `labels`       | [LabelsStage][]       | Promote extracted values to labels. Mirrors [`stage.labels`][stage.labels]. |
+| `regex`        | [RegexStage][]        | Extract values with a regular expression. Mirrors [`stage.regex`][stage.regex]. |
+| `staticLabels` | [StaticLabelsStage][] | Add fixed labels. Mirrors [`stage.static_labels`][stage.static_labels]. |
+
+[DropStage]: #dropstage
+[LabelsStage]: #labelsstage
+[RegexStage]: #regexstage
+[StaticLabelsStage]: #staticlabelsstage
+[stage.drop]: ../loki.process/#stagedrop
+[stage.labels]: ../loki.process/#stagelabels
+[stage.regex]: ../loki.process/#stageregex
+[stage.static_labels]: ../loki.process/#stagestatic_labels
+
+#### `DropStage`
+
+| Field               | Type   | Description                                                                              |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------- |
+| `dropCounterReason` | string | Value of the `reason` label on the dropped lines counter. Default is `drop_stage`.        |
+| `expression`        | string | RE2 regular expression. The line is dropped when it matches.                             |
+| `separator`         | string | String used to join multiple `source` values. Default is `;`.                            |
+| `source`            | string | Comma-separated list of extracted keys to match on. When empty, the log line is matched. |
+| `value`             | string | The line is dropped when the joined `source` values equal this string exactly.           |
+
+At least one of `source` or `expression` must be set. `value` requires `source` and can't be combined with `expression`.
+
+#### `RegexStage`
+
+| Field              | Type    | Description                                                                 |
+| ------------------ | ------- | --------------------------------------------------------------------------- |
+| `expression`       | string  | RE2 regular expression with named capture groups. Required.                 |
+| `labelsFromGroups` | boolean | Add every named capture group as a label.                                   |
+| `source`           | string  | Extracted key to run the expression on. When unset, the log line is used.   |
+
+#### `LabelsStage`
+
+| Field    | Type                | Description                                                                              |
+| -------- | ------------------- | ---------------------------------------------------------------------------------------- |
+| `values` | map[string]string   | Label name to extracted key. An empty value uses the label name as the key. Required.    |
+
+#### `StaticLabelsStage`
+
+| Field    | Type                | Description                          |
+| -------- | ------------------- | ------------------------------------ |
+| `values` | map[string]string   | Label name to label value. Required. |
+
+The following `PodLogs` drops `DEBUG` lines and adds the user ID found in the remaining lines as a `user` label:
+
+```yaml
+apiVersion: monitoring.grafana.com/v1alpha2
+kind: PodLogs
+metadata:
+  name: user-service
+  namespace: shop
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  pipeline:
+    stages:
+      - drop:
+          expression: ".*DEBUG.*"
+      - regex:
+          expression: "user=(?P<user>\\w+)"
+          labelsFromGroups: true
+```
+
+Stages run inside every {{< param "PRODUCT_NAME" >}} instance that tails the matched Pods, once per log line.
+Keep regular expressions cheap and avoid promoting high-cardinality values to labels.
+A dropped line still advances the saved position of its container, so it isn't collected again on restart.
+Dropped lines are counted in the `loki_process_dropped_lines_total` metric of the `loki.source.podlogs` component.
+A `PodLogs` with an invalid pipeline collects nothing and reports the error in the component's debug information.
 
 ## Blocks
 
