@@ -30,6 +30,7 @@ func init() {
 type Arguments struct {
 	ArrayMode bool   `alloy:"array_mode,attr,optional"`
 	Mode      string `alloy:"mode,attr,optional"`
+	ParseInts bool   `alloy:"parse_ints,attr,optional"`
 }
 
 var (
@@ -43,6 +44,7 @@ func ArgumentsFromConfig(cfg *jsonlogencodingextension.Config) Arguments {
 	return Arguments{
 		ArrayMode: cfg.ArrayMode,
 		Mode:      string(cfg.Mode),
+		ParseInts: cfg.ParseInts,
 	}
 }
 
@@ -56,6 +58,7 @@ func (args Arguments) otelConfig() *jsonlogencodingextension.Config {
 	cfg := jsonlogencodingextension.NewFactory().CreateDefaultConfig().(*jsonlogencodingextension.Config)
 	cfg.ArrayMode = args.ArrayMode
 	cfg.Mode = jsonlogencodingextension.JSONEncodingMode(args.Mode)
+	cfg.ParseInts = args.ParseInts
 	return cfg
 }
 

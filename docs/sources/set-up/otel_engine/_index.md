@@ -23,7 +23,7 @@ It runs the {{< param "OTEL_ENGINE" >}} under an embedded OpAMP supervisor that 
 
 To learn when to use each engine, refer to [OpenTelemetry in {{< param "PRODUCT_NAME" >}}][OTelAlloy].
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 {{< section >}}
 

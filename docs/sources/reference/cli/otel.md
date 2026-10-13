@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/otel/
 description: Learn about the otel command
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otel
@@ -11,10 +11,7 @@ weight: 350
 
 # `otel`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `otel` command runs {{< param "PRODUCT_NAME" >}} with the {{< param "OTEL_ENGINE" >}}.
 This command accepts OpenTelemetry Collector YAML configuration files.

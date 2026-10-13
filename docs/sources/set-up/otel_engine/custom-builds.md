@@ -16,7 +16,7 @@ If you need additional components or want to remove bundled components, edit the
 Grafana doesn't offer commercial support for custom builds.
 {{< /admonition >}}
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 
