@@ -3,7 +3,6 @@ package harness
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -11,10 +10,10 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/service/features"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	lokiservice "github.com/grafana/alloy/internal/service/loki"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 )
 
@@ -31,14 +30,14 @@ const (
 )
 
 func defaultServices(l *logging.Logger, flags []string) ([]service.Service, error) {
-	enabled, err := featuresFromFlags(flags)
+	lokiOpts, err := lokiOptionsFromFlags(flags)
 	if err != nil {
 		return nil, err
 	}
 
 	return []service.Service{
-		features.New(enabled...),
 		livedebugging.New(),
+		lokiservice.New(lokiOpts),
 		labelstore.New(l.Slog(), prometheus.NewRegistry()),
 		httpservice.New(httpservice.Options{
 			Logger:           l,
@@ -59,18 +58,19 @@ func defaultServices(l *logging.Logger, flags []string) ([]service.Service, erro
 	}, nil
 }
 
-// featuresFromFlags returns the features named by flags, which use the CLI flag
-// name without the leading dashes.
-func featuresFromFlags(flags []string) ([]features.Feature, error) {
-	enabled := make([]features.Feature, 0, len(flags))
+// lokiOptionsFromFlags returns the loki service options enabled by flags, which
+// use the CLI flag name without the leading dashes.
+func lokiOptionsFromFlags(flags []string) (lokiservice.Options, error) {
+	var opts lokiservice.Options
 	for _, flag := range flags {
-		i := slices.IndexFunc(features.All, func(f features.Feature) bool { return f.Flag() == flag })
-		if i < 0 {
-			return nil, fmt.Errorf("unknown feature %q", flag)
+		switch flag {
+		case "feature.loki.consumer-pipeline.enabled":
+			opts.ConsumerPipeline = true
+		default:
+			return lokiservice.Options{}, fmt.Errorf("unknown feature %q", flag)
 		}
-		enabled = append(enabled, features.All[i])
 	}
-	return enabled, nil
+	return opts, nil
 }
 
 var _ service.Service = (*mockService)(nil)
