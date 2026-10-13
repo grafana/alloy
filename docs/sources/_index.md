@@ -9,6 +9,7 @@ cascade:
   PROM_WIN_EXP_VERSION: v0.31.3
   SNMP_VERSION: v0.29.0
   BEYLA_VERSION: v3.35.0
+  GO_VERSION: 1.26.7
   FULL_PRODUCT_NAME: Grafana Alloy
   PRODUCT_NAME: Alloy
   FULL_OTEL_ENGINE: Alloy OpenTelemetry Engine
