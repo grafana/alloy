@@ -41,13 +41,13 @@ For example `export DYLD_LIBRARY_PATH=/lib/oracle/instantclient_23_3`.
 
 ### Environment variables
 
-Set the following environment variables for Oracle Client library access:
+Set the following environment variables so {{< param "PRODUCT_NAME" >}} can find the Oracle Client libraries:
 
-- **Linux**: Set `LD_LIBRARY_PATH` to the Oracle Instant Client library directory
-- **macOS (ARM)**: Set `DYLD_LIBRARY_PATH` to the Oracle Instant Client library directory
-- **`ORACLE_BASE`** (optional): Base directory for Oracle installations
-- **`ORACLE_HOME`** (optional): Location of the Oracle Instant Client installation
-- **`TNS_ADMIN`** (optional): Location of your Oracle wallet directory when using wallet authentication
+- `LD_LIBRARY_PATH`: The Oracle Instant Client library directory on Linux.
+- `DYLD_LIBRARY_PATH`: The Oracle Instant Client library directory on macOS.
+- `ORACLE_BASE`: The base directory for Oracle installations. Optional.
+- `ORACLE_HOME`: The location of the Oracle Instant Client installation. Optional.
+- `TNS_ADMIN`: The location of your Oracle wallet directory. Set this when you use wallet authentication. Optional.
 
 ### Database user permissions
 
