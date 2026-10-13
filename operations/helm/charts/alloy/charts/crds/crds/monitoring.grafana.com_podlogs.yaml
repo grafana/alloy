@@ -92,6 +92,8 @@ spec:
                     items:
                       description: PipelineStage is a single processing stage. Exactly
                         one field must be set.
+                      maxProperties: 1
+                      minProperties: 1
                       properties:
                         drop:
                           description: Drop discards log lines matching the configured

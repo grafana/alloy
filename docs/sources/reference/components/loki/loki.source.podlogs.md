@@ -126,8 +126,8 @@ In addition to the meta labels, the following labels are exposed to tell `loki.s
 `PipelineSpec` lists the stages that every log line collected for the `PodLogs` passes through, in order, before it's forwarded to the `forward_to` receivers.
 Each stage behaves like the `loki.process` stage of the same name.
 
-| Field    | Type              | Description                                  |
-| -------- | ----------------- | -------------------------------------------- |
+| Field    | Type              | Description                                   |
+| -------- | ----------------- | --------------------------------------------- |
 | `stages` | [PipelineStage][] | Stages to run on each log line. At least one. |
 
 [PipelineStage]: #pipelinestage
@@ -136,12 +136,12 @@ Each stage behaves like the `loki.process` stage of the same name.
 
 A `PipelineStage` sets exactly one of the following fields.
 
-| Field          | Type                  | Description                                                      |
-| -------------- | --------------------- | ---------------------------------------------------------------- |
-| `drop`         | [DropStage][]         | Drop log lines that match. Mirrors [`stage.drop`][stage.drop].    |
-| `labels`       | [LabelsStage][]       | Promote extracted values to labels. Mirrors [`stage.labels`][stage.labels]. |
-| `regex`        | [RegexStage][]        | Extract values with a regular expression. Mirrors [`stage.regex`][stage.regex]. |
-| `staticLabels` | [StaticLabelsStage][] | Add fixed labels. Mirrors [`stage.static_labels`][stage.static_labels]. |
+| Field          | Type                  | Description                                                                      |
+| -------------- | --------------------- | -------------------------------------------------------------------------------- |
+| `drop`         | [DropStage][]         | Drop log lines that match. Mirrors [`stage.drop`][stage.drop].                   |
+| `labels`       | [LabelsStage][]       | Promote extracted values to labels. Mirrors [`stage.labels`][stage.labels].      |
+| `regex`        | [RegexStage][]        | Extract values with a regular expression. Mirrors [`stage.regex`][stage.regex].  |
+| `staticLabels` | [StaticLabelsStage][] | Add fixed labels. Mirrors [`stage.static_labels`][stage.static_labels].          |
 
 [DropStage]: #dropstage
 [LabelsStage]: #labelsstage
@@ -156,7 +156,7 @@ A `PipelineStage` sets exactly one of the following fields.
 
 | Field               | Type   | Description                                                                              |
 | ------------------- | ------ | ---------------------------------------------------------------------------------------- |
-| `dropCounterReason` | string | Value of the `reason` label on the dropped lines counter. Default is `drop_stage`.        |
+| `dropCounterReason` | string | Value of the `reason` label on the dropped lines counter. Default is `drop_stage`.       |
 | `expression`        | string | RE2 regular expression. The line is dropped when it matches.                             |
 | `separator`         | string | String used to join multiple `source` values. Default is `;`.                            |
 | `source`            | string | Comma-separated list of extracted keys to match on. When empty, the log line is matched. |
@@ -166,23 +166,23 @@ At least one of `source` or `expression` must be set. `value` requires `source` 
 
 #### `RegexStage`
 
-| Field              | Type    | Description                                                                 |
-| ------------------ | ------- | --------------------------------------------------------------------------- |
-| `expression`       | string  | RE2 regular expression with named capture groups. Required.                 |
-| `labelsFromGroups` | boolean | Add every named capture group as a label.                                   |
-| `source`           | string  | Extracted key to run the expression on. When unset, the log line is used.   |
+| Field              | Type    | Description                                                               |
+| ------------------ | ------- | ------------------------------------------------------------------------- |
+| `expression`       | string  | RE2 regular expression with named capture groups. Required.               |
+| `labelsFromGroups` | boolean | Add every named capture group as a label.                                 |
+| `source`           | string  | Extracted key to run the expression on. When unset, the log line is used. |
 
 #### `LabelsStage`
 
-| Field    | Type                | Description                                                                              |
-| -------- | ------------------- | ---------------------------------------------------------------------------------------- |
-| `values` | map[string]string   | Label name to extracted key. An empty value uses the label name as the key. Required.    |
+| Field    | Type              | Description                                                                           |
+| -------- | ----------------- | ------------------------------------------------------------------------------------- |
+| `values` | map[string]string | Label name to extracted key. An empty value uses the label name as the key. Required. |
 
 #### `StaticLabelsStage`
 
-| Field    | Type                | Description                          |
-| -------- | ------------------- | ------------------------------------ |
-| `values` | map[string]string   | Label name to label value. Required. |
+| Field    | Type              | Description                          |
+| -------- | ----------------- | ------------------------------------ |
+| `values` | map[string]string | Label name to label value. Required. |
 
 The following `PodLogs` drops `DEBUG` lines and adds the user ID found in the remaining lines as a `user` label:
 
