@@ -45,7 +45,7 @@ For the full list of arguments and their default values, refer to the [`otelcol.
 
 ## Calculate the maximum request rate
 
-Little's Law connects concurrency, latency, and throughput.
+[Little's Law][littles law] connects concurrency, latency, and throughput.
 Because each consumer sends one request at a time, the maximum request rate is:
 
 ```text
@@ -270,3 +270,4 @@ Test each change before you use it in production.
 [batch]: ../../reference/components/otelcol/otelcol.processor.batch/
 [adaptive metrics]: https://grafana.com/docs/grafana-cloud/adaptive-telemetry/adaptive-metrics/troubleshoot-discarded-raw-samples/
 [mimir runbooks]: https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/
+[littles law]: https://en.wikipedia.org/wiki/Little%27s_law
