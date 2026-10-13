@@ -262,7 +262,6 @@ func (t *tailer) tail(ctx context.Context) error {
 // It returns when the context is done, the stream ends, or an error occurs.
 func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
-	batch := loki.NewBatch()
 	reader := bufio.NewReader(stream)
 	lastReadTime := sinceTime
 	// A re-tail replays the lines at sinceTime that were already forwarded.
@@ -293,7 +292,7 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 				Line:      entryLine,
 			})
 
-			if err := t.send(ctx, ch, &batch, entry); err != nil {
+			if err := t.send(ctx, ch, entry); err != nil {
 				if ctx.Err() != nil {
 					return nil
 				}
@@ -302,8 +301,8 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 
 			// Save position after the entry has been handed over. The saved
 			// position seeds sinceTime for the next tail, so it never moves
-			// backwards even when the stream is out of order. A line the consumer
-			// dropped has still been read, so its position is saved too.
+			// backwards even when the stream is out of order. Dropped lines count
+			// as read.
 			if entryTimestamp.After(lastReadTime) {
 				lastReadTime = entryTimestamp
 			}
@@ -326,9 +325,9 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 	}
 }
 
-// send hands entry to the target's consumer when one is set, otherwise to the
-// handler channel. batch is reused across calls to avoid allocating per line.
-func (t *tailer) send(ctx context.Context, ch chan<- loki.Entry, batch *loki.Batch, entry loki.Entry) error {
+// send passes entry to the target's consumer, or to the handler channel when it
+// has none.
+func (t *tailer) send(ctx context.Context, ch chan<- loki.Entry, entry loki.Entry) error {
 	if t.target.consumer == nil {
 		select {
 		case <-ctx.Done():
@@ -338,9 +337,9 @@ func (t *tailer) send(ctx context.Context, ch chan<- loki.Entry, batch *loki.Bat
 		}
 	}
 
-	batch.Reset()
+	batch := loki.NewBatch()
 	batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
-	return t.target.consumer.Consume(ctx, *batch)
+	return t.target.consumer.Consume(ctx, batch)
 }
 
 // isJobPod determines if a pod is owned by a Job or CronJob workload.

@@ -19,8 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func TestConvertPipeline(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -32,7 +30,7 @@ func TestConvertPipeline(t *testing.T) {
 			name: "all supported stages",
 			spec: &monitoringv1alpha2.PipelineSpec{Stages: []monitoringv1alpha2.PipelineStage{
 				{Drop: &monitoringv1alpha2.DropStage{Expression: ".*DEBUG.*", DropCounterReason: "debug"}},
-				{Regex: &monitoringv1alpha2.RegexStage{Expression: `user=(?P<user>\w+)`, Source: ptr("line")}},
+				{Regex: &monitoringv1alpha2.RegexStage{Expression: `user=(?P<user>\w+)`, Source: "line"}},
 				{Labels: &monitoringv1alpha2.LabelsStage{Values: map[string]string{"user": "", "uid": "user_id"}}},
 				{StaticLabels: &monitoringv1alpha2.StaticLabelsStage{Values: map[string]string{"team": "a"}}},
 			}},
@@ -40,6 +38,7 @@ func TestConvertPipeline(t *testing.T) {
 				require.Len(t, cfgs, 4)
 				require.Equal(t, ".*DEBUG.*", cfgs[0].DropConfig.Expression)
 				require.Equal(t, "debug", cfgs[0].DropConfig.DropReason)
+				require.Equal(t, `user=(?P<user>\w+)`, cfgs[1].RegexConfig.Expression.String())
 				require.Equal(t, "line", *cfgs[1].RegexConfig.Source)
 				require.Nil(t, cfgs[2].LabelsConfig.Values["user"])
 				require.Equal(t, "user_id", *cfgs[2].LabelsConfig.Values["uid"])
@@ -65,6 +64,13 @@ func TestConvertPipeline(t *testing.T) {
 				{StaticLabels: &monitoringv1alpha2.StaticLabelsStage{Values: map[string]string{"": "a"}}},
 			}},
 			expectErr: "stage 0: staticLabels: invalid label name",
+		},
+		{
+			name: "invalid regex",
+			spec: &monitoringv1alpha2.PipelineSpec{Stages: []monitoringv1alpha2.PipelineStage{
+				{Regex: &monitoringv1alpha2.RegexStage{Expression: "("}},
+			}},
+			expectErr: "stage 0: regex: error parsing regexp",
 		},
 	}
 

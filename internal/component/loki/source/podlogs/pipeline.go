@@ -18,12 +18,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
-// podLogsPipeline is the processing pipeline built from one PodLogs spec. It is
-// shared by every tailer of that PodLogs, so its stages must be safe for
-// concurrent use.
+// podLogsPipeline is the pipeline of one PodLogs, shared by all its tailers.
 type podLogsPipeline struct {
-	// id changes whenever the pipeline spec changes. Targets carry it so a
-	// spec change restarts their tailers with the new pipeline.
+	// id changes with the spec, which restarts the tailers.
 	id       string
 	consumer *stages.PipelineConsumer
 }
@@ -36,8 +33,7 @@ type pipelineCache struct {
 	out          chan<- loki.Entry
 
 	pipelines map[client.ObjectKey]*podLogsPipeline
-	// retired pipelines can still be in use by tailers until the next
-	// successful SyncTargets, so they are only stopped by retain.
+	// retired pipelines may still be in use until the next successful SyncTargets.
 	retired []*podLogsPipeline
 }
 
@@ -52,8 +48,8 @@ func newPipelineCache(l *slog.Logger, registerer prometheus.Registerer, minStabi
 	}
 }
 
-// get returns the pipeline for podLogs, or nil when it has none. A pipeline
-// whose spec did not change since the last call is returned as is.
+// get returns the pipeline for podLogs, or nil if it has none. It rebuilds
+// only when the spec changed.
 func (pc *pipelineCache) get(podLogs *monitoringv1alpha2.PodLogs) (*podLogsPipeline, error) {
 	key := client.ObjectKeyFromObject(podLogs)
 
@@ -85,8 +81,8 @@ func (pc *pipelineCache) get(podLogs *monitoringv1alpha2.PodLogs) (*podLogsPipel
 	return p, nil
 }
 
-// retain stops every retired pipeline and every pipeline whose key is not in
-// keep. Callers must make sure no tailer uses those pipelines anymore.
+// retain stops retired pipelines and those of PodLogs not in keep. Call it
+// only once no tailer uses them.
 func (pc *pipelineCache) retain(keep map[client.ObjectKey]struct{}) {
 	for key := range pc.pipelines {
 		if _, ok := keep[key]; !ok {
@@ -114,8 +110,8 @@ func pipelineID(key client.ObjectKey, spec *monitoringv1alpha2.PipelineSpec) (st
 	return key.String() + "/" + strconv.FormatUint(xxhash.Sum64(raw), 16), nil
 }
 
-// channelConsumer is the last step of a PodLogs pipeline. It forwards the
-// entries that survived the stages to the component's shared entry channel.
+// channelConsumer sends what's left after the stages to the component's entry
+// channel.
 type channelConsumer struct {
 	out chan<- loki.Entry
 }
@@ -124,8 +120,7 @@ func (c channelConsumer) Consume(ctx context.Context, batch loki.Batch) error {
 	for _, stream := range batch.Streams() {
 		for i, e := range stream.Entries {
 			lset := stream.Labels
-			// Entries of one stream share their labels, but every entry leaving the
-			// channel must own its label set.
+			// Each entry needs its own labels.
 			if i > 0 {
 				lset = lset.Clone()
 			}
@@ -140,8 +135,6 @@ func (c channelConsumer) Consume(ctx context.Context, batch loki.Batch) error {
 	return nil
 }
 
-// convertPipeline maps the PodLogs pipeline spec onto loki.process stage
-// configurations.
 func convertPipeline(spec *monitoringv1alpha2.PipelineSpec) ([]stages.StageConfig, error) {
 	res := make([]stages.StageConfig, 0, len(spec.Stages))
 
@@ -169,8 +162,10 @@ func convertPipeline(spec *monitoringv1alpha2.PipelineSpec) ([]stages.StageConfi
 			}
 			cfg.RegexConfig = &stages.RegexConfig{
 				Expression:       expr,
-				Source:           stage.Regex.Source,
 				LabelsFromGroups: stage.Regex.LabelsFromGroups,
+			}
+			if stage.Regex.Source != "" {
+				cfg.RegexConfig.Source = &stage.Regex.Source
 			}
 			if err := cfg.RegexConfig.Validate(); err != nil {
 				return nil, fmt.Errorf("stage %d: regex: %w", i, err)
@@ -200,8 +195,7 @@ func convertPipeline(spec *monitoringv1alpha2.PipelineSpec) ([]stages.StageConfi
 	return res, nil
 }
 
-// optionalValues converts a CRD map to the loki.process form, where a nil
-// value means "no value given".
+// optionalValues maps "" to nil, which loki.process reads as unset.
 func optionalValues(in map[string]string) map[string]*string {
 	res := make(map[string]*string, len(in))
 	for k, v := range in {

@@ -271,6 +271,117 @@ func Test_processLogStream(t *testing.T) {
 	}
 }
 
+// relabelConsumer forwards entries to out, drops lines containing "drop" and
+// adds a label to the rest.
+type relabelConsumer struct {
+	out chan<- loki.Entry
+}
+
+func (c relabelConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+	for _, stream := range batch.Streams() {
+		for _, e := range stream.Entries {
+			if strings.Contains(e.Line, "drop") {
+				continue
+			}
+			lset := stream.Labels.Clone()
+			lset["processed"] = "true"
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case c.out <- loki.NewEntryWithCreatedUnixMicro(lset, stream.Created(), e):
+			}
+		}
+	}
+	return nil
+}
+
+type recordingPositions struct {
+	mockPositions
+	puts []int64
+}
+
+func (p *recordingPositions) Put(_, _ string, pos int64) { p.puts = append(p.puts, pos) }
+
+func testTargetLabels(t *testing.T) labels.Labels {
+	t.Helper()
+	lset, err := PrepareLabels(labels.FromStrings(
+		kubePodName, "test-pod",
+		kubePodNamespace, "default",
+		kubePodContainerName, "test-container",
+		kubePodUID, "test-uid-123",
+	), "test")
+	require.NoError(t, err)
+	return lset
+}
+
+func Test_processLogStream_consumer(t *testing.T) {
+	lset := testTargetLabels(t)
+
+	handler := newMockEntryHandler()
+	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: handler.ch})
+	recorded := &recordingPositions{}
+	tailer := &tailer{
+		target: target,
+		lset:   newLabelSet(target.Labels()),
+		opts:   &Options{Positions: recorded},
+	}
+
+	stream := &mockReadCloser{strings.NewReader(
+		"2023-01-23T17:00:10Z keep1\n" +
+			"2023-01-23T17:00:11Z drop me\n" +
+			"2023-01-23T17:00:12Z keep2\n",
+	)}
+	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
+	require.NoError(t, tailer.processLogStream(t.Context(), stream, handler, time.Time{}, positions.Entry{}, calc))
+
+	require.Len(t, handler.ch, 2)
+	for _, want := range []string{"keep1\n", "keep2\n"} {
+		got := <-handler.ch
+		require.Equal(t, want, got.Line)
+		require.Equal(t, "true", string(got.Labels["processed"]))
+	}
+
+	// The dropped line still advanced the position.
+	require.Len(t, recorded.puts, 3)
+	require.Equal(t, time.Date(2023, time.January, 23, 17, 0, 12, 0, time.UTC).UnixMicro(), recorded.puts[2])
+}
+
+func Test_processLogStream_consumerCanceled(t *testing.T) {
+	lset := testTargetLabels(t)
+
+	blocked := make(chan loki.Entry) // nobody reads
+	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: blocked})
+	recorded := &recordingPositions{}
+	tailer := &tailer{
+		target: target,
+		lset:   newLabelSet(target.Labels()),
+		opts:   &Options{Positions: recorded},
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	stream := &mockReadCloser{strings.NewReader("2023-01-23T17:00:10Z keep1\n")}
+	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
+	require.NoError(t, tailer.processLogStream(ctx, stream, newMockEntryHandler(), time.Time{}, positions.Entry{}, calc))
+	require.Empty(t, recorded.puts)
+}
+
+func Test_tailerTask_Equals_pipelineID(t *testing.T) {
+	lset := testTargetLabels(t)
+
+	opts := &Options{}
+	plain := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false)}
+	p1 := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p1", nil)}
+	p1Again := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p1", nil)}
+	p2 := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p2", nil)}
+
+	require.True(t, p1.Equals(p1Again))
+	require.Equal(t, p1.Hash(), p1Again.Hash())
+	require.False(t, plain.Equals(p1))
+	require.False(t, p1.Equals(p2))
+	require.NotEqual(t, p1.Hash(), p2.Hash())
+}
+
 func Test_processLogStream_retail(t *testing.T) {
 	tt := []struct {
 		name        string
@@ -349,122 +460,4 @@ func Test_processLogStream_retail(t *testing.T) {
 			require.Equal(t, tc.expectLines, process(tc.retailLines, target.LastEntry()))
 		})
 	}
-}
-
-// relabelConsumer forwards entries to out, drops lines containing "drop" and
-// adds a label to the rest.
-type relabelConsumer struct {
-	out chan<- loki.Entry
-}
-
-func (c relabelConsumer) Consume(ctx context.Context, batch loki.Batch) error {
-	for _, stream := range batch.Streams() {
-		for _, e := range stream.Entries {
-			if strings.Contains(e.Line, "drop") {
-				continue
-			}
-			lset := stream.Labels.Clone()
-			lset["processed"] = "true"
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case c.out <- loki.NewEntryWithCreatedUnixMicro(lset, stream.Created(), e):
-			}
-		}
-	}
-	return nil
-}
-
-type recordingPositions struct {
-	mockPositions
-	puts []int64
-}
-
-func (p *recordingPositions) Put(_, _ string, pos int64) { p.puts = append(p.puts, pos) }
-
-func Test_processLogStream_consumer(t *testing.T) {
-	lset := labels.FromStrings(
-		kubePodName, "test-pod",
-		kubePodNamespace, "default",
-		kubePodContainerName, "test-container",
-		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
-	require.NoError(t, err)
-
-	handler := newMockEntryHandler()
-	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: handler.ch})
-	recorded := &recordingPositions{}
-	tailer := &tailer{
-		target: target,
-		lset:   newLabelSet(target.Labels()),
-		opts:   &Options{Positions: recorded},
-	}
-
-	stream := &mockReadCloser{strings.NewReader(
-		"2023-01-23T17:00:10Z keep1\n" +
-			"2023-01-23T17:00:11Z drop me\n" +
-			"2023-01-23T17:00:12Z keep2\n",
-	)}
-	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
-	require.NoError(t, tailer.processLogStream(t.Context(), stream, handler, time.Time{}, positions.Entry{}, calc))
-
-	require.Len(t, handler.ch, 2)
-	for _, want := range []string{"keep1\n", "keep2\n"} {
-		got := <-handler.ch
-		require.Equal(t, want, got.Line)
-		require.Equal(t, "true", string(got.Labels["processed"]))
-	}
-
-	// The dropped line still advanced the position.
-	require.Len(t, recorded.puts, 3)
-	require.Equal(t, time.Date(2023, time.January, 23, 17, 0, 12, 0, time.UTC).UnixMicro(), recorded.puts[2])
-}
-
-func Test_processLogStream_consumerCanceled(t *testing.T) {
-	lset := labels.FromStrings(
-		kubePodName, "test-pod",
-		kubePodNamespace, "default",
-		kubePodContainerName, "test-container",
-		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
-	require.NoError(t, err)
-
-	blocked := make(chan loki.Entry) // nobody reads
-	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: blocked})
-	tailer := &tailer{
-		target: target,
-		lset:   newLabelSet(target.Labels()),
-		opts:   &Options{Positions: &mockPositions{}},
-	}
-
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	stream := &mockReadCloser{strings.NewReader("2023-01-23T17:00:10Z keep1\n")}
-	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
-	require.NoError(t, tailer.processLogStream(ctx, stream, newMockEntryHandler(), time.Time{}, positions.Entry{}, calc))
-}
-
-func Test_tailerTask_Equals_pipelineID(t *testing.T) {
-	lset := labels.FromStrings(
-		kubePodName, "test-pod",
-		kubePodNamespace, "default",
-		kubePodContainerName, "test-container",
-		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
-	require.NoError(t, err)
-
-	opts := &Options{}
-	plain := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false)}
-	p1 := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p1", nil)}
-	p1Again := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p1", nil)}
-	p2 := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false).WithConsumer("p2", nil)}
-
-	require.True(t, p1.Equals(p1Again))
-	require.Equal(t, p1.Hash(), p1Again.Hash())
-	require.False(t, plain.Equals(p1))
-	require.False(t, p1.Equals(p2))
-	require.NotEqual(t, p1.Hash(), p2.Hash())
 }
