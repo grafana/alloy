@@ -190,7 +190,22 @@ func TestValidate(t *testing.T) {
 	type = "graphql"
 	url = "http://x"
 	url_options { body_graphql_variables = "{" }
-}`, "body_graphql_variables must be valid JSON"},
+}`, "body_graphql_variables must be a JSON object"},
+		{"graphql variables array", `query "q" {
+	type = "graphql"
+	url = "http://x"
+	url_options { body_graphql_variables = "[1]" }
+}`, "body_graphql_variables must be a JSON object"},
+		{"graphql variables scalar", `query "q" {
+	type = "graphql"
+	url = "http://x"
+	url_options { body_graphql_variables = "5" }
+}`, "body_graphql_variables must be a JSON object"},
+		{"graphql variables null", `query "q" {
+	type = "graphql"
+	url = "http://x"
+	url_options { body_graphql_variables = "null" }
+}`, "body_graphql_variables must be a JSON object"},
 		{"param also in url", `query "q" {
 	url = "http://x/?page=1"
 	url_options { params = { "page" = "2" } }

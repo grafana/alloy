@@ -436,8 +436,8 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 	if o.BodyType != typeGraphQL && (o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables != "") {
 		errs = append(errs, errors.New(`body_graphql_query and body_graphql_variables require body_type "graphql"`))
 	}
-	if o.BodyGraphQLVariables != "" && !json.Valid([]byte(o.BodyGraphQLVariables)) {
-		errs = append(errs, errors.New("body_graphql_variables must be valid JSON"))
+	if o.BodyGraphQLVariables != "" && !isJSONObject(o.BodyGraphQLVariables) {
+		errs = append(errs, errors.New("body_graphql_variables must be a JSON object"))
 	}
 	canonical := map[string]string{}
 	for _, k := range slices.Sorted(maps.Keys(o.Headers)) {
@@ -456,6 +456,13 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 		}
 	}
 	return errs
+}
+
+// isJSONObject reports whether s is a JSON object. GraphQL variables must be
+// an object, so an array, a scalar or null is a config error.
+func isJSONObject(s string) bool {
+	var m map[string]any
+	return json.Unmarshal([]byte(s), &m) == nil && m != nil
 }
 
 // validateOutputs checks that each query has an output for its signal.
