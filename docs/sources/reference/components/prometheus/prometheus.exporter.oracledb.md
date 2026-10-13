@@ -81,13 +81,22 @@ You can use the following arguments with `prometheus.exporter.oracledb`:
 | `query_timeout`     | `int`          | The query timeout in seconds.                              | `5`     | no       |
 | `username`          | `string`       | Deprecated. Use the `database` block instead.              |         | no       |
 
-{{< admonition type="note" >}}
-The top-level `connection_string`, `username`, and `password` arguments are deprecated.
+<!-- vale Grafana.GooglePassive = NO -->
+<!-- vale Grafana.GoogleWill = NO -->
+<!-- vale Grafana.Timeless = NO -->
+
+{{< admonition type="caution" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.16, the top-level `connection_string`, `username`, and `password` arguments are deprecated.
+They will be removed in a future release.
 Use the `database` block instead.
 
 If you keep the deprecated top-level configuration and omit `database` blocks, you must set `connection_string`.
 If the URL doesn't embed a username and password, set the deprecated top-level `username` and `password` arguments for that target only.
 {{< /admonition >}}
+
+<!-- vale Grafana.GooglePassive = YES -->
+<!-- vale Grafana.GoogleWill = YES -->
+<!-- vale Grafana.Timeless = YES -->
 
 Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
