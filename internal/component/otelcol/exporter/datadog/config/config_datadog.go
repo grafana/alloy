@@ -39,11 +39,11 @@ func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
 		ReadBufferSize:      args.ReadBufferSize,
 		WriteBufferSize:     args.WriteBufferSize,
 		Timeout:             args.Timeout,
-		MaxIdleConns:        args.MaxIdleConns,
-		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+		MaxIdleConns:        args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
+		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
 		MaxConnsPerHost:     args.MaxConnsPerHost,
-		IdleConnTimeout:     args.IdleConnTimeout,
-		DisableKeepAlives:   args.DisableKeepAlives,
+		IdleConnTimeout:     args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
+		DisableKeepAlives:   args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
 		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},

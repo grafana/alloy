@@ -16,6 +16,20 @@ const (
 	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
 	ExplainPlanOutputOperationUnknown              ExplainPlanOutputOperation = "Unknown"
 
+	// MySQL access type operations.
+	ExplainPlanOutputOperationSingleRowSystemConstant    ExplainPlanOutputOperation = "Single Row (system constant)"
+	ExplainPlanOutputOperationSingleRowConstant          ExplainPlanOutputOperation = "Single Row (constant)"
+	ExplainPlanOutputOperationUniqueKeyLookup            ExplainPlanOutputOperation = "Unique Key Lookup"
+	ExplainPlanOutputOperationNonUniqueKeyLookup         ExplainPlanOutputOperation = "Non-Unique Key Lookup"
+	ExplainPlanOutputOperationFulltextIndexSearch        ExplainPlanOutputOperation = "Fulltext Index Search"
+	ExplainPlanOutputOperationKeyLookupWithNullValues    ExplainPlanOutputOperation = "Key Lookup + Fetch NULL Values"
+	ExplainPlanOutputOperationIndexMerge                 ExplainPlanOutputOperation = "Index Merge"
+	ExplainPlanOutputOperationUniqueKeyLookupSubquery    ExplainPlanOutputOperation = "Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationNonUniqueKeyLookupSubquery ExplainPlanOutputOperation = "Non-Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationIndexRangeScan             ExplainPlanOutputOperation = "Index Range Scan"
+	ExplainPlanOutputOperationFullIndexScan              ExplainPlanOutputOperation = "Full Index Scan"
+	ExplainPlanOutputOperationFullTableScan              ExplainPlanOutputOperation = "Full Table Scan"
+
 	// SQL Server showplan-specific operations with no equivalent among the operations above.
 	ExplainPlanOutputOperationComputeScalar ExplainPlanOutputOperation = "Compute Scalar"
 	ExplainPlanOutputOperationFilter        ExplainPlanOutputOperation = "Filter"
@@ -40,11 +54,18 @@ const (
 type ExplainPlanAccessType string
 
 const (
-	ExplainPlanAccessTypeAll   ExplainPlanAccessType = "all"
-	ExplainPlanAccessTypeIndex ExplainPlanAccessType = "index"
-	ExplainPlanAccessTypeRange ExplainPlanAccessType = "range"
-	ExplainPlanAccessTypeRef   ExplainPlanAccessType = "ref"
-	ExplainPlanAccessTypeEqRef ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeSystem         ExplainPlanAccessType = "system"
+	ExplainPlanAccessTypeConst          ExplainPlanAccessType = "const"
+	ExplainPlanAccessTypeEqRef          ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeRef            ExplainPlanAccessType = "ref"
+	ExplainPlanAccessTypeFulltext       ExplainPlanAccessType = "fulltext"
+	ExplainPlanAccessTypeRefOrNull      ExplainPlanAccessType = "ref_or_null"
+	ExplainPlanAccessTypeIndexMerge     ExplainPlanAccessType = "index_merge"
+	ExplainPlanAccessTypeUniqueSubquery ExplainPlanAccessType = "unique_subquery"
+	ExplainPlanAccessTypeIndexSubquery  ExplainPlanAccessType = "index_subquery"
+	ExplainPlanAccessTypeRange          ExplainPlanAccessType = "range"
+	ExplainPlanAccessTypeIndex          ExplainPlanAccessType = "index"
+	ExplainPlanAccessTypeAll            ExplainPlanAccessType = "all"
 )
 
 type ExplainPlanJoinAlgorithm string
@@ -166,7 +187,9 @@ type ExplainPlanNode struct {
 }
 
 type ExplainPlanNodeDetails struct {
-	EstimatedRows int64                     `json:"estimatedRows"`
+	EstimatedRows int64 `json:"estimatedRows"`
+	// EstimatedCost is the cost attributable to this operation alone. Summing
+	// it across a plan tree approximates the database's total query cost.
 	EstimatedCost *float64                  `json:"estimatedCost,omitempty"`
 	TableName     *string                   `json:"tableName,omitempty"`
 	Alias         *string                   `json:"alias,omitempty"`

@@ -296,42 +296,25 @@ loki_process_cri_partial_lines_flushed_total 3
 		),
 	}
 
-	t.Run("Pipeline", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		p, err := NewPipeline(logging.NewSlogNop(), cfgs, registry, featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
+	registry := prometheus.NewRegistry()
+	var collected []Entry
+	next := func(_ context.Context, entries []Entry) error {
+		collected = append(collected, entries...)
+		return nil
+	}
 
-		out := p.Run(withInboundEntries(newEntries()...))
-		var collected []Entry
-		for e := range out {
-			collected = append(collected, e)
-		}
+	p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.NoError(t, err)
 
-		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
-		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
-	})
+	// One entry per call, matching how Stage.Run offers entries to the
+	// limit check one at a time off the channel.
+	for _, e := range newEntries() {
+		require.NoError(t, p.process(context.Background(), []Entry{e}))
+	}
+	p.stop()
 
-	t.Run("New Pipeline", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		var collected []Entry
-		next := func(_ context.Context, entries []Entry) error {
-			collected = append(collected, entries...)
-			return nil
-		}
-
-		p, err := newPipeline(logging.NewSlogNop(), registry, featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-
-		// One entry per call, matching how Stage.Run offers entries to the
-		// limit check one at a time off the channel.
-		for _, e := range newEntries() {
-			require.NoError(t, p.process(context.Background(), []Entry{e}))
-		}
-		p.stop()
-
-		assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
-		require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
-	})
+	assertEntriesUnordered(t, expected, collected, entryCheckFNs{})
+	require.NoError(t, testutil.GatherAndCompare(registry, strings.NewReader(expectedMetrics)))
 }
 
 func TestCRIStageNoContentLost(t *testing.T) {

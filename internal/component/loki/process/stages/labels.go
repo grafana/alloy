@@ -54,10 +54,7 @@ func (lc *LabelsConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*labelStage)(nil)
-	_ entryProcessor = (*labelStage)(nil)
-)
+var _ entryProcessor = (*labelStage)(nil)
 
 // newLabelStage creates a new label stage to set labels from extracted data
 func newLabelStage(configs LabelsConfig, opts stageOpts) *labelStage {
@@ -84,24 +81,6 @@ type labelStage struct {
 	cfg          *LabelsConfig
 	labelsConfig map[string]string
 	logger       *slog.Logger
-}
-
-// Run implements Stage
-func (l *labelStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			switch l.cfg.SourceType {
-			case SourceTypeExtractedMap:
-				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
-			case SourceTypeStructuredMetadata:
-				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
-			}
-			out <- e
-		}
-	}()
-	return out
 }
 
 func (l *labelStage) process(ctx context.Context, entries []Entry) error {
@@ -160,9 +139,4 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 			break
 		}
 	}
-}
-
-// Cleanup implements Stage.
-func (*labelStage) Cleanup() {
-	// no-op
 }

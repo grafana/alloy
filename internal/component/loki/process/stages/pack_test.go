@@ -17,7 +17,7 @@ import (
 
 func TestPackPipeline(t *testing.T) {
 	var (
-		now = time.Now()
+		ts  = time.Unix(1, 0)
 		cfg = `
 		stage.match {
 				selector = "{container=\"foo\"}"
@@ -45,7 +45,7 @@ func TestPackPipeline(t *testing.T) {
 				"cluster":   "us-eu-1",
 			},
 			testMatchLogLineApp1,
-			now,
+			ts,
 		)
 	}
 	entry2 := func() Entry {
@@ -58,7 +58,7 @@ func TestPackPipeline(t *testing.T) {
 				"cluster":   "us-eu-1",
 			},
 			regexLogFixture,
-			now,
+			ts,
 		)
 	}
 
@@ -73,9 +73,9 @@ func TestPackPipeline(t *testing.T) {
 
 		// Validate timestamps
 		// Line 1 should use the first matcher and should use the log line timestamp
-		assert.Equal(t, now, out1.Timestamp)
+		assert.Equal(t, ts, out1.Timestamp)
 		// Line 2 should use the second matcher and should get timestamp by the pack stage
-		assert.True(t, out2.Timestamp.After(now))
+		assert.True(t, out2.Timestamp.After(ts))
 
 		// Unmarshal the packed object and validate line1
 		w := &Packed{}
@@ -96,35 +96,21 @@ func TestPackPipeline(t *testing.T) {
 		assert.Equal(t, regexLogFixture, w.Entry)
 	}
 
-	t.Run("Pipeline", func(t *testing.T) {
-		pl, err := NewPipeline(util.TestAlloyLogger(t).Slog(), loadConfig(cfg), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
+	var collected []Entry
+	next := func(_ context.Context, entries []Entry) error {
+		collected = append(collected, entries...)
+		return nil
+	}
 
-		out1 := processEntries(pl, entry1())[0]
-		time.Sleep(1 * time.Millisecond)
-		out2 := processEntries(pl, entry2())[0]
+	p, err := newPipeline(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, loadConfig(cfg), next)
+	require.NoError(t, err)
 
-		assertPacked(t, out1, out2)
-	})
+	require.NoError(t, p.process(context.Background(), []Entry{entry1()}))
+	require.NoError(t, p.process(context.Background(), []Entry{entry2()}))
+	p.stop()
 
-	t.Run("New Pipeline", func(t *testing.T) {
-		var collected []Entry
-		next := func(_ context.Context, entries []Entry) error {
-			collected = append(collected, entries...)
-			return nil
-		}
-
-		p, err := newPipeline(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, loadConfig(cfg), next)
-		require.NoError(t, err)
-
-		require.NoError(t, p.process(context.Background(), []Entry{entry1()}))
-		time.Sleep(1 * time.Millisecond)
-		require.NoError(t, p.process(context.Background(), []Entry{entry2()}))
-		p.stop()
-
-		require.Len(t, collected, 2)
-		assertPacked(t, collected[0], collected[1])
-	})
+	require.Len(t, collected, 2)
+	assertPacked(t, collected[0], collected[1])
 }
 
 func TestPackStage(t *testing.T) {

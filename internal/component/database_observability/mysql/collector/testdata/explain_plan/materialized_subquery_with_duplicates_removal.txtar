@@ -1,0 +1,161 @@
+MySQL explain json captured from a query with an independently costed materialized subquery:
+
+-- materialized_subquery_with_duplicates_removal.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "95836.36"
+    },
+    "ordering_operation": {
+      "using_temporary_table": true,
+      "using_filesort": true,
+      "nested_loop": [
+        {
+          "table": {
+            "table_name": "b",
+            "access_type": "range",
+            "possible_keys": [
+              "PRIMARY",
+              "idx_books_stock_rate"
+            ],
+            "key": "idx_books_stock_rate",
+            "used_key_parts": [
+              "stock"
+            ],
+            "key_length": "4",
+            "rows_examined_per_scan": 70108,
+            "rows_produced_per_join": 23366,
+            "filtered": "33.33",
+            "using_index": true,
+            "cost_info": {
+              "read_cost": "11715.07",
+              "eval_cost": "2336.70",
+              "prefix_cost": "14051.77",
+              "data_read_per_join": "25M"
+            },
+            "used_columns": [
+              "id",
+              "stock",
+              "daily_rate"
+            ],
+            "attached_condition": "( ( `books_store` . `b` . `stock` > ? ) and ( `books_store` . `b` . `daily_rate` > ? ) )"
+          }
+        },
+        {
+          "table": {
+            "table_name": "rl",
+            "access_type": "ref",
+            "possible_keys": [
+              "<auto_key0>"
+            ],
+            "key": "<auto_key0>",
+            "used_key_parts": [
+              "book_id"
+            ],
+            "key_length": "4",
+            "ref": [
+              "books_store.b.id"
+            ],
+            "rows_examined_per_scan": 10,
+            "rows_produced_per_join": 233670,
+            "filtered": "100.00",
+            "cost_info": {
+              "read_cost": "58417.57",
+              "eval_cost": "23367.03",
+              "prefix_cost": "95836.36",
+              "data_read_per_join": "3M"
+            },
+            "used_columns": [
+              "book_id",
+              "status",
+              "updated_at"
+            ],
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": false,
+              "cacheable": true,
+              "query_block": {
+                "select_id": 2,
+                "cost_info": {
+                  "query_cost": "2539064.60"
+                },
+                "ordering_operation": {
+                  "using_temporary_table": true,
+                  "using_filesort": true,
+                  "duplicates_removal": {
+                    "using_temporary_table": true,
+                    "using_filesort": false,
+                    "cost_info": {
+                      "sort_cost": "2304463.25"
+                    },
+                    "nested_loop": [
+                      {
+                        "table": {
+                          "table_name": "rl",
+                          "access_type": "ALL",
+                          "possible_keys": [
+                            "PRIMARY",
+                            "idx_reading_lists_update"
+                          ],
+                          "rows_examined_per_scan": 10294,
+                          "rows_produced_per_join": 8000,
+                          "filtered": "77.72",
+                          "cost_info": {
+                            "read_cost": "235.55",
+                            "eval_cost": "800.10",
+                            "prefix_cost": "1035.65",
+                            "data_read_per_join": "187K"
+                          },
+                          "used_columns": [
+                            "id",
+                            "status",
+                            "updated_at"
+                          ],
+                          "attached_condition": "( `books_store` . `rl` . `updated_at` > < cache > ( ( now ( ) - interval ? day ) ) )"
+                        }
+                      },
+                      {
+                        "table": {
+                          "table_name": "rlb",
+                          "access_type": "ref",
+                          "possible_keys": [
+                            "PRIMARY",
+                            "idx_reading_list_books_position"
+                          ],
+                          "key": "PRIMARY",
+                          "used_key_parts": [
+                            "reading_list_id"
+                          ],
+                          "key_length": "4",
+                          "ref": [
+                            "books_store.rl.id"
+                          ],
+                          "rows_examined_per_scan": 288,
+                          "rows_produced_per_join": 2304463,
+                          "filtered": "100.00",
+                          "using_index": true,
+                          "cost_info": {
+                            "read_cost": "3119.38",
+                            "eval_cost": "230446.32",
+                            "prefix_cost": "234601.36",
+                            "data_read_per_join": "52M"
+                          },
+                          "used_columns": [
+                            "reading_list_id",
+                            "book_id"
+                          ],
+                          "attached_condition": "( ( `books_store` . `rlb` . `book_id` % ? ) = < cache > ( ( `floor` ( ( `unix_timestamp` ( ) / ? ) ) % ? ) ) )"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
