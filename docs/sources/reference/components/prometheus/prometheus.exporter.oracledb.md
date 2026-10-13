@@ -37,7 +37,7 @@ For macOS on Apple silicon, set `DYLD_LIBRARY_PATH` to the directory where you i
 For example `export DYLD_LIBRARY_PATH=/lib/oracle/instantclient_23_3`.
 {{< /admonition >}}
 
-[instant-client]: http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html
+[instant-client]: https://www.oracle.com/technetwork/database/features/instant-client/index-097480.html
 
 ### Environment variables
 
