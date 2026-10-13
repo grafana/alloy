@@ -17,7 +17,7 @@ If you don't set `ALLOY_OTEL_MODE`, or you set it to any other value, {{< param 
 No service installer exposes an install-time flag for this setting.
 Set it with the platform-specific mechanism below, then restart the service.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 

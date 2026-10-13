@@ -12,7 +12,7 @@ weight: 300
 Use the upstream [OpenTelemetry Collector Helm chart][Chart] to run the {{< param "OTEL_ENGINE" >}} on Kubernetes.
 The chart deploys the {{< param "PRODUCT_NAME" >}} image with the standard upstream chart values, so you configure it the same way you configure any OpenTelemetry Collector deployment.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 
