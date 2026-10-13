@@ -167,7 +167,7 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) == 3
+		return len(lokiClient.Received()) == 2
 	}, 5*time.Second, 20*time.Millisecond)
 
 	entries := lokiClient.Received()
@@ -176,10 +176,9 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	require.NotContains(t, entries[0].Line, `\n`)
 	require.NotContains(t, entries[0].Line, `\t`)
 
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers"`, entries[2].Line)
+	require.Len(t, entries, 2)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" tables="[{\"table\":\"dbo.orders\",\"validated\":false},{\"table\":\"customers\",\"validated\":false}]"`, entries[1].Line)
 }
 
 func TestQueryDetails_DedupesRepeatedHashWithinCycle(t *testing.T) {

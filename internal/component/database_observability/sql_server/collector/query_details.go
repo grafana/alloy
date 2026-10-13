@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -224,7 +225,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 }
 
 // emit obfuscates and normalizes the query text, then emits the
-// query_association and query_parsed_table_name logs.
+// query_association and query_parsed_table_names_v2 logs.
 func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	normalized, metadata, err := sqllexer.ObfuscateAndNormalize(
 		queryText, c.obfuscator, c.normalizer, sqllexer.WithDBMS(sqllexer.DBMSSQLServer),
@@ -241,17 +242,24 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, normalized),
 	)
 
-	if metadata == nil {
+	if metadata == nil || len(metadata.Tables) == 0 {
 		return
 	}
 
+	parsedTables := make([]database_observability.ParsedTable, 0, len(metadata.Tables))
 	for _, table := range metadata.Tables {
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_PARSED_TABLE_NAME,
-			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
-		)
+		parsedTables = append(parsedTables, database_observability.ParsedTable{Table: table})
 	}
+	tablesJSON, err := json.Marshal(parsedTables)
+	if err != nil {
+		c.logger.Error("failed to encode parsed tables", "err", err)
+		return
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+		fmt.Sprintf(`database=%q query_hash=%q tables=%q`, database, queryHash, tablesJSON),
+	)
 }
 
 // pruneThrottle drops throttle entries whose (database, query_hash) was not
