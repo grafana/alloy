@@ -70,6 +70,17 @@ flowchart TD
     style otel fill:#ffffff,stroke:#000000,color:#000000,rx:10,ry:10
 {{< /mermaid >}}
 
+### Differences between the engines
+
+The two engines store data and serve HTTP traffic in different ways.
+
+- **Storage**: The {{< param "DEFAULT_ENGINE" >}} uses the `--storage.path` flag to set the directory where components write data to disk.
+  The {{< param "OTEL_ENGINE" >}} has no such flag. Use the `filestorage` extension instead.
+  Refer to the [upstream documentation](https://opentelemetry.io/docs/collector/resiliency/#persistent-storage-write-ahead-log---wal) for more information.
+- **Ports**: The {{< param "DEFAULT_ENGINE" >}} serves its HTTP endpoints, including the UI, on port `12345`.
+  The {{< param "OTEL_ENGINE" >}} serves only its own metrics, on port `8888`.
+  It doesn't provide a UI, support bundles, or a reload endpoint.
+
 ## Choose an engine
 
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension.
