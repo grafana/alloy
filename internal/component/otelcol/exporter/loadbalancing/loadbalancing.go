@@ -45,18 +45,18 @@ func init() {
 				myArgs := args.(Arguments)
 				var typeSignal exporter.TypeSignal
 				switch myArgs.RoutingKey {
-				case "traceID":
+				case routingKeyTraceID:
 					typeSignal = exporter.TypeLogs | exporter.TypeTraces
-				case "randomness":
+				case routingKeyRandomness:
 					typeSignal = exporter.TypeTraces
-				case "service", routingKeyAttributes:
+				case routingKeyService, routingKeyAttributes:
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
 					} else {
 						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces
 					}
-				case "resource", "metric", "streamID":
+				case routingKeyResource, routingKeyMetric, routingKeyStreamID:
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeMetrics
 					} else {
@@ -70,8 +70,16 @@ func init() {
 	})
 }
 
-// routingKeyAttributes is the routing key that routes by routing_attributes.
-const routingKeyAttributes = "attributes"
+// Supported values for the routing_key argument.
+const (
+	routingKeyTraceID    = "traceID"
+	routingKeyRandomness = "randomness"
+	routingKeyService    = "service"
+	routingKeyResource   = "resource"
+	routingKeyMetric     = "metric"
+	routingKeyStreamID   = "streamID"
+	routingKeyAttributes = "attributes"
+)
 
 // Arguments configures the otelcol.exporter.loadbalancing component.
 type Arguments struct {
@@ -99,7 +107,7 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		RoutingKey: "traceID",
+		RoutingKey: routingKeyTraceID,
 	}
 	args.DebugMetrics.SetToDefault()
 	args.Protocol.OTLP.SetToDefault()
@@ -114,7 +122,7 @@ func (args *Arguments) Validate() error {
 	// Allow routing keys for all signal types. Metrics exporter will be disabled
 	// if stability level is above experimental
 	switch args.RoutingKey {
-	case "service", "traceID", "randomness", "resource", "metric", "streamID", routingKeyAttributes:
+	case routingKeyService, routingKeyTraceID, routingKeyRandomness, routingKeyResource, routingKeyMetric, routingKeyStreamID, routingKeyAttributes:
 		// The routing key is valid.
 	default:
 		return fmt.Errorf("invalid routing key %q", args.RoutingKey)
