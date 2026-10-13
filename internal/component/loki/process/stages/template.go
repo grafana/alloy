@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"encoding"
 	"encoding/hex"
 	"errors"
@@ -15,7 +16,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/grafana/alloy/syntax"
 )

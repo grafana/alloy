@@ -29,8 +29,8 @@ func TestDefaultArguments(t *testing.T) {
 			Headers:           configopaque.MapList{},
 			Compression:       configcompression.TypeGzip,
 			WriteBufferSize:   512 * 1024,
-			MaxIdleConns:      100,
-			IdleConnTimeout:   90 * time.Second,
+			MaxIdleConns:      100,              //nolint:staticcheck // migrate to confighttp Keepalive
+			IdleConnTimeout:   90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
 			HTTP2PingTimeout:  15 * time.Second,
 			ForceAttemptHTTP2: true,
 		},
