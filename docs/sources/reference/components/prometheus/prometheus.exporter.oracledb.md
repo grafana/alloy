@@ -13,7 +13,7 @@ title: prometheus.exporter.oracledb
 # `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) to collect statistics from one or more OracleDB servers.
+[`oracledb_exporter`][oracledb-exporter] to collect statistics from one or more OracleDB servers.
 
 You can specify multiple `prometheus.exporter.oracledb` components by giving them different labels.
 
@@ -22,9 +22,11 @@ Ensure you have the following:
 - Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}
 - Appropriate environment variables configured for Oracle Client libraries
 
+[oracledb-exporter]: https://github.com/oracle/oracle-db-appdev-monitoring
+
 ### Oracle instant client basic
 
-When you run the standalone binary, you must install the [Oracle Instant Client Basic](http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html) for your operating system.
+When you run the standalone binary, you must install the [Oracle Instant Client Basic][instant-client] for your operating system.
 The exporter only requires the basic version.
 
 {{< admonition type="note" >}}
@@ -34,6 +36,8 @@ The `prometheus.exporter.oracledb` component relies on Oracle Instant Client lib
 For macOS on Apple silicon, set `DYLD_LIBRARY_PATH` to the directory where you installed the Oracle Instant Client libraries.
 For example `export DYLD_LIBRARY_PATH=/lib/oracle/instantclient_23_3`.
 {{< /admonition >}}
+
+[instant-client]: http://www.oracle.com/technetwork/database/features/instant-client/index-097480.html
 
 ### Environment variables
 
@@ -84,7 +88,7 @@ If you keep the deprecated top-level configuration and omit `database` blocks, y
 If the URL doesn't embed a username and password, set the deprecated top-level `username` and `password` arguments for that target only.
 {{< /admonition >}}
 
-Refer to the [`oracledb_exporter` repository](https://github.com/oracle/oracle-db-appdev-monitoring) for examples of TOML metrics files.
+Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
 For backward compatibility, you can still provide the `username` and `password` arguments in the `connection_string` argument:
 
