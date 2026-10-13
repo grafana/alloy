@@ -35,8 +35,9 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 	case bodyTypeRaw:
 		if s.body != "" {
 			body = strings.NewReader(s.body)
-			contentType = s.bodyContentType
 		}
+		// The user can ask for a Content-Type on a request with no body.
+		contentType = s.bodyContentType
 	case "x-www-form-urlencoded":
 		form := url.Values{}
 		for k, v := range s.bodyForm {

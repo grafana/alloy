@@ -62,6 +62,21 @@ func TestBuildRequestRawBody(t *testing.T) {
 	require.Equal(t, `{"a":1}`, string(b))
 }
 
+func TestBuildRequestRawContentTypeWithoutBody(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://example.com/api"
+		url_options {
+			method            = "POST"
+			body_content_type = "application/json"
+		}
+	}`)
+	require.NoError(t, err)
+
+	req, err := buildRequest(t.Context(), s)
+	require.NoError(t, err)
+	require.Equal(t, "application/json", req.Header.Get("Content-Type"))
+}
+
 func TestBuildRequestURLEncodedForm(t *testing.T) {
 	s, err := specFromConfig(`query "q" {
 		url = "http://example.com/api"
