@@ -69,7 +69,7 @@ Refer to [Install {{< param "FULL_PRODUCT_NAME" >}}][Install] for more informati
    curl http://localhost:8888/metrics
    ```
 
-{{< param "PRODUCT_NAME" >}} then accepts incoming OTLP data on `localhost:4317` for gRPC and `localhost:4318` for HTTP requests.
+{{< param "PRODUCT_NAME" >}} then accepts incoming OTLP traces on `localhost:4317` for gRPC and `localhost:4318` for HTTP requests.
 Metrics are also available on the default collector port and endpoint at `localhost:8888/metrics`.
 
 The {{< param "DEFAULT_ENGINE" >}} isn't running, so its UI at `localhost:12345` and its metrics at `localhost:12345/metrics` aren't available.
