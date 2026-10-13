@@ -258,7 +258,7 @@ func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash
 	}
 
 	c.logger.Debug("db native explain plan", "query_hash", queryHash,
-		"db_native_explain_plan", base64.StdEncoding.EncodeToString(planXML))
+		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactNativeShowPlanXML(planXML)))
 
 	c.emit(database, queryHash, now, database_observability.ExplainProcessingResultSuccess, "", planNode)
 	c.recordEmission(key, hash, now)
@@ -323,12 +323,6 @@ func (c *ExplainPlans) emit(
 
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			// DatabaseEngine/DatabaseVersion are intentionally left unset: the
-			// engine is now carried as a Loki label (see addLokiLabels) instead,
-			// which is queryable and consistent with connection_info's "engine"
-			// metric label, unlike these fields which no UI consumer ever read
-			// (grafana-dbo11y-app#3471). mysql/postgres still populate them
-			// pending a follow-up change there.
 			QueryIdentifier:        queryHash,
 			GeneratedAt:            now.Format(time.RFC3339),
 			ProcessingResult:       result,
@@ -346,7 +340,7 @@ func (c *ExplainPlans) emit(
 	}
 
 	logMessage := fmt.Sprintf(
-		`database="%s" query_hash="%s" explain_plan_output="%s"`,
+		`database=%q query_hash=%q explain_plan_output=%q`,
 		database,
 		queryHash,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),

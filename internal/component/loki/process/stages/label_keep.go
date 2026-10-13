@@ -3,6 +3,8 @@ package stages
 import (
 	"context"
 	"errors"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // errEmptyLabelKeepStageConfig error is returned if the config is empty.
@@ -13,16 +15,19 @@ type LabelKeepConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-var (
-	_ Stage          = (*labelKeepStage)(nil)
-	_ entryProcessor = (*labelKeepStage)(nil)
-)
+var _ syntax.Validator = (*LabelKeepConfig)(nil)
 
-func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) (*labelKeepStage, error) {
-	if len(config.Values) < 1 {
-		return nil, errEmptyLabelKeepStageConfig
+func (l *LabelKeepConfig) Validate() error {
+	if len(l.Values) < 1 {
+		return errEmptyLabelKeepStageConfig
 	}
 
+	return nil
+}
+
+var _ entryProcessor = (*labelKeepStage)(nil)
+
+func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) *labelKeepStage {
 	labelMap := make(map[string]struct{})
 	for _, label := range config.Values {
 		labelMap[label] = struct{}{}
@@ -31,24 +36,12 @@ func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) (*labelKeepStage,
 	return &labelKeepStage{
 		next:   opts.next,
 		labels: labelMap,
-	}, nil
+	}
 }
 
 type labelKeepStage struct {
 	next   nextFn
 	labels map[string]struct{}
-}
-
-// Run implements Stage.
-func (l *labelKeepStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		for label := range e.Labels {
-			if _, ok := l.labels[string(label)]; !ok {
-				delete(e.Labels, label)
-			}
-		}
-		return e
-	})
 }
 
 func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
@@ -61,6 +54,3 @@ func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return l.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (l *labelKeepStage) Cleanup() {}

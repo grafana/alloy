@@ -270,7 +270,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_TABLE_DETECTION,
-			fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+			fmt.Sprintf(`schema=%q table=%q`, schema, tableName),
 		)
 	}
 
@@ -355,7 +355,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 				logging.LevelInfo,
 				database_observability.OP_CREATE_STATEMENT,
 				fmt.Sprintf(
-					`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					`schema=%q table=%q create_statement=%q table_spec=%q`,
 					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 				),
 			)

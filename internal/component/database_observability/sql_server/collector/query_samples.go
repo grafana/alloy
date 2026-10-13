@@ -584,7 +584,7 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 		line += fmt.Sprintf(` client_port="%d"`, row.ClientPort.Int64)
 	}
 	line += fmt.Sprintf(
-		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time="%s" elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
+		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time=%q elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
 		row.SessionID,
 		row.RequestID,
 		strconv.Quote(row.QueryHash),
@@ -610,7 +610,7 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 
 func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccurrence) string {
 	line := fmt.Sprintf(
-		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s wait_object_name=%s`,
+		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s`,
 		strconv.Quote(row.DatabaseName),
 		strconv.Quote(row.LoginName.String),
 		row.SessionID,
@@ -619,7 +619,6 @@ func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccu
 		strconv.Quote(row.QueryHash),
 		strconv.Quote(classifySQLServerWaitEventType(wait.identity.waitType)),
 		strconv.Quote(wait.identity.waitType),
-		strconv.Quote(wait.identity.resource),
 	)
 	if wait.identity.blockingSessionID.Valid {
 		line += fmt.Sprintf(` blocking_session_id="%d"`, wait.identity.blockingSessionID.Int64)

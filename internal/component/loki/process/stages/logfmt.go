@@ -52,10 +52,7 @@ func validateLogfmtConfig(c *LogfmtConfig) (map[string]string, *regexp.Regexp, e
 	return inverseMapping, re, nil
 }
 
-var (
-	_ Stage          = (*logfmtStage)(nil)
-	_ entryProcessor = (*logfmtStage)(nil)
-)
+var _ entryProcessor = (*logfmtStage)(nil)
 
 // newLogfmtStage creates a new logfmt pipeline stage from a config.
 func newLogfmtStage(config LogfmtConfig, opts stageOpts) (*logfmtStage, error) {
@@ -84,22 +81,12 @@ type logfmtStage struct {
 	logger         *slog.Logger
 }
 
-// Run implements Stage.
-func (j *logfmtStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return j.processEntry(e)
-	})
-}
-
 func (j *logfmtStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = j.processEntry(entries[i])
 	}
 	return j.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (j *logfmtStage) Cleanup() {}
 
 func (j *logfmtStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the logfmt stage should process it

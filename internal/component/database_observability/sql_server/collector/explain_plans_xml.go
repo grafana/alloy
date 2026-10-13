@@ -3,6 +3,8 @@ package collector
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
+	"regexp"
 	"strings"
 
 	"github.com/grafana/alloy/internal/component/database_observability"
@@ -174,12 +176,13 @@ func newExplainPlanOutputFromShowPlanXML(showPlanXML []byte) (*database_observab
 }
 
 func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode {
+	subtreeCost := parseFloatPtrOrNil(op.EstimatedTotalSubtreeCost)
 	node := database_observability.ExplainPlanNode{
 		Details: database_observability.ExplainPlanNodeDetails{
 			EstimatedRows: parseInt64OrZero(op.EstimateRows),
-			EstimatedCost: parseFloatPtrOrNil(op.EstimatedTotalSubtreeCost),
 		},
 	}
+	var childSubtreeCost float64
 
 	if op.Warnings != nil {
 		node.Details.Warnings = op.Warnings.strings()
@@ -199,10 +202,10 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 		if op.LogicalOp != "" {
 			node.Details.JoinType = &op.LogicalOp
 		}
-		node.Children = childrenOf(op.NestedLoops.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.NestedLoops.RelOp)
 	case op.Hash != nil:
 		populateHashDetails(&node, op)
-		node.Children = childrenOf(op.Hash.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Hash.RelOp)
 	case op.Merge != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationMergeJoin
 		algo := database_observability.ExplainPlanJoinAlgorithmMerge
@@ -210,10 +213,10 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 		if op.LogicalOp != "" {
 			node.Details.JoinType = &op.LogicalOp
 		}
-		node.Children = childrenOf(op.Merge.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Merge.RelOp)
 	case op.StreamAggregate != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationGroupingOperation
-		node.Children = childrenOf(op.StreamAggregate.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.StreamAggregate.RelOp)
 	case op.Sort != nil:
 		if strings.EqualFold(op.LogicalOp, "Distinct Sort") {
 			node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
@@ -223,40 +226,46 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 		if op.Sort.OrderBy != nil {
 			node.Details.SortKeys = orderByColumns(op.Sort.OrderBy)
 		}
-		node.Children = childrenOf(op.Sort.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Sort.RelOp)
 	case op.ComputeScalar != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationComputeScalar
-		node.Children = childrenOf(op.ComputeScalar.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.ComputeScalar.RelOp)
 	case op.Filter != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationFilter
 		if op.Filter.Predicate != nil {
 			node.Details.Condition = redactedCondition(op.Filter.Predicate)
 		}
-		node.Children = childrenOf(op.Filter.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Filter.RelOp)
 	case op.Top != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationTop
-		node.Children = childrenOf(op.Top.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Top.RelOp)
 	case op.Concat != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationUnion
-		node.Children = childrenOf(op.Concat.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Concat.RelOp)
 	case op.Parallelism != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationParallelism
-		node.Children = childrenOf(op.Parallelism.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Parallelism.RelOp)
 	case op.TableSpool != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationSpool
-		node.Children = childrenOf(op.TableSpool.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.TableSpool.RelOp)
 	case op.IndexSpool != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationSpool
-		node.Children = childrenOf(op.IndexSpool.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.IndexSpool.RelOp)
 	case op.Update != nil:
 		populateUpdateDetails(&node, op)
-		node.Children = childrenOf(op.Update.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Update.RelOp)
 	case op.Assert != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationAssert
-		node.Children = childrenOf(op.Assert.RelOp)
+		node.Children, childSubtreeCost = childrenOf(op.Assert.RelOp)
 	default:
 		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
 		node.Details.UnrecognizedOperator = &op.PhysicalOp
+	}
+
+	if subtreeCost != nil {
+		incrementalCost := max(0, *subtreeCost-childSubtreeCost)
+		incrementalCost = math.Round(incrementalCost*1e12) / 1e12
+		node.Details.EstimatedCost = &incrementalCost
 	}
 
 	return node
@@ -359,15 +368,48 @@ func redactedCondition(predicate *xmlPredicate) *string {
 	return &redacted
 }
 
-func childrenOf(relOps []xmlRelOp) []database_observability.ExplainPlanNode {
+// nativeShowPlanLiteralAttrs matches the raw Showplan XML attributes known to
+// carry literal customer data: predicate constants (ScalarString) and
+// compiled/runtime parameter values (ParameterCompiledValue,
+// ParameterRuntimeValue).
+var nativeShowPlanLiteralAttrs = regexp.MustCompile(`(ScalarString|ParameterCompiledValue|ParameterRuntimeValue)="([^"]*)"`)
+
+// xmlAttrEscaper and xmlAttrUnescaper cover the five entities XML predefines
+// for attribute values - the only escaping SQL Server's own XML serializer
+// produces here, so a full encoding/xml round-trip isn't needed just to edit
+// one attribute value in place.
+var xmlAttrEscaper = strings.NewReplacer(`&`, "&amp;", `<`, "&lt;", `>`, "&gt;", `"`, "&quot;", `'`, "&apos;")
+var xmlAttrUnescaper = strings.NewReplacer(`&lt;`, "<", `&gt;`, ">", `&quot;`, `"`, `&apos;`, "'", `&amp;`, "&")
+
+// redactNativeShowPlanXML redacts literal values out of the raw Showplan XML
+// bytes fetched from sys.query_store_plan, for the debug-only native-plan log
+// line. It edits known literal-bearing attribute values in place by regex
+// rather than unmarshaling and remarshaling through the xml* structs above:
+// those structs only model the operators this package understands, so a
+// remarshal would silently drop every other attribute (warnings, memory
+// grants, etc.) that this log line exists to preserve for troubleshooting.
+func redactNativeShowPlanXML(planXML []byte) []byte {
+	return nativeShowPlanLiteralAttrs.ReplaceAllFunc(planXML, func(match []byte) []byte {
+		groups := nativeShowPlanLiteralAttrs.FindSubmatch(match)
+		attr, value := string(groups[1]), string(groups[2])
+		redacted := database_observability.RedactSql(xmlAttrUnescaper.Replace(value))
+		return fmt.Appendf(nil, `%s="%s"`, attr, xmlAttrEscaper.Replace(redacted))
+	})
+}
+
+func childrenOf(relOps []xmlRelOp) ([]database_observability.ExplainPlanNode, float64) {
 	if len(relOps) == 0 {
-		return nil
+		return nil, 0
 	}
 	children := make([]database_observability.ExplainPlanNode, 0, len(relOps))
+	var subtreeCost float64
 	for _, child := range relOps {
 		children = append(children, relOpToExplainPlanNode(child))
+		if cost := parseFloatPtrOrNil(child.EstimatedTotalSubtreeCost); cost != nil {
+			subtreeCost += *cost
+		}
 	}
-	return children
+	return children, subtreeCost
 }
 
 func columnReferences(refs []xmlColumnReference) []string {

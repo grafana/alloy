@@ -1,0 +1,38 @@
+{
+  "operation": "Unique Key Lookup",
+  "details": {
+    "estimatedRows": 37253,
+    "estimatedCost": 40978.94,
+    "alias": "e",
+    "accessType": "eq_ref",
+    "keyUsed": "PRIMARY",
+    "joinAlgorithm": "nested_loop",
+    "condition": "( year ( `employees` . `e` . `hire_date` ) = ? )"
+  },
+  "children": [
+    {
+      "operation": "Non-Unique Key Lookup",
+      "details": {
+        "estimatedRows": 37253,
+        "estimatedCost": 57152.59,
+        "alias": "de",
+        "accessType": "ref",
+        "keyUsed": "dept_no",
+        "joinAlgorithm": "nested_loop",
+        "condition": "( `employees` . `de` . `to_date` = date ? )"
+      },
+      "children": [
+        {
+          "operation": "Full Index Scan",
+          "details": {
+            "estimatedRows": 9,
+            "estimatedCost": 1.9,
+            "alias": "d",
+            "accessType": "index",
+            "keyUsed": "dept_name"
+          }
+        }
+      ]
+    }
+  ]
+}

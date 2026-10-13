@@ -28,6 +28,17 @@ linters:
               desc: Use github.com/go-kit/log instead of github.com/go-kit/kit/log
             - pkg: golang.org/x/sync/errgroup
               desc: Use github.com/oklog/run instead of golang.org/x/sync/errgroup
+    goconst:
+      # Setting this replaces the default [Call]. CompositeLit keeps the scope
+      # we had before goconst 1.10 started checking composite literals.
+      exclude-types:
+        - Call
+        - CompositeLit
+    govet:
+      disable:
+        # Reports generic call sites it can't rewrite yet ("type parameter
+        # inference is not yet supported"), which we can't fix on our side.
+        - inline
     revive:
       rules:
         - name: package-comments
@@ -51,6 +62,11 @@ linters:
       - linters:
           - goconst
         path: (.+)_test\.go
+      # FIXME: migrate x/net/http2 transports to http.Transport.Protocols/HTTP2.
+      # https://github.com/grafana/alloy/issues/7364
+      - linters:
+          - staticcheck
+        text: 'SA1019: .*golang\.org/x/net/http2'
     paths:
       - component/pyroscope/scrape/internal/fastdelta
       - component/pyroscope/scrape/internal/pproflite

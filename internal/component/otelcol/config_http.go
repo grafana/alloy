@@ -98,13 +98,13 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 	return configoptional.Some(otelconfighttp.ServerConfig{
 		NetAddr:               confignet.AddrConfig{Endpoint: args.Endpoint, Transport: confignet.TransportTypeTCP},
 		TLS:                   args.TLS.Convert(),
-		KeepAlivesEnabled:     keepAliveEnabled,
+		KeepAlivesEnabled:     keepAliveEnabled, //nolint:staticcheck // migrate to confighttp Keepalive
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
-		IdleTimeout:           args.IdleTimeout,
+		IdleTimeout:           args.IdleTimeout, //nolint:staticcheck // migrate to confighttp Keepalive
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
@@ -298,11 +298,11 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		WriteBufferSize:      int(args.WriteBufferSize),
 		Timeout:              args.Timeout,
 		Headers:              opaqueHeaders,
-		MaxIdleConns:         args.MaxIdleConns,
-		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost,
+		MaxIdleConns:         args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
+		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
 		MaxConnsPerHost:      args.MaxConnsPerHost,
-		IdleConnTimeout:      args.IdleConnTimeout,
-		DisableKeepAlives:    args.DisableKeepAlives,
+		IdleConnTimeout:      args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
+		DisableKeepAlives:    args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 		ForceAttemptHTTP2:    args.ForceAttemptHTTP2,

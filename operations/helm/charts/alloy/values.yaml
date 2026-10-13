@@ -136,6 +136,14 @@ alloy:
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
 
+  # -- Resize policy for the Grafana Alloy container. Controls whether an
+  # in-place resize of CPU or memory restarts the container.
+  resizePolicy: []
+    # - resourceName: cpu
+    #   restartPolicy: NotRequired
+    # - resourceName: memory
+    #   restartPolicy: RestartContainer
+
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
     # preStop:
@@ -263,6 +271,9 @@ configReloader:
     requests:
       cpu: "10m"
       memory: "50Mi"
+  # -- Resize policy for the config reloader container. Controls whether an
+  # in-place resize of CPU or memory restarts the container.
+  resizePolicy: []
   # -- Security context to apply to the Grafana configReloader container.
   securityContext:
     allowPrivilegeEscalation: false

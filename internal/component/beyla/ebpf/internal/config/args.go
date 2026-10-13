@@ -11,25 +11,28 @@ type Arguments struct {
 	// Deprecated: Use discovery.services instead.
 	Port string `alloy:"open_port,attr,optional"`
 	// Deprecated: Use discovery.services instead.
-	ExecutableName    string                     `alloy:"executable_name,attr,optional"`
-	Debug             bool                       `alloy:"debug,attr,optional"`
-	LogLevel          string                     `alloy:"log_level,attr,optional"`
-	TracePrinter      string                     `alloy:"trace_printer,attr,optional"`
-	EnforceSysCaps    bool                       `alloy:"enforce_sys_caps,attr,optional"`
-	Routes            Routes                     `alloy:"routes,block,optional"`
-	Attributes        Attributes                 `alloy:"attributes,block,optional"`
-	Discovery         Discovery                  `alloy:"discovery,block,optional"`
-	Metrics           Metrics                    `alloy:"metrics,block,optional"`
-	Traces            Traces                     `alloy:"traces,block,optional"`
-	EBPF              EBPF                       `alloy:"ebpf,block,optional"`
-	Filters           Filters                    `alloy:"filters,block,optional"`
-	Output            *otelcol.ConsumerArguments `alloy:"output,block,optional"`
-	Injector          Injector                   `alloy:"injector,block,optional"`
-	Stats             Stats                      `alloy:"stats,block,optional"`
-	InternalMetrics   InternalMetrics            `alloy:"internal_metrics,block,optional"`
-	Javaagent         Javaagent                  `alloy:"javaagent,block,optional"`
-	Nodejs            Nodejs                     `alloy:"nodejs,block,optional"`
-	JVMRuntimeMetrics JVMRuntimeMetrics          `alloy:"jvm_runtime_metrics,block,optional"`
+	ExecutableName       string                     `alloy:"executable_name,attr,optional"`
+	Debug                bool                       `alloy:"debug,attr,optional"`
+	LogLevel             string                     `alloy:"log_level,attr,optional"`
+	TracePrinter         string                     `alloy:"trace_printer,attr,optional"`
+	EnforceSysCaps       bool                       `alloy:"enforce_sys_caps,attr,optional"`
+	Routes               Routes                     `alloy:"routes,block,optional"`
+	Attributes           Attributes                 `alloy:"attributes,block,optional"`
+	Discovery            Discovery                  `alloy:"discovery,block,optional"`
+	Metrics              Metrics                    `alloy:"metrics,block,optional"`
+	Traces               Traces                     `alloy:"traces,block,optional"`
+	EBPF                 EBPF                       `alloy:"ebpf,block,optional"`
+	Filters              Filters                    `alloy:"filters,block,optional"`
+	Output               *otelcol.ConsumerArguments `alloy:"output,block,optional"`
+	Injector             Injector                   `alloy:"injector,block,optional"`
+	Stats                Stats                      `alloy:"stats,block,optional"`
+	InternalMetrics      InternalMetrics            `alloy:"internal_metrics,block,optional"`
+	Javaagent            Javaagent                  `alloy:"javaagent,block,optional"`
+	Nodejs               Nodejs                     `alloy:"nodejs,block,optional"`
+	JVMRuntimeMetrics    JVMRuntimeMetrics          `alloy:"jvm_runtime_metrics,block,optional"`
+	DotnetRuntimeMetrics DotnetRuntimeMetrics       `alloy:"dotnet_runtime_metrics,block,optional"`
+	CloudMetadata        CloudMetadata              `alloy:"cloud_metadata,block,optional"`
+	NameResolver         NameResolver               `alloy:"name_resolver,block,optional"`
 }
 
 type Attributes struct {
@@ -130,6 +133,8 @@ type Buckets struct {
 	StatTCPRTTHistogram                   []float64 `alloy:"stat_tcp_rtt_histogram,attr,optional"`
 	GenAIClientOperationDurationHistogram []float64 `alloy:"gen_ai_client_operation_duration_histogram,attr,optional"`
 	GenAIClientTokenUsageHistogram        []float64 `alloy:"gen_ai_client_token_usage_histogram,attr,optional"`
+	JVMGCDurationHistogram                []float64 `alloy:"jvm_gc_duration_histogram,attr,optional"`
+	V8JSGCDurationHistogram               []float64 `alloy:"v8js_gc_duration_histogram,attr,optional"`
 }
 
 type NativeHistogramConfig struct {
