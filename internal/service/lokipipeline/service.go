@@ -1,6 +1,6 @@
-// Package loki implements the loki service, which exposes Loki related
+// Package lokipipeline implements the lokipipeline service, which exposes Loki related
 // command-line options to components.
-package loki
+package lokipipeline
 
 import (
 	"context"
@@ -10,17 +10,17 @@ import (
 	"github.com/grafana/alloy/internal/service"
 )
 
-// ServiceName defines the name used for the loki service.
-const ServiceName = "loki"
+// ServiceName defines the name used for the lokipipeline service.
+const ServiceName = "lokipipeline"
 
-// Options configures the loki service.
+// Options configures the lokipipeline service.
 type Options struct {
 	// ConsumerPipeline enables passing logs between Loki components through
 	// consumers instead of channels.
 	ConsumerPipeline bool
 }
 
-// Data is the runtime data exposed by the loki service.
+// Data is the runtime data exposed by the lokipipeline service.
 type Data interface {
 	// ConsumerPipelineEnabled reports whether the consumer pipeline is enabled.
 	ConsumerPipelineEnabled() bool
@@ -35,7 +35,7 @@ var (
 	_ Data            = (*Service)(nil)
 )
 
-// New creates a new loki service.
+// New creates a new lokipipeline service.
 func New(opts Options) *Service {
 	return &Service{opts: opts}
 }
@@ -46,7 +46,7 @@ func (*Service) Run(ctx context.Context, _ service.Host) error {
 }
 
 func (*Service) Update(_ any) error {
-	return fmt.Errorf("loki service does not support configuration")
+	return fmt.Errorf("lokipipeline service does not support configuration")
 }
 
 func (*Service) Definition() service.Definition {

@@ -42,7 +42,7 @@ import (
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	lokiservice "github.com/grafana/alloy/internal/service/loki"
+	"github.com/grafana/alloy/internal/service/lokipipeline"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -568,7 +568,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 
 	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
-	lokiService := lokiservice.New(lokiservice.Options{ConsumerPipeline: fr.enableLokiConsumerPipeline})
+	lokiService := lokipipeline.New(lokipipeline.Options{ConsumerPipeline: fr.enableLokiConsumerPipeline})
 	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{

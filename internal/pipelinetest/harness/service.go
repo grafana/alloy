@@ -12,7 +12,7 @@ import (
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	lokiservice "github.com/grafana/alloy/internal/service/loki"
+	"github.com/grafana/alloy/internal/service/lokipipeline"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 )
 
@@ -31,7 +31,7 @@ const (
 func defaultServices(l *logging.Logger, cfg Config) []service.Service {
 	return []service.Service{
 		livedebugging.New(),
-		lokiservice.New(lokiservice.Options{ConsumerPipeline: cfg.LokiConsumerPipeline}),
+		lokipipeline.New(lokipipeline.Options{ConsumerPipeline: cfg.LokiConsumerPipeline}),
 		labelstore.New(l.Slog(), prometheus.NewRegistry()),
 		httpservice.New(httpservice.Options{
 			Logger:           l,
