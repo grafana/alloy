@@ -75,7 +75,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
 					Retry: configkafka.MetadataRetryConfig{
-						Max:     3,
+						Max:     20,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
@@ -414,7 +414,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -427,7 +426,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -440,7 +438,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
