@@ -18,6 +18,8 @@ You can run it with the CLI, the OpenTelemetry Collector Helm chart, or a servic
 To run a {{< param "DEFAULT_ENGINE" >}} pipeline inside the {{< param "OTEL_ENGINE" >}}, add the {{< param "PRODUCT_NAME" >}} Engine extension to any of these.
 You can also build your own binary with the OpenTelemetry Collector Builder.
 
+To manage the {{< param "OTEL_ENGINE" >}} configuration remotely, use the [`otel-supervisor`][OTelSupervisorCommand] command.
+It runs the {{< param "OTEL_ENGINE" >}} under an embedded OpAMP supervisor that receives the configuration from [Grafana Fleet Management][FleetManagement].
 
 To learn when to use each engine, refer to [OpenTelemetry in {{< param "PRODUCT_NAME" >}}][OTelAlloy].
 
@@ -28,6 +30,9 @@ To learn when to use each engine, refer to [OpenTelemetry in {{< param "PRODUCT_
 ## Next steps
 
 - [`otel` command reference][OTelCommand]
+- [`otel-supervisor` command reference][OTelSupervisorCommand]
 
+[FleetManagement]: https://grafana.com/docs/grafana-cloud/send-data/fleet-management/
 [OTelAlloy]: ../../introduction/otel_alloy/
 [OTelCommand]: ../../reference/cli/otel/
+[OTelSupervisorCommand]: ../../reference/cli/otel-supervisor/
