@@ -91,6 +91,7 @@ body:
       - otelcol.auth.oauth2
       - otelcol.auth.sigv4
       - otelcol.connector.count
+      - otelcol.connector.exceptions
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
       - otelcol.connector.signaltometrics
