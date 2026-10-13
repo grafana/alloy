@@ -48,7 +48,7 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 1. Optional: Set `OTEL_CUSTOM_ARGS` to pass additional command-line flags to the {{< param "OTEL_ENGINE" >}}.
    This setting works the same way as `CUSTOM_ARGS` does for the {{< param "DEFAULT_ENGINE" >}}.
 
-1. Check the configuration, replacing `<OTEL_CONFIG_FILE>` with the path configured above:
+1. Check the configuration, and replace _`<OTEL_CONFIG_FILE>`_ with the path configured above:
 
    ```shell
    alloy otel validate --config=<OTEL_CONFIG_FILE>
