@@ -16,7 +16,7 @@ The two engines run in parallel and can't exchange data with each other. If requ
 Set exactly one of `config.path` or `config.inline.content`.
 The extension fails to start if you set both or neither.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 

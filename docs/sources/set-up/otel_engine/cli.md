@@ -13,7 +13,7 @@ The {{< param "OTEL_ENGINE" >}} is available under the {{< param "PRODUCT_NAME" 
 Use the CLI to experiment locally or to run the {{< param "OTEL_ENGINE" >}} on a single host.
 Refer to the [`otel`][OTelCommand] reference documentation for more information.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Before you begin
 

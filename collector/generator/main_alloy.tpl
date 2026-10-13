@@ -27,7 +27,7 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
 
 	otelCmd.Use = useragent.EngineOTel
 	otelCmd.Short = "Use Alloy with OTel Engine"
-	otelCmd.Long = "[EXPERIMENTAL] Use Alloy with OpenTelemetry Collector Engine"
+	otelCmd.Long = "Use Alloy with OpenTelemetry Collector Engine"
 
 	// Match `alloy run`: report anonymous usage stats unless the user opts out.
 	disableReporting := otelCmd.Flags().Bool("disable-reporting", false, "Disable reporting of enabled components to Grafana.")
