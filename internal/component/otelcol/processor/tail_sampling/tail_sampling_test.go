@@ -114,6 +114,7 @@ func TestBigConfig(t *testing.T) {
     sample_on_first_match = true
     drop_pending_traces_on_shutdown = true
     maximum_trace_size_bytes = 4096
+    num_shards = 4
     policy {
       name = "test-policy-1"
       type = "always_sample"

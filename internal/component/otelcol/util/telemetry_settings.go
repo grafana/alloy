@@ -24,7 +24,7 @@ func GetTelemetrySettingsResource() (pcommon.Resource, error) {
 	telemetrySettings := telemetry.Settings{BuildInfo: GetBuildInfo()}
 
 	fact := otelconftelemetry.NewFactory()
-	resource, err := fact.CreateResource(context.Background(), telemetrySettings, fact.CreateDefaultConfig())
+	resource, _, err := fact.CreateResource(context.Background(), telemetrySettings, fact.CreateDefaultConfig())
 	if err != nil {
 		return pcommon.Resource{}, err
 	}

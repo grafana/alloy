@@ -91,11 +91,15 @@ prometheus.remote_write "default" {
 		metadata_config { }
 
 		sigv4 {
-			region     = "us-east-1"
-			access_key = "fake_access_key"
-			secret_key = "fake_secret_key"
-			profile    = "fake_profile"
-			role_arn   = "fake_role_arn"
+			region       = "us-east-1"
+			access_key   = "fake_access_key"
+			secret_key   = "fake_secret_key"
+			profile      = "fake_profile"
+			role_arn     = "fake_role_arn"
+			session_name = "fake_session_name"
+			tags         = {
+				team = "fake_team",
+			}
 		}
 	}
 

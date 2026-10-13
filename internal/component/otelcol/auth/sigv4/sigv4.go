@@ -44,17 +44,16 @@ func (args *Arguments) SetToDefault() {
 
 // ConvertClient implements auth.Arguments.
 func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
-	res := sigv4authextension.Config{
-		Region:     args.Region,
-		Service:    args.Service,
-		AssumeRole: *args.AssumeRole.Convert(),
-	}
+	res := sigv4authextension.NewFactory().CreateDefaultConfig().(*sigv4authextension.Config)
+	res.Region = args.Region
+	res.Service = args.Service
+	res.AssumeRole = *args.AssumeRole.Convert()
 	// sigv4authextension.Config has a private member called "credsProvider" which gets initialized when we call Validate().
 	// If we don't call validate, the unit tests for this component will fail.
 	if err := res.Validate(); err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res, nil
 }
 
 // ConvertServer returns nil since the sigv4 extension does not support server authentication.

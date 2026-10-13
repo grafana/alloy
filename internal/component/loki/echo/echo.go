@@ -97,13 +97,13 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
-	return batch.ConsumeStreams(func(stream loki.Stream) error {
+	for _, stream := range batch.Streams() {
 		lbls := stream.Labels.String()
 		for _, e := range stream.Entries {
 			c.printEntry(lbls, e)
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 func (c *Component) printEntry(lbls string, e push.Entry) {

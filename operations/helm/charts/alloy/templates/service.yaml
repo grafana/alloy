@@ -25,6 +25,11 @@ spec:
   externalTrafficPolicy: {{.Values.service.externalTrafficPolicy}}
   {{- end }}
   {{- end }}
+  {{- if semverCompare ">=1.34-0" .Capabilities.KubeVersion.Version }}
+  {{- with .Values.service.trafficDistribution }}
+  trafficDistribution: {{ . }}
+  {{- end }}
+  {{- end }}
   ports:
     - name: http-metrics
       {{- if eq .Values.service.type "NodePort" }}

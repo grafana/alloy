@@ -2,9 +2,6 @@
 package googlecloud
 
 import (
-	"time"
-
-	"github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -64,11 +61,10 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var result googlecloudexporter.Config
-	// We need to assign default values first to populate fields with unexported functions
-	result.Config = collector.DefaultConfig()
+	// The factory default seeds the embedded collector.DefaultConfig(), which
+	// populates fields holding unexported functions.
+	result := *googlecloudexporter.NewFactory().CreateDefaultConfig().(*googlecloudexporter.Config)
 
-	result.TimeoutSettings.Timeout = 12 * time.Second // https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/70d8986fa3a30e1f26927abffe1880345e2afa3f/exporter/googlecloudexporter/factory.go#L48
 	q, err := args.Queue.Convert()
 	if err != nil {
 		return nil, err

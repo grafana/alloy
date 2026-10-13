@@ -99,6 +99,7 @@ func Test_processLogStream(t *testing.T) {
 		logLines           []string
 		lastReadTime       time.Time
 		expectLines        []string
+		expectLastEntry    time.Time
 	}{
 		{name: "duplicate timestamps are not discarded",
 			logLines: []string{
@@ -153,6 +154,32 @@ func Test_processLogStream(t *testing.T) {
 			lastReadTime:       baseTime,
 			expectLines:        []string{"line1\n", "line2\n", "line3\n", "line4\n"},
 			preserveMetaLabels: true,
+		},
+		{
+			// The container runtime stamps stdout and stderr independently, so a
+			// live stream can carry a line whose timestamp precedes the previous
+			// line's. It must still be forwarded, and the reported position must
+			// not move backwards.
+			name: "out-of-order line on a live stream is not discarded",
+			logLines: []string{
+				"2023-01-23T17:00:10.000000000Z line1\n",
+				"2023-01-23T17:00:11.011798230Z stderr_late_stamp\n",
+				"2023-01-23T17:00:11.011741569Z stdout_early_stamp\n",
+				"2023-01-23T17:00:12.000000000Z line4\n",
+			},
+			lastReadTime:    baseTime.Add(-1 * time.Second),
+			expectLines:     []string{"line1\n", "stderr_late_stamp\n", "stdout_early_stamp\n", "line4\n"},
+			expectLastEntry: baseTime.Add(2 * time.Second),
+		},
+		{
+			name: "out-of-order line older than the resume time is discarded",
+			logLines: []string{
+				"2023-01-23T17:00:09.999Z old_line\n",
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:09.999Z old_line_again\n",
+			},
+			lastReadTime: baseTime,
+			expectLines:  []string{"line1\n"},
 		},
 	}
 
@@ -220,6 +247,10 @@ func Test_processLogStream(t *testing.T) {
 			}
 
 			require.Equal(t, tc.expectLines, receivedLines, "received lines should match expected lines")
+
+			if !tc.expectLastEntry.IsZero() {
+				require.Eventually(t, func() bool { return target.LastEntry().Equal(tc.expectLastEntry) }, time.Second, 10*time.Millisecond, "LastEntry should be the latest timestamp seen, got %v", target.LastEntry())
+			}
 
 			if tc.preserveMetaLabels {
 				lbls := target.Labels()

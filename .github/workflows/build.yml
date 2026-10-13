@@ -15,7 +15,7 @@ jobs:
   build_linux:
     name: Build on Linux
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    container: grafana/alloy-build-image:v0.1.36@sha256:415f7914a39d836d88e63e2da5807afa8d2f6db4540cf362c04a9dfa151ee23d
     strategy:
       matrix:
         os: [linux]
@@ -35,7 +35,7 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    container: grafana/alloy-build-image:v0.1.36@sha256:415f7914a39d836d88e63e2da5807afa8d2f6db4540cf362c04a9dfa151ee23d
     strategy:
       matrix:
         os: [linux]
@@ -72,7 +72,7 @@ jobs:
 
   build_windows:
     name: Build on Windows (AMD64)
-    runs-on: windows-latest
+    runs-on: github-hosted-windows-x64-large
     steps:
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -94,7 +94,7 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    container: grafana/alloy-build-image:v0.1.36@sha256:415f7914a39d836d88e63e2da5807afa8d2f6db4540cf362c04a9dfa151ee23d
     steps:
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3

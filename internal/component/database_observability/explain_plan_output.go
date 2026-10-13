@@ -16,22 +16,56 @@ const (
 	ExplainPlanOutputOperationUnion                ExplainPlanOutputOperation = "Union"
 	ExplainPlanOutputOperationUnknown              ExplainPlanOutputOperation = "Unknown"
 
+	// MySQL access type operations.
+	ExplainPlanOutputOperationSingleRowSystemConstant    ExplainPlanOutputOperation = "Single Row (system constant)"
+	ExplainPlanOutputOperationSingleRowConstant          ExplainPlanOutputOperation = "Single Row (constant)"
+	ExplainPlanOutputOperationUniqueKeyLookup            ExplainPlanOutputOperation = "Unique Key Lookup"
+	ExplainPlanOutputOperationNonUniqueKeyLookup         ExplainPlanOutputOperation = "Non-Unique Key Lookup"
+	ExplainPlanOutputOperationFulltextIndexSearch        ExplainPlanOutputOperation = "Fulltext Index Search"
+	ExplainPlanOutputOperationKeyLookupWithNullValues    ExplainPlanOutputOperation = "Key Lookup + Fetch NULL Values"
+	ExplainPlanOutputOperationIndexMerge                 ExplainPlanOutputOperation = "Index Merge"
+	ExplainPlanOutputOperationUniqueKeyLookupSubquery    ExplainPlanOutputOperation = "Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationNonUniqueKeyLookupSubquery ExplainPlanOutputOperation = "Non-Unique Key Lookup into table of subquery"
+	ExplainPlanOutputOperationIndexRangeScan             ExplainPlanOutputOperation = "Index Range Scan"
+	ExplainPlanOutputOperationFullIndexScan              ExplainPlanOutputOperation = "Full Index Scan"
+	ExplainPlanOutputOperationFullTableScan              ExplainPlanOutputOperation = "Full Table Scan"
+
 	// SQL Server showplan-specific operations with no equivalent among the operations above.
 	ExplainPlanOutputOperationComputeScalar ExplainPlanOutputOperation = "Compute Scalar"
 	ExplainPlanOutputOperationFilter        ExplainPlanOutputOperation = "Filter"
 	ExplainPlanOutputOperationTop           ExplainPlanOutputOperation = "Top"
 	ExplainPlanOutputOperationSpool         ExplainPlanOutputOperation = "Spool"
 	ExplainPlanOutputOperationParallelism   ExplainPlanOutputOperation = "Parallelism"
+
+	// Data modification statements (INSERT/UPDATE/DELETE/MERGE). SQL Server
+	// showplan wraps all four in the same <Update> XML element - LogicalOp is
+	// what actually distinguishes them - so these are split out individually
+	// rather than collapsed into one generic operation.
+	ExplainPlanOutputOperationInsert ExplainPlanOutputOperation = "Insert"
+	ExplainPlanOutputOperationUpdate ExplainPlanOutputOperation = "Update"
+	ExplainPlanOutputOperationDelete ExplainPlanOutputOperation = "Delete"
+	ExplainPlanOutputOperationMerge  ExplainPlanOutputOperation = "Merge"
+	// ExplainPlanOutputOperationAssert validates a condition (referential
+	// integrity, scalar subquery cardinality, etc.) and passes the row
+	// through unchanged if it holds.
+	ExplainPlanOutputOperationAssert ExplainPlanOutputOperation = "Assert"
 )
 
 type ExplainPlanAccessType string
 
 const (
-	ExplainPlanAccessTypeAll   ExplainPlanAccessType = "all"
-	ExplainPlanAccessTypeIndex ExplainPlanAccessType = "index"
-	ExplainPlanAccessTypeRange ExplainPlanAccessType = "range"
-	ExplainPlanAccessTypeRef   ExplainPlanAccessType = "ref"
-	ExplainPlanAccessTypeEqRef ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeSystem         ExplainPlanAccessType = "system"
+	ExplainPlanAccessTypeConst          ExplainPlanAccessType = "const"
+	ExplainPlanAccessTypeEqRef          ExplainPlanAccessType = "eq_ref"
+	ExplainPlanAccessTypeRef            ExplainPlanAccessType = "ref"
+	ExplainPlanAccessTypeFulltext       ExplainPlanAccessType = "fulltext"
+	ExplainPlanAccessTypeRefOrNull      ExplainPlanAccessType = "ref_or_null"
+	ExplainPlanAccessTypeIndexMerge     ExplainPlanAccessType = "index_merge"
+	ExplainPlanAccessTypeUniqueSubquery ExplainPlanAccessType = "unique_subquery"
+	ExplainPlanAccessTypeIndexSubquery  ExplainPlanAccessType = "index_subquery"
+	ExplainPlanAccessTypeRange          ExplainPlanAccessType = "range"
+	ExplainPlanAccessTypeIndex          ExplainPlanAccessType = "index"
+	ExplainPlanAccessTypeAll            ExplainPlanAccessType = "all"
 )
 
 type ExplainPlanJoinAlgorithm string
@@ -133,14 +167,12 @@ type ExplainPlanOutput struct {
 	Plan     ExplainPlanNode         `json:"plan"`
 }
 
+// ExplainPlanMetadataInfo no longer carries a database engine/version -
+// mysql, postgres, and sql_server all identify themselves via the "engine"
+// Loki label instead (grafana-dbo11y-app#3471 found no consumer ever read
+// these fields, and a label is queryable in a way an embedded JSON field
+// isn't).
 type ExplainPlanMetadataInfo struct {
-	// DatabaseEngine/DatabaseVersion are omitempty because sql_server no
-	// longer populates them (grafana-dbo11y-app#3471 found no consumer ever
-	// read them, and the engine is now carried as a Loki label instead,
-	// which is queryable, unlike this field). mysql/postgres still set both
-	// unconditionally, so omitempty has no effect on their existing output.
-	DatabaseEngine  string `json:"databaseEngine,omitempty"`
-	DatabaseVersion string `json:"databaseVersion,omitempty"`
 	QueryIdentifier string `json:"queryIdentifier"`
 	GeneratedAt     string `json:"generatedAt"`
 
@@ -155,7 +187,9 @@ type ExplainPlanNode struct {
 }
 
 type ExplainPlanNodeDetails struct {
-	EstimatedRows int64                     `json:"estimatedRows"`
+	EstimatedRows int64 `json:"estimatedRows"`
+	// EstimatedCost is the cost attributable to this operation alone. Summing
+	// it across a plan tree approximates the database's total query cost.
 	EstimatedCost *float64                  `json:"estimatedCost,omitempty"`
 	TableName     *string                   `json:"tableName,omitempty"`
 	Alias         *string                   `json:"alias,omitempty"`
@@ -171,4 +205,9 @@ type ExplainPlanNodeDetails struct {
 	// mysql/postgres today; a node can carry more than one simultaneously, hence
 	// a slice rather than a single string.
 	Warnings []string `json:"warnings,omitempty"`
+	// UnrecognizedOperator holds the engine-native operator name when Operation
+	// is ExplainPlanOutputOperationUnknown, so an unmodeled operator is
+	// diagnosable from the emitted output alone rather than requiring the raw
+	// plan. Never set when Operation is anything else.
+	UnrecognizedOperator *string `json:"unrecognizedOperator,omitempty"`
 }

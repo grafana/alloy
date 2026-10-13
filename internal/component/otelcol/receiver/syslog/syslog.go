@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/textutils"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
@@ -22,6 +23,7 @@ import (
 	stanzaparsersyslog "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/operator/parser/syslog"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/syslogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -98,6 +100,10 @@ type TCP struct {
 	Encoding        string                      `alloy:"encoding,attr,optional"`
 	MultilineConfig *otelcol.MultilineConfig    `alloy:"multiline,block,optional"`
 	TrimConfig      *otelcol.TrimConfig         `alloy:",squash"`
+
+	// Authentication is a binding to an otelcol.auth.* component extension which
+	// authenticates each accepted TCP connection before logs are read from it.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 }
 
 type UDP struct {
@@ -159,12 +165,22 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	if args.TCP != nil {
+		var authCfg *helper.AuthConfig
+		if args.TCP.Authentication != nil {
+			ext, err := args.TCP.Authentication.GetExtension(auth.Server)
+			if err != nil {
+				return nil, err
+			}
+			authCfg = &helper.AuthConfig{Config: otelconfigauth.Config{AuthenticatorID: ext.ID}}
+		}
+
 		c.TCP = &stanzainputtcp.BaseConfig{
 			MaxLogSize:      helper.ByteSize(args.TCP.MaxLogSize),
 			ListenAddress:   args.TCP.ListenAddress,
 			AddAttributes:   args.TCP.AddAttributes,
 			OneLogPerPacket: args.TCP.OneLogPerPacket,
 			Encoding:        args.TCP.Encoding,
+			Auth:            authCfg,
 		}
 		if c.TCP.MaxLogSize == 0 {
 			c.TCP.MaxLogSize = tcpDefaultMaxLogSize
@@ -219,7 +235,16 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.TCP != nil && args.TCP.Authentication != nil {
+		ext, err := args.TCP.Authentication.GetExtension(auth.Server)
+		// Extension will not be registered if there was an error.
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
+	}
+	return m
 }
 
 // Exporters implements receiver.Arguments.
