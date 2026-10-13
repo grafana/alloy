@@ -51,6 +51,9 @@ func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenter
 		Endpoint: cfg.Endpoint,
 		Username: cfg.Username,
 		Password: alloytypes.Secret(cfg.Password),
+		ProxyURL: cfg.ProxyURL,
+
+		MaxQueryMetrics: cfg.MaxQueryMetrics,
 
 		DebugMetrics: common.DefaultValue[vcenter.Arguments]().DebugMetrics,
 

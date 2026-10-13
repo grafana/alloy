@@ -60,11 +60,7 @@ func (l *LimitConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*limitStage)(nil)
-	_ Stopper        = (*limitStage)(nil)
-	_ entryProcessor = (*limitStage)(nil)
-)
+var _ entryProcessor = (*limitStage)(nil)
 
 func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
 	logger := opts.slogger.With("stage", "limit")
@@ -78,14 +74,11 @@ func newLimitStage(cfg LimitConfig, opts stageOpts) (*limitStage, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	r := &limitStage{
 		next:      opts.next,
 		logger:    logger,
 		cfg:       cfg,
 		dropCount: dropCount,
-		ctx:       ctx,
-		cancel:    cancel,
 	}
 
 	if cfg.ByLabelName != "" {
@@ -114,23 +107,6 @@ type limitStage struct {
 
 	dropCount        *prometheus.CounterVec
 	dropCountByLabel *prometheus.CounterVec
-
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func (m *limitStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			if err := m.throttle(m.ctx, e.Labels); err != nil {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
 }
 
 func (m *limitStage) process(ctx context.Context, entries []Entry) error {
@@ -157,11 +133,6 @@ func (m *limitStage) process(ctx context.Context, entries []Entry) error {
 	}
 
 	return m.next(ctx, entries[:dst])
-}
-
-// Stop implements Stopper
-func (m *limitStage) Stop() {
-	m.cancel()
 }
 
 // throttle applies the configured rate limit to the entry. It returns
@@ -192,9 +163,6 @@ func (m *limitStage) throttle(ctx context.Context, labels model.LabelSet) error 
 
 	return m.rateLimiter.Wait(ctx)
 }
-
-// Cleanup implements Stage.
-func (*limitStage) Cleanup() {}
 
 // generationalMap is ported from Loki's pkg/util package. It didn't exist
 // in our dependency at the time, so I copied the implementation over.

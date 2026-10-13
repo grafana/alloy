@@ -65,10 +65,7 @@ func (r *RuleConfig) effectiveLimit() units.Base2Bytes {
 	return r.Limit - units.Base2Bytes(len(r.Suffix))
 }
 
-var (
-	_ Stage          = (*truncateStage)(nil)
-	_ entryProcessor = (*truncateStage)(nil)
-)
+var _ entryProcessor = (*truncateStage)(nil)
 
 // newTruncateStage creates a TruncateStage from config
 func newTruncateStage(cfg TruncateConfig, opts stageOpts) *truncateStage {
@@ -86,12 +83,6 @@ type truncateStage struct {
 	logger         *slog.Logger
 	cfg            TruncateConfig
 	truncatedCount *prometheus.CounterVec
-}
-
-func (m *truncateStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return m.processEntry(e)
-	})
 }
 
 func (m *truncateStage) process(ctx context.Context, entries []Entry) error {
@@ -211,11 +202,6 @@ func (m *truncateStage) tryTruncateStructuredMetadata(rule *RuleConfig, metadata
 func markTruncated(metric *prometheus.CounterVec, set map[string]struct{}, field string) {
 	metric.WithLabelValues(field).Inc()
 	set[field] = struct{}{}
-}
-
-// Cleanup implements Stage.
-func (*truncateStage) Cleanup() {
-	// no-op
 }
 
 func getTruncateCountMetric(registerer prometheus.Registerer) *prometheus.CounterVec {

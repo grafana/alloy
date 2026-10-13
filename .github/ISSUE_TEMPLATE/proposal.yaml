@@ -160,7 +160,6 @@ body:
       - prometheus.exporter.azure
       - prometheus.exporter.blackbox
       - prometheus.exporter.cadvisor
-      - prometheus.exporter.catchpoint
       - prometheus.exporter.cloudwatch
       - prometheus.exporter.consul
       - prometheus.exporter.databricks

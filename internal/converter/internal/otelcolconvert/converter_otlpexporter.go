@@ -105,7 +105,42 @@ func toQueueArguments(cfg configoptional.Optional[exporterhelper.QueueBatchConfi
 			ID: *queueCfg.StorageID,
 		}
 	}
+
+	// The default batch is a "default" flavor, for which Get() returns nil. So
+	// the batch block is only converted if batching was explicitly configured.
+	if batchCfg := queueCfg.Batch.Get(); batchCfg != nil {
+		q.Batch = toBatchArguments(batchCfg)
+	}
 	return q
+}
+
+func toBatchArguments(cfg *exporterhelper.BatchConfig) *otelcol.BatchConfig {
+	sizer, err := cfg.Sizer.MarshalText()
+	if err != nil {
+		panic(fmt.Errorf("failed to marshal batch sizer: %w", err))
+	}
+
+	b := &otelcol.BatchConfig{
+		FlushTimeout: cfg.FlushTimeout,
+		MinSize:      cfg.MinSize,
+		MaxSize:      cfg.MaxSize,
+		Sizer:        string(sizer),
+	}
+
+	// Only emit the partition block if it differs from the upstream defaults.
+	defaultBatch := exporterhelper.NewDefaultQueueConfig().Batch
+	defaults := defaultBatch.GetOrInsertDefault().Partition
+	if len(cfg.Partition.MetadataKeys) > 0 ||
+		cfg.Partition.CacheSize != defaults.CacheSize ||
+		cfg.Partition.IdleTimeout != defaults.IdleTimeout {
+
+		b.Partition = &otelcol.PartitionConfig{
+			MetadataKeys: cfg.Partition.MetadataKeys,
+			CacheSize:    cfg.Partition.CacheSize,
+			IdleTimeout:  cfg.Partition.IdleTimeout,
+		}
+	}
+	return b
 }
 
 func toRetryArguments(cfg configretry.BackOffConfig) otelcol.RetryArguments {

@@ -33,10 +33,7 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 	return nil
 }
 
-var (
-	_ Stage          = (*luhnFilterStage)(nil)
-	_ entryProcessor = (*luhnFilterStage)(nil)
-)
+var _ entryProcessor = (*luhnFilterStage)(nil)
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
 func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) (*luhnFilterStage, error) {
@@ -67,22 +64,12 @@ type luhnFilterStage struct {
 	skipRegex *regexp.Regexp
 }
 
-// Run implements Stage.
-func (l *luhnFilterStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return l.processEntry(e)
-	})
-}
-
 func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = l.processEntry(entries[i])
 	}
 	return l.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (l *luhnFilterStage) Cleanup() {}
 
 func (l *luhnFilterStage) processEntry(e Entry) Entry {
 	input := e.Line

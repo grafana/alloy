@@ -369,32 +369,17 @@ func TestSplitJSONStage_ChildStateIsolation(t *testing.T) {
 		assert.Equal(t, "123", last.StructuredMetadata[0].Value)
 	}
 
-	t.Run("Stage", func(t *testing.T) {
-		p, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
+	var collected []Entry
+	next := func(_ context.Context, es []Entry) error {
+		collected = append(collected, es...)
+		return nil
+	}
 
-		out := p.Run(withInboundEntries(newParent()))
-		var collected []Entry
-		for e := range out {
-			collected = append(collected, e)
-		}
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+	require.NoError(t, err)
+	require.NoError(t, p.process(context.Background(), []Entry{newParent()}))
 
-		assertChildrenIsolated(t, collected)
-	})
-
-	t.Run("New Stage", func(t *testing.T) {
-		var collected []Entry
-		next := func(_ context.Context, es []Entry) error {
-			collected = append(collected, es...)
-			return nil
-		}
-
-		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
-		require.NoError(t, err)
-		require.NoError(t, p.process(context.Background(), []Entry{newParent()}))
-
-		assertChildrenIsolated(t, collected)
-	})
+	assertChildrenIsolated(t, collected)
 }
 
 // benchSplitJSONLine builds a top-level JSON array of n objects, each padded

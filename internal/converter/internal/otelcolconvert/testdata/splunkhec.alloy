@@ -1,5 +1,4 @@
 otelcol.receiver.splunkhec "default" {
-	idle_timeout        = "0s"
 	write_timeout       = "20s"
 	read_header_timeout = "20s"
 	raw_path            = "/raw"
@@ -19,11 +18,9 @@ otelcol.receiver.splunkhec "default" {
 
 otelcol.exporter.splunkhec "default" {
 	client {
-		endpoint                = "https://splunk:8088/services/collector"
-		timeout                 = "10s"
-		max_idle_conns          = 200
-		max_idle_conns_per_host = 100
-		idle_conn_timeout       = "10s"
+		endpoint       = "https://splunk:8088/services/collector"
+		timeout        = "10s"
+		max_idle_conns = 200
 	}
 
 	splunk {
