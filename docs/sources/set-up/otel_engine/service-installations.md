@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/service-installations/
 description: Learn how to run the Alloy OpenTelemetry Engine from an Alloy service installation on Linux, macOS, or Windows
 menuTitle: Service installations
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Run the Alloy OpenTelemetry Engine with service installations
 weight: 400
 ---
