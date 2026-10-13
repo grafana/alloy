@@ -65,6 +65,7 @@ You can use the following blocks with `database_observability.mysql`:
 | `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance]                           | Define one database to monitor. Repeat the block to monitor several databases. | no       |
 | `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| `database_instance` > [`rule`][rule]                      | Relabel the metrics and logs of one database.        | no       |
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
@@ -81,6 +82,7 @@ You can use the following blocks with `database_observability.mysql`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[rule]: #rule
 [clustering]: #clustering
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
@@ -143,7 +145,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 |--------------------|---------------------|-----------------------------------------------------------|---------|----------|
 | `data_source_name` | `secret`            | [Data Source Name][] for the MySQL server to connect to. |         | yes      |
 
-Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only, and [`rule`][rule] blocks that relabel the metrics and logs of that database only.
 
 The component always embeds a `mysqld_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
 Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
@@ -171,13 +173,32 @@ database_observability.mysql "pool" {
         arn = "orders-rds-db-arn"
       }
     }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
   }
 
   database_instance "billing" {
     data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
   }
 }
 ```
+
+In this example, the metrics and logs of the `orders` database carry `environment="production"`, and those of the `billing` database carry `environment="staging"`.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored database apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `clustering`
 
