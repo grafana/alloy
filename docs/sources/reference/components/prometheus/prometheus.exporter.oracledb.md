@@ -13,7 +13,7 @@ title: prometheus.exporter.oracledb
 # `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from one or more OracleDB servers.
+[`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) to collect statistics from one or more OracleDB servers.
 
 You can specify multiple `prometheus.exporter.oracledb` components by giving them different labels.
 
