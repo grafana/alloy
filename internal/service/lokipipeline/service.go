@@ -1,5 +1,7 @@
-// Package lokipipeline implements the lokipipeline service, which exposes Loki related
-// command-line options to components.
+// Package lokipipeline implements the lokipipeline service, which exposes the
+// --feature.loki.consumer-pipeline.enabled flag to components. The service is
+// temporary and will be removed once the migration of Loki components to the
+// consumer pipeline is complete (https://github.com/grafana/alloy/issues/4953).
 package lokipipeline
 
 import (
