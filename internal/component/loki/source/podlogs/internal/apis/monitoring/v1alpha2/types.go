@@ -41,6 +41,8 @@ type PipelineSpec struct {
 }
 
 // PipelineStage is a single processing stage. Exactly one field must be set.
+// +kubebuilder:validation:MinProperties=1
+// +kubebuilder:validation:MaxProperties=1
 type PipelineStage struct {
 	// Drop discards log lines matching the configured source, value or expression.
 	Drop *DropStage `json:"drop,omitempty"`
@@ -71,7 +73,7 @@ type RegexStage struct {
 	// Expression is an RE2 regular expression with named capture groups.
 	Expression string `json:"expression"`
 	// Source is the extracted key to run the expression on. When unset, the log line is used.
-	Source *string `json:"source,omitempty"`
+	Source string `json:"source,omitempty"`
 	// LabelsFromGroups adds every named capture group as a label.
 	LabelsFromGroups bool `json:"labelsFromGroups,omitempty"`
 }

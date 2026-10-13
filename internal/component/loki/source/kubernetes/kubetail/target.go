@@ -53,8 +53,7 @@ type Target struct {
 	uid            string // UID from pod
 	hash           uint64 // Hash of public labels, id, uid and pipelineID
 
-	// Entries from this target go through consumer, when set, instead of being
-	// sent to Options.Handler directly. consumer must be safe for concurrent use.
+	// Shared by every tailer of a PodLogs, so it must be safe for concurrent use.
 	pipelineID string
 	consumer   loki.Consumer
 
@@ -93,9 +92,8 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels 
 	return t
 }
 
-// WithConsumer routes entries from the target through consumer before they
-// reach Options.Handler. id identifies the consumer's configuration: a tailer
-// is restarted when the id of its target changes.
+// WithConsumer sends the target's entries through consumer. A different id
+// restarts the tailer.
 func (t *Target) WithConsumer(id string, consumer loki.Consumer) *Target {
 	t.pipelineID = id
 	t.consumer = consumer
@@ -112,8 +110,6 @@ func (t *Target) computeHash() uint64 {
 	return hasher.Sum64()
 }
 
-// PipelineID returns the identifier of the consumer configured with
-// WithConsumer, or an empty string.
 func (t *Target) PipelineID() string { return t.pipelineID }
 
 func publicLabels(lset labels.Labels, preserveMetaLabels bool) labels.Labels {

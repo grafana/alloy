@@ -302,15 +302,20 @@ type recordingPositions struct {
 
 func (p *recordingPositions) Put(_, _ string, pos int64) { p.puts = append(p.puts, pos) }
 
-func Test_processLogStream_consumer(t *testing.T) {
-	lset := labels.FromStrings(
+func testTargetLabels(t *testing.T) labels.Labels {
+	t.Helper()
+	lset, err := PrepareLabels(labels.FromStrings(
 		kubePodName, "test-pod",
 		kubePodNamespace, "default",
 		kubePodContainerName, "test-container",
 		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
+	), "test")
 	require.NoError(t, err)
+	return lset
+}
+
+func Test_processLogStream_consumer(t *testing.T) {
+	lset := testTargetLabels(t)
 
 	handler := newMockEntryHandler()
 	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: handler.ch})
@@ -342,21 +347,15 @@ func Test_processLogStream_consumer(t *testing.T) {
 }
 
 func Test_processLogStream_consumerCanceled(t *testing.T) {
-	lset := labels.FromStrings(
-		kubePodName, "test-pod",
-		kubePodNamespace, "default",
-		kubePodContainerName, "test-container",
-		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
-	require.NoError(t, err)
+	lset := testTargetLabels(t)
 
 	blocked := make(chan loki.Entry) // nobody reads
 	target := NewTarget(lset, lset, false).WithConsumer("p1", relabelConsumer{out: blocked})
+	recorded := &recordingPositions{}
 	tailer := &tailer{
 		target: target,
 		lset:   newLabelSet(target.Labels()),
-		opts:   &Options{Positions: &mockPositions{}},
+		opts:   &Options{Positions: recorded},
 	}
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -364,17 +363,11 @@ func Test_processLogStream_consumerCanceled(t *testing.T) {
 	stream := &mockReadCloser{strings.NewReader("2023-01-23T17:00:10Z keep1\n")}
 	calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
 	require.NoError(t, tailer.processLogStream(ctx, stream, newMockEntryHandler(), time.Time{}, positions.Entry{}, calc))
+	require.Empty(t, recorded.puts)
 }
 
 func Test_tailerTask_Equals_pipelineID(t *testing.T) {
-	lset := labels.FromStrings(
-		kubePodName, "test-pod",
-		kubePodNamespace, "default",
-		kubePodContainerName, "test-container",
-		kubePodUID, "test-uid-123",
-	)
-	lset, err := PrepareLabels(lset, "test")
-	require.NoError(t, err)
+	lset := testTargetLabels(t)
 
 	opts := &Options{}
 	plain := &tailerTask{Options: opts, Target: NewTarget(lset, lset, false)}

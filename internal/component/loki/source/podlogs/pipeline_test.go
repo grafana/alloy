@@ -19,8 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 func TestConvertPipeline(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -32,7 +30,7 @@ func TestConvertPipeline(t *testing.T) {
 			name: "all supported stages",
 			spec: &monitoringv1alpha2.PipelineSpec{Stages: []monitoringv1alpha2.PipelineStage{
 				{Drop: &monitoringv1alpha2.DropStage{Expression: ".*DEBUG.*", DropCounterReason: "debug"}},
-				{Regex: &monitoringv1alpha2.RegexStage{Expression: `user=(?P<user>\w+)`, Source: ptr("line")}},
+				{Regex: &monitoringv1alpha2.RegexStage{Expression: `user=(?P<user>\w+)`, Source: "line"}},
 				{Labels: &monitoringv1alpha2.LabelsStage{Values: map[string]string{"user": "", "uid": "user_id"}}},
 				{StaticLabels: &monitoringv1alpha2.StaticLabelsStage{Values: map[string]string{"team": "a"}}},
 			}},
