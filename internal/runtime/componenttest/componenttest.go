@@ -221,6 +221,8 @@ func (c *Controller) Update(args component.Arguments) error {
 // GetComponent retrieves the component under test. It should only be called
 // after Run()
 func (c *Controller) GetComponent() (component.Component, error) {
+	c.innerMut.Lock()
+	defer c.innerMut.Unlock()
 	if c.inner == nil {
 		return nil, fmt.Errorf("component was nil. Did you call Run()? %w", component.ErrComponentNotFound)
 	}

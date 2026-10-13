@@ -12,6 +12,10 @@ type Consumer interface {
 	// the first ConsumeEntry.
 	Start()
 
+	// Consume hands a batch to the consumer. It returns
+	// loki.ErrConsumerStopped once Stop has been called.
+	Consume(ctx context.Context, batch loki.Batch) error
+
 	// ConsumeEntry hands an entry to the consumer. It returns
 	// loki.ErrConsumerStopped once Stop has been called.
 	ConsumeEntry(ctx context.Context, entry loki.Entry) error

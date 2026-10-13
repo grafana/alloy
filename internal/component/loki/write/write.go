@@ -38,6 +38,7 @@ type Exports struct {
 
 var (
 	_ component.Component = (*Component)(nil)
+	_ loki.Consumer       = (*Component)(nil)
 )
 
 // Component implements the loki.write component.
@@ -46,6 +47,7 @@ type Component struct {
 	receiver loki.LogsReceiver
 
 	mut            sync.RWMutex
+	stopped        bool
 	externalLabels model.LabelSet
 
 	// wal is opened when it is first enabled and reused across updates.
@@ -80,6 +82,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.mut.Lock()
 		defer c.mut.Unlock()
+		c.stopped = true
 
 		if d, ok := c.consumer.(client.DrainableConsumer); ok {
 			// stop and drain since component is shutting down.
@@ -198,6 +201,47 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 	return consumer, nil
 }
 
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	var labelsMerged bool
+
+	for {
+		c.mut.RLock()
+		if c.stopped {
+			c.mut.RUnlock()
+			return loki.ErrConsumerStopped
+		}
+
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
+				stream.Labels = externalLabels.Merge(stream.Labels)
+				return stream, true
+			})
+		}
+
+		err := consumer.Consume(ctx, batch)
+		// Only a stopped consumer is worth retrying, an update swapped it out.
+		// Anything else is an accepted batch, a canceled context while shutting down,
+		// or a failed WAL write.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the batch, and the retry hands it to those endpoints again.
+		if !errors.Is(err, loki.ErrConsumerStopped) {
+			return err
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+	}
+}
+
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 	var labelsMerged bool
 
@@ -229,6 +273,10 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			return
 		}
 	}
+}
+
+func (c *Component) String() string {
+	return c.opts.ID + ".receiver"
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {

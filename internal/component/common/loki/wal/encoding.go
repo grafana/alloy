@@ -54,6 +54,10 @@ func (r RefEntries) EntryAt(lset model.LabelSet, i int) loki.Entry {
 	return loki.NewEntryWithCreatedUnixMicro(lset, r.Created, r.Entries[i])
 }
 
+func (r RefEntries) Stream(lset model.LabelSet) loki.Stream {
+	return loki.NewStreamWithCreatedUnixMicro(lset, r.Created, r.Entries...)
+}
+
 // Record is a struct combining the series and samples record.
 type Record struct {
 	// UserID is unused.
@@ -68,10 +72,13 @@ func (r *Record) IsEmpty() bool {
 
 func (r *Record) Reset() {
 	r.UserID = ""
-	if len(r.Series) > 0 {
-		r.Series = r.Series[:0]
-	}
 
+	// Zero out to avoid retaining series data.
+	clear(r.Series)
+	r.Series = r.Series[:0]
+
+	// Zero out to avoid retaining RefEntries data.
+	clear(r.RefEntries)
 	r.RefEntries = r.RefEntries[:0]
 }
 

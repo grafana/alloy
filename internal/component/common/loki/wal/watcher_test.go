@@ -345,16 +345,21 @@ func TestWatcher(t *testing.T) {
 			// create new watcher, and defer stop
 			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
 			defer watcher.Stop()
+
 			wl, err := New(logger, reg, dir)
 			require.NoError(t, err)
 			defer wl.Close()
-			ew := newEntryWriter()
+
+			writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
+			require.NoError(t, err)
+			defer writer.Stop()
+
 			// run test case injecting resources
 			testCase(
 				t,
 				&watcherTestResources{
 					writeEntry: func(entry loki.Entry) {
-						_ = ew.writeEntry(entry, wl)
+						_ = writer.WriteEntry(entry)
 					},
 					notifyWrite: func() {
 						watcher.NotifyWrite()
@@ -363,10 +368,10 @@ func TestWatcher(t *testing.T) {
 						watcher.Start()
 					},
 					syncWAL: func() error {
-						return wl.Sync()
+						return writer.wal.Sync()
 					},
 					nextWALSegment: func() error {
-						_, err := wl.NextSegment()
+						_, err := writer.wal.NextSegment()
 						return err
 					},
 					writeTo: writeTo,
@@ -420,56 +425,59 @@ func TestWatcher_Replay(t *testing.T) {
 			},
 		})
 		defer watcher.Stop()
+
 		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
-		ew := newEntryWriter()
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
+		require.NoError(t, err)
+		defer writer.Stop()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.writeEntry(loki.Entry{
+		err = writer.WriteEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
-		}, wl)
+		})
 		require.NoError(t, err)
 
 		// cut segment and sync
-		_, err = wl.NextSegment()
+		_, err = writer.wal.NextSegment()
 		require.NoError(t, err)
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.writeEntry(loki.Entry{
+			err = writer.WriteEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl)
+			})
 			require.NoError(t, err)
 		}
 
 		// cut segment and sync
-		_, err = wl.NextSegment()
+		_, err = writer.wal.NextSegment()
 		require.NoError(t, err)
 
 		// Finally, write some data to the last segment, this will be the write head
 		for _, line := range segment2Lines {
-			err = ew.writeEntry(loki.Entry{
+			err = writer.WriteEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl)
+			})
 			require.NoError(t, err)
 		}
 
 		// sync wal, and start watcher
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		// start watcher
 		watcher.Start()
@@ -499,62 +507,65 @@ func TestWatcher_Replay(t *testing.T) {
 			},
 		})
 		defer watcher.Stop()
+
 		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
-		ew := newEntryWriter()
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
+		require.NoError(t, err)
+		defer writer.Stop()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.writeEntry(loki.Entry{
+		err = writer.WriteEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
-		}, wl)
+		})
 		require.NoError(t, err)
 
 		// cut segment and sync
-		_, err = wl.NextSegment()
+		_, err = writer.wal.NextSegment()
 		require.NoError(t, err)
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.writeEntry(loki.Entry{
+			err = writer.WriteEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl)
+			})
 			require.NoError(t, err)
 		}
 
 		// cut segment and sync
-		_, err = wl.NextSegment()
+		_, err = writer.wal.NextSegment()
 		require.NoError(t, err)
 
 		// sync wal, and start watcher
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		// start watcher
 		watcher.Start()
 
 		// Write something after watcher started
 		for _, line := range segment2Lines {
-			err = ew.writeEntry(loki.Entry{
+			err = writer.WriteEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl)
+			})
 			require.NoError(t, err)
 		}
 
 		// sync wal, and start watcher
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		require.Eventually(t, func() bool {
 			return writeTo.ReadEntries.Length() == 3 // wait for watcher to catch up with both segments
@@ -589,7 +600,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 	logger := autil.TestAlloyLogger(t).Slog()
 
 	// newTestingResources is a helper for bootstrapping all required testing resources
-	newTestingResources := func(t *testing.T, cfg WatchConfig) (*slowWriteTo, *Watcher, WAL) {
+	newTestingResources := func(t *testing.T, cfg WatchConfig) (*slowWriteTo, WAL, *Watcher, *Writer) {
 		reg := prometheus.NewRegistry()
 		dir := t.TempDir()
 		metrics := NewWatcherMetrics(reg)
@@ -611,7 +622,8 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 
 		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
-		return writeTo, watcher, wl
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
+		return writeTo, wl, watcher, writer
 	}
 
 	t.Run("watcher drains WAL just in time", func(t *testing.T) {
@@ -620,23 +632,22 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// the watcher would have consumed only 5 entries, this timeout will give the Watcher just enough time to fully
 		// drain the WAL.
 		cfg.DrainTimeout = time.Second * 16
-		writeTo, watcher, wl := newTestingResources(t, cfg)
+		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
 		defer wl.Close()
-
-		ew := newEntryWriter()
+		defer writer.Stop()
 
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.writeEntry(loki.Entry{
+				err := writer.WriteEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl)
+				})
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}
@@ -652,10 +663,10 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 			return writeTo.entriesReceived.Load() >= 5
 		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
 
-		_, err := wl.NextSegment()
+		_, err := writer.wal.NextSegment()
 		require.NoError(t, err)
 		writeNLines(t, 10)
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
 		now := time.Now()
@@ -672,23 +683,22 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		cfg := DefaultWatchConfig
 		// the drain timeout will be too long, for the amount of data remaining in the WAL (~15 entries more)
 		cfg.DrainTimeout = time.Second * 30
-		writeTo, watcher, wl := newTestingResources(t, cfg)
+		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
 		defer wl.Close()
-
-		ew := newEntryWriter()
+		defer writer.Stop()
 
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.writeEntry(loki.Entry{
+				err := writer.WriteEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl)
+				})
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}
@@ -704,10 +714,10 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 			return writeTo.entriesReceived.Load() >= 5
 		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
 
-		_, err := wl.NextSegment()
+		_, err := writer.wal.NextSegment()
 		require.NoError(t, err)
 		writeNLines(t, 10)
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
 		now := time.Now()
@@ -725,23 +735,22 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// having a 10 seconds timeout should give the watcher enough time to only consume ~10 entries, and be missing ~5
 		// from the last segment
 		cfg.DrainTimeout = time.Second * 10
-		writeTo, watcher, wl := newTestingResources(t, cfg)
+		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
 		defer wl.Close()
-
-		ew := newEntryWriter()
+		defer writer.Stop()
 
 		// helper to add context to each written line
 		var lineCounter atomic.Int64
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.writeEntry(loki.Entry{
+				err := writer.WriteEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl)
+				})
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}
@@ -757,10 +766,10 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 			return writeTo.entriesReceived.Load() >= 5
 		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
 
-		_, err := wl.NextSegment()
+		_, err := writer.wal.NextSegment()
 		require.NoError(t, err)
 		writeNLines(t, 10)
-		require.NoError(t, wl.Sync())
+		require.NoError(t, writer.wal.Sync())
 
 		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
 		now := time.Now()

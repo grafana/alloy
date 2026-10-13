@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/record"
@@ -44,9 +43,10 @@ type Writer struct {
 	wg     sync.WaitGroup
 	wal    WAL
 
-	writeMut    sync.Mutex
-	stopped     bool
-	entryWriter *entryWriter
+	// mut is held for reading by writes and for writing by Stop, so Stop waits
+	// for in-flight writes and no write starts after it.
+	mut     sync.RWMutex
+	stopped bool
 
 	cleanupSubscribersLock sync.RWMutex
 	cleanupSubscribers     []CleanupEventSubscriber
@@ -62,13 +62,12 @@ type Writer struct {
 // NewWriter creates a new Writer.
 func NewWriter(logger *slog.Logger, metrics *WriterMetrics, wl WAL, cfg Config) *Writer {
 	return &Writer{
-		logger:      logger,
-		entryWriter: newEntryWriter(),
-		wg:          sync.WaitGroup{},
-		cfg:         cfg,
-		wal:         wl,
-		done:        make(chan struct{}),
-		metrics:     metrics,
+		logger:  logger,
+		wg:      sync.WaitGroup{},
+		cfg:     cfg,
+		wal:     wl,
+		done:    make(chan struct{}),
+		metrics: metrics,
 	}
 }
 
@@ -98,19 +97,29 @@ func (wrt *Writer) Start() {
 }
 
 func (wrt *Writer) WriteEntry(entry loki.Entry) error {
-	wrt.writeMut.Lock()
-	defer wrt.writeMut.Unlock()
+	wrt.mut.RLock()
+	defer wrt.mut.RUnlock()
 
 	if wrt.stopped {
 		return loki.ErrConsumerStopped
 	}
 
-	if err := wrt.entryWriter.writeEntry(entry, wrt.wal); err != nil {
+	rec := getRecord()
+	defer putRecord(rec)
+
+	appendStreamToRecord(
+		loki.NewStreamWithCreatedUnixMicro(entry.Labels, entry.Created(), entry.Entry),
+		rec,
+	)
+
+	if err := wrt.wal.Log(rec); err != nil {
 		wrt.logger.Error("failed to write entry", "err", err)
 		return err
 	}
 
-	// emit metric with latest written timestamp, to be able to track delay from writer to watcher
+	// FIXME(kalleep): This is meant to track delay from writer to watcher, but entry timestamps
+	// are not write times. They can be old or out of order, e.g. when tailing an old file or
+	// when loki.process sets them from the log line.
 	wrt.metrics.lastWrittenTimestamp.WithLabelValues().Set(float64(entry.Timestamp.Unix()))
 
 	wrt.writeSubscribersLock.RLock()
@@ -122,9 +131,54 @@ func (wrt *Writer) WriteEntry(entry loki.Entry) error {
 	return nil
 }
 
+func (wrt *Writer) WriteBatch(batch loki.Batch) error {
+	wrt.mut.RLock()
+	defer wrt.mut.RUnlock()
+
+	if wrt.stopped {
+		return loki.ErrConsumerStopped
+	}
+
+	if batch.EntryLen() == 0 {
+		return nil
+	}
+
+	rec := getRecord()
+	defer putRecord(rec)
+
+	var maxSeenTimestamp time.Time
+
+	for _, stream := range batch.Streams() {
+		appendStreamToRecord(stream, rec)
+		for _, e := range stream.Entries {
+			if e.Timestamp.After(maxSeenTimestamp) {
+				maxSeenTimestamp = e.Timestamp
+			}
+		}
+	}
+
+	if err := wrt.wal.Log(rec); err != nil {
+		wrt.logger.Error("failed to write batch", "err", err)
+		return err
+	}
+
+	// FIXME(kalleep): This is meant to track delay from writer to watcher, but entry timestamps
+	// are not write times. They can be old or out of order, e.g. when tailing an old file or
+	// when loki.process sets them from the log line.
+	wrt.metrics.lastWrittenTimestamp.WithLabelValues().Set(float64(maxSeenTimestamp.Unix()))
+
+	wrt.writeSubscribersLock.RLock()
+	for _, s := range wrt.writeSubscribers {
+		s.NotifyWrite()
+	}
+	wrt.writeSubscribersLock.RUnlock()
+
+	return nil
+}
+
 func (wrt *Writer) Stop() {
-	wrt.writeMut.Lock()
-	defer wrt.writeMut.Unlock()
+	wrt.mut.Lock()
+	defer wrt.mut.Unlock()
 	wrt.stopped = true
 
 	// Stop cleaner routine and wait for it to stop.
@@ -195,47 +249,6 @@ func (wrt *Writer) SubscribeWrite(subscriber WriteEventSubscriber) {
 	wrt.writeSubscribers = append(wrt.writeSubscribers, subscriber)
 }
 
-// entryWriter writes loki.Entry to a WAL, keeping in memory a single Record object that's reused
-// across every write.
-type entryWriter struct {
-	reusableWALRecord *Record
-}
-
-// newEntryWriter creates a new entryWriter.
-func newEntryWriter() *entryWriter {
-	return &entryWriter{
-		reusableWALRecord: &Record{
-			RefEntries: make([]RefEntries, 0, 1),
-			Series:     make([]record.RefSeries, 0, 1),
-		},
-	}
-}
-
-func (ew *entryWriter) writeEntry(entry loki.Entry, wl WAL) error {
-	defer ew.reusableWALRecord.Reset()
-
-	var fp uint64
-	lbs := labels.FromMap(util.ModelLabelSetToMap(entry.Labels))
-	fp, _ = lbs.HashWithoutLabels(nil, []string(nil)...)
-	ref := chunks.HeadSeriesRef(fp)
-
-	ew.reusableWALRecord.Series = append(ew.reusableWALRecord.Series, record.RefSeries{
-		Ref:    ref,
-		Labels: lbs,
-	})
-
-	// Append the entry to an already existing stream (if any)
-	ew.reusableWALRecord.RefEntries = append(ew.reusableWALRecord.RefEntries, RefEntries{
-		Ref: ref,
-		Entries: []push.Entry{
-			entry.Entry,
-		},
-		Created: entry.Created(),
-	})
-
-	return wl.Log(ew.reusableWALRecord)
-}
-
 type segmentRef struct {
 	name         string
 	number       int
@@ -276,4 +289,20 @@ func listSegments(dir string) (refs []segmentRef, err error) {
 		}
 	}
 	return refs, nil
+}
+
+func appendStreamToRecord(stream loki.Stream, r *Record) {
+	lbls := labels.FromMap(util.ModelLabelSetToMap(stream.Labels))
+	fp, _ := lbls.HashWithoutLabels(nil, []string(nil)...)
+	ref := chunks.HeadSeriesRef(fp)
+
+	r.Series = append(r.Series, record.RefSeries{
+		Ref:    ref,
+		Labels: lbls,
+	})
+	r.RefEntries = append(r.RefEntries, RefEntries{
+		Created: stream.Created(),
+		Ref:     ref,
+		Entries: stream.Entries,
+	})
 }
