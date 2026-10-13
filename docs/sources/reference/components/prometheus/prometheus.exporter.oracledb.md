@@ -24,7 +24,7 @@ Ensure you have the following:
 
 [oracledb-exporter]: https://github.com/oracle/oracle-db-appdev-monitoring
 
-### Oracle instant client basic
+### Oracle Instant Client Basic
 
 When you run the standalone binary, you must install the [Oracle Instant Client Basic][instant-client] for your operating system.
 The exporter only requires the basic version.
