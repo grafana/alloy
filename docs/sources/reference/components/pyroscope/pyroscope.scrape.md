@@ -141,7 +141,7 @@ The component injects the following labels into the scraped profiles so that you
 [example_dynamic_targets]: #default-endpoints-of-dynamic-targets
 [example_static_and_dynamic_targets]: #default-endpoints-of-static-and-dynamic-targets
 
-#### `scrape_interval`
+### `scrape_interval`
 
 The `scrape_interval` typically refers to the frequency with which {{< param "PRODUCT_NAME" >}} collects performance profiles from the monitored targets.
 It represents the time interval between consecutive scrapes or data collection events.
@@ -173,7 +173,7 @@ For example, consider this situation:
 
 [delta argument]: #delta-argument
 
-#### `scrape_timeout`
+### `scrape_timeout`
 
 The `scrape_timeout` is the time limit for a single scrape request.
 
@@ -438,6 +438,7 @@ When the `delta` argument is `true`:
 
 * The [pprof][] HTTP query runs for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
+* The `scrape_interval` must be at least `"2s"`, because the `seconds` parameter must be at least 1.
 * The default value for the `seconds` query parameter is `scrape_interval - 1`.
   If you set `delta_profiling_duration`, then `seconds` takes the same value as `delta_profiling_duration`.
   However, the `delta_profiling_duration` must be, at most, `scrape_interval` minus 1 second.
