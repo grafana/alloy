@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/service-installations/
 description: Learn how to run the Alloy OpenTelemetry Engine from an Alloy service installation on Linux, macOS, or Windows
 menuTitle: Service installations
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Run the Alloy OpenTelemetry Engine with service installations
 weight: 400
 ---
@@ -48,7 +48,7 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 1. Optional: Set `OTEL_CUSTOM_ARGS` to pass additional command-line flags to the {{< param "OTEL_ENGINE" >}}.
    This setting works the same way as `CUSTOM_ARGS` does for the {{< param "DEFAULT_ENGINE" >}}.
 
-1. Check the configuration, replacing `<OTEL_CONFIG_FILE>` with the path configured above:
+1. Check the configuration, and replace _`<OTEL_CONFIG_FILE>`_ with the path configured above:
 
    ```shell
    alloy otel validate --config=<OTEL_CONFIG_FILE>

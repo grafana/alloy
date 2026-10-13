@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/helm/
 description: Learn how to run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 menuTitle: Helm chart
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 weight: 300
 ---
@@ -110,8 +110,10 @@ Make sure you have the following:
 
    The example sets the chart defaults it doesn't need to `null` and uses the chart's own `health_check` extension without redefining it.
    Refer to the [Helm chart documentation][ChartConfig] for how `config` combines with the chart's defaults.
+   
    The example also sets the metrics endpoint host to `0.0.0.0` so it listens on all interfaces inside the Pod.
-   The chart's default binds the Pod IP, which other Pods in the cluster can already reach, so set `0.0.0.0` when you also want to reach the endpoint on `127.0.0.1` inside the Pod, for example from a sidecar container.
+   The chart's default binds the Pod IP, which other Pods in the cluster can already reach.
+   Set `0.0.0.0` when you also want to reach the endpoint on `127.0.0.1` inside the Pod, for example from a sidecar container.
    Set `ports.metrics.enabled` to `true` to expose port `8888` on the Pod and the Service.
 
 1. Install the chart:
