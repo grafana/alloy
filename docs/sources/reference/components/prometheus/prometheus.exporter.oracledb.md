@@ -75,8 +75,8 @@ You can use the following arguments with `prometheus.exporter.oracledb`:
 | `connection_string` | `secret`       | Deprecated. Use the `database` block instead.              |         | no       |
 | `custom_metrics`    | `list(string)` | The paths to the custom metrics files in TOML format.      |         | no       |
 | `default_metrics`   | `string`       | The path to the default metrics file in TOML format.       |         | no       |
-| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool. | `0`     | no       |
-| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool. | `10`    | no       |
+| `max_idle_conns`    | `int`          | Maximum number of idle connections in the connection pool. | `0`     | no       |
+| `max_open_conns`    | `int`          | Maximum number of open connections in the connection pool. | `10`    | no       |
 | `password`          | `secret`       | Deprecated. Use the `database` block instead.              |         | no       |
 | `query_timeout`     | `int`          | The query timeout in seconds.                              | `5`     | no       |
 | `username`          | `string`       | Deprecated. Use the `database` block instead.              |         | no       |
