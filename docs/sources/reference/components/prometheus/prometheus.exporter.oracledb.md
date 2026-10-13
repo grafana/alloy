@@ -70,16 +70,16 @@ prometheus.exporter.oracledb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.oracledb`:
 
-| Name                | Type           | Description                                                    | Default | Required |
-| ------------------- | -------------- | -------------------------------------------------------------- | ------- | -------- |
-| `connection_string` | `secret`       | (Deprecated) The connection string used to connect to an Oracle Database. Required when no `database` blocks are set. |         | __See below__ |
-| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)           |         | no       |
-| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)            |         | no       |
-| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool.     | `0`     | no       |
-| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool.     | `10`    | no       |
-| `password`          | `secret`       | (Deprecated) The password to use for authentication to the Oracle Database. |         | no       |
-| `query_timeout`     | `int`          | The query timeout in seconds.                                  | `5`     | no       |
-| `username`          | `string`       | (Deprecated) The username to use for authentication to the Oracle Database. |         | no       |
+| Name                | Type           | Description                                                | Default | Required |
+| ------------------- | -------------- | ---------------------------------------------------------- | ------- | -------- |
+| `connection_string` | `secret`       | Deprecated. Use the `database` block instead.              |         | no       |
+| `custom_metrics`    | `list(string)` | The paths to the custom metrics files. (TOML format)       |         | no       |
+| `default_metrics`   | `string`       | The path to the default metrics file. (TOML format)        |         | no       |
+| `max_idle_conns`    | `int`          | Number of maximum idle connections in the connection pool. | `0`     | no       |
+| `max_open_conns`    | `int`          | Number of maximum open connections in the connection pool. | `10`    | no       |
+| `password`          | `secret`       | Deprecated. Use the `database` block instead.              |         | no       |
+| `query_timeout`     | `int`          | The query timeout in seconds.                              | `5`     | no       |
+| `username`          | `string`       | Deprecated. Use the `database` block instead.              |         | no       |
 
 {{< admonition type="note" >}}
 The top-level `connection_string`, `username` and `password` arguments are deprecated. Use the `database` block instead.
