@@ -23,7 +23,7 @@ Refer to [Install {{< param "FULL_PRODUCT_NAME" >}}][Install] for more informati
 ## Run the {{% param "OTEL_ENGINE" %}}
 
 1. Create a configuration file named `config.yaml`.
-   The following example accepts telemetry over [OTLP][] and prints it to the console:
+   The following example accepts traces over [OTLP][] and prints it to the console:
 
    ```yaml
    receivers:

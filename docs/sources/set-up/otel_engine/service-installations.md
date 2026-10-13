@@ -41,7 +41,7 @@ To run the {{< param "OTEL_ENGINE" >}} on Linux:
 1. Set `ALLOY_OTEL_MODE=1`.
 
 1. Edit the sample OpenTelemetry Collector configuration the package installs at `/etc/alloy/config.yaml`.
-   The sample receives OTLP data and sends it to the `debug` exporter, which only writes to the log.
+   The sample receives OTLP data and sends it to the `debug` exporter, which only writes to the console.
    Replace the `debug` exporter with a real backend.
    To use a different file, set `OTEL_CONFIG_FILE` to its path.
 
