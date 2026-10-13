@@ -134,9 +134,7 @@ Several arguments carry the label "Deprecated (no-op)". These arguments once con
 
 ## Debug information
 
-* `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-* `pid_cache` per process elf symbol tables and their sizes in symbols count.
-* `targets` the active targets the component tracks.
+`pyroscope.ebpf` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
