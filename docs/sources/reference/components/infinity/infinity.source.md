@@ -125,29 +125,29 @@ The label is used as the `instance` label on every sample and log entry the quer
 
 The following strings are valid `type` values:
 
-* `"json"`: Parse the response as JSON.
-* `"csv"`: Parse the response as comma-separated values.
-* `"tsv"`: Parse the response as tab-separated values.
-* `"xml"`: Parse the response as XML.
-* `"html"`: Parse the response with the XML parser.
+- `"json"`: Parse the response as JSON.
+- `"csv"`: Parse the response as comma-separated values.
+- `"tsv"`: Parse the response as tab-separated values.
+- `"xml"`: Parse the response as XML.
+- `"html"`: Parse the response with the XML parser.
   `infinity.source` doesn't extract HTML tables.
   Malformed markup can parse into one string field with an empty name, without an error.
-* `"graphql"`: Parse a GraphQL JSON response. This implies `url_options.method = "POST"` and `url_options.body_type = "graphql"`.
+- `"graphql"`: Parse a GraphQL JSON response. This implies `url_options.method = "POST"` and `url_options.body_type = "graphql"`.
 
 The following strings are valid `parser` values:
 
-* `"backend"`: Use the Grafana Infinity backend parser.
-* `"jq-backend"`: Use the backend parser with a `jq` expression as `root_selector`.
+- `"backend"`: Use the Grafana Infinity backend parser.
+- `"jq-backend"`: Use the backend parser with a `jq` expression as `root_selector`.
 
 The following strings are valid `format` values:
 
-* `"table"`: Each row becomes a current-state metric sample. Refer to [Metrics](#metrics-1).
-* `"logs"`: Each row becomes a log entry. Refer to [Logs](#logs-1).
+- `"table"`: Each row becomes a current-state metric sample. Refer to [Metrics](#metrics-1).
+- `"logs"`: Each row becomes a log entry. Refer to [Logs](#logs-1).
 
 The following strings are valid `source` values:
 
-* `"url"`: Fetch the response with an HTTP request to `url`.
-* `"inline"`: Use the `data` argument as the response body, without making an HTTP request.
+- `"url"`: Fetch the response with an HTTP request to `url`.
+- `"inline"`: Use the `data` argument as the response body, without making an HTTP request.
 
 When `source` is `"url"`, the `url` argument is required, and must be an absolute `http` or `https` URL.
 When `source` is `"inline"`, the `data` argument is required, and `url` and the `url_options` block must not be set.
@@ -300,10 +300,10 @@ The `method` argument accepts `"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, and `"DELET
 
 The following strings are valid `body_type` values:
 
-* `"raw"`: Send `body` as is. Set `body_content_type` to set the request's `Content-Type` header.
-* `"form-data"`: Encode `body_form` as `multipart/form-data`.
-* `"x-www-form-urlencoded"`: Encode `body_form` as a URL-encoded form.
-* `"graphql"`: Send `body_graphql_query` and `body_graphql_variables` as a JSON object, with a `Content-Type` of `application/json`.
+- `"raw"`: Send `body` as is. Set `body_content_type` to set the request's `Content-Type` header.
+- `"form-data"`: Encode `body_form` as `multipart/form-data`.
+- `"x-www-form-urlencoded"`: Encode `body_form` as a URL-encoded form.
+- `"graphql"`: Send `body_graphql_query` and `body_graphql_variables` as a JSON object, with a `Content-Type` of `application/json`.
 
 A request body with `method = "GET"` is a configuration error.
 A `type = "graphql"` query on the enclosing `query` block requires `method = "POST"` and `body_type = "graphql"`; setting either argument to a conflicting value is a configuration error.
@@ -312,9 +312,9 @@ A `type = "graphql"` query with `source = "url"` requires `body_graphql_query`.
 
 Each body argument must match `body_type`, or it's a configuration error:
 
-* `body` and `body_content_type` require `body_type = "raw"`.
-* `body_form` requires `body_type = "form-data"` or `body_type = "x-www-form-urlencoded"`.
-* `body_graphql_query` and `body_graphql_variables` require `body_type = "graphql"`.
+- `body` and `body_content_type` require `body_type = "raw"`.
+- `body_form` requires `body_type = "form-data"` or `body_type = "x-www-form-urlencoded"`.
+- `body_graphql_query` and `body_graphql_variables` require `body_type = "graphql"`.
 
 `infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the existing query string of the request URL.
 A header name in both `headers` and `client`'s `http_headers` argument is a configuration error, and so is a parameter name in both `params` and the `url` argument's own query string.
@@ -327,9 +327,9 @@ A redirect to an absolute URL drops the `Host` override.
 
 When neither `headers` nor `client`'s `http_headers` sets an `Accept` header, `infinity.source` sends a default `Accept` header for the query's `type`:
 
-* `"json"` and `"graphql"`: `application/json;q=0.9,text/plain`
-* `"csv"` and `"tsv"`: `text/csv`
-* `"xml"` and `"html"`: `text/xml;q=0.9,text/plain`
+- `"json"` and `"graphql"`: `application/json;q=0.9,text/plain`
+- `"csv"` and `"tsv"`: `text/csv`
+- `"xml"` and `"html"`: `text/xml;q=0.9,text/plain`
 
 ### `client`
 
@@ -402,25 +402,25 @@ Every query with `format = "logs"` needs at least one receiver in `forward_to.lo
 
 `infinity.source` maps each row of a query's parsed frame to metrics as follows:
 
-* Each string column with a non-nil value becomes a label. The label name is the column name, sanitized to a valid Prometheus label name.
-* Each numeric column with a non-nil value becomes a gauge sample. The sample name is the `metrics` block's `prefix` argument plus the column name, sanitized to a valid Prometheus metric name.
-* Each boolean column becomes a sample with a value of `1` or `0`.
-* Time columns don't become samples or labels.
-* CSV, TSV, XML, and HTML columns are strings unless a `column` block sets `type = "number"`.
+- Each string column with a non-nil value becomes a label. The label name is the column name, sanitized to a valid Prometheus label name.
+- Each numeric column with a non-nil value becomes a gauge sample. The sample name is the `metrics` block's `prefix` argument plus the column name, sanitized to a valid Prometheus metric name.
+- Each boolean column becomes a sample with a value of `1` or `0`.
+- Time columns don't become samples or labels.
+- CSV, TSV, XML, and HTML columns are strings unless a `column` block sets `type = "number"`.
   JSON string values that hold numbers, for example `"5"`, are also strings.
   A string column without a `type` becomes a label, so a query without a numeric column sends only `up`.
-* Every sample from one poll shares the poll's start time.
-* Every series has a `job` label set to the component's ID, and an `instance` label set to the query's label.
+- Every sample from one poll shares the poll's start time.
+- Every series has a `job` label set to the component's ID, and an `instance` label set to the query's label.
   A column named `job` or `instance` doesn't override these two labels; `infinity.source` logs a warning the first time this happens for a query.
-* When two rows produce the same label set, `infinity.source` keeps the first row's sample and drops the rest.
+- When two rows produce the same label set, `infinity.source` keeps the first row's sample and drops the rest.
   It counts the dropped samples in `infinity_source_duplicate_series_total` and logs a warning once for each poll.
-* `up` is reserved for the synthetic sample described below. A column whose final metric name is `up`, after `prefix` and sanitizing, is dropped; `infinity.source` logs a warning the first time this happens for a query. Set `metrics.prefix` to avoid this collision.
-* `up` is `1` after a successful poll and `0` after a failed poll.
-* If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
-* When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends nothing for the poll in progress, even if its fetch already succeeded.
-* A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends; when a reload removes a query, `infinity.source` sends that query's stale markers to the metric outputs from before the reload.
-* When a reload changes a query from `format = "table"` to `format = "logs"`, the next poll sends stale markers for its old series to the metric outputs that exist after the reload; if that reload also removes every metric output, the old series become stale when the lookback period of the metrics backend ends.
-* When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series become stale when the lookback period of the metrics backend ends. Losing ownership also clears the query's health on this node.
+- `up` is reserved for the synthetic sample described below. A column whose final metric name is `up`, after `prefix` and sanitizing, is dropped; `infinity.source` logs a warning the first time this happens for a query. Set `metrics.prefix` to avoid this collision.
+- `up` is `1` after a successful poll and `0` after a failed poll.
+- If a series from an earlier poll doesn't appear in the current poll, or if a poll fails, `infinity.source` sends a stale marker for that series.
+- When {{< param "PRODUCT_NAME" >}} stops, or a configuration reload restarts a query's poll loop, `infinity.source` sends nothing for the poll in progress, even if its fetch already succeeded.
+- A poll uses the settings from one configuration load for its whole request, and sends to the outputs that are current when it sends; when a reload removes a query, `infinity.source` sends that query's stale markers to the metric outputs from before the reload.
+- When a reload changes a query from `format = "table"` to `format = "logs"`, the next poll sends stale markers for its old series to the metric outputs that exist after the reload; if that reload also removes every metric output, the old series become stale when the lookback period of the metrics backend ends.
+- When this node loses [clustering](#clustering) ownership of a query, `infinity.source` sends no stale markers for that query on this node; the series become stale when the lookback period of the metrics backend ends. Losing ownership also clears the query's health on this node.
 
 This example parses inline CSV data and sets `type = "number"` on the `count` column, so `count` becomes a sample and `name` becomes a label:
 
@@ -451,13 +451,13 @@ infinity.source "inline_csv" {
 
 `infinity.source` maps each row of a query's parsed frame to a log entry as follows:
 
-* Timestamp: the first time column with a non-nil value in the row. If no time column has a value, `infinity.source` uses the poll's start time.
-* Line: the value of the `logs` block's `line_column` column, converted to a string. If the frame has no column with that name, the line is a JSON object of every column in the row, in column order.
-* Labels: `job`, `instance`, plus each column listed in `label_columns` that has a non-nil value in the row. `infinity.source` ignores a name in `label_columns` that isn't a column in the frame.
-* Level: `infinity.source` sets the `level` label from the `severity` column, or from the `level` column when `severity` has no value in that row, unless `label_columns` already maps a column to a label named `level`. The `level` value also stays as an OpenTelemetry log attribute.
-* Structured metadata: each column listed in `structured_metadata_columns` that has a non-nil value in the row.
-* `job` and `instance` map to the OpenTelemetry resource attributes `service.name` and `service.instance.id`.
-* If the entry count for a poll would exceed the `logs` block's `entry_limit`, the poll fails, and `infinity.source` sends no entries for it.
+- Timestamp: the first time column with a non-nil value in the row. If no time column has a value, `infinity.source` uses the poll's start time.
+- Line: the value of the `logs` block's `line_column` column, converted to a string. If the frame has no column with that name, the line is a JSON object of every column in the row, in column order.
+- Labels: `job`, `instance`, plus each column listed in `label_columns` that has a non-nil value in the row. `infinity.source` ignores a name in `label_columns` that isn't a column in the frame.
+- Level: `infinity.source` sets the `level` label from the `severity` column, or from the `level` column when `severity` has no value in that row, unless `label_columns` already maps a column to a label named `level`. The `level` value also stays as an OpenTelemetry log attribute.
+- Structured metadata: each column listed in `structured_metadata_columns` that has a non-nil value in the row.
+- `job` and `instance` map to the OpenTelemetry resource attributes `service.name` and `service.instance.id`.
+- If the entry count for a poll would exceed the `logs` block's `entry_limit`, the poll fails, and `infinity.source` sends no entries for it.
 
 `infinity.source` doesn't deduplicate log entries across polls. Refer to [Limitations](#limitations).
 
@@ -465,16 +465,16 @@ infinity.source "inline_csv" {
 
 `infinity.source` has the following limitations:
 
-* `infinity.source` doesn't remove duplicate log entries across polls. If the API returns an overlapping time window, Loki receives the same entries again. Use API query parameters to request only new entries.
-* Metrics show the current state only. `infinity.source` doesn't ingest historical points.
-* Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
-* `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the `uql`, `groq`, and `simple` parsers.
-* A JSON, GraphQL, XML, or HTML frame can have at most 2,000,000 cells, where cells are rows times columns.
+- `infinity.source` doesn't remove duplicate log entries across polls. If the API returns an overlapping time window, Loki receives the same entries again. Use API query parameters to request only new entries.
+- Metrics show the current state only. `infinity.source` doesn't ingest historical points.
+- Query parameters in `url` aren't secret. Put API keys in `url_options.params` or `url_options.headers`, which accept secrets.
+- `infinity.source` doesn't support pagination, Azure Blob Storage, AWS SigV4, Google Sheets, or the `uql`, `groq`, and `simple` parsers.
+- A JSON, GraphQL, XML, or HTML frame can have at most 2,000,000 cells, where cells are rows times columns.
   The parser makes one column for each distinct key in any row, so a small response with many distinct keys can need a very large frame.
   `infinity.source` checks this after `root_selector` and before it builds the frame, and fails the poll with the `too_large` reason.
   One poll near this budget can still use a few hundred MB of memory. Set `metrics.series_limit` or `logs.entry_limit` to limit what a query sends.
-* `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large APIs and for APIs you don't control.
-* The parser libraries can't stop a `jq` or `jsonata` expression that doesn't end.
+- `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large APIs and for APIs you don't control.
+- The parser libraries can't stop a `jq` or `jsonata` expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
   While it runs, `infinity.source` starts no new poll for that query.
   Each skipped poll fails with the `timeout` reason and the message `the previous poll is still running`.
@@ -634,9 +634,9 @@ loki.write "default" {
 
 Replace the following:
 
-* `GITHUB_TOKEN`: A GitHub personal access token with permission to read the organization's events.
-* `PROMETHEUS_URL`: The URL of the Prometheus remote-write-compatible server to send metrics to.
-* `LOKI_URL`: The URL of the Loki server to send logs to.
+- `GITHUB_TOKEN`: A GitHub personal access token with permission to read the organization's events.
+- `PROMETHEUS_URL`: The URL of the Prometheus remote-write-compatible server to send metrics to.
+- `LOKI_URL`: The URL of the Loki server to send logs to.
 
 ### Count completed items per user
 
