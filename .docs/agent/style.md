@@ -102,10 +102,12 @@ Use "refer to" instead of "see", "consult", "check out", and other phrases.
 
 Use sentence case for titles and headings.
 
-Use inline Markdown links: [Link text](https://example.com).
+Use refrence style Markdown links: [Link text][link definition].
+[link definition]: https://example.com
 
 Link to other sections using descriptive phrases that include the section name:
-"For setup details, refer to the [Lists](#lists) section."
+"For setup details, refer to the [Lists][] section."
+[Lists]: (#lists)
 
 Bold text with two asterisks: **bold**
 
