@@ -391,7 +391,11 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 
 	newHash := lbls.Hash()
 	prev, ok := s.uniqueRefToChildRefs[uniqueRef]
-	if ok && prev.labelHash != newHash {
+	if !ok {
+		// The mapping was removed after the caller's GetMapping call; the next append creates a new one.
+		return
+	}
+	if prev.labelHash != newHash {
 		delete(s.labelHashToUniqueRef, prev.labelHash)
 		s.labelHashToUniqueRef[newHash] = uniqueRef
 	}
@@ -444,9 +448,6 @@ const staleRefDeleteChunk = 8192
 // Every append takes refMappingMu as a reader via GetMapping. Deletes therefore go out
 // in bounded batches, keeping each hold of that lock short.
 func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
-	// At 8192 refs this is exactly 64KiB, the largest implicit variable the compiler
-	// will stack-allocate, so the buffer costs no heap at all. Raising the chunk
-	// moves it to the heap.
 	batch := make([]storage.SeriesRef, 0, staleRefDeleteChunk)
 	stale := 0
 
@@ -468,12 +469,6 @@ func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
 	s.timestampTrackingMu.Unlock()
 
 	s.refsCleaned.Add(float64(stale))
-
-	// Read the gauge off the map rather than tracking a running delta, so it re-syncs
-	// every cycle even when a ref was tracked without a mapping behind it.
-	s.refMappingMu.RLock()
-	s.activeMappings.Set(float64(len(s.uniqueRefToChildRefs)))
-	s.refMappingMu.RUnlock()
 }
 
 // deleteMappings drops refs' mappings under a single refMappingMu write. Callers already
@@ -493,6 +488,10 @@ func (s *SeriesRefMappingStore) deleteMappings(refs []storage.SeriesRef) {
 			delete(s.uniqueRefToChildRefs, ref)
 		}
 	}
+
+	// Set from the map rather than Sub(len(refs)): the batch includes refs tracked with
+	// no mapping, and reading the map stays right even if a writer skips Inc.
+	s.activeMappings.Set(float64(len(s.uniqueRefToChildRefs)))
 }
 
 // Clear will clear all internal mappings and stop the cleaner goroutine if it is running.
