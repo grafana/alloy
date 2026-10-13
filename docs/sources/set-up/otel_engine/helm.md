@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/set-up/otel_engine/helm/
 description: Learn how to run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 menuTitle: Helm chart
-review_date: 2026-09-23
+review_date: 2026-10-06
 title: Run the Alloy OpenTelemetry Engine with the OpenTelemetry Collector Helm chart
 weight: 300
 ---
