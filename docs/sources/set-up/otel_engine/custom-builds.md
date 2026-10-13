@@ -27,6 +27,13 @@ Make sure you have the following tools:
 - Node.js
 - Docker, if you want to build the container image
 
+The build compiles C dependencies, so you also need the following for your platform:
+
+- On Linux, the systemd headers.
+  On Debian-based distributions, run `sudo apt-get install libsystemd-dev`.
+- On Windows, a 64-bit [mingw-w64][MinGW] gcc toolchain.
+  Grafana recommends the [WinLibs][WinLibs] build.
+
 ## Build a custom binary
 
 1. Clone the {{< param "PRODUCT_NAME" >}} repository and change to the repository root.
@@ -86,6 +93,8 @@ Make sure you have the following tools:
    - _`<TAG>`_: Your image tag.
 
 [BuilderConfig]: https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml
+[MinGW]: https://www.mingw-w64.org/
 [OCB]: https://opentelemetry.io/docs/collector/custom-collector/
 [OTelCommand]: ../../../reference/cli/otel/
 [ReleaseTag]: https://github.com/grafana/alloy/releases
+[WinLibs]: https://winlibs.com/
