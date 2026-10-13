@@ -24,21 +24,16 @@ const (
 )
 
 type Config struct {
-	SinkID   string
-	Source   string
-	DataPath string
-	Features []string
+	SinkID               string
+	Source               string
+	DataPath             string
+	LokiConsumerPipeline bool
 }
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests
 // from the provided source.
 func NewAlloy(cfg Config) (*Alloy, error) {
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
-	if err != nil {
-		return nil, err
-	}
-
-	services, err := defaultServices(logger, cfg.Features)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +46,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		// the default registry.
 		Reg:          prometheus.DefaultRegisterer,
 		MinStability: featuregate.StabilityExperimental,
-		Services:     services,
+		Services:     defaultServices(logger, cfg),
 	})
 	if err != nil {
 		return nil, err

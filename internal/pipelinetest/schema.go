@@ -18,13 +18,12 @@ const (
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
-	// Features lists feature flags to enable for the test, named like the
-	// CLI flag without the leading dashes, e.g. feature.loki.consumer-pipeline.enabled.
-	Features []string        `yaml:"features,omitempty"`
-	Config   ConfigSchema    `yaml:"config"`
-	Inputs   InputSchema     `yaml:"inputs"`
-	Mocks    MockSchema      `yaml:"mocks"`
-	Assert   AssertionSchema `yaml:"assert"`
+	// LokiConsumerPipeline enables the experimental Loki consumer pipeline,
+	LokiConsumerPipeline bool            `yaml:"loki_consumer_pipeline,omitempty"`
+	Config               ConfigSchema    `yaml:"config"`
+	Inputs               InputSchema     `yaml:"inputs"`
+	Mocks                MockSchema      `yaml:"mocks"`
+	Assert               AssertionSchema `yaml:"assert"`
 }
 
 type ConfigSchema string

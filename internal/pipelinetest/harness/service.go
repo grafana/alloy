@@ -2,7 +2,6 @@ package harness
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -29,15 +28,10 @@ const (
 	memoryListenAddr = "alloy.internal:12345"
 )
 
-func defaultServices(l *logging.Logger, flags []string) ([]service.Service, error) {
-	lokiOpts, err := lokiOptionsFromFlags(flags)
-	if err != nil {
-		return nil, err
-	}
-
+func defaultServices(l *logging.Logger, cfg Config) []service.Service {
 	return []service.Service{
 		livedebugging.New(),
-		lokiservice.New(lokiOpts),
+		lokiservice.New(lokiservice.Options{ConsumerPipeline: cfg.LokiConsumerPipeline}),
 		labelstore.New(l.Slog(), prometheus.NewRegistry()),
 		httpservice.New(httpservice.Options{
 			Logger:           l,
@@ -55,22 +49,7 @@ func defaultServices(l *logging.Logger, flags []string) ([]service.Service, erro
 			name: cluster.ServiceName,
 			data: cluster.Mock(),
 		},
-	}, nil
-}
-
-// lokiOptionsFromFlags returns the loki service options enabled by flags, which
-// use the CLI flag name without the leading dashes.
-func lokiOptionsFromFlags(flags []string) (lokiservice.Options, error) {
-	var opts lokiservice.Options
-	for _, flag := range flags {
-		switch flag {
-		case "feature.loki.consumer-pipeline.enabled":
-			opts.ConsumerPipeline = true
-		default:
-			return lokiservice.Options{}, fmt.Errorf("unknown feature %q", flag)
-		}
 	}
-	return opts, nil
 }
 
 var _ service.Service = (*mockService)(nil)

@@ -16,10 +16,10 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 	}
 
 	alloy, err := harness.NewAlloy(harness.Config{
-		SinkID:   "pipelinetest.sink.out",
-		DataPath: cfg.DataPath,
-		Source:   withPrelude(schema),
-		Features: schema.Features,
+		SinkID:               "pipelinetest.sink.out",
+		DataPath:             cfg.DataPath,
+		Source:               withPrelude(schema),
+		LokiConsumerPipeline: schema.LokiConsumerPipeline,
 	})
 	if err != nil {
 		return err
