@@ -102,14 +102,14 @@ Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of
 
 For backward compatibility, you can still provide the `username` and `password` arguments in the `connection_string` argument:
 
-```conn
+```text
 oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
 If the `connection_string` argument doesn't contain the `username` and `password`, you must provide the `username` and `password` arguments.
 In this case, the URL must have the format:
 
-```conn
+```text
 host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
