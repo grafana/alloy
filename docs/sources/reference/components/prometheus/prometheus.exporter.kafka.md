@@ -62,7 +62,7 @@ You can use the following arguments with `prometheus.exporter.kafka`:
 | `topic_workers`               | `int`          | Number of concurrent workers that collect topic metrics.                             | `100`     | no       |
 | `topics_exclude_regex`        | `string`       | Regex that determines which topics to exclude.                                       | `"^$"`    | no       |
 | `topics_filter_regex`         | `string`       | Regex filter for topics to monitor.                                                  | `".*"`    | no       |
-| `use_sasl`                    | `bool`         | Whether to connect using SASL/PLAIN.                                                 |           | no       |
+| `use_sasl`                    | `bool`         | Whether to connect using SASL.                                                       |           | no       |
 | `use_sasl_handshake`          | `bool`         | Whether to use the SASL handshake. Set to `false` only for a non-Kafka SASL proxy.   | `true`    | no       |
 | `use_tls`                     | `bool`         | Whether to connect using TLS.                                                        |           | no       |
 | `use_zookeeper_lag`           | `bool`         | Whether to read consumer group lag from Apache ZooKeeper.                            |           | no       |
