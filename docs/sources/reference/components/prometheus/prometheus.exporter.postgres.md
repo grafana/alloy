@@ -283,7 +283,7 @@ If your PostgreSQL connection string includes special characters for e.g. passwo
 ```alloy
 prometheus.exporter.postgres "example" {
   data_source_names = [
-    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable"
+    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable",
   ]
 }
 ```
