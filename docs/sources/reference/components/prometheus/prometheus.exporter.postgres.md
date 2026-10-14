@@ -170,10 +170,10 @@ The following arguments are supported:
 The following example uses a `prometheus.exporter.postgres` component to collect metrics from a PostgreSQL server running locally with all default settings:
 
 ```alloy
-// Because no autodiscovery is defined, this will only scrape the 'database_name' database, as defined
+// Because no autodiscovery is defined, this will only scrape the <DATABASE_NAME> database, as defined
 // in the DSN below.
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 }
 
 prometheus.scrape "default" {
@@ -195,6 +195,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -205,9 +208,9 @@ The following example uses a `prometheus.exporter.postgres` component to collect
 
 ```alloy
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 
-  // This block configures autodiscovery to check for databases outside of the 'database_name' db
+  // This block configures autodiscovery to check for databases outside of the <DATABASE_NAME> db
   // specified in the DSN above. The database_allowlist field means that only the 'frontend_app' and 'backend_app'
   // databases will be scraped.
   autodiscovery {
@@ -238,6 +241,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -248,7 +254,7 @@ This example uses a `prometheus.exporter.postgres` component to collect custom m
 
 ```alloy
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 
   // The database_denylist field will filter out those databases from the list of databases to scrape,
   // meaning that all databases *except* these will be scraped.
@@ -277,6 +283,15 @@ prometheus.remote_write "demo" {
 }
 ```
 
+Replace the following:
+
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
 ### Escape special characters in postgres url
 
 If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
@@ -284,7 +299,7 @@ If your PostgreSQL connection string includes special characters for e.g. passwo
 ```alloy
 prometheus.exporter.postgres "example" {
   data_source_names = [
-    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable",
+    "postgresql://<DB_USERNAME>:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/<DATABASE_NAME>?sslmode=disable",
   ]
 }
 ```
@@ -292,9 +307,8 @@ This ensures the DSN remains valid and correctly parsed.
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
