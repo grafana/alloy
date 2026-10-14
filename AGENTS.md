@@ -50,6 +50,10 @@ maintainers. Full policy: [docs/developer/genai.md](docs/developer/genai.md).
 ### MUST
 
 - Leave `HUMAN ONLY` PR sections and all review discussion to the human.
+- Before opening a pull request, use
+  [Issue or pull request?](docs/developer/contributing.md#issue-or-pull-request) to decide whether
+  the change should start as an issue. If it should, tell the human rather than opening the pull
+  request.
 - When opening or drafting a pull request is part of the task: read and use
   [.github/pull_request_template.md](.github/pull_request_template.md) as the body structure. Do not
   invent a custom PR layout. Follow the AI AGENTS rule in that file: **do not fill any section whose
