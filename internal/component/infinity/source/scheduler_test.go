@@ -156,6 +156,27 @@ func TestLoopKickDuringPoll(t *testing.T) {
 
 // TestLoopStopCancelsJitter checks that stop does not wait for, or run, a
 // kicked poll whose jitter has not ended.
+// TestLoopPollServesWaitingKick checks that a poll serves a kick that waits
+// in the channel. When the first poll wins the select over the kick, the
+// kick must not cause a second poll. select picks at random, so the test
+// runs many loops.
+func TestLoopPollServesWaitingKick(t *testing.T) {
+	const loops = 20
+	calls := make([]atomic.Int32, loops)
+	for i := range loops {
+		kick := make(chan struct{}, 1)
+		kick <- struct{}{}
+		l := startLoop(t.Context(), time.Second, 0, kick, func(context.Context) { calls[i].Add(1) }, func() {})
+		defer l.stop()
+	}
+	// The jitter of a kick is below interval/10, and the next tick is 1s
+	// after the first poll.
+	time.Sleep(400 * time.Millisecond)
+	for i := range loops {
+		require.Equal(t, int32(1), calls[i].Load(), "loop %d", i)
+	}
+}
+
 func TestLoopStopCancelsJitter(t *testing.T) {
 	kick := make(chan struct{}, 1)
 	var calls atomic.Int32

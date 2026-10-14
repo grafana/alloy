@@ -65,10 +65,15 @@ func startLoop(parent context.Context, interval, offset time.Duration, kick <-ch
 			if ctx.Err() != nil {
 				return
 			}
-			// This poll also serves a pending kick.
+			// This poll also serves a pending kick. A kick can wait in the
+			// channel when the ticker won the select.
 			if soon != nil {
 				soon.Stop()
 				soon, soonC = nil, nil
+			}
+			select {
+			case <-kick:
+			default:
 			}
 			if ticker == nil {
 				first.Stop()
