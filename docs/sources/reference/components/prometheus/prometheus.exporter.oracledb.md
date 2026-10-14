@@ -101,6 +101,11 @@ If you keep the deprecated top-level configuration and omit `database` blocks, y
 <!-- vale Grafana.GoogleWill = YES -->
 <!-- vale Grafana.Timeless = YES -->
 
+The exporter collects a built-in set of metrics.
+Set `default_metrics` to replace the built-in set with your own file.
+Set `custom_metrics` to add metrics to the set.
+A custom metric replaces a built-in metric when both use the same context and field names.
+
 Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
 The component sets the `instance` label on its exported targets to the host portion of the connection string.
