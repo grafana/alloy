@@ -188,7 +188,7 @@ The `*` character indicates a wildcard.
 
 The receiver matches each origin as a prefix of the full URL, where `*` matches any characters, including `/`, and `?` matches a single character.
 End each origin with a `/` so that it can't match a longer host name.
-For example, `https://app.example.com/` doesn't match `https://app.example.com.example.net/`, but `https://app.example.com` does.
+For example, the origin `https://app.example.com/` doesn't match a script at  `https://app.example.com.example.net/app.js`, but the origin `https://app.example.com` does.
 Avoid using `*` in the host part of an origin.
 For example, `https://*.example.com/` also matches `https://example.net/x.example.com/app.js`.
 
