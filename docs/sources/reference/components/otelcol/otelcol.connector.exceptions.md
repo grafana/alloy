@@ -85,9 +85,14 @@ You can use the following blocks with `otelcol.connector.exceptions`:
 
 ### `dimension`
 
-The `dimension` block configures an attribute to add to the emitted log records and metric data points.
+The `dimension` block configures an attribute to add to the log records converted from span events and to the emitted metric data points.
 
-Each log record and metric data point always has the following attributes:
+{{< admonition type="note" >}}
+Dimensions don't apply when logs are both the input and the output signal.
+`otelcol.connector.exceptions` forwards matching log records unchanged, so they keep exactly the attributes they arrived with.
+{{< /admonition >}}
+
+Each converted log record and metric data point always has the following attributes:
 
 * `service.name`
 * `span.name`
@@ -107,8 +112,8 @@ The following arguments are supported:
 | `name`    | `string` | Span, span event, log record, or resource attribute name. |         | yes      |
 | `default` | `string` | Value to use if the attribute is missing.                 |         | no       |
 
-`otelcol.connector.exceptions` looks for the `name` attribute in the span attributes, then in the span event attributes, and finally in the resource attributes.
-For log records, it looks in the log record attributes and then in the resource attributes.
+When the input signal is traces, `otelcol.connector.exceptions` looks for the `name` attribute in the span attributes, then in the span event attributes, and finally in the resource attributes.
+When the input signal is logs, it looks in the log record attributes and then in the resource attributes.
 
 If the attribute is missing:
 
@@ -117,7 +122,7 @@ If the attribute is missing:
 
 You can't use `service.name`, `span.name`, `span.kind`, or `status.code` as a dimension name because they're already added by default.
 
-Log records always carry the `exception.type`, `exception.message`, and `exception.stacktrace` attributes when they're present on the span event, regardless of the configured dimensions.
+Converted log records always carry the `exception.type`, `exception.message`, and `exception.stacktrace` attributes when they're present on the span event, regardless of the configured dimensions.
 
 ### `exemplars`
 
