@@ -431,6 +431,33 @@ func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 	require.Nil(t, store.GetMapping(uniqueRef2, lbls))
 }
 
+func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCellUse(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				// Get is the unlocked read Clear used to race with.
+				store.GetCellForAppendedSeries()
+			}
+		})
+	}
+
+	for range 100_000 {
+		store.Clear()
+	}
+	close(stop)
+	wg.Wait()
+}
+
 func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 	t.Cleanup(func() { store.Clear() })

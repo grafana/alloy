@@ -235,11 +235,12 @@ type SeriesRefMappingStore struct {
 	// below this value is from a previous generation and must be treated as unmapped.
 	firstRefOfCurrentGeneration storage.SeriesRef
 
-	// timestampTrackingMu protects uniqueRefTimestamps and cellPool
+	// timestampTrackingMu protects uniqueRefTimestamps
 	timestampTrackingMu sync.Mutex
 	// uniqueRefTimestamps maps unique refs to their last append timestamp
 	uniqueRefTimestamps map[storage.SeriesRef]int64
 	// cellPool is used to pool slices of SeriesRefs used for tracking unique refs in TrackAppendedSeries.
+	// Get runs without a lock, so it must never be reassigned.
 	cellPool sync.Pool
 
 	// Cleanup goroutine coordination (no lock required)
@@ -522,13 +523,6 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	clear(s.uniqueRefToChildRefs)
 	clear(s.uniqueRefTimestamps)
 	clear(s.labelHashToUniqueRef)
-
-	// reset the pool
-	s.cellPool = sync.Pool{
-		New: func() any {
-			return &Cell{Refs: make([]storage.SeriesRef, 0, 100)}
-		},
-	}
 
 	// NOTE: We do NOT reset nextUniqueRef here. Resetting it would cause ref collisions
 	// with components like prometheus.scrape which will keep re-sending the same cached refs.
