@@ -190,16 +190,17 @@ The following example collects metrics from two Oracle databases:
 ```alloy
 prometheus.exporter.oracledb "example" {
   database {
-    name = "primary"
+    name              = "primary"
     connection_string = "db-primary.example.com:1521/ORCL"
-    username            = "<DB_USERNAME>"
-    password            = "<DB_PASSWORD>"
+    username          = "<DB_USERNAME>"
+    password          = "<DB_PASSWORD>"
   }
+
   database {
-    name = "standby"
+    name              = "standby"
     connection_string = "db-standby.example.com:1521/ORCL"
-    username            = "<DB_USERNAME>"
-    password            = "<DB_PASSWORD>"
+    username          = "<DB_USERNAME>"
+    password          = "<DB_PASSWORD>"
   }
 }
 
