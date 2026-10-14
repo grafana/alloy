@@ -28,6 +28,7 @@ func TestCWLogsRecordBlob(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, gz.Close())
 	blob := base64.StdEncoding.EncodeToString(buf.Bytes())
+	// Copy this blob into the CloudWatch Logs record's data in test.yaml.
 	t.Logf("blob:\n%s", blob)
 
 	compressed, err := base64.StdEncoding.DecodeString(blob)
