@@ -103,6 +103,10 @@ By default, the following collectors are enabled:
 Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument is only applied to the first data source in the list.
 {{< /admonition >}}
 
+The component sets the `instance` label on its exported targets to a simplified form of the data source name, `postgresql://<HOST>:<PORT>/<DATABASE>`, with any credentials removed.
+The component omits the port when the data source name doesn't include one.
+When you configure more than one data source name, the component sets the `instance` label to the component ID.
+
 ## Blocks
 
 You can use the following blocks with `prometheus.exporter.postgres`:
