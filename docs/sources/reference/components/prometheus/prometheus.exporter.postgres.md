@@ -309,7 +309,7 @@ Replace the following:
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
-### Escape special characters in postgres url
+### Escape special characters in a connection string
 
 If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
 
