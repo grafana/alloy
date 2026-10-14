@@ -77,7 +77,7 @@ Leaving it enabled makes each concurrent scrape issue its own Kafka operations, 
 {{< /admonition >}}
 
 When `insecure_skip_verify` is `true`, the component doesn't check the server's certificate for validity.
-This makes your HTTPS connections insecure.
+This makes your TLS connections insecure.
 
 The component verifies the hostname on returned certificates unless you enable `insecure_skip_verify`.
 If you don't set `tls_server_name`, the component uses the host from the corresponding `kafka_uris` entry.
