@@ -84,7 +84,11 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// If no bookmark specified create one in the datapath.
 	if newArgs.BookmarkPath == "" {

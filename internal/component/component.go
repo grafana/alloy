@@ -95,6 +95,26 @@ type Component interface {
 	// gracefully handle updating its config while still running.
 	//
 	// An error may be returned if the provided config is invalid.
+	//
+	// Components referenced in the new Arguments may not be running until
+	// every Update in the same reload has returned. Update should follow these
+	// rules:
+	//
+	//   - If Update changes the downstream components the component sends data
+	//     to, it must first drain its in-flight data to the old ones. It must
+	//     not wait on anything that sends to the new ones, since they may not
+	//     be running yet.
+	//   - When Update returns, with or without an error, the component must
+	//     only send to the downstream components in the new Arguments. The
+	//     reload stops removed components even when Update fails, so data sent
+	//     to an old one may block or be lost.
+	//   - If Update fails, the component should stay as it was before the call
+	//     where possible, apart from the downstream components changed by the
+	//     previous rule.
+	//   - Prefer a cheap Update: Validate (see syntax.Validator) checks the
+	//     desired config, New and Update only store it, and Run does the work
+	//     to reach it, retrying and reporting failures through HealthComponent.
+	//     Small, goroutine-safe changes can be applied directly in Update.
 	Update(args Arguments) error
 }
 
