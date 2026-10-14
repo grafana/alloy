@@ -113,6 +113,9 @@ In this case, the URL must have the format:
 host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
+The component sets the `instance` label on its exported targets to the host portion of the connection string.
+When you configure more than one `database` block, the component sets the `instance` label to the component ID, for example, `prometheus.exporter.oracledb.example`.
+
 ### Multiple databases
 
 When you scrape several databases from one component, define one or more `database` blocks instead of a top-level `connection_string`.
