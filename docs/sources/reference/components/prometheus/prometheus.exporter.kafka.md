@@ -85,8 +85,8 @@ If you don't set `tls_server_name`, the component uses the host from the corresp
 When you enable `use_sasl`, you must also set `sasl_username` and `sasl_password`.
 When you enable `use_zookeeper_lag`, you must also set `zookeeper_uris`.
 
-The component sets the `instance` label on its exported targets to the value of the first entry in `kafka_uris`.
-If `kafka_uris` contains more than one address, you must set `instance` explicitly.
+When `kafka_uris` contains one address, the component sets the `instance` label on its exported targets to that address.
+When `kafka_uris` contains more than one address, you must set `instance`, and the component uses that value as the label.
 
 ## Blocks
 
