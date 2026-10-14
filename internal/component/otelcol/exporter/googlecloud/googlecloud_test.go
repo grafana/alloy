@@ -50,7 +50,8 @@ func TestConfigConversion(t *testing.T) {
 					},
 					LogConfig: collector.LogConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint: "logging.googleapis.com:443",
+							Endpoint:       "logging.googleapis.com:443",
+							UniverseDomain: "googleapis.com",
 						},
 						ResourceFilters:       make([]collector.ResourceFilter, 0),
 						ServiceResourceLabels: true,
@@ -109,6 +110,7 @@ func TestConfigConversion(t *testing.T) {
 
 				log {
 					endpoint = "logging.example.com:443"
+					universe_domain = "example.com"
 					compression = "gzip"
 					grpc_pool_size = 8
 					use_insecure = true
@@ -170,10 +172,11 @@ func TestConfigConversion(t *testing.T) {
 					},
 					LogConfig: collector.LogConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint:     "logging.example.com:443",
-							Compression:  "gzip",
-							UseInsecure:  true,
-							GRPCPoolSize: 8,
+							Endpoint:       "logging.example.com:443",
+							UniverseDomain: "example.com",
+							Compression:    "gzip",
+							UseInsecure:    true,
+							GRPCPoolSize:   8,
 						},
 						DefaultLogName: "my-default-log-name",
 						ResourceFilters: []collector.ResourceFilter{
