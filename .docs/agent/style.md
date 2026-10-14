@@ -102,7 +102,7 @@ Use "refer to" instead of "see", "consult", "check out", and other phrases.
 
 Use sentence case for titles and headings.
 
-Use refrence style Markdown links: [Link text][link definition].
+Use reference style Markdown links: [Link text][link definition].
 [link definition]: https://example.com
 
 Link to other sections using descriptive phrases that include the section name:
