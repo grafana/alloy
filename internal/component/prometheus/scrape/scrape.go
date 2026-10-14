@@ -408,7 +408,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 	defer c.unregisterer.UnregisterAll()
-	defer c.appendable.Clear()
+	defer c.appendable.Stop()
 
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 

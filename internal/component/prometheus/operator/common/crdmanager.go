@@ -191,7 +191,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
-	defer alloyAppendable.Clear()
+	defer alloyAppendable.Stop()
 
 	scrapeOpts := &scrape.Options{
 		AppendMetadata:          c.args.Scrape.HonorMetadata,
