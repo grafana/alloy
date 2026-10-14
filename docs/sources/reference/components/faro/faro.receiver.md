@@ -192,7 +192,7 @@ For example, the origin `https://app.example.com/` doesn't match a script at  `h
 Avoid using `*` in the host part of an origin.
 For example, `https://*.example.com/` also matches `https://example.net/x.example.com/app.js`.
 
-The following example only downloads sourcemaps for scripts from `https://app.example.com`:
+The following example downloads sourcemaps only for scripts served from `https://app.example.com/`:
 
 ```alloy
 faro.receiver "default" {
