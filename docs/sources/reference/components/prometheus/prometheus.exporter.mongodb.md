@@ -72,7 +72,8 @@ When `compatible_mode` is `true`, the exporter exposes each metric under its cur
 It also exposes a second copy under the matching `mongodb_exporter` 0.1x name, where one exists.
 Refer to [Info on Percona MongoDB exporter versions][exporter-versions] for details.
 
-The `currentop_slow_time` argument applies only when `enable_currentop_metrics` is `true`.
+The `currentop_slow_time` argument applies whenever the exporter collects current operation metrics.
+The exporter collects them when you set `enable_currentop_metrics` to `true`, or when `collect_all` is `true`.
 The exporter doesn't collect current operation metrics from a `mongos` instance.
 
 You can't use `direct_connect` with multiple hosts or an SRV URI.
