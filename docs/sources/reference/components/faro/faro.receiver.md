@@ -173,7 +173,7 @@ Those requests come from the host that runs {{< param "PRODUCT_NAME" >}}, so any
 If the receiver accepts telemetry from the internet or from other networks that you don't trust, take one or more of the following steps:
 
 * Set `download` to `false`, and provide sourcemaps with [`location` blocks](#location).
-* Set `download_from_origins` to the specific origins that host your sourcemaps, and end each origin with a `/`.
+* Set `download_from_origins` so {{< param "PRODUCT_NAME" >}} downloads sourcemaps only for scripts served from your own origins, and end each origin with a `/`.
 * Restrict outbound network access from the host that runs {{< param "PRODUCT_NAME" >}}, for example with a network policy or firewall rules, so that it can only reach the destinations it needs.
 {{< /admonition >}}
 
