@@ -51,7 +51,13 @@ otelcol.connector.exceptions "<LABEL>" {
 
 ## Arguments
 
-The `otelcol.connector.exceptions` component doesn't support any arguments. You can configure this component with blocks.
+You can use the following argument with `otelcol.connector.exceptions`:
+
+| Name                         | Type   | Description                                       | Default | Required |
+|------------------------------|--------|---------------------------------------------------|---------|----------|
+| `disable_default_dimensions` | `bool` | Emits metric data points with no dimensions.      | `false` | no       |
+
+Setting `disable_default_dimensions` to `true` and specifying a [`dimension`](#dimension) block is an error, because a `dimension` block already replaces the default dimensions.
 
 ## Blocks
 
@@ -104,6 +110,7 @@ The `span.name`, `span.kind`, and `status.code` attributes are only added when t
 You can specify multiple `dimension` blocks.
 When you don't specify any `dimension` block, {{< param "PRODUCT_NAME" >}} adds the `exception.type` and `exception.message` dimensions.
 When you specify at least one `dimension` block, {{< param "PRODUCT_NAME" >}} adds only the dimensions you list.
+To add no dimensions beyond the attributes listed previously, set [`disable_default_dimensions`](#arguments) to `true` and specify no `dimension` block.
 
 The following arguments are supported:
 

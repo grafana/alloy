@@ -57,6 +57,27 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "DisableDefaultDimensions",
+			cfg: `
+				disable_default_dimensions = true
+				output {}
+			`,
+			expected: exceptionsconnector.Config{
+				Dimensions: []exceptionsconnector.Dimension{},
+			},
+		},
+		{
+			testName: "DisableDefaultDimensionsWithDimension",
+			cfg: `
+				disable_default_dimensions = true
+				dimension {
+					name = "http.method"
+				}
+				output {}
+			`,
+			errorMsg: "dimension blocks cannot be set when disable_default_dimensions is true",
+		},
+		{
 			testName: "ReservedDimension",
 			cfg: `
 				dimension {
@@ -321,8 +342,42 @@ const logDerivedMetrics = `{
 	}]
 }`
 
+const noDimensionMetrics = `{
+	"resourceMetrics": [{
+		"scopeMetrics": [{
+			"scope": { "name": "exceptionsconnector" },
+			"metrics": [{
+				"name": "exceptions",
+				"sum": {
+					"dataPoints": [{
+						"attributes": [{
+							"key": "service.name",
+							"value": { "stringValue": "shop-backend" }
+						},
+						{
+							"key": "span.name",
+							"value": { "stringValue": "GET /checkout" }
+						},
+						{
+							"key": "span.kind",
+							"value": { "stringValue": "SPAN_KIND_SERVER" }
+						},
+						{
+							"key": "status.code",
+							"value": { "stringValue": "STATUS_CODE_ERROR" }
+						}],
+						"asInt": "1"
+					}],
+					"aggregationTemporality": 2,
+					"isMonotonic": true
+				}
+			}]
+		}]
+	}]
+}`
+
 func Test_ComponentIO(t *testing.T) {
-	const cfg = `
+	const defaultCfg = `
 		output {
 			// no-op: will be overridden by test code.
 		}
@@ -330,6 +385,7 @@ func Test_ComponentIO(t *testing.T) {
 
 	tests := []struct {
 		testName string
+		cfg      string
 		signal   processortest.Signal
 	}{
 		{
@@ -352,6 +408,28 @@ func Test_ComponentIO(t *testing.T) {
 			testName: "logs to logs and metrics",
 			signal:   processortest.NewLogToLogAndMetricSignal(inputLogs, filteredLogs, logDerivedMetrics),
 		},
+		{
+			testName: "traces to logs without default dimensions",
+			cfg: `
+				disable_default_dimensions = true
+
+				output {
+					// no-op: will be overridden by test code.
+				}
+			`,
+			signal: processortest.NewTraceToLogSignal(inputTrace, exceptionLog),
+		},
+		{
+			testName: "traces to metrics without default dimensions",
+			cfg: `
+				disable_default_dimensions = true
+
+				output {
+					// no-op: will be overridden by test code.
+				}
+			`,
+			signal: processortest.NewTraceToMetricSignal(inputTrace, noDimensionMetrics),
+		},
 	}
 
 	for _, tc := range tests {
@@ -361,6 +439,11 @@ func Test_ComponentIO(t *testing.T) {
 
 			ctrl, err := componenttest.NewControllerFromID(l, "otelcol.connector.exceptions")
 			require.NoError(t, err)
+
+			cfg := tc.cfg
+			if cfg == "" {
+				cfg = defaultCfg
+			}
 
 			var args exceptions.Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))

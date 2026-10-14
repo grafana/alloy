@@ -2,6 +2,8 @@
 package exceptions
 
 import (
+	"errors"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -38,6 +40,9 @@ type Arguments struct {
 	// - status.code
 	// The dimensions are looked up in the span, span event, and resource attributes.
 	Dimensions []Dimension `alloy:"dimension,block,optional"`
+
+	// DisableDefaultDimensions configures the connector with an empty dimension list.
+	DisableDefaultDimensions bool `alloy:"disable_default_dimensions,attr,optional"`
 
 	// Exemplars configures how to attach exemplars to metrics.
 	Exemplars ExemplarsConfig `alloy:"exemplars,block,optional"`
@@ -77,17 +82,16 @@ var (
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = Arguments{
-		Dimensions: []Dimension{
-			{Name: string(semconv.ExceptionTypeKey)},
-			{Name: string(semconv.ExceptionMessageKey)},
-		},
-	}
+	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	if args.DisableDefaultDimensions && len(args.Dimensions) > 0 {
+		return errors.New("dimension blocks cannot be set when disable_default_dimensions is true")
+	}
+
 	cfg, err := args.Convert()
 	if err != nil {
 		return err
@@ -100,6 +104,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	dimensions := make([]exceptionsconnector.Dimension, 0, len(args.Dimensions))
 	for _, d := range args.Dimensions {
 		dimensions = append(dimensions, d.Convert())
+	}
+
+	if len(dimensions) == 0 && !args.DisableDefaultDimensions {
+		dimensions = append(dimensions,
+			exceptionsconnector.Dimension{Name: string(semconv.ExceptionTypeKey)},
+			exceptionsconnector.Dimension{Name: string(semconv.ExceptionMessageKey)},
+		)
 	}
 
 	return &exceptionsconnector.Config{

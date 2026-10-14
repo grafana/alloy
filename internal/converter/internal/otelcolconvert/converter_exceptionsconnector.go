@@ -63,7 +63,8 @@ func toExceptionsConnector(state *State, id componentstatus.InstanceID, cfg *exc
 	}
 
 	return &exceptions.Arguments{
-		Dimensions: dimensions,
+		Dimensions:               dimensions,
+		DisableDefaultDimensions: len(cfg.Dimensions) == 0,
 		Exemplars: exceptions.ExemplarsConfig{
 			Enabled: cfg.Exemplars.Enabled,
 		},
