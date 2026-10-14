@@ -96,6 +96,7 @@ body:
       - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
+      - otelcol.encoding.azure
       - otelcol.encoding.jsonlog
       - otelcol.encoding.text
       - otelcol.exporter.awss3
