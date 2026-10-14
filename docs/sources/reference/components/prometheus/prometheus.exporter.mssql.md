@@ -31,15 +31,15 @@ prometheus.exporter.mssql "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mssql`:
 
-| Name                      | Type                 | Description                                                            | Default | Required |
-| ------------------------- | -------------------- | ---------------------------------------------------------------------- | ------- | -------- |
-| `connection_string`       | `secret`             | Connection string for the Microsoft SQL Server.                        |         | yes      |
-| `connection_name`         | `string`             | Name for the connection. Appears in log messages.                      | `""`    | no       |
-| `max_connection_lifetime` | `duration`           | Maximum lifetime of a connection. `0` keeps connections forever.       | `"0s"`  | no       |
-| `max_idle_connections`    | `int`                | Maximum number of idle connections in the connection pool.             | `3`     | no       |
-| `max_open_connections`    | `int`                | Maximum number of open connections in the connection pool.             | `3`     | no       |
-| `query_config`            | `string` or `secret` | Collector configuration that maps MSSQL queries to Prometheus metrics. |         | no       |
-| `timeout`                 | `duration`           | Query timeout for each scrape.                                         | `"10s"` | no       |
+| Name                      | Type                 | Description                                                                      | Default | Required |
+| ------------------------- | -------------------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| `connection_string`       | `secret`             | Connection string for the Microsoft SQL Server.                                  |         | yes      |
+| `connection_name`         | `string`             | Name for the connection. Enables the `up` and `scrape_duration_seconds` metrics. | `""`    | no       |
+| `max_connection_lifetime` | `duration`           | Maximum lifetime of a connection. `0` keeps connections forever.                 | `"0s"`  | no       |
+| `max_idle_connections`    | `int`                | Maximum number of idle connections in the connection pool.                       | `3`     | no       |
+| `max_open_connections`    | `int`                | Maximum number of open connections in the connection pool.                       | `3`     | no       |
+| `query_config`            | `string` or `secret` | Collector configuration that maps MSSQL queries to Prometheus metrics.           |         | no       |
+| `timeout`                 | `duration`           | Query timeout for each scrape.                                                   | `"10s"` | no       |
 
 `connection_string` must be a URL that uses the `sqlserver` scheme.
 `max_idle_connections` and `max_open_connections` must each be at least `1`, and `timeout` must be positive.
@@ -61,6 +61,9 @@ For more information, refer to the [Data Source Names][dsn] section in the `sql_
 
 {{< param "PRODUCT_NAME" >}} includes `connection_name` in this component's log messages.
 It maps to the [`sql_exporter`][sql-exporter-config] `target.name` setting.
+
+When you set `connection_name`, the exporter also emits the `up` and `scrape_duration_seconds` metrics for the connection.
+The exporter doesn't apply the name as a label on those metrics.
 
 If you set `query_config`, it must be a YAML string that defines which MSSQL queries map to custom Prometheus metrics.
 You typically load `query_config` from the exports of another component.
