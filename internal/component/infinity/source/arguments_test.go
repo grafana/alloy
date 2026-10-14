@@ -11,12 +11,36 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 func parse(cfg string) (Arguments, error) {
 	var args Arguments
 	err := syntax.Unmarshal([]byte(cfg), &args)
 	return args, err
+}
+
+// TestGraphQLVariablesSecret checks that body_graphql_variables takes a
+// secret, such as the value of remote.vault or sys.env.
+func TestGraphQLVariablesSecret(t *testing.T) {
+	f, err := parser.ParseFile("", []byte(`query "q" {
+		type = "graphql"
+		url  = "http://example.com/graphql"
+		url_options {
+			body_graphql_query     = "{ a }"
+			body_graphql_variables = vars
+		}
+	}`))
+	require.NoError(t, err)
+	scope := vm.NewScope(map[string]any{"vars": alloytypes.Secret(`{"token": "s3cret"}`)})
+	var args Arguments
+	require.NoError(t, vm.New(f).Evaluate(scope, &args))
+
+	opts := args.Queries[0].URLOptions
+	require.True(t, opts.BodyGraphQLVariables.IsSecret)
+	require.Equal(t, `{"token": "s3cret"}`, newQuerySpec(args.Queries[0]).graphqlVariables)
 }
 
 const minimalQuery = `query "q" { url = "http://example.com/api" }`

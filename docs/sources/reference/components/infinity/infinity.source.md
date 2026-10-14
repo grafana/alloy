@@ -290,7 +290,7 @@ The `url_options` block configures the HTTP request for a query with `source = "
 | `body_content_type`        | `string`      | `Content-Type` header, used when `body_type` is `"raw"`.             |         | no       |
 | `body_form`                | `map(secret)` | Form fields, used when `body_type` is `"form-data"` or `"x-www-form-urlencoded"`. | | no |
 | `body_graphql_query`       | `string or secret` | GraphQL query, used when `body_type` is `"graphql"`.            |         | no       |
-| `body_graphql_variables`   | `string`      | GraphQL variables as a JSON object, used when `body_type` is `"graphql"`. | | no  |
+| `body_graphql_variables`   | `string or secret` | GraphQL variables as a JSON object, used when `body_type` is `"graphql"`. | | no  |
 | `body_type`                | `string`      | Encoding of the request body.                                        | `"raw"` | no       |
 | `headers`                  | `map(secret)` | Extra HTTP headers, added after the headers from `client`. Can't set `User-Agent`. |         | no       |
 | `method`                   | `string`      | HTTP method for the request.                                         | `"GET"` | no       |
@@ -307,7 +307,7 @@ The following strings are valid `body_type` values:
 
 A request body with `method = "GET"` is a configuration error.
 A `type = "graphql"` query on the enclosing `query` block requires `method = "POST"` and `body_type = "graphql"`; setting either argument to a conflicting value is a configuration error.
-The `body_graphql_variables` argument must be valid JSON when set.
+The `body_graphql_variables` argument must be a JSON object when set.
 A `type = "graphql"` query with `source = "url"` requires `body_graphql_query`.
 
 Each body argument must match `body_type`, or it's a configuration error:

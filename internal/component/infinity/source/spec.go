@@ -98,7 +98,7 @@ func newQuerySpec(q QueryBlock) querySpec {
 		bodyContentType:  q.URLOptions.BodyContentType,
 		bodyForm:         unwrapSecrets(q.URLOptions.BodyForm),
 		graphqlQuery:     q.URLOptions.BodyGraphQLQuery.Value,
-		graphqlVariables: q.URLOptions.BodyGraphQLVariables,
+		graphqlVariables: q.URLOptions.BodyGraphQLVariables.Value,
 		rootSelector:     q.RootSelector,
 		filter:           q.FilterExpression,
 		csv: csvSpec{

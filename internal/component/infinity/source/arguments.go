@@ -89,7 +89,7 @@ type URLOptions struct {
 	BodyContentType      string                       `alloy:"body_content_type,attr,optional"`
 	BodyForm             map[string]alloytypes.Secret `alloy:"body_form,attr,optional"`
 	BodyGraphQLQuery     alloytypes.OptionalSecret    `alloy:"body_graphql_query,attr,optional"`
-	BodyGraphQLVariables string                       `alloy:"body_graphql_variables,attr,optional"`
+	BodyGraphQLVariables alloytypes.OptionalSecret    `alloy:"body_graphql_variables,attr,optional"`
 }
 
 // Column selects one field from the response.
@@ -400,7 +400,7 @@ func (o *URLOptions) isSet(queryType string) bool {
 	return (o.Method != "" && o.Method != defMethod) || (o.BodyType != "" && o.BodyType != defBodyType) ||
 		len(o.Headers) > 0 || len(o.Params) > 0 ||
 		o.Body.Value != "" || o.BodyContentType != "" || len(o.BodyForm) > 0 ||
-		o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables != ""
+		o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables.Value != ""
 }
 
 func (o *URLOptions) validate(queryType, source string, clientHeaders map[string]struct{}) []error {
@@ -433,10 +433,10 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 	if o.BodyType != "form-data" && o.BodyType != "x-www-form-urlencoded" && len(o.BodyForm) > 0 {
 		errs = append(errs, errors.New(`body_form requires body_type "form-data" or "x-www-form-urlencoded"`))
 	}
-	if o.BodyType != typeGraphQL && (o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables != "") {
+	if o.BodyType != typeGraphQL && (o.BodyGraphQLQuery.Value != "" || o.BodyGraphQLVariables.Value != "") {
 		errs = append(errs, errors.New(`body_graphql_query and body_graphql_variables require body_type "graphql"`))
 	}
-	if o.BodyGraphQLVariables != "" && !isJSONObject(o.BodyGraphQLVariables) {
+	if o.BodyGraphQLVariables.Value != "" && !isJSONObject(o.BodyGraphQLVariables.Value) {
 		errs = append(errs, errors.New("body_graphql_variables must be a JSON object"))
 	}
 	canonical := map[string]string{}
