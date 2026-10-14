@@ -65,6 +65,7 @@ The following collectors are available for selection:
 * `process_idle`
 * `replication_slot`
 * `replication`
+* `roles`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
 * `stat_checkpointer` - Only supported in PostgreSQL 17 and later
