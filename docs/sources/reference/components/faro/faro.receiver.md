@@ -180,7 +180,7 @@ If the receiver accepts telemetry from the internet or from other networks that 
 It doesn't restrict the sourcemap URL that a script refers to, so restrict outbound network access as well.
 {{< /admonition >}}
 
-The `download_from_origins` argument determines which origins a sourcemap may be downloaded from.
+The `download_from_origins` argument restricts sourcemap downloads to scripts served from the listed origins.
 The receiver compares the URL of the script file in each stack frame of the telemetry it receives with these origins.
 The client that sends the telemetry sets that URL.
 The default value, `["*"]`, enables downloading sourcemaps from all origins.
