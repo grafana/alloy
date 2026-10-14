@@ -167,9 +167,8 @@ When exceptions are sent to the `faro.receiver` component, it can download sourc
 You can disable this behavior by setting the `download` argument to `false`.
 
 {{< admonition type="warning" >}}
-By default, `faro.receiver` downloads sourcemaps from any URL that a client includes in the telemetry it sends.
-The request comes from the host that runs {{< param "PRODUCT_NAME" >}}.
-A client that can reach the receiver can use this to make {{< param "PRODUCT_NAME" >}} send requests to any address that the host can reach, including internal services.
+By default, `faro.receiver` downloads sourcemaps by requesting any URL that a client includes in its telemetry.
+Those requests come from the host that runs {{< param "PRODUCT_NAME" >}}, so any client that reaches the receiver can make {{< param "PRODUCT_NAME" >}} send HTTP or HTTPS requests to any address the host can reach, including internal services.
 
 If the receiver accepts telemetry from the internet or from other networks that you don't trust, take one or more of the following steps:
 
