@@ -4,17 +4,21 @@ Grafana Alloy uses GitHub to manage reviews of pull requests.
 
 ## Issue or pull request?
 
-Open an [issue][new-issue] first when the problem you want to solve has several possible solutions
-and it's not clear which one is best. This lets maintainers and the community discuss the
-alternatives before anyone spends time implementing or reviewing a change. For user-facing features
-and larger changes, follow the [proposal process][proposal-process].
+Open a pull request directly only when the change is one of the following:
 
-Open a pull request directly when the problem has one solution that's clearly better than the
-alternatives, or when the change is a trivial fix or improvement. Maintainers may still ask you to
-open an issue if the change needs more discussion.
+- A typo, broken link, or other documentation fix.
+- A dependency update.
+- A bug fix that doesn't change configuration or documented behavior.
+- An implementation of an issue where a maintainer has agreed on the approach.
 
-If you're unsure, open an issue. You're welcome to link a draft pull request or proof-of-concept
-branch from the issue.
+Maintainers may still ask you to open an issue if a pull request needs more discussion.
+
+For anything not on that list, open an [issue][new-issue] first so maintainers and the community
+can discuss the approach before anyone spends time implementing or reviewing it. You're welcome to
+link a draft pull request or proof-of-concept branch from the issue.
+
+For cross-cutting changes to the core of Alloy, a maintainer may ask you to write a
+[proposal][proposal-process].
 
 ## Before Contributing
 
