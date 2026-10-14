@@ -12,9 +12,11 @@ title: prometheus.exporter.postgres
 
 # `prometheus.exporter.postgres`
 
-The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) for collecting metrics from a PostgreSQL database.
+The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`][postgres-exporter] for collecting metrics from a PostgreSQL database.
 
 You can specify multiple `prometheus.exporter.postgres` components by giving them different labels.
+
+[postgres-exporter]: https://github.com/prometheus-community/postgres_exporter
 
 ## Usage
 
@@ -36,18 +38,23 @@ You can use the following arguments with `prometheus.exporter.postgres`:
 | `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
 | `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | `[]`    | no       |
 
-Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_names`.
+Refer to the [PostgreSQL documentation][libpq-connstring] for more information about the format of the connection strings in `data_source_names`.
 
-Refer to the examples for the `custom_queries_config_path` file in the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml).
+Refer to the examples for the `custom_queries_config_path` file in the [`postgres_exporter` repository][postgres-exporter-queries].
+
+[libpq-connstring]: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+[postgres-exporter-queries]: https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml
 
 {{< admonition type="note" >}}
 There are a number of environment variables that aren't recommended for use, as they will affect _all_ `prometheus.exporter.postgres` components.
-Refer to the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter#environment-variables) for a full list of environment variables.
+Refer to the [`postgres_exporter` repository][postgres-exporter-env] for a full list of environment variables.
+
+[postgres-exporter-env]: https://github.com/prometheus-community/postgres_exporter#environment-variables
 {{< /admonition >}}
 
-The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) to run with a collection timeout of 10 seconds.
+The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`][postgres-exporter] to run with a collection timeout of 10 seconds.
 
-By default, the component enables the same set of metrics as the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
+By default, the component enables the same set of metrics as the upstream [`postgres_exporter`][postgres-exporter].
 Set `custom_queries_config_path` to expose additional metrics from a configuration file.
 
 Set `disable_default_metrics` to `true` to expose only the metrics from `custom_queries_config_path`.
