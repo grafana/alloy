@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-14
 title: prometheus.exporter.postgres
 ---
 
