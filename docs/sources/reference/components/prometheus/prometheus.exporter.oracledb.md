@@ -91,7 +91,6 @@ They will be removed in a future release.
 Use the `database` block instead.
 
 If you keep the deprecated top-level configuration and omit `database` blocks, you must set `connection_string`.
-If the URL doesn't embed a username and password, set the deprecated top-level `username` and `password` arguments for that target only.
 {{< /admonition >}}
 
 <!-- vale Grafana.GooglePassive = YES -->
