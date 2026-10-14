@@ -44,7 +44,7 @@ You can use the following arguments with `prometheus.exporter.mongodb`:
 | ------------------------------ | ---------- | --------------------------------------------------------------------- | ------- | -------- |
 | `mongodb_uri`                  | `secret`   | MongoDB connection URI.                                               |         | yes      |
 | `collect_all`                  | `bool`     | Enables all collectors.                                               | `true`  | no       |
-| `compatible_mode`              | `bool`     | Exposes metrics under both their current and v0.1x names.             | `true`  | no       |
+| `compatible_mode`              | `bool`     | Exposes metrics under both current and `mongodb_exporter` 0.1x names. | `true`  | no       |
 | `currentop_slow_time`          | `duration` | Minimum running time of an operation before the exporter reports it.  | `"1m"`  | no       |
 | `direct_connect`               | `bool`     | Whether to connect directly to one host instead of the whole cluster. | `false` | no       |
 | `discovering_mode`             | `bool`     | Whether to automatically discover collections.                        | `false` | no       |
@@ -68,6 +68,10 @@ Set `mongodb_uri` to a [MongoDB connection string][connection-string] that uses 
 While it's `true`, it overrides `discovering_mode` and each `enable_*` argument, so setting any of them to `false` has no effect.
 Set `collect_all` to `false` to choose collectors individually.
 
+When `compatible_mode` is `true`, the exporter exposes each metric under its current name.
+It also exposes a second copy under the matching `mongodb_exporter` 0.1x name, where one exists.
+Refer to [Info on Percona MongoDB exporter versions][exporter-versions] for details.
+
 The `currentop_slow_time` argument applies only when `enable_currentop_metrics` is `true`.
 The exporter doesn't collect current operation metrics from a `mongos` instance.
 
@@ -77,6 +81,7 @@ The MongoDB driver returns an error if your `mongodb_uri` contains either.
 The component sets the `instance` label on its exported targets to the host portion of `mongodb_uri`.
 
 [connection-string]: https://docs.mongodb.com/manual/reference/connection-string/
+[exporter-versions]: https://github.com/percona/mongodb_exporter#info-on-percona-mongodb-exporter-versions
 
 ## Blocks
 
