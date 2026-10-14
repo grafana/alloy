@@ -257,8 +257,8 @@ func (c *walEndpointAdapter) AppendEntries(ctx context.Context, entries wal.RefE
 	)
 
 	if !ok {
-		// TODO(thepalbi): Add metric here
 		c.logger.Debug("series for entries not found")
+		c.metrics.streamNotFoundEntries.WithLabelValues().Add(float64(len(entries.Entries)))
 		return nil
 	}
 
