@@ -29,7 +29,7 @@ func TestSeriesRefMappingStore_GetMappingReturnsNilForUnknownRef(t *testing.T) {
 
 func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 
 	childRefs := []storage.SeriesRef{1, 2, 3}
 	lbls := labels.NewBuilder(labels.EmptyLabels()).Set("foo", "bar").Labels()
@@ -49,7 +49,7 @@ func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
 
 func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 
 	type mappingAndLabels struct {
 		refs   []storage.SeriesRef
@@ -82,7 +82,7 @@ func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 
 func TestSeriesRefMappingStore_UpdateMappingChangesReturnedValue(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	originalRefs := []storage.SeriesRef{1, 2, 3}
@@ -108,7 +108,7 @@ func TestSeriesRefMappingStore_UpdateMappingWithZeroRefDoesNothing(t *testing.T)
 
 func TestSeriesRefMappingStore_UpdateMappingAfterRemovalDoesNotRecreate(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.FromStrings("k", "v")
 
 	uniqueRef := store.CreateMapping([]storage.SeriesRef{1}, lbls)
@@ -148,7 +148,7 @@ func TestSeriesRefMappingStore_SliceIsEmptyAfterReturn(t *testing.T) {
 func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(func() { store.Clear() })
+		t.Cleanup(store.Stop)
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
@@ -174,7 +174,7 @@ func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(func() { store.Clear() })
+		t.Cleanup(store.Stop)
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with recent timestamp
@@ -197,7 +197,7 @@ func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) 
 func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := NewSeriesRefMappingStore(nil)
-		t.Cleanup(func() { store.Clear() })
+		t.Cleanup(store.Stop)
 		lbls := labels.EmptyLabels()
 
 		// Create and track a mapping with old timestamp
@@ -245,7 +245,7 @@ func TestSeriesRefMappingStore_RemoveStaleRefs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := NewSeriesRefMappingStore(nil)
-			t.Cleanup(func() { store.Clear() })
+			t.Cleanup(store.Stop)
 
 			now := time.Now().Unix()
 			create := func(prefix string, n int, ts int64) ([]storage.SeriesRef, []labels.Labels) {
@@ -287,7 +287,7 @@ func TestSeriesRefMappingStore_RemoveStaleRefs(t *testing.T) {
 
 func TestSeriesRefMappingStore_RemoveStaleRefsRacesWithAppends(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 
 	const series = 128
 	lbls := make([]labels.Labels, series)
@@ -356,6 +356,7 @@ func trackRef(store *SeriesRefMappingStore, ref storage.SeriesRef, ts int64) {
 
 func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	// Create several mappings
@@ -389,6 +390,7 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 
 func TestSeriesRefMappingStore_ClearIsIdempotent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	// Create some mappings
@@ -405,7 +407,7 @@ func TestSeriesRefMappingStore_ClearIsIdempotent(t *testing.T) {
 
 func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	// Create multiple mappings before clear
@@ -433,7 +435,7 @@ func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 
 func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCellUse(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
@@ -458,9 +460,68 @@ func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCellUse(t *testing.T) {
 	wg.Wait()
 }
 
+func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCreates(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	for w := range 8 {
+		wg.Go(func() {
+			for i := 0; ; i++ {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				// CreateMapping is what starts the cleanup goroutine.
+				store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("w", strconv.Itoa(w), "i", strconv.Itoa(i)))
+			}
+		})
+	}
+
+	for range 1000 {
+		store.Clear()
+	}
+	close(stop)
+	wg.Wait()
+}
+
+func TestSeriesRefMappingStore_CleanupKeepsRunningAfterClear(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := NewSeriesRefMappingStore(nil)
+		t.Cleanup(store.Stop)
+		lbls := labels.FromStrings("k", "v")
+
+		trackRef(store, store.CreateMapping([]storage.SeriesRef{1}, lbls), time.Now().Unix())
+		store.Clear()
+
+		uniqueRef := store.CreateMapping([]storage.SeriesRef{2}, lbls)
+		trackRef(store, uniqueRef, time.Now().Add(-20*time.Minute).Unix())
+
+		time.Sleep(16 * time.Minute)
+
+		require.Nil(t, store.GetMapping(uniqueRef, lbls))
+	})
+}
+
+func TestSeriesRefMappingStore_StopIsIdempotent(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := NewSeriesRefMappingStore(nil)
+
+		// Before the cleanup goroutine has started.
+		store.Stop()
+		store.Stop()
+
+		// A goroutine started after Stop exits straight away, or synctest.Test never returns.
+		store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("k", "v"))
+		store.Stop()
+	})
+}
+
 func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	// Create a mapping
@@ -486,7 +547,7 @@ func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 
 func TestSeriesRefMappingStore_ConcurrentCreatesGetUniqueRefs(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	var wg sync.WaitGroup
@@ -525,7 +586,7 @@ func TestSeriesRefMappingStore_ConcurrentCreatesGetUniqueRefs(t *testing.T) {
 
 func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 	lbls := labels.EmptyLabels()
 
 	// Create some mappings

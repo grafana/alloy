@@ -125,7 +125,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run satisfies the Component interface.
 func (c *Component) Run(ctx context.Context) error {
-	defer c.fanout.Clear()
+	defer c.fanout.Stop()
 	defer func() {
 		c.updateMut.Lock()
 		defer c.updateMut.Unlock()

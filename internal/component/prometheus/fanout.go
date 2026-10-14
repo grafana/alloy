@@ -170,11 +170,9 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	return appenders.New(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
 }
 
-func (f *Fanout) Clear() {
-	f.mut.Lock()
-	defer f.mut.Unlock()
-
-	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+// Stop ends the Fanout's background work. Owning components call it when Run exits.
+func (f *Fanout) Stop() {
+	f.seriesRefMappingStore.Stop()
 }
 
 // AppenderV2 satisfies the AppendableV2 interface.
