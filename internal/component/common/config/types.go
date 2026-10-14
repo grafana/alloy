@@ -486,16 +486,16 @@ func (o *OAuth2Config) Validate() error {
 		if len(o.ClientCertificateKey) > 0 && len(o.ClientCertificateKeyFile) > 0 {
 			return fmt.Errorf("at most one of oauth2 client_certificate_key and client_certificate_key_file must be configured")
 		}
+		allowedSignatureAlgorithms := []string{"RS256", "RS384", "RS512"}
+		if !slices.Contains(allowedSignatureAlgorithms, o.SignatureAlgorithm) {
+			return fmt.Errorf("unsupported signature_algorithm: %q", o.SignatureAlgorithm)
+		}
 	case grantTypeClientCredentials:
 		if len(o.ClientSecret) == 0 && len(o.ClientSecretFile) == 0 {
 			return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
 		}
 		if len(o.ClientSecret) > 0 && len(o.ClientSecretFile) > 0 {
 			return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
-		}
-		allowedSignatureAlgorithms := []string{"RS256", "RS384", "RS512"}
-		if !slices.Contains(allowedSignatureAlgorithms, o.SignatureAlgorithm) {
-			return fmt.Errorf("unsupported signature_algorithm: %q", o.SignatureAlgorithm)
 		}
 	default:
 		return fmt.Errorf("unsupported oauth2 grant_type %q", o.GrantType)
