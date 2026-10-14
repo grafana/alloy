@@ -17,8 +17,8 @@ For anything not on that list, open an [issue][new-issue] first so maintainers a
 can discuss the approach before anyone spends time implementing or reviewing it. You're welcome to
 link a draft pull request or proof-of-concept branch from the issue.
 
-For larger features and bugs with more than one potential solution, a maintainer may ask you to write a
-[proposal][proposal-process].
+For larger features and bugs with more than one potential solution, a maintainer may ask you to
+write a [proposal][proposal-process].
 
 ## Before Contributing
 
