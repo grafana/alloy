@@ -18,12 +18,12 @@ The `prometheus.exporter.oracledb` component embeds
 
 You can specify multiple `prometheus.exporter.oracledb` components by giving them different labels.
 
-Ensure you have the following:
-
-- Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}
-- Environment variables that let {{< param "PRODUCT_NAME" >}} find the Oracle Client libraries
-
 [oracledb-exporter]: https://github.com/oracle/oracle-db-appdev-monitoring
+
+## Prerequisites
+
+`prometheus.exporter.oracledb` needs the Oracle Client libraries on the system that runs {{< param "PRODUCT_NAME" >}}, and a database user that can read Oracle system views.
+You set up both outside {{< param "PRODUCT_NAME" >}}, before you configure the component.
 
 ### Oracle Instant Client Basic
 
