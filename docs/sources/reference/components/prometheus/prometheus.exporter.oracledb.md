@@ -14,14 +14,14 @@ title: prometheus.exporter.oracledb
 # `prometheus.exporter.oracledb`
 
 The `prometheus.exporter.oracledb` component embeds
-[`oracledb_exporter`][oracledb-exporter] to collect statistics from one or more OracleDB servers.
+[`oracledb_exporter`][oracledb-exporter] to collect statistics from one or more Oracle databases.
 
 You can specify multiple `prometheus.exporter.oracledb` components by giving them different labels.
 
 Ensure you have the following:
 
 - Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}
-- Appropriate environment variables configured for Oracle Client libraries
+- Environment variables that let {{< param "PRODUCT_NAME" >}} find the Oracle Client libraries
 
 [oracledb-exporter]: https://github.com/oracle/oracle-db-appdev-monitoring
 
@@ -52,7 +52,7 @@ Set the following environment variables so {{< param "PRODUCT_NAME" >}} can find
 
 ### Database user permissions
 
-The database user specified in the connection string must have permissions to query Oracle system views.
+The database user in the connection string must have permissions to query Oracle system views.
 The user requires the `SELECT_CATALOG_ROLE` role, or `SELECT` privilege on specific system views.
 
 Refer to the [Oracle AI Database Metrics Exporter Installation guide][oracledb_exporter_install] for the complete list of required permissions.
@@ -63,7 +63,10 @@ Refer to the [Oracle AI Database Metrics Exporter Installation guide][oracledb_e
 
 ```alloy
 prometheus.exporter.oracledb "<LABEL>" {
+  database {
+    name              = "<DATABASE_NAME>"
     connection_string = "<CONNECTION_STRING>"
+  }
 }
 ```
 
@@ -101,7 +104,7 @@ If you keep the deprecated top-level configuration and omit `database` blocks, y
 Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
 The component sets the `instance` label on its exported targets to the host portion of the connection string.
-Refer to [Multiple databases][multiple-databases] for the `instance` label when you configure more than one `database` block.
+Refer to [Multiple databases][multiple-databases] for the `instance` label value when you configure more than one `database` block.
 
 [multiple-databases]: #multiple-databases
 
@@ -124,7 +127,6 @@ Configure one or more `database` blocks, or the deprecated `connection_string` a
 ### `database`
 
 The `database` block configures an Oracle database for the component to scrape.
-You can configure the `database` block multiple times to scrape several databases from one component.
 
 You can use the following arguments with the `database` block:
 
