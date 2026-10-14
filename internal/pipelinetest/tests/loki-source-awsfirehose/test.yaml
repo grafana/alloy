@@ -79,8 +79,7 @@ inputs:
 
     # A CloudWatch Logs record: its data is a gzip-compressed, base64-encoded
     # CloudWatch Logs subscription record with two log events. The readable
-    # record is cwLogsRecord in cwlogs_test.go, which also checks this blob
-    # still decodes to it and prints a fresh one when it changes.
+    # record and the command that prints this blob are in cwlogs_test.go.
     - url: http://127.0.0.1:1517/awsfirehose/api/v1/push
       headers:
         Content-Type: application/json
@@ -88,7 +87,7 @@ inputs:
         X-Amz-Firehose-Source-Arn: arn:aws:firehose:us-east-1:123456789012:deliverystream/cw-stream
         X-Amz-Firehose-Protocol-Version: "1.0"
       expected_status: 200
-      body: '{"requestId":"cw-logs-1","timestamp":1767225604000,"records":[{"data":"H4sIAAAAAAAA/4yQsWrDMBCGX8X8dFSwpMZ2q81QN0s72VswRXEUI5AsI8k1JeTdi+KlHQqFW447vvu/u8K4sflUUwwQxyv0GQIq9TsKAqtCkKOCwLBmxo3ZfZTR7OKdzYZ1F6JX0oIgaqtClHaGYFVZcV6UdE8pvZFfUPY3lP0PWiRoT1Lug3fLDIFcriE30p7OMo8qxN1lmYao3YT7WrvhBDjlZU5ZquPDW901bddvAj9cu685+b7UXf3x3rRtfWhA4NZJeQgw/rgvyurpmTIOgrCcwuD1nI69ahOVT2/EFkKbqDz62/cAEQFap2QBAAA="}]}'
+      body: '{"requestId":"cw-logs-1","timestamp":1767225604000,"records":[{"data":"H4sIAAAAAAAA/3zOwWq0MBQF4FeRw79UTPKP2mYn1M6mXelukJJx7ohgjCSxUoZ59xKFQiktZHPIPd+9N5h1IgsJLv4fsrx4eGRcIMZo+qM1ywyJVK0uHZU+X1TqyfnkukydH8y0j9XektKQEEzkKePhnf69lE1VN63bPhliuOXsOjvMofg8jJ6sgzxhB7eMNoYm51RPzcdMkHgqm/Lttarr8ljty6p3mnwo3jBcIEEhJ8H3gybnlZ4heZEXQmQ5OzDGvkxIdGs0mj7aShGLrtboqFuT/Ujc428o/wXN/kL5D7S9fw4A7iJEoWQBAAA="}]}'
 
 assert:
   loki:
