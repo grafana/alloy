@@ -2,8 +2,6 @@
 package exceptions
 
 import (
-	"strings"
-
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -61,7 +59,7 @@ type Dimension struct {
 func (d Dimension) Convert() exceptionsconnector.Dimension {
 	res := exceptionsconnector.Dimension{Name: d.Name}
 	if d.Default != nil {
-		str := strings.Clone(*d.Default)
+		str := *d.Default
 		res.Default = &str
 	}
 	return res
