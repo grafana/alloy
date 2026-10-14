@@ -13,9 +13,10 @@ var ErrConsumerStopped = errors.New("consumer stopped")
 
 // Consumer consumes batches of log entries.
 type Consumer interface {
-	// Consume consumes batch. The batch is only valid until Consume returns and
-	// may be reused by the caller afterwards, so an implementation that retains
-	// it must retain a Clone.
+	// Consume consumes batch. The batch and the slices returned by it, such as
+	// Streams and each stream's Entries, are only valid until Consume returns and
+	// may be reused by the caller afterwards. Labels and entries may be retained
+	// as-is. An implementation that retains the batch must retain a Clone.
 	Consume(ctx context.Context, batch Batch) error
 }
 

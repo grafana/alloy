@@ -18,7 +18,7 @@ const (
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
-	// LokiConsumerPipeline enables the experimental Loki consumer pipeline,
+	// LokiConsumerPipeline enables the experimental Loki consumer pipeline.
 	LokiConsumerPipeline bool            `yaml:"loki_consumer_pipeline,omitempty"`
 	Config               ConfigSchema    `yaml:"config"`
 	Inputs               InputSchema     `yaml:"inputs"`
