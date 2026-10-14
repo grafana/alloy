@@ -107,7 +107,7 @@ Use reference style Markdown links: [Link text][link definition].
 
 Link to other sections using descriptive phrases that include the section name:
 "For setup details, refer to the [Lists][] section."
-[Lists]: (#lists)
+[Lists]: #lists
 
 Bold text with two asterisks: **bold**
 

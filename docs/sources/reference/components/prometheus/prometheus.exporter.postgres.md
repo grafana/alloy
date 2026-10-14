@@ -115,7 +115,8 @@ Due to a limitation of the upstream exporter, `enabled_collectors` applies only 
 {{< /admonition >}}
 
 The component sets the `instance` label on its exported targets to a simplified form of the data source name, `postgresql://<HOST>:<PORT>/<DATABASE>`, with any credentials removed.
-The component omits the port when the data source name doesn't include one.
+The component omits the port when the data source name specifies a host without a port.
+When the data source name omits the host, the component uses `localhost:5432`.
 When you configure more than one data source name, the component sets the `instance` label to the component ID.
 
 ## Blocks

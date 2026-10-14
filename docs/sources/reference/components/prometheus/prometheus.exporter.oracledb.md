@@ -95,6 +95,10 @@ They will be removed in a future release.
 Use the `database` block instead.
 
 If you keep the deprecated top-level configuration and omit `database` blocks, you must set `connection_string`.
+Set the top-level `username` and `password` when `connection_string` omits credentials.
+These arguments follow the same connection string rules as the [`database`][database-block] block.
+
+[database-block]: #database
 {{< /admonition >}}
 
 <!-- vale Grafana.GooglePassive = YES -->
@@ -108,7 +112,7 @@ A custom metric replaces a built-in metric when both use the same context and fi
 
 Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
-The component sets the `instance` label on its exported targets to the host portion of the connection string.
+The component sets the `instance` label on its exported targets to the host and port portion of the connection string.
 Refer to [Multiple databases][multiple-databases] for the `instance` label value when you configure more than one `database` block.
 
 [multiple-databases]: #multiple-databases
