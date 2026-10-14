@@ -129,7 +129,7 @@ You can use the following blocks with `prometheus.exporter.postgres`:
 
 The `autodiscovery` block configures discovery of databases, outside of any specified in `data_source_names`.
 
-The following arguments are supported:
+You can use the following arguments with the `autodiscovery` block:
 
 | Name                 | Type           | Description                                                                    | Default | Required |
 |----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
@@ -146,7 +146,8 @@ If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denyl
 The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
 This configuration takes effect only when the `stat_statements` collector is enabled.
 
-The following arguments are supported:
+You can use the following arguments with the `stat_statements` block:
+
 | Name                | Type           | Description                                         | Default | Required |
 | ------------------- | -------------- | --------------------------------------------------- | ------- | -------- |
 | `exclude_databases` | `list(string)` | Comma-separated list of database names to exclude.  | `[]`    | no       |
@@ -162,6 +163,7 @@ The following arguments are supported:
 ## Component health
 
 `prometheus.exporter.postgres` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
