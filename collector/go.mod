@@ -524,7 +524,6 @@ require (
 	github.com/grafana/alloy-remote-config v0.0.12 // indirect
 	github.com/grafana/alloy/syntax v0.1.2 // indirect
 	github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e // indirect
-	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 // indirect
 	github.com/grafana/clusterurl v0.3.0 // indirect
 	github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff // indirect
 	github.com/grafana/dskit v0.0.0-20260909113722-8b24b9af5808 // indirect

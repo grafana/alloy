@@ -1,25 +1,20 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
-	"context"
-	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"sort"
-	"sync"
+	"strconv"
 	"testing"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
@@ -27,21 +22,40 @@ import (
 )
 
 func TestTailer(t *testing.T) {
+	rangeKey := func(start, end time.Time) string {
+		return strconv.FormatInt(start.UnixNano(), 10) + "-" + strconv.FormatInt(end.UnixNano(), 10)
+	}
+
 	var (
 		logger = logging.NewSlogNop()
-		cfg    = &tailerConfig{
+		end    = time.Unix(0, time.Hour.Nanoseconds())
+		start  = time.Unix(0, time.Hour.Nanoseconds()-int64(time.Minute))
+		third  = time.Minute / 3
+		// Lines served for each pull request of the first window, keyed by start and end.
+		responses = map[string]string{
+			rangeKey(start, start.Add(third)):              `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
+			rangeKey(start.Add(third), start.Add(2*third)): `{"EdgeStartTimestamp":2, "EdgeRequestHost":"bar.com"}`,
+			rangeKey(start.Add(2*third), end):              `{"EdgeStartTimestamp":3, "EdgeRequestHost":"buzz.com"}` + "\n" + `{"EdgeRequestHost":"fuzz.com"}`,
+		}
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		_, _ = io.WriteString(w, responses[q.Get("start")+"-"+q.Get("end")])
+	}))
+	defer srv.Close()
+
+	var (
+		cfg = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
+			APIURL:     srv.URL,
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    defaultBackoff,
 		}
-		end      = time.Unix(0, time.Hour.Nanoseconds())
-		start    = time.Unix(0, time.Hour.Nanoseconds()-int64(cfg.PullRange))
-		handler  = loki.NewCollectingHandler()
-		cfClient = newFakeCloudflareClient()
+		handler = loki.NewCollectingHandler()
 	)
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -50,32 +64,6 @@ func TestTailer(t *testing.T) {
 	// set our end time to be the last time we have a position
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
 	require.NoError(t, err)
-
-	// setup response for the first pull batch of 1 minutes.
-	cfClient.On("LogpullReceived", mock.Anything, start, start.Add(time.Duration(cfg.PullRange/3))).Return(&fakeLogIterator{
-		logs: []string{
-			`{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
-		},
-	}, nil)
-	cfClient.On("LogpullReceived", mock.Anything, start.Add(time.Duration(cfg.PullRange/3)), start.Add(time.Duration(2*cfg.PullRange/3))).Return(&fakeLogIterator{
-		logs: []string{
-			`{"EdgeStartTimestamp":2, "EdgeRequestHost":"bar.com"}`,
-		},
-	}, nil)
-	cfClient.On("LogpullReceived", mock.Anything, start.Add(time.Duration(2*cfg.PullRange/3)), end).Return(&fakeLogIterator{
-		logs: []string{
-			`{"EdgeStartTimestamp":3, "EdgeRequestHost":"buzz.com"}`,
-			`{"EdgeRequestHost":"fuzz.com"}`,
-		},
-	}, nil)
-	// setup empty response for the rest.
-	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(&fakeLogIterator{
-		logs: []string{},
-	}, nil)
-	// replace the client.
-	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
@@ -101,7 +89,6 @@ func TestTailer(t *testing.T) {
 	require.Equal(t, time.Unix(0, 2), received[2].Timestamp)
 	require.Equal(t, `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`, received[3].Line)
 	require.Equal(t, time.Unix(0, 1), received[3].Timestamp)
-	cfClient.AssertExpectations(t)
 	ta.stop()
 	ps.Stop()
 	// Make sure we save the last position.
@@ -111,23 +98,24 @@ func TestTailer(t *testing.T) {
 
 func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 	var (
-		logger   = logging.NewSlogNop()
-		end      = time.Unix(0, time.Hour.Nanoseconds())
-		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
-		handler  = loki.NewCollectingHandler()
-		cfClient = newFakeCloudflareClient()
+		logger  = logging.NewSlogNop()
+		end     = time.Unix(0, time.Hour.Nanoseconds())
+		start   = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
+		handler = loki.NewCollectingHandler()
+		calls   atomic.Int32
 	)
-	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
-		err: ErrorLogpullReceived,
-	}, nil).Times(2) // just retry once
-	// replace the client
-	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
+	// Fail the first request, then succeed.
+	client, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Inc() == 1 {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = io.WriteString(w, "error")
+		}
+	}, nil)
+	defer srv.Close()
 	ta := &tailer{
 		logger:  logger,
 		handler: handler.Receiver(),
-		client:  cfClient,
+		client:  client,
 		config: &tailerConfig{
 			Labels: make(model.LabelSet),
 			Backoff: backoff.Config{
@@ -140,42 +128,33 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 	}
 
 	require.NoError(t, ta.pull(t.Context(), start, end))
+	require.Equal(t, int32(2), calls.Load())
 }
 
 func TestTailer_RetryErrorIterating(t *testing.T) {
 	var (
-		logger   = logging.NewSlogNop()
-		end      = time.Unix(0, time.Hour.Nanoseconds())
-		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
-		handler  = loki.NewCollectingHandler()
-		cfClient = newFakeCloudflareClient()
+		logger  = logging.NewSlogNop()
+		end     = time.Unix(0, time.Hour.Nanoseconds())
+		start   = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
+		handler = loki.NewCollectingHandler()
+		calls   atomic.Int32
 	)
-	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
-		logs: []string{
-			`{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
-			`error`,
-		},
-	}, nil).Once()
-	// setup response for the first pull batch of 1 minutes.
-	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
-		logs: []string{
-			`{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
-			`{"EdgeStartTimestamp":2, "EdgeRequestHost":"foo.com"}`,
-			`{"EdgeStartTimestamp":3, "EdgeRequestHost":"foo.com"}`,
-		},
-	}, nil).Once()
-	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
-		err: ErrorLogpullReceived,
-	}, nil).Once()
-	// replace the client.
-	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
-	metrics := newMetrics(prometheus.NewRegistry())
+	client, srv := newTestClient(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Inc() == 1 {
+			// Declaring a longer body than is written makes the client fail mid-stream.
+			w.Header().Set("Content-Length", "1000")
+			_, _ = io.WriteString(w, `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`+"\n")
+			return
+		}
+		_, _ = io.WriteString(w, `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`+"\n"+
+			`{"EdgeStartTimestamp":2, "EdgeRequestHost":"foo.com"}`+"\n"+
+			`{"EdgeStartTimestamp":3, "EdgeRequestHost":"foo.com"}`+"\n")
+	}, nil)
+	defer srv.Close()
 	ta := &tailer{
 		logger:  logger,
 		handler: handler.Receiver(),
-		client:  cfClient,
+		client:  client,
 		config: &tailerConfig{
 			Labels: make(model.LabelSet),
 			Backoff: backoff.Config{
@@ -184,7 +163,7 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 				MaxRetries: 5,
 			},
 		},
-		metrics: metrics,
+		metrics: newMetrics(prometheus.NewRegistry()),
 	}
 
 	require.NoError(t, ta.pull(t.Context(), start, end))
@@ -194,20 +173,29 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 }
 
 func TestTailer_CloudflareTargetError(t *testing.T) {
+	var calls atomic.Int32
+	// A client error is not retried by the client, so every retry is the tailer's.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Inc()
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "no logs")
+	}))
+	defer srv.Close()
+
 	var (
 		logger = logging.NewSlogNop()
 		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
+			APIURL:     srv.URL,
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},
 		}
-		end      = time.Unix(0, time.Hour.Nanoseconds())
-		handler  = loki.NewCollectingHandler()
-		cfClient = newFakeCloudflareClient()
+		end     = time.Unix(0, time.Hour.Nanoseconds())
+		handler = loki.NewCollectingHandler()
 	)
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -217,13 +205,6 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 	// set our end time to be the last time we have a position
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
 	require.NoError(t, err)
-
-	// setup errors for all retries
-	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("no logs"))
-	// replace the client.
-	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
-		return cfClient, nil
-	}
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
@@ -234,7 +215,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.Len(t, handler.Received(), 0)
-	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
+	require.GreaterOrEqual(t, calls.Load(), int32(5))
 	require.NotEmpty(t, ta.details()["error"])
 	ta.stop()
 	ps.Stop()
@@ -245,20 +226,28 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 }
 
 func TestTailer_CloudflareTargetError168h(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Inc()
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, "bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available")
+	}))
+	defer srv.Close()
+
 	var (
 		logger = logging.NewSlogNop()
 		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
+			APIURL:     srv.URL,
 			Labels:     model.LabelSet{"job": "cloudflare"},
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},
 		}
-		end      = time.Unix(0, time.Hour.Nanoseconds())
-		handler  = loki.NewCollectingHandler()
-		cfClient = newFakeCloudflareClient()
+		end     = time.Unix(0, time.Hour.Nanoseconds())
+		handler = loki.NewCollectingHandler()
 	)
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -269,23 +258,16 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
 	require.NoError(t, err)
 
-	// setup errors for all retries
-	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("HTTP status 400: bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available"))
-	// replace the client.
-	getClient = func(_, _, _ string, _ []string) (Client, error) {
-		return cfClient, nil
-	}
-
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
 
 	// wait for the target to be stopped.
 	require.Eventually(t, func() bool {
-		return cfClient.CallCount() >= 5
+		return calls.Load() >= 5
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.Len(t, handler.Received(), 0)
-	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
+	require.GreaterOrEqual(t, calls.Load(), int32(5))
 	ta.stop()
 	ps.Stop()
 
@@ -337,71 +319,4 @@ func TestTailer_SplitRequests(t *testing.T) {
 			}
 		})
 	}
-}
-
-var ErrorLogpullReceived = errors.New("error logpull received")
-
-type fakeCloudflareClient struct {
-	mut sync.RWMutex
-	mock.Mock
-}
-
-func (f *fakeCloudflareClient) CallCount() int {
-	var actualCalls int
-	f.mut.RLock()
-	for _, call := range f.Calls {
-		if call.Method == "LogpullReceived" {
-			actualCalls++
-		}
-	}
-	f.mut.RUnlock()
-	return actualCalls
-}
-
-type fakeLogIterator struct {
-	logs    []string
-	current string
-
-	err error
-}
-
-func (f *fakeLogIterator) Next() bool {
-	if len(f.logs) == 0 {
-		return false
-	}
-	f.current = f.logs[0]
-	if f.current == `error` {
-		f.err = errors.New("error")
-		return false
-	}
-	f.logs = f.logs[1:]
-	return true
-}
-func (f *fakeLogIterator) Err() error                         { return f.err }
-func (f *fakeLogIterator) Line() []byte                       { return []byte(f.current) }
-func (f *fakeLogIterator) Fields() (map[string]string, error) { return nil, nil }
-func (f *fakeLogIterator) Close() error {
-	if f.err == ErrorLogpullReceived {
-		f.err = nil
-	}
-	return nil
-}
-
-func newFakeCloudflareClient() *fakeCloudflareClient {
-	return &fakeCloudflareClient{}
-}
-
-func (f *fakeCloudflareClient) LogpullReceived(ctx context.Context, start, end time.Time) (cloudflare.LogpullReceivedIterator, error) {
-	f.mut.Lock()
-	defer f.mut.Unlock()
-
-	r := f.Called(ctx, start, end)
-	if r.Get(0) != nil {
-		it := r.Get(0).(cloudflare.LogpullReceivedIterator)
-		if it.Err() == ErrorLogpullReceived {
-			return it, it.Err()
-		}
-		return it, nil
-	}
-	return nil, r.Error(1)
 }
