@@ -223,25 +223,26 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 	return nil
 }
 
-// emit obfuscates and normalizes the query text, then emits the
-// query_association and query_parsed_table_name logs.
+// emit strips comments and obfuscates literals while preserving the query's
+// structure, then emits the query_association and query_parsed_table_name logs.
 func (c *QueryDetails) emit(database, queryHash, queryText string) {
-	normalized, metadata, err := sqllexer.ObfuscateAndNormalize(
-		queryText, c.obfuscator, c.normalizer, sqllexer.WithDBMS(sqllexer.DBMSSQLServer),
-	)
+	commentFree, err := stripSQLServerComments(queryText)
 	if err != nil {
-		c.logger.Warn("failed to normalize query text", "database", database, "query_hash", queryHash, "err", err)
-		normalized = c.obfuscator.Obfuscate(queryText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
-		metadata = nil
+		c.logger.Warn("failed to sanitize query text", "database", database, "query_hash", queryHash, "err", err)
+		return
 	}
+	statementText := stripSQLServerParameterDeclarations(commentFree)
 
+	obfuscated := c.obfuscator.Obfuscate(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
 		database_observability.OP_QUERY_ASSOCIATION,
-		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, normalized),
+		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, obfuscated),
 	)
 
-	if metadata == nil {
+	_, metadata, err := c.normalizer.Normalize(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
+	if err != nil {
+		c.logger.Warn("failed to extract tables from query text", "database", database, "query_hash", queryHash, "err", err)
 		return
 	}
 
@@ -252,6 +253,214 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
 		)
 	}
+}
+
+func stripSQLServerComments(queryText string) (string, error) {
+	var commentFree strings.Builder
+	commentFree.Grow(len(queryText))
+
+	for i := 0; i < len(queryText); {
+		switch {
+		case queryText[i] == '\'' || queryText[i] == '"' || queryText[i] == '[':
+			closing := queryText[i]
+			if closing == '[' {
+				closing = ']'
+			}
+			start := i
+			i = scanSQLServerQuoted(queryText, i, closing)
+			commentFree.WriteString(queryText[start:i])
+		case i+1 < len(queryText) && queryText[i:i+2] == "--":
+			commentFree.WriteByte(' ')
+			i += 2
+			for i < len(queryText) && queryText[i] != '\n' && queryText[i] != '\r' {
+				i++
+			}
+		case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+			commentFree.WriteByte(' ')
+			i += 2
+			depth := 1
+			for i < len(queryText) && depth > 0 {
+				switch {
+				case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+					depth++
+					i += 2
+				case i+1 < len(queryText) && queryText[i:i+2] == "*/":
+					depth--
+					i += 2
+				default:
+					i++
+				}
+			}
+			if depth > 0 {
+				return "", fmt.Errorf("unterminated block comment")
+			}
+		default:
+			commentFree.WriteByte(queryText[i])
+			i++
+		}
+	}
+
+	return commentFree.String(), nil
+}
+
+func stripSQLServerParameterDeclarations(queryText string) string {
+	start := 0
+	for start < len(queryText) && isSQLServerSpace(queryText[start]) {
+		start++
+	}
+	if start == len(queryText) || queryText[start] != '(' {
+		return queryText
+	}
+
+	depth := 1
+	end := start + 1
+	for end < len(queryText) && depth > 0 {
+		switch queryText[end] {
+		case '\'', '"':
+			end = scanSQLServerQuoted(queryText, end, queryText[end])
+		case '[':
+			end = scanSQLServerQuoted(queryText, end, ']')
+		case '(':
+			depth++
+			end++
+		case ')':
+			depth--
+			end++
+		default:
+			end++
+		}
+	}
+	if depth != 0 || !isSQLServerParameterDeclarationList(queryText[start+1:end-1]) {
+		return queryText
+	}
+
+	bodyStart := end
+	for bodyStart < len(queryText) && isSQLServerSpace(queryText[bodyStart]) {
+		bodyStart++
+	}
+	if bodyStart == len(queryText) {
+		return queryText
+	}
+	return queryText[end:]
+}
+
+func isSQLServerParameterDeclarationList(declarations string) bool {
+	index := 0
+	for {
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) {
+			return false
+		}
+		if declarations[index] != '@' || index+1 == len(declarations) || declarations[index+1] == '@' {
+			return false
+		}
+		index++
+
+		parameterStart := index
+		for index < len(declarations) && isSQLServerParameterIdentifierPart(declarations[index]) {
+			index++
+		}
+		if index == parameterStart || index == len(declarations) || !isSQLServerSpace(declarations[index]) {
+			return false
+		}
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) || !isSQLServerTypeStart(declarations[index]) {
+			return false
+		}
+
+		typeStart := index
+		depth := 0
+		for index < len(declarations) {
+			switch declarations[index] {
+			case '\'', '"':
+				index = scanSQLServerQuoted(declarations, index, declarations[index])
+			case '[':
+				index = scanSQLServerQuoted(declarations, index, ']')
+			case '(':
+				depth++
+				index++
+			case ')':
+				if depth == 0 {
+					return false
+				}
+				depth--
+				index++
+			case ',':
+				if depth == 0 {
+					if !validSQLServerParameterType(declarations[typeStart:index]) {
+						return false
+					}
+					index++
+					goto nextDeclaration
+				}
+				index++
+			case '=', '+', '-', '*', '/', '<', '>':
+				if depth == 0 {
+					return false
+				}
+				index++
+			default:
+				index++
+			}
+		}
+
+		return depth == 0 && validSQLServerParameterType(declarations[typeStart:index])
+
+	nextDeclaration:
+	}
+}
+
+func validSQLServerParameterType(parameterType string) bool {
+	parameterType = strings.TrimSpace(parameterType)
+	return parameterType != "" && isSQLServerTypeStart(parameterType[0])
+}
+
+func scanSQLServerQuoted(sqlText string, start int, closing byte) int {
+	index := start + 1
+	for index < len(sqlText) {
+		if sqlText[index] != closing {
+			index++
+			continue
+		}
+		index++
+		if index < len(sqlText) && sqlText[index] == closing {
+			index++
+			continue
+		}
+		break
+	}
+	return index
+}
+
+func isSQLServerSpace(char byte) bool {
+	switch char {
+	case ' ', '\t', '\n', '\r', '\f':
+		return true
+	default:
+		return false
+	}
+}
+
+func isSQLServerParameterIdentifierPart(char byte) bool {
+	return char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char >= '0' && char <= '9' ||
+		char == '_' ||
+		char == '#' ||
+		char == '$'
+}
+
+func isSQLServerTypeStart(char byte) bool {
+	return char == '[' ||
+		char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char == '_'
 }
 
 // pruneThrottle drops throttle entries whose (database, query_hash) was not

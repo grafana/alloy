@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/DataDog/go-sqllexer"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -140,7 +141,7 @@ func TestQueryDetails_SkipsWhenQueryStoreUnavailable(t *testing.T) {
 	require.Empty(t, lokiClient.Received())
 }
 
-func TestQueryDetails_NormalizesQueryText(t *testing.T) {
+func TestQueryDetails_ObfuscatesQueryTextWithoutNormalizing(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -159,7 +160,7 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	queryText := "SELECT *\n\tFROM [dbo].[orders] o /* pick up the big ones */\n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > 100"
+	queryText := "(@minTotal decimal(18,2))SELECT *\n\tFROM [dbo].[orders] o /* pick up the big ones */\n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > 100"
 
 	expectQueryText(t, mock, []string{testHash}, []driver.Value{queryHashBytes, queryText})
 
@@ -172,14 +173,128 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT * FROM [dbo].[orders] o JOIN customers c ON c.id = o.customer_id WHERE o.total > ?"`, entries[0].Line)
-	require.NotContains(t, entries[0].Line, `\n`)
-	require.NotContains(t, entries[0].Line, `\t`)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT *\n\tFROM [dbo].[orders] o  \n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > ?"`, entries[0].Line)
+	require.NotContains(t, entries[0].Line, "pick up the big ones")
 
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers"`, entries[2].Line)
+}
+
+func TestSQLServerQueryTextSanitizationPreservesStructure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "aliases and literal lists",
+			input: `SELECT [Id] AS [OrderId] FROM [dbo].[Orders] AS orders WHERE [Id] IN (1, 2, 3)`,
+			want:  `SELECT [Id] AS [OrderId] FROM [dbo].[Orders] AS orders WHERE [Id] IN (?, ?, ?)`,
+		},
+		{
+			name:  "numeric bind declaration and compact operators",
+			input: `(@1 int)SELECT * FROM values_table WHERE value!=42 AND flags&1=1`,
+			want:  `SELECT * FROM values_table WHERE value!=? AND flags&?=?`,
+		},
+		{
+			name:  "multiple parameter Query Store prefix",
+			input: "(@p4 nvarchar(4000),@p1 bit,@p2 float,@p3 datetimeoffset(7))UPDATE k6_testing.k6_test_configs\n\tSET enabled = @p1, check_in_count = check_in_count + 1\n\tWHERE test_name = @p4",
+			want:  "UPDATE k6_testing.k6_test_configs\n\tSET enabled = @p1, check_in_count = check_in_count + ?\n\tWHERE test_name = @p4",
+		},
+		{
+			name:  "named bind and Unicode string",
+			input: `SELECT [Id] FROM [sales].[Orders] WHERE [Id] = @orderId AND [Status] = N'ACTIVE'`,
+			want:  `SELECT [Id] FROM [sales].[Orders] WHERE [Id] = @orderId AND [Status] = N?`,
+		},
+		{
+			name:  "comments are removed without treating markers in strings as comments",
+			input: "SELECT '--literal', value/* separator */FROM values_table -- trailing comment\nWHERE id = 7",
+			want:  "SELECT ?, value FROM values_table  \nWHERE id = ?",
+		},
+	}
+
+	obfuscator := sqllexer.NewObfuscator()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commentFree, err := stripSQLServerComments(tt.input)
+			require.NoError(t, err)
+			statementText := stripSQLServerParameterDeclarations(commentFree)
+			require.Equal(t, tt.want, obfuscator.Obfuscate(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer)))
+		})
+	}
+}
+
+func TestStripSQLServerParameterDeclarations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "single parameter",
+			input: `(@p1 bigint)SELECT stock FROM books WHERE id = @p1`,
+			want:  `SELECT stock FROM books WHERE id = @p1`,
+		},
+		{
+			name:  "multiple parameters with nested type modifiers",
+			input: `(@p4 nvarchar(4000),@p1 bit,@p2 decimal(18,2),@p3 datetimeoffset(7))UPDATE configs SET enabled = @p1 WHERE name = @p4`,
+			want:  `UPDATE configs SET enabled = @p1 WHERE name = @p4`,
+		},
+		{
+			name:  "user-defined type modifiers and whitespace",
+			input: " \n(@items [dbo].[ItemList] READONLY, @count int OUTPUT)\nEXEC process_items @items, @count OUTPUT",
+			want:  "\nEXEC process_items @items, @count OUTPUT",
+		},
+		{
+			name:  "ordinary statement",
+			input: `SELECT * FROM books`,
+			want:  `SELECT * FROM books`,
+		},
+		{
+			name:  "parenthesized subquery",
+			input: `(SELECT id FROM books) UNION ALL SELECT id FROM archives`,
+			want:  `(SELECT id FROM books) UNION ALL SELECT id FROM archives`,
+		},
+		{
+			name:  "parenthesized expression",
+			input: `(@value + 1) SELECT * FROM books`,
+			want:  `(@value + 1) SELECT * FROM books`,
+		},
+		{
+			name:  "parameter without type",
+			input: `(@p1)SELECT * FROM books`,
+			want:  `(@p1)SELECT * FROM books`,
+		},
+		{
+			name:  "unterminated declaration",
+			input: `(@p1 decimal(18,2) SELECT * FROM books`,
+			want:  `(@p1 decimal(18,2) SELECT * FROM books`,
+		},
+		{
+			name:  "declaration without statement",
+			input: `(@p1 bigint)`,
+			want:  `(@p1 bigint)`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, stripSQLServerParameterDeclarations(tt.input))
+		})
+	}
+}
+
+func TestStripSQLServerCommentsRejectsInvalidSQL(t *testing.T) {
+	t.Parallel()
+
+	_, err := stripSQLServerComments("SELECT 1 /* unterminated")
+	require.Error(t, err)
 }
 
 func TestQueryDetails_DedupesRepeatedHashWithinCycle(t *testing.T) {
