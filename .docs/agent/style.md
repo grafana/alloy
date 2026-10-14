@@ -127,6 +127,7 @@ Write complete sentences for lists:
 - All languages and frameworks (incorrect)
 
 Use dashes for unordered lists.
+Asterisks can be used, but dashes are preferred.
 
 Bold keywords at list start and follow with a colon.
 

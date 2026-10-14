@@ -231,8 +231,8 @@ prometheus.exporter.postgres "example" {
   data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 
   // This block configures autodiscovery to check for databases outside of the <DATABASE_NAME> db
-  // specified in the DSN above. The database_allowlist field means that only the 'frontend_app' and 'backend_app'
-  // databases will be scraped.
+  // specified in the DSN above. The database_allowlist field limits autodiscovery to the
+  // 'frontend_app' and 'backend_app' databases. The component also scrapes <DATABASE_NAME>.
   autodiscovery {
     enabled            = true
     database_allowlist = ["frontend_app", "backend_app"]
