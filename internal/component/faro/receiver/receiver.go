@@ -233,12 +233,12 @@ type varSourceMapsStore struct {
 
 var _ sourceMapsStore = (*varSourceMapsStore)(nil)
 
-func (vs *varSourceMapsStore) GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error) {
+func (vs *varSourceMapsStore) GetSourceMap(sourceURL string, smCtx sourceMapContext) (*sourcemap.Consumer, error) {
 	vs.mut.RLock()
 	defer vs.mut.RUnlock()
 
 	if vs.inner != nil {
-		return vs.inner.GetSourceMap(sourceURL, release)
+		return vs.inner.GetSourceMap(sourceURL, smCtx)
 	}
 
 	return nil, fmt.Errorf("no sourcemap available")
