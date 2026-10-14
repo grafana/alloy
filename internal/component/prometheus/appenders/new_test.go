@@ -43,7 +43,7 @@ func TestNew_PassthroughReceivesDeadRefThreshold(t *testing.T) {
 
 	// Issue a mapping so nextUniqueRef advances past 1.
 	lbls := labels.FromStrings("job", "test")
-	store.CreateMapping([]storage.SeriesRef{100, 200}, lbls)
+	store.CreateMapping([]storage.SeriesRef{100, 200}, lbls, 0)
 
 	// Clear advances firstRefOfCurrentGeneration to the current nextUniqueRef.
 	threshold := store.Clear()

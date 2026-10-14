@@ -13,10 +13,12 @@ import (
 	"github.com/prometheus/prometheus/storage"
 )
 
+// MappingStore maps unique refs to per-child refs. generation is the store generation the
+// caller's children were installed in; calls from an older generation are ignored.
 type MappingStore interface {
-	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef
-	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef
-	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels)
+	GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels, generation uint64) []storage.SeriesRef
+	CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels, generation uint64) storage.SeriesRef
+	UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels, generation uint64)
 	TrackAppendedSeries(ts int64, cell *Cell)
 	GetCellForAppendedSeries() *Cell
 }
@@ -25,6 +27,8 @@ type seriesRefMapping struct {
 	start    time.Time
 	children []storage.Appender
 	store    MappingStore
+	// generation is the store generation children belong to.
+	generation uint64
 
 	uniqueRefCell *Cell
 
@@ -35,12 +39,13 @@ type seriesRefMapping struct {
 	samplesForwarded prometheus.Counter
 }
 
-func NewSeriesRefMapping(children []storage.Appender, store MappingStore, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+func NewSeriesRefMapping(children []storage.Appender, store MappingStore, generation uint64, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
 	uniqueRefCell := store.GetCellForAppendedSeries()
 
 	return &seriesRefMapping{
 		children:         children,
 		store:            store,
+		generation:       generation,
 		writeLatency:     writeLatency,
 		samplesForwarded: samplesForwarded,
 
@@ -151,7 +156,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	}
 
 	// Check if the incoming ref has ref mappings
-	existingChildRefs := s.store.GetMapping(ref, lbls)
+	existingChildRefs := s.store.GetMapping(ref, lbls, s.generation)
 
 	var appendErr error
 
@@ -179,7 +184,7 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 		}
 
 		if refUpdateRequired {
-			s.store.UpdateMapping(ref, s.childRefs, lbls)
+			s.store.UpdateMapping(ref, s.childRefs, lbls, s.generation)
 		}
 
 		return ref, nil
@@ -210,7 +215,12 @@ func (s *seriesRefMapping) appendToChildren(ref storage.SeriesRef, lbls labels.L
 	}
 
 	// At least one child allocated a ref, so create a mapping.
-	uniqueRef := s.store.CreateMapping(s.childRefs, lbls)
+	uniqueRef := s.store.CreateMapping(s.childRefs, lbls, s.generation)
+	if uniqueRef == 0 {
+		// Children changed after this appender was built. Return 0 so the caller
+		// resolves by labels against the new children.
+		return 0, nil
+	}
 	s.uniqueRefCell.Refs = append(s.uniqueRefCell.Refs, uniqueRef)
 	return uniqueRef, nil
 }
@@ -233,6 +243,8 @@ type SeriesRefMappingStore struct {
 	// firstRefOfCurrentGeneration is the first ref issued after the last Clear(). Any ref
 	// below this value is from a previous generation and must be treated as unmapped.
 	firstRefOfCurrentGeneration storage.SeriesRef
+	// generation counts Clear calls.
+	generation uint64
 
 	// timestampTrackingMu protects uniqueRefTimestamps
 	timestampTrackingMu sync.Mutex
@@ -304,16 +316,21 @@ type Cell struct {
 // GetMapping returns existing child ref results for the given unique ref if one exists.
 //
 // If the passed uniqueRef is zero, the method will attempt to find a mapping using passed labels.
-// Returns nil if no mapping exists.
+// Returns nil if no mapping exists or generation is not current.
 //
 // The returned slice must be treated as read-only. Callers that need to change a mapping
 // must provide an updated slice to UpdateMapping. Concurrent appenders may race to update
 // the same mapping with different values, which is safe because stale mappings are
 // self-correcting - using a stale ref will cause the child appender to return a new ref
 // on the next append.
-func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels, generation uint64) []storage.SeriesRef {
 	s.refMappingMu.RLock()
 	defer s.refMappingMu.RUnlock()
+
+	// Current mappings hold refs for the current children, not the caller's.
+	if generation != s.generation {
+		return nil
+	}
 
 	if uniqueRef == 0 {
 		// Some consumers don't memo the global ref. Try to lookup a ref by label hash.
@@ -343,7 +360,8 @@ func (s *SeriesRefMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls lab
 }
 
 // CreateMapping creates a new unique ref mapping for the given child ref results.
-func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
+// Returns 0 without creating anything if generation is not current.
+func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels, generation uint64) storage.SeriesRef {
 	// Start cleanup goroutine on first mapping
 	s.startRefCleanup.Do(func() {
 		go s.cleanupStaleRefs()
@@ -358,6 +376,12 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
+
+	// A stale caller's child refs would be served to the current children, and a ref
+	// minted now would sit above the passthrough's deadRefThreshold.
+	if generation != s.generation {
+		return 0
+	}
 
 	// Create a new unique ref
 	uniqueRef := s.nextUniqueRef
@@ -375,7 +399,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 	return uniqueRef
 }
 
-func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels) {
+func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels, generation uint64) {
 	if uniqueRef == 0 {
 		return
 	}
@@ -385,6 +409,10 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
+
+	if generation != s.generation {
+		return
+	}
 
 	newHash := lbls.Hash()
 	prev, ok := s.uniqueRefToChildRefs[uniqueRef]
@@ -495,6 +523,14 @@ func (s *SeriesRefMappingStore) Stop() {
 	s.stopOnce.Do(func() { close(s.stopCleanup) })
 }
 
+// Generation returns the current store generation. Read it under the same lock that
+// guards the caller's children, so the two match.
+func (s *SeriesRefMappingStore) Generation() uint64 {
+	s.refMappingMu.RLock()
+	defer s.refMappingMu.RUnlock()
+	return s.generation
+}
+
 // Clear will clear all internal mappings. The cleanup goroutine keeps running.
 // It is safe to re-use the same instance after calling Clear.
 // Returns the generation boundary; any ref below this value is stale.
@@ -514,6 +550,7 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	// with components like prometheus.scrape which will keep re-sending the same cached refs.
 	// We continue incrementing to ensure all refs remain unique across the lifetime of the process.
 	s.firstRefOfCurrentGeneration = s.nextUniqueRef
+	s.generation++
 
 	// Reset metrics
 	s.activeMappings.Set(0)

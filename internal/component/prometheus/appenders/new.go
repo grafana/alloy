@@ -17,5 +17,5 @@ func New(children []storage.Appender, store *SeriesRefMappingStore, deadRefThres
 		return NewPassthrough(children[0], deadRefThreshold, writeLatency, samplesForwarded)
 	}
 
-	return NewSeriesRefMapping(children, store, writeLatency, samplesForwarded)
+	return NewSeriesRefMapping(children, store, store.Generation(), writeLatency, samplesForwarded)
 }
