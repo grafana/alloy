@@ -149,6 +149,7 @@ func (args *GoogleCloudTraceArguments) SetToDefault() {
 
 type GoogleCloudLogArguments struct {
 	Endpoint              string           `alloy:"endpoint,attr,optional"`
+	UniverseDomain        string           `alloy:"universe_domain,attr,optional"`
 	Compression           string           `alloy:"compression,attr,optional"`
 	GRPCPoolSize          int              `alloy:"grpc_pool_size,attr,optional"`
 	UseInsecure           bool             `alloy:"use_insecure,attr,optional"`
@@ -162,10 +163,11 @@ func (args *GoogleCloudLogArguments) Convert(c collector.LogConfig) collector.Lo
 	c.DefaultLogName = args.DefaultLogName
 	c.ResourceFilters = lo.Map(args.ResourceFilters, ResourceFilter.convert)
 	c.ClientConfig = collector.ClientConfig{
-		Endpoint:     args.Endpoint,
-		Compression:  args.Compression,
-		UseInsecure:  args.UseInsecure,
-		GRPCPoolSize: args.GRPCPoolSize,
+		Endpoint:       args.Endpoint,
+		UniverseDomain: args.Endpoint,
+		Compression:    args.Compression,
+		UseInsecure:    args.UseInsecure,
+		GRPCPoolSize:   args.GRPCPoolSize,
 	}
 	c.ServiceResourceLabels = args.ServiceResourceLabels
 	c.ErrorReportingType = args.ErrorReportingType
@@ -175,6 +177,7 @@ func (args *GoogleCloudLogArguments) Convert(c collector.LogConfig) collector.Lo
 func (args *GoogleCloudLogArguments) SetToDefault() {
 	*args = GoogleCloudLogArguments{
 		Endpoint:              "logging.googleapis.com:443",
+		UniverseDomain:        "googleapis.com",
 		ServiceResourceLabels: true,
 	}
 }
