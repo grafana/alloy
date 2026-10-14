@@ -208,7 +208,7 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	if !outputsToTraces(connectorType) && len(next.Traces) > 0 {
-		return errors.New("traces output is not supported yet")
+		return errors.New("this connector cannot output traces")
 	}
 
 	// addConnector records a connector instance created by the factory. A
