@@ -69,6 +69,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance] | Define one SQL Server instance to monitor. Repeat the block to monitor several instances. | no |
 | `database_instance` > [`cloud_provider`][cloud_provider] | Provide Cloud Provider information for one instance. | no |
+| `database_instance` > [`rule`][rule] | Relabel the metrics and logs of one instance. | no |
 | [`clustering`][clustering]           | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no |
 | [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
 | [`health_check`][health_check]       | Configure the health check collector.             | no       |
@@ -82,6 +83,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[rule]: #rule
 [clustering]: #clustering
 [explain_plans]: #explain_plans
 [health_check]: #health_check
@@ -143,7 +145,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 |--------------------|----------|-------------------------------------------------------------------|---------|----------|
 | `data_source_name` | `secret` | [Data Source Name][] for the SQL Server instance to connect to. |         | yes      |
 
-Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that instance only.
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that instance only, and [`rule`][rule] blocks that relabel the metrics and logs of that instance only.
 
 When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
 They're mutually exclusive with `database_instance` blocks.
@@ -167,13 +169,32 @@ database_observability.sql_server "pool" {
         arn = "orders-rds-db-arn"
       }
     }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
   }
 
   database_instance "billing" {
     data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
   }
 }
 ```
+
+In this example, the metrics and logs of the `orders` instance carry `environment="production"`, and those of the `billing` instance carry `environment="staging"`.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored instance apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `clustering`
 

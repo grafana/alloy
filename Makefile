@@ -102,7 +102,7 @@ BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
 # OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
 # Collector core version in collector/builder-config.yaml.
-BUILDER_VERSION      		?= v0.161.0
+BUILDER_VERSION      		?= v0.162.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -364,7 +364,7 @@ alloy-image-distroless:
 # to call `docker build` themselves.
 .PHONY: prom-gen-image
 prom-gen-image:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/k8s/fixtures/prom-gen/Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images-windows: alloy-image-windows

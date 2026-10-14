@@ -352,7 +352,7 @@ func TestNewPipelineStopsOnFailure(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	cfgs := loadConfig(`
-	stage.regex {
+	stage.replace {
 		expression = "[unclosed"
 	}
 	stage.match {
