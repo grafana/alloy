@@ -157,8 +157,13 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 	return appenders.New(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
 }
 
-// Stop ends the Fanout's background work. Owning components call it when Run exits.
+// Stop clears the Fanout's ref mappings and ends its background work. Owning
+// components call it when Run exits.
 func (f *Fanout) Stop() {
+	f.mut.Lock()
+	defer f.mut.Unlock()
+
+	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
 	f.seriesRefMappingStore.Stop()
 }
 
