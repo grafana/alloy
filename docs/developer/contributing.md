@@ -2,11 +2,23 @@
 
 Grafana Alloy uses GitHub to manage reviews of pull requests.
 
-If you're planning to do a large amount of work, you should discuss your ideas in an
-[issue][new-issue]. This will help you avoid unnecessary work and surely give you and us a good deal
-of inspiration.
+## Issue or pull request?
 
-For trivial fixes or improvements, pull requests can be opened immediately without an issue.
+Open a pull request directly only when the change is one of the following:
+
+- A typo, broken link, or other documentation fix.
+- A dependency update.
+- A bug fix that doesn't change configuration or documented behavior.
+- An implementation of an issue where a maintainer has agreed on the approach.
+
+Maintainers may still ask you to open an issue if a pull request needs more discussion.
+
+For anything not on that list, open an [issue][new-issue] first so maintainers and the community
+can discuss the approach before anyone spends time implementing or reviewing it. You're welcome to
+link a draft pull request or proof-of-concept branch from the issue.
+
+For larger features and bugs with more than one potential solution, a maintainer may ask you to
+write a [proposal][proposal-process].
 
 ## Before Contributing
 
@@ -192,6 +204,15 @@ commit's title and all of the individual commit details as the squashed commit's
 You can find the list of all Conventional Commit "types" we allow
 [here](../../.github/workflows/release-lint-pr-title.yml).
 
+## (Maintainers) Editing issues and pull requests
+
+To shorten review turnaround and keep contributions moving, maintainers may do the following without
+prior notice:
+
+- Edit or rewrite the description of an issue.
+- Close a pull request and open a new one with an alternative implementation.
+- Push minor changes directly to a pull request.
+
 ## (Maintainers) Merging a PR
 
 PR merge time is the point at which you can modify the commit title (via the "Commit message" box)
@@ -274,6 +295,7 @@ If upstream is unresponsive, consider choosing a different dependency or making 
 creating a new Go module with the same source).
 
 [new-issue]: https://github.com/grafana/alloy/issues/new
+[proposal-process]: ../design/README.md
 [code-review-comments]: https://go.dev/wiki/CodeReviewComments
 [best-practices]: https://peter.bourgon.org/go-in-production/#formatting-and-style
 [uber-style-guide]: https://github.com/uber-go/guide/blob/master/style.md
