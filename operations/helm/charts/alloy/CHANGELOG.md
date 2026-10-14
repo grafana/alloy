@@ -10,6 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
+- Add support to provide extraLabels to alloy pdb (@jfengupgrade)
+
 ### Enhancements
 
 - Add `alloy.resizePolicy` and `configReloader.resizePolicy` to configure in-place resource resize behavior for each container. (@younsl)
