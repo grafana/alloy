@@ -302,9 +302,13 @@ func (c *Component) apply(args Arguments, gen *generation) {
 			stale = nil
 		}
 		if len(stale) > 0 {
-			if err := oldOutputs.sendMetrics(context.Background(), c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
+			// The reload waits for this send. The timeout stops a blocked
+			// consumer from stopping the reload.
+			ctx, cancel := context.WithTimeout(context.Background(), gen.timeout)
+			if err := oldOutputs.sendMetrics(ctx, c.opts.ID, r.name, time.Now(), nil, stale); err != nil {
 				c.logSendFailure("failed to send stale markers for a removed query", r.name, err)
 			}
+			cancel()
 		}
 		c.metrics.deleteQuery(r.name)
 	}

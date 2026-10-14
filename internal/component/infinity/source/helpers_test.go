@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/atomic"
 )
 
 // testConsumer records what it receives. It implements otelcol.Consumer.
@@ -109,4 +110,20 @@ type failingConsumer struct{ testConsumer }
 
 func (*failingConsumer) ConsumeMetrics(context.Context, pmetric.Metrics) error {
 	return fmt.Errorf(`remote: Post "https://r.example/push?key=supersecret": 401 supersecret`)
+}
+
+// blockingConsumer takes the first metrics batch. Then it waits for the
+// context of each batch to end, like an exporter that cannot reach its
+// server.
+type blockingConsumer struct {
+	testConsumer
+	calls atomic.Int32
+}
+
+func (c *blockingConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	if c.calls.Add(1) == 1 {
+		return c.testConsumer.ConsumeMetrics(ctx, md)
+	}
+	<-ctx.Done()
+	return ctx.Err()
 }

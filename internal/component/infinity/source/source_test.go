@@ -1742,6 +1742,48 @@ func TestUpdateSendsRemovalMarkersToOldOutputs(t *testing.T) {
 	require.Zero(t, points, "the new OTel output must get nothing for the removed query")
 }
 
+// TestUpdateRemovalMarkersDoNotBlockReload checks that a reload that removes
+// a query returns when the old OTel consumer blocks. The send of the stale
+// markers has a timeout.
+func TestUpdateRemovalMarkersDoNotBlockReload(t *testing.T) {
+	cfg := `
+		interval = "1h"
+		timeout  = "50ms"
+		query %q {
+			source = "inline"
+			data   = "[{\"v\":1}]"
+		}`
+	app := testappender.NewCollectingAppender()
+	otel := &blockingConsumer{}
+	args, err := parse(fmt.Sprintf(cfg, "q"))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+	args.Output.Metrics = []otelcol.Consumer{otel}
+	c, err := New(testOptions(t, cluster.Mock()), args)
+	require.NoError(t, err)
+	cancel, _ := runComponent(t.Context(), c)
+	defer cancel()
+	// A 1h interval waits up to 1h for the first poll, so poll now.
+	c.mut.RLock()
+	qs := c.queries["q"]
+	c.mut.RUnlock()
+	c.poll(t.Context(), "q", qs)
+	require.NotNil(t, app.LatestSampleFor(series("up")))
+
+	args, err = parse(fmt.Sprintf(cfg, "other"))
+	require.NoError(t, err)
+	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	done := make(chan error, 1)
+	go func() { done <- c.Update(args) }()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Update did not return while the old OTel consumer blocked")
+	}
+	require.True(t, value.IsStaleNaN(app.LatestSampleFor(series("up")).Value))
+}
+
 // inlineQueryConfig is a config with one inline table query named name.
 func inlineQueryConfig(interval, name string) string {
 	return fmt.Sprintf(`
