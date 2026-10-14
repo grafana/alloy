@@ -46,7 +46,8 @@ Refer to the examples for the `custom_queries_config_path` file in the [`postgre
 [postgres-exporter-queries]: https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml
 
 {{< admonition type="note" >}}
-There are a number of environment variables that aren't recommended for use, as they will affect _all_ `prometheus.exporter.postgres` components.
+Avoid configuring the exporter with environment variables.
+They affect _all_ `prometheus.exporter.postgres` components, not just one.
 Refer to the [`postgres_exporter` repository][postgres-exporter-env] for a full list of environment variables.
 
 [postgres-exporter-env]: https://github.com/prometheus-community/postgres_exporter#environment-variables
@@ -66,14 +67,14 @@ The following collectors are available for selection:
 {{< column-list >}}
 
 * `buffercache_summary`
-* `database_wraparound`
 * `database`
+* `database_wraparound`
 * `locks`
 * `long_running_transactions`
 * `postmaster`
 * `process_idle`
-* `replication_slot`
 * `replication`
+* `replication_slot`
 * `roles`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
@@ -90,14 +91,14 @@ The following collectors are available for selection:
 
 {{< /column-list >}}
 
-By default, the following collectors are enabled:
+The component enables the following collectors by default:
 
 {{< column-list >}}
 
 * `database`
 * `locks`
-* `replication_slot`
 * `replication`
+* `replication_slot`
 * `roles`
 * `stat_bgwriter`
 * `stat_database`
@@ -109,7 +110,7 @@ By default, the following collectors are enabled:
 {{< /column-list >}}
 
 {{< admonition type="note" >}}
-Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument is only applied to the first data source in the list.
+Due to a limitation of the upstream exporter, `enabled_collectors` applies only to the first data source when you configure multiple `data_source_names`.
 {{< /admonition >}}
 
 The component sets the `instance` label on its exported targets to a simplified form of the data source name, `postgresql://<HOST>:<PORT>/<DATABASE>`, with any credentials removed.
@@ -138,20 +139,20 @@ The `autodiscovery` block configures discovery of databases, outside of any spec
 
 You can use the following arguments with the `autodiscovery` block:
 
-| Name                 | Type           | Description                                                                    | Default | Required |
-|----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `database_allowlist` | `list(string)` | List of databases to filter for, meaning only these databases will be scraped. |         | no       |
-| `database_denylist`  | `list(string)` | List of databases to filter out, meaning all other databases will be scraped.  |         | no       |
-| `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
+| Name                 | Type           | Description                                        | Default | Required |
+| -------------------- | -------------- | -------------------------------------------------- | ------- | -------- |
+| `database_allowlist` | `list(string)` | Scrape only these databases.                       |         | no       |
+| `database_denylist`  | `list(string)` | Scrape all databases except these.                 |         | no       |
+| `enabled`            | `bool`         | Whether to automatically discover other databases. | `false` | no       |
 
-If `enabled` is set to `true` and no allowlist or denylist is specified, the exporter scrapes from all databases.
+If you set `enabled` to `true` without an allowlist or a denylist, the exporter scrapes all databases.
 
-If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` has any effect.
+If you don't enable `autodiscovery`, neither `database_allowlist` nor `database_denylist` has any effect.
 
 ### `stat_statements`
 
 The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
-This configuration takes effect only when the `stat_statements` collector is enabled.
+This configuration takes effect only when you enable the `stat_statements` collector.
 
 You can use the following arguments with the `stat_statements` block:
 
@@ -311,7 +312,7 @@ Replace the following:
 
 ### Escape special characters in a connection string
 
-If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
+If your password contains special characters such as `@`, `:`, or `/`, wrap it with `encoding.url_encode`.
 
 ```alloy
 prometheus.exporter.postgres "example" {
@@ -320,7 +321,7 @@ prometheus.exporter.postgres "example" {
   ]
 }
 ```
-This ensures the DSN remains valid and correctly parsed.
+This keeps the connection string valid.
 
 Replace the following:
 
