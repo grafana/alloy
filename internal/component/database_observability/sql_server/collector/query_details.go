@@ -22,23 +22,6 @@ const (
 	QueryDetailsCollector = "query_details"
 )
 
-// selectQueryTextTemplate returns the query text for the tracked
-// query_hashes on the currently connected database.
-//
-// TODO(cristian): consider fetching only the first query_sql_text
-// and also using a cursor.
-const selectQueryTextTemplate = `
-	SELECT
-		q.query_hash,
-		qt.query_sql_text
-	FROM
-		sys.query_store_query q
-	JOIN
-		sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
-	WHERE
-		q.is_internal_query = 0
-		AND q.query_hash IN (%s)`
-
 // QueryTracker reports which (database, query_hash) pairs are currently tracked
 // by the query_metrics collector.
 type QueryTracker interface {
@@ -46,23 +29,25 @@ type QueryTracker interface {
 }
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	QueryTimeout    time.Duration
-	Tracker         QueryTracker
-	EntryHandler    loki.EntryHandler
+	DB                 *sql.DB
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Tracker            QueryTracker
+	ExcludeCurrentUser bool
+	EntryHandler       loki.EntryHandler
 
 	Logger *slog.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	queryTimeout    time.Duration
-	entryHandler    loki.EntryHandler
-	tracker         QueryTracker
-	obfuscator      *sqllexer.Obfuscator
-	normalizer      *sqllexer.Normalizer
+	dbConnection       *sql.DB
+	collectInterval    time.Duration
+	queryTimeout       time.Duration
+	excludeCurrentUser bool
+	entryHandler       loki.EntryHandler
+	tracker            QueryTracker
+	obfuscator         *sqllexer.Obfuscator
+	normalizer         *sqllexer.Normalizer
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
 	// was last emitted for a (database, query_hash), used to throttle logging
@@ -81,12 +66,13 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
-		entryHandler:    args.EntryHandler,
-		tracker:         args.Tracker,
-		obfuscator:      sqllexer.NewObfuscator(),
+		dbConnection:       args.DB,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		entryHandler:       args.EntryHandler,
+		tracker:            args.Tracker,
+		obfuscator:         sqllexer.NewObfuscator(),
 		normalizer: sqllexer.NewNormalizer(
 			sqllexer.WithCollectTables(true),
 			sqllexer.WithKeepIdentifierQuotation(true),
@@ -162,7 +148,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		return nil
 	}
 
-	query, args, err := buildQueryTextStatement(hashes)
+	query, args, err := buildQueryTextStatement(hashes, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
@@ -266,7 +252,7 @@ func (c *QueryDetails) pruneThrottle(seen map[queryMetricsKey]struct{}) {
 
 // buildQueryTextStatement returns the query text statement plus its named
 // parameters, binding each 16-char hex hash back to its binary(8) form.
-func buildQueryTextStatement(hashes []string) (string, []any, error) {
+func buildQueryTextStatement(hashes []string, excludeCurrentUser bool) (string, []any, error) {
 	placeholders := make([]string, 0, len(hashes))
 	args := make([]any, 0, len(hashes))
 	for i, h := range hashes {
@@ -278,6 +264,8 @@ func buildQueryTextStatement(hashes []string) (string, []any, error) {
 		placeholders = append(placeholders, "@"+name)
 		args = append(args, sql.Named(name, raw))
 	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectQueryTextTemplate, strings.Join(placeholders, ", ")), args, nil
 }

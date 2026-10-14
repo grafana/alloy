@@ -52,7 +52,7 @@ func namedArgs(args []any) []driver.Value {
 func expectQueryText(t *testing.T, mock sqlmock.Sqlmock, hashes []string, rows ...[]driver.Value) {
 	t.Helper()
 
-	query, args, err := buildQueryTextStatement(hashes)
+	query, args, err := buildQueryTextStatement(hashes, false)
 	require.NoError(t, err)
 
 	mockSelectQueryStoreState(mock, "READ_WRITE")
@@ -271,14 +271,14 @@ func TestBuildQueryTextStatement(t *testing.T) {
 	t.Parallel()
 
 	t.Run("hashes fill the IN clause with binary params", func(t *testing.T) {
-		query, args, err := buildQueryTextStatement([]string{testHash, "aabbccddeeff0011"})
+		query, args, err := buildQueryTextStatement([]string{testHash, "aabbccddeeff0011"}, false)
 		require.NoError(t, err)
 		require.Equal(t, fmt.Sprintf(selectQueryTextTemplate, "@h0, @h1"), query)
-		require.Len(t, args, 2)
+		require.Len(t, args, 4)
 	})
 
 	t.Run("invalid hex hash errors", func(t *testing.T) {
-		_, _, err := buildQueryTextStatement([]string{"not_hex_string"})
+		_, _, err := buildQueryTextStatement([]string{"not_hex_string"}, false)
 		require.Error(t, err)
 	})
 }
