@@ -126,7 +126,7 @@ This example uses a [`prometheus.scrape` component][scrape] to collect metrics f
 
 ```alloy
 prometheus.exporter.mssql "example" {
-  connection_string = "sqlserver://user:pass@localhost:1433"
+  connection_string = "sqlserver://<DB_USERNAME>:<DB_PASSWORD>@localhost:1433"
 }
 
 // Configure a prometheus.scrape component to collect mssql metrics.
@@ -149,6 +149,8 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+- _`<DB_USERNAME>`_: The username for the Microsoft SQL Server.
+- _`<DB_PASSWORD>`_: The password for the Microsoft SQL Server.
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
