@@ -23,7 +23,7 @@ You can specify multiple `prometheus.exporter.oracledb` components by giving the
 ## Prerequisites
 
 `prometheus.exporter.oracledb` needs the Oracle Client libraries on the system that runs {{< param "PRODUCT_NAME" >}}, and a database user that can read Oracle system views.
-You set up both outside {{< param "PRODUCT_NAME" >}}, before you configure the component.
+You set up both outside {{< param "PRODUCT_NAME" >}} before you configure the component.
 
 ### Oracle Instant Client Basic
 
@@ -31,8 +31,8 @@ When you run the standalone binary, you must install the [Oracle Instant Client 
 The exporter only requires the basic version.
 
 {{< admonition type="note" >}}
-You must also provide Oracle Instant Client Basic when you run {{< param "PRODUCT_NAME" >}} in Docker or Kubernetes.
-The `prometheus.exporter.oracledb` component relies on Oracle Instant Client libraries that are available in the container image or host environment.
+{{< param "PRODUCT_NAME" >}} container images don't include the Oracle Instant Client libraries.
+When you run {{< param "PRODUCT_NAME" >}} in Docker or Kubernetes, you must add the libraries to the image or make them available to the container.
 
 For macOS on Apple silicon, set `DYLD_LIBRARY_PATH` to the directory where you installed the Oracle Instant Client libraries.
 For example `export DYLD_LIBRARY_PATH=/lib/oracle/instantclient_23_3`.
@@ -161,7 +161,7 @@ The component returns an error if you set either argument together with an `orac
 Configure a `database` block for each Oracle database you want to scrape from one component.
 The component connects to every database you configure and exports a single target for all of them.
 
-Because one target covers every database, the component sets the `instance` label to the component ID, for example, `prometheus.exporter.oracledb.example`, instead of a host address.
+When you configure more than one `database` block, no single host identifies the target, so the component sets the `instance` label to the component ID, for example, `prometheus.exporter.oracledb.example`.
 Use the `database` label, which the exporter sets to each block's `name`, to tell the metrics from each database apart.
 
 Refer to the [Example][example] for a configuration that scrapes two databases.
