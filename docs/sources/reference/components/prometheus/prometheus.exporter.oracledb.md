@@ -100,45 +100,71 @@ If the URL doesn't embed a username and password, set the deprecated top-level `
 
 Refer to the [`oracledb_exporter` repository][oracledb-exporter] for examples of TOML metrics files.
 
-For backward compatibility, you can still provide the `username` and `password` arguments in the `connection_string` argument:
+The component sets the `instance` label on its exported targets to the host portion of the connection string.
+Refer to [Multiple databases][multiple-databases] for the `instance` label when you configure more than one `database` block.
+
+[multiple-databases]: #multiple-databases
+
+## Blocks
+
+You can use the following blocks with `prometheus.exporter.oracledb`:
+
+{{< docs/alloy-config >}}
+
+| Block                  | Description                              | Required |
+| ---------------------- | ---------------------------------------- | -------- |
+| [`database`][database] | Configures an Oracle database to scrape. | no       |
+
+[database]: #database
+
+{{< /docs/alloy-config >}}
+
+Configure one or more `database` blocks, or the deprecated `connection_string` argument, but not both.
+
+### `database`
+
+The `database` block configures an Oracle database for the component to scrape.
+You can configure the `database` block multiple times to scrape several databases from one component.
+
+You can use the following arguments with the `database` block:
+
+| Name                | Type          | Description                                            | Default | Required |
+| ------------------- | ------------- | ------------------------------------------------------ | ------- | -------- |
+| `connection_string` | `secret`      | Connection string for the Oracle database.             |         | yes      |
+| `name`              | `string`      | Unique name for the Oracle database.                   |         | yes      |
+| `labels`            | `map(string)` | Extra labels to add to the metrics from this database. |         | no       |
+| `password`          | `secret`      | Password when `connection_string` omits credentials.   |         | no       |
+| `username`          | `string`      | Username when `connection_string` omits credentials.   |         | no       |
+
+Each `database` block must have a `name` that's unique within the component.
+The exporter uses the `name` argument as the value of the `database` label on the metrics it collects from this database.
+
+The `connection_string` argument accepts an `oracle://` URL with the username and password embedded:
 
 ```text
 oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
-If the `connection_string` argument doesn't contain the `username` and `password`, you must provide the `username` and `password` arguments.
-In this case, the URL must have the format:
+It also accepts an address without a scheme, where you set the `username` and `password` arguments separately:
 
 ```text
 host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
 ```
 
-The component sets the `instance` label on its exported targets to the host portion of the connection string.
-When you configure more than one `database` block, the component sets the `instance` label to the component ID, for example, `prometheus.exporter.oracledb.example`.
+Set `username` and `password` only with the second format.
+The component returns an error if you set either argument together with an `oracle://` connection string.
 
-### Multiple databases
+## Multiple databases
 
-When you scrape several databases from one component, define one or more `database` blocks instead of a top-level `connection_string`.
-You must not set both `connection_string` and `database` blocks.
+Configure a `database` block for each Oracle database you want to scrape from one component.
+The component connects to every database you configure and exports a single target for all of them.
 
-The exporter uses the `name` argument as the database name in metrics, for example in the `database` label.
-Each block supports the same connection string rules as the top-level `connection_string`, with optional per-block `username` and `password`.
+Because one target covers every database, the component sets the `instance` label to the component ID, for example, `prometheus.exporter.oracledb.example`, instead of a host address.
+Use the `database` label, which the exporter sets to each block's `name`, to tell the metrics from each database apart.
 
-## Blocks
+Refer to the [Example][example] for a configuration that scrapes two databases.
 
-### `database`
-
-The `database` block configures a single Oracle target when using multi-database mode.
-
-| Name                  | Type                | Description                                                                 | Default | Required |
-| --------------------- | ------------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| `name`                | `string`            | Unique name for this database target.                                       |         | yes      |
-| `connection_string`   | `secret`            | Connection string for this database (same formats as top-level).            |         | yes      |
-| `labels`              | `map(string)`       | Optional extra labels applied to metrics from this database.                |         | no       |
-| `password`            | `secret`            | Password when not embedded in `connection_string`.                          |         | no       |
-| `username`            | `string`            | Username when not embedded in `connection_string`.                          |         | no       |
-
-The `name` argument identifies this database in the exporter configuration and must be unique within the component.
+[example]: #example
 
 ## Exported fields
 
