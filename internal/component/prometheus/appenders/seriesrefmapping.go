@@ -391,11 +391,7 @@ func (s *SeriesRefMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refRe
 
 	newHash := lbls.Hash()
 	prev, ok := s.uniqueRefToChildRefs[uniqueRef]
-	if !ok {
-		// The mapping was removed after the caller's GetMapping call; the next append creates a new one.
-		return
-	}
-	if prev.labelHash != newHash {
+	if ok && prev.labelHash != newHash {
 		delete(s.labelHashToUniqueRef, prev.labelHash)
 		s.labelHashToUniqueRef[newHash] = uniqueRef
 	}
@@ -433,65 +429,43 @@ func (s *SeriesRefMappingStore) cleanupStaleRefs() {
 	for {
 		select {
 		case <-ticker.C:
-			s.removeStaleRefs(time.Now().Add(-15 * time.Minute).Unix())
+			cutoffTime := time.Now().Add(-15 * time.Minute).Unix()
+
+			// Hold both locks to prevent race condition where a ref could be
+			// appended after we delete it from uniqueRefCell but before
+			// we delete it from uniqueRefToChildRefs
+			s.timestampTrackingMu.Lock()
+			s.refMappingMu.Lock()
+
+			staleRefCount := 0
+			for ref, ts := range s.uniqueRefTimestamps {
+				if ts < cutoffTime {
+					staleRefCount++
+
+					v, ok := s.uniqueRefToChildRefs[ref]
+					if ok {
+						delete(s.labelHashToUniqueRef, v.labelHash)
+					}
+
+					delete(s.uniqueRefTimestamps, ref)
+					delete(s.uniqueRefToChildRefs, ref)
+				}
+			}
+
+			// Update metrics
+			if staleRefCount > 0 {
+				s.refsCleaned.Add(float64(staleRefCount))
+				s.activeMappings.Sub(float64(staleRefCount))
+				s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
+			}
+
+			s.refMappingMu.Unlock()
+			s.timestampTrackingMu.Unlock()
+
 		case <-s.stopCleanup:
 			return
 		}
 	}
-}
-
-// staleRefDeleteChunk bounds the mappings deleted per refMappingMu acquisition.
-const staleRefDeleteChunk = 8192
-
-// removeStaleRefs evicts every ref last appended before cutoff.
-//
-// Every append takes refMappingMu as a reader via GetMapping. Deletes therefore go out
-// in bounded batches, keeping each hold of that lock short.
-func (s *SeriesRefMappingStore) removeStaleRefs(cutoff int64) {
-	batch := make([]storage.SeriesRef, 0, staleRefDeleteChunk)
-	stale := 0
-
-	s.timestampTrackingMu.Lock()
-	for ref, ts := range s.uniqueRefTimestamps {
-		if ts >= cutoff {
-			continue
-		}
-		batch = append(batch, ref)
-		delete(s.uniqueRefTimestamps, ref)
-		stale++
-		if len(batch) == staleRefDeleteChunk {
-			s.deleteMappings(batch)
-			batch = batch[:0]
-		}
-	}
-	s.deleteMappings(batch)
-	s.trackedRefs.Set(float64(len(s.uniqueRefTimestamps)))
-	s.timestampTrackingMu.Unlock()
-
-	s.refsCleaned.Add(float64(stale))
-}
-
-// deleteMappings drops refs' mappings under a single refMappingMu write. Callers already
-// hold timestampTrackingMu; refMappingMu is always the second of the two to avoid
-// deadlock.
-func (s *SeriesRefMappingStore) deleteMappings(refs []storage.SeriesRef) {
-	if len(refs) == 0 {
-		return
-	}
-
-	s.refMappingMu.Lock()
-	defer s.refMappingMu.Unlock()
-
-	for _, ref := range refs {
-		if v, ok := s.uniqueRefToChildRefs[ref]; ok {
-			delete(s.labelHashToUniqueRef, v.labelHash)
-			delete(s.uniqueRefToChildRefs, ref)
-		}
-	}
-
-	// Set from the map rather than Sub(len(refs)): the batch includes refs tracked with
-	// no mapping, and reading the map stays right even if a writer skips Inc.
-	s.activeMappings.Set(float64(len(s.uniqueRefToChildRefs)))
 }
 
 // Clear will clear all internal mappings and stop the cleaner goroutine if it is running.
