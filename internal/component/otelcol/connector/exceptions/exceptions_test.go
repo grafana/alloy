@@ -292,6 +292,35 @@ const exceptionMetrics = `{
 	}]
 }`
 
+// logDerivedMetrics is the metric produced from inputLogs. Log records carry no
+// span, so the span.name, span.kind, and status.code dimensions are absent, and
+// inputLogs sets no exception.message attribute.
+const logDerivedMetrics = `{
+	"resourceMetrics": [{
+		"scopeMetrics": [{
+			"scope": { "name": "exceptionsconnector" },
+			"metrics": [{
+				"name": "exceptions",
+				"sum": {
+					"dataPoints": [{
+						"attributes": [{
+							"key": "service.name",
+							"value": { "stringValue": "shop-backend" }
+						},
+						{
+							"key": "exception.type",
+							"value": { "stringValue": "NullPointerException" }
+						}],
+						"asInt": "1"
+					}],
+					"aggregationTemporality": 2,
+					"isMonotonic": true
+				}
+			}]
+		}]
+	}]
+}`
+
 func Test_ComponentIO(t *testing.T) {
 	const cfg = `
 		output {
@@ -314,6 +343,14 @@ func Test_ComponentIO(t *testing.T) {
 		{
 			testName: "traces to metrics",
 			signal:   processortest.NewTraceToMetricSignal(inputTrace, exceptionMetrics),
+		},
+		{
+			testName: "traces to logs and metrics",
+			signal:   processortest.NewTraceToLogAndMetricSignal(inputTrace, exceptionLog, exceptionMetrics),
+		},
+		{
+			testName: "logs to logs and metrics",
+			signal:   processortest.NewLogToLogAndMetricSignal(inputLogs, filteredLogs, logDerivedMetrics),
 		},
 	}
 
