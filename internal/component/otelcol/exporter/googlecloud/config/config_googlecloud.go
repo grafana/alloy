@@ -30,6 +30,7 @@ func (args *GoogleCloudImpersonateArguments) SetToDefault() {
 type GoogleCloudMetricArguments struct {
 	Prefix                           string           `alloy:"prefix,attr,optional"`
 	Endpoint                         string           `alloy:"endpoint,attr,optional"`
+	UniverseDomain                   string           `alloy:"universe_domain,attr,optional"`
 	Compression                      string           `alloy:"compression,attr,optional"`
 	GRPCPoolSize                     int              `alloy:"grpc_pool_size,attr,optional"`
 	UseInsecure                      bool             `alloy:"use_insecure,attr,optional"`
@@ -81,10 +82,11 @@ func (e *ExperimentalWAL) convert() *collector.WALConfig {
 func (args *GoogleCloudMetricArguments) Convert(c collector.MetricConfig) collector.MetricConfig {
 	c.Prefix = args.Prefix
 	c.ClientConfig = collector.ClientConfig{
-		Endpoint:     args.Endpoint,
-		Compression:  args.Compression,
-		UseInsecure:  args.UseInsecure,
-		GRPCPoolSize: args.GRPCPoolSize,
+		Endpoint:       args.Endpoint,
+		UniverseDomain: args.UniverseDomain,
+		Compression:    args.Compression,
+		UseInsecure:    args.UseInsecure,
+		GRPCPoolSize:   args.GRPCPoolSize,
 	}
 	c.KnownDomains = args.KnownDomains
 	c.SkipCreateMetricDescriptor = args.SkipCreateDescriptor
@@ -102,6 +104,7 @@ func (args *GoogleCloudMetricArguments) Convert(c collector.MetricConfig) collec
 func (args *GoogleCloudMetricArguments) SetToDefault() {
 	*args = GoogleCloudMetricArguments{
 		Endpoint:                         "monitoring.googleapis.com:443",
+		UniverseDomain:                   "googleapis.com",
 		KnownDomains:                     []string{"googleapis.com", "kubernetes.io", "istio.io", "knative.dev"},
 		Prefix:                           "workload.googleapis.com",
 		CreateMetricDescriptorBufferSize: 10,
@@ -113,6 +116,7 @@ func (args *GoogleCloudMetricArguments) SetToDefault() {
 
 type GoogleCloudTraceArguments struct {
 	Endpoint          string              `alloy:"endpoint,attr,optional"`
+	UniverseDomain    string              `alloy:"universe_domain,attr,optional"`
 	GRPCPoolSize      int                 `alloy:"grpc_pool_size,attr,optional"`
 	UseInsecure       bool                `alloy:"use_insecure,attr,optional"`
 	AttributeMappings []AttributeMappings `alloy:"attribute_mappings,attr,optional"`
@@ -133,9 +137,10 @@ func (a AttributeMappings) convert(_ int) collector.AttributeMapping {
 
 func (args *GoogleCloudTraceArguments) Convert(c collector.TraceConfig) collector.TraceConfig {
 	c.ClientConfig = collector.ClientConfig{
-		Endpoint:     args.Endpoint,
-		UseInsecure:  args.UseInsecure,
-		GRPCPoolSize: args.GRPCPoolSize,
+		Endpoint:       args.Endpoint,
+		UniverseDomain: args.UniverseDomain,
+		UseInsecure:    args.UseInsecure,
+		GRPCPoolSize:   args.GRPCPoolSize,
 	}
 	c.AttributeMappings = lo.Map(args.AttributeMappings, AttributeMappings.convert)
 	return c
@@ -143,7 +148,8 @@ func (args *GoogleCloudTraceArguments) Convert(c collector.TraceConfig) collecto
 
 func (args *GoogleCloudTraceArguments) SetToDefault() {
 	*args = GoogleCloudTraceArguments{
-		Endpoint: "cloudtrace.googleapis.com:443",
+		Endpoint:       "cloudtrace.googleapis.com:443",
+		UniverseDomain: "googleapis.com",
 	}
 }
 
@@ -164,7 +170,7 @@ func (args *GoogleCloudLogArguments) Convert(c collector.LogConfig) collector.Lo
 	c.ResourceFilters = lo.Map(args.ResourceFilters, ResourceFilter.convert)
 	c.ClientConfig = collector.ClientConfig{
 		Endpoint:       args.Endpoint,
-		UniverseDomain: args.Endpoint,
+		UniverseDomain: args.UniverseDomain,
 		Compression:    args.Compression,
 		UseInsecure:    args.UseInsecure,
 		GRPCPoolSize:   args.GRPCPoolSize,
