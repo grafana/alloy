@@ -47,11 +47,13 @@ Refer to the [`postgres_exporter` repository](https://github.com/prometheus-comm
 
 The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) to run with a collection timeout of 10 seconds.
 
-By default, the same set of metrics is enabled as in the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
-If `custom_queries_config_path` is set, additional metrics defined in the given configuration file will be exposed.
-If `disable_default_metrics` is set to `true`, only the metrics defined in the `custom_queries_config_path` file will be exposed.
+By default, the component enables the same set of metrics as the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
+Set `custom_queries_config_path` to expose additional metrics from a configuration file.
 
-A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument.
+Set `disable_default_metrics` to `true` to expose only the metrics from `custom_queries_config_path`.
+That makes `custom_queries_config_path` required, and you can't set `enabled_collectors`.
+
+Set `enabled_collectors` to control a subset of the metrics collectors.
 The following collectors are available for selection:
 
 {{< column-list >}}
