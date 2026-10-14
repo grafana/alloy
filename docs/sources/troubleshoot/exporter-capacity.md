@@ -18,7 +18,7 @@ Before you begin, ensure you have the following:
 
 - An {{< param "PRODUCT_NAME" >}} instance that runs an `otelcol.exporter.otlp` or `otelcol.exporter.otlphttp` component.
 - A Prometheus-compatible database that collects the {{< param "PRODUCT_NAME" >}} internal metrics.
-  For setup details, refer to [Monitor components][component metrics].
+  For setup details, refer to [Monitor components](../component_metrics/).
 - A way to run PromQL queries, for example Grafana Explore.
   If your backend doesn't support PromQL, you can write similar queries in the query language of your backend.
 
@@ -41,11 +41,26 @@ Each exporter has a `sending_queue` block and a `retry_on_failure` block:
 The consumers set the maximum throughput.
 If all consumers are busy, the exporter can't send faster, even if the destination has spare capacity.
 
-For the full list of arguments and their default values, refer to the [`otelcol.exporter.otlp`][otlp] and [`otelcol.exporter.otlphttp`][otlphttp] reference pages.
+This page applies when the sending queue is on.
+The queue is on by default.
+If you set `enabled` to `false` in the `sending_queue` block, the exporter has no consumers, and the calculations on this page don't apply.
+
+### Each signal has its own queue
+
+An exporter component creates one internal exporter for each signal that it receives: metrics, logs, and traces.
+Each internal exporter has its own sending queue and its own `num_consumers` consumers.
+For example, an exporter with `num_consumers` set to `10` that sends metrics and logs has 20 consumers in total.
+
+Calculate the capacity for each signal separately.
+The queue and in-flight metrics on this page have a `data_type` label that identifies the signal.
+The HTTP and gRPC client latency histograms don't have this label, so they combine the requests of all signals.
+For an accurate result, use a dedicated exporter component for each signal that you want to measure.
+
+For the full list of arguments and their default values, refer to the [`otelcol.exporter.otlp`](../../reference/components/otelcol/otelcol.exporter.otlp/) and [`otelcol.exporter.otlphttp`](../../reference/components/otelcol/otelcol.exporter.otlphttp/) reference pages.
 
 ## Calculate the maximum request rate
 
-[Little's Law][littles law] connects concurrency, latency, and throughput.
+[Little's Law](https://en.wikipedia.org/wiki/Little%27s_law) connects concurrency, latency, and throughput.
 Because each consumer sends one request at a time, the maximum request rate is:
 
 ```text
@@ -85,6 +100,9 @@ Replace the following:
 
 - _`<COMPONENT_ID>`_: The ID of the exporter component, for example `otelcol.exporter.otlphttp.default`.
 
+If you use modules or `foreach` blocks, components in different module instances can have the same ID.
+In this case, also filter each query on the `component_path` label.
+
 To check the spread of the latency, you can also calculate percentiles from the same histogram, for example with `histogram_quantile(0.99, ...)`.
 Use the mean in the calculation, and use the 99th percentile as a worst-case check.
 
@@ -101,8 +119,8 @@ max items per second = max requests per second × mean items per request
 ### Measure the mean items per request
 
 Don't assume that every request is full.
-The batcher sends a batch when it reaches its size limit, or when its timeout expires.
-At low traffic, the batcher sends most batches when the timeout expires, and these batches are smaller than the limit.
+The exporter sends a batch when the batch reaches its size limit, or when the batch timeout expires.
+At low traffic, the exporter sends most batches when the timeout expires, and these batches are smaller than the limit.
 
 For `otelcol.exporter.otlphttp`, the following query divides the number of metric data points that the exporter sends by the number of requests:
 
@@ -165,17 +183,18 @@ The following query shows how many requests are in flight.
 This number includes requests that wait in retry backoff:
 
 ```promql
-sum(otelcol_exporter_in_flight_requests{component_id="<COMPONENT_ID>"})
+sum(otelcol_exporter_in_flight_requests{component_id="<COMPONENT_ID>", data_type="metrics"})
 ```
 
 If this value is often equal to `num_consumers`, all consumers are busy and the exporter is at its limit.
+For other signals, set `data_type` to `logs` or `traces`.
 
 The following query shows how full the sending queue is, as a fraction between `0` and `1`:
 
 ```promql
-sum(otelcol_exporter_queue_size{component_id="<COMPONENT_ID>"})
+sum(otelcol_exporter_queue_size{component_id="<COMPONENT_ID>", data_type="metrics"})
 /
-sum(otelcol_exporter_queue_capacity{component_id="<COMPONENT_ID>"})
+sum(otelcol_exporter_queue_capacity{component_id="<COMPONENT_ID>", data_type="metrics"})
 ```
 
 A queue that grows and doesn't drain means that data comes in faster than the exporter can send it.
@@ -210,7 +229,8 @@ For `otelcol.exporter.otlphttp`, the following HTTP status codes are retryable:
 For example, the exporter doesn't retry a request that fails with `500` Internal Server Error.
 The exporter drops the data at once, and the consumer moves to the next request.
 
-Permanent errors don't reduce the request rate, but you lose the data in those requests.
+Permanent errors don't cause retry backoff, so the consumer doesn't wait before it sends the next request.
+The response latency still holds the consumer, and you lose the data in those requests.
 The `otelcol_exporter_send_failed_metric_points_total` metric counts the data points in failed requests.
 
 ### Estimate the time to drain the queue
@@ -235,10 +255,10 @@ Grafana Mimir and Grafana Cloud Metrics reject old samples with the following er
   If out-of-order ingestion is on, the sample is older than the `out_of_order_time_window` setting allows.
 - **`err-mimir-too-far-in-past`:** The sample is older than the wall clock time minus the `out_of_order_time_window` and `past_grace_period` settings.
 
-For more information about these errors and how to fix them, refer to the [Mimir runbooks][mimir runbooks].
+For more information about these errors and how to fix them, refer to the [Mimir runbooks](https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/).
 
 Grafana Cloud Adaptive Metrics also rejects samples that arrive too late to aggregate, with the reason `aggregator-sample-too-old`.
-For more information, refer to [Troubleshoot discarded raw samples][adaptive metrics].
+For more information, refer to [Troubleshoot discarded raw samples](https://grafana.com/docs/grafana-cloud/adaptive-telemetry/adaptive-metrics/troubleshoot-discarded-raw-samples/).
 
 ## Increase the maximum throughput
 
@@ -257,17 +277,9 @@ Test each change before you use it in production.
 
 ## Next steps
 
-- [Monitor components][component metrics]
-- [Import rendered mixin dashboards][mixin dashboards]
-- [`otelcol.exporter.otlp`][otlp] reference
-- [`otelcol.exporter.otlphttp`][otlphttp] reference
-- [`otelcol.processor.batch`][batch] reference
+- [Monitor components](../component_metrics/)
+- [Import rendered mixin dashboards](../import-mixin-dashboards/)
+- [`otelcol.exporter.otlp`](../../reference/components/otelcol/otelcol.exporter.otlp/) reference
+- [`otelcol.exporter.otlphttp`](../../reference/components/otelcol/otelcol.exporter.otlphttp/) reference
+- [`otelcol.processor.batch`](../../reference/components/otelcol/otelcol.processor.batch/) reference
 
-[component metrics]: ../component_metrics/
-[mixin dashboards]: ../import-mixin-dashboards/
-[otlp]: ../../reference/components/otelcol/otelcol.exporter.otlp/
-[otlphttp]: ../../reference/components/otelcol/otelcol.exporter.otlphttp/
-[batch]: ../../reference/components/otelcol/otelcol.processor.batch/
-[adaptive metrics]: https://grafana.com/docs/grafana-cloud/adaptive-telemetry/adaptive-metrics/troubleshoot-discarded-raw-samples/
-[mimir runbooks]: https://grafana.com/docs/mimir/latest/manage/mimir-runbooks/
-[littles law]: https://en.wikipedia.org/wiki/Little%27s_law
