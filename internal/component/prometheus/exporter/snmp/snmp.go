@@ -3,6 +3,7 @@ package snmp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -146,12 +147,13 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Arguments struct {
-	ConfigFile          string                    `alloy:"config_file,attr,optional"`
-	SnmpConcurrency     int                       `alloy:"concurrency,attr,optional"`
-	Config              alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	ConfigMergeStrategy string                    `alloy:"config_merge_strategy,attr,optional"`
-	Targets             TargetBlock               `alloy:"target,block,optional"`
-	WalkParams          WalkParams                `alloy:"walk_param,block,optional"`
+	ConfigFile          string                      `alloy:"config_file,attr,optional"`
+	SnmpConcurrency     int                         `alloy:"concurrency,attr,optional"`
+	Config              alloytypes.OptionalSecret   `alloy:"config,attr,optional"`
+	Configs             []alloytypes.OptionalSecret `alloy:"configs,attr,optional"`
+	ConfigMergeStrategy string                      `alloy:"config_merge_strategy,attr,optional"`
+	Targets             TargetBlock                 `alloy:"target,block,optional"`
+	WalkParams          WalkParams                  `alloy:"walk_param,block,optional"`
 	ConfigStruct        snmp_config.Config
 
 	// New way of passing targets. This allows the component to receive targets from other components.
@@ -243,6 +245,16 @@ func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 	err := yaml.UnmarshalStrict([]byte(a.Config.Value), &a.ConfigStruct)
 	if err != nil {
 		return fmt.Errorf("invalid snmp_exporter config: %s", err)
+	}
+
+	for idx, cfg := range a.Configs {
+		parsed := snmp_config.Config{}
+		err := yaml.UnmarshalStrict([]byte(cfg.Value), &parsed)
+		if err != nil {
+			return fmt.Errorf("invalid snmp_exporter configs[%d]: %s", idx, err)
+		}
+		maps.Copy(a.ConfigStruct.Auths, parsed.Auths)
+		maps.Copy(a.ConfigStruct.Modules, parsed.Modules)
 	}
 
 	return nil
