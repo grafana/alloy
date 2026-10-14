@@ -186,7 +186,7 @@ The client that sends the telemetry sets that URL.
 The default value, `["*"]`, enables downloading sourcemaps from all origins.
 The `*` character indicates a wildcard.
 
-The receiver matches each origin as a prefix of the full URL, and `*` matches any characters, including `/`.
+The receiver matches each origin as a prefix of the full URL, where `*` matches any characters, including `/`, and `?` matches a single character.
 End each origin with a `/` so that it can't match a longer host name.
 For example, `https://app.example.com/` doesn't match `https://app.example.com.example.net/`, but `https://app.example.com` does.
 Avoid using `*` in the host part of an origin.
