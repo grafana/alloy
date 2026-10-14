@@ -118,7 +118,8 @@ func BenchmarkAppenderFlows(b *testing.B) {
 				app.Commit()
 
 				b.StopTimer()
-				fanout.Clear()
+				fanout.Stop()
+				fanout = prometheus.NewFanout(children, "fanout", promclient.DefaultRegisterer, ls)
 				b.StartTimer()
 			}
 		})

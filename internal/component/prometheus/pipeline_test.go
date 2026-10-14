@@ -378,7 +378,9 @@ func newRemoteWritePipeline(t testing.TB, logger *slog.Logger, numberOfRemoteWri
 	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() {
-		pipelineAppendable.Clear()
+		// Changing the children is what resets the Fanout's ref mappings.
+		pipelineAppendable.UpdateChildren(nil)
+		pipelineAppendable.UpdateChildren(rwAppendables)
 		ls.Clear()
 	}
 }
@@ -393,7 +395,9 @@ func newRelabelPipeline(t testing.TB, logger *slog.Logger, destination storage.A
 	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() {
-		pipelineAppendable.Clear()
+		// Changing the children is what resets the Fanout's ref mappings.
+		pipelineAppendable.UpdateChildren(nil)
+		pipelineAppendable.UpdateChildren([]storage.Appendable{relabelAppendable})
 		ls.Clear()
 	}
 }
