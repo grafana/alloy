@@ -175,6 +175,9 @@ If the receiver accepts telemetry from the internet or from other networks that 
 * Set `download` to `false`, and provide sourcemaps with [`location` blocks](#location).
 * Set `download_from_origins` so {{< param "PRODUCT_NAME" >}} downloads sourcemaps only for scripts served from your own origins, and end each origin with a `/`.
 * Restrict outbound network access from the host that runs {{< param "PRODUCT_NAME" >}}, for example with a network policy or firewall rules, so that it can only reach the destinations it needs.
+
+`download_from_origins` only restricts the script URLs that {{< param "PRODUCT_NAME" >}} fetches.
+It doesn't restrict the sourcemap URL that a script refers to, so restrict outbound network access as well.
 {{< /admonition >}}
 
 The `download_from_origins` argument determines which origins a sourcemap may be downloaded from.
