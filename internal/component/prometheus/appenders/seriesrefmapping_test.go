@@ -21,10 +21,10 @@ import (
 func TestSeriesRefMappingStore_GetMappingReturnsNilForUnknownRef(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
 
-	require.Nil(t, store.GetMapping(0, labels.EmptyLabels()))
-	require.Nil(t, store.GetMapping(1, labels.EmptyLabels()))
-	require.Nil(t, store.GetMapping(999, labels.EmptyLabels()))
-	require.Nil(t, store.GetMapping(storage.SeriesRef(12345), labels.EmptyLabels()))
+	require.Nil(t, store.GetMapping(0, labels.EmptyLabels(), 0))
+	require.Nil(t, store.GetMapping(1, labels.EmptyLabels(), 0))
+	require.Nil(t, store.GetMapping(999, labels.EmptyLabels(), 0))
+	require.Nil(t, store.GetMapping(storage.SeriesRef(12345), labels.EmptyLabels(), 0))
 }
 
 func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
@@ -34,15 +34,15 @@ func TestSeriesRefMappingStore_CreatedMappingCanBeRetrieved(t *testing.T) {
 	childRefs := []storage.SeriesRef{1, 2, 3}
 	lbls := labels.NewBuilder(labels.EmptyLabels()).Set("foo", "bar").Labels()
 
-	uniqueRef := store.CreateMapping(childRefs, lbls)
+	uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 	// Case 1: get by unique ref
-	got := store.GetMapping(uniqueRef, lbls)
+	got := store.GetMapping(uniqueRef, lbls, 0)
 	require.NotNil(t, got)
 	require.Equal(t, childRefs, got)
 
 	// Case 1: rely on label hash fallback
-	got = store.GetMapping(0, lbls)
+	got = store.GetMapping(0, lbls, 0)
 	require.NotNil(t, got)
 	require.Equal(t, childRefs, got)
 }
@@ -62,7 +62,7 @@ func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 	for i := range 100 {
 		lbls := labels.NewBuilder(labels.EmptyLabels()).Set("k", strconv.Itoa(i)).Labels()
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i + 1)}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 		// Verify this ref is unique
 		require.False(t, refs[uniqueRef], "ref %d was already used", uniqueRef)
@@ -75,7 +75,7 @@ func TestSeriesRefMappingStore_EachCreatedMappingGetsUniqueRef(t *testing.T) {
 
 	// Verify all mappings can be retrieved independently
 	for uniqueRef, mp := range mappings {
-		retrieved := store.GetMapping(uniqueRef, mp.labels)
+		retrieved := store.GetMapping(uniqueRef, mp.labels, 0)
 		require.Equal(t, mp.refs, retrieved)
 	}
 }
@@ -86,12 +86,12 @@ func TestSeriesRefMappingStore_UpdateMappingChangesReturnedValue(t *testing.T) {
 	lbls := labels.EmptyLabels()
 
 	originalRefs := []storage.SeriesRef{1, 2, 3}
-	uniqueRef := store.CreateMapping(originalRefs, lbls)
+	uniqueRef := store.CreateMapping(originalRefs, lbls, 0)
 
 	updatedRefs := []storage.SeriesRef{4, 5, 6}
-	store.UpdateMapping(uniqueRef, updatedRefs, lbls)
+	store.UpdateMapping(uniqueRef, updatedRefs, lbls, 0)
 
-	retrieved := store.GetMapping(uniqueRef, lbls)
+	retrieved := store.GetMapping(uniqueRef, lbls, 0)
 	require.Equal(t, updatedRefs, retrieved)
 	require.NotEqual(t, originalRefs, retrieved)
 }
@@ -100,10 +100,10 @@ func TestSeriesRefMappingStore_UpdateMappingWithZeroRefDoesNothing(t *testing.T)
 	store := NewSeriesRefMappingStore(nil)
 	lbls := labels.EmptyLabels()
 
-	store.UpdateMapping(0, []storage.SeriesRef{1, 2, 3}, lbls)
+	store.UpdateMapping(0, []storage.SeriesRef{1, 2, 3}, lbls, 0)
 
 	// Should still return nil
-	require.Nil(t, store.GetMapping(0, lbls))
+	require.Nil(t, store.GetMapping(0, lbls, 0))
 }
 
 func TestSeriesRefMappingStore_UpdateMappingAfterRemovalDoesNotRecreate(t *testing.T) {
@@ -111,11 +111,11 @@ func TestSeriesRefMappingStore_UpdateMappingAfterRemovalDoesNotRecreate(t *testi
 	t.Cleanup(store.Stop)
 	lbls := labels.FromStrings("k", "v")
 
-	uniqueRef := store.CreateMapping([]storage.SeriesRef{1}, lbls)
+	uniqueRef := store.CreateMapping([]storage.SeriesRef{1}, lbls, 0)
 	trackRef(store, uniqueRef, time.Now().Unix()-3600)
 	store.removeStaleRefs(time.Now().Unix())
 
-	store.UpdateMapping(uniqueRef, []storage.SeriesRef{2}, lbls)
+	store.UpdateMapping(uniqueRef, []storage.SeriesRef{2}, lbls, 0)
 
 	require.Empty(t, store.uniqueRefToChildRefs)
 	require.Empty(t, store.labelHashToUniqueRef)
@@ -153,7 +153,7 @@ func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 
 		// Create and track a mapping with old timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		cell := store.GetCellForAppendedSeries()
@@ -161,13 +161,13 @@ func TestSeriesRefMappingStore_RefsAreEventuallyCleanedUp(t *testing.T) {
 		store.TrackAppendedSeries(oldTimestamp, cell)
 
 		// Verify mapping exists initially
-		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls, 0))
 
 		// Wait for cleanup to run (15 minute ticker + some buffer)
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should be cleaned up
-		require.Nil(t, store.GetMapping(uniqueRef, lbls))
+		require.Nil(t, store.GetMapping(uniqueRef, lbls, 0))
 	})
 }
 
@@ -179,7 +179,7 @@ func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) 
 
 		// Create and track a mapping with recent timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 		recentTimestamp := time.Now().Unix()
 		cell := store.GetCellForAppendedSeries()
@@ -190,7 +190,7 @@ func TestSeriesRefMappingStore_RecentlyTrackedRefsAreNotCleanedUp(t *testing.T) 
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should still exist
-		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls, 0))
 	})
 }
 
@@ -202,7 +202,7 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 
 		// Create and track a mapping with old timestamp
 		childRefs := []storage.SeriesRef{1, 2, 3}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 		oldTimestamp := time.Now().Add(-20 * time.Minute).Unix()
 		cell1 := store.GetCellForAppendedSeries()
@@ -222,7 +222,7 @@ func TestSeriesRefMappingStore_TrackingRefAgainUpdatesTimestamp(t *testing.T) {
 		time.Sleep(16 * time.Minute)
 
 		// Mapping should NOT be cleaned up because timestamp was refreshed
-		require.NotNil(t, store.GetMapping(uniqueRef, lbls))
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls, 0))
 	})
 }
 
@@ -253,7 +253,7 @@ func TestSeriesRefMappingStore_RemoveStaleRefs(t *testing.T) {
 				lbls := make([]labels.Labels, n)
 				for i := range n {
 					lbls[i] = labels.FromStrings("k", prefix+strconv.Itoa(i))
-					refs[i] = store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i + 1)}, lbls[i])
+					refs[i] = store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i + 1)}, lbls[i], 0)
 					trackRef(store, refs[i], ts)
 				}
 				return refs, lbls
@@ -267,11 +267,11 @@ func TestSeriesRefMappingStore_RemoveStaleRefs(t *testing.T) {
 			store.removeStaleRefs(now - 60)
 
 			for i, ref := range staleRefs {
-				require.Nil(t, store.GetMapping(ref, staleLbls[i]), "stale mapping should be removed")
+				require.Nil(t, store.GetMapping(ref, staleLbls[i], 0), "stale mapping should be removed")
 				require.NotContains(t, store.uniqueRefTimestamps, ref)
 			}
 			for i, ref := range freshRefs {
-				require.NotNil(t, store.GetMapping(ref, freshLbls[i]), "fresh mapping should survive")
+				require.NotNil(t, store.GetMapping(ref, freshLbls[i], 0), "fresh mapping should survive")
 				require.Contains(t, store.uniqueRefTimestamps, ref)
 			}
 			require.Len(t, store.uniqueRefToChildRefs, tt.fresh)
@@ -294,7 +294,7 @@ func TestSeriesRefMappingStore_RemoveStaleRefsRacesWithAppends(t *testing.T) {
 	refs := make([]storage.SeriesRef, series)
 	for i := range series {
 		lbls[i] = labels.FromStrings("k", strconv.Itoa(i))
-		refs[i] = store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i + 1)}, lbls[i])
+		refs[i] = store.CreateMapping([]storage.SeriesRef{storage.SeriesRef(i + 1)}, lbls[i], 0)
 	}
 
 	stop := make(chan struct{})
@@ -311,7 +311,7 @@ func TestSeriesRefMappingStore_RemoveStaleRefsRacesWithAppends(t *testing.T) {
 					return
 				default:
 				}
-				store.GetMapping(refs[i], lbls[i])
+				store.GetMapping(refs[i], lbls[i], 0)
 				trackRef(store, refs[i], time.Now().Unix())
 				if first {
 					ready.Done()
@@ -343,8 +343,8 @@ func TestSeriesRefMappingStore_RemoveStaleRefsRacesWithAppends(t *testing.T) {
 
 	// The store is still usable afterward.
 	newLbls := labels.FromStrings("k", "after")
-	newRef := store.CreateMapping([]storage.SeriesRef{42}, newLbls)
-	require.Equal(t, []storage.SeriesRef{42}, store.GetMapping(newRef, newLbls))
+	newRef := store.CreateMapping([]storage.SeriesRef{42}, newLbls, 0)
+	require.Equal(t, []storage.SeriesRef{42}, store.GetMapping(newRef, newLbls, 0))
 }
 
 // trackRef records ts as ref's last-append time via the normal tracking path.
@@ -363,7 +363,7 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 	var uniqueRefs []storage.SeriesRef
 	for i := range 10 {
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i), storage.SeriesRef(i + 1)}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 
 		// Track them
@@ -374,7 +374,7 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 
 	// Verify they exist
 	for _, ref := range uniqueRefs {
-		require.NotNil(t, store.GetMapping(ref, lbls))
+		require.NotNil(t, store.GetMapping(ref, lbls, 0))
 	}
 
 	// Clear advances the generation boundary past all previously issued refs.
@@ -384,7 +384,7 @@ func TestSeriesRefMappingStore_ClearRemovesAllMappings(t *testing.T) {
 
 	// Verify all are gone
 	for _, ref := range uniqueRefs {
-		require.Nil(t, store.GetMapping(ref, lbls))
+		require.Nil(t, store.GetMapping(ref, lbls, store.Generation()))
 	}
 }
 
@@ -395,7 +395,7 @@ func TestSeriesRefMappingStore_ClearIsIdempotent(t *testing.T) {
 
 	// Create some mappings
 	childRefs := []storage.SeriesRef{1, 2, 3}
-	store.CreateMapping(childRefs, lbls)
+	store.CreateMapping(childRefs, lbls, 0)
 
 	// Clear multiple times
 	require.NotPanics(t, func() {
@@ -412,25 +412,26 @@ func TestSeriesRefMappingStore_CanBeReusedAfterClear(t *testing.T) {
 
 	// Create multiple mappings before clear
 	childRefs1 := []storage.SeriesRef{1, 2, 3}
-	uniqueRef1 := store.CreateMapping(childRefs1, lbls)
+	uniqueRef1 := store.CreateMapping(childRefs1, lbls, 0)
 	childRefs2 := []storage.SeriesRef{7, 8, 9}
-	uniqueRef2 := store.CreateMapping(childRefs2, lbls)
+	uniqueRef2 := store.CreateMapping(childRefs2, lbls, 0)
 
 	// Clear
 	store.Clear()
+	gen := store.Generation()
 
 	// Create new mappings after clear
 	childRefs3 := []storage.SeriesRef{4, 5, 6}
-	uniqueRef3 := store.CreateMapping(childRefs3, lbls)
+	uniqueRef3 := store.CreateMapping(childRefs3, lbls, gen)
 
 	// New mapping should work
-	retrieved := store.GetMapping(uniqueRef3, lbls)
+	retrieved := store.GetMapping(uniqueRef3, lbls, gen)
 	require.NotNil(t, retrieved)
 	require.Equal(t, childRefs3, retrieved)
 
 	// Old mappings should not exist
-	require.Nil(t, store.GetMapping(uniqueRef1, lbls))
-	require.Nil(t, store.GetMapping(uniqueRef2, lbls))
+	require.Nil(t, store.GetMapping(uniqueRef1, lbls, gen))
+	require.Nil(t, store.GetMapping(uniqueRef2, lbls, gen))
 }
 
 func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCellUse(t *testing.T) {
@@ -475,7 +476,7 @@ func TestSeriesRefMappingStore_ClearIsSafeWithConcurrentCreates(t *testing.T) {
 				default:
 				}
 				// CreateMapping is what starts the cleanup goroutine.
-				store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("w", strconv.Itoa(w), "i", strconv.Itoa(i)))
+				store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("w", strconv.Itoa(w), "i", strconv.Itoa(i)), 0)
 			}
 		})
 	}
@@ -493,16 +494,52 @@ func TestSeriesRefMappingStore_CleanupKeepsRunningAfterClear(t *testing.T) {
 		t.Cleanup(store.Stop)
 		lbls := labels.FromStrings("k", "v")
 
-		trackRef(store, store.CreateMapping([]storage.SeriesRef{1}, lbls), time.Now().Unix())
+		trackRef(store, store.CreateMapping([]storage.SeriesRef{1}, lbls, 0), time.Now().Unix())
 		store.Clear()
+		gen := store.Generation()
 
-		uniqueRef := store.CreateMapping([]storage.SeriesRef{2}, lbls)
+		uniqueRef := store.CreateMapping([]storage.SeriesRef{2}, lbls, gen)
+		require.NotNil(t, store.GetMapping(uniqueRef, lbls, gen))
 		trackRef(store, uniqueRef, time.Now().Add(-20*time.Minute).Unix())
 
 		time.Sleep(16 * time.Minute)
 
-		require.Nil(t, store.GetMapping(uniqueRef, lbls))
+		require.Nil(t, store.GetMapping(uniqueRef, lbls, gen))
 	})
+}
+
+func TestSeriesRefMappingStore_IgnoresStaleGeneration(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
+	lbls := labels.FromStrings("k", "v")
+
+	stale := store.Generation()
+	store.Clear()
+	gen := store.Generation()
+	ref := store.CreateMapping([]storage.SeriesRef{1, 2}, lbls, gen)
+
+	require.Zero(t, store.CreateMapping([]storage.SeriesRef{3, 4}, labels.FromStrings("k", "other"), stale))
+	require.Len(t, store.uniqueRefToChildRefs, 1)
+
+	require.Nil(t, store.GetMapping(ref, lbls, stale))
+	require.Nil(t, store.GetMapping(0, lbls, stale))
+
+	store.UpdateMapping(ref, []storage.SeriesRef{3, 4}, lbls, stale)
+	require.Equal(t, []storage.SeriesRef{1, 2}, store.GetMapping(ref, lbls, gen))
+}
+
+func TestSeriesRefMappingStore_ClearAlwaysStartsNewGeneration(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
+
+	// No refs are issued between the two Clears, so the threshold stays put but the
+	// generation still moves.
+	firstThreshold := store.Clear()
+	first := store.Generation()
+	secondThreshold := store.Clear()
+	require.Equal(t, firstThreshold, secondThreshold)
+	require.NotEqual(t, first, store.Generation())
+	require.Zero(t, store.CreateMapping([]storage.SeriesRef{1, 2}, labels.FromStrings("k", "v"), first))
 }
 
 func TestSeriesRefMappingStore_StopIsIdempotent(t *testing.T) {
@@ -514,7 +551,7 @@ func TestSeriesRefMappingStore_StopIsIdempotent(t *testing.T) {
 		store.Stop()
 
 		// A goroutine started after Stop exits straight away, or synctest.Test never returns.
-		store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("k", "v"))
+		store.CreateMapping([]storage.SeriesRef{1}, labels.FromStrings("k", "v"), 0)
 		store.Stop()
 	})
 }
@@ -526,7 +563,7 @@ func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 
 	// Create a mapping
 	childRefs := []storage.SeriesRef{1, 2, 3}
-	uniqueRef := store.CreateMapping(childRefs, lbls)
+	uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 
 	// Spawn many goroutines reading the same mapping
 	var wg sync.WaitGroup
@@ -535,7 +572,7 @@ func TestSeriesRefMappingStore_ConcurrentReadsAreConsistent(t *testing.T) {
 	for range numReaders {
 		wg.Go(func() {
 			for range 100 {
-				retrieved := store.GetMapping(uniqueRef, lbls)
+				retrieved := store.GetMapping(uniqueRef, lbls, 0)
 				require.NotNil(t, retrieved)
 				require.Equal(t, childRefs, retrieved)
 			}
@@ -563,7 +600,7 @@ func TestSeriesRefMappingStore_ConcurrentCreatesGetUniqueRefs(t *testing.T) {
 
 			for j := range refsPerCreator {
 				childRefs := []storage.SeriesRef{storage.SeriesRef(id*1000 + j)}
-				uniqueRef := store.CreateMapping(childRefs, lbls)
+				uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 				refsChan <- uniqueRef
 			}
 		}(i)
@@ -593,7 +630,7 @@ func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 	var uniqueRefs []storage.SeriesRef
 	for i := range 50 {
 		childRefs := []storage.SeriesRef{storage.SeriesRef(i)}
-		uniqueRef := store.CreateMapping(childRefs, lbls)
+		uniqueRef := store.CreateMapping(childRefs, lbls, 0)
 		uniqueRefs = append(uniqueRefs, uniqueRef)
 	}
 
@@ -619,7 +656,7 @@ func TestSeriesRefMappingStore_ConcurrentTrackingIsCorrect(t *testing.T) {
 
 	// All refs should still be retrievable (tracking shouldn't break anything)
 	for _, ref := range uniqueRefs {
-		require.NotNil(t, store.GetMapping(ref, lbls))
+		require.NotNil(t, store.GetMapping(ref, lbls, 0))
 	}
 }
 
@@ -632,7 +669,7 @@ func TestSeriesRefMapping_AppendReusesExistingMapping(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_reuse", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_reuse", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
 	ref, err := app.Append(77, lbls, 123, 42)
@@ -657,7 +694,7 @@ func TestSeriesRefMapping_AppendUpdatesExistingMappingWhenRefsChange(t *testing.
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_update", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_update", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
 	ref, err := app.Append(33, lbls, 123, 42)
@@ -679,7 +716,7 @@ func TestSeriesRefMapping_AppendAllChildrenZeroPassesThroughInputRef(t *testing.
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_all_zero_latency", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_all_zero_forwarded", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	ref, err := app.Append(42, labels.FromStrings("job", "test"), 1, 1)
 	require.NoError(t, err)
@@ -701,7 +738,7 @@ func TestSeriesRefMapping_AppendUnmappedNonZeroRefForwardsZeroToChildren(t *test
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_unmapped_nonzero_latency", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_unmapped_nonzero_forwarded", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	// Ref 9999 has no mapping (e.g. a store ref whose mapping was cleaned or predates a
 	// topology change). It must not reach the children — they'd risk misattributing the
@@ -725,7 +762,7 @@ func TestSeriesRefMapping_AppendSingleNonZeroChildCreatesMapping(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_single_nonzero_latency", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_single_nonzero_forwarded", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	// A single allocating child still gets a mapping, so the series stays routable on
 	// later appends rather than being returned bare and unmapped.
@@ -750,7 +787,7 @@ func TestSeriesRefMapping_AppendSecondAppendUsesChildRefsFromMapping(t *testing.
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_single_no_leak", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_single_no_leak", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "single")
 
@@ -779,7 +816,7 @@ func TestSeriesRefMapping_AppendErrorSkipsMappingUpdate(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_error", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_error", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	ref, err := app.Append(88, labels.EmptyLabels(), 1, 1)
 	require.Error(t, err)
@@ -798,7 +835,7 @@ func TestSeriesRefMapping_CommitTracksRefsAndAggregatesErrors(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_commit", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_commit", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	_, err := app.Append(101, labels.EmptyLabels(), 1, 1)
 	require.NoError(t, err)
@@ -822,7 +859,7 @@ func TestSeriesRefMapping_RollbackTracksRefs(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_rollback", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_rollback", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	_, err := app.Append(202, labels.EmptyLabels(), 1, 1)
 	require.NoError(t, err)
@@ -849,7 +886,7 @@ func TestSeriesRefMapping_MappingReusedOnSubsequentAppends(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_reuse_latency", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_reuse_forwarded", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
 
@@ -888,7 +925,7 @@ func TestSeriesRefMapping_ChildRefChangeUpdatesMapping(t *testing.T) {
 
 	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_child_change_latency", Help: "test"})
 	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_child_change_forwarded", Help: "test"})
-	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, 0, writeLatency, samplesForwarded)
 
 	lbls := labels.FromStrings("job", "test")
 
@@ -908,6 +945,51 @@ func TestSeriesRefMapping_ChildRefChangeUpdatesMapping(t *testing.T) {
 	_, err = app.Append(ref, lbls, 3, 3)
 	require.NoError(t, err)
 	require.Equal(t, storage.SeriesRef(9999), child2.appendRefs[2])
+}
+
+// TestSeriesRefMapping_AppenderFromPreviousGenerationIsIsolated covers an appender built
+// before a children change that is still appending after it.
+func TestSeriesRefMapping_AppenderFromPreviousGenerationIsIsolated(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_prev_gen_latency", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_prev_gen_forwarded", Help: "test"})
+	childReturning := func(ref storage.SeriesRef) *mockAppender {
+		return &mockAppender{appendFn: func(_ storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
+			return ref, nil
+		}}
+	}
+
+	oldA, oldB := childReturning(11), childReturning(22)
+	oldApp := NewSeriesRefMapping([]storage.Appender{oldA, oldB}, store, store.Generation(), writeLatency, samplesForwarded)
+	store.Clear()
+	gen := store.Generation()
+	newC, newD := childReturning(33), childReturning(44)
+	newApp := NewSeriesRefMapping([]storage.Appender{newC, newD}, store, gen, writeLatency, samplesForwarded)
+
+	// The old appender's child refs never reach the store.
+	written := labels.FromStrings("job", "written")
+	ref, err := oldApp.Append(0, written, 1, 1)
+	require.NoError(t, err)
+	require.Zero(t, ref)
+	_, err = newApp.Append(0, written, 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, []storage.SeriesRef{0}, newC.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0}, newD.appendRefs)
+
+	// Nor do the new children's refs reach the old appender's children.
+	read := labels.FromStrings("job", "read")
+	ref, err = newApp.Append(0, read, 1, 1)
+	require.NoError(t, err)
+	_, err = oldApp.Append(ref, read, 1, 1)
+	require.NoError(t, err)
+	_, err = oldApp.Append(0, read, 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, []storage.SeriesRef{0, 0, 0}, oldA.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0, 0, 0}, oldB.appendRefs)
+
+	// The new mapping still holds the new children's refs.
+	require.Equal(t, []storage.SeriesRef{33, 44}, store.GetMapping(ref, read, gen))
 }
 
 type createCall struct {
@@ -945,7 +1027,7 @@ func newMockMappingStore() *mockMappingStore {
 	}
 }
 
-func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels, _ uint64) []storage.SeriesRef {
 	if uniqueRef == 0 {
 		mappedRef, ok := m.mappingByHash[lbls.Hash()]
 		if !ok {
@@ -962,7 +1044,7 @@ func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.L
 	return copyRefs(refs)
 }
 
-func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
+func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels, _ uint64) storage.SeriesRef {
 	newRef := m.createRef
 	m.createRef++
 
@@ -974,7 +1056,7 @@ func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls la
 	return newRef
 }
 
-func (m *mockMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels) {
+func (m *mockMappingStore) UpdateMapping(uniqueRef storage.SeriesRef, refResults []storage.SeriesRef, lbls labels.Labels, _ uint64) {
 	copiedRefs := copyRefs(refResults)
 	m.mappingByRef[uniqueRef] = copiedRefs
 	m.mappingByHash[lbls.Hash()] = uniqueRef
