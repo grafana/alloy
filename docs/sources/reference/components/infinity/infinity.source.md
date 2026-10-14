@@ -119,7 +119,7 @@ The label is used as the `instance` label on every sample and log entry the quer
 | `source`                 | `string`   | `"url"` to fetch the response over HTTP, or `"inline"` to use `data`.   | `"url"`    | no       |
 | `summarize_alias`        | `string`   | Name of the resulting column, when `summarize_expression` is set.       | `"summary"`| no       |
 | `summarize_by`           | `string`   | Column to group rows by, when `summarize_expression` is set.            |            | no       |
-| `summarize_expression`   | `string`   | Expression that summarizes the frame into one row.                      |            | no       |
+| `summarize_expression`   | `string`   | Expression that summarizes the frame into one row, or one row for each group. |   | no       |
 | `type`                   | `string`   | Response format to parse.                                               | `"json"`   | no       |
 | `url`                    | `string`   | URL to poll. Required when `source` is `"url"`.                         |            | no       |
 
@@ -154,7 +154,10 @@ When `source` is `"inline"`, the `data` argument is required, and `url` and the 
 The `csv_options` block is valid only when `type` is `"csv"` or `"tsv"`.
 
 Set `filter_expression` to drop rows after parsing.
-Set `summarize_expression` to replace the frame with a single row that summarizes it; `summarize_by` groups rows before summarizing, and `summarize_alias` names the resulting column.
+Set `summarize_expression` to replace the frame with a summary.
+Without `summarize_by`, the summary is a single row.
+With `summarize_by`, the summary has one row for each value of that column.
+`summarize_alias` names the resulting column.
 Setting `summarize_by` or `summarize_alias` without `summarize_expression` is a configuration error.
 
 `infinity.source` post-processes each parsed frame in a fixed order: computed columns, then `filter_expression`, then the summary when `summarize_expression` is set, and finally each `transform` block, in the order the blocks appear in the configuration.
