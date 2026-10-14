@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -177,7 +179,7 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 
 	// Create a reconciler. The tailer and cluster are not used by reconcilePodLogs,
 	// so we can pass nil.
-	r := newReconciler(logging.NewSlogNop(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, nil)
 
 	// Call reconcilePodLogs.
 	targets, _ := r.reconcilePodLogs(t.Context(), cl, podLogs)
@@ -391,7 +393,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			}).Build()
 
 			// Create a reconciler and configure node filtering
-			r := newReconciler(logging.NewSlogNop(), nil, nil)
+			r := newReconciler(logging.NewSlogNop(), nil, nil, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, nil)
 			r.UpdateNodeFilter(tt.nodeFilterEnabled, tt.nodeFilterName)
 
 			// Call reconcilePodLogs.
@@ -434,7 +436,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 }
 
 func TestNodeFilterConfiguration(t *testing.T) {
-	r := newReconciler(logging.NewSlogNop(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, nil)
 
 	// Test initial state
 	if r.getNodeFilterName() != "" {
@@ -469,7 +471,7 @@ func TestNodeFilterConfiguration(t *testing.T) {
 
 func TestPreserveDiscoveredLabels_MetaLabelPreservation(t *testing.T) {
 	// Create a reconciler with preserve discovered labels enabled
-	r := newReconciler(logging.NewSlogNop(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, nil)
 	r.UpdatePreserveMetaLabels(true)
 
 	// Verify the preserveMetaLabels field is set correctly
@@ -478,4 +480,55 @@ func TestPreserveDiscoveredLabels_MetaLabelPreservation(t *testing.T) {
 	// Test disabling meta label preservation
 	r.UpdatePreserveMetaLabels(false)
 	require.False(t, r.preserveMetaLabels)
+}
+
+func TestReconcilePodLogs_Pipeline(t *testing.T) {
+	podLogs := &monitoringv1alpha2.PodLogs{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "testlogs"},
+		Spec: monitoringv1alpha2.PodLogsSpec{
+			Pipeline: &monitoringv1alpha2.PipelineSpec{Stages: []monitoringv1alpha2.PipelineStage{
+				{Drop: &monitoringv1alpha2.DropStage{Expression: ".*DEBUG.*"}},
+			}},
+		},
+	}
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "mypod", UID: "12345"},
+		Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "container1", Image: "nginx"}}},
+	}
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, monitoringv1alpha2.AddToScheme(scheme))
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(podLogs, ns, pod).Build()
+
+	r := newReconciler(logging.NewSlogNop(), nil, nil, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, nil)
+
+	targets, info := r.reconcilePodLogs(t.Context(), cl, podLogs)
+	require.Empty(t, info.ReconcileError)
+	require.Len(t, targets, 1)
+	firstID := targets[0].PipelineID()
+	require.NotEmpty(t, firstID)
+
+	// An unrelated reconcile keeps the pipeline identity, so tailers are not restarted.
+	targets, _ = r.reconcilePodLogs(t.Context(), cl, podLogs)
+	require.Equal(t, firstID, targets[0].PipelineID())
+
+	// A spec change produces a new identity.
+	podLogs.Spec.Pipeline.Stages[0].Drop.Expression = ".*TRACE.*"
+	targets, _ = r.reconcilePodLogs(t.Context(), cl, podLogs)
+	require.NotEqual(t, firstID, targets[0].PipelineID())
+
+	// An invalid pipeline is reported and yields no targets.
+	podLogs.Spec.Pipeline.Stages[0].Drop = &monitoringv1alpha2.DropStage{}
+	targets, info = r.reconcilePodLogs(t.Context(), cl, podLogs)
+	require.Empty(t, targets)
+	require.Contains(t, info.ReconcileError, "invalid pipeline")
+
+	// Without a pipeline, targets carry no identity.
+	podLogs.Spec.Pipeline = nil
+	targets, info = r.reconcilePodLogs(t.Context(), cl, podLogs)
+	require.Empty(t, info.ReconcileError)
+	require.Len(t, targets, 1)
+	require.Empty(t, targets[0].PipelineID())
 }

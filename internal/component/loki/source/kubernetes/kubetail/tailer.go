@@ -47,6 +47,7 @@ func (tt *tailerTask) Equals(other runner.Task) bool {
 	// Slow path: check individual fields which are part of the task.
 	return tt.Options == otherTask.Options &&
 		tt.Target.UID() == otherTask.Target.UID() &&
+		tt.Target.PipelineID() == otherTask.Target.PipelineID() &&
 		labels.Equal(tt.Target.Labels(), otherTask.Target.Labels())
 }
 
@@ -291,19 +292,22 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 				Line:      entryLine,
 			})
 
-			select {
-			case <-ctx.Done():
-				return nil
-			case ch <- entry:
-				// Save position after it's been sent over the channel. The saved
-				// position seeds sinceTime for the next tail, so it never moves
-				// backwards even when the stream is out of order.
-				if entryTimestamp.After(lastReadTime) {
-					lastReadTime = entryTimestamp
+			if err := t.send(ctx, ch, entry); err != nil {
+				if ctx.Err() != nil {
+					return nil
 				}
-				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
-				t.target.Report(lastReadTime, nil)
+				return err
 			}
+
+			// Save position after the entry has been handed over. The saved
+			// position seeds sinceTime for the next tail, so it never moves
+			// backwards even when the stream is out of order. Dropped lines count
+			// as read.
+			if entryTimestamp.After(lastReadTime) {
+				lastReadTime = entryTimestamp
+			}
+			t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
+			t.target.Report(lastReadTime, nil)
 		}
 
 		// Return an error if our stream closed. The caller will reopen the tailer
@@ -319,6 +323,23 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			return err
 		}
 	}
+}
+
+// send passes entry to the target's consumer, or to the handler channel when it
+// has none.
+func (t *tailer) send(ctx context.Context, ch chan<- loki.Entry, entry loki.Entry) error {
+	if t.target.consumer == nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case ch <- entry:
+			return nil
+		}
+	}
+
+	batch := loki.NewBatch()
+	batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
+	return t.target.consumer.Consume(ctx, batch)
 }
 
 // isJobPod determines if a pod is owned by a Job or CronJob workload.

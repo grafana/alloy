@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // Internal labels which indicate what container to tail logs from.
@@ -49,7 +51,11 @@ type Target struct {
 	containerName  string
 	id             string // String representation of "namespace/pod:container"; not fully unique
 	uid            string // UID from pod
-	hash           uint64 // Hash of public labels and id
+	hash           uint64 // Hash of public labels, id, uid and pipelineID
+
+	// Shared by every tailer of a PodLogs, so it must be safe for concurrent use.
+	pipelineID string
+	consumer   loki.Consumer
 
 	mut       sync.RWMutex
 	lastError error
@@ -73,15 +79,7 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels 
 		publicLabels = publicLabels(lset, preserveMetaLabels)
 	)
 
-	// Precompute the hash of the target from the public labels and the ID of the
-	// target.
-	hasher := xxhash.New()
-	_, _ = fmt.Fprintf(hasher, "%016d", labels.StableHash(publicLabels))
-	_, _ = fmt.Fprint(hasher, id)
-	_, _ = fmt.Fprint(hasher, uid)
-	hash := hasher.Sum64()
-
-	return &Target{
+	t := &Target{
 		origLabels:   origLabels,
 		publicLabels: publicLabels,
 
@@ -89,9 +87,30 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels 
 		containerName:  containerName,
 		id:             id,
 		uid:            uid,
-		hash:           hash,
 	}
+	t.hash = t.computeHash()
+	return t
 }
+
+// WithConsumer sends the target's entries through consumer. A different id
+// restarts the tailer.
+func (t *Target) WithConsumer(id string, consumer loki.Consumer) *Target {
+	t.pipelineID = id
+	t.consumer = consumer
+	t.hash = t.computeHash()
+	return t
+}
+
+func (t *Target) computeHash() uint64 {
+	hasher := xxhash.New()
+	_, _ = fmt.Fprintf(hasher, "%016d", labels.StableHash(t.publicLabels))
+	_, _ = fmt.Fprint(hasher, t.id)
+	_, _ = fmt.Fprint(hasher, t.uid)
+	_, _ = fmt.Fprint(hasher, t.pipelineID)
+	return hasher.Sum64()
+}
+
+func (t *Target) PipelineID() string { return t.pipelineID }
 
 func publicLabels(lset labels.Labels, preserveMetaLabels bool) labels.Labels {
 	lb := labels.NewBuilder(lset)
