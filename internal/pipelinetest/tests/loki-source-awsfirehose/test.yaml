@@ -59,7 +59,9 @@ config: |
 
 inputs:
   http:
-    # Direct PUT records: each record's data is a base64-encoded log line.
+    # Direct PUT records: each record's data is a log line in plain base64,
+    # for example: echo -n 'log line 0 from stream-1' | base64. The
+    # assertions below name each decoded line.
     - url: http://127.0.0.1:1517/awsfirehose/api/v1/push
       headers:
         Content-Type: application/json
