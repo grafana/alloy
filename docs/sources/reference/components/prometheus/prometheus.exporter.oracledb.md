@@ -142,13 +142,13 @@ The exporter uses the `name` argument as the value of the `database` label on th
 The `connection_string` argument accepts an `oracle://` URL with the username and password embedded:
 
 ```text
-oracle://user:pass@host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+oracle://<USERNAME>:<PASSWORD>@<HOST>:<PORT>/<SERVICE_NAME>[?<OPTION_1>=<VALUE_1>[&<OPTION_N>=<VALUE_N>]]
 ```
 
 It also accepts an address without a scheme, where you set the `username` and `password` arguments separately:
 
 ```text
-host:port/service_name[?OPTION1=VALUE1[&OPTIONn=VALUEn]...]
+<HOST>:<PORT>/<SERVICE_NAME>[?<OPTION_1>=<VALUE_1>[&<OPTION_N>=<VALUE_N>]]
 ```
 
 Set `username` and `password` only with the second format.
