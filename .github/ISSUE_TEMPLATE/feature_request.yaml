@@ -96,6 +96,8 @@ body:
       - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
+      - otelcol.encoding.jsonlog
+      - otelcol.encoding.text
       - otelcol.exporter.awss3
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
@@ -160,7 +162,6 @@ body:
       - prometheus.exporter.azure
       - prometheus.exporter.blackbox
       - prometheus.exporter.cadvisor
-      - prometheus.exporter.catchpoint
       - prometheus.exporter.cloudwatch
       - prometheus.exporter.consul
       - prometheus.exporter.databricks

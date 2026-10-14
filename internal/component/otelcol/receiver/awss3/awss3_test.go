@@ -5,9 +5,13 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver"
 	"github.com/stretchr/testify/require"
+	otelcomponent "go.opentelemetry.io/collector/component"
 
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/awss3"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 func TestArguments_Defaults(t *testing.T) {
@@ -118,6 +122,81 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			require.Equal(t, tc.expected, *cfg)
 		})
 	}
+}
+
+func TestArguments_UnmarshalEncodings(t *testing.T) {
+	textHandler := &extension.ExtensionHandler{
+		ID: otelcomponent.MustNewIDWithName("text_encoding", "plain"),
+	}
+	jsonlogHandler := &extension.ExtensionHandler{
+		ID: otelcomponent.MustNewIDWithName("json_log_encoding", "json"),
+	}
+
+	scope := vm.NewScope(map[string]any{
+		"otelcol": map[string]any{
+			"encoding": map[string]any{
+				"text": map[string]any{
+					"plain": extension.Exports{Handler: textHandler},
+				},
+				"jsonlog": map[string]any{
+					"json": extension.Exports{Handler: jsonlogHandler},
+				},
+			},
+		},
+	})
+
+	cfg := `
+		start_time = "2024-01-01T00:00:00Z"
+		end_time = "2024-01-02T00:00:00Z"
+
+		s3downloader {
+			s3_bucket = "grafana-logs"
+			s3_prefix = "logs/"
+		}
+
+		encoding {
+			extension = otelcol.encoding.text.plain.handler
+			suffix = ".txt"
+		}
+
+		encoding {
+			extension = otelcol.encoding.jsonlog.json.handler
+			suffix = ".json"
+		}
+
+		output {}
+	`
+
+	file, err := parser.ParseFile(t.Name(), []byte(cfg))
+	require.NoError(t, err)
+
+	var args awss3.Arguments
+	require.NoError(t, vm.New(file).Evaluate(scope, &args))
+
+	require.Equal(t, []awss3.Encoding{
+		{
+			Extension: textHandler,
+			Suffix:    ".txt",
+		},
+		{
+			Extension: jsonlogHandler,
+			Suffix:    ".json",
+		},
+	}, args.Encodings)
+
+	actual, err := args.Convert()
+	require.NoError(t, err)
+
+	require.Equal(t, []awss3receiver.Encoding{
+		{
+			Extension: textHandler.ID,
+			Suffix:    ".txt",
+		},
+		{
+			Extension: jsonlogHandler.ID,
+			Suffix:    ".json",
+		},
+	}, actual.(*awss3receiver.Config).Encodings)
 }
 
 func TestArguments_Validate(t *testing.T) {

@@ -64,6 +64,7 @@ You can use the following blocks with `otelcol.receiver.zipkin`:
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received traces.                                  | yes      |
+| [`keepalive`][keepalive]         | Configures keepalive settings for the HTTP server.                        | no       |
 | [`cors`][cors]                   | Configures CORS for the HTTP server.                                       | no       |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 | [`tls`][tls]                     | Configures TLS for the HTTP server.                                        | no       |
@@ -71,6 +72,7 @@ You can use the following blocks with `otelcol.receiver.zipkin`:
 
 [tls]: #tls
 [tpm]: #tpm
+[keepalive]: #keepalive
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
@@ -82,6 +84,12 @@ You can use the following blocks with `otelcol.receiver.zipkin`:
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `keepalive`
+
+The `keepalive` block configures HTTP keep-alive settings for the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `debug_metrics`
 

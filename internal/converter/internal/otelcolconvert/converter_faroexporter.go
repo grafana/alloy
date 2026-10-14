@@ -70,6 +70,7 @@ func toFaroExporter(cfg *faroexporter.Config) *faro.Arguments {
 }
 
 func toFaroHTTPClientArguments(cfg confighttp.ClientConfig) faro.HTTPClientArguments {
+	keepalive := effectiveClientKeepalive(cfg)
 	var a *auth.Handler
 	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
@@ -83,12 +84,14 @@ func toFaroHTTPClientArguments(cfg confighttp.ClientConfig) faro.HTTPClientArgum
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
 
-		Timeout:              cfg.Timeout,
-		Headers:              toHeadersMap(cfg.Headers),
-		MaxIdleConns:         cfg.MaxIdleConns,
-		MaxIdleConnsPerHost:  cfg.MaxIdleConnsPerHost,
-		MaxConnsPerHost:      cfg.MaxConnsPerHost,
-		IdleConnTimeout:      cfg.IdleConnTimeout,
+		Timeout: cfg.Timeout,
+		Headers: toHeadersMap(cfg.Headers),
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
+		MaxConnsPerHost:     cfg.MaxConnsPerHost,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
+		//nolint:staticcheck
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +19,8 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
+	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -25,8 +29,7 @@ import (
 )
 
 const (
-	ExplainPlanCollector   = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlanCollector = "explain_plans"
 )
 
 const selectQueriesForExplainPlanTemplate = `
@@ -227,6 +230,7 @@ type ExplainPlansArguments struct {
 	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
+	TableRegistry    *TableRegistry
 
 	Logger *slog.Logger
 }
@@ -245,6 +249,7 @@ type ExplainPlans struct {
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
+	tableRegistry       *TableRegistry
 	lastEmittedAt       map[string]time.Time
 	now                 func() time.Time
 	logger              *slog.Logger
@@ -269,6 +274,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		lastEmittedAt:       make(map[string]time.Time),
 		now:                 time.Now,
 		entryHandler:        args.EntryHandler,
+		tableRegistry:       args.TableRegistry,
 		logger:              args.Logger.With("collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
 	}
@@ -323,8 +329,6 @@ func (c *ExplainPlans) pruneThrottle(seen map[string]struct{}) {
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:         "PostgreSQL",
-			DatabaseVersion:        c.dbVersion.String(),
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
@@ -341,7 +345,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		`schema=%q digest=%q explain_plan_output=%q`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
@@ -349,7 +353,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		database_observability.OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
 	c.recordEmission(explainPlanQueryKey(schemaName, digest))
@@ -576,12 +580,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
-		for _, code := range unrecoverablePostgresSQLErrors {
-			if strings.Contains(err.Error(), code) {
-				return true
-			}
-		}
-		return false
+		return isUnrecoverablePostgresSQLError(err)
 	}
 
 	if len(byteExplainPlanJSON) == 0 {
@@ -628,6 +627,19 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	return false
 }
 
+func isUnrecoverablePostgresSQLError(err error) bool {
+	for _, message := range unrecoverablePostgresSQLErrors {
+		if strings.Contains(err.Error(), message) {
+			return true
+		}
+	}
+
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) &&
+		pqErr.Code == pqerror.UndefinedObject &&
+		strings.HasPrefix(pqErr.Message, "unrecognized configuration parameter ")
+}
+
 // postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest
 // placeholder index in the query. The same index may appear multiple times (e.g. two $1)
 // without increasing N.
@@ -643,6 +655,48 @@ func postgresPreparedStatementParamCount(queryText string) int {
 	return maxParam
 }
 
+// buildSearchPathStatement builds the "SET SESSION search_path ..." statement executed before
+// preparing an explain plan. When the table registry knows the schemas for the database, all of
+// them are included (with public always last as a catch-all) so that unqualified table names in
+// the query can resolve regardless of which schema they live in. When the registry is unavailable
+// (schema_details disabled, cold start, or a database with no tables) it falls back to the public
+// schema only.
+func (c *ExplainPlans) buildSearchPathStatement(datname string) string {
+	const prefix = "SET SESSION search_path TO "
+
+	if c.tableRegistry != nil {
+		if schemas := c.tableRegistry.SchemasForDatabase(database(datname)); len(schemas) > 0 {
+			nonPublic := make([]string, 0, len(schemas))
+			for _, s := range schemas {
+				if s != "public" {
+					nonPublic = append(nonPublic, s)
+				}
+			}
+
+			// Sort for deterministic output. Note that the order only affects resolution of
+			// table names that are duplicated across schemas, which is inherently ambiguous
+			// for queries that do not use qualified table names.
+			sort.Strings(nonPublic)
+
+			quoted := make([]string, 0, len(nonPublic)+1)
+			for _, s := range nonPublic {
+				quoted = append(quoted, quotePostgresIdentifier(s))
+			}
+			quoted = append(quoted, quotePostgresIdentifier("public"))
+
+			return prefix + strings.Join(quoted, ", ")
+		}
+	}
+
+	return prefix + quotePostgresIdentifier("public")
+}
+
+// quotePostgresIdentifier wraps an identifier in double quotes, escaping any embedded double
+// quotes, so it can be safely used as a schema name in a search_path statement.
+func quotePostgresIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
@@ -654,7 +708,7 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 	defer conn.Close()
 
-	setSearchPathStatement := fmt.Sprintf("SET SESSION search_path TO \"%s\", public", qi.datname)
+	setSearchPathStatement := c.buildSearchPathStatement(qi.datname)
 	if _, err := conn.ExecContext(ctx, setSearchPathStatement); err != nil {
 		return nil, fmt.Errorf("failed to set search path: %w", err)
 	}

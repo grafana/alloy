@@ -13,7 +13,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 
 	assert.DeepEqual(t, &Config{
-		HostIdentifiers:      []string{"host.id"},
+		HostIdentifiers:      []string{"k8s.node.name", "host.id"},
 		MetricsFlushInterval: 60 * time.Second,
 	}, cfg)
 

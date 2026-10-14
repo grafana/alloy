@@ -17,6 +17,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
@@ -65,7 +66,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" cpu_time="10s"`,
@@ -89,7 +90,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" state="active" xid="0" xmin="0" xact_time="0s" query_time="0s" queryid="123" cpu_time="0s"`,
@@ -113,8 +114,8 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
-				{"op": OP_WAIT_EVENT},
+				{"op": database_observability.OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_WAIT_EVENT},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="124"`,
@@ -141,7 +142,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			},
 			disableQueryRedaction: true,
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": database_observability.OP_QUERY_SAMPLE},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'"`,
@@ -255,7 +256,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 		require.NoError(t, sampleCollector.Start(t.Context()))
 		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 100*time.Millisecond)
 
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
 		assert.Equal(t,
 			`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" traceparent="00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01"`,
 			lokiClient.Received()[0].Line)
@@ -310,7 +311,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 		require.NotNil(t, sampleCollector)
 		require.NoError(t, sampleCollector.Start(t.Context()))
 		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 100*time.Millisecond)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
 
 		assert.Equal(t,
 			`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /*traceparent='00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01'*/" traceparent="00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01"`,
@@ -367,7 +368,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 
 		require.NoError(t, sampleCollector.Start(t.Context()))
 		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 100*time.Millisecond)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
 
 		assert.Equal(t,
 			`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /*traceparent='00-00bd5199fe2a4c8506368b55ef21"`,
@@ -379,6 +380,24 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 100*time.Millisecond)
 	})
+}
+
+func TestBuildQuerySampleLabelsWithEndEscapesLogfmtValues(t *testing.T) {
+	queryText := "SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"
+	state := &SampleState{
+		LastRow: QuerySamplesInfo{
+			DatabaseName:    sql.NullString{String: `test"db`, Valid: true},
+			Username:        sql.NullString{String: "test\\user", Valid: true},
+			ApplicationName: sql.NullString{String: "line one\nline two", Valid: true},
+			BackendType:     sql.NullString{String: "client backend", Valid: true},
+			State:           sql.NullString{String: "active", Valid: true},
+			Query:           sql.NullString{String: queryText, Valid: true},
+			Now:             time.Now(),
+		},
+	}
+	collector := &QuerySamples{disableQueryRedaction: true}
+
+	require.Equal(t, `datname="test\"db" pid="0" leader_pid="" user="test\\user" app="line one\nline two" client="" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="" query_time="" queryid="0" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com' /* \"quoted\"\nC:\\tmp\\file */"`, collector.buildQuerySampleLabelsWithEnd(state, sql.NullTime{}))
 }
 
 // TestQuerySamples_FetchQuerySamples_ErrorCases tests scenarios where errors occur
@@ -564,7 +583,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
 		expectedTimestamp := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
@@ -638,8 +657,8 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Line)
 
 		sampleCollector.Stop()
@@ -711,9 +730,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[1].Line)
 
 		sampleCollector.Stop()
@@ -785,9 +804,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m5s" query_time="35s" queryid="9002" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[1].Line)
 
 		sampleCollector.Stop()
@@ -859,14 +878,14 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m3s" query_time="33s" queryid="9003" query="UPDATE t SET c=1"`, entries[0].Line)
 		// A (brand-new) wait_time = LastTimestamp(now) - boundedStart(state_change=now-5s) = 5s.
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[1].Line)
 		// B (new occurrence after identity change) wait_time =
 		//   LastTimestamp(now+3s) - boundedStart(max(state_change=now-5s, priorLastSeen=now)) = 3s.
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[2].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="3s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[2].Line)
 		// All three entries collapse to the sample's query_start.
 		expectedTs := time.Unix(0, queryStartTime.UnixNano())
@@ -959,7 +978,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Contains(t, entries[0].Line, `query_time="20s"`)
 		require.Contains(t, entries[0].Line, `cpu_time="10s"`)
 		expectedTs := time.Unix(0, queryStartTime.UnixNano())
@@ -1039,7 +1058,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Contains(t, entries[0].Line, `query_time="20s"`)
 		expectedTs := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
@@ -1118,7 +1137,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		// End timestamp should match state_change
 		expectedTs := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
@@ -1217,7 +1236,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.Len(t, entries, 2)
 		// Both entries should be OP_QUERY_SAMPLE
 		for _, e := range entries {
-			require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, e.Labels)
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, e.Labels)
 		}
 		// Ensure both queryids are present among the two entries
 		var seen22002, seen23002 bool
@@ -1539,8 +1558,8 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 		// The wait_event entry must contain the raw wait_event_type, not a classified value
 		require.Contains(t, entries[1].Line, `wait_event_type="IO"`)
 		require.NotContains(t, entries[1].Line, `wait_event_type="IO Wait"`)
@@ -1603,9 +1622,9 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.True(t, now.Add(-30*time.Second).Equal(time.Unix(0, entries[0].Timestamp.UnixNano())))
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[1].Labels)
 		require.True(t, now.Add(-30*time.Second).Equal(time.Unix(0, entries[1].Timestamp.UnixNano())))
 		// The wait_event_v2 entry must contain the classified wait_event_type
 		require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
@@ -1684,8 +1703,8 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 
 	entries := lokiClient.Received()
 	require.Len(t, entries, 2)
-	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT}, entries[1].Labels)
 	require.Contains(t, entries[1].Line, `wait_time="5s"`, "wait_time bounded by priorLastSeen offset, not 1h stateAge")
 	// Both entries stamp at query_start (1h before t0), not at the scrape time.
 	expectedTs := time.Unix(0, queryStart.UnixNano())

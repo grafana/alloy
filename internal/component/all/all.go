@@ -76,6 +76,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/signaltometrics"        // Import otelcol.connector.signaltometrics
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs"               // Import otelcol.connector.spanlogs
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanmetrics"            // Import otelcol.connector.spanmetrics
+	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/jsonlog"                 // Import otelcol.encoding.jsonlog
+	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/text"                    // Import otelcol.encoding.text
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3exporter
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
@@ -139,7 +141,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/azure"                // Import prometheus.exporter.azure
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/blackbox"             // Import prometheus.exporter.blackbox
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cadvisor"             // Import prometheus.exporter.cadvisor
-	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/catchpoint"           // Import prometheus.exporter.catchpoint
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/cloudwatch"           // Import prometheus.exporter.cloudwatch
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/consul"               // Import prometheus.exporter.consul
 	_ "github.com/grafana/alloy/internal/component/prometheus/exporter/databricks"           // Import prometheus.exporter.databricks

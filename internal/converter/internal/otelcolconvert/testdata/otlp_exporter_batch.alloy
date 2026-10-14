@@ -1,0 +1,62 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		traces = [otelcol.exporter.otlp.default_no_batch.input, otelcol.exporter.otlp.default_default_batch.input, otelcol.exporter.otlp.default_explicit_batch.input, otelcol.exporter.otlp.default_partitioned_batch.input]
+	}
+}
+
+otelcol.exporter.otlp "default_no_batch" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.otlp "default_default_batch" {
+	sending_queue {
+		batch {
+			min_size = 8192
+			max_size = 0
+		}
+	}
+
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.otlp "default_explicit_batch" {
+	sending_queue {
+		batch {
+			flush_timeout = "100ms"
+			min_size      = 4096
+			max_size      = 16384
+			sizer         = "bytes"
+		}
+	}
+
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.exporter.otlp "default_partitioned_batch" {
+	sending_queue {
+		batch {
+			min_size = 8192
+			max_size = 0
+
+			partition {
+				metadata_keys = ["tenant", "region"]
+				cache_size    = 20
+				idle_timeout  = "2m0s"
+			}
+		}
+	}
+
+	client {
+		endpoint = "database:4317"
+	}
+}

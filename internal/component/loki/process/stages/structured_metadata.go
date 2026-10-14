@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -22,13 +23,13 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	// We must not mutate the c.Values, create a copy with changes we need.
 	ret := map[string]string{}
 	if c == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(errEmptyLabelStageConfig)
 	}
 	for labelName, labelSrc := range c {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
+			return nil, fmt.Errorf(errInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
@@ -40,9 +41,13 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	return ret, nil
 }
 
-func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataConfig) (Stage, error) {
-	var validatedLabelsConfig map[string]string
-	var err error
+var _ entryProcessor = (*structuredMetadataStage)(nil)
+
+func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (*structuredMetadataStage, error) {
+	var (
+		err                   error
+		validatedLabelsConfig map[string]string
+	)
 
 	if len(configs.Values) > 0 {
 		validatedLabelsConfig, err = validateStructuredMetadataConfig(configs.Values)
@@ -56,53 +61,55 @@ func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataC
 		return nil, err
 	}
 	return &structuredMetadataStage{
+		next:         opts.next,
 		labelsConfig: validatedLabelsConfig,
 		regex:        *re,
-		logger:       logger.With("stage", "structured_metadata"),
+		logger:       opts.slogger.With("stage", "structured_metadata"),
 	}, nil
 }
 
 type structuredMetadataStage struct {
+	next         nextFn
 	labelsConfig map[string]string
 	regex        regexp.Regexp
 	logger       *slog.Logger
 }
 
-// Cleanup implements Stage.
-func (*structuredMetadataStage) Cleanup() {
-	// no-op
+func (s *structuredMetadataStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = s.processEntry(entries[i])
+	}
+	return s.next(ctx, entries)
 }
 
-func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
-			metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
+func (s *structuredMetadataStage) processEntry(e Entry) Entry {
+	appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
+		metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
 
-			i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
-				return label.Name == metadata.Name
-			})
-			if i != -1 {
-				e.StructuredMetadata[i] = metadata
-				return
-			}
-
-			e.StructuredMetadata = append(e.StructuredMetadata, metadata)
+		i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
+			return label.Name == metadata.Name
+		})
+		if i != -1 {
+			e.StructuredMetadata[i] = metadata
+			return
 		}
 
-		// Try to add structured metadata from extracted map using labelsConfig.
-		processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
+		e.StructuredMetadata = append(e.StructuredMetadata, metadata)
+	}
 
-		// Try to add structured metadata from extracted map using regex.
-		processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
+	// Try to add structured metadata from extracted map using labelsConfig.
+	processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
 
-		// Try to add structured metadata from labels using labelsConfig.
-		processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
+	// Try to add structured metadata from extracted map using regex.
+	processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
 
-		// Try to add structured metadata from labels using regex.
-		processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+	// Try to add structured metadata from labels using labelsConfig.
+	processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
 
-		return e
-	})
+	// Try to add structured metadata from labels using regex.
+	processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+
+	return e
 }
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)

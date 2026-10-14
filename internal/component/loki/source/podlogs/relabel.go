@@ -1,6 +1,7 @@
 package podlogs
 
 import (
+	"fmt"
 	"strings"
 
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -26,8 +27,11 @@ func convertRelabelConfig(in []*promv1.RelabelConfig) ([]*relabel.Config, error)
 			}
 			outRule.Regex = regex
 		}
+		if inRule.Modulus < 0 {
+			return nil, fmt.Errorf("modulus must not be negative, got %d", inRule.Modulus)
+		}
 		if inRule.Modulus != 0 {
-			outRule.Modulus = inRule.Modulus
+			outRule.Modulus = uint64(inRule.Modulus)
 		}
 		if inRule.TargetLabel != "" {
 			outRule.TargetLabel = inRule.TargetLabel

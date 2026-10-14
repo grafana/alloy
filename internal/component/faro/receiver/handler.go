@@ -21,7 +21,15 @@ import (
 
 const apiKeyHeader = "x-api-key"
 
-var defaultAllowedHeaders = []string{"content-type", "content-encoding", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
+var defaultAllowedHeaders = []string{
+	"content-type",
+	"content-encoding",
+	"idempotency-key",
+	"traceparent",
+	apiKeyHeader,
+	"x-faro-session-id",
+	"x-scope-orgid",
+}
 
 type handler struct {
 	log            *slog.Logger
@@ -88,6 +96,7 @@ func (h *handler) Update(args ServerArguments) {
 		h.cors = cors.New(cors.Options{
 			AllowedOrigins: args.CORSAllowedOrigins,
 			AllowedHeaders: defaultAllowedHeaders,
+			ExposedHeaders: []string{"Retry-After"},
 		})
 	} else {
 		h.cors = nil // Disable cors.

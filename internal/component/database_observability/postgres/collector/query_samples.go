@@ -22,9 +22,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT         = "wait_event"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
 
 const (
@@ -491,7 +488,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		database_observability.OP_QUERY_SAMPLE,
 		sampleLabels,
 		ts,
 	)
@@ -508,10 +505,10 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 
 		var op, labels string
 		if c.enablePreClassifiedWaitEvents {
-			op = OP_WAIT_EVENT_V2
+			op = database_observability.OP_WAIT_EVENT_V2
 			labels = c.buildWaitEventV2Labels(state, we, waitTimeStr)
 		} else {
-			op = OP_WAIT_EVENT
+			op = database_observability.OP_WAIT_EVENT
 			labels = c.buildWaitEventLabels(state, we, waitTimeStr)
 		}
 
@@ -548,15 +545,15 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	}
 
 	labels := fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" app="%s" client="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s app=%s client=%s backend_type=%s state=%s xid="%d" xmin="%d" xact_time="%s" query_time="%s" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.ApplicationName.String,
-		clientAddr,
-		state.LastRow.BackendType.String,
-		state.LastRow.State.String,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.ApplicationName.String),
+		strconv.Quote(clientAddr),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(state.LastRow.State.String),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		xactDuration,
@@ -564,10 +561,10 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		state.LastRow.QueryID.Int64,
 	)
 	if state.LastCpuTime != "" {
-		labels = fmt.Sprintf(`%s cpu_time="%s"`, labels, state.LastCpuTime)
+		labels = fmt.Sprintf(`%s cpu_time=%q`, labels, state.LastCpuTime)
 	}
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
-		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
+		labels = fmt.Sprintf(`%s query=%s`, labels, strconv.Quote(state.LastRow.Query.String))
 	}
 
 	if state.LastRow.Query.Valid {
@@ -587,19 +584,19 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s backend_type=%s state=%s xid="%d" xmin="%d" wait_time="%s" wait_event_type=%s wait_event=%s wait_event_name=%s blocked_by_pids="%v" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.BackendType.String,
-		we.LastState,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(we.LastState),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		waitTime,
-		we.WaitEventType,
-		we.WaitEvent,
-		waitEventFullName,
+		strconv.Quote(we.WaitEventType),
+		strconv.Quote(we.WaitEvent),
+		strconv.Quote(waitEventFullName),
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
@@ -652,19 +649,19 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
 	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
+		`datname=%s pid="%d" leader_pid="%s" user=%s backend_type=%s state=%s xid="%d" xmin="%d" wait_time="%s" wait_event_type=%s wait_event=%s wait_event_name=%s blocked_by_pids="%v" queryid="%d"`,
+		strconv.Quote(state.LastRow.DatabaseName.String),
 		state.LastRow.PID,
 		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.BackendType.String,
-		we.LastState,
+		strconv.Quote(state.LastRow.Username.String),
+		strconv.Quote(state.LastRow.BackendType.String),
+		strconv.Quote(we.LastState),
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		waitTime,
-		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
-		we.WaitEvent,
-		waitEventFullName,
+		strconv.Quote(classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent)),
+		strconv.Quote(we.WaitEvent),
+		strconv.Quote(waitEventFullName),
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
@@ -695,18 +692,18 @@ func isPostgresReplicationWaitEvent(waitEvent string) bool {
 
 func classifyPostgresWaitEventType(rawType, waitEvent string) string {
 	if isPostgresReplicationWaitEvent(waitEvent) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	switch rawType {
 	case "IO":
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	case "Client":
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	case "Lock":
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	case "LWLock", "BufferPin", "IPC":
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	default:
-		return "Other Wait"
+		return database_observability.WAIT_EVENT_TYPE_OTHER
 	}
 }

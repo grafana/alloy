@@ -15,8 +15,10 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 	}
 
 	args := cloudflare.Arguments{
-		APIToken:   alloytypes.Secret(s.cfg.CloudflareConfig.APIToken),
-		ZoneID:     s.cfg.CloudflareConfig.ZoneID,
+		APIToken: alloytypes.Secret(s.cfg.CloudflareConfig.APIToken),
+		ZoneID:   s.cfg.CloudflareConfig.ZoneID,
+		// Promtail has no setting for the API URL.
+		APIURL:     cloudflare.DefaultArguments.APIURL,
 		Labels:     convertPromLabels(s.cfg.CloudflareConfig.Labels),
 		Workers:    s.cfg.CloudflareConfig.Workers,
 		PullRange:  time.Duration(s.cfg.CloudflareConfig.PullRange),

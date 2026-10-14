@@ -1,6 +1,7 @@
 package wal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -53,7 +54,9 @@ type WriteTo interface {
 	// found in.
 	StoreSeries(series []record.RefSeries, segmentNum int)
 
-	AppendEntries(entries RefEntries, segmentNum int) error
+	// AppendEntries is called with the entries read from a segment. ctx is tied to the lifetime of the Watcher and is
+	// canceled when it stops, so an implementation that blocks must honour it or it will hold up shutdown.
+	AppendEntries(ctx context.Context, entries RefEntries, segmentNum int) error
 }
 
 // Marker allows the Watcher to start from a specific segment in the WAL.
@@ -132,12 +135,12 @@ func (w *Watcher) mainLoop() {
 		if w.state.IsDraining() && errors.Is(err, os.ErrNotExist) {
 			w.logger.Info("reached non existing segment while draining, assuming end of WAL")
 			// since we've reached the end of the WAL, and the Watcher is draining, promptly transition to stopping state
-			// so the watcher can stoppingSignal early
+			// so the watcher can stop early
 			w.state.Transition(internal.StateStopping)
 		}
 
 		select {
-		case <-w.state.WaitForStopping():
+		case <-w.state.StoppingContext().Done():
 			return
 		case <-time.After(5 * time.Second):
 		}
@@ -222,7 +225,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 	for {
 		select {
-		case <-w.state.WaitForStopping():
+		case <-w.state.StoppingContext().Done():
 			return nil
 
 		case <-segmentTicker.C:
@@ -244,7 +247,13 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 			// We know that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
 			// the remaining data from the segmentNum and return from `watch` to read the next one.
+
 			_, err = w.readSegment(reader, segmentNum)
+
+			// context.Canceled means the Watcher is stopping.
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 
 			// io.EOF error are non-fatal since we are consuming the segment till the end
 			if !errors.Is(err, io.EOF) {
@@ -264,6 +273,12 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 		// read from open segment routine
 		ok, err := w.readSegment(reader, segmentNum)
+
+		// context.Canceled means the Watcher is stopping.
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
 		// Ignore all errors reading to end of segment whilst replaying the WAL. This is because when replaying not the
 		// last segment, we assume that segment is not written anymore (closed), and the call to readSegment will read
 		// to the end of it. If error, log a warning accordingly. After, error or no error, nil is returned so that the
@@ -315,7 +330,7 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 }
 
 // decodeAndDispatch first decodes a WAL record. Upon reading either Series or Entries from the WAL record, call the
-// appropriate callbacks in the writeTo.
+// appropriate function in the writeTo.
 func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
@@ -333,7 +348,15 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	readData = true
 
 	for _, entries := range rec.RefEntries {
-		if err := w.actions.AppendEntries(entries, segmentNum); err != nil && firstErr == nil {
+		err := w.actions.AppendEntries(w.state.StoppingContext(), entries, segmentNum)
+
+		// The WriteTo gave up because the Watcher is stopping, so there is no point handing it
+		// the rest of the record. The caller turns this into a quiet exit.
+		if errors.Is(err, context.Canceled) {
+			return readData, err
+		}
+
+		if err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
@@ -351,12 +374,14 @@ func (w *Watcher) Drain() {
 	select {
 	case <-time.NewTimer(w.drainTimeout).C:
 		w.logger.Warn("watcher drain timeout occurred, transitioning to Stopping")
-	case <-w.state.WaitForStopping():
+	case <-w.state.StoppingContext().Done():
 	}
 }
 
 // Stop stops the Watcher, shutting down the main routine.
 func (w *Watcher) Stop() {
+	// Transitioning cancels the state's context, which releases a WriteTo blocked in
+	// AppendEntries so the wait below can return.
 	w.state.Transition(internal.StateStopping)
 
 	// upon calling stop, wait for main mainLoop execution to stop

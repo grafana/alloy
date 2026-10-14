@@ -1,6 +1,7 @@
 package remotecfg
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -10,6 +11,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/natefinch/atomic"
 
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy/internal/service"
@@ -135,10 +138,10 @@ func (cm *configManager) getCachedConfig() ([]byte, error) {
 	return os.ReadFile(p)
 }
 
+// setCachedConfig writes b to the cache path atomically
 func (cm *configManager) setCachedConfig(b []byte) {
 	p := cm.getCachedConfigPath()
-	err := os.WriteFile(p, b, 0750)
-	if err != nil {
+	if err := atomic.WriteFile(p, bytes.NewReader(b)); err != nil {
 		cm.logger.Error("failed to flush remote configuration contents the on-disk cache", "err", err)
 	}
 }
