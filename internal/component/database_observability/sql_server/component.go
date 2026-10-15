@@ -835,6 +835,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
 	collectors := enableOrDisableCollectors(c.args)
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
@@ -849,6 +850,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(ctx); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
@@ -910,6 +912,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			QueryTimeout:    c.args.QueryTimeout,
 			EntryHandler:    entryHandler,
+			TableRegistry:   tableRegistry,
 			Logger:          c.opts.Logger,
 		}
 
