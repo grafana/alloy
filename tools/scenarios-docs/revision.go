@@ -4,4 +4,4 @@ package scenariosdocs
 
 // revision is the grafana/alloy-scenarios commit that the scenario tables in
 // docs/sources/shared/scenarios are generated from.
-const revision = "df88aebbe47f347d7449c69f5c8bd9227610187b"
+const revision = "2547598b4b4c3d9394db165698fc10e2f6965972"
