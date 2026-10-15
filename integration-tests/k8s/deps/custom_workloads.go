@@ -16,6 +16,9 @@ type CustomWorkloadsOptions struct {
 	// Vars expands ${KEY} placeholders in the manifest. See util.SubstituteVars;
 	// unresolved placeholders fail Install loudly.
 	Vars map[string]string
+	// Images are loaded into the kind cluster before the manifest is applied.
+	// Manifests use imagePullPolicy: Never, so list every image they run.
+	Images []string
 }
 
 type CustomWorkloads struct {
@@ -44,6 +47,12 @@ func (w *CustomWorkloads) Install(_ *harness.TestContext) error {
 		return fmt.Errorf("resolve custom workloads path: %w", err)
 	}
 	w.absPath = absPath
+
+	for _, image := range w.opts.Images {
+		if err := ensureKindImage(image); err != nil {
+			return fmt.Errorf("load image %s: %w", image, err)
+		}
+	}
 
 	manifest, err := w.renderManifest()
 	if err != nil {
