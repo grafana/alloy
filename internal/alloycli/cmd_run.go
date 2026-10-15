@@ -30,7 +30,6 @@ import (
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/importsource"
@@ -51,9 +50,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
-
-	// Install Components
-	_ "github.com/grafana/alloy/internal/component/all"
 )
 
 func newAlloyRun() *alloyRun {
@@ -710,13 +706,17 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 		return nil, err
 	}
 	if converterSourceFormat != "alloy" {
+		if convertFn == nil {
+			return nil, errConverterNotIncluded
+		}
+
 		var diags convert_diag.Diagnostics
 		ea, err := parseExtraArgs(configExtraArgs)
 		if err != nil {
 			return nil, err
 		}
 
-		bb, diags = converter.Convert(bb, converter.Input(converterSourceFormat), ea)
+		bb, diags = convertFn(bb, converterSourceFormat, ea)
 		hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
 		hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
 		if hasCritical || (!converterBypassErrors && hasError) {
