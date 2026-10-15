@@ -3,7 +3,6 @@
 package reporter
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
@@ -42,12 +41,16 @@ type Config struct {
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
 	PIDLabel                  bool
+	AggregateProfiles         bool
 	CommMode                  args.CommMode
 	KernelFrames              bool
 }
 type PPROFReporter struct {
-	cfg *Config
-	log *slog.Logger
+	cfg               *Config
+	profileOptionsMut sync.RWMutex
+	pidLabel          bool
+	aggregateProfiles bool
+	log               *slog.Logger
 
 	consumer PPROFConsumer
 	symbols  irsymcache.NativeSymbolResolver
@@ -69,12 +72,14 @@ func NewPPROF(log *slog.Logger,
 
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
-		cfg:         cfg,
-		log:         log,
-		traceEvents: xsync.NewRWMutex(tree),
-		sd:          sd,
-		consumer:    consumer,
-		symbols:     symbols,
+		cfg:               cfg,
+		pidLabel:          cfg.PIDLabel,
+		aggregateProfiles: cfg.AggregateProfiles,
+		log:               log,
+		traceEvents:       xsync.NewRWMutex(tree),
+		sd:                sd,
+		consumer:          consumer,
+		symbols:           symbols,
 	}
 }
 
@@ -163,14 +168,28 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	newEvents := make(samples.TraceEventsTree)
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
+	pidLabel, aggregate := p.profileOptions()
 	var profiles []PPROF
+	var groups profileGroups
+	var allocator *profileAllocator
+	if aggregate {
+		groups = make(profileGroups)
+		allocator = &profileAllocator{}
+	}
 	for resourceKey, rtp := range reportedEvents {
 		for profileType, events := range rtp.Events {
-			pp := p.createProfile(resourceKey, profileType, events)
-			profiles = append(profiles, pp...)
+			built := p.buildProfiles(resourceKey, profileType, events, pidLabel, allocator)
+			if aggregate {
+				groups.add(built, profileType.SampleType)
+			} else {
+				profiles = append(profiles, p.encodeProfiles(built)...)
+			}
 		}
 	}
 
+	if aggregate {
+		profiles = p.encodeGroups(groups)
+	}
 	p.consumer(ctx, profiles)
 	sz := 0
 	for _, it := range profiles {
@@ -180,17 +199,22 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 }
 
 func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileType *samples.TypeMetadata, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
+	pidLabel, _ := p.profileOptions()
+	return p.encodeProfiles(p.buildProfiles(resourceKey, profileType, events, pidLabel, nil))
+}
+
+func (p *PPROFReporter) buildProfiles(resourceKey samples.ResourceKey, profileType *samples.TypeMetadata, events map[samples.SampleKey]*samples.TraceEvents, pidLabel bool, allocator *profileAllocator) []builtProfile {
 	defer func() {
 		if p.symbols != nil {
 			p.symbols.Cleanup()
 		}
 	}()
 
-	bs := NewProfileBuilders(BuildersOptions{
+	bs := newProfileBuilders(BuildersOptions{
 		SampleRate:    p.cfg.SamplesPerSecond,
 		PerPIDProfile: true,
 		ProfileType:   profileType,
-	})
+	}, allocator)
 
 	for sampleKey, traceInfo := range events {
 		target := p.sd.FindTarget(uint32(resourceKey.PID), resourceKey.ContainerID.String())
@@ -210,7 +234,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		if comm != "" && p.cfg.CommMode.Label() {
 			sampleLabels["comm"] = []string{comm}
 		}
-		if p.cfg.PIDLabel {
+		if pidLabel {
 			sampleLabels["pid"] = []string{strconv.FormatInt(resourceKey.PID, 10)}
 		}
 		if sampleKey.SpanID != libpf.InvalidAPMSpanID {
@@ -312,14 +336,8 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 			s.Location = append(s.Location, b.CommLocation(comm))
 		}
 	}
-	res := make([]PPROF, 0, len(bs.Builders))
+	res := make([]builtProfile, 0, len(bs.Builders))
 	for _, b := range bs.Builders {
-		buf := bytes.NewBuffer(nil)
-		_, err := b.Write(buf)
-		if err != nil {
-			p.log.Error("failed to encode profile", "err", err)
-			continue
-		}
 		_, ls := b.Target.Labels()
 		metric := discovery.MetricValueProcessCPU
 		if profileType.ReportValues {
@@ -329,11 +347,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		builder := labels.NewBuilder(ls)
 		builder.Set(model.MetricNameLabel, metric)
 		pyroscope.AddScopeLabels(builder, pyroscope.ScopeNameEBPF)
-		res = append(res, PPROF{
-			Raw:     buf.Bytes(),
-			Samples: len(b.Profile.Sample),
-			Labels:  builder.Labels(),
-		})
+		res = append(res, builtProfile{profile: b.Profile, labels: builder.Labels()})
 	}
 	return res
 }
