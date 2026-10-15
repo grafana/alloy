@@ -926,7 +926,7 @@ func (conv *Converter) GC(staleTime time.Duration) {
 		defer series.Unlock()
 
 		if now.Sub(series.lastSeen) > staleTime {
-			conv.seriesCache.Delete(key)
+			conv.metadataCache.Delete(key)
 		}
 		return true
 	})
