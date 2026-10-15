@@ -135,6 +135,10 @@ func TestExtension(t *testing.T) {
 		metrics {
 			aggregations = ["count"]
 		}
+
+		traces {
+			time_formats = ["01/02/2006 15:04:05"]
+		}
 	`), &args))
 
 	go func() {
@@ -169,7 +173,7 @@ func TestExtension(t *testing.T) {
 	require.True(t, ok, "extension does not implement encoding.LogsUnmarshalerExtension")
 	metricsUnmarshaler, ok := exports.Handler.Extension.(encoding.MetricsUnmarshalerExtension)
 	require.True(t, ok, "extension does not implement encoding.MetricsUnmarshalerExtension")
-	_, ok = exports.Handler.Extension.(encoding.TracesUnmarshalerExtension)
+	tracesUnmarshaler, ok := exports.Handler.Extension.(encoding.TracesUnmarshalerExtension)
 	require.True(t, ok, "extension does not implement encoding.TracesUnmarshalerExtension")
 
 	// The AuditEvent record is dropped by exclude_categories.
@@ -214,6 +218,29 @@ func TestExtension(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, metrics.MetricCount())
 	require.Equal(t, "cputime_count", metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Name())
+
+	// The non-ISO 8601 timestamp is only parsed by the configured time_formats layout.
+	traces, err := tracesUnmarshaler.UnmarshalTraces([]byte(`{
+		"records": [
+			{
+				"time": "04/18/2023 09:03:00",
+				"resourceId": "/RESOURCE_ID",
+				"Type": "AppRequests",
+				"OperationId": "2ad25f23760aebd3dcc3791d6ecf140e",
+				"ParentId": "2ad25f23760aebd3dcc3791d6ecf140e",
+				"Id": "d5096a85972c6cb3",
+				"Name": "Method1",
+				"Success": true,
+				"ResultCode": "0",
+				"DurationMs": 15
+			}
+		]
+	}`))
+	require.NoError(t, err)
+	require.Equal(t, 1, traces.SpanCount())
+	span := traces.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
+	require.Equal(t, "Method1", span.Name())
+	require.Equal(t, time.Date(2023, 4, 18, 9, 3, 0, 0, time.UTC), span.StartTimestamp().AsTime())
 }
 
 func stringsOf[T ~string](in []T) []string {
