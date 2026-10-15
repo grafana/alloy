@@ -377,8 +377,7 @@ func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lb
 	s.refMappingMu.Lock()
 	defer s.refMappingMu.Unlock()
 
-	// A stale caller's child refs would be served to the current children, and a ref
-	// minted now would sit above the passthrough's deadRefThreshold.
+	// A stale caller's child refs would be served to the current children.
 	if generation != s.generation {
 		return 0
 	}
